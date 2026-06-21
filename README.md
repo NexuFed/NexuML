@@ -39,6 +39,15 @@ A modular deep learning pipeline framework built on PyTorch Lightning and Tensor
 
 ## Install
 
+Directly from GitHub, without cloning:
+
+```bash
+uv pip install "nexuml[all] @ git+https://github.com/NexuFed/NexuML.git"
+uv pip install "nexuml-library @ git+https://github.com/NexuFed/NexuML.git#subdirectory=library"
+```
+
+Or after cloning:
+
 ```bash
 uv pip install --link-mode=copy -e ".[dev,all]"
 uv pip install --link-mode=copy -e "./library"
