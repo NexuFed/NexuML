@@ -1,0 +1,96 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: nexuml-ast-audioset
+  # namespace: <username>
+spec:
+  ttlSecondsAfterFinished: 100
+  backoffLimit: 2
+  template:
+    metadata:
+      annotations:
+        sidecar.istio.io/inject: "false"
+    spec:
+      restartPolicy: OnFailure
+      runtimeClassName: nvidia
+
+      imagePullSecrets:
+      - name: regcred
+
+      volumes:
+      - name: shared-mem
+        emptyDir:
+          sizeLimit: 4Gi
+          medium: Memory
+      - name: local-storage
+        emptyDir: {}
+      - name: juicefs
+        persistentVolumeClaim:
+          claimName: juicefs
+      - name: juicefs-prisma
+        persistentVolumeClaim:
+          claimName: juicefs-prisma
+
+      containers:
+        - name: nexuml
+          image: harbor.ika.rub.de/library/nexuml:latest
+          command: ["/bin/bash", "-c"]
+          args: 
+          - |
+            python -m nexuml train audioset-ast-adacos;
+            python -m nexuml train audioset-ast-adacos-full;
+
+          imagePullPolicy: Always
+
+          env:
+          - name: OMP_NUM_THREADS
+            value: "1"
+          - name: NEXUML_DATA_ROOT
+            value: /mnt/data
+          - name: NEXUML_LOGS_ROOT
+            value: /mnt/logs
+
+          resources:
+            limits:
+              nvidia.com/gpu: "1"
+
+          volumeMounts:
+          - name: shared-mem
+            mountPath: /dev/shm
+          - name: local-storage
+            mountPath: /mnt/local
+
+          - name: juicefs-prisma
+            subPathExpr: data
+            mountPath: /mnt/data
+          - name: juicefs-prisma
+            subPathExpr: logs
+            mountPath: /mnt/logs
+
+          - name: juicefs
+            mountPath: /workspace
+            subPathExpr: code/nexuml
+          - name: juicefs
+            mountPath: /home/python-user/workspace
+            subPathExpr: code/nexuml
+
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: "nvidia.com/gpu.memory"
+                operator: Gt
+                values: ["12000"]
+              - key: "nvidia.com/cuda.runtime.major"
+                operator: Gt
+                values: ["11"]
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                # - Tesla-V100-SXM2-32GB
+                - NVIDIA-GeForce-RTX-5080
+                - NVIDIA-GeForce-RTX-5070
+                - NVIDIA-GeForce-RTX-4090
+                - NVIDIA-GeForce-RTX-4070-SUPER
+                - NVIDIA-GeForce-RTX-4070

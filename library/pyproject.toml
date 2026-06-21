@@ -1,0 +1,30 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "nexuml-library"
+version = "0.1.0"
+description = "Base reusable library for NexuML"
+readme = "../README.md"
+requires-python = ">=3.12"
+license = { text = "Proprietary" }
+license-files = [
+    "LICENSE",
+]
+dependencies = [
+    "nexuml>=0.1.0",
+    "datasets>=2.18",
+    "huggingface_hub>=0.22",
+    "torchcodec==0.10.0",
+    "tqdm>=4.66",
+    "ffmpeg",
+    "einops",
+    "omegaconf",
+]
+
+[project.entry-points."nexuml.libraries"]
+base = "nexuml_library"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/nexuml_library"]

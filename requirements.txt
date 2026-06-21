@@ -1,0 +1,23 @@
+# NexuML — legacy requirements.txt
+#
+# The canonical dependency specification is in pyproject.toml.
+# Use `uv sync` or `pip install -e ".[dev]"` for development.
+# Optional feature deps live in pyproject extras such as `audio`, `pretrained`,
+# `eval`, `tracking`, `tuning`, `export`, `dali`, and `all`.
+#
+# This file exists only for environments that require a plain requirements.txt
+# (e.g., Docker builds, Dockerfile RUN pip install -r requirements.txt).
+
+--extra-index-url https://download.pytorch.org/whl/cu128
+
+# Core (pinned ranges match pyproject.toml)
+torch>=2.0
+torchaudio>=2.0
+torchvision>=0.15
+lightning>=2.0
+tensordict>=0.6
+torchmetrics>=1.0
+safetensors>=0.4
+tensorboard
+torch-tb-profiler
+opencv-python-headless

@@ -1,0 +1,171 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "nexuml"
+version = "0.1.0"
+description = "Modular deep learning pipeline framework"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "Proprietary" }
+license-files = [
+    "LICENSE",
+]
+dependencies = [
+    "torch>=2.0",
+    "torchaudio>=2.0",
+    "torchvision>=0.15",
+    "lightning>=2.0",
+    "tensordict>=0.6",
+    "numpy>=1.26",
+    "pandas>=2.0",
+    "pydantic>=2.0",
+    "typer>=0.9",
+    "ruamel.yaml>=0.18",
+    "torchmetrics>=1.0",
+    "rich>=13.0",
+    "requests>=2.0",
+    "loguru>=0.7",
+    "tensorboard>=2.0",
+    "safetensors>=0.4",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=4.0",
+    "ruff>=0.4",
+    "ty",
+    "mkdocs-material>=9.6",
+    "mkdocstrings[python]>=0.29",
+    "mkdocs-gen-files>=0.5",
+    "mkdocs-literate-nav>=0.6",
+    "mkdocs-section-index>=0.3",
+    "mike>=2.1",
+    "pymdown-extensions>=10.0",
+    "mkdocs-click>=0.8",
+]
+audio = [
+    "librosa>=0.10",
+    "soundfile>=0.12",
+]
+data = [
+    "datasets>=2.18",
+    "huggingface_hub>=0.22",
+    "torchcodec==0.10.0",
+    "tqdm>=4.66",
+]
+pretrained = [
+    "timm>=1.0",
+    "transformers>=4.0",
+]
+eval = [
+    "matplotlib>=3.8",
+    "scikit-learn>=1.4",
+    "umap-learn>=0.5",
+]
+tracking = [
+    "mlflow>=2.0",
+]
+tuning = [
+    "optuna>=3.0",
+]
+dali = [
+    "nvidia-dali-cuda120; sys_platform == 'linux'",
+]
+export = [
+    "onnxscript>=0.1",
+    "Pillow>=10",
+    "soundfile>=0.12",
+]
+all = [
+    "datasets>=2.18",
+    "huggingface_hub>=0.22",
+    "librosa>=0.10",
+    "matplotlib>=3.8",
+    "mlflow>=2.0",
+    "nvidia-dali-cuda120; sys_platform == 'linux'",
+    "onnxscript>=0.1",
+    "optuna>=3.0",
+    "Pillow>=10",
+    "scikit-learn>=1.4",
+    "soundfile>=0.12",
+    "torchcodec==0.10.0",
+    "timm>=1.0",
+    "transformers>=4.0",
+    "tqdm>=4.66",
+    "umap-learn>=0.5",
+]
+
+[project.scripts]
+nexuml = "nexuml.cli.main:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/nexuml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "library/src"]
+addopts = ["--strict-markers"]
+markers = [
+    "slow: tests that touch external services or large local datasets",
+    "conformance: registry-driven contract tests",
+    "requires_gpu: needs a CUDA device",
+    "requires_data: needs NEXUML_RUN_DATA_TESTS=1 and a valid NEXUML_DATA_ROOT",
+    "requires_optional(name): skipped if optional dependency is not installed",
+    "conformance_skip(reason): escape hatch for unsupported contract elements",
+]
+
+[tool.coverage.run]
+source = ["src/nexuml", "library/src/nexuml_library"]
+
+[tool.coverage.report]
+fail_under = 50
+show_missing = true
+
+[tool.coverage.xml]
+output = "reports/coverage.xml"
+
+[tool.ruff]
+target-version = "py312"
+src = ["src", "library/src"]
+line-length = 100
+
+[tool.ruff.lint]
+preview = true
+select = ["E", "F", "W", "D", "DOC"]
+extend-ignore = [
+    "D100",  # module docstrings: added incrementally
+    "D104",  # package docstrings: added incrementally
+    "D102",  # method docstrings: added incrementally
+    "D105",  # magic method docstrings: Google style doesn't require them
+    "D107",  # __init__ docstrings: Google style documents via class docstring
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["D", "DOC"]
+"src/nexuml/evaluation/__init__.py" = ["F822"]
+
+[tool.ty.environment]
+extra-paths = ["src", "library/src"]
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[[tool.uv.index]]
+name = "nvidia-pypi"
+url = "https://pypi.nvidia.com"
+explicit = true
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cu128" }]
+torchvision = [{ index = "pytorch-cu128" }]
+torchaudio = [{ index = "pytorch-cu128" }]
+torchcodec = [{ index = "pytorch-cu128" }]
+"nvidia-dali-cuda120" = [{ index = "nvidia-pypi" }]

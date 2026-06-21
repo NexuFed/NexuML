@@ -1,0 +1,230 @@
+T2:
+  "2020":
+    zenodo_ids: {dev: 3678171, additional: 3727685, eval: 3841772}
+    dev:
+      machine_types: [fan, pump, slider, ToyCar, ToyConveyor, valve]
+      downloads:
+        fan: "https://zenodo.org/records/3678171/files/dev_data_fan.zip?download=1"
+        pump: "https://zenodo.org/records/3678171/files/dev_data_pump.zip?download=1"
+        slider: "https://zenodo.org/records/3678171/files/dev_data_slider.zip?download=1"
+        ToyCar: "https://zenodo.org/records/3678171/files/dev_data_ToyCar.zip?download=1"
+        ToyConveyor: "https://zenodo.org/records/3678171/files/dev_data_ToyConveyor.zip?download=1"
+        valve: "https://zenodo.org/records/3678171/files/dev_data_valve.zip?download=1"
+    additional:
+      machine_types: [fan, pump, slider, ToyCar, ToyConveyor, valve]
+      downloads:
+        fan: "https://zenodo.org/records/3727685/files/eval_data_train_fan.zip?download=1"
+        pump: "https://zenodo.org/records/3727685/files/eval_data_train_pump.zip?download=1"
+        slider: "https://zenodo.org/records/3727685/files/eval_data_train_slider.zip?download=1"
+        ToyCar: "https://zenodo.org/records/3727685/files/eval_data_train_ToyCar.zip?download=1"
+        ToyConveyor: "https://zenodo.org/records/3727685/files/eval_data_train_ToyConveyor.zip?download=1"
+        valve: "https://zenodo.org/records/3727685/files/eval_data_train_valve.zip?download=1"
+    eval:
+      machine_types: [fan, pump, slider, ToyCar, ToyConveyor, valve]
+      downloads:
+        fan: "https://zenodo.org/records/3841772/files/eval_data_test_fan.zip?download=1"
+        pump: "https://zenodo.org/records/3841772/files/eval_data_test_pump.zip?download=1"
+        slider: "https://zenodo.org/records/3841772/files/eval_data_test_slider.zip?download=1"
+        ToyCar: "https://zenodo.org/records/3841772/files/eval_data_test_ToyCar.zip?download=1"
+        ToyConveyor: "https://zenodo.org/records/3841772/files/eval_data_test_ToyConveyor.zip?download=1"
+        valve: "https://zenodo.org/records/3841772/files/eval_data_test_valve.zip?download=1"
+
+  "2021":
+    zenodo_ids: {dev: 4562016, additional: 4660992, eval: 4884786}
+    dev:
+      machine_types: [fan, gearbox, pump, slider, ToyCar, ToyTrain, valve]
+      downloads:
+        fan: "https://zenodo.org/records/4562016/files/dev_data_fan.zip?download=1"
+        gearbox: "https://zenodo.org/records/4562016/files/dev_data_gearbox.zip?download=1"
+        pump: "https://zenodo.org/records/4562016/files/dev_data_pump.zip?download=1"
+        slider: "https://zenodo.org/records/4562016/files/dev_data_slider.zip?download=1"
+        ToyCar: "https://zenodo.org/records/4562016/files/dev_data_ToyCar.zip?download=1"
+        ToyTrain: "https://zenodo.org/records/4562016/files/dev_data_ToyTrain.zip?download=1"
+        valve: "https://zenodo.org/records/4562016/files/dev_data_valve.zip?download=1"
+    additional:
+      machine_types: [fan, gearbox, pump, slider, ToyCar, ToyTrain, valve]
+      downloads:
+        fan: "https://zenodo.org/records/4660992/files/eval_data_fan_train.zip?download=1"
+        gearbox: "https://zenodo.org/records/4660992/files/eval_data_gearbox_train.zip?download=1"
+        pump: "https://zenodo.org/records/4660992/files/eval_data_pump_train.zip?download=1"
+        slider: "https://zenodo.org/records/4660992/files/eval_data_slider_train.zip?download=1"
+        ToyCar: "https://zenodo.org/records/4660992/files/eval_data_ToyCar_train.zip?download=1"
+        ToyTrain: "https://zenodo.org/records/4660992/files/eval_data_ToyTrain_train.zip?download=1"
+        valve: "https://zenodo.org/records/4660992/files/eval_data_valve_train.zip?download=1"
+    eval:
+      machine_types: [fan, gearbox, pump, slider, ToyCar, ToyTrain, valve]
+      downloads:
+        fan: "https://zenodo.org/records/4884786/files/eval_data_fan_test.zip?download=1"
+        gearbox: "https://zenodo.org/records/4884786/files/eval_data_gearbox_test.zip?download=1"
+        pump: "https://zenodo.org/records/4884786/files/eval_data_pump_test.zip?download=1"
+        slider: "https://zenodo.org/records/4884786/files/eval_data_slider_test.zip?download=1"
+        ToyCar: "https://zenodo.org/records/4884786/files/eval_data_ToyCar_test.zip?download=1"
+        ToyTrain: "https://zenodo.org/records/4884786/files/eval_data_ToyTrain_test.zip?download=1"
+        valve: "https://zenodo.org/records/4884786/files/eval_data_valve_test.zip?download=1"
+
+  "2022":
+    zenodo_ids: {dev: 6355122, additional: 6462969, eval: 6586456}
+    dev:
+      machine_types: [bearing, fan, gearbox, slider, ToyCar, ToyTrain, valve]
+      downloads:
+        bearing: "https://zenodo.org/records/6355122/files/dev_bearing.zip?download=1"
+        fan: "https://zenodo.org/records/6355122/files/dev_fan.zip?download=1"
+        gearbox: "https://zenodo.org/records/6355122/files/dev_gearbox.zip?download=1"
+        slider: "https://zenodo.org/records/6355122/files/dev_slider.zip?download=1"
+        ToyCar: "https://zenodo.org/records/6355122/files/dev_ToyCar.zip?download=1"
+        ToyTrain: "https://zenodo.org/records/6355122/files/dev_ToyTrain.zip?download=1"
+        valve: "https://zenodo.org/records/6355122/files/dev_valve.zip?download=1"
+    additional:
+      machine_types: [bearing, fan, gearbox, slider, ToyCar, ToyTrain, valve]
+      downloads:
+        bearing: "https://zenodo.org/records/6462969/files/eval_data_bearing_train.zip?download=1"
+        fan: "https://zenodo.org/records/6462969/files/eval_data_fan_train.zip?download=1"
+        gearbox: "https://zenodo.org/records/6462969/files/eval_data_gearbox_train.zip?download=1"
+        slider: "https://zenodo.org/records/6462969/files/eval_data_slider_train.zip?download=1"
+        ToyCar: "https://zenodo.org/records/6462969/files/eval_data_ToyCar_train.zip?download=1"
+        ToyTrain: "https://zenodo.org/records/6462969/files/eval_data_ToyTrain_train.zip?download=1"
+        valve: "https://zenodo.org/records/6462969/files/eval_data_valve_train.zip?download=1"
+    eval:
+      machine_types: [bearing, fan, gearbox, slider, ToyCar, ToyTrain, valve]
+      downloads:
+        bearing: "https://zenodo.org/records/6586456/files/eval_data_bearing_test.zip?download=1"
+        fan: "https://zenodo.org/records/6586456/files/eval_data_fan_test.zip?download=1"
+        gearbox: "https://zenodo.org/records/6586456/files/eval_data_gearbox_test.zip?download=1"
+        slider: "https://zenodo.org/records/6586456/files/eval_data_slider_test.zip?download=1"
+        ToyCar: "https://zenodo.org/records/6586456/files/eval_data_ToyCar_test.zip?download=1"
+        ToyTrain: "https://zenodo.org/records/6586456/files/eval_data_ToyTrain_test.zip?download=1"
+        valve: "https://zenodo.org/records/6586456/files/eval_data_valve_test.zip?download=1"
+
+  "2023":
+    zenodo_ids: {dev: 7882613, additional: 7830345, eval: 7860847}
+    dev:
+      machine_types: [bearing, fan, gearbox, slider, ToyCar, ToyTrain, valve]
+      downloads:
+        bearing: "https://zenodo.org/records/7882613/files/dev_bearing.zip?download=1"
+        fan: "https://zenodo.org/records/7882613/files/dev_fan.zip?download=1"
+        gearbox: "https://zenodo.org/records/7882613/files/dev_gearbox.zip?download=1"
+        slider: "https://zenodo.org/records/7882613/files/dev_slider.zip?download=1"
+        ToyCar: "https://zenodo.org/records/7882613/files/dev_ToyCar.zip?download=1"
+        ToyTrain: "https://zenodo.org/records/7882613/files/dev_ToyTrain.zip?download=1"
+        valve: "https://zenodo.org/records/7882613/files/dev_valve.zip?download=1"
+    additional:
+      machine_types: [bandsaw, grinder, shaker, ToyDrone, ToyNscale, ToyTank, Vacuum]
+      downloads:
+        bandsaw: "https://zenodo.org/records/7830345/files/eval_data_bandsaw_train.zip?download=1"
+        grinder: "https://zenodo.org/records/7830345/files/eval_data_grinder_train.zip?download=1"
+        shaker: "https://zenodo.org/records/7830345/files/eval_data_shaker_train.zip?download=1"
+        ToyDrone: "https://zenodo.org/records/7830345/files/eval_data_ToyDrone_train.zip?download=1"
+        ToyNscale: "https://zenodo.org/records/7830345/files/eval_data_ToyNscale_train.zip?download=1"
+        ToyTank: "https://zenodo.org/records/7830345/files/eval_data_ToyTank_train.zip?download=1"
+        Vacuum: "https://zenodo.org/records/7830345/files/eval_data_Vacuum_train.zip?download=1"
+    eval:
+      machine_types: [bandsaw, grinder, shaker, ToyDrone, ToyNscale, ToyTank, Vacuum]
+      downloads:
+        bandsaw: "https://zenodo.org/records/7860847/files/eval_data_bandsaw_test.zip?download=1"
+        grinder: "https://zenodo.org/records/7860847/files/eval_data_grinder_test.zip?download=1"
+        shaker: "https://zenodo.org/records/7860847/files/eval_data_shaker_test.zip?download=1"
+        ToyDrone: "https://zenodo.org/records/7860847/files/eval_data_ToyDrone_test.zip?download=1"
+        ToyNscale: "https://zenodo.org/records/7860847/files/eval_data_ToyNscale_test.zip?download=1"
+        ToyTank: "https://zenodo.org/records/7860847/files/eval_data_ToyTank_test.zip?download=1"
+        Vacuum: "https://zenodo.org/records/7860847/files/eval_data_Vacuum_test.zip?download=1"
+
+  "2024":
+    zenodo_ids: {dev: 10902294, additional: 11259435, eval: 11363076}
+    dev:
+      machine_types: [bearing, fan, gearbox, slider, ToyCar, ToyTrain, valve]
+      downloads:
+        bearing: "https://zenodo.org/records/10902294/files/dev_bearing.zip?download=1"
+        fan: "https://zenodo.org/records/10902294/files/dev_fan.zip?download=1"
+        gearbox: "https://zenodo.org/records/10902294/files/dev_gearbox.zip?download=1"
+        slider: "https://zenodo.org/records/10902294/files/dev_slider.zip?download=1"
+        ToyCar: "https://zenodo.org/records/10902294/files/dev_ToyCar.zip?download=1"
+        ToyTrain: "https://zenodo.org/records/10902294/files/dev_ToyTrain.zip?download=1"
+        valve: "https://zenodo.org/records/10902294/files/dev_valve.zip?download=1"
+    additional:
+      machine_types: [3DPrinter, AirCompressor, BrushlessMotor, HairDryer, HoveringDrone, RoboticArm, Scanner, ToothBrush, ToyCircuit]
+      downloads:
+        3DPrinter: "https://zenodo.org/records/11259435/files/eval_data_3DPrinter_train_r2.zip?download=1"
+        AirCompressor: "https://zenodo.org/records/11259435/files/eval_data_AirCompressor_train.zip?download=1"
+        BrushlessMotor: "https://zenodo.org/records/11259435/files/eval_data_BrushlessMotor_train.zip?download=1"
+        HairDryer: "https://zenodo.org/records/11259435/files/eval_data_HairDryer_train.zip?download=1"
+        HoveringDrone: "https://zenodo.org/records/11259435/files/eval_data_HoveringDrone_train.zip?download=1"
+        RoboticArm: "https://zenodo.org/records/11259435/files/eval_data_RoboticArm_train_r2.zip?download=1"
+        Scanner: "https://zenodo.org/records/11259435/files/eval_data_Scanner_train.zip?download=1"
+        ToothBrush: "https://zenodo.org/records/11259435/files/eval_data_ToothBrush_train.zip?download=1"
+        ToyCircuit: "https://zenodo.org/records/11259435/files/eval_data_ToyCircuit_train.zip?download=1"
+    eval:
+      machine_types: [3DPrinter, AirCompressor, BrushlessMotor, HairDryer, HoveringDrone, RoboticArm, Scanner, ToothBrush, ToyCircuit]
+      downloads:
+        3DPrinter: "https://zenodo.org/records/11363076/files/eval_data_3DPrinter_test.zip?download=1"
+        AirCompressor: "https://zenodo.org/records/11363076/files/eval_data_AirCompressor_test.zip?download=1"
+        BrushlessMotor: "https://zenodo.org/records/11363076/files/eval_data_BrushlessMotor_test.zip?download=1"
+        HairDryer: "https://zenodo.org/records/11363076/files/eval_data_HairDryer_test.zip?download=1"
+        HoveringDrone: "https://zenodo.org/records/11363076/files/eval_data_HoveringDrone_test.zip?download=1"
+        RoboticArm: "https://zenodo.org/records/11363076/files/eval_data_RoboticArm_test.zip?download=1"
+        Scanner: "https://zenodo.org/records/11363076/files/eval_data_Scanner_test.zip?download=1"
+        ToothBrush: "https://zenodo.org/records/11363076/files/eval_data_ToothBrush_test.zip?download=1"
+        ToyCircuit: "https://zenodo.org/records/11363076/files/eval_data_ToyCircuit_test.zip?download=1"
+
+  "2025":
+    zenodo_ids: {dev: 15097779, additional: 15392814, eval: 15519362}
+    dev:
+      machine_types: [bearing, fan, gearbox, slider, ToyCar, ToyTrain, valve]
+      downloads:
+        bearing: "https://zenodo.org/records/15097779/files/dev_bearing.zip?download=1"
+        fan: "https://zenodo.org/records/15097779/files/dev_fan.zip?download=1"
+        gearbox: "https://zenodo.org/records/15097779/files/dev_gearbox.zip?download=1"
+        slider: "https://zenodo.org/records/15097779/files/dev_slider.zip?download=1"
+        ToyCar: "https://zenodo.org/records/15097779/files/dev_ToyCar.zip?download=1"
+        ToyTrain: "https://zenodo.org/records/15097779/files/dev_ToyTrain.zip?download=1"
+        valve: "https://zenodo.org/records/15097779/files/dev_valve.zip?download=1"
+    additional:
+      machine_types: [AutoTrash, BandSealer, CoffeeGrinder, HomeCamera, Polisher, ScrewFeeder, ToyPet, ToyRCCar]
+      downloads:
+        AutoTrash: "https://zenodo.org/records/15392814/files/eval_data_AutoTrash_train.zip?download=1"
+        BandSealer: "https://zenodo.org/records/15392814/files/eval_data_BandSealer_train.zip?download=1"
+        CoffeeGrinder: "https://zenodo.org/records/15392814/files/eval_data_CoffeeGrinder_train.zip?download=1"
+        HomeCamera: "https://zenodo.org/records/15392814/files/eval_data_HomeCamera_train.zip?download=1"
+        Polisher: "https://zenodo.org/records/15392814/files/eval_data_Polisher_train.zip?download=1"
+        ScrewFeeder: "https://zenodo.org/records/15392814/files/eval_data_ScrewFeeder_train.zip?download=1"
+        ToyPet: "https://zenodo.org/records/15392814/files/eval_data_ToyPet_train.zip?download=1"
+        ToyRCCar: "https://zenodo.org/records/15392814/files/eval_data_ToyRCCar_train.zip?download=1"
+    eval:
+      machine_types: [AutoTrash, BandSealer, CoffeeGrinder, HomeCamera, Polisher, ScrewFeeder, ToyPet, ToyRCCar]
+      downloads:
+        AutoTrash: "https://zenodo.org/records/15519362/files/eval_data_AutoTrash_test.zip?download=1"
+        BandSealer: "https://zenodo.org/records/15519362/files/eval_data_BandSealer_test.zip?download=1"
+        CoffeeGrinder: "https://zenodo.org/records/15519362/files/eval_data_CoffeeGrinder_test.zip?download=1"
+        HomeCamera: "https://zenodo.org/records/15519362/files/eval_data_HomeCamera_test.zip?download=1"
+        Polisher: "https://zenodo.org/records/15519362/files/eval_data_Polisher_test.zip?download=1"
+        ScrewFeeder: "https://zenodo.org/records/15519362/files/eval_data_ScrewFeeder_test.zip?download=1"
+        ToyPet: "https://zenodo.org/records/15519362/files/eval_data_ToyPet_test.zip?download=1"
+        ToyRCCar: "https://zenodo.org/records/15519362/files/eval_data_ToyRCCar_test.zip?download=1"
+
+  "2026":
+    zenodo_ids: {dev: 19336329, additional: 20151556, eval: 20437238}
+    dev:
+      machine_types: [bearingEmu, fan, gearboxEmu, sliderEmu, ToyCar, ToyCarEmu, valveEmu]
+      downloads:
+        bearingEmu: "https://zenodo.org/records/19336329/files/dev_bearingEmu.zip?download=1"
+        fan: "https://zenodo.org/records/19336329/files/dev_fan.zip?download=1"
+        gearboxEmu: "https://zenodo.org/records/19336329/files/dev_gearboxEmu.zip?download=1"
+        sliderEmu: "https://zenodo.org/records/19336329/files/dev_sliderEmu.zip?download=1"
+        ToyCar: "https://zenodo.org/records/19336329/files/dev_ToyCar_r2.zip?download=1"
+        ToyCarEmu: "https://zenodo.org/records/19336329/files/dev_ToyCarEmu.zip?download=1"
+        valveEmu: "https://zenodo.org/records/19336329/files/dev_valveEmu.zip?download=1"
+    additional:
+      machine_types: [BlowerDustCollector, Sander, SewingMachine, ToothBrush, ToyDrone]
+      downloads:
+        BlowerDustCollector: "https://zenodo.org/records/20151556/files/eval_data_BlowerDustCollector_train.zip?download=1"
+        Sander: "https://zenodo.org/records/20151556/files/eval_data_Sander_train.zip?download=1"
+        SewingMachine: "https://zenodo.org/records/20151556/files/eval_data_SewingMachine_train.zip?download=1"
+        ToothBrush: "https://zenodo.org/records/20151556/files/eval_data_ToothBrush_train.zip?download=1"
+        ToyDrone: "https://zenodo.org/records/20151556/files/eval_data_ToyDrone_train.zip?download=1"
+    eval:
+      machine_types: [BlowerDustCollector, Sander, SewingMachine, ToothBrush, ToyDrone]
+      downloads:
+        BlowerDustCollector: "https://zenodo.org/records/20437238/files/eval_data_BlowerDustCollector_test.zip?download=1"
+        Sander: "https://zenodo.org/records/20437238/files/eval_data_Sander_test.zip?download=1"
+        SewingMachine: "https://zenodo.org/records/20437238/files/eval_data_SewingMachine_test.zip?download=1"
+        ToothBrush: "https://zenodo.org/records/20437238/files/eval_data_ToothBrush_test.zip?download=1"
+        ToyDrone: "https://zenodo.org/records/20437238/files/eval_data_ToyDrone_test.zip?download=1"

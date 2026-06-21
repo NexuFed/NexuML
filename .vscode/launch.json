@@ -1,0 +1,284 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src",
+                "QT_QPA_PLATFORM": "offscreen",
+                "MPLBACKEND": "Agg"
+            }
+        },
+        {
+            "name": "CLI: smoke",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "nexuml.cli.main",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src",
+                "QT_QPA_PLATFORM": "offscreen",
+                "MPLBACKEND": "Agg"
+            },
+            "args": [
+                "smoke", 
+                "${input:experimentConfigScenario}",
+                "--max-epochs", "${input:maxEpochs}"
+            ]
+        },
+        {
+            "name": "CLI: resolve",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "nexuml.cli.main",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src",
+                "QT_QPA_PLATFORM": "offscreen",
+                "MPLBACKEND": "Agg"
+            },
+            "args": [
+                "resolve", 
+                "${input:experimentConfigScenario}",
+            ]
+        },
+        {
+            "name": "CLI: train",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "nexuml.cli.main",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src",
+                "QT_QPA_PLATFORM": "offscreen",
+                "MPLBACKEND": "Agg"
+            },
+            "args": [
+                "train", 
+                "${input:experimentConfigScenario}",
+                "--max-epochs", "${input:maxEpochs}"
+            ]
+        },
+        {
+            "name": "CLI: train file",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "nexuml.cli.main",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src",
+                "QT_QPA_PLATFORM": "offscreen",
+                "MPLBACKEND": "Agg"
+            },
+            "args": [
+                "train", 
+                "--scenario-file",
+                "library/src/nexuml_library/scenarios/tune/dcase2026t2_ast.py"
+            ]
+        },
+        {
+            "name": "CLI: export",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "nexuml.cli.main",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src",
+                "QT_QPA_PLATFORM": "offscreen",
+                "MPLBACKEND": "Agg"
+            },
+            "args": [
+                "export", 
+                "${input:experimentConfigScenario}",
+                "--output", "${input:outputPath}/${input:experimentConfigScenario}",
+            ]
+        },
+        {
+            "name": "CLI: export-dataset",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "nexuml.cli.main",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src",
+                "QT_QPA_PLATFORM": "offscreen",
+                "MPLBACKEND": "Agg"
+            },
+            "args": [
+                "export-dataset", 
+                "${input:experimentConfigScenario}",
+                "--output", "${input:outputPath}/${input:experimentConfigScenario}",
+                "--backend", "${input:dataBackend}",
+                "${input:preprocessData}",
+                "--preprocess-until-key", "${input:preprocessKey}"
+            ]
+        },
+        {
+            "name": "CLI: registry-list",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "nexuml.cli.main",
+            "args": ["registry-list"],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src",
+                "QT_QPA_PLATFORM": "offscreen",
+                "MPLBACKEND": "Agg"
+            }
+        },
+        {
+            "name": "CLI: scenario-list",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "nexuml.cli.main",
+            "args": ["scenarios"],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src",
+                "QT_QPA_PLATFORM": "offscreen",
+                "MPLBACKEND": "Agg"
+            }
+        },
+        {
+            "name": "pytest: all tests",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "pytest",
+            "args": ["tests/", "-v"],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src",
+                "QT_QPA_PLATFORM": "offscreen",
+                "MPLBACKEND": "Agg"
+            }
+        },
+        {
+            "name": "pytest: unit tests",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "pytest",
+            "args": ["tests/unit/", "-v"],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src",
+                "QT_QPA_PLATFORM": "offscreen",
+                "MPLBACKEND": "Agg"
+            }
+        },
+        {
+            "name": "pytest: integration tests",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "pytest",
+            "args": ["tests/integration/", "-v"],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src",
+                "QT_QPA_PLATFORM": "offscreen",
+                "MPLBACKEND": "Agg"
+            }
+        },
+        {
+            "name": "pytest: current file",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "pytest",
+            "args": ["${file}", "-v"],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src",
+                "QT_QPA_PLATFORM": "offscreen",
+                "MPLBACKEND": "Agg"
+            }
+        }
+    ],
+    "inputs": [
+        {
+            "id": "experimentConfigScenario",
+            "type": "pickString",
+            "description": "Choose the experiment config",
+            "default": "dcase-ast-adacos",
+            "options": [
+                "audioset-ast-adacos",
+                "dcase2026-task2-ast-gmm",
+                "dcase2026-task2-frozen-ast-multiview-knn",
+                // "dcase-ast-adacos",
+                // "dcase-ast-ncm",
+                // "dcase-ast-gmm",
+                // "dcase-coelho-cae",
+                // "pdsc4k",
+            ]
+        },
+        {
+            "id": "maxEpochs",
+            "type": "promptString",
+            "description": "Number of epochs",
+            "default": "3",
+        },
+        {
+            "id": "outputPath",
+            "type": "promptString",
+            "description": "Output path",
+            "default": ".experiments/exports",
+        },
+        {
+            "id": "preprocessData",
+            "type": "pickString",
+            "description": "Preprocess data",
+            "default": "--no-preprocess",
+            "options": [
+                "--preprocess",
+                "--no-preprocess",
+            ]
+        },
+        {
+            "id": "preprocessKey",
+            "type": "promptString",
+            "description": "Preprocess data",
+            "default": "spectrogram",
+        },
+        {
+            "id": "dataBackend",
+            "type": "pickString",
+            "description": "Data backend",
+            "default": "webdataset",
+            "options": [
+                "numpy",
+                "torch"
+                "numpy_mmap",
+                "tensordict_memmap",
+                "webdataset",
+            ]
+        },
+    ]
+}

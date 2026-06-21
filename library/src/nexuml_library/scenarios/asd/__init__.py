@@ -1,0 +1,1 @@
+"""Anomaly-detection scenario definitions."""

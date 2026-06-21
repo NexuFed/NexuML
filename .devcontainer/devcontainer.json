@@ -1,0 +1,261 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/docker-existing-dockerfile
+{
+	"name": "NexuML",
+
+	"build": {
+		// Sets the run context to one level up instead of the .devcontainer folder.
+		"context": "..",
+		// Update the 'dockerFile' property if you aren't using the standard 'Dockerfile' filename.
+		"dockerfile": "../Dockerfile"
+	},
+
+	// https://containers.dev/features
+	"features": {
+		"ghcr.io/devcontainers/features/docker-outside-of-docker:1": {},
+		"ghcr.io/devcontainers/features/common-utils:2": {
+			"configureZshAsDefaultShell": false,
+			"nonFreePackages": true
+		},
+		"ghcr.io/jsburckhardt/devcontainer-features/gitleaks:1": {},
+		"ghcr.io/devcontainers/features/github-cli:1": {}
+	},
+
+	"initializeCommand": "echo PARENT_HOSTNAME=$(cat /etc/hostname) > .devcontainer/hostname.env",
+
+	// Environment variables to set in the container.
+	"containerEnv": {
+		"PROJECT_NAME": "${localWorkspaceFolderBasename}"
+	},
+
+	// Use 'forwardPorts' to make a list of ports inside the container available locally.
+	// "forwardPorts": [6007],
+
+	"postCreateCommand": "bash ./.devcontainer/postCreateCommand.sh",
+
+	// Configure tool-specific properties.
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				// Python and Data Science
+				"ms-python.python",
+				"ms-python.vscode-pylance",
+				"ms-python.gather",
+				"ms-toolsai.jupyter",
+				"ms-toolsai.jupyter-renderers",
+				"redhat.vscode-yaml",
+				"bierner.markdown-mermaid",
+
+				// Code Quality
+				"charliermarsh.ruff",
+				"astral-sh.ty",
+				"streetsidesoftware.code-spell-checker",
+				"njpwerner.autodocstring",
+				"bufbuild.vscode-buf",
+
+				// Git and Version Control
+				"eamodio.gitlens",
+				"GitHub.vscode-pull-request-github",
+				"github.vscode-github-actions",
+
+				// AI Assistance
+				"github.copilot",
+				"github.copilot-chat",
+				"ms-vscode.vscode-websearchforcopilot",
+				"anthropic.claude-code",
+				"Google.geminicodeassist",
+				"Google.gemini-cli-vscode-ide-companion",
+				"openai.chatgpt",
+				"kilocode.kilo-code",
+				"saoudrizwan.claude-dev",
+				"fedaykindev.openchamber",
+
+				// Remote Development and Collaboration
+				"ms-vscode-remote.remote-containers",
+				"ms-vscode-remote.vscode-remote-extensionpack",
+				"ms-kubernetes-tools.vscode-kubernetes-tools",
+				"ms-vsliveshare.vsliveshare",
+				"ms-vsliveshare.vsliveshare-pack",
+
+				// MLOps
+				"ms-toolsai.tensorboard",
+				"lakefs.lakefs-dvc",
+				"lakefs.lakefs-dvc-pack",
+				"Optuna.optuna-dashboard",
+				"ms-toolsai.datawrangler",
+				"ZenML.zenml-vscode",
+
+				// Utilities
+				"mutantdino.resourcemonitor",
+				"vscode-icons-team.vscode-icons",
+				"gruntfuggly.todo-tree"
+			]
+		}
+	},
+
+	// Uncomment to connect as an existing user other than the container default.
+	// "remoteUser": "nexuadmin",
+
+	"mounts": [
+		"source=/home/${localEnv:USER}/.nexuml,target=/home/nexuadmin,type=bind,consistency=cached",
+
+		"source=/mnt/juicefs,target=/mnt/juicefs,type=bind,consistency=cached",
+
+		// "source=/mnt/prisma/data,target=/mnt/data,type=bind,consistency=cached",
+		"source=${localEnv:HOME}/data,target=/mnt/local,type=bind,consistency=cached"
+	],
+
+	"workspaceMount": "source=${localWorkspaceFolder}/..,target=/workspaces,type=bind,consistency=cached",
+	"workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+
+	// Use these settings if running in privileged mode and multiple GPUs are available.
+	// "containerEnv": {
+	// 	"NVIDIA_VISIBLE_DEVICES": "0,3,6,7",
+	// 	"CUDA_VISIBLE_DEVICES": "0,3,6,7"
+	// },
+
+	"runArgs": [
+		"--env-file=.devcontainer/devcontainer.env",
+		"--env-file=.devcontainer/hostname.env",
+		// "--hostname=dev-container-gpu",
+		"--shm-size=50gb",
+		// "--privileged",
+		"--gpus",
+		"all",
+		"--cap-add=NET_ADMIN",
+		"--device=/dev/net/tun:/dev/net/tun"
+	]
+}
+
+
+	"build": {
+		// Sets the run context to one level up instead of the .devcontainer folder.
+		"context": "..",
+		// Update the 'dockerFile' property if you aren't using the standard 'Dockerfile' filename.
+		"dockerfile": "../Dockerfile"
+	},
+	
+	// "image": "harbor.ika.rub.de/library/pytorch-template:latest",
+
+	// https://containers.dev/features
+	"features": {
+		"ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {},
+		"ghcr.io/devcontainers/features/docker-outside-of-docker:1": {},
+		"ghcr.io/devcontainers/features/common-utils:2": {
+			"configureZshAsDefaultShell": false,
+			"nonFreePackages": true
+		},
+		"ghcr.io/devcontainers-extra/features/tmux-apt-get:1": {},
+		"ghcr.io/jsburckhardt/devcontainer-features/codex:1": {},
+		"ghcr.io/jsburckhardt/devcontainer-features/gitleaks:1": {},
+		//"ghcr.io/devcontainer-community/devcontainer-features/btop:1": {},
+	},
+
+	"initializeCommand": "echo PARENT_HOSTNAME=$(cat /etc/hostname) > .devcontainer/hostname.env",
+
+	// Environment variables to set in the container.
+	"containerEnv": {
+		"PROJECT_NAME": "${localWorkspaceFolderBasename}",
+	},
+
+	// Environment variables to VSCode related processes.
+	// "remoteEnv": {
+	// 	"MANUAL_HOSTNAME": "pc-gpu"
+	// },
+
+	// Use 'forwardPorts' to make a list of ports inside the container available locally.
+	// "forwardPorts": [6007],
+
+	// Uncomment the next line to run commands after the container is created.
+	"postCreateCommand": "bash ./.devcontainer/postCreateCommand.sh",
+
+	// Configure tool-specific properties.
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				// Python and Data Science
+				"ms-python.python",
+				"ms-python.vscode-pylance",
+				"ms-python.gather",
+				"ms-toolsai.jupyter",
+				"ms-toolsai.jupyter-renderers",
+				"redhat.vscode-yaml",
+				"bierner.markdown-mermaid",
+				
+				// Code Quality
+				"charliermarsh.ruff",
+				"ms-python.mypy-type-checker",
+				"streetsidesoftware.code-spell-checker",
+				"njpwerner.autodocstring",
+				
+				// Git and Version Control
+				"eamodio.gitlens",
+				"GitHub.vscode-pull-request-github",
+
+				// AI Assistance
+				"github.copilot",
+				"github.copilot-chat",
+				"ms-vscode.vscode-websearchforcopilot",
+				"saoudrizwan.claude-dev",
+				"kilocode.kilo-code",
+				"openai.chatgpt",
+				
+				// Remote Development and Collaboration
+				"ms-vscode-remote.remote-containers",
+				"ms-vscode-remote.vscode-remote-extensionpack",
+				"ms-kubernetes-tools.vscode-kubernetes-tools",
+				"ms-vsliveshare.vsliveshare",
+				"ms-vsliveshare.vsliveshare-pack",
+				
+				// MLOps
+				"ms-toolsai.tensorboard",
+				"Iterative.dvc",
+				"Iterative.vscode-dvc-pack",
+				"Optuna.optuna-dashboard",
+				"ms-toolsai.datawrangler",
+				"ZenML.zenml-vscode",
+
+				// Utilities
+				"mutantdino.resourcemonitor",
+				"vscode-icons-team.vscode-icons",
+				"gruntfuggly.todo-tree",
+			]
+		}
+	},
+
+	// Uncomment to connect as an existing user other than the container default. More info: https://aka.ms/dev-containers-non-root.
+	// "remoteUser": "python-user",
+
+	"mounts": [
+		"source=${localEnv:HOME}${localEnv:USERPROFILE},target=/host-home-folder,type=bind,consistency=cached", // Mount home folder
+		"source=/home/${localEnv:USER}/.ssh,target=/home/python-user/.ssh,type=bind,consistency=cached", // Mount SSH keys
+		"source=/home/${localEnv:USER}/.kube,target=/home/python-user/.kube,type=bind,consistency=cached", // Mount Kubeconfig
+		"source=/home/${localEnv:USER}/.gitconfig,target=/home/python-user/.gitconfig,type=bind,consistency=cached", // Mount git config
+
+		// "source=/mnt/nfs,target=/mnt/nfs,type=bind,consistency=cached", // Mount NFS
+		"source=/mnt/nvme_nfs,target=/mnt/nvme_nfs,type=bind,consistency=cached", // Mount NVME NFS
+		// "source=/mnt/rdma_nfs,target=/mnt/rdma_nfs,type=bind,consistency=cached" // Mount RDMA NFS
+
+		"source=/mnt/prisma/data,target=/mnt/data,type=bind,consistency=cached", // Mount NVME NFS Shared Data
+		"source=${localEnv:HOME}/data,target=/mnt/local,type=bind,consistency=cached", // Mount data folder in home
+	],
+
+	"workspaceMount":  "source=${localWorkspaceFolder}/..,target=/workspaces,type=bind,consistency=cached",
+  	"workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+
+	// Use these settings if running in privileged mode and multiple GPUs are available.
+	// "containerEnv": {
+	// 	"NVIDIA_VISIBLE_DEVICES": "0,3,6,7",
+	// 	"CUDA_VISIBLE_DEVICES": "0,3,6,7"
+	// },
+
+	"runArgs": [
+		"--env-file=.devcontainer/devcontainer.env",
+		"--env-file=.devcontainer/hostname.env",
+		// "--hostname=dev-container-gpu",
+		"--shm-size=50gb",
+		// "--privileged",
+		"--gpus",
+		"all"
+	]
+}

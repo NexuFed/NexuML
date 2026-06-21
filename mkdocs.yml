@@ -1,0 +1,143 @@
+site_name: NexuML
+site_description: Modular deep learning pipeline framework
+site_url: https://nexufed.github.io/NexuML/
+repo_name: NexuFed/NexuML
+repo_url: https://github.com/NexuFed/NexuML
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.instant
+    - navigation.instant.prefetch
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.action.edit
+    - toc.follow
+  palette:
+    - scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+extra_css:
+  - stylesheets/extra.css
+
+extra:
+  version:
+    provider: mike
+    default: latest
+
+plugins:
+  - search
+  - gen-files:
+      scripts:
+        - scripts/gen_ref_pages.py
+  - literate-nav:
+      nav_file: SUMMARY.md
+  - section-index
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src, library/src, external, external/*, external/*/src]
+          options:
+            docstring_style: google
+            show_source: true
+            show_root_heading: true
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            members_order: source
+            separate_signature: true
+            show_signature_annotations: true
+
+markdown_extensions:
+  - mkdocs-click
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.snippets:
+      base_path: [.]
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Start here:
+    - start/index.md
+    - Install: start/install.md
+    - Train CIFAR ResNet: start/train-cifar-resnet.md
+  - Learn NexuML:
+    - learn/index.md
+    - Mental model: learn/mental-model.md
+    - Coming from Lightning: learn/from-lightning.md
+    - Scenarios: learn/scenarios.md
+    - Decorators and discovery: learn/decorators-and-discovery.md
+    - CIFAR ResNet walkthrough: learn/cifar-resnet-walkthrough.md
+  - How-to guides:
+    - how-to/index.md
+    - Core workflow:
+      - CLI lifecycle: how-to/cli-lifecycle.md
+      - Run scenarios: how-to/run-scenarios.md
+      - Train a model: how-to/train.md
+      - Evaluate a model: how-to/evaluate.md
+      - Export a model package: how-to/export.md
+      - Checkpoints: how-to/checkpoints.md
+    - Scenario authoring:
+      - Define a scenario: how-to/define-scenario.md
+      - Trusted scenario files: how-to/scenario-file.md
+      - Custom composed scenario: how-to/custom-scenario.md
+      - Custom library end-to-end: how-to/custom-library.md
+    - Data:
+      - Export a dataset: how-to/export-dataset.md
+    - Library extension:
+      - Add a custom layer: how-to/custom-layer.md
+      - Add a custom data source: how-to/custom-data-source.md
+      - Add a custom eval algorithm: how-to/custom-eval-algorithm.md
+      - Register a library: how-to/register-library.md
+      - Manage local library roots: how-to/library-cli.md
+    - Optimization:
+      - Optuna tuning: how-to/tune.md
+      - Automatic batch size: how-to/auto-batch-size.md
+    - Advanced operations:
+      - Tracking and logging: how-to/tracking.md
+      - Autoresearch: how-to/autoresearch.md
+      - Docker & Kubernetes: how-to/deploy.md
+  - Concepts:
+    - explanation/index.md
+    - Core concepts:
+      - Architecture: explanation/architecture.md
+      - TensorDict data flow: explanation/tensordict.md
+      - Pipeline diagrams: explanation/diagrams.md
+      - Library discovery: explanation/library-discovery.md
+  - Reference:
+    - reference/index.md
+    - API: reference/api/
+    - CLI: reference/cli.md
+    - ScenarioSpec: reference/scenario-spec.md
+    - Tuning file: reference/tuning-file.md
+    - Decorators: reference/decorators.md
+    - Registry inspection: reference/registry.md
+    - Backends: reference/backends.md
+    - Environment roots: reference/environment.md
+  - Development:
+    - development/index.md
+    - Install for development: development/install.md
+    - Development setup: how-to/development.md
+    - Enable GitHub Pages: how-to/github-pages.md
