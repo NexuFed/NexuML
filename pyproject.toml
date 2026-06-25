@@ -30,6 +30,7 @@ dependencies = [
     "tensorboard>=2.0",
     "safetensors>=0.4",
     "rapids>=0.0.1",
+    "numba>=0.60",
 ]
 
 [project.optional-dependencies]
