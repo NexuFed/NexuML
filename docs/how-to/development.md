@@ -6,7 +6,7 @@
 uv sync --all-extras
 source .venv/bin/activate
 uv pip install --link-mode=copy -e ".[all]"
-uv pip install --link-mode=copy -e "./library[all]"
+uv pip install --link-mode=copy -e "./library"
 ```
 
 ## Tests

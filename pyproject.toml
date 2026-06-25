@@ -31,6 +31,7 @@ dependencies = [
     "safetensors>=0.4",
     "rapids>=0.0.1",
     "numba>=0.60",
+    "nexuml-library",
 ]
 
 [project.optional-dependencies]
@@ -150,9 +151,14 @@ name = "nvidia-pypi"
 url = "https://pypi.nvidia.com"
 explicit = true
 
+[tool.uv.workspace]
+members = ["library"]
+
 [tool.uv.sources]
 torch = [{ index = "pytorch-cu128" }]
 torchvision = [{ index = "pytorch-cu128" }]
 torchaudio = [{ index = "pytorch-cu128" }]
 torchcodec = [{ index = "pytorch-cu128" }]
-"nvidia-dali-cuda120" = [{ index = "nvidia-pypi" }]
+nvidia-dali-cuda120 = [{ index = "nvidia-pypi" }]
+nexuml = { workspace = true } 
+nexuml-library = { workspace = true }
