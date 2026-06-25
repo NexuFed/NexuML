@@ -7475,6 +7475,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#pull-requests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pull requests
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#docs" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -7633,6 +7644,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#pull-requests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pull requests
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#docs" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -7672,6 +7694,7 @@
 <h2 id="install-dev-dependencies">Install dev dependencies<a class="headerlink" href="#install-dev-dependencies" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>uv<span class="w"> </span>sync<span class="w"> </span>--all-extras
 <span class="nb">source</span><span class="w"> </span>.venv/bin/activate
+uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>--link-mode<span class="o">=</span>copy<span class="w"> </span>-e<span class="w"> </span><span class="s2">&quot;.[all]&quot;</span>
 uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>--link-mode<span class="o">=</span>copy<span class="w"> </span>-e<span class="w"> </span><span class="s2">&quot;./library&quot;</span>
 </code></pre></div>
 <h2 id="tests">Tests<a class="headerlink" href="#tests" title="Permanent link">&para;</a></h2>
@@ -7712,42 +7735,68 @@ ruff<span class="w"> </span>format<span class="w"> </span>--check<span class="w"
 <div class="highlight"><pre><span></span><code>openspec<span class="w"> </span>validate<span class="w"> </span>&lt;change&gt;<span class="w"> </span>--strict
 </code></pre></div>
 <h2 id="ci-gates">CI gates<a class="headerlink" href="#ci-gates" title="Permanent link">&para;</a></h2>
-<p>The <code>main</code> branch runs <code>.github/workflows/ci.yml</code> on every push and PR:</p>
+<p><code>.github/workflows/ci.yml</code> runs on every push and PR against <code>main</code>:</p>
 <ol>
-<li>Static job (<code>ika-runner</code>): <code>ruff check</code>, <code>ruff format --check</code>, <code>ty check</code>.</li>
-<li>Test job (<code>ika-runner-gpu</code>): full <code>pytest --cov=nexuml --cov=nexuml_library --cov-report=term-missing</code> suite with the configured coverage gate.</li>
+<li>Static job (<code>ika-runner</code>): linting, formatting, type checking (see sections above).</li>
+<li>Test job (<code>ika-runner-gpu</code>): full pytest suite with the coverage gate from <code>pyproject.toml</code>.</li>
 </ol>
-<p>Run the same gates locally before opening or updating a PR:</p>
-<div class="highlight"><pre><span></span><code>ruff<span class="w"> </span>check<span class="w"> </span>.
-ruff<span class="w"> </span>format<span class="w"> </span>--check<span class="w"> </span>.
-ty<span class="w"> </span>check
-pytest<span class="w"> </span>--cov<span class="o">=</span>nexuml<span class="w"> </span>--cov<span class="o">=</span>nexuml_library<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--cov-report<span class="o">=</span>term-missing<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--cov-report<span class="o">=</span>xml:reports/coverage.xml
-</code></pre></div>
-<p>To trigger the GitHub Actions workflow manually from GitHub:</p>
-<ol>
-<li>Open the repository on GitHub.</li>
-<li>Go to <strong>Actions</strong> → <strong>CI</strong>.</li>
-<li>Click <strong>Run workflow</strong>.</li>
-<li>Select the branch and click <strong>Run workflow</strong>.</li>
-</ol>
-<p>The same manual trigger is available from the GitHub CLI:</p>
+<p>Run all gates locally before opening a PR (see the sections above for individual commands). To trigger or monitor CI manually:</p>
 <div class="highlight"><pre><span></span><code>gh<span class="w"> </span>workflow<span class="w"> </span>run<span class="w"> </span>ci.yml<span class="w"> </span>--ref<span class="w"> </span>&lt;branch&gt;
 gh<span class="w"> </span>run<span class="w"> </span>list<span class="w"> </span>--workflow<span class="w"> </span>ci.yml<span class="w"> </span>--limit<span class="w"> </span><span class="m">5</span>
 gh<span class="w"> </span>run<span class="w"> </span>watch<span class="w"> </span>&lt;run-id&gt;
 gh<span class="w"> </span>run<span class="w"> </span>view<span class="w"> </span>&lt;run-id&gt;<span class="w"> </span>--log-failed
 </code></pre></div>
-<p>Local workflow emulation with <code>act</code> is useful for YAML syntax and basic job
-shape, but it does not reproduce the self-hosted <code>ika-runner</code> /
-<code>ika-runner-gpu</code> environment, CUDA devices, NexuCluster scheduling, or private
-runner credentials. Treat <code>act</code> as a smoke check only; the authoritative result
-is the GitHub run on the real runners.</p>
+<p><code>act</code> can check YAML syntax but does not reproduce the self-hosted runner environment — treat it as a smoke check only.</p>
 <h2 id="dependency-management">Dependency management<a class="headerlink" href="#dependency-management" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>uv<span class="w"> </span>add<span class="w"> </span>&lt;package&gt;<span class="w">        </span><span class="c1"># add runtime dep</span>
 uv<span class="w"> </span>add<span class="w"> </span>--dev<span class="w"> </span>&lt;package&gt;<span class="w">  </span><span class="c1"># add dev dep</span>
+uv<span class="w"> </span>lock<span class="w"> </span>--upgrade<span class="w">       </span><span class="c1"># update the lock file to latest packages</span>
 uv<span class="w"> </span>sync<span class="w">                 </span><span class="c1"># install all deps from uv.lock</span>
 uv<span class="w"> </span>lock<span class="w">                 </span><span class="c1"># regenerate uv.lock</span>
+</code></pre></div>
+<h2 id="pull-requests">Pull requests<a class="headerlink" href="#pull-requests" title="Permanent link">&para;</a></h2>
+<p>Label every PR before merging — labels drive the automated release changelog generated on each <code>v*</code> tag.</p>
+<table>
+<thead>
+<tr>
+<th>Label</th>
+<th>Release section</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>feature</code>, <code>enhancement</code></td>
+<td>🚀 Features</td>
+</tr>
+<tr>
+<td><code>bug</code>, <code>fix</code></td>
+<td>🐛 Bug Fixes</td>
+</tr>
+<tr>
+<td><code>chore</code>, <code>refactor</code></td>
+<td>🧰 Maintenance</td>
+</tr>
+<tr>
+<td><code>documentation</code>, <code>docs</code></td>
+<td>📝 Documentation</td>
+</tr>
+<tr>
+<td><code>ignore-for-release</code></td>
+<td>excluded entirely</td>
+</tr>
+<tr>
+<td><em>(anything else)</em></td>
+<td>Other Changes</td>
+</tr>
+</tbody>
+</table>
+<p>PRs without a matching label land in <strong>Other Changes</strong>. Add <code>ignore-for-release</code> to omit a PR from the changelog completely (e.g. CI tweaks, lock-file-only bumps).</p>
+<p>When merging, use <strong>Squash and merge</strong> and delete the branch afterwards. Set the commit title to match the PR title exactly, and replace the default commit description with a bullet-point list of what changed:</p>
+<div class="highlight"><pre><span></span><code>feat(NEX-123): add export pipeline
+
+- Add ONNX export step to pipeline registry
+- Expose --output-format CLI flag
+- Update docs with export examples
 </code></pre></div>
 <h2 id="docs">Docs<a class="headerlink" href="#docs" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>uv<span class="w"> </span>sync<span class="w"> </span>--extra<span class="w"> </span>docs
