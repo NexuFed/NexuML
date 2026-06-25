@@ -110,7 +110,15 @@ Label every PR before merging — labels drive the automated release changelog g
 
 PRs without a matching label land in **Other Changes**. Add `ignore-for-release` to omit a PR from the changelog completely (e.g. CI tweaks, lock-file-only bumps).
 
-When merging, use **Squash and merge** and delete the branch afterwards.
+When merging, use **Squash and merge** and delete the branch afterwards. Set the commit title to match the PR title exactly, and replace the default commit description with a bullet-point list of what changed:
+
+```
+feat(NEX-123): add export pipeline
+
+- Add ONNX export step to pipeline registry
+- Expose --output-format CLI flag
+- Update docs with export examples
+```
 
 ## Docs
 
