@@ -5,7 +5,8 @@
 ```bash
 uv sync --all-extras
 source .venv/bin/activate
-uv pip install --link-mode=copy -e "./library"
+uv pip install --link-mode=copy -e ".[all]"
+uv pip install --link-mode=copy -e "./library[all]"
 ```
 
 ## Tests
@@ -111,6 +112,7 @@ is the GitHub run on the real runners.
 ```bash
 uv add <package>        # add runtime dep
 uv add --dev <package>  # add dev dep
+uv lock --upgrade       # update the lock file to latest packages
 uv sync                 # install all deps from uv.lock
 uv lock                 # regenerate uv.lock
 ```
