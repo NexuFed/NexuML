@@ -232,3 +232,6 @@ reports/
 
 # Internal proprietary library (not part of the public NexuML repo)
 external/
+
+# Graphify
+graphify-out/
