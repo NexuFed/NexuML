@@ -5,6 +5,7 @@
 ```bash
 uv sync --all-extras
 source .venv/bin/activate
+uv pip install --link-mode=copy -e ".[all]"
 uv pip install --link-mode=copy -e "./library"
 ```
 
@@ -68,30 +69,12 @@ openspec validate <change> --strict
 
 ## CI gates
 
-The `main` branch runs `.github/workflows/ci.yml` on every push and PR:
+`.github/workflows/ci.yml` runs on every push and PR against `main`:
 
-1. Static job (`ika-runner`): `ruff check`, `ruff format --check`, `ty check`.
-2. Test job (`ika-runner-gpu`): full `pytest --cov=nexuml --cov=nexuml_library --cov-report=term-missing` suite with the configured coverage gate.
+1. Static job (`ika-runner`): linting, formatting, type checking (see sections above).
+2. Test job (`ika-runner-gpu`): full pytest suite with the coverage gate from `pyproject.toml`.
 
-Run the same gates locally before opening or updating a PR:
-
-```bash
-ruff check .
-ruff format --check .
-ty check
-pytest --cov=nexuml --cov=nexuml_library \
-  --cov-report=term-missing \
-  --cov-report=xml:reports/coverage.xml
-```
-
-To trigger the GitHub Actions workflow manually from GitHub:
-
-1. Open the repository on GitHub.
-2. Go to **Actions** → **CI**.
-3. Click **Run workflow**.
-4. Select the branch and click **Run workflow**.
-
-The same manual trigger is available from the GitHub CLI:
+Run all gates locally before opening a PR (see the sections above for individual commands). To trigger or monitor CI manually:
 
 ```bash
 gh workflow run ci.yml --ref <branch>
@@ -100,19 +83,41 @@ gh run watch <run-id>
 gh run view <run-id> --log-failed
 ```
 
-Local workflow emulation with `act` is useful for YAML syntax and basic job
-shape, but it does not reproduce the self-hosted `ika-runner` /
-`ika-runner-gpu` environment, CUDA devices, NexuCluster scheduling, or private
-runner credentials. Treat `act` as a smoke check only; the authoritative result
-is the GitHub run on the real runners.
+`act` can check YAML syntax but does not reproduce the self-hosted runner environment — treat it as a smoke check only.
 
 ## Dependency management
 
 ```bash
 uv add <package>        # add runtime dep
 uv add --dev <package>  # add dev dep
+uv lock --upgrade       # update the lock file to latest packages
 uv sync                 # install all deps from uv.lock
 uv lock                 # regenerate uv.lock
+```
+
+## Pull requests
+
+Label every PR before merging — labels drive the automated release changelog generated on each `v*` tag.
+
+| Label | Release section |
+|---|---|
+| `feature`, `enhancement` | 🚀 Features |
+| `bug`, `fix` | 🐛 Bug Fixes |
+| `chore`, `refactor` | 🧰 Maintenance |
+| `documentation`, `docs` | 📝 Documentation |
+| `ignore-for-release` | excluded entirely |
+| *(anything else)* | Other Changes |
+
+PRs without a matching label land in **Other Changes**. Add `ignore-for-release` to omit a PR from the changelog completely (e.g. CI tweaks, lock-file-only bumps).
+
+When merging, use **Squash and merge** and delete the branch afterwards. Set the commit title to match the PR title exactly, and replace the default commit description with a bullet-point list of what changed:
+
+```
+feat(NEX-123): add export pipeline
+
+- Add ONNX export step to pipeline registry
+- Expose --output-format CLI flag
+- Update docs with export examples
 ```
 
 ## Docs

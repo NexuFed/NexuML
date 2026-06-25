@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import ast
 import copy
 import logging
-import ast
 from contextlib import nullcontext
 from typing import Any, Callable, cast
 
@@ -368,7 +368,7 @@ def _maybe_start_mlflow_study_run(scenario: ScenarioSpec):
         artifact_location,
     )
 
-    return mlflow.start_run(  # ty: ignore[possibly-missing-attribute]
+    return mlflow.start_run(
         experiment_id=experiment_id,
         run_name="study",
         tags={key: str(value) for key, value in _augment_mlflow_tags(mlflow_spec.tags).items()},
