@@ -29,6 +29,7 @@ dependencies = [
     "loguru>=0.7",
     "tensorboard>=2.0",
     "safetensors>=0.4",
+    "rapids>=0.0.1",
 ]
 
 [project.optional-dependencies]
@@ -80,22 +81,7 @@ export = [
     "soundfile>=0.12",
 ]
 all = [
-    "datasets>=2.18",
-    "huggingface_hub>=0.22",
-    "librosa>=0.10",
-    "matplotlib>=3.8",
-    "mlflow>=2.0",
-    "nvidia-dali-cuda120; sys_platform == 'linux'",
-    "onnxscript>=0.1",
-    "optuna>=3.0",
-    "Pillow>=10",
-    "scikit-learn>=1.4",
-    "soundfile>=0.12",
-    "torchcodec==0.10.0",
-    "timm>=1.0",
-    "transformers>=4.0",
-    "tqdm>=4.66",
-    "umap-learn>=0.5",
+    "nexuml[dev,audio,data,pretrained,eval,tracking,tuning,dali,export]",
 ]
 
 [project.scripts]
