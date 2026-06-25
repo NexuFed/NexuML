@@ -117,6 +117,21 @@ uv sync                 # install all deps from uv.lock
 uv lock                 # regenerate uv.lock
 ```
 
+## Pull requests
+
+Label every PR before merging — labels drive the automated release changelog generated on each `v*` tag.
+
+| Label | Release section |
+|---|---|
+| `feature`, `enhancement` | 🚀 Features |
+| `bug`, `fix` | 🐛 Bug Fixes |
+| `chore`, `refactor` | 🧰 Maintenance |
+| `documentation`, `docs` | 📝 Documentation |
+| `ignore-for-release` | excluded entirely |
+| *(anything else)* | Other Changes |
+
+PRs without a matching label land in **Other Changes**. Add `ignore-for-release` to omit a PR from the changelog completely (e.g. CI tweaks, lock-file-only bumps).
+
 ## Docs
 
 ```bash
