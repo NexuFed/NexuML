@@ -5,9 +5,13 @@ from __future__ import annotations
 import copy
 import fnmatch
 import hashlib
+import importlib
+import importlib.metadata
 import json
 import logging
-from dataclasses import dataclass, field
+import pkgutil
+import sys
+from dataclasses import dataclass, field, is_dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -16,7 +20,8 @@ import torch
 from safetensors.torch import load_file as load_safetensors_file
 from safetensors.torch import save_file as save_safetensors_file
 from tensordict import TensorDict
-from torch.package import PackageExporter, PackageImporter
+from torch.package.package_exporter import PackageExporter
+from torch.package.package_importer import PackageImporter
 
 from nexuml.core.compiler import compile as compile_pipeline
 from nexuml.core.config import ResolvedConfig
@@ -31,6 +36,75 @@ PACKAGE_PICKLE_PACKAGE = "nexuml_export"
 PACKAGE_PICKLE_NAME = "artifact.pkl"
 LEGACY_PACKAGE_PICKLE_PACKAGE = "model"
 LEGACY_PACKAGE_PICKLE_NAME = "pipeline.pkl"
+REQUIREMENTS_FILENAME = "requirements.txt"
+CHECKPOINT_SIDECAR = "lightning.ckpt"
+
+# Modules that are expected to live in the target runtime environment.
+_RUNTIME_EXTERN_PATTERNS = [
+    # stdlib fragments that torch.package may otherwise try to intern
+    "builtins",
+    "collections",
+    "copy",
+    "datetime",
+    "fnmatch",
+    "importlib",
+    "inspect",
+    "io",
+    "json",
+    "logging",
+    "pathlib",
+    "sys",
+    "typing",
+    "typing_extensions",
+    # heavy third-party runtime dependencies
+    "torch.**",
+    "torchaudio.**",
+    "torchvision.**",
+    "tensordict.**",
+    "timm.**",
+    "numpy.**",
+    "librosa.**",
+    "torchmetrics.**",
+    "torchrl.**",
+    "lightning.**",
+    "pydantic.**",
+    "ruamel.**",
+    "safetensors.**",
+    "pandas.**",
+    "yaml.**",
+    "soundfile.**",
+    "PIL.**",
+    "tqdm.**",
+    "sklearn.**",
+    "matplotlib.**",
+    "umap.**",
+    "transformers.**",
+    "nvidia.**",
+    "onnxscript.**",
+    "optuna.**",
+    "mlflow.**",
+    "dagshub.**",
+    "dvclive.**",
+    "typer.**",
+    "rich.**",
+]
+
+# Top-level names covered by the extern policy.
+_RUNTIME_TOP_LEVELS = {
+    pat.rstrip(".*") for pat in _RUNTIME_EXTERN_PATTERNS if "**" in pat
+} | {pat for pat in _RUNTIME_EXTERN_PATTERNS if "**" not in pat}
+
+# Override module -> distribution name mapping for packages whose PyPI name
+# differs from the import name.
+_MODULE_DISTRIBUTION_OVERRIDES: dict[str, str] = {
+    "PIL": "Pillow",
+    "sklearn": "scikit-learn",
+    "umap": "umap-learn",
+    "yaml": "PyYAML",
+    "ruamel": "ruamel.yaml",
+}
+
+_STDLIB_MODULES = sys.stdlib_module_names
 
 
 @dataclass
@@ -69,6 +143,37 @@ def _config_hash(config: ResolvedConfig) -> str:
     return hashlib.sha256(yaml_str.encode()).hexdigest()[:16]
 
 
+def _make_json_safe(value: Any) -> Any:
+    """Recursively convert common non-JSON types into plain JSON-safe values.
+
+    Returns:
+        A JSON-serializable representation of *value*.
+    """
+    if isinstance(value, (str, int, float, bool, type(None))):
+        return value
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    if isinstance(value, torch.Tensor):
+        return value.detach().cpu().tolist()
+    if isinstance(value, Path):
+        return str(value)
+    # Pydantic v2 models
+    if hasattr(value, "model_dump"):
+        return _make_json_safe(value.model_dump(mode="json"))
+    # dataclasses
+    if is_dataclass(value) and not isinstance(value, type):
+        from dataclasses import asdict
+
+        return _make_json_safe(asdict(value))
+    if isinstance(value, dict):
+        return {str(k): _make_json_safe(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_make_json_safe(v) for v in value]
+    if isinstance(value, set):
+        return sorted(str(v) for v in value)
+    return str(value)
+
+
 def _artifact_metadata(
     pipeline: CompiledPipeline,
     metadata: dict[str, Any] | None = None,
@@ -91,7 +196,7 @@ def _artifact_metadata(
     }
     if metadata:
         meta.update(metadata)
-    return meta
+    return _make_json_safe(meta)
 
 
 def _package_payload(
@@ -103,54 +208,294 @@ def _package_payload(
     return {
         "pipeline": packaged_pipeline,
         "resolved_config": pipeline.resolved_config.model_dump(mode="json"),
-        "metadata": metadata,
+        "metadata": _make_json_safe(metadata),
         "state_dict": {k: v.detach().cpu() for k, v in pipeline.state_dict().items()},
         "training_state": training_state or {},
     }
 
 
+def _is_stdlib_module(module_name: str) -> bool:
+    top = module_name.split(".")[0]
+    return top in _STDLIB_MODULES
+
+
+def _is_runtime_module(module_name: str) -> bool:
+    top = module_name.split(".")[0]
+    if top in _RUNTIME_TOP_LEVELS:
+        return True
+    if top in _STDLIB_MODULES:
+        return True
+    for pat in _RUNTIME_EXTERN_PATTERNS:
+        if fnmatch.fnmatch(module_name, pat) or fnmatch.fnmatch(top, pat):
+            return True
+    return False
+
+
+def _discover_pipeline_module_packages(pipeline: CompiledPipeline) -> set[str]:
+    """Find top-level source packages referenced by concrete pipeline layers.
+
+    Returns:
+        Set of top-level package names that are not NexuML-owned or runtime deps.
+    """
+    packages: set[str] = set()
+    for _stage, _name, layer in pipeline.iter_layers():
+        module_name = getattr(layer.__class__, "__module__", None)
+        if not module_name:
+            continue
+        top = module_name.split(".")[0]
+        if top in ("nexuml", "nexuml_library") or _is_runtime_module(top):
+            continue
+        packages.add(top)
+    return packages
+
+
+def _apply_package_policy(
+    exporter: PackageExporter,
+    pipeline: CompiledPipeline,
+    include_modules: list[str] | None = None,
+) -> set[str]:
+    """Apply the export packaging policy and return the set of externed modules.
+
+    Order: externalize runtime deps, intern NexuML + library + discovered custom
+    modules, then apply explicit includes. Deny known dev/test modules so they
+    cannot be silently packaged.
+
+    Returns:
+        Set of discovered custom top-level package names.
+    """
+    # 1. Runtime / third-party modules stay external.
+    for pattern in _RUNTIME_EXTERN_PATTERNS:
+        exporter.extern(pattern)
+
+    # 2. NexuML-owned and built-in library source modules are hermetic.
+    exporter.intern("nexuml.**")
+    exporter.intern("nexuml_library.**")
+
+    # 3. Best-effort interning of concrete pipeline layer source packages.
+    custom_packages = _discover_pipeline_module_packages(pipeline)
+    for package in sorted(custom_packages):
+        exporter.intern(f"{package}.**")
+
+    # 4. Explicit user-provided include patterns for dynamic custom code.
+    for pattern in include_modules or []:
+        explicit_package = pattern.removesuffix(".**").removesuffix(".*")
+        if explicit_package in custom_packages:
+            continue
+        if not _save_explicit_source_modules(exporter, pattern):
+            exporter.intern(pattern)
+
+    # 5. Deny accidental packaging of test/dev modules.
+    exporter.deny("tests.**")
+    exporter.deny("test_*.**")
+
+    return custom_packages
+
+
+def _save_explicit_source_modules(exporter: PackageExporter, pattern: str) -> bool:
+    """Force-save source modules for an explicit include pattern.
+
+    ``PackageExporter.intern()`` only affects modules discovered through pickle
+    globals/source imports. Dynamic imports can stay invisible, so explicit
+    includes also save importable ``.py`` modules under the requested package.
+
+    Returns:
+        True when at least one source file was saved.
+    """
+    package_name = pattern.removesuffix(".**").removesuffix(".*")
+    if not package_name or any(ch in package_name for ch in "*?[]"):
+        return False
+    try:
+        package = importlib.import_module(package_name)
+    except Exception as exc:
+        logger.warning("Could not import explicit include package %s: %s", package_name, exc)
+        return False
+
+    modules = [package]
+    if hasattr(package, "__path__"):
+        for info in pkgutil.walk_packages(package.__path__, prefix=f"{package.__name__}."):
+            try:
+                modules.append(importlib.import_module(info.name))
+            except Exception as exc:
+                logger.warning("Could not import explicit include module %s: %s", info.name, exc)
+
+    saved = False
+    for module in modules:
+        source = getattr(module, "__file__", None)
+        if source and source.endswith(".py"):
+            exporter.save_source_file(module.__name__, source, dependencies=False)
+            saved = True
+    return saved
+
+
+def _validate_package_policy(
+    exporter: PackageExporter,
+    custom_packages: set[str],
+) -> None:
+    """Ensure no NexuML-owned module leaked external and custom sources were interned.
+
+    Raises:
+        RuntimeError: If a NexuML-owned module is externalized or a custom
+            source package could not be interned.
+    """
+    externed = set(exporter.externed_modules())
+    interned = set(exporter.interned_modules())
+
+    leaked = sorted(
+        m
+        for m in externed
+        if m.startswith("nexuml.") or m.startswith("nexuml_library.")
+    )
+    if leaked:
+        raise RuntimeError(
+            f"NexuML-owned modules were externalized by torch.package: {leaked}. "
+            "This usually means a non-source module was referenced; "
+            "ensure all runtime dependencies are listed in the extern policy."
+        )
+
+    for package in sorted(custom_packages):
+        package_interned = any(
+            m == package or m.startswith(f"{package}.") for m in interned
+        )
+        package_externed = any(
+            m == package or m.startswith(f"{package}.") for m in externed
+        )
+        if not package_interned and package_externed:
+            raise RuntimeError(
+                f"Custom source package '{package}' could not be interned. "
+                "It may be a non-source (extension/bytecode) module or may not "
+                "be importable from the filesystem. Add an explicit include "
+                "pattern to export_package(include_modules=...) if the module "
+                "is loaded dynamically."
+            )
+
+
+def _normalize_module_name(module_name: str) -> str:
+    """Map a referenced module to its top-level import name.
+
+    Returns:
+        The top-level import name of *module_name*.
+    """
+    return module_name.split(".")[0]
+
+
+def _resolve_distribution(module_name: str) -> tuple[str, str | None]:
+    """Return (distribution_name, version) for an external module.
+
+    Returns:
+        Tuple of distribution name and installed version (or None if unknown).
+    """
+    top = _normalize_module_name(module_name)
+    dist = _MODULE_DISTRIBUTION_OVERRIDES.get(top, top)
+    try:
+        version = importlib.metadata.version(dist)
+    except Exception:
+        version = None
+    return dist, version
+
+
+def _collect_external_dependencies(
+    exporter: PackageExporter,
+) -> tuple[list[dict[str, Any]], list[str]]:
+    """Collect actual external dependencies referenced by the packaged payload.
+
+    Returns:
+        Tuple of (structured dependency entries, requirements.txt lines).
+    """
+    externed = sorted(set(exporter.externed_modules()))
+    entries: list[dict[str, Any]] = []
+    lines: list[str] = []
+    seen: set[str] = set()
+
+    for module_name in externed:
+        if _is_stdlib_module(module_name):
+            continue
+        top = _normalize_module_name(module_name)
+        if top in ("nexuml", "nexuml_library"):
+            continue
+        dist, version = _resolve_distribution(module_name)
+        if dist in seen:
+            continue
+        seen.add(dist)
+        entries.append(
+            {
+                "module": top,
+                "distribution": dist,
+                "version": version,
+                "specifier": f"{dist}=={version}" if version else dist,
+                "reason": "extern",
+            }
+        )
+        lines.append(f"{dist}=={version}" if version else dist)
+
+    return entries, lines
+
+
+def _load_checkpoint_metadata(checkpoint_path: Path) -> dict[str, Any]:
+    """Load and normalize Lightning checkpoint provenance for package metadata.
+
+    Returns:
+        JSON-safe dictionary of checkpoint-derived metadata.
+    """
+    checkpoint_path = Path(checkpoint_path)
+    raw = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
+    if not isinstance(raw, dict):
+        return {"source": str(checkpoint_path)}
+
+    callbacks = raw.get("callbacks") or {}
+    model_checkpoint_state: dict[str, Any] | None = None
+    for key, value in callbacks.items():
+        if "ModelCheckpoint" in key and isinstance(value, dict):
+            model_checkpoint_state = value
+            break
+
+    checkpoint_meta: dict[str, Any] = {
+        "source": str(checkpoint_path),
+        "epoch": raw.get("epoch"),
+        "global_step": raw.get("global_step"),
+        "hyper_parameters": _make_json_safe(raw.get("hyper_parameters") or {}),
+        "callbacks": _make_json_safe(callbacks),
+        "loops": _make_json_safe(raw.get("loops") or {}),
+        "optimizer_states_count": len(raw.get("optimizer_states", []) or []),
+        "scheduler_states_count": len(raw.get("lr_schedulers", []) or []),
+    }
+
+    if isinstance(model_checkpoint_state, dict):
+        checkpoint_meta["best_model_path"] = model_checkpoint_state.get("best_model_path")
+        checkpoint_meta["best_model_score"] = _make_json_safe(
+            model_checkpoint_state.get("best_model_score")
+        )
+        checkpoint_meta["monitor"] = model_checkpoint_state.get("monitor")
+        checkpoint_meta["mode"] = model_checkpoint_state.get("mode")
+
+    logged_metrics = raw.get("logged_metrics") or {}
+    if logged_metrics:
+        checkpoint_meta["validation_metrics"] = _make_json_safe(
+            {k: v for k, v in logged_metrics.items() if k.startswith("val/")}
+        )
+
+    checkpoint_meta["nexuml_eval"] = _make_json_safe(raw.get("nexuml_eval") or {})
+    checkpoint_meta["nexuml_post_train"] = _make_json_safe(raw.get("nexuml_post_train") or {})
+
+    return checkpoint_meta
+
+
+def _training_state_from_checkpoint(checkpoint: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "epoch": checkpoint.get("epoch"),
+        "global_step": checkpoint.get("global_step"),
+        "optimizers": checkpoint.get("optimizer_states", []),
+        "schedulers": checkpoint.get("lr_schedulers", []),
+        "callbacks": checkpoint.get("callbacks", {}),
+        "loops": checkpoint.get("loops", {}),
+    }
+
+
 def _extern_runtime_dependencies(exporter: PackageExporter) -> None:
-    patterns = [
-        "io",
-        "sys",
-        "json",
-        "pathlib",
-        "datetime",
-        "collections",
-        "typing",
-        "fnmatch",
-        "torch.**",
-        "tensordict.**",
-        "timm.**",
-        "numpy.**",
-        "librosa.**",
-        "torchaudio.**",
-        "torchmetrics.**",
-        "torchvision.**",
-        "torchrl.**",
-        "lightning.**",
-        "pydantic.**",
-        "ruamel.**",
-        "safetensors.**",
-        "pandas.**",
-        "yaml.**",
-        "soundfile.**",
-        "PIL.**",
-        "tqdm.**",
-        "sklearn.**",
-        "matplotlib.**",
-        "umap.**",
-        "transformers.**",
-        "nvidia.**",
-        "onnxscript.**",
-        "optuna.**",
-        "mlflow.**",
-        "dagshub.**",
-        "dvclive.**",
-        "typer.**",
-        "rich.**",
-    ]
-    for pattern in patterns:
+    """Legacy helper: keep runtime modules external.
+
+    Prefer :func:`_apply_package_policy` for full policy handling.
+    """
+    for pattern in _RUNTIME_EXTERN_PATTERNS:
         exporter.extern(pattern)
 
 
@@ -160,8 +505,23 @@ def export_package(
     metadata: dict[str, Any] | None = None,
     lightning_module: Any | None = None,
     trainer: Any | None = None,
+    checkpoint_path: str | Path | None = None,
+    include_modules: list[str] | None = None,
+    source_metadata: dict[str, Any] | None = None,
 ) -> Path:
     """Export a trained pipeline as a rich package-backed artifact directory.
+
+    Args:
+        pipeline: Compiled pipeline to export.
+        path: Destination directory.
+        metadata: Optional provenance metadata merged into the artifact.
+        lightning_module: Optional Lightning module for checkpoint sidecars.
+        trainer: Optional Lightning trainer for training-state sidecars.
+        checkpoint_path: Optional source Lightning checkpoint to preserve.
+        include_modules: Optional glob patterns for additional source modules to
+            intern (useful for dynamic imports invisible to torch.package).
+        source_metadata: Optional metadata describing the export source (e.g.
+            CLI checkpoint path). Merged into *metadata*.
 
     Returns:
         Path to the created export directory.
@@ -169,6 +529,9 @@ def export_package(
     path = Path(path)
     path.mkdir(parents=True, exist_ok=True)
 
+    metadata = {**(metadata or {}), **(source_metadata or {})}
+
+    # Gather training state from the live trainer when available.
     training_state: dict[str, Any] = {}
     if trainer is not None:
         optimizers = trainer.optimizers if hasattr(trainer, "optimizers") else []
@@ -187,29 +550,75 @@ def export_package(
             ],
         }
 
+    checkpoint_raw: dict[str, Any] | None = None
+    if checkpoint_path is not None:
+        checkpoint_path = Path(checkpoint_path)
+        checkpoint_raw = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
+        if isinstance(checkpoint_raw, dict):
+            metadata["checkpoint"] = _load_checkpoint_metadata(checkpoint_path)
+            training_state = _training_state_from_checkpoint(checkpoint_raw)
+        # Preserve the original checkpoint as a sidecar.
+        import shutil
+
+        shutil.copy2(checkpoint_path, path / CHECKPOINT_SIDECAR)
+
     meta = _artifact_metadata(pipeline, metadata=metadata, training_state=training_state)
 
     torch.save(
         {k: v.detach().cpu() for k, v in pipeline.state_dict().items()}, path / "state_dict.pt"
     )
     pipeline.resolved_config.save(path / "resolved_config.yaml")
-    (path / "metadata.json").write_text(json.dumps(meta, indent=2, default=str))
     if training_state:
         torch.save(training_state, path / "training_state.pt")
 
     package_path = path / PACKAGE_FILENAME
-    payload = _package_payload(pipeline, meta, training_state=training_state)
+    # Save the legacy pipeline entry first so torch.package resolves the full
+    # dependency graph; we then read the actual externed modules and write the
+    # primary payload with the dependency manifest included.
     with PackageExporter(str(package_path)) as exporter:
-        exporter.intern("nexuml.**")
-        exporter.extern("nexuml_library.**")
-        _extern_runtime_dependencies(exporter)
-        exporter.save_pickle(PACKAGE_PICKLE_PACKAGE, PACKAGE_PICKLE_NAME, payload)
-        # Backward-compatible entrypoint expected by NexuFL package loader.
+        custom_packages = _apply_package_policy(exporter, pipeline, include_modules=include_modules)
+
+        legacy_pipeline = copy.deepcopy(pipeline).cpu().eval()
         exporter.save_pickle(
             LEGACY_PACKAGE_PICKLE_PACKAGE,
             LEGACY_PACKAGE_PICKLE_NAME,
-            payload["pipeline"],
+            legacy_pipeline,
         )
+
+        external_deps, requirements_lines = _collect_external_dependencies(exporter)
+        meta["external_dependencies"] = external_deps
+
+        payload = _package_payload(pipeline, meta, training_state=training_state)
+        exporter.save_pickle(PACKAGE_PICKLE_PACKAGE, PACKAGE_PICKLE_NAME, payload)
+
+        _validate_package_policy(exporter, custom_packages)
+
+    if requirements_lines:
+        (path / REQUIREMENTS_FILENAME).write_text("\n".join(requirements_lines) + "\n")
+    else:
+        (path / REQUIREMENTS_FILENAME).write_text("")
+    (path / "metadata.json").write_text(json.dumps(meta, indent=2, default=str))
+
+    # Generate or preserve a Lightning checkpoint sidecar.
+    sidecar_path = path / CHECKPOINT_SIDECAR
+    if not sidecar_path.exists():
+        if checkpoint_path is not None:
+            # Already copied above.
+            pass
+        elif trainer is not None and getattr(trainer, "model", None) is not None:
+            trainer.save_checkpoint(str(sidecar_path))
+        elif lightning_module is not None:
+            torch.save(
+                {
+                    "state_dict": lightning_module.state_dict(),
+                    "epoch": 0,
+                    "global_step": 0,
+                    "hyper_parameters": _make_json_safe(
+                        getattr(lightning_module, "hparams", {}) or {}
+                    ),
+                },
+                sidecar_path,
+            )
 
     logger.info("Exported pipeline to %s", path)
     return path

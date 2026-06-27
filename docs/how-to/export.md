@@ -30,10 +30,27 @@ nexuml export my-scenario -o packages/my-scenario/
 
 ```
 packages/my-scenario/
-├── state_dict.pt       # model weights as PyTorch state dict
-├── config.yaml         # full ResolvedConfig (pipeline + spec)
-└── metadata.json       # provenance: scenario name, version, eval results
+├── pipeline.package              # torch.package archive (primary artifact)
+│   ├── nexuml_export/artifact.pkl    # payload: pipeline, config, metadata, training_state
+│   └── model/pipeline.pkl            # legacy pipeline-only entrypoint
+├── state_dict.pt                 # model weights as PyTorch state dict
+├── resolved_config.yaml          # full ResolvedConfig (pipeline + spec)
+├── metadata.json                 # provenance, checkpoint metadata, external dependencies
+├── training_state.pt             # optimizer/scheduler state when available
+├── lightning.ckpt                # Lightning checkpoint sidecar when available
+└── requirements.txt              # export-time runtime dependency snapshot
 ```
+
+### Primary payload contract
+
+`pipeline.package` contains `nexuml_export/artifact.pkl`, a pickled dictionary with the following keys:
+
+| Key | Type | Description |
+|---|---|---|
+| `pipeline` | `torch.nn.Module` | Fully assembled, CPU `CompiledPipeline` with loaded weights. |
+| `resolved_config` | `dict` | JSON/YAML-safe resolved configuration. |
+| `metadata` | `dict` | JSON-safe provenance: schema version, config hash, loss/metric keys, checkpoint info, `external_dependencies`. |
+| `training_state` | `dict` | Optimizer/scheduler/callback state, empty `{}` when none is available. |
 
 ## Load and infer in Python
 
@@ -84,6 +101,46 @@ ScenarioSpec(
 ```
 
 See [Checkpoints](checkpoints.md) for the full `CheckpointLoadSpec` reference.
+
+## Checkpoint provenance
+
+When a Lightning checkpoint is supplied (or can be generated from the live trainer), the export directory includes `lightning.ckpt` and `metadata.json` is populated with normalized checkpoint metadata:
+
+```json
+{
+  "checkpoint": {
+    "source": "/path/to/last.ckpt",
+    "epoch": 12,
+    "global_step": 3456,
+    "best_model_path": "/path/to/best.ckpt",
+    "best_model_score": 0.42,
+    "monitor": "val/loss",
+    "mode": "min",
+    "validation_metrics": {"val/loss": 0.42, "val/accuracy": 0.87},
+    "hyper_parameters": {"scenario": {...}, "runtime_metadata": {...}}
+  }
+}
+```
+
+## Runtime dependency manifest
+
+`requirements.txt` is generated from the modules actually referenced by the packaged payload. It excludes stdlib modules and NexuML-owned packages (`nexuml`, `nexuml_library`) because those are interned in `pipeline.package`. The same information is available as structured metadata:
+
+```json
+{
+  "external_dependencies": [
+    {"module": "torch", "distribution": "torch", "version": "2.x.y", "specifier": "torch==2.x.y"}
+  ]
+}
+```
+
+The generated file is an export-time snapshot of the runtime environment, not a hand-maintained dependency list.
+
+## Re-exporting the CIFAR ResNet reference model
+
+```bash
+nexuml export cifar-resnet --checkpoint /workspaces/NexuFederated/.experiments/checkpoints/cifar-resnet/last.ckpt -o /workspaces/NexuFederated/.experiments/model/cifar-resnet
+```
 
 ## Alternative export formats
 
