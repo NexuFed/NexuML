@@ -7814,14 +7814,7 @@ evaluation.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>library/src/nexuml_library/scenarios/vision/cifar_resnet.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">15</span>
-<span class="normal">16</span>
-<span class="normal">17</span>
-<span class="normal">18</span>
-<span class="normal">19</span>
-<span class="normal">20</span>
-<span class="normal">21</span>
-<span class="normal">22</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">22</span>
 <span class="normal">23</span>
 <span class="normal">24</span>
 <span class="normal">25</span>
@@ -7875,7 +7868,19 @@ evaluation.</p>
 <span class="normal">73</span>
 <span class="normal">74</span>
 <span class="normal">75</span>
-<span class="normal">76</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@scenario</span><span class="p">(</span><span class="s2">&quot;cifar-resnet&quot;</span><span class="p">)</span>
+<span class="normal">76</span>
+<span class="normal">77</span>
+<span class="normal">78</span>
+<span class="normal">79</span>
+<span class="normal">80</span>
+<span class="normal">81</span>
+<span class="normal">82</span>
+<span class="normal">83</span>
+<span class="normal">84</span>
+<span class="normal">85</span>
+<span class="normal">86</span>
+<span class="normal">87</span>
+<span class="normal">88</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@scenario</span><span class="p">(</span><span class="s2">&quot;cifar-resnet&quot;</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">cifar_resnet</span><span class="p">(</span>
     <span class="n">dataset</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;cifar10&quot;</span><span class="p">,</span>
     <span class="n">download</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
@@ -7936,6 +7941,11 @@ evaluation.</p>
         <span class="p">),</span>
         <span class="n">data</span><span class="o">=</span><span class="n">data</span><span class="p">,</span>
         <span class="n">evaluation</span><span class="o">=</span><span class="n">classification_evaluation</span><span class="p">(),</span>
+        <span class="n">logging</span><span class="o">=</span><span class="n">default_logging</span><span class="p">(</span><span class="n">log_system_metrics</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">use_tensorboard</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">use_mlflow</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+        <span class="n">callbacks</span><span class="o">=</span><span class="n">default_callbacks</span><span class="p">(),</span>
+        <span class="n">checkpoint</span><span class="o">=</span><span class="n">default_checkpoint</span><span class="p">(),</span>
+        <span class="n">tuning</span><span class="o">=</span><span class="n">default_tuning</span><span class="p">(),</span>
+        <span class="n">exports</span><span class="o">=</span><span class="n">default_exports</span><span class="p">(),</span>
     <span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>

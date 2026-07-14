@@ -1092,6 +1092,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Export layout (package format)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#primary-payload-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Primary payload contract
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1138,6 +1155,39 @@
     <span class="md-ellipsis">
       
         Reload for fine-tuning (selective weight loading)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#checkpoint-provenance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Checkpoint provenance
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#runtime-dependency-manifest" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Runtime dependency manifest
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#re-exporting-the-cifar-resnet-reference-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Re-exporting the CIFAR ResNet reference model
       
     </span>
   </a>
@@ -7673,6 +7723,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Export layout (package format)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#primary-payload-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Primary payload contract
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -7719,6 +7786,39 @@
     <span class="md-ellipsis">
       
         Reload for fine-tuning (selective weight loading)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#checkpoint-provenance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Checkpoint provenance
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#runtime-dependency-manifest" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Runtime dependency manifest
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#re-exporting-the-cifar-resnet-reference-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Re-exporting the CIFAR ResNet reference model
       
     </span>
   </a>
@@ -7863,10 +7963,49 @@ nexuml<span class="w"> </span><span class="nb">export</span><span class="w"> </s
 </table>
 <h2 id="export-layout-package-format">Export layout (package format)<a class="headerlink" href="#export-layout-package-format" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>packages/my-scenario/
-├── state_dict.pt       # model weights as PyTorch state dict
-├── config.yaml         # full ResolvedConfig (pipeline + spec)
-└── metadata.json       # provenance: scenario name, version, eval results
+├── pipeline.package              # torch.package archive (primary artifact)
+│   ├── nexuml_export/artifact.pkl    # payload: pipeline, config, metadata, training_state
+│   └── model/pipeline.pkl            # legacy pipeline-only entrypoint
+├── state_dict.pt                 # model weights as PyTorch state dict
+├── resolved_config.yaml          # full ResolvedConfig (pipeline + spec)
+├── metadata.json                 # provenance, checkpoint metadata, external dependencies
+├── training_state.pt             # optimizer/scheduler state when available
+├── lightning.ckpt                # Lightning checkpoint sidecar when available
+└── requirements.txt              # export-time runtime dependency snapshot
 </code></pre></div>
+<h3 id="primary-payload-contract">Primary payload contract<a class="headerlink" href="#primary-payload-contract" title="Permanent link">&para;</a></h3>
+<p><code>pipeline.package</code> contains <code>nexuml_export/artifact.pkl</code>, a pickled dictionary with the following keys:</p>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>pipeline</code></td>
+<td><code>torch.nn.Module</code></td>
+<td>Fully assembled, CPU <code>CompiledPipeline</code> with loaded weights.</td>
+</tr>
+<tr>
+<td><code>resolved_config</code></td>
+<td><code>dict</code></td>
+<td>JSON/YAML-safe resolved configuration.</td>
+</tr>
+<tr>
+<td><code>metadata</code></td>
+<td><code>dict</code></td>
+<td>JSON-safe provenance: schema version, config hash, loss/metric keys, checkpoint info, <code>external_dependencies</code>.</td>
+</tr>
+<tr>
+<td><code>training_state</code></td>
+<td><code>dict</code></td>
+<td>Optimizer/scheduler/callback state, empty <code>{}</code> when none is available.</td>
+</tr>
+</tbody>
+</table>
 <h2 id="load-and-infer-in-python">Load and infer in Python<a class="headerlink" href="#load-and-infer-in-python" title="Permanent link">&para;</a></h2>
 <h3 id="full-package-reload">Full package reload<a class="headerlink" href="#full-package-reload" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">nexuml.core.export</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_package</span>
@@ -7903,6 +8042,34 @@ nexuml<span class="w"> </span><span class="nb">export</span><span class="w"> </s
 <span class="p">)</span>
 </code></pre></div>
 <p>See <a href="../checkpoints/">Checkpoints</a> for the full <code>CheckpointLoadSpec</code> reference.</p>
+<h2 id="checkpoint-provenance">Checkpoint provenance<a class="headerlink" href="#checkpoint-provenance" title="Permanent link">&para;</a></h2>
+<p>When a Lightning checkpoint is supplied (or can be generated from the live trainer), the export directory includes <code>lightning.ckpt</code> and <code>metadata.json</code> is populated with normalized checkpoint metadata:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;checkpoint&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;source&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/path/to/last.ckpt&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;epoch&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">12</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;global_step&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3456</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;best_model_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/path/to/best.ckpt&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;best_model_score&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.42</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;monitor&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;val/loss&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;mode&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;min&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;validation_metrics&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;val/loss&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.42</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;val/accuracy&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.87</span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;hyper_parameters&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;scenario&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="err">...</span><span class="p">},</span><span class="w"> </span><span class="nt">&quot;runtime_metadata&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="err">...</span><span class="p">}}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<h2 id="runtime-dependency-manifest">Runtime dependency manifest<a class="headerlink" href="#runtime-dependency-manifest" title="Permanent link">&para;</a></h2>
+<p><code>requirements.txt</code> is generated from the modules actually referenced by the packaged payload. It excludes stdlib modules and NexuML-owned packages (<code>nexuml</code>, <code>nexuml_library</code>) because those are interned in <code>pipeline.package</code>. The same information is available as structured metadata:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;external_dependencies&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span><span class="nt">&quot;module&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;torch&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;distribution&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;torch&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2.x.y&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;specifier&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;torch==2.x.y&quot;</span><span class="p">}</span>
+<span class="w">  </span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>The generated file is an export-time snapshot of the runtime environment, not a hand-maintained dependency list.</p>
+<h2 id="re-exporting-the-cifar-resnet-reference-model">Re-exporting the CIFAR ResNet reference model<a class="headerlink" href="#re-exporting-the-cifar-resnet-reference-model" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>nexuml<span class="w"> </span><span class="nb">export</span><span class="w"> </span>cifar-resnet<span class="w"> </span>--checkpoint<span class="w"> </span>/workspaces/NexuFederated/.experiments/checkpoints/cifar-resnet/last.ckpt<span class="w"> </span>-o<span class="w"> </span>/workspaces/NexuFederated/.experiments/model/cifar-resnet
+</code></pre></div>
 <h2 id="alternative-export-formats">Alternative export formats<a class="headerlink" href="#alternative-export-formats" title="Permanent link">&para;</a></h2>
 <h3 id="safetensors">SafeTensors<a class="headerlink" href="#safetensors" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">nexuml.core.export</span><span class="w"> </span><span class="kn">import</span> <span class="n">export_safetensors</span>
