@@ -51,7 +51,7 @@ def reconstruction_evaluation(
                 },
             )
         ],
-        test_result_metrics=[],
+        test_result_metrics=metrics,
     )
 
 
@@ -92,7 +92,7 @@ def classification_evaluation(
                 },
             ),
         ],
-        test_result_metrics=[],
+        test_result_metrics=metrics,
     )
 
 

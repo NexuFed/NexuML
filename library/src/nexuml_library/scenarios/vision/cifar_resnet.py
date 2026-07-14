@@ -1,15 +1,22 @@
 """Composed CIFAR + ResNet classification scenarios."""
 
 from __future__ import annotations
-from nexuml.core.discovery import scenario
 
+from nexuml.core.discovery import scenario
 from nexuml.core.types import ScenarioSpec
 from nexuml_library.scenarios.data.cifar import cifar10_data, cifar100_data
 from nexuml_library.scenarios.evaluation.base import (
     classification_evaluation,
 )
 from nexuml_library.scenarios.model.resnet_classifier import resnet_classifier
-from nexuml_library.scenarios.training.defaults import default_training
+from nexuml_library.scenarios.training.defaults import (
+    default_callbacks,
+    default_checkpoint,
+    default_exports,
+    default_logging,
+    default_training,
+    default_tuning,
+)
 
 
 @scenario("cifar-resnet")
@@ -73,4 +80,9 @@ def cifar_resnet(
         ),
         data=data,
         evaluation=classification_evaluation(),
+        logging=default_logging(log_system_metrics=False, use_tensorboard=True, use_mlflow=True),
+        callbacks=default_callbacks(),
+        checkpoint=default_checkpoint(),
+        tuning=default_tuning(),
+        exports=default_exports(),
     )

@@ -416,7 +416,18 @@ def export_cmd(
     session.setup()
     console.print("[green]Pipeline created successfully![/green]")
 
-    export_package(session.pipeline, output)
+    source_metadata: dict[str, Any] = {}
+    if checkpoint is not None:
+        source_metadata["source"] = {"checkpoint": str(checkpoint)}
+
+    export_package(
+        session.pipeline,
+        output,
+        lightning_module=session.lightning_module,
+        trainer=session.trainer,
+        checkpoint_path=checkpoint,
+        source_metadata=source_metadata,
+    )
     console.print(f"[green]Exported to {output}[/green]")
 
 

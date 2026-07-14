@@ -2,16 +2,21 @@
 
 from __future__ import annotations
 
+
 from nexuml.core.types import (
     AutoBatchSizeSpec,
     BatchSizeSpec,
+    CallbackSpec,
+    CheckpointLoadSpec,
     DVCLiveSpec,
+    ExportSpec,
     LoggingSpec,
     MLflowSpec,
     OptimizerSpec,
     SchedulerSpec,
     TensorBoardSpec,
     TrainingSpec,
+    TuningSpec,
 )
 
 DEFAULT_AUTO_BATCH_SIZE = AutoBatchSizeSpec(
@@ -89,3 +94,76 @@ def default_logging(
         run_name=run_name,
         log_system_metrics=log_system_metrics,
     )
+
+
+def default_callbacks() -> list[CallbackSpec]:
+    """Create a default list of CallbackSpec.
+
+    Returns:
+        list[CallbackSpec]: Default callbacks for training.
+    """
+    return [
+        CallbackSpec(
+            type="early_stopping",
+            params={"monitor": "val/loss", "patience": 5},
+        ),
+        CallbackSpec(
+            type="lr_monitor",
+        ),
+        CallbackSpec(
+            type="checkpoint",
+            params={
+                "dirpath": ".experiments/checkpoints/cifar-resnet",
+                "monitor": "val/loss",
+                "mode": "min",
+                "save_top_k": 1,
+                "filename": "{epoch:02d}-{val_loss:.4f}",
+                "save_last": True,
+            },
+        ),
+        CallbackSpec(
+            type="rich_progress",
+        ),
+        CallbackSpec(
+            type="device_stats",
+        ),
+    ]
+
+
+def default_checkpoint(
+    path: str | None = None,
+) -> CheckpointLoadSpec:
+    """Create a default CheckpointLoadSpec.
+
+    Returns:
+        CheckpointLoadSpec: Default checkpoint loading configuration.
+    """
+    return CheckpointLoadSpec(
+        source=path, allow_missing=True, allow_shape_mismatch=True, freeze_loaded=False
+    )
+
+
+def default_tuning() -> TuningSpec:
+    """Create a default tuning configuration.
+
+    Returns:
+        TuningSpec: Default tuning configuration.
+    """
+    return TuningSpec(
+        n_trials=2,
+        directions=["minimize"],
+        metric_key="val/loss",
+        storage=".experiments/optuna/optuna.log",
+        prune=False,
+    )
+
+
+def default_exports(
+    path: str | None = None,
+) -> list[ExportSpec]:
+    """Create a default exports configuration.
+
+    Returns:
+        list[ExportSpec]: Default exports configuration.
+    """
+    return [ExportSpec(kind="train_package", output=path)]
