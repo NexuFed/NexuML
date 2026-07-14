@@ -71,3 +71,25 @@ jobs:
 
       - name: Run pytest suite with coverage
         run: pytest --cov=nexuml --cov=nexuml_library --cov-report=term-missing --cov-report=xml:reports/coverage.xml
+
+  required-ci:
+    name: CI
+    needs:
+      - static
+      - test
+    if: ${{ always() }}
+    runs-on: ika-runner
+
+    steps:
+      - name: Verify required jobs
+        env:
+          STATIC_RESULT: ${{ needs.static.result }}
+          TEST_RESULT: ${{ needs.test.result }}
+        run: |
+          echo "static: $STATIC_RESULT"
+          echo "test:   $TEST_RESULT"
+
+          if [ "$STATIC_RESULT" != "success" ] || [ "$TEST_RESULT" != "success" ]; then
+            echo "One or more required CI jobs failed."
+            exit 1
+          fi
