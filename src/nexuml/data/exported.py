@@ -1,7 +1,6 @@
 """Dataset source for loading NexuML exported datasets."""
 
 from __future__ import annotations
-from nexuml.core.discovery import data_source
 
 import copy
 import io
@@ -18,7 +17,9 @@ import yaml
 from PIL import Image
 from tensordict import TensorDict
 
+from nexuml.core.discovery import data_source
 from nexuml.data.dataset import _KEEP_DATA, NexuDataset
+from nexuml.data.export import get_export_backend, register_export_backend
 
 
 @data_source("ExportedDataset")
@@ -245,7 +246,11 @@ class ExportedDataset(NexuDataset):
         elif self.backend == "webdataset":
             payload = self._webdataset_payload(export_idx)
         else:
-            raise ValueError(f"Unsupported exported dataset backend: {self.backend}")
+            try:
+                backend_cls = get_export_backend(self.backend)
+            except KeyError as exc:
+                raise ValueError(f"Unsupported exported dataset backend: {self.backend}") from exc
+            payload = backend_cls.load_payload(self.root, export_idx)
 
         self._cached_export_idx = export_idx
         self._cached_payload = payload
