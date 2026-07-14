@@ -328,15 +328,15 @@ def test_custom_layer_package_export_and_clean_load(tmp_path):
     pkg_dir.mkdir()
     (pkg_dir / "__init__.py").write_text("")
     (pkg_dir / "layers.py").write_text(
-        'import torch\n'
-        'from tensordict import TensorDict\n'
-        'from nexuml.core.base_layer import PipelineLayer\n\n'
-        'class CustomLinear(PipelineLayer):\n'
-        '    def __init__(self, **kwargs):\n'
-        '        super().__init__(**kwargs)\n'
-        '        self.linear = torch.nn.Linear(16, 4)\n'
-        '    def forward_tensor(self, x, y=None):\n'
-        '        return self.linear(x)\n'
+        "import torch\n"
+        "from tensordict import TensorDict\n"
+        "from nexuml.core.base_layer import PipelineLayer\n\n"
+        "class CustomLinear(PipelineLayer):\n"
+        "    def __init__(self, **kwargs):\n"
+        "        super().__init__(**kwargs)\n"
+        "        self.linear = torch.nn.Linear(16, 4)\n"
+        "    def forward_tensor(self, x, y=None):\n"
+        "        return self.linear(x)\n"
     )
 
     sys.path.insert(0, str(tmp_path))
@@ -375,7 +375,7 @@ def test_custom_layer_package_export_and_clean_load(tmp_path):
 import torch
 from tensordict import TensorDict
 from torch.package.package_importer import PackageImporter
-pkg = PackageImporter("{export_dir / 'pipeline.package'}")
+pkg = PackageImporter("{export_dir / "pipeline.package"}")
 payload = pkg.load_pickle("nexuml_export", "artifact.pkl")
 pipeline = payload["pipeline"]
 assert isinstance(pipeline, torch.nn.Module)
@@ -408,20 +408,17 @@ def test_explicit_include_modules_package_dynamic_import(tmp_path):
     helper_dir.mkdir()
     (custom_dir / "__init__.py").write_text("")
     (helper_dir / "__init__.py").write_text("")
-    (helper_dir / "ops.py").write_text(
-        'def scale(x):\n'
-        '    return x * 3.0\n'
-    )
+    (helper_dir / "ops.py").write_text("def scale(x):\n    return x * 3.0\n")
     (custom_dir / "layers.py").write_text(
-        'import torch\n'
-        'from nexuml.core.base_layer import PipelineLayer\n\n'
-        'class DynamicImportLayer(PipelineLayer):\n'
-        '    def __init__(self, **kwargs):\n'
-        '        super().__init__(**kwargs)\n'
-        '        self.linear = torch.nn.Linear(16, 4)\n'
-        '    def forward_tensor(self, x, y=None):\n'
-        '        from dynamic_helper import ops\n'
-        '        return ops.scale(self.linear(x))\n'
+        "import torch\n"
+        "from nexuml.core.base_layer import PipelineLayer\n\n"
+        "class DynamicImportLayer(PipelineLayer):\n"
+        "    def __init__(self, **kwargs):\n"
+        "        super().__init__(**kwargs)\n"
+        "        self.linear = torch.nn.Linear(16, 4)\n"
+        "    def forward_tensor(self, x, y=None):\n"
+        "        from dynamic_helper import ops\n"
+        "        return ops.scale(self.linear(x))\n"
     )
 
     sys.path.insert(0, str(tmp_path))
@@ -460,7 +457,7 @@ def test_explicit_include_modules_package_dynamic_import(tmp_path):
 import torch
 from tensordict import TensorDict
 from torch.package.package_importer import PackageImporter
-pkg = PackageImporter("{export_dir / 'pipeline.package'}")
+pkg = PackageImporter("{export_dir / "pipeline.package"}")
 payload = pkg.load_pickle("nexuml_export", "artifact.pkl")
 pipeline = payload["pipeline"]
 x = TensorDict({{"features": torch.ones(2, 16)}}, batch_size=[2])
@@ -523,7 +520,7 @@ def test_cifar_resnet_package_export_and_clean_load(cifar_resnet_export_dir):
 import torch
 from tensordict import TensorDict
 from torch.package.package_importer import PackageImporter
-pkg = PackageImporter("{cifar_resnet_export_dir / 'pipeline.package'}")
+pkg = PackageImporter("{cifar_resnet_export_dir / "pipeline.package"}")
 payload = pkg.load_pickle("nexuml_export", "artifact.pkl")
 for key in ("pipeline", "resolved_config", "metadata", "training_state"):
     assert key in payload, key

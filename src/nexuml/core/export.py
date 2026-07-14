@@ -90,9 +90,9 @@ _RUNTIME_EXTERN_PATTERNS = [
 ]
 
 # Top-level names covered by the extern policy.
-_RUNTIME_TOP_LEVELS = {
-    pat.rstrip(".*") for pat in _RUNTIME_EXTERN_PATTERNS if "**" in pat
-} | {pat for pat in _RUNTIME_EXTERN_PATTERNS if "**" not in pat}
+_RUNTIME_TOP_LEVELS = {pat.rstrip(".*") for pat in _RUNTIME_EXTERN_PATTERNS if "**" in pat} | {
+    pat for pat in _RUNTIME_EXTERN_PATTERNS if "**" not in pat
+}
 
 # Override module -> distribution name mapping for packages whose PyPI name
 # differs from the import name.
@@ -341,9 +341,7 @@ def _validate_package_policy(
     interned = set(exporter.interned_modules())
 
     leaked = sorted(
-        m
-        for m in externed
-        if m.startswith("nexuml.") or m.startswith("nexuml_library.")
+        m for m in externed if m.startswith("nexuml.") or m.startswith("nexuml_library.")
     )
     if leaked:
         raise RuntimeError(
@@ -353,12 +351,8 @@ def _validate_package_policy(
         )
 
     for package in sorted(custom_packages):
-        package_interned = any(
-            m == package or m.startswith(f"{package}.") for m in interned
-        )
-        package_externed = any(
-            m == package or m.startswith(f"{package}.") for m in externed
-        )
+        package_interned = any(m == package or m.startswith(f"{package}.") for m in interned)
+        package_externed = any(m == package or m.startswith(f"{package}.") for m in externed)
         if not package_interned and package_externed:
             raise RuntimeError(
                 f"Custom source package '{package}' could not be interned. "
