@@ -341,7 +341,7 @@ def test_custom_layer_package_export_and_clean_load(tmp_path):
 
     sys.path.insert(0, str(tmp_path))
     try:
-        from custom_test_pkg.layers import CustomLinear
+        from custom_test_pkg.layers import CustomLinear  # ty: ignore[unresolved-import]
 
         registry = LayerRegistry()
         registry.register("CustomLinear", CustomLinear)
@@ -423,7 +423,7 @@ def test_explicit_include_modules_package_dynamic_import(tmp_path):
 
     sys.path.insert(0, str(tmp_path))
     try:
-        from custom_dynamic_pkg.layers import DynamicImportLayer
+        from custom_dynamic_pkg.layers import DynamicImportLayer  # ty: ignore[unresolved-import]
 
         registry = LayerRegistry()
         registry.register("DynamicImportLayer", DynamicImportLayer)
