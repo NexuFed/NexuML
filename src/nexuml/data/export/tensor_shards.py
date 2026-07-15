@@ -276,7 +276,7 @@ class TensorShardsBackend(ExportBackend):
         root = Path(export_dir)
 
         if isinstance(shard, int):
-            manifest = TensorShardBackend.load_manifest(root)
+            manifest = TensorShardsBackend.load_manifest(root)
             try:
                 relative_path = manifest["shards"][shard]["path"]
             except IndexError as exc:
@@ -306,7 +306,7 @@ class TensorShardsBackend(ExportBackend):
         index: int,
     ) -> dict[str, torch.Tensor]:
         """Map-style compatibility path; the window loader should use load_shard."""
-        manifest = TensorShardBackend.load_manifest(export_dir)
+        manifest = TensorShardsBackend.load_manifest(export_dir)
         num_samples = int(manifest["num_samples"])
         if not 0 <= index < num_samples:
             raise IndexError(f"Sample index {index} out of bounds for {num_samples}")
@@ -322,7 +322,7 @@ class TensorShardsBackend(ExportBackend):
         if local_index >= int(entry["num_samples"]):
             raise IndexError(f"No shard contains sample {index}")
 
-        payload = TensorShardBackend.load_shard(export_dir, entry)
+        payload = TensorShardsBackend.load_shard(export_dir, entry)
         return {key: tensor[local_index].clone() for key, tensor in payload["features"].items()}
 
     def _prepare_batch(

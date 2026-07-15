@@ -250,7 +250,7 @@ class ExportedDataset(NexuDataset):
                 backend_cls = get_export_backend(self.backend)
             except KeyError as exc:
                 raise ValueError(f"Unsupported exported dataset backend: {self.backend}") from exc
-            payload = backend_cls.load_payload(self.root, export_idx)
+            payload = backend_cls.load_sample(self.root, export_idx)
 
         self._cached_export_idx = export_idx
         self._cached_payload = payload

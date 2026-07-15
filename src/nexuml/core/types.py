@@ -206,7 +206,9 @@ class PreprocessingSpec(SpecModel):
     y_keys: list[str] | None = None
     include_labels: bool = True
     label_prefix: str = "label__"
-    writer: Literal["webdataset", "tensordict_memmap", "numpy", "numpy_mmap", "torch"] = "numpy"
+    writer: Literal[
+        "webdataset", "tensordict_memmap", "numpy", "numpy_mmap", "torch", "tensor_shards"
+    ] = "numpy"
     overwrite: bool = False
 
 
