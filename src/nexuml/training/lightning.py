@@ -1060,6 +1060,7 @@ def materialize_preprocessed_dataset(
         y_keys=preprocessing.y_keys,
         include_labels=preprocessing.include_labels,
         label_prefix=preprocessing.label_prefix,
+        **preprocessing.writer_params,
     )
     return export_path
 

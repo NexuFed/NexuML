@@ -294,6 +294,25 @@ class TensorShardsBackend(ExportBackend):
         )
         if not isinstance(payload, dict) or not isinstance(payload.get("features"), dict):
             raise ValueError(f"Invalid tensor shard: {path}")
+        capacity = int(
+            payload.get(
+                "capacity",
+                payload["features"][next(iter(payload["features"]))].shape[0],
+            )
+        )
+        num_samples = int(payload["num_samples"])
+
+        if not 0 <= num_samples <= capacity:
+            raise ValueError(
+                f"Invalid valid-sample count in shard {path}: {num_samples} / {capacity}"
+            )
+
+        for key, tensor in payload["features"].items():
+            if int(tensor.shape[0]) != capacity:
+                raise ValueError(
+                    f"Feature {key!r} in shard {path} has "
+                    f"{tensor.shape[0]} rows, expected {capacity}"
+                )
 
         payload["features"] = {
             str(key): tensor.detach().cpu() for key, tensor in payload["features"].items()
@@ -378,7 +397,7 @@ class TensorShardsBackend(ExportBackend):
 
     def _allocate_buffer(self, start_index: int) -> None:
         self._buffer = {
-            key: torch.empty(
+            key: torch.zeros(
                 (self.samples_per_shard, *shape),
                 dtype=self._storage_dtypes[key],
             )
@@ -400,10 +419,26 @@ class TensorShardsBackend(ExportBackend):
         path.parent.mkdir(parents=True, exist_ok=True)
 
         count = self._buffer_count
-        features = (
-            self._buffer
-            if count == self.samples_per_shard
-            else {key: tensor[:count].clone() for key, tensor in self._buffer.items()}
+        features = self._buffer
+
+        capacity = self.samples_per_shard
+        padding_count = capacity - count
+
+        valid_mask = torch.zeros(
+            capacity,
+            dtype=torch.bool,
+        )
+        valid_mask[:count] = True
+
+        indices = torch.full(
+            (capacity,),
+            -1,
+            dtype=torch.int64,
+        )
+        indices[:count] = torch.arange(
+            self._buffer_start,
+            self._buffer_start + count,
+            dtype=torch.int64,
         )
 
         payload = {
@@ -411,13 +446,19 @@ class TensorShardsBackend(ExportBackend):
             "format": "tensor_shard",
             "split": split,
             "shard_id": shard_id,
+            # Global export index of the first real sample.
             "start_index": self._buffer_start,
+            # Number of real samples in the shard.
             "num_samples": count,
-            "indices": torch.arange(
-                self._buffer_start,
-                self._buffer_start + count,
-                dtype=torch.int64,
-            ),
+            # Number of physically stored tensor rows.
+            "capacity": capacity,
+            # Number of zero-filled rows.
+            "num_padding_samples": padding_count,
+            # True only for real samples.
+            "valid_mask": valid_mask,
+            # Global export indices; padded positions use -1.
+            "indices": indices,
+            # Every tensor has leading dimension == capacity.
             "features": features,
         }
         self._torch_save_atomic(path, payload)
@@ -427,9 +468,13 @@ class TensorShardsBackend(ExportBackend):
                 "split": split,
                 "shard_id": shard_id,
                 "path": str(path.relative_to(root)),
+                # Logical sample range, end-exclusive.
                 "start_index": self._buffer_start,
                 "end_index": self._buffer_start + count,
                 "num_samples": count,
+                # Physical shard size.
+                "capacity": capacity,
+                "num_padding_samples": padding_count,
             }
         )
         self._next_shard_id[split] += 1

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-
 import pytest
 import torch
 from tensordict import TensorDict
@@ -206,3 +205,129 @@ def test_export_data_module_webdataset_roundtrip(tmp_path):
     assert sample["features"].numel() == expected_x["features"].numel()
     assert torch.isfinite(sample["features"]).all()
     _assert_exported_labels_match(sample, expected_y)
+
+
+def test_export_data_module_tensor_shards_roundtrip(
+    tmp_path,
+):
+    from nexuml.data.export.tensor_shards import (
+        TensorShardsBackend,
+    )
+
+    scenario = _make_simple_scenario()
+    data_module = create_data_module_from_spec(scenario)
+    expected_x, expected_y = _expected_first_train_sample(data_module)
+
+    export_dir = export_data_module(
+        data_module,
+        tmp_path / "exported_data",
+        backend="tensor_shards",
+        splits=["train"],
+        samples_per_shard=8,
+    )
+
+    sample = TensorShardsBackend.load_sample(
+        export_dir,
+        0,
+    )
+
+    assert torch.equal(
+        sample["features"],
+        expected_x["features"],
+    )
+    _assert_exported_labels_match(
+        sample,
+        expected_y,
+    )
+
+
+def test_tensor_shards_zero_pad_partial_shard(
+    tmp_path,
+):
+    from nexuml.data.export.tensor_shards import (
+        TensorShardsBackend,
+    )
+
+    scenario = _make_simple_scenario()
+    data_module = create_data_module_from_spec(scenario)
+
+    export_dir = export_data_module(
+        data_module,
+        tmp_path / "exported_data",
+        backend="tensor_shards",
+        splits=["train"],
+        samples_per_shard=8,
+    )
+
+    manifest = TensorShardsBackend.load_manifest(export_dir)
+    last_entry = manifest["shards"][-1]
+    shard = TensorShardsBackend.load_shard(
+        export_dir,
+        last_entry,
+    )
+
+    valid_count = int(shard["num_samples"])
+    capacity = int(shard["capacity"])
+
+    assert capacity == 8
+    assert valid_count <= capacity
+    assert int(shard["num_padding_samples"]) == (capacity - valid_count)
+
+    assert shard["valid_mask"][:valid_count].all()
+    assert not shard["valid_mask"][valid_count:].any()
+
+    assert torch.equal(
+        shard["indices"][valid_count:],
+        torch.full(
+            (capacity - valid_count,),
+            -1,
+            dtype=torch.long,
+        ),
+    )
+
+    for tensor in shard["features"].values():
+        assert tensor.shape[0] == capacity
+        assert torch.count_nonzero(tensor[valid_count:]) == 0
+
+
+def test_tensor_shards_do_not_mix_splits(
+    tmp_path,
+):
+    from nexuml.data.export.tensor_shards import (
+        TensorShardsBackend,
+    )
+
+    scenario = _make_simple_scenario()
+    data_module = create_data_module_from_spec(scenario)
+
+    export_dir = export_data_module(
+        data_module,
+        tmp_path / "exported_data",
+        backend="tensor_shards",
+        splits=["train", "val", "test"],
+        samples_per_shard=8,
+    )
+
+    manifest = TensorShardsBackend.load_manifest(export_dir)
+
+    seen_indices: set[int] = set()
+
+    for entry in manifest["shards"]:
+        split = entry["split"]
+
+        assert f"data/shards/{split}/" in entry["path"]
+
+        shard = TensorShardsBackend.load_shard(
+            export_dir,
+            entry,
+        )
+
+        assert shard["split"] == split
+
+        valid_indices = shard["indices"][shard["valid_mask"]].tolist()
+
+        for index in valid_indices:
+            assert index not in seen_indices
+            seen_indices.add(index)
+
+    assert len(seen_indices) == manifest["num_samples"]
