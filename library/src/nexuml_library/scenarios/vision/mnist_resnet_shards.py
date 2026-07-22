@@ -26,7 +26,11 @@ def mnist_resnet_shards(
     pin_memory: bool = False,
     overwrite_shards: bool = False,
 ) -> ScenarioSpec:
-    """MNIST ResNet using materialized tensor shards."""
+    """MNIST ResNet using materialized tensor shards.
+
+    Returns:
+        ScenarioSpec: Assembled scenario configured for tensor-shard loading.
+    """
     base = mnist_resnet(
         download=download,
         resnet_type=resnet_type,

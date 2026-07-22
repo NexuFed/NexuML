@@ -246,14 +246,14 @@ class _TensorShardWindowDataset(IterableDataset[tuple[TensorDict, TensorDict | N
             local_indices = self._local_indices(batch_export_indices)
             batch_len = int(local_indices.shape[0])
 
-            x_payload = {
+            x_payload: dict[str, torch.Tensor] = {
                 logical_key: batch_features[stored_key]
                 for logical_key, stored_key in self._stored_x_keys.items()
             }
             x_payload["sample_index"] = local_indices
             x = TensorDict(x_payload, batch_size=[batch_len])
 
-            y_payload = {
+            y_payload: dict[str, torch.Tensor] = {
                 logical_key: batch_features[stored_key]
                 for logical_key, stored_key in self._stored_y_keys.items()
             }
