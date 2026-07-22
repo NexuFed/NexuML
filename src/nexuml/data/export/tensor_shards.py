@@ -272,7 +272,15 @@ class TensorShardsBackend(ExportBackend):
         export_dir: Path,
         shard: int | str | dict[str, Any],
     ) -> dict[str, Any]:
-        """Load a complete shard for the future windowed loader."""
+        """Load a complete shard for the future windowed loader.
+
+        Returns:
+            dict[str, Any]: Shard payload with metadata and CPU feature tensors.
+
+        Raises:
+            IndexError: If an integer shard index is out of range.
+            ValueError: If the shard content or metadata is invalid.
+        """
         root = Path(export_dir)
 
         if isinstance(shard, int):
@@ -324,7 +332,14 @@ class TensorShardsBackend(ExportBackend):
         export_dir: Path,
         index: int,
     ) -> dict[str, torch.Tensor]:
-        """Map-style compatibility path; the window loader should use load_shard."""
+        """Map-style compatibility path; the window loader should use load_shard.
+
+        Returns:
+            dict[str, torch.Tensor]: Feature tensors for the requested sample index.
+
+        Raises:
+            IndexError: If the sample index is outside available shard bounds.
+        """
         manifest = TensorShardsBackend.load_manifest(export_dir)
         num_samples = int(manifest["num_samples"])
         if not 0 <= index < num_samples:
