@@ -16,7 +16,6 @@ import logging
 import pkgutil
 import sys
 import traceback
-from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable
 
@@ -29,18 +28,32 @@ logger = logging.getLogger(__name__)
 DISCOVERED_ATTR = "__nexuml_discovered__"
 
 
-@dataclass(frozen=True)
 class DiscoveredItem:
     """Metadata for a decorated discovery item."""
 
-    kind: str
-    key: str
-    obj: Any
-    module: str
-    origin: str = "decorator"
+    __slots__ = ("kind", "key", "obj", "module", "origin")
+
+    def __init__(
+        self,
+        kind: str,
+        key: str,
+        obj: Any,
+        module: str,
+        origin: str = "decorator",
+    ):
+        self.kind = kind
+        self.key = key
+        self.obj = obj
+        self.module = module
+        self.origin = origin
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return (
+            f"DiscoveredItem(kind={self.kind!r}, key={self.key!r}, "
+            f"module={self.module!r}, origin={self.origin!r})"
+        )
 
 
-@dataclass(frozen=True)
 class DiscoveryError:
     """A failure encountered while importing or registering a discovery item.
 
@@ -48,12 +61,23 @@ class DiscoveryError:
     other scenario/layer/dataset/eval algorithm in the registry.
     """
 
-    module: str
-    phase: str  # "import" (failed to import) or "register" (failed to register)
-    error_type: str
-    message: str
-    traceback: str = ""
-    key: str | None = None  # discovery key, when known (register phase)
+    __slots__ = ("module", "phase", "error_type", "message", "traceback", "key")
+
+    def __init__(
+        self,
+        module: str,
+        phase: str,
+        error_type: str,
+        message: str,
+        traceback: str = "",
+        key: str | None = None,
+    ):
+        self.module = module
+        self.phase = phase
+        self.error_type = error_type
+        self.message = message
+        self.traceback = traceback
+        self.key = key
 
     def short(self) -> str:
         """One-line, human-readable summary for tables/log lines.
@@ -63,6 +87,9 @@ class DiscoveryError:
         """
         where = f"{self.module}" if self.key is None else f"{self.module} ({self.key})"
         return f"{where}: {self.error_type}: {self.message}"
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return f"DiscoveryError(module={self.module!r}, phase={self.phase!r}, key={self.key!r})"
 
 
 # ---------------------------------------------------------------------------
@@ -302,11 +329,13 @@ DEFAULT_CONFIG_DIR = Path.home() / ".config" / "nexuml"
 DEFAULT_CONFIG_PATH = DEFAULT_CONFIG_DIR / "libraries.json"
 
 
-@dataclass
 class LibraryConfig:
     """User-level configuration for local library roots."""
 
-    roots: list[str] = field(default_factory=list)
+    __slots__ = ("roots",)
+
+    def __init__(self, roots: list[str] | None = None):
+        self.roots = list(roots or [])
 
     @classmethod
     def load(cls, path: Path | None = None) -> "LibraryConfig":
@@ -327,6 +356,9 @@ class LibraryConfig:
         path = path or DEFAULT_CONFIG_PATH
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps({"roots": self.roots}, indent=2))
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return f"LibraryConfig(roots={self.roots!r})"
 
     def add_root(self, root: str) -> None:
         abs_root = str(Path(root).expanduser().resolve())
