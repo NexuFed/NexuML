@@ -68,3 +68,13 @@ def _ensure_default_backends() -> None:
             register_loader_backend("dali", DaliLoaderBackend())
         except ImportError:
             logger.debug("DALI not available; 'dali' backend not registered")
+
+    if "tensor_shards" not in _LOADER_BACKENDS:
+        from nexuml.data.loaders.tensor_shards_backend import (
+            TensorShardsLoaderBackend,
+        )
+
+        register_loader_backend(
+            "tensor_shards",
+            TensorShardsLoaderBackend(),
+        )

@@ -1025,10 +1025,21 @@ def materialize_preprocessed_dataset(
     if config_path.exists() and not preprocessing.overwrite:
         return export_path
 
+    raw_loader = scenario.data.loader
+
+    if raw_loader.backend == "tensor_shards":
+        raw_loader = raw_loader.model_copy(
+            update={
+                "backend": "torch",
+                "params": {},
+            }
+        )
+
     raw_scenario = scenario.model_copy(
         update={
             "data": scenario.data.model_copy(
                 update={
+                    "loader": raw_loader,
                     "skip_pipeline_stages": [],
                     "preprocessing": scenario.data.preprocessing.model_copy(
                         update={"enabled": False}
@@ -1060,6 +1071,7 @@ def materialize_preprocessed_dataset(
         y_keys=preprocessing.y_keys,
         include_labels=preprocessing.include_labels,
         label_prefix=preprocessing.label_prefix,
+        **preprocessing.writer_params,
     )
     return export_path
 

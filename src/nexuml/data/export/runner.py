@@ -141,7 +141,8 @@ def _export_batches(
         )
         with torch.no_grad():
             with progress:
-                for _split_name, loader in batch_iterables:
+                for split_name, loader in batch_iterables:
+                    split_started = False
                     for batch in loader:
                         x_batch, y_batch = batch
                         if transform is not None:
@@ -192,7 +193,21 @@ def _export_batches(
                             )
 
                         assert backend_instance is not None
-                        backend_instance.save_batch(export_index, payload)
+                        if not split_started:
+                            start_split = getattr(
+                                backend_instance,
+                                "start_split",
+                                None,
+                            )
+                            if callable(start_split):
+                                start_split(split_name)
+
+                            split_started = True
+
+                        backend_instance.save_batch(
+                            export_index,
+                            payload,
+                        )
                         export_index += current_batch_size
                         progress.update(current_batch_size)
 
@@ -201,6 +216,12 @@ def _export_batches(
                             or export_index == num_samples
                         ):
                             logger.info("Exported %d / %d samples", export_index, num_samples)
+
+                    if split_started:
+                        assert backend_instance is not None
+                        end_split = getattr(backend_instance, "end_split", None)
+                        if callable(end_split):
+                            end_split(split_name)
 
     if stored_feature_shapes is None:
         raise ValueError("No batches were produced during export")

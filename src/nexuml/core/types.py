@@ -184,6 +184,7 @@ class LoaderSpec(SpecModel):
     persistent_workers: bool = False
     weighted_sampling: bool = False
     shuffle_train: bool = True
+    params: dict[str, Any] = Field(default_factory=dict)
 
     @field_validator("batch_size")
     @classmethod
@@ -206,7 +207,10 @@ class PreprocessingSpec(SpecModel):
     y_keys: list[str] | None = None
     include_labels: bool = True
     label_prefix: str = "label__"
-    writer: Literal["webdataset", "tensordict_memmap", "numpy", "numpy_mmap", "torch"] = "numpy"
+    writer: Literal[
+        "webdataset", "tensordict_memmap", "numpy", "numpy_mmap", "torch", "tensor_shards"
+    ] = "numpy"
+    writer_params: dict[str, Any] = Field(default_factory=dict)
     overwrite: bool = False
 
 
