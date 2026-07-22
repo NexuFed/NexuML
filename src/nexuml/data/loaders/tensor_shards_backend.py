@@ -48,10 +48,14 @@ class _TensorShardWindowDataset(IterableDataset[tuple[TensorDict, TensorDict | N
             raise ValueError("batch_size must be positive")
         if shards_per_window <= 0:
             raise ValueError("shards_per_window must be positive")
+        if shards_per_window == 1 and (shuffle_shards or shuffle_samples):
+            raise ValueError("shards_per_window must be > 1 when shuffling is enabled")
         if prefetch_windows < 0:
             raise ValueError("prefetch_windows must be non-negative")
-        if prefetch_workers <= 0:
-            raise ValueError("prefetch_workers must be positive")
+        if prefetch_windows == 0:
+            prefetch_workers = 0
+        elif prefetch_workers <= 0:
+            raise ValueError("prefetch_workers must be positive when prefetch_windows > 0")
 
         if getattr(dataset, "backend", None) != "tensor_shards":
             raise TypeError(

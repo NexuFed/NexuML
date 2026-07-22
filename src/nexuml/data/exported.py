@@ -19,7 +19,7 @@ from tensordict import TensorDict
 
 from nexuml.core.discovery import data_source
 from nexuml.data.dataset import _KEEP_DATA, NexuDataset
-from nexuml.data.export import get_export_backend, register_export_backend
+from nexuml.data.export import get_export_backend
 
 
 @data_source("ExportedDataset")
