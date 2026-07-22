@@ -223,6 +223,7 @@ class _TensorShardWindowDataset(IterableDataset[tuple[TensorDict, TensorDict | N
             return
 
         order = torch.randperm(window_size, generator=generator) if self.shuffle_samples else None
+        # Potential bug but for now ok: When drop_last=True and any intermediate shard window is not divisible by batch_size, this truncates that window before the next window is loaded
         stop = window_size - (window_size % self.batch_size) if self.drop_last else window_size
 
         for start in range(0, stop, self.batch_size):
