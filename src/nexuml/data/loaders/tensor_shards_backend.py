@@ -12,6 +12,8 @@ from typing import Any, Iterator, Sequence, cast
 
 import torch
 from tensordict import TensorDict
+from tensordict.base import CompatibleType
+from tensordict.utils import NestedKey
 from torch.utils.data import DataLoader, IterableDataset, WeightedRandomSampler
 
 from nexuml.data.export.tensor_shards import TensorShardsBackend
@@ -246,14 +248,14 @@ class _TensorShardWindowDataset(IterableDataset[tuple[TensorDict, TensorDict | N
             local_indices = self._local_indices(batch_export_indices)
             batch_len = int(local_indices.shape[0])
 
-            x_payload: dict[str, torch.Tensor] = {
+            x_payload: dict[NestedKey, CompatibleType] = {
                 logical_key: batch_features[stored_key]
                 for logical_key, stored_key in self._stored_x_keys.items()
             }
             x_payload["sample_index"] = local_indices
-            x = TensorDict(x_payload, batch_size=[batch_len])
+            x = TensorDict.from_dict(x_payload, batch_size=[batch_len])
 
-            y_payload: dict[str, torch.Tensor] = {
+            y_payload: dict[NestedKey, CompatibleType] = {
                 logical_key: batch_features[stored_key]
                 for logical_key, stored_key in self._stored_y_keys.items()
             }
@@ -265,7 +267,7 @@ class _TensorShardWindowDataset(IterableDataset[tuple[TensorDict, TensorDict | N
                     ]
                     y_payload[key] = torch.stack(tensors)
 
-            y = TensorDict(y_payload, batch_size=[batch_len]) if y_payload else None
+            y = TensorDict.from_dict(y_payload, batch_size=[batch_len]) if y_payload else None
             yield x, y
 
     def _local_indices(self, export_indices: torch.Tensor) -> torch.Tensor:
