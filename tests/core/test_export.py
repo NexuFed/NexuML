@@ -331,3 +331,54 @@ def test_tensor_shards_do_not_mix_splits(
             seen_indices.add(index)
 
     assert len(seen_indices) == manifest["num_samples"]
+
+
+def test_tensor_shards_window_loader(tmp_path):
+    from nexuml.core.types import LoaderSpec
+    from nexuml.data.exported import ExportedDataset
+    from nexuml.data.module import NexuDataModule
+
+    scenario = _make_simple_scenario()
+    raw_data_module = create_data_module_from_spec(scenario)
+
+    export_dir = export_data_module(
+        raw_data_module,
+        tmp_path / "exported_data",
+        backend="tensor_shards",
+        splits=["train", "val", "test"],
+        samples_per_shard=8,
+    )
+
+    dataset = ExportedDataset(export_dir)
+
+    data_module = NexuDataModule(
+        dataset=dataset,
+        loader_spec=LoaderSpec(
+            backend="tensor_shards",
+            batch_size=5,
+            num_workers=0,
+            params={
+                "shards_per_window": 2,
+                "prefetch_windows": 1,
+                "prefetch_workers": 1,
+                "shuffle_shards": False,
+                "shuffle_samples": False,
+            },
+        ),
+        split_by_column=True,
+    )
+    data_module.setup("fit")
+
+    x_batch, y_batch = next(iter(data_module.train_dataloader()))
+
+    assert x_batch.batch_size == torch.Size([5])
+    assert "features" in x_batch.keys()
+    assert "sample_index" in x_batch.keys()
+
+    assert torch.equal(
+        x_batch["sample_index"],
+        torch.arange(5),
+    )
+
+    if y_batch is not None:
+        assert y_batch.batch_size == torch.Size([5])

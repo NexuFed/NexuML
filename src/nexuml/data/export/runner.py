@@ -193,17 +193,22 @@ def _export_batches(
                             )
 
                         assert backend_instance is not None
-                        backend_instance.save_batch(export_index, payload)
-                        export_index += current_batch_size
-                        progress.update(current_batch_size)
-
-                        # Add new logic for splits
                         if not split_started:
-                            start_split = getattr(backend_instance, "start_split", None)
+                            start_split = getattr(
+                                backend_instance,
+                                "start_split",
+                                None,
+                            )
                             if callable(start_split):
                                 start_split(split_name)
+
                             split_started = True
-                        backend_instance.save_batch(export_index, payload)
+
+                        backend_instance.save_batch(
+                            export_index,
+                            payload,
+                        )
+                        export_index += current_batch_size
                         progress.update(current_batch_size)
 
                         if (
