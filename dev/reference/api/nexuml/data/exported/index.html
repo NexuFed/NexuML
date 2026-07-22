@@ -3150,6 +3150,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../export/tensor_shards/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    tensor_shards
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../export/tensordict_memmap/" class="md-nav__link">
         
   
@@ -3580,6 +3608,34 @@
     
   
     registry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../loaders/tensor_shards_backend/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    tensor_shards_backend
   
 
     
@@ -6945,6 +7001,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../nexuml_library/scenarios/vision/mnist_resnet_shards/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    mnist_resnet_shards
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -7621,8 +7705,7 @@
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>src/nexuml/data/exported.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 24</span>
-<span class="normal"> 25</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 25</span>
 <span class="normal"> 26</span>
 <span class="normal"> 27</span>
 <span class="normal"> 28</span>
@@ -7890,7 +7973,12 @@
 <span class="normal">290</span>
 <span class="normal">291</span>
 <span class="normal">292</span>
-<span class="normal">293</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@data_source</span><span class="p">(</span><span class="s2">&quot;ExportedDataset&quot;</span><span class="p">)</span>
+<span class="normal">293</span>
+<span class="normal">294</span>
+<span class="normal">295</span>
+<span class="normal">296</span>
+<span class="normal">297</span>
+<span class="normal">298</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@data_source</span><span class="p">(</span><span class="s2">&quot;ExportedDataset&quot;</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">ExportedDataset</span><span class="p">(</span><span class="n">NexuDataset</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Load a dataset previously written by ``export_data_module``.&quot;&quot;&quot;</span>
 
@@ -8114,7 +8202,11 @@
         <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">backend</span> <span class="o">==</span> <span class="s2">&quot;webdataset&quot;</span><span class="p">:</span>
             <span class="n">payload</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_webdataset_payload</span><span class="p">(</span><span class="n">export_idx</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unsupported exported dataset backend: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">backend</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">backend_cls</span> <span class="o">=</span> <span class="n">get_export_backend</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">backend</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">KeyError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unsupported exported dataset backend: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">backend</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+            <span class="n">payload</span> <span class="o">=</span> <span class="n">backend_cls</span><span class="o">.</span><span class="n">load_sample</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">root</span><span class="p">,</span> <span class="n">export_idx</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_cached_export_idx</span> <span class="o">=</span> <span class="n">export_idx</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_cached_payload</span> <span class="o">=</span> <span class="n">payload</span>

@@ -3148,6 +3148,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../data/export/tensor_shards/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    tensor_shards
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../data/export/tensordict_memmap/" class="md-nav__link">
         
   
@@ -3503,6 +3531,34 @@
     
   
     registry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../data/loaders/tensor_shards_backend/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    tensor_shards_backend
   
 
     
@@ -7180,6 +7236,34 @@
     
   
     mnist_resnet
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../nexuml_library/scenarios/vision/mnist_resnet_shards/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    mnist_resnet_shards
   
 
     
@@ -11380,7 +11464,19 @@
 <span class="normal">1061</span>
 <span class="normal">1062</span>
 <span class="normal">1063</span>
-<span class="normal">1064</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">materialize_preprocessed_dataset</span><span class="p">(</span>
+<span class="normal">1064</span>
+<span class="normal">1065</span>
+<span class="normal">1066</span>
+<span class="normal">1067</span>
+<span class="normal">1068</span>
+<span class="normal">1069</span>
+<span class="normal">1070</span>
+<span class="normal">1071</span>
+<span class="normal">1072</span>
+<span class="normal">1073</span>
+<span class="normal">1074</span>
+<span class="normal">1075</span>
+<span class="normal">1076</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">materialize_preprocessed_dataset</span><span class="p">(</span>
     <span class="n">scenario</span><span class="p">:</span> <span class="n">ScenarioSpec</span><span class="p">,</span>
     <span class="n">registry</span><span class="p">:</span> <span class="n">LayerRegistry</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
@@ -11398,10 +11494,21 @@
     <span class="k">if</span> <span class="n">config_path</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">preprocessing</span><span class="o">.</span><span class="n">overwrite</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">export_path</span>
 
+    <span class="n">raw_loader</span> <span class="o">=</span> <span class="n">scenario</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">loader</span>
+
+    <span class="k">if</span> <span class="n">raw_loader</span><span class="o">.</span><span class="n">backend</span> <span class="o">==</span> <span class="s2">&quot;tensor_shards&quot;</span><span class="p">:</span>
+        <span class="n">raw_loader</span> <span class="o">=</span> <span class="n">raw_loader</span><span class="o">.</span><span class="n">model_copy</span><span class="p">(</span>
+            <span class="n">update</span><span class="o">=</span><span class="p">{</span>
+                <span class="s2">&quot;backend&quot;</span><span class="p">:</span> <span class="s2">&quot;torch&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;params&quot;</span><span class="p">:</span> <span class="p">{},</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+
     <span class="n">raw_scenario</span> <span class="o">=</span> <span class="n">scenario</span><span class="o">.</span><span class="n">model_copy</span><span class="p">(</span>
         <span class="n">update</span><span class="o">=</span><span class="p">{</span>
             <span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="n">scenario</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">model_copy</span><span class="p">(</span>
                 <span class="n">update</span><span class="o">=</span><span class="p">{</span>
+                    <span class="s2">&quot;loader&quot;</span><span class="p">:</span> <span class="n">raw_loader</span><span class="p">,</span>
                     <span class="s2">&quot;skip_pipeline_stages&quot;</span><span class="p">:</span> <span class="p">[],</span>
                     <span class="s2">&quot;preprocessing&quot;</span><span class="p">:</span> <span class="n">scenario</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">preprocessing</span><span class="o">.</span><span class="n">model_copy</span><span class="p">(</span>
                         <span class="n">update</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;enabled&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">}</span>
@@ -11433,6 +11540,7 @@
         <span class="n">y_keys</span><span class="o">=</span><span class="n">preprocessing</span><span class="o">.</span><span class="n">y_keys</span><span class="p">,</span>
         <span class="n">include_labels</span><span class="o">=</span><span class="n">preprocessing</span><span class="o">.</span><span class="n">include_labels</span><span class="p">,</span>
         <span class="n">label_prefix</span><span class="o">=</span><span class="n">preprocessing</span><span class="o">.</span><span class="n">label_prefix</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">preprocessing</span><span class="o">.</span><span class="n">writer_params</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="k">return</span> <span class="n">export_path</span>
 </code></pre></div></td></tr></table></div>
@@ -11482,22 +11590,22 @@
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/nexuml/training/lightning.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1067</span>
-<span class="normal">1068</span>
-<span class="normal">1069</span>
-<span class="normal">1070</span>
-<span class="normal">1071</span>
-<span class="normal">1072</span>
-<span class="normal">1073</span>
-<span class="normal">1074</span>
-<span class="normal">1075</span>
-<span class="normal">1076</span>
-<span class="normal">1077</span>
-<span class="normal">1078</span>
-<span class="normal">1079</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1079</span>
 <span class="normal">1080</span>
 <span class="normal">1081</span>
-<span class="normal">1082</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">resolve_preprocessing_path</span><span class="p">(</span><span class="n">scenario</span><span class="p">:</span> <span class="n">ScenarioSpec</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="normal">1082</span>
+<span class="normal">1083</span>
+<span class="normal">1084</span>
+<span class="normal">1085</span>
+<span class="normal">1086</span>
+<span class="normal">1087</span>
+<span class="normal">1088</span>
+<span class="normal">1089</span>
+<span class="normal">1090</span>
+<span class="normal">1091</span>
+<span class="normal">1092</span>
+<span class="normal">1093</span>
+<span class="normal">1094</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">resolve_preprocessing_path</span><span class="p">(</span><span class="n">scenario</span><span class="p">:</span> <span class="n">ScenarioSpec</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve the configured preprocessing output directory.</span>
 
 <span class="sd">    Returns:</span>
@@ -11584,19 +11692,7 @@
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/nexuml/training/lightning.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1085</span>
-<span class="normal">1086</span>
-<span class="normal">1087</span>
-<span class="normal">1088</span>
-<span class="normal">1089</span>
-<span class="normal">1090</span>
-<span class="normal">1091</span>
-<span class="normal">1092</span>
-<span class="normal">1093</span>
-<span class="normal">1094</span>
-<span class="normal">1095</span>
-<span class="normal">1096</span>
-<span class="normal">1097</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1097</span>
 <span class="normal">1098</span>
 <span class="normal">1099</span>
 <span class="normal">1100</span>
@@ -11644,7 +11740,19 @@
 <span class="normal">1142</span>
 <span class="normal">1143</span>
 <span class="normal">1144</span>
-<span class="normal">1145</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">create_runtime_artifacts</span><span class="p">(</span>
+<span class="normal">1145</span>
+<span class="normal">1146</span>
+<span class="normal">1147</span>
+<span class="normal">1148</span>
+<span class="normal">1149</span>
+<span class="normal">1150</span>
+<span class="normal">1151</span>
+<span class="normal">1152</span>
+<span class="normal">1153</span>
+<span class="normal">1154</span>
+<span class="normal">1155</span>
+<span class="normal">1156</span>
+<span class="normal">1157</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">create_runtime_artifacts</span><span class="p">(</span>
     <span class="n">scenario</span><span class="p">:</span> <span class="n">ScenarioSpec</span><span class="p">,</span>
     <span class="n">registry</span><span class="p">:</span> <span class="n">LayerRegistry</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">apply_selective_checkpoint</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
@@ -11766,19 +11874,7 @@
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/nexuml/training/lightning.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1251</span>
-<span class="normal">1252</span>
-<span class="normal">1253</span>
-<span class="normal">1254</span>
-<span class="normal">1255</span>
-<span class="normal">1256</span>
-<span class="normal">1257</span>
-<span class="normal">1258</span>
-<span class="normal">1259</span>
-<span class="normal">1260</span>
-<span class="normal">1261</span>
-<span class="normal">1262</span>
-<span class="normal">1263</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1263</span>
 <span class="normal">1264</span>
 <span class="normal">1265</span>
 <span class="normal">1266</span>
@@ -11791,7 +11887,19 @@
 <span class="normal">1273</span>
 <span class="normal">1274</span>
 <span class="normal">1275</span>
-<span class="normal">1276</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">train</span><span class="p">(</span>
+<span class="normal">1276</span>
+<span class="normal">1277</span>
+<span class="normal">1278</span>
+<span class="normal">1279</span>
+<span class="normal">1280</span>
+<span class="normal">1281</span>
+<span class="normal">1282</span>
+<span class="normal">1283</span>
+<span class="normal">1284</span>
+<span class="normal">1285</span>
+<span class="normal">1286</span>
+<span class="normal">1287</span>
+<span class="normal">1288</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">train</span><span class="p">(</span>
     <span class="n">scenario</span><span class="p">:</span> <span class="n">ScenarioSpec</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">registry</span><span class="p">:</span> <span class="n">LayerRegistry</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">accelerator</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;auto&quot;</span><span class="p">,</span>
@@ -11901,19 +12009,7 @@
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/nexuml/training/lightning.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1279</span>
-<span class="normal">1280</span>
-<span class="normal">1281</span>
-<span class="normal">1282</span>
-<span class="normal">1283</span>
-<span class="normal">1284</span>
-<span class="normal">1285</span>
-<span class="normal">1286</span>
-<span class="normal">1287</span>
-<span class="normal">1288</span>
-<span class="normal">1289</span>
-<span class="normal">1290</span>
-<span class="normal">1291</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1291</span>
 <span class="normal">1292</span>
 <span class="normal">1293</span>
 <span class="normal">1294</span>
@@ -11924,7 +12020,19 @@
 <span class="normal">1299</span>
 <span class="normal">1300</span>
 <span class="normal">1301</span>
-<span class="normal">1302</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">load_scenario_from_trainer_checkpoint</span><span class="p">(</span>
+<span class="normal">1302</span>
+<span class="normal">1303</span>
+<span class="normal">1304</span>
+<span class="normal">1305</span>
+<span class="normal">1306</span>
+<span class="normal">1307</span>
+<span class="normal">1308</span>
+<span class="normal">1309</span>
+<span class="normal">1310</span>
+<span class="normal">1311</span>
+<span class="normal">1312</span>
+<span class="normal">1313</span>
+<span class="normal">1314</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">load_scenario_from_trainer_checkpoint</span><span class="p">(</span>
     <span class="n">checkpoint_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">,</span>
     <span class="n">fallback</span><span class="p">:</span> <span class="n">ScenarioSpec</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ScenarioSpec</span><span class="p">:</span>
@@ -12004,19 +12112,7 @@
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/nexuml/training/lightning.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1305</span>
-<span class="normal">1306</span>
-<span class="normal">1307</span>
-<span class="normal">1308</span>
-<span class="normal">1309</span>
-<span class="normal">1310</span>
-<span class="normal">1311</span>
-<span class="normal">1312</span>
-<span class="normal">1313</span>
-<span class="normal">1314</span>
-<span class="normal">1315</span>
-<span class="normal">1316</span>
-<span class="normal">1317</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1317</span>
 <span class="normal">1318</span>
 <span class="normal">1319</span>
 <span class="normal">1320</span>
@@ -12027,7 +12123,19 @@
 <span class="normal">1325</span>
 <span class="normal">1326</span>
 <span class="normal">1327</span>
-<span class="normal">1328</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">create_runtime_artifacts_from_trainer_checkpoint</span><span class="p">(</span>
+<span class="normal">1328</span>
+<span class="normal">1329</span>
+<span class="normal">1330</span>
+<span class="normal">1331</span>
+<span class="normal">1332</span>
+<span class="normal">1333</span>
+<span class="normal">1334</span>
+<span class="normal">1335</span>
+<span class="normal">1336</span>
+<span class="normal">1337</span>
+<span class="normal">1338</span>
+<span class="normal">1339</span>
+<span class="normal">1340</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">create_runtime_artifacts_from_trainer_checkpoint</span><span class="p">(</span>
     <span class="n">checkpoint_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">,</span>
     <span class="n">scenario</span><span class="p">:</span> <span class="n">ScenarioSpec</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">registry</span><span class="p">:</span> <span class="n">LayerRegistry</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
