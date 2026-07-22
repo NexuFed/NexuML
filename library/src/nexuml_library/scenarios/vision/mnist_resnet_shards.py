@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from nexuml.core.discovery import scenario
 from nexuml.core.types import LoaderSpec, PreprocessingSpec, ScenarioSpec
+from nexuml_library.scenarios.data.roots import resolve_data_root
 from nexuml_library.scenarios.vision.mnist_resnet import mnist_resnet
 
 
@@ -59,6 +60,12 @@ def mnist_resnet_shards(
                 source_view="raw",
                 target_view="prepared",
                 writer="tensor_shards",
+                path=str(
+                    resolve_data_root(
+                        "preprocessed/mnist_resnet_shards/prepared/tensor_shards",
+                        env_var="NEXUML_DATA_ROOT",
+                    )
+                ),
                 writer_params={
                     "samples_per_shard": samples_per_shard,
                 },
