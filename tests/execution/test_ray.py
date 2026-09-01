@@ -30,7 +30,7 @@ def test_ray_execution_config_is_placement_only():
 
 
 def test_ray_worker_reuses_nexusession_and_reports_final_metrics(monkeypatch):
-    ray = pytest.importorskip("ray")
+    ray_train = pytest.importorskip("ray.train")
     calls: list[str] = []
     reported = {}
 
@@ -56,7 +56,7 @@ def test_ray_worker_reuses_nexusession_and_reports_final_metrics(monkeypatch):
         "_prepare_session_trainer",
         lambda session: calls.append("trainer") or SimpleNamespace(),
     )
-    monkeypatch.setattr(ray.train, "report", lambda metrics: reported.update(metrics))
+    monkeypatch.setattr(ray_train, "report", lambda metrics: reported.update(metrics))
 
     scenario = ScenarioSpec(name="worker")
     ray_execution.train_loop_per_worker({"scenario": scenario.model_dump(mode="json")})

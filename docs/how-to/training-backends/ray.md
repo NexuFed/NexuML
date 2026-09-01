@@ -1,6 +1,6 @@
 # Ray training
 
-Ray is an optional execution backend for the existing NexuML Lightning session. It is useful when one scenario should use multiple GPUs/nodes or when training should run on shared cluster capacity.
+Ray is an optional execution backend for the existing NexuML Lightning session. Use it when one scenario should use multiple GPUs/nodes or shared cluster capacity.
 
 Install the optional dependency:
 
@@ -127,7 +127,10 @@ dataset = ExportedDataset("s3://my-bucket/datasets/my-dataset")
 
 For S3 exports, `ExportedDataset` loads only `config.yaml` and metadata. Tensor payloads are intentionally read by DALI, not one-by-one through Python/boto3.
 
-DALI receives the `s3://...tar` and `s3://...idx` paths directly and shards them with `shard_id=global_rank` and `num_shards=world_size`. Direct S3 WebDataset behavior is verified by an optional integration test against the target DALI/object-store environment; NexuML does not prebuild a second cache/capability framework.
+NexuML passes the `s3://...tar` and `s3://...idx` paths directly to the existing DALI WebDataset reader and preserves DALI sharding with `shard_id=global_rank` and `num_shards=world_size`.
+
+!!! warning "Verify direct S3 WebDataset support in the target DALI environment"
+    DALI supports S3 in several readers, but current `readers.webdataset` documentation does not explicitly guarantee cloud URLs and NVIDIA still tracks cloud-WebDataset support publicly. NexuML therefore keeps this boundary deliberately thin: direct URLs are the intended path, and a real target-environment integration test must confirm them before production use. If that combination needs a fallback, add the smallest worker-local shard materializer rather than a second cache/capability framework.
 
 S3 credentials are resolved by boto3's normal AWS/provider credential chain and are not stored in scenario configuration.
 
@@ -136,3 +139,21 @@ S3 credentials are resolved by boto3's normal AWS/provider credential chain and 
 Temporary Ray clusters are intentionally treated as infrastructure rather than a second execution framework. A KubeRay integration should use an infrastructure-owned `RayJob` template containing image, node selectors, queues, tolerations, service accounts, and autoscaling policy. NexuML only needs to provide the code working-directory URI and entrypoint.
 
 Until that small template adapter is implemented, use the KubeRay `RayJob` manifest directly with the same `uv run nexuml train ...` entrypoint.
+
+## Troubleshooting
+
+**Ray imports are missing**
+
+Install `nexuml[ray]` (or `uv sync --extra ray`) in the driver and worker runtime.
+
+**DeepSpeed strategy fails to initialize**
+
+Install DeepSpeed in the Ray worker environment. NexuML intentionally does not make it a base dependency.
+
+**Workers cannot read the S3 dataset**
+
+First verify the normal AWS/provider credential chain in the Ray worker environment. For S3-compatible endpoints, also verify the endpoint configuration expected by DALI itself; boto3 export settings do not automatically configure DALI's native readers.
+
+**`wds2idx` is not found during export**
+
+Install the DALI extra/tooling in the environment performing the export, or explicitly disable index generation if startup-time index inference is acceptable.

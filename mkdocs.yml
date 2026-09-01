@@ -96,6 +96,9 @@ nav:
       - CLI lifecycle: how-to/cli-lifecycle.md
       - Run scenarios: how-to/run-scenarios.md
       - Train a model: how-to/train.md
+      - Training backends:
+        - Overview: how-to/training-backends/index.md
+        - Ray: how-to/training-backends/ray.md
       - Evaluate a model: how-to/evaluate.md
       - Export a model package: how-to/export.md
       - Checkpoints: how-to/checkpoints.md

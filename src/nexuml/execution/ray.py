@@ -118,9 +118,13 @@ def _final_metrics(result: Any) -> dict[str, float | int]:
 
 
 def train_loop_per_worker(config: dict[str, Any]) -> None:
-    """Run one Ray worker through the normal NexuML session lifecycle."""
+    """Run one Ray worker through the normal NexuML session lifecycle.
+
+    Raises:
+        RayExecutionError: If Ray Train is unavailable in the worker environment.
+    """
     try:
-        from ray import train
+        import ray.train as train
     except ImportError as error:
         raise RayExecutionError("Ray execution requires the nexuml[ray] extra") from error
 
