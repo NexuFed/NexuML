@@ -45,6 +45,17 @@ Local execution SHALL remain the existing direct `NexuSession.run()` path. The R
 - **WHEN** a scenario uses the default local execution
 - **THEN** NexuML runs the existing local session path with no Ray dependency imported
 
+### Requirement: Distributed post-train fitting never silently changes semantics
+A scenario containing a `PostTrainFitLayer` SHALL NOT run through Ray while the post-train fit pass would see only the worker's rank-sharded training data. Until NexuML implements a globally correct full-training-set finalization and synchronized fitted state, the Ray driver SHALL reject such scenarios before Ray allocation.
+
+#### Scenario: Post-train fitted layer is present
+- **WHEN** a Ray scenario contains a layer type that subclasses `PostTrainFitLayer`
+- **THEN** execution fails before connecting/allocating Ray workers with a clear explanation that distributed post-train finalization is not yet implemented
+
+#### Scenario: Ordinary distributed pipeline has no post-train fit layer
+- **WHEN** a Ray scenario contains only layers whose training/evaluation semantics are already distributed by Lightning/DALI
+- **THEN** the guard does not alter the normal `TorchTrainer` path
+
 ### Requirement: KubeRay remains a template boundary
 Temporary KubeRay execution MAY be supported through a small user/infrastructure-owned RayJob template adapter. NexuML SHALL NOT model Kubernetes topology, Kueue policy, worker images, service accounts, tolerations, or node selectors as Ray backend domain objects.
 

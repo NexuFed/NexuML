@@ -18,7 +18,8 @@
 - [x] 2.6 Ensure each Ray worker reconstructs `ScenarioSpec`, creates the real `NexuSession`, and calls `run()` once.
 - [x] 2.7 Support existing-cluster `ray.init(address=...)` and fixed/elastic worker counts.
 - [x] 2.8 Keep native Ray `Result` as the return value; do not add another result/handle schema.
-- [ ] 2.9 Keep KubeRay as a small infrastructure-template adapter only if it can remain infrastructure-agnostic.
+- [ ] 2.9 Implement globally correct `PostTrainFitLayer` finalization/state synchronization and remove the temporary Ray safety guard.
+- [ ] 2.10 Keep KubeRay as a small infrastructure-template adapter only if it can remain infrastructure-agnostic.
 
 ## 3. Simplify WebDataset and add `.idx`
 

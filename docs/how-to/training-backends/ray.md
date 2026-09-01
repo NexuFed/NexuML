@@ -87,6 +87,12 @@ Under Ray, NexuML maps these values to Ray's official `RayDDPStrategy`, `RayFSDP
 
 DeepSpeed itself must be available in the Ray worker environment when that strategy is selected.
 
+## Post-train fitted pipeline layers
+
+Ray currently rejects scenarios containing a `PostTrainFitLayer`. NexuML normally fits these layers after gradient training by running a predict pass over the full training set. Under distributed DALI loading, each worker sees only its rank shard, so fitting independently would silently create different fitted state on different workers.
+
+The backend therefore fails before Ray allocation instead of changing model semantics. Keep those scenarios local until NexuML implements global post-train finalization and fitted-state synchronization.
+
 ## Shared datasets with S3 WebDataset
 
 Ray workers need a shared data location. NexuML's distributed data path is:
@@ -125,7 +131,7 @@ from nexuml.data.exported import ExportedDataset
 dataset = ExportedDataset("s3://my-bucket/datasets/my-dataset")
 ```
 
-For S3 exports, `ExportedDataset` loads only `config.yaml` and metadata. Tensor payloads are intentionally read by DALI, not one-by-one through Python/boto3.
+For S3 exports, `ExportedDataset` loads only `config.yaml` and metadata. Tensor payloads are intentionally read by DALI, not one-by-one through Python/boto3. Remote exports also avoid the local-only per-sample Python WebDataset index; the tar/index lists in `config.yaml` are sufficient for DALI.
 
 NexuML passes the `s3://...tar` and `s3://...idx` paths directly to the existing DALI WebDataset reader and preserves DALI sharding with `shard_id=global_rank` and `num_shards=world_size`.
 
@@ -145,6 +151,10 @@ Until that small template adapter is implemented, use the KubeRay `RayJob` manif
 **Ray imports are missing**
 
 Install `nexuml[ray]` (or `uv sync --extra ray`) in the driver and worker runtime.
+
+**A `PostTrainFitLayer` scenario is rejected**
+
+This is intentional until the post-train fit pass can aggregate the complete training set and synchronize one fitted state across all Ray workers. Run that scenario locally for now.
 
 **DeepSpeed strategy fails to initialize**
 

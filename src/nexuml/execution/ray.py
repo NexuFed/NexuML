@@ -101,10 +101,12 @@ def _final_metrics(result: Any) -> dict[str, float | int]:
         if not isinstance(row, Mapping):
             continue
         for key, value in row.items():
+            name = str(key)
+            metric_key = name if name.startswith(f"{prefix}/") else f"{prefix}/{name}"
             if isinstance(value, bool):
-                metrics[f"{prefix}/{key}"] = int(value)
+                metrics[metric_key] = int(value)
             elif isinstance(value, (int, float)):
-                metrics[f"{prefix}/{key}"] = value
+                metrics[metric_key] = value
 
     evaluation = getattr(result, "eval_algorithm_results", {})
     if isinstance(evaluation, Mapping):
@@ -115,6 +117,28 @@ def _final_metrics(result: Any) -> dict[str, float | int]:
                 metrics[str(key)] = value
     metrics.setdefault("nexuml/completed", 1)
     return metrics
+
+
+def _ensure_distributed_semantics(scenario: ScenarioSpec) -> None:
+    """Reject pipeline phases whose distributed semantics are not defined yet.
+
+    Raises:
+        RayExecutionError: If the scenario contains a ``PostTrainFitLayer``.
+    """
+    from nexuml.core.post_train_layer import PostTrainFitLayer
+    from nexuml.core.registry import get_registry
+
+    registry = get_registry()
+    for stage in scenario.pipeline.stages.values():
+        for layer_spec in stage:
+            layer_type = registry.get(layer_spec.type_key)
+            if issubclass(layer_type, PostTrainFitLayer):
+                raise RayExecutionError(
+                    "Ray execution does not yet support PostTrainFitLayer semantics: "
+                    "the post-train fit pass must see the full training set rather than one "
+                    "DALI rank shard. Keep this scenario local until distributed post-train "
+                    "finalization is implemented."
+                )
 
 
 def train_loop_per_worker(config: dict[str, Any]) -> None:
@@ -209,13 +233,14 @@ def run_ray(scenario: ScenarioSpec) -> Any:
         The ``ray.train.Result`` returned by ``TorchTrainer.fit``.
 
     Raises:
-        RayExecutionError: If the scenario does not select Ray execution or Ray
-            dependencies are unavailable.
+        RayExecutionError: If the scenario cannot be executed safely with Ray or
+            Ray dependencies are unavailable.
     """
     execution = scenario.execution
     if not isinstance(execution, RayExecutionSpec):
         raise RayExecutionError("run_ray requires scenario.execution.kind='ray'")
 
+    _ensure_distributed_semantics(scenario)
     _connect(execution)
     try:
         from ray.train.torch import TorchTrainer

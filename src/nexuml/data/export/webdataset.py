@@ -245,10 +245,11 @@ class WebDatasetBackend(ExportBackend):
         _write_tar_bytes(tar_handle, f"{sample_id}.__index.npy", index_buffer.getvalue())
 
         assert self._current_shard_relative is not None
-        self._sample_index[sample_id] = {
-            "shard": self._current_shard_relative,
-            "components": components,
-        }
+        if self._s3 is None:
+            self._sample_index[sample_id] = {
+                "shard": self._current_shard_relative,
+                "components": components,
+            }
         self._current_shard_samples += 1
         self._saved += 1
 
@@ -265,22 +266,21 @@ class WebDatasetBackend(ExportBackend):
         if self._export_dir is None:
             raise RuntimeError("WebDataset backend has not been initialized")
 
-        index_file = self._export_dir / "data" / "webdataset_index.json"
-        index_file.parent.mkdir(parents=True, exist_ok=True)
-        index_file.write_text(json.dumps(self._sample_index, indent=2, sort_keys=True))
-        if self._s3 is not None:
-            self._upload(index_file, "data/webdataset_index.json")
-
-        return {
+        metadata: dict[str, Any] = {
             "format": "webdataset",
             "dtype": None if self._dtype is None else self._dtype.name,
             "samples_saved": self._saved,
             "key_specs": self._key_specs,
             "shards": list(self._shard_paths),
             "index_paths": list(self._index_paths),
-            "sample_index_file": "data/webdataset_index.json",
             "storage_uri": self.remote_uri,
         }
+        if self._s3 is None:
+            index_file = self._export_dir / "data" / "webdataset_index.json"
+            index_file.parent.mkdir(parents=True, exist_ok=True)
+            index_file.write_text(json.dumps(self._sample_index, indent=2, sort_keys=True))
+            metadata["sample_index_file"] = "data/webdataset_index.json"
+        return metadata
 
     def publish_export_metadata(self, config_path: Path, metadata_path: Path) -> None:
         """Upload the final lightweight export metadata for an S3 export."""

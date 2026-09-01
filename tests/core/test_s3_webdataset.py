@@ -67,9 +67,10 @@ def test_webdataset_uses_lossless_numpy_and_writes_index(tmp_path, monkeypatch):
         restored = np.load(io.BytesIO(member.read()), allow_pickle=False)
     assert np.array_equal(restored, expected.numpy())
     assert metadata["key_specs"]["features"]["encoding"] == "npy"
+    assert metadata["sample_index_file"] == "data/webdataset_index.json"
 
 
-def test_s3_webdataset_uploads_closed_shard_and_index(tmp_path, monkeypatch):
+def test_s3_webdataset_uploads_closed_shard_and_index_without_sample_index(tmp_path, monkeypatch):
     _fake_wds2idx(monkeypatch)
     s3 = FakeS3()
     backend = WebDatasetBackend(
@@ -89,6 +90,8 @@ def test_s3_webdataset_uploads_closed_shard_and_index(tmp_path, monkeypatch):
     assert "dataset/data/shards/train/shard-000000.idx" in uploaded_keys
     assert "dataset/data/shards/train/shard-000001.tar" in uploaded_keys
     assert "dataset/data/shards/train/shard-000001.idx" in uploaded_keys
+    assert "dataset/data/webdataset_index.json" not in uploaded_keys
+    assert "sample_index_file" not in metadata
     assert not list(tmp_path.rglob("*.tar"))
     assert not list(tmp_path.rglob("*.idx"))
     assert metadata["storage_uri"] == "s3://bucket/dataset"

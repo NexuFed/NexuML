@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from nexuml.core.types import RayExecutionSpec, ScenarioSpec
+from nexuml.core.types import LayerSpec, PipelineSpec, RayExecutionSpec, ScenarioSpec
 from nexuml.execution import ray as ray_execution
 
 
@@ -43,8 +43,8 @@ def test_ray_worker_reuses_nexusession_and_reports_final_metrics(monkeypatch):
         def run(self):
             calls.append("run")
             return SimpleNamespace(
-                validation_results=[{"loss": 0.4}],
-                test_results=[{"accuracy": 0.9}],
+                validation_results=[{"val/loss": 0.4}],
+                test_results=[{"test/accuracy": 0.9}],
                 eval_algorithm_results={"test/f1": 0.8},
             )
 
@@ -90,6 +90,44 @@ def test_ray_strategy_uses_official_ray_classes(monkeypatch):
     assert isinstance(ray_execution._ray_strategy("ddp", {}), DDP)
     assert isinstance(ray_execution._ray_strategy("fsdp", {"state_dict_type": "full"}), FSDP)
     assert isinstance(ray_execution._ray_strategy("deepspeed", {"stage": 2}), DeepSpeed)
+
+
+def test_ray_rejects_post_train_fit_layers_until_global_finalization_exists(monkeypatch):
+    from nexuml.core.post_train_layer import PostTrainFitLayer
+    import nexuml.core.registry as registry_module
+
+    class FakePostTrain(PostTrainFitLayer):
+        def collect_batch(self, x, y):
+            pass
+
+        def finalize_fit(self):
+            pass
+
+        def _transform_forward(self, x, y):
+            return x, y
+
+    monkeypatch.setattr(
+        registry_module,
+        "get_registry",
+        lambda: SimpleNamespace(get=lambda _key: FakePostTrain),
+    )
+    scenario = ScenarioSpec(
+        name="post-train",
+        pipeline=PipelineSpec(
+            stages={
+                "post": [
+                    LayerSpec(
+                        type_key="post_train",
+                        keys_in=["features"],
+                        keys_out=["score"],
+                    )
+                ]
+            }
+        ),
+    )
+
+    with pytest.raises(ray_execution.RayExecutionError, match="PostTrainFitLayer"):
+        ray_execution._ensure_distributed_semantics(scenario)
 
 
 def test_connect_uses_working_dir_and_uv(monkeypatch):
