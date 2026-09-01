@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "nexuml-library"
 version = "0.1.0"
 description = "Base reusable library for NexuML"
-readme = "../README.md"
+readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "Proprietary" }
 license-files = [
