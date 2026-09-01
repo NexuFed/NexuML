@@ -20,6 +20,7 @@ from tensordict import TensorDict
 from nexuml.core.discovery import data_source
 from nexuml.data.dataset import _KEEP_DATA, NexuDataset
 from nexuml.data.export import get_export_backend
+from nexuml.storage.s3 import S3Client, S3Path, is_s3_uri
 
 
 @data_source("ExportedDataset")
@@ -33,11 +34,31 @@ class ExportedDataset(NexuDataset):
         feature_keys: list[str] | None = None,
         label_keys: list[str] | None = None,
         label_prefix: str = "label__",
+        s3_endpoint_url: str | None = None,
+        s3_region: str | None = None,
+        s3_profile: str | None = None,
+        s3_client: Any | None = None,
     ):
-        self.root = Path(root)
-        config = yaml.safe_load((self.root / "config.yaml").read_text()) or {}
+        root_text = str(root)
+        self._s3 = (
+            S3Client(
+                endpoint_url=s3_endpoint_url,
+                region=s3_region,
+                profile=s3_profile,
+                client=s3_client,
+            )
+            if is_s3_uri(root_text)
+            else None
+        )
+        self.root: Path | S3Path = (
+            S3Path.parse(root_text) if self._s3 is not None else Path(root)
+        )
+
+        config = yaml.safe_load(self._read_text("config.yaml")) or {}
         self.config = cast(dict[str, Any], config)
         self.backend = str(config.get("writer") or config.get("backend", "numpy"))
+        if self._s3 is not None and self.backend != "webdataset":
+            raise ValueError("Remote ExportedDataset currently supports WebDataset exports only")
         self.modality = str(config.get("modality", "generic"))
         self.label_prefix = str(config.get("label_prefix", label_prefix))
         self.supports_dali_loader = self.backend in {
@@ -117,14 +138,51 @@ class ExportedDataset(NexuDataset):
             for key in self.label_names
             if key in config_num_classes
         }
+        self._filter_webdataset_paths_to_meta()
+
+    @property
+    def is_remote(self) -> bool:
+        """Return whether tensors are stored in S3."""
+        return self._s3 is not None
+
+    def _read_bytes(self, relative: str) -> bytes:
+        if self._s3 is not None:
+            assert isinstance(self.root, S3Path)
+            return self._s3.read_bytes(self.root / relative)
+        assert isinstance(self.root, Path)
+        return (self.root / relative).read_bytes()
+
+    def _read_text(self, relative: str) -> str:
+        return self._read_bytes(relative).decode("utf-8")
+
+    def _filter_webdataset_paths_to_meta(self) -> None:
+        if self.backend != "webdataset" or self.meta is None or "split" not in self.meta.columns:
+            return
+        splits = {str(value) for value in self.meta["split"].dropna().unique()}
+        if len(splits) != 1:
+            return
+        split = next(iter(splits))
+        prefix = f"data/shards/{split}/"
+        self.extra = copy.deepcopy(self.extra)
+        for key in ("shards", "index_paths"):
+            paths = self.extra.get(key)
+            if isinstance(paths, list):
+                self.extra[key] = [str(path) for path in paths if str(path).startswith(prefix)]
 
     def _load_metadata(self, config: dict[str, Any]) -> pd.DataFrame:
         extra = cast(dict[str, Any], config.get("extra", {}) or {})
-        metadata_file = extra.get("metadata_file")
-        metadata_format = extra.get("metadata_format")
+        metadata_file = str(extra.get("metadata_file") or "metadata.parquet")
+        metadata_format = str(extra.get("metadata_format") or "parquet")
 
-        if metadata_file is not None:
-            metadata_path = self.root / str(metadata_file)
+        if self._s3 is not None:
+            data = io.BytesIO(self._read_bytes(metadata_file))
+            if metadata_format == "csv" or metadata_file.endswith(".csv"):
+                return pd.read_csv(data)
+            return pd.read_parquet(data)
+
+        assert isinstance(self.root, Path)
+        metadata_path = self.root / metadata_file
+        if metadata_path.exists():
             if metadata_format == "csv" or metadata_path.suffix == ".csv":
                 return pd.read_csv(metadata_path)
             return pd.read_parquet(metadata_path)
@@ -143,11 +201,15 @@ class ExportedDataset(NexuDataset):
             str(key) for key in cast(list[Any], extra.get("stored_keys", []) or [])
         ]
         if not stored_keys:
-            if self.backend == "numpy":
+            if self._s3 is not None:
+                stored_keys = sorted(self.feature_shapes.keys())
+            elif self.backend == "numpy":
+                assert isinstance(self.root, Path)
                 stored_keys = sorted(
                     path.name for path in (self.root / "data").iterdir() if path.is_dir()
                 )
             elif self.backend == "numpy_mmap":
+                assert isinstance(self.root, Path)
                 stored_keys = sorted(path.stem for path in (self.root / "data").glob("*.npy"))
             else:
                 stored_keys = sorted(self.feature_shapes.keys())
@@ -165,24 +227,35 @@ class ExportedDataset(NexuDataset):
 
         return stored_x, stored_y
 
+    def _local_root(self) -> Path:
+        if not isinstance(self.root, Path):
+            raise RuntimeError(
+                "S3 ExportedDataset tensors are consumed through the DALI WebDataset loader; "
+                "per-sample Python reads are intentionally unsupported"
+            )
+        return self.root
+
     def _mmap_array(self, stored_key: str) -> np.ndarray:
+        root = self._local_root()
         if stored_key not in self._mmap_arrays:
             self._mmap_arrays[stored_key] = np.load(
-                self.root / "data" / f"{stored_key}.npy", mmap_mode="r"
+                root / "data" / f"{stored_key}.npy", mmap_mode="r"
             )
         return self._mmap_arrays[stored_key]
 
     def _torch_payload(self, export_idx: int) -> dict[str, torch.Tensor]:
+        root = self._local_root()
         payload = torch.load(
-            self.root / "data" / f"{export_idx:08d}.pt", map_location="cpu", weights_only=False
+            root / "data" / f"{export_idx:08d}.pt", map_location="cpu", weights_only=False
         )
         return {str(key): _to_tensor(value) for key, value in payload.items()}
 
     def _numpy_payload(self, export_idx: int) -> dict[str, torch.Tensor]:
+        root = self._local_root()
         return {
             stored_key: torch.from_numpy(
                 np.load(
-                    self.root / "data" / stored_key / f"{export_idx:08d}.npy", allow_pickle=False
+                    root / "data" / stored_key / f"{export_idx:08d}.npy", allow_pickle=False
                 )
             )
             for stored_key in {*self._stored_x_keys.values(), *self._stored_y_keys.values()}
@@ -195,21 +268,23 @@ class ExportedDataset(NexuDataset):
         }
 
     def _tensordict_payload(self, export_idx: int) -> dict[str, torch.Tensor]:
+        root = self._local_root()
         if self._tensordict_memmap is None:
-            self._tensordict_memmap = TensorDict.load_memmap(self.root / "data")
+            self._tensordict_memmap = TensorDict.load_memmap(root / "data")
         sample: TensorDict = self._tensordict_memmap[export_idx]  # ty: ignore[invalid-assignment]
         return {str(key): _to_tensor(value) for key, value in sample.items()}
 
     def _webdataset_payload(self, export_idx: int) -> dict[str, torch.Tensor]:
+        root = self._local_root()
         if self._webdataset_index is None:
-            index_path = self.root / "data" / "webdataset_index.json"
+            index_path = root / str(self.extra.get("sample_index_file", "data/webdataset_index.json"))
             self._webdataset_index = json.loads(index_path.read_text())
 
         sample_id = f"{export_idx:08d}"
         if sample_id not in self._webdataset_index:
             raise IndexError(f"Sample index {export_idx} is not present in the WebDataset export")
         sample_entry = self._webdataset_index[sample_id]
-        shard_path = self.root / "data" / "shards" / sample_entry["shard"]
+        shard_path = root / sample_entry["shard"]
 
         payload: dict[str, torch.Tensor] = {}
         with tarfile.open(shard_path, "r") as handle:
@@ -232,6 +307,8 @@ class ExportedDataset(NexuDataset):
         return payload
 
     def _payload(self, export_idx: int) -> dict[str, torch.Tensor]:
+        if self._s3 is not None:
+            self._local_root()
         if self._cached_export_idx == export_idx and self._cached_payload is not None:
             return self._cached_payload
 
@@ -250,7 +327,7 @@ class ExportedDataset(NexuDataset):
                 backend_cls = get_export_backend(self.backend)
             except KeyError as exc:
                 raise ValueError(f"Unsupported exported dataset backend: {self.backend}") from exc
-            payload = backend_cls.load_sample(self.root, export_idx)
+            payload = backend_cls.load_sample(self._local_root(), export_idx)
 
         self._cached_export_idx = export_idx
         self._cached_payload = payload
@@ -267,6 +344,8 @@ class ExportedDataset(NexuDataset):
             clone.data = cast(Any, data)
         clone.label_names = list(self.label_names)
         clone.num_classes = dict(self.num_classes)
+        clone.extra = copy.deepcopy(self.extra)
+        clone._filter_webdataset_paths_to_meta()
         return clone
 
     def load_item(self, idx: int, row: pd.Series) -> TensorDict:

@@ -7,65 +7,14 @@ import json
 import shutil
 import subprocess
 import tarfile
-import tempfile
 from pathlib import Path
 from typing import Any
 
 import numpy as np
-import soundfile as sf
 import torch
-from PIL import Image
 
 from nexuml.data.export.backend import ExportBackend, register_export_backend
-
-
-def _normalize_to_uint8(array: np.ndarray) -> np.ndarray:
-    if array.dtype == np.uint8:
-        return array
-    if np.issubdtype(array.dtype, np.floating):
-        if array.size and float(array.min()) >= 0.0 and float(array.max()) <= 1.0:
-            array = array * 255.0
-    return np.clip(array, 0, 255).astype(np.uint8)
-
-
-def _infer_layout(array: np.ndarray, modality: str) -> str | None:
-    if modality == "image" and array.ndim == 3:
-        if array.shape[0] in {1, 3, 4}:
-            return "CHW"
-        if array.shape[-1] in {1, 3, 4}:
-            return "HWC"
-    if modality == "video" and array.ndim == 4:
-        if array.shape[1] in {1, 3, 4}:
-            return "TCHW"
-        if array.shape[-1] in {1, 3, 4}:
-            return "THWC"
-    if modality == "audio" and array.ndim == 2:
-        if array.shape[0] <= 8 and array.shape[1] > array.shape[0]:
-            return "CT"
-        return "TC"
-    if modality == "audio" and array.ndim == 1:
-        return "T"
-    return None
-
-
-def _layout_for_payload(array: np.ndarray, layout: str | None, modality: str) -> np.ndarray:
-    if modality == "image" and layout == "CHW":
-        return np.moveaxis(array, 0, -1)
-    if modality == "video" and layout == "TCHW":
-        return np.moveaxis(array, 1, -1)
-    if modality == "audio" and layout == "CT":
-        return np.moveaxis(array, 0, -1)
-    return array
-
-
-def _layout_from_payload(array: np.ndarray, layout: str | None, modality: str) -> np.ndarray:
-    if modality == "image" and layout == "CHW":
-        return np.moveaxis(array, -1, 0)
-    if modality == "video" and layout == "TCHW":
-        return np.moveaxis(array, -1, 1)
-    if modality == "audio" and layout == "CT":
-        return np.moveaxis(array, -1, 0)
-    return array
+from nexuml.storage.s3 import S3Client, S3Path
 
 
 def _write_tar_bytes(handle: tarfile.TarFile, member_name: str, data: bytes) -> None:
@@ -74,40 +23,65 @@ def _write_tar_bytes(handle: tarfile.TarFile, member_name: str, data: bytes) -> 
     handle.addfile(info, io.BytesIO(data))
 
 
+def _safe_split(value: str) -> str:
+    split = str(value).strip()
+    if not split or split in {".", ".."} or "/" in split or "\\" in split:
+        raise ValueError(f"Invalid WebDataset split name: {value!r}")
+    return split
+
+
 @register_export_backend("webdataset")
 class WebDatasetBackend(ExportBackend):
-    """Write samples into WebDataset tar shards."""
+    """Write lossless NumPy components into indexed WebDataset tar shards."""
 
     def __init__(
         self,
         *,
-        modality: str = "generic",
-        x_keys: list[str] | None = None,
-        y_keys: list[str] | None = None,
-        transform_applied: bool = False,
-        generic_payload: str = "npy",
         samples_per_shard: int = 256,
-        audio_sample_rate: int = 16000,
-        video_fps: float = 30.0,
-        **_kwargs,
+        create_index: bool = True,
+        s3_uri: str | None = None,
+        s3_endpoint_url: str | None = None,
+        s3_region: str | None = None,
+        s3_profile: str | None = None,
+        s3_client: Any | None = None,
+        **_kwargs: Any,
     ) -> None:
-        self.modality = str(modality).lower()
-        self.x_keys = set(x_keys or [])
-        self.y_keys = set(y_keys or [])
-        self.transform_applied = bool(transform_applied)
-        self.generic_payload = generic_payload
+        if samples_per_shard < 1:
+            raise ValueError("samples_per_shard must be positive")
         self.samples_per_shard = int(samples_per_shard)
-        self.audio_sample_rate = int(audio_sample_rate)
-        self.video_fps = float(video_fps)
+        self.create_index = bool(create_index)
+        self._s3_root = S3Path.parse(s3_uri) if s3_uri is not None else None
+        self._s3 = (
+            S3Client(
+                endpoint_url=s3_endpoint_url,
+                region=s3_region,
+                profile=s3_profile,
+                client=s3_client,
+            )
+            if self._s3_root is not None
+            else None
+        )
+
         self._export_dir: Path | None = None
-        self._feature_shapes: dict[str, tuple[int, ...]] = {}
         self._dtype: np.dtype[Any] | None = None
         self._key_specs: dict[str, dict[str, Any]] = {}
         self._sample_index: dict[str, dict[str, Any]] = {}
-        self._current_shard_id: int | None = None
-        self._current_shard_name: str | None = None
+        self._saved = 0
+
+        self._split: str | None = None
+        self._next_shard_id: dict[str, int] = {}
         self._current_tar: tarfile.TarFile | None = None
-        self._saved: int = 0
+        self._current_tar_path: Path | None = None
+        self._current_shard_relative: str | None = None
+        self._current_shard_samples = 0
+
+        self._shard_paths: list[str] = []
+        self._index_paths: list[str] = []
+
+    @property
+    def remote_uri(self) -> str | None:
+        """Return the S3 dataset root when exporting remotely."""
+        return None if self._s3_root is None else str(self._s3_root)
 
     def initialize(
         self,
@@ -116,247 +90,215 @@ class WebDatasetBackend(ExportBackend):
         feature_shapes: dict[str, tuple[int, ...]],
         dtype: np.dtype[Any] | str | None = None,
     ) -> None:
-        self._export_dir = export_dir
-        self._feature_shapes = dict(feature_shapes)
+        """Prepare local shard staging.
+
+        Args:
+            export_dir: Local export/staging directory.
+            num_samples: Declared number of exported samples.
+            feature_shapes: Tensor shapes supplied by the export runner.
+            dtype: Optional floating-point storage dtype.
+        """
+        del num_samples, feature_shapes
+        self._export_dir = Path(export_dir)
         self._dtype = None if dtype is None else np.dtype(dtype)
-        (export_dir / "data" / "shards").mkdir(parents=True, exist_ok=True)
+        (self._export_dir / "data" / "shards").mkdir(parents=True, exist_ok=True)
 
-    def _ensure_shard(self, index: int) -> tuple[tarfile.TarFile, str]:
+    def start_split(self, split: str) -> None:
+        """Start one physically isolated dataset split."""
+        if self._current_tar is not None:
+            self._close_current_shard()
+        self._split = _safe_split(split)
+        self._next_shard_id.setdefault(self._split, 0)
+
+    def end_split(self, split: str) -> None:
+        """Finish one dataset split and close its current shard."""
+        selected = _safe_split(split)
+        if self._split != selected:
+            raise RuntimeError(f"Cannot end split {selected!r}; active split is {self._split!r}")
+        self._close_current_shard()
+        self._split = None
+
+    def _new_shard(self) -> None:
         if self._export_dir is None:
-            raise RuntimeError("Backend has not been initialized")
-        shard_id = index // self.samples_per_shard
-        shard_name = f"shard-{shard_id:06d}.tar"
-        if self._current_shard_id != shard_id:
-            if self._current_tar is not None:
-                self._current_tar.close()
-            self._current_shard_id = shard_id
-            self._current_shard_name = shard_name
-            self._current_tar = tarfile.open(self._export_dir / "data" / "shards" / shard_name, "w")
-        tar = self._current_tar
-        assert tar is not None
-        return tar, shard_name
+            raise RuntimeError("WebDataset backend has not been initialized")
+        split = self._split or "all"
+        shard_id = self._next_shard_id.setdefault(split, 0)
+        self._next_shard_id[split] = shard_id + 1
+        relative = f"data/shards/{split}/shard-{shard_id:06d}.tar"
+        path = self._export_dir / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        self._current_tar_path = path
+        self._current_shard_relative = relative
+        self._current_shard_samples = 0
+        self._current_tar = tarfile.open(path, "w")
 
-    def _choose_encoding(self, key: str, tensor: torch.Tensor | str | bytes) -> str:
-        if key in self.y_keys:
-            return self.generic_payload
-        if self.transform_applied:
-            return self.generic_payload
-        if key not in self.x_keys:
-            return self.generic_payload
-        if self.modality == "image":
-            return "png"
-        if self.modality == "audio":
-            return "wav"
-        if self.modality == "video":
-            return "mp4"
-        if self.modality == "text":
-            if isinstance(tensor, (str, bytes)):
-                return "txt"
-            if isinstance(tensor, torch.Tensor) and tensor.dtype in {torch.uint8, torch.int8}:
-                return "txt"
-        return self.generic_payload
+    def _ensure_shard(self) -> tarfile.TarFile:
+        if self._current_tar is None:
+            self._new_shard()
+        elif self._current_shard_samples >= self.samples_per_shard:
+            self._close_current_shard()
+            self._new_shard()
+        assert self._current_tar is not None
+        return self._current_tar
 
-    def _encode_component(
-        self, key: str, value: torch.Tensor | str | bytes
-    ) -> tuple[str, bytes, dict[str, Any]]:
-        encoding = self._choose_encoding(key, value)
-        layout: str | None = None
-        dtype_name: str | None = None
-        shape: list[int] | None = None
+    def _generate_index(self, tar_path: Path) -> Path:
+        index_path = tar_path.with_suffix(".idx")
+        if not self.create_index:
+            return index_path
+        tool = shutil.which("wds2idx")
+        if tool is None:
+            raise RuntimeError(
+                "WebDataset index generation requires DALI's wds2idx utility; "
+                "install the nexuml[dali] extra or set create_index=False"
+            )
+        subprocess.run(
+            [tool, str(tar_path), str(index_path)],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        return index_path
 
-        if isinstance(value, bytes):
-            payload = value
-            encoding = "txt" if encoding == "txt" else encoding
-            dtype_name = "bytes"
-            shape = [len(payload)]
-        elif isinstance(value, str):
-            payload = value.encode("utf-8")
-            encoding = "txt"
-            dtype_name = "utf8"
-            shape = [len(payload)]
-        else:
-            tensor = value.detach().cpu()
-            if self._dtype is not None and tensor.is_floating_point():
-                tensor = tensor.to(torch.from_numpy(np.empty((), dtype=self._dtype)).dtype)
-            array = tensor.numpy()
-            shape = list(array.shape)
-            dtype_name = str(array.dtype)
-            layout = _infer_layout(array, self.modality if key in self.x_keys else "generic")
+    def _upload(self, local_path: Path, relative: str) -> None:
+        if self._s3 is None or self._s3_root is None:
+            return
+        self._s3.upload_file(local_path, self._s3_root / relative)
 
-            if encoding == "png":
-                image_array = _layout_for_payload(array, layout, "image")
-                image = Image.fromarray(_normalize_to_uint8(image_array))
-                buffer = io.BytesIO()
-                image.save(buffer, format="PNG")
-                payload = buffer.getvalue()
-            elif encoding == "wav":
-                audio_array = _layout_for_payload(array, layout, "audio")
-                buffer = io.BytesIO()
-                sf.write(buffer, audio_array, self.audio_sample_rate, format="WAV")
-                payload = buffer.getvalue()
-            elif encoding == "mp4":
-                payload = _encode_video(array, layout, fps=self.video_fps)
-            elif encoding == "pt":
-                buffer = io.BytesIO()
-                torch.save(tensor, buffer)
-                payload = buffer.getvalue()
-            elif encoding == "bin":
-                payload = array.tobytes(order="C")
-            elif encoding == "txt":
-                payload = bytes(array.tolist())
-            else:
-                buffer = io.BytesIO()
-                np.save(buffer, array, allow_pickle=False)
-                payload = buffer.getvalue()
+    def _close_current_shard(self) -> None:
+        if self._current_tar is None:
+            return
+        assert self._current_tar_path is not None
+        assert self._current_shard_relative is not None
 
-        spec: dict[str, Any] = {
-            "encoding": encoding,
-            "dtype": dtype_name,
-            "layout": layout,
-            "shape": shape,
-            "storage": {
-                "type": "webdataset",
-                "path": "data/shards",
-            },
-        }
-        if encoding == "wav":
-            spec["sample_rate"] = self.audio_sample_rate
-        if encoding == "mp4":
-            spec["fps"] = self.video_fps
-        return encoding, payload, spec
+        self._current_tar.close()
+        tar_path = self._current_tar_path
+        tar_relative = self._current_shard_relative
+        idx_path = self._generate_index(tar_path)
+        idx_relative = str(Path(tar_relative).with_suffix(".idx")).replace("\\", "/")
+
+        self._shard_paths.append(tar_relative)
+        if self.create_index:
+            self._index_paths.append(idx_relative)
+
+        if self._s3 is not None:
+            self._upload(tar_path, tar_relative)
+            if self.create_index:
+                self._upload(idx_path, idx_relative)
+            tar_path.unlink(missing_ok=True)
+            if self.create_index:
+                idx_path.unlink(missing_ok=True)
+
+        self._current_tar = None
+        self._current_tar_path = None
+        self._current_shard_relative = None
+        self._current_shard_samples = 0
+
+    def _encode(self, value: torch.Tensor) -> tuple[bytes, list[int], str]:
+        tensor = value.detach().cpu()
+        if self._dtype is not None and tensor.is_floating_point():
+            torch_dtype = torch.from_numpy(np.empty((), dtype=self._dtype)).dtype
+            tensor = tensor.to(torch_dtype)
+        array = tensor.numpy()
+        buffer = io.BytesIO()
+        np.save(buffer, array, allow_pickle=False)
+        return buffer.getvalue(), list(array.shape), str(array.dtype)
 
     def save_sample(self, index: int, features: dict[str, torch.Tensor]) -> None:
-        tar_handle, shard_name = self._ensure_shard(index)
+        """Append one tensor sample to the active tar shard."""
+        tar_handle = self._ensure_shard()
         sample_id = f"{index:08d}"
-        sample_components: dict[str, dict[str, Any]] = {}
+        components: dict[str, dict[str, str]] = {}
 
         for key, value in features.items():
-            encoding, payload, spec = self._encode_component(key, value)
-            ext = f"{key}.{encoding}"
-            member_name = f"{sample_id}.{ext}"
+            if "/" in key or "\\" in key:
+                raise ValueError(f"WebDataset keys must not contain path separators: {key!r}")
+            payload, shape, dtype = self._encode(value)
+            member_ext = f"{key}.npy"
+            member_name = f"{sample_id}.{member_ext}"
             _write_tar_bytes(tar_handle, member_name, payload)
-            spec["storage"] = {
-                **spec["storage"],
-                "member_ext": ext,
-            }
-            self._key_specs.setdefault(key, spec)
-            sample_components[key] = {
-                "member": member_name,
-                "encoding": encoding,
-            }
+            self._key_specs.setdefault(
+                key,
+                {
+                    "encoding": "npy",
+                    "dtype": dtype,
+                    "layout": None,
+                    "shape": shape,
+                    "storage": {
+                        "type": "webdataset",
+                        "path": "data/shards",
+                        "member_ext": member_ext,
+                    },
+                },
+            )
+            components[key] = {"member": member_name, "encoding": "npy"}
 
         index_buffer = io.BytesIO()
         np.save(index_buffer, np.asarray(index, dtype=np.int64), allow_pickle=False)
-        index_member = f"{sample_id}.__index.npy"
-        _write_tar_bytes(tar_handle, index_member, index_buffer.getvalue())
+        _write_tar_bytes(tar_handle, f"{sample_id}.__index.npy", index_buffer.getvalue())
 
+        assert self._current_shard_relative is not None
         self._sample_index[sample_id] = {
-            "shard": shard_name,
-            "components": sample_components,
+            "shard": self._current_shard_relative,
+            "components": components,
         }
+        self._current_shard_samples += 1
         self._saved += 1
 
     def finalize(self) -> dict[str, Any]:
-        if self._current_tar is not None:
-            self._current_tar.close()
-            self._current_tar = None
-        if self._export_dir is None:
-            raise RuntimeError("Backend has not been initialized")
+        """Close the final shard and return metadata for ``config.yaml``.
 
-        shard_paths = sorted(
-            str(path.relative_to(self._export_dir))
-            for path in (self._export_dir / "data" / "shards").glob("*.tar")
-        )
-        index_path = self._export_dir / "data" / "webdataset_index.json"
-        index_path.write_text(json.dumps(self._sample_index, indent=2, sort_keys=True))
+        Returns:
+            Backend-specific export metadata.
+        """
+        self._close_current_shard()
+        if self._export_dir is None:
+            raise RuntimeError("WebDataset backend has not been initialized")
+
+        index_file = self._export_dir / "data" / "webdataset_index.json"
+        index_file.parent.mkdir(parents=True, exist_ok=True)
+        index_file.write_text(json.dumps(self._sample_index, indent=2, sort_keys=True))
+        if self._s3 is not None:
+            self._upload(index_file, "data/webdataset_index.json")
+
         return {
             "format": "webdataset",
             "dtype": None if self._dtype is None else self._dtype.name,
             "samples_saved": self._saved,
             "key_specs": self._key_specs,
-            "shards": shard_paths,
-            "sample_index_file": str(index_path.relative_to(self._export_dir)),
+            "shards": list(self._shard_paths),
+            "index_paths": list(self._index_paths),
+            "sample_index_file": "data/webdataset_index.json",
+            "storage_uri": self.remote_uri,
         }
+
+    def publish_export_metadata(self, config_path: Path, metadata_path: Path) -> None:
+        """Upload the final lightweight export metadata for an S3 export."""
+        if self._s3 is None:
+            return
+        self._upload(config_path, "config.yaml")
+        self._upload(metadata_path, metadata_path.name)
 
     @staticmethod
     def load_sample(export_dir: Path, index: int) -> dict[str, torch.Tensor]:
+        """Load one sample from a local WebDataset export.
+
+        Returns:
+            Mapping of stored keys to tensors.
+        """
         index_data = json.loads((export_dir / "data" / "webdataset_index.json").read_text())
         sample_id = f"{index:08d}"
         if sample_id not in index_data:
-            raise IndexError(f"Sample index {index} is not present in WebDataset export")
+            raise IndexError(f"Sample index {index} is not present in the WebDataset export")
 
-        components = index_data[sample_id]["components"]
-        shard_path = export_dir / "data" / "shards" / index_data[sample_id]["shard"]
-        with tarfile.open(shard_path, "r") as handle:
-            members = {member.name: member for member in handle.getmembers()}
+        sample_entry = index_data[sample_id]
+        with tarfile.open(export_dir / sample_entry["shard"], "r") as handle:
             result: dict[str, torch.Tensor] = {}
-            for key, entry in components.items():
-                member = members[entry["member"]]
-                payload = handle.extractfile(member)
-                if payload is None:
+            for key, entry in sample_entry["components"].items():
+                member = handle.getmember(entry["member"])
+                extracted = handle.extractfile(member)
+                if extracted is None:
                     raise FileNotFoundError(f"Could not read tar member {member.name}")
-                result[key] = _decode_component(payload.read(), encoding=entry["encoding"], key=key)
-        return result
-
-
-def _decode_component(data: bytes, *, encoding: str, key: str) -> torch.Tensor:
-    if encoding == "npy":
-        return torch.from_numpy(np.load(io.BytesIO(data), allow_pickle=False).copy())
-    if encoding == "pt":
-        value = torch.load(io.BytesIO(data), map_location="cpu", weights_only=False)
-        return value.detach().cpu() if isinstance(value, torch.Tensor) else torch.as_tensor(value)
-    if encoding == "txt":
-        return torch.tensor(list(data), dtype=torch.uint8)
-    if encoding == "bin":
-        raise ValueError(
-            f"Raw binary component '{key}' requires manifest-based reinterpretation and cannot be "
-            "decoded without ExportedDataset metadata."
-        )
-    if encoding in {"png", "jpg", "jpeg"}:
-        image = np.asarray(Image.open(io.BytesIO(data)))
-        return torch.from_numpy(image.copy())
-    if encoding == "wav":
-        audio, _sr = sf.read(io.BytesIO(data), dtype="float32", always_2d=True)
-        return torch.from_numpy(audio.copy())
-    if encoding == "mp4":
-        raise NotImplementedError(
-            "Torch-side WebDataset MP4 decoding is not available without a video decoder stack."
-        )
-    raise ValueError(f"Unsupported WebDataset component encoding: {encoding}")
-
-
-def _encode_video(array: np.ndarray, layout: str | None, *, fps: float) -> bytes:
-    frames = _layout_for_payload(array, layout, "video")
-    frames = _normalize_to_uint8(frames)
-    if frames.ndim != 4:
-        raise ValueError(f"Video export expects a 4D tensor, got shape {frames.shape}")
-
-    ffmpeg = shutil.which("ffmpeg")
-    if ffmpeg is None:
-        raise RuntimeError("WebDataset video export requires ffmpeg on PATH")
-
-    with tempfile.TemporaryDirectory() as tmpdir:
-        frame_dir = Path(tmpdir)
-        for idx, frame in enumerate(frames):
-            Image.fromarray(frame).save(frame_dir / f"frame_{idx:06d}.png")
-
-        output_path = frame_dir / "sample.mp4"
-        subprocess.run(
-            [
-                ffmpeg,
-                "-y",
-                "-loglevel",
-                "error",
-                "-framerate",
-                str(fps),
-                "-i",
-                str(frame_dir / "frame_%06d.png"),
-                "-pix_fmt",
-                "yuv420p",
-                str(output_path),
-            ],
-            check=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
-        return output_path.read_bytes()
+                result[key] = torch.from_numpy(
+                    np.load(io.BytesIO(extracted.read()), allow_pickle=False).copy()
+                )
+            return result
