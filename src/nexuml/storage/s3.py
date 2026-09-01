@@ -38,7 +38,7 @@ class S3Path:
 
     @property
     def suffix(self) -> str:
-        """Return the suffix of the object key."""
+        """Object-key suffix."""
         return PurePosixPath(self.key).suffix
 
     def __str__(self) -> str:
@@ -67,6 +67,9 @@ class S3Client:
 
         Returns:
             A boto3-compatible S3 client.
+
+        Raises:
+            RuntimeError: If boto3 is unavailable.
         """
         if self._client is not None:
             return self._client
@@ -75,7 +78,11 @@ class S3Client:
         except ImportError as error:
             raise RuntimeError("S3 support requires the nexuml[s3] extra") from error
 
-        session = boto3.session.Session(profile_name=self.profile) if self.profile else boto3.Session()
+        session = (
+            boto3.session.Session(profile_name=self.profile)
+            if self.profile
+            else boto3.Session()
+        )
         kwargs: dict[str, Any] = {}
         if self.endpoint_url:
             kwargs["endpoint_url"] = self.endpoint_url

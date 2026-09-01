@@ -140,6 +140,9 @@ def _export_batches(
 
     Returns:
         Local export/staging directory.
+
+    Raises:
+        ValueError: If no samples, batches, dtype metadata, or backend are available.
     """
     export_dir.mkdir(parents=True, exist_ok=True)
     if num_samples == 0:

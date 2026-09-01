@@ -29,8 +29,10 @@ def test_ray_execution_config_is_placement_only():
     assert not hasattr(scenario.execution, "strategy")
 
 
-def test_ray_worker_reuses_nexusession(monkeypatch):
+def test_ray_worker_reuses_nexusession_and_reports_final_metrics(monkeypatch):
+    ray = pytest.importorskip("ray")
     calls: list[str] = []
+    reported = {}
 
     class FakeSession:
         @classmethod
@@ -40,6 +42,11 @@ def test_ray_worker_reuses_nexusession(monkeypatch):
 
         def run(self):
             calls.append("run")
+            return SimpleNamespace(
+                validation_results=[{"loss": 0.4}],
+                test_results=[{"accuracy": 0.9}],
+                eval_algorithm_results={"test/f1": 0.8},
+            )
 
     import nexuml.training.lightning as lightning_backend
 
@@ -49,11 +56,18 @@ def test_ray_worker_reuses_nexusession(monkeypatch):
         "_prepare_session_trainer",
         lambda session: calls.append("trainer") or SimpleNamespace(),
     )
+    monkeypatch.setattr(ray.train, "report", lambda metrics: reported.update(metrics))
 
     scenario = ScenarioSpec(name="worker")
     ray_execution.train_loop_per_worker({"scenario": scenario.model_dump(mode="json")})
 
     assert calls == ["session:worker", "trainer", "run"]
+    assert reported == {
+        "val/loss": 0.4,
+        "test/accuracy": 0.9,
+        "test/f1": 0.8,
+        "nexuml/completed": 1,
+    }
 
 
 def test_ray_strategy_uses_official_ray_classes(monkeypatch):

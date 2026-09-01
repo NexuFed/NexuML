@@ -80,7 +80,7 @@ class WebDatasetBackend(ExportBackend):
 
     @property
     def remote_uri(self) -> str | None:
-        """Return the S3 dataset root when exporting remotely."""
+        """S3 dataset root for remote exports."""
         return None if self._s3_root is None else str(self._s3_root)
 
     def initialize(
@@ -111,7 +111,11 @@ class WebDatasetBackend(ExportBackend):
         self._next_shard_id.setdefault(self._split, 0)
 
     def end_split(self, split: str) -> None:
-        """Finish one dataset split and close its current shard."""
+        """Finish one dataset split and close its current shard.
+
+        Raises:
+            RuntimeError: If the requested split is not the active split.
+        """
         selected = _safe_split(split)
         if self._split != selected:
             raise RuntimeError(f"Cannot end split {selected!r}; active split is {self._split!r}")
@@ -204,7 +208,11 @@ class WebDatasetBackend(ExportBackend):
         return buffer.getvalue(), list(array.shape), str(array.dtype)
 
     def save_sample(self, index: int, features: dict[str, torch.Tensor]) -> None:
-        """Append one tensor sample to the active tar shard."""
+        """Append one tensor sample to the active tar shard.
+
+        Raises:
+            ValueError: If a component key contains a path separator.
+        """
         tar_handle = self._ensure_shard()
         sample_id = f"{index:08d}"
         components: dict[str, dict[str, str]] = {}
@@ -249,6 +257,9 @@ class WebDatasetBackend(ExportBackend):
 
         Returns:
             Backend-specific export metadata.
+
+        Raises:
+            RuntimeError: If the backend was never initialized.
         """
         self._close_current_shard()
         if self._export_dir is None:
@@ -284,6 +295,10 @@ class WebDatasetBackend(ExportBackend):
 
         Returns:
             Mapping of stored keys to tensors.
+
+        Raises:
+            IndexError: If the sample is absent from the export index.
+            FileNotFoundError: If a referenced tar member cannot be read.
         """
         index_data = json.loads((export_dir / "data" / "webdataset_index.json").read_text())
         sample_id = f"{index:08d}"

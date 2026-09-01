@@ -14,7 +14,6 @@ import yaml
 from nexuml.core.types import LoaderSpec
 from nexuml.data.export.webdataset import WebDatasetBackend
 from nexuml.data.exported import ExportedDataset
-from nexuml.storage.s3 import S3Path
 
 
 class FakeS3:

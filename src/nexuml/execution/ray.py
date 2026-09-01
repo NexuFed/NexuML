@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
 
 import lightning as L
@@ -14,7 +15,14 @@ class RayExecutionError(RuntimeError):
 
 
 def _ray_strategy(name: str, params: dict[str, Any]) -> Any:
-    """Map NexuML's training strategy to Ray's official Lightning strategy."""
+    """Map the NexuML strategy to Ray's official Lightning strategy.
+
+    Returns:
+        Ray Lightning strategy instance.
+
+    Raises:
+        RayExecutionError: If Ray is unavailable or the strategy is unsupported.
+    """
     try:
         from ray.train.lightning import RayDDPStrategy, RayDeepSpeedStrategy, RayFSDPStrategy
     except ImportError as error:
@@ -33,7 +41,14 @@ def _ray_strategy(name: str, params: dict[str, Any]) -> Any:
 
 
 def _prepare_session_trainer(session: Any) -> L.Trainer:
-    """Build the Ray-aware Lightning Trainer and attach it to one NexuSession."""
+    """Build and attach the Ray-aware Lightning Trainer.
+
+    Returns:
+        Trainer prepared by Ray for the current worker.
+
+    Raises:
+        RayExecutionError: If the Ray Lightning integration is unavailable.
+    """
     try:
         from ray.train.lightning import (
             RayLightningEnvironment,
@@ -69,18 +84,64 @@ def _prepare_session_trainer(session: Any) -> L.Trainer:
     return prepared
 
 
+def _final_metrics(result: Any) -> dict[str, float | int]:
+    """Flatten final NexuML metrics into Ray's scalar result payload.
+
+    Returns:
+        Scalar validation, test, and evaluation metrics.
+    """
+    metrics: dict[str, float | int] = {}
+    for prefix, rows in (
+        ("val", getattr(result, "validation_results", ())),
+        ("test", getattr(result, "test_results", ())),
+    ):
+        if not rows:
+            continue
+        row = rows[-1]
+        if not isinstance(row, Mapping):
+            continue
+        for key, value in row.items():
+            if isinstance(value, bool):
+                metrics[f"{prefix}/{key}"] = int(value)
+            elif isinstance(value, (int, float)):
+                metrics[f"{prefix}/{key}"] = value
+
+    evaluation = getattr(result, "eval_algorithm_results", {})
+    if isinstance(evaluation, Mapping):
+        for key, value in evaluation.items():
+            if isinstance(value, bool):
+                metrics[str(key)] = int(value)
+            elif isinstance(value, (int, float)):
+                metrics[str(key)] = value
+    metrics.setdefault("nexuml/completed", 1)
+    return metrics
+
+
 def train_loop_per_worker(config: dict[str, Any]) -> None:
     """Run one Ray worker through the normal NexuML session lifecycle."""
+    try:
+        from ray import train
+    except ImportError as error:
+        raise RayExecutionError("Ray execution requires the nexuml[ray] extra") from error
+
     from nexuml.training.lightning import NexuSession
 
     scenario = ScenarioSpec.model_validate(config["scenario"])
     session = NexuSession.from_scenario(scenario)
     _prepare_session_trainer(session)
-    session.run()
+    result = session.run()
+    train.report(_final_metrics(result))
 
 
 def _scaling_config(execution: RayExecutionSpec) -> Any:
-    """Build Ray's native ScalingConfig from placement-only NexuML settings."""
+    """Build Ray's native placement configuration.
+
+    Returns:
+        Ray ``ScalingConfig`` matching the execution specification.
+
+    Raises:
+        RayExecutionError: If Ray Train is unavailable.
+    """
     try:
         from ray.train import ScalingConfig
     except ImportError as error:
@@ -95,7 +156,14 @@ def _scaling_config(execution: RayExecutionSpec) -> Any:
 
 
 def _run_config(scenario: ScenarioSpec, execution: RayExecutionSpec) -> Any:
-    """Build Ray's native RunConfig and keep Ray responsible for run storage."""
+    """Build Ray's native run configuration.
+
+    Returns:
+        Ray ``RunConfig`` with NexuML's run name and storage path.
+
+    Raises:
+        RayExecutionError: If Ray Train is unavailable.
+    """
     try:
         from ray.train import RunConfig
     except ImportError as error:
@@ -105,7 +173,11 @@ def _run_config(scenario: ScenarioSpec, execution: RayExecutionSpec) -> Any:
 
 
 def _connect(execution: RayExecutionSpec) -> None:
-    """Connect to the configured existing cluster without wrapping Ray Jobs."""
+    """Connect to the configured existing cluster without wrapping Ray Jobs.
+
+    Raises:
+        RayExecutionError: If Ray is unavailable.
+    """
     try:
         import ray
     except ImportError as error:

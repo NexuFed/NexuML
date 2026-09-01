@@ -142,7 +142,7 @@ class ExportedDataset(NexuDataset):
 
     @property
     def is_remote(self) -> bool:
-        """Return whether tensors are stored in S3."""
+        """Whether tensors are stored in S3."""
         return self._s3 is not None
 
     def _read_bytes(self, relative: str) -> bytes:
@@ -277,7 +277,10 @@ class ExportedDataset(NexuDataset):
     def _webdataset_payload(self, export_idx: int) -> dict[str, torch.Tensor]:
         root = self._local_root()
         if self._webdataset_index is None:
-            index_path = root / str(self.extra.get("sample_index_file", "data/webdataset_index.json"))
+            index_name = str(
+                self.extra.get("sample_index_file", "data/webdataset_index.json")
+            )
+            index_path = root / index_name
             self._webdataset_index = json.loads(index_path.read_text())
 
         sample_id = f"{export_idx:08d}"
