@@ -3,6 +3,15 @@
 from __future__ import annotations
 
 from nexuml.core.types import LayerSpec, PipelineSpec
+from nexuml_library.layers.feature.lmbe import LMBE
+from nexuml_library.layers.head.anomaly_score import AnomalyScore
+from nexuml_library.layers.head.classification_head import LatentClassificationHead
+from nexuml_library.layers.head.regression_head import LatentRegressionHead
+from nexuml_library.layers.loss.classification_loss import ClassificationLoss
+from nexuml_library.layers.loss.classification_metrics import ClassificationMetrics
+from nexuml_library.layers.loss.reconstruction_loss import ReconstructionLoss
+from nexuml_library.layers.loss.regression_loss import RegressionLoss
+from nexuml_library.layers.model.linear_encoder import LinearEncoder
 
 
 def linear_ae_reconstruction(
@@ -25,35 +34,32 @@ def linear_ae_reconstruction(
         stages={
             "Encoder": [
                 LayerSpec(
-                    type_key="LinearEncoder",
+                    component=LinearEncoder(
+                        hidden_dims=hidden_dims,
+                        output_dim=latent_dim,
+                        activation=activation,
+                    ),
                     keys_in=[feature_key],
                     keys_out=["latent"],
-                    params={
-                        "hidden_dims": hidden_dims,
-                        "output_dim": latent_dim,
-                        "activation": activation,
-                    },
                     meta_out={"output_dim": "latent_dim"},
                 ),
             ],
             "Decoder": [
                 LayerSpec(
-                    type_key="LinearEncoder",
+                    component=LinearEncoder(
+                        hidden_dims=decoder_hidden,
+                        output_dim=input_dim,
+                        activation=activation,
+                    ),
                     keys_in=["latent"],
                     keys_out=["reconstructed"],
-                    params={
-                        "hidden_dims": decoder_hidden,
-                        "output_dim": input_dim,
-                        "activation": activation,
-                    },
                 ),
             ],
             "Loss": [
                 LayerSpec(
-                    type_key="ReconstructionLoss",
+                    component=ReconstructionLoss(),
                     keys_in=[feature_key, "reconstructed"],
                     keys_out=["reconstruction_loss"],
-                    params={},
                 ),
             ],
         }
@@ -83,10 +89,9 @@ def linear_ae_anomaly_detection(
     )
     pipeline.stages["Loss"].append(
         LayerSpec(
-            type_key="AnomalyScore",
+            component=AnomalyScore(reduction=score_reduction),
             keys_in=[feature_key, "reconstructed"],
             keys_out=["anomaly_score"],
-            params={"reduction": score_reduction},
         ),
     )
     return pipeline
@@ -120,17 +125,16 @@ def linear_ae_lmbe(
     stages = {
         "Features": [
             LayerSpec(
-                type_key="LMBE",
+                component=LMBE(
+                    sample_rate=sample_rate,
+                    n_mels=n_mels,
+                    n_fft=n_fft,
+                    hop_length=hop_length,
+                    to_db=True,
+                    normalize=True,
+                ),
                 keys_in=["waveform"],
                 keys_out=["spectrogram"],
-                params={
-                    "sample_rate": sample_rate,
-                    "n_mels": n_mels,
-                    "n_fft": n_fft,
-                    "hop_length": hop_length,
-                    "to_db": True,
-                    "normalize": True,
-                },
             )
         ]
     }
@@ -142,7 +146,6 @@ def linear_ae_multiclass(
     input_dim: int = 128,
     hidden_dims: list[int] | None = None,
     latent_dim: int = 8,
-    num_classes: int = 5,
     activation: str = "torch.nn.ReLU",
 ) -> PipelineSpec:
     """Create a PipelineSpec for a linear AE with reconstruction + classification.
@@ -158,62 +161,50 @@ def linear_ae_multiclass(
         stages={
             "Encoder": [
                 LayerSpec(
-                    type_key="LinearEncoder",
+                    component=LinearEncoder(
+                        hidden_dims=hidden_dims,
+                        output_dim=latent_dim,
+                        activation=activation,
+                    ),
                     keys_in=["features"],
                     keys_out=["latent"],
-                    params={
-                        "hidden_dims": hidden_dims,
-                        "output_dim": latent_dim,
-                        "activation": activation,
-                    },
                 ),
             ],
             "Decoder": [
                 LayerSpec(
-                    type_key="LinearEncoder",
+                    component=LinearEncoder(
+                        hidden_dims=decoder_hidden,
+                        output_dim=input_dim,
+                        activation=activation,
+                    ),
                     keys_in=["latent"],
                     keys_out=["reconstructed"],
-                    params={
-                        "hidden_dims": decoder_hidden,
-                        "output_dim": input_dim,
-                        "activation": activation,
-                    },
                 ),
             ],
             "Heads": [
                 LayerSpec(
-                    type_key="LatentClassificationHead",
+                    component=LatentClassificationHead(),
                     keys_in=["latent"],
                     keys_out=["class_logits"],
-                    params={
-                        "num_classes": num_classes,
-                    },
                 ),
             ],
             "Loss": [
                 LayerSpec(
-                    type_key="ReconstructionLoss",
+                    component=ReconstructionLoss(),
                     keys_in=["features", "reconstructed"],
                     keys_out=["reconstruction_loss"],
-                    params={},
                 ),
                 LayerSpec(
-                    type_key="ClassificationLoss",
+                    component=ClassificationLoss(loss_type="cross_entropy"),
                     keys_in=["class_logits"],
                     keys_out=["classification_loss"],
-                    params={
-                        "loss_type": "cross_entropy",
-                        "label_key": "class_labels",
-                    },
+                    label_key="class_labels",
                 ),
                 LayerSpec(
-                    type_key="ClassificationMetrics",
+                    component=ClassificationMetrics(metrics=["accuracy", "f1"]),
                     keys_in=["class_logits"],
                     keys_out=["accuracy", "f1"],
-                    params={
-                        "label_key": "class_labels",
-                        "metrics": ["accuracy", "f1"],
-                    },
+                    label_key="class_labels",
                 ),
             ],
         }
@@ -224,7 +215,6 @@ def linear_ae_multilabel(
     input_dim: int = 128,
     hidden_dims: list[int] | None = None,
     latent_dim: int = 8,
-    num_classes: int = 5,
     activation: str = "torch.nn.ReLU",
 ) -> PipelineSpec:
     """Create a PipelineSpec for a linear AE with reconstruction + multilabel classification.
@@ -240,53 +230,44 @@ def linear_ae_multilabel(
         stages={
             "Encoder": [
                 LayerSpec(
-                    type_key="LinearEncoder",
+                    component=LinearEncoder(
+                        hidden_dims=hidden_dims,
+                        output_dim=latent_dim,
+                        activation=activation,
+                    ),
                     keys_in=["features"],
                     keys_out=["latent"],
-                    params={
-                        "hidden_dims": hidden_dims,
-                        "output_dim": latent_dim,
-                        "activation": activation,
-                    },
                 ),
             ],
             "Decoder": [
                 LayerSpec(
-                    type_key="LinearEncoder",
+                    component=LinearEncoder(
+                        hidden_dims=decoder_hidden,
+                        output_dim=input_dim,
+                        activation=activation,
+                    ),
                     keys_in=["latent"],
                     keys_out=["reconstructed"],
-                    params={
-                        "hidden_dims": decoder_hidden,
-                        "output_dim": input_dim,
-                        "activation": activation,
-                    },
                 ),
             ],
             "Heads": [
                 LayerSpec(
-                    type_key="LatentClassificationHead",
+                    component=LatentClassificationHead(),
                     keys_in=["latent"],
                     keys_out=["multilabel_logits"],
-                    params={
-                        "num_classes": num_classes,
-                    },
                 ),
             ],
             "Loss": [
                 LayerSpec(
-                    type_key="ReconstructionLoss",
+                    component=ReconstructionLoss(),
                     keys_in=["features", "reconstructed"],
                     keys_out=["reconstruction_loss"],
-                    params={},
                 ),
                 LayerSpec(
-                    type_key="ClassificationLoss",
+                    component=ClassificationLoss(loss_type="bce"),
                     keys_in=["multilabel_logits"],
                     keys_out=["multilabel_loss"],
-                    params={
-                        "loss_type": "bce",
-                        "label_key": "multilabel_targets",
-                    },
+                    label_key="multilabel_targets",
                 ),
             ],
         }
@@ -313,52 +294,44 @@ def linear_ae_regression(
         stages={
             "Encoder": [
                 LayerSpec(
-                    type_key="LinearEncoder",
+                    component=LinearEncoder(
+                        hidden_dims=hidden_dims,
+                        output_dim=latent_dim,
+                        activation=activation,
+                    ),
                     keys_in=["features"],
                     keys_out=["latent"],
-                    params={
-                        "hidden_dims": hidden_dims,
-                        "output_dim": latent_dim,
-                        "activation": activation,
-                    },
                 ),
             ],
             "Decoder": [
                 LayerSpec(
-                    type_key="LinearEncoder",
+                    component=LinearEncoder(
+                        hidden_dims=decoder_hidden,
+                        output_dim=input_dim,
+                        activation=activation,
+                    ),
                     keys_in=["latent"],
                     keys_out=["reconstructed"],
-                    params={
-                        "hidden_dims": decoder_hidden,
-                        "output_dim": input_dim,
-                        "activation": activation,
-                    },
                 ),
             ],
             "Heads": [
                 LayerSpec(
-                    type_key="LatentRegressionHead",
+                    component=LatentRegressionHead(num_outputs=num_outputs),
                     keys_in=["latent"],
                     keys_out=["regression_predictions"],
-                    params={
-                        "num_outputs": num_outputs,
-                    },
                 ),
             ],
             "Loss": [
                 LayerSpec(
-                    type_key="ReconstructionLoss",
+                    component=ReconstructionLoss(),
                     keys_in=["features", "reconstructed"],
                     keys_out=["reconstruction_loss"],
-                    params={},
                 ),
                 LayerSpec(
-                    type_key="RegressionLoss",
+                    component=RegressionLoss(),
                     keys_in=["regression_predictions"],
                     keys_out=["regression_loss"],
-                    params={
-                        "label_key": "regression_targets",
-                    },
+                    label_key="regression_targets",
                 ),
             ],
         }

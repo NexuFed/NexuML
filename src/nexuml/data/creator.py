@@ -6,9 +6,7 @@ import logging
 
 from nexuml.core.types import AutoBatchSizeSpec, DatasetSpec, DataSpec, LoaderSpec
 from nexuml.data.dataset import NexuDataset
-from nexuml.data.loaders import get_loader_backend
 from nexuml.data.module import NexuDataModule
-from nexuml.data.registry import DatasetRegistry, get_dataset_registry
 from nexuml.data.super_dataset import SuperDataset
 
 logger = logging.getLogger("lightning.pytorch")
@@ -17,62 +15,30 @@ logger = logging.getLogger("lightning.pytorch")
 class NexuDataCreator:
     """Build datasets and datamodules from a ``DataSpec``."""
 
-    def __init__(self, registry: DatasetRegistry | None = None):
-        self.registry = registry or get_dataset_registry()
-
     def build_dataset(self, spec: DataSpec) -> NexuDataset:
-        # Normalize synthetic data specs that don't have datasets
-        if not spec.datasets and spec.source_type == "synthetic":
-            target_dicts = []
-            for t in spec.targets:
-                d = {
-                    "type": t.type,
-                    "key": t.key,
-                    "num_classes": t.num_classes,
-                    "num_outputs": t.num_outputs,
-                    "positive_fraction": t.positive_fraction,
-                    "label_density": 0.3,
-                }
-                target_dicts.append(d)
-
-            spec = spec.model_copy(
-                update={
-                    "datasets": [
-                        DatasetSpec(
-                            type_key="synthetic",
-                            params={
-                                "feature_shape": spec.params.get("feature_shape", (128,)),
-                                "num_samples": spec.params.get("num_samples", 1000),
-                                "noise_type": spec.params.get("noise_type", "gaussian"),
-                                "num_clusters": spec.params.get("num_clusters"),
-                                "seed": spec.params.get("seed", 42),
-                                "targets": target_dicts or None,
-                                "feature_key": spec.feature_key,
-                            },
-                        )
-                    ]
-                }
-            )
-
-        if not spec.datasets:
-            raise ValueError("DataSpec.datasets is empty. Add at least one DatasetSpec.")
+        dataset_specs = list(spec.datasets)
+        if spec.source is not None:
+            dataset_specs.insert(0, DatasetSpec(source=spec.source))
+        if not dataset_specs:
+            raise ValueError("DataSpec requires source or at least one DatasetSpec")
 
         source_datasets: dict[str, NexuDataset] = {}
         seen_types: dict[str, int] = {}
         all_label_names: list[str] = []
 
-        for ds_spec in spec.datasets:
-            dataset = self.registry.instantiate(ds_spec.type_key, **ds_spec.params)
+        for ds_spec in dataset_specs:
+            dataset = ds_spec.source.build()
+            source_name = ds_spec.source.component_name
             if not isinstance(dataset, NexuDataset):
                 raise TypeError(
-                    f"Dataset '{ds_spec.type_key}' must be a NexuDataset subclass, "
+                    f"Data source '{source_name}' must build a NexuDataset, "
                     f"got {type(dataset).__name__}"
                 )
 
             prepared = self._prepare_dataset(dataset, ds_spec)
-            source_name = self._make_source_name(ds_spec.type_key, seen_types)
-            setattr(prepared, "source_type", ds_spec.type_key)
-            source_datasets[source_name] = prepared
+            unique_source_name = self._make_source_name(source_name, seen_types)
+            setattr(prepared, "source_type", source_name)
+            source_datasets[unique_source_name] = prepared
 
             # Collect label names from all datasets
             for label in prepared.label_names:
@@ -108,17 +74,14 @@ class NexuDataCreator:
 
         if len(merged_dataset) == 0:
             dataset_summaries = []
-            for ds_spec in spec.datasets:
-                root = (
-                    ds_spec.params.get("data_root")
-                    or ds_spec.params.get("root")
-                    or ds_spec.params.get("data_dir")
-                )
-                machine_type = ds_spec.params.get("machine_type")
-                summary = ds_spec.type_key
+            for ds_spec in dataset_specs:
+                params = ds_spec.source.model_dump()
+                root = params.get("data_root") or params.get("root") or params.get("data_dir")
+                machine_type = params.get("machine_type")
+                summary = ds_spec.source.component_name
                 if root is not None:
                     summary += f"(root={root})"
-                meta_dir = ds_spec.params.get("meta_dir")
+                meta_dir = params.get("meta_dir")
                 if meta_dir is not None:
                     summary += f"[meta_dir={meta_dir}]"
                 if machine_type is not None:
@@ -126,7 +89,7 @@ class NexuDataCreator:
                 dataset_summaries.append(summary)
             details = ", ".join(dataset_summaries)
             recovery = ""
-            if spec.params.get("download") is False:
+            if any(item.source.model_dump().get("download") is False for item in dataset_specs):
                 recovery = (
                     " Enable dataset download if supported or set NEXUML_DATA_ROOT/data_root."
                 )
@@ -165,7 +128,9 @@ class NexuDataCreator:
             sample_idx = meta.sample(n=ds_spec.max_samples).index.tolist()
             dataset = dataset.take(sample_idx)
             meta = getattr(dataset, "meta", None)
-            logger.info("[%s] Sampled to %d rows", ds_spec.type_key, ds_spec.max_samples)
+            logger.info(
+                "[%s] Sampled to %d rows", ds_spec.source.component_name, ds_spec.max_samples
+            )
 
         if meta is not None:
             if ds_spec.split_type != "keep" or "split" not in meta.columns:
@@ -186,11 +151,7 @@ class NexuDataCreator:
     ) -> LoaderSpec:
         batch_size = loader_spec.batch_size or default_batch_size
         if isinstance(batch_size, AutoBatchSizeSpec):
-            batch_size: int = batch_size.min
-
-        # Validate the backend exists
-        backend_name = loader_spec.backend
-        get_loader_backend(backend_name)
+            batch_size = batch_size.min
 
         return loader_spec.model_copy(update={"batch_size": batch_size})
 

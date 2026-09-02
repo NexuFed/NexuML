@@ -3,6 +3,14 @@
 from __future__ import annotations
 
 from nexuml.core.types import LayerSpec, PipelineSpec
+from nexuml_library.layers.feature.lmbe import LMBE
+from nexuml_library.layers.head.anomaly_score import AnomalyScore
+from nexuml_library.layers.loss.reconstruction_loss import ReconstructionLoss
+from nexuml_library.layers.model.conv_autoencoder import (
+    ConvolutionalDecoder,
+    ConvolutionalEncoder,
+    VariationalLatent,
+)
 
 
 def spectrogram_conv_ae(
@@ -23,14 +31,13 @@ def spectrogram_conv_ae(
         stages={
             "Encoder": [
                 LayerSpec(
-                    type_key="ConvolutionalEncoder",
+                    component=ConvolutionalEncoder(
+                        output_dim=latent_dim,
+                        channel_schedule=channel_schedule,
+                        activation=activation,
+                    ),
                     keys_in=["spectrogram"],
                     keys_out=["latent"],
-                    params={
-                        "output_dim": latent_dim,
-                        "channel_schedule": channel_schedule,
-                        "activation": activation,
-                    },
                     meta_out={
                         "decoder_shape": "decoder_shape",
                     },
@@ -38,29 +45,26 @@ def spectrogram_conv_ae(
             ],
             "Decoder": [
                 LayerSpec(
-                    type_key="ConvolutionalDecoder",
+                    component=ConvolutionalDecoder(
+                        output_shape=input_shape,
+                        channel_schedule=channel_schedule,
+                        activation=activation,
+                    ),
                     keys_in=["latent"],
                     keys_out=["reconstructed"],
-                    params={
-                        "output_shape": input_shape,
-                        "channel_schedule": channel_schedule,
-                        "activation": activation,
-                    },
                     meta_in={"decoder_shape": "decoder_shape"},
                 ),
             ],
             "Loss": [
                 LayerSpec(
-                    type_key="ReconstructionLoss",
+                    component=ReconstructionLoss(),
                     keys_in=["spectrogram", "reconstructed"],
                     keys_out=["reconstruction_loss"],
-                    params={},
                 ),
                 LayerSpec(
-                    type_key="AnomalyScore",
+                    component=AnomalyScore(reduction=score_reduction),
                     keys_in=["spectrogram", "reconstructed"],
                     keys_out=["anomaly_score"],
-                    params={"reduction": score_reduction},
                 ),
             ],
         }
@@ -87,48 +91,43 @@ def spectrogram_conv_cvae(
         stages={
             "Encoder": [
                 LayerSpec(
-                    type_key="ConvolutionalEncoder",
+                    component=ConvolutionalEncoder(
+                        output_dim=encoder_dim,
+                        channel_schedule=channel_schedule,
+                        activation=activation,
+                    ),
                     keys_in=["spectrogram"],
                     keys_out=["encoded"],
-                    params={
-                        "output_dim": encoder_dim,
-                        "channel_schedule": channel_schedule,
-                        "activation": activation,
-                    },
                     meta_out={"decoder_shape": "decoder_shape"},
                 ),
                 LayerSpec(
-                    type_key="VariationalLatent",
+                    component=VariationalLatent(latent_dim=latent_dim, beta=beta),
                     keys_in=["encoded"],
                     keys_out=["latent", "latent_mu", "latent_logvar", "kl_loss"],
-                    params={"latent_dim": latent_dim, "beta": beta},
                 ),
             ],
             "Decoder": [
                 LayerSpec(
-                    type_key="ConvolutionalDecoder",
+                    component=ConvolutionalDecoder(
+                        output_shape=input_shape,
+                        channel_schedule=channel_schedule,
+                        activation=activation,
+                    ),
                     keys_in=["latent"],
                     keys_out=["reconstructed"],
-                    params={
-                        "output_shape": input_shape,
-                        "channel_schedule": channel_schedule,
-                        "activation": activation,
-                    },
                     meta_in={"decoder_shape": "decoder_shape"},
                 ),
             ],
             "Loss": [
                 LayerSpec(
-                    type_key="ReconstructionLoss",
+                    component=ReconstructionLoss(),
                     keys_in=["spectrogram", "reconstructed"],
                     keys_out=["reconstruction_loss"],
-                    params={},
                 ),
                 LayerSpec(
-                    type_key="AnomalyScore",
+                    component=AnomalyScore(reduction=score_reduction),
                     keys_in=["spectrogram", "reconstructed"],
                     keys_out=["anomaly_score"],
-                    params={"reduction": score_reduction},
                 ),
             ],
         }
@@ -160,17 +159,16 @@ def conv_ae_lmbe(
     stages = {
         "Features": [
             LayerSpec(
-                type_key="LMBE",
+                component=LMBE(
+                    sample_rate=sample_rate,
+                    n_mels=n_mels,
+                    n_fft=n_fft,
+                    hop_length=hop_length,
+                    to_db=True,
+                    normalize=True,
+                ),
                 keys_in=["waveform"],
                 keys_out=["spectrogram"],
-                params={
-                    "sample_rate": sample_rate,
-                    "n_mels": n_mels,
-                    "n_fft": n_fft,
-                    "hop_length": hop_length,
-                    "to_db": True,
-                    "normalize": True,
-                },
             )
         ]
     }
@@ -207,17 +205,16 @@ def conv_cvae_lmbe(
     stages = {
         "Features": [
             LayerSpec(
-                type_key="LMBE",
+                component=LMBE(
+                    sample_rate=sample_rate,
+                    n_mels=n_mels,
+                    n_fft=n_fft,
+                    hop_length=hop_length,
+                    to_db=True,
+                    normalize=True,
+                ),
                 keys_in=["waveform"],
                 keys_out=["spectrogram"],
-                params={
-                    "sample_rate": sample_rate,
-                    "n_mels": n_mels,
-                    "n_fft": n_fft,
-                    "hop_length": hop_length,
-                    "to_db": True,
-                    "normalize": True,
-                },
             )
         ]
     }

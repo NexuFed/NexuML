@@ -68,8 +68,10 @@ export NEXUML_LOGS_ROOT=/experiments/nexuml
 Then in any scenario:
 
 ```python
+from my_library.data import MyDataset
+
 DataSpec(
-    source_type="my_dataset",
+    source=MyDataset(),
     # dataset reads from $NEXUML_DATA_ROOT/my_dataset/ automatically
 )
 ```

@@ -9,10 +9,11 @@ from tensordict import TensorDict
 from torchmetrics.classification import MultilabelAveragePrecision
 
 from nexuml.core.base_layer import LightningMode, PipelineLayer
+from nexuml.core.components import LayerBuildContext, LayerDefinition
 
 
 @layer("MultiLabelMAPMetrics")
-class MultiLabelMAPMetrics(PipelineLayer):
+class MultiLabelMAPMetrics(LayerDefinition):
     """Pipeline layer computing multi-label mean Average Precision.
 
     Consumes logits from keys_in[0] and multi-hot labels from y[label_key].
@@ -20,6 +21,14 @@ class MultiLabelMAPMetrics(PipelineLayer):
     torchmetrics MultilabelAveragePrecision metric.
     """
 
+    def build(self, context: LayerBuildContext) -> PipelineLayer:
+        return _MultiLabelMAPMetricsRuntime(
+            num_labels=context.num_classes,
+            **context.runtime_kwargs(),
+        )
+
+
+class _MultiLabelMAPMetricsRuntime(PipelineLayer):
     val_metric: MultilabelAveragePrecision
     test_metric: MultilabelAveragePrecision
 

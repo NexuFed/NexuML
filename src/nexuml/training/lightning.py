@@ -18,7 +18,7 @@ from tensordict import TensorDict
 from nexuml.core.compiler import compile
 from nexuml.core.log_paths import resolve_logs_root
 from nexuml.core.pipeline import CompiledPipeline
-from nexuml.core.registry import LayerRegistry, get_registry
+from nexuml.core.serialization import lower_model, restore_model_data
 from nexuml.core.types import AutoBatchSizeSpec, EvalAlgorithmSpec, ScenarioSpec, TrainingSpec
 from nexuml.data.auto_batch import resolve_with_probe
 from nexuml.data.dataset import NexuDataset
@@ -43,15 +43,14 @@ class NexuLightningModule(L.LightningModule):
         pipeline: CompiledPipeline | None = None,
         scenario: ScenarioSpec | dict[str, Any] | None = None,
         runtime_metadata: dict[str, Any] | None = None,
-        registry: LayerRegistry | None = None,
     ):
         super().__init__()
         if scenario is not None and not isinstance(scenario, ScenarioSpec):
-            scenario = ScenarioSpec.model_validate(scenario)
+            scenario = ScenarioSpec.model_validate(restore_model_data(scenario, ScenarioSpec))
         if pipeline is None:
             if scenario is None:
                 raise ValueError("Either 'pipeline' or 'scenario' must be provided.")
-            pipeline = compile(scenario, registry or get_registry())
+            pipeline = compile(scenario)
 
         self.pipeline = pipeline
         self.scenario = scenario
@@ -62,7 +61,7 @@ class NexuLightningModule(L.LightningModule):
         )
         self.save_hyperparameters(
             {
-                "scenario": scenario.model_dump(mode="json") if scenario is not None else None,
+                "scenario": lower_model(scenario) if scenario is not None else None,
                 "runtime_metadata": runtime_metadata or {},
             }
         )
@@ -308,7 +307,10 @@ class NexuLightningModule(L.LightningModule):
         self,
         algorithm_specs: list[EvalAlgorithmSpec],
     ) -> list[tuple[str, EvalAlgorithm]]:
-        return [(spec.name or spec.type, create_algorithm(spec)) for spec in algorithm_specs]
+        return [
+            (spec.name or spec.algorithm.component_name, create_algorithm(spec))
+            for spec in algorithm_specs
+        ]
 
     # TODO: Do we need _attach_eval_metadata?
     def _attach_eval_metadata(
@@ -583,7 +585,6 @@ class NexuSession:
     def __init__(
         self,
         scenario: ScenarioSpec | None,
-        registry: LayerRegistry | None = None,
         accelerator: str = "auto",
         devices: int | str = "auto",
         log_dir: str | Path = ".experiments",
@@ -594,7 +595,6 @@ class NexuSession:
         if scenario is None and trainer_checkpoint is None:
             raise ValueError("Either 'scenario' or 'trainer_checkpoint' must be provided.")
 
-        self.registry = registry
         self.accelerator = accelerator
         self.devices = devices
         self.log_dir = resolve_logs_root(log_dir)
@@ -694,13 +694,9 @@ class NexuSession:
                 self._runtime = create_runtime_artifacts_from_trainer_checkpoint(
                     self.trainer_checkpoint,
                     scenario=self.scenario,
-                    registry=self.registry,
                 )
             else:
-                self._runtime = create_runtime_artifacts(
-                    self.scenario,
-                    registry=self.registry,
-                )
+                self._runtime = create_runtime_artifacts(self.scenario)
         return self._runtime
 
     def build_trainer(self) -> L.Trainer:
@@ -721,7 +717,7 @@ class NexuSession:
 
             data_backend = None
             if self._runtime is not None and self._runtime.data_module is not None:
-                data_backend = self._runtime.data_module.loader_spec.backend
+                data_backend = self._runtime.data_module.loader_spec.backend.component_name
 
             print_service_info(
                 trainer_loggers=(
@@ -793,7 +789,7 @@ class NexuSession:
         dataloaders: Any = None,
         datamodule: NexuDataModule | None = None,
         return_predictions: bool = False,
-    ):
+    ) -> Any:
         """Run Trainer.predict() with session defaults unless explicitly overridden.
 
         Returns:
@@ -967,17 +963,14 @@ def create_dataset_from_spec(scenario: ScenarioSpec) -> NexuDataset:
     return creator.build_dataset(scenario.data)
 
 
-def create_data_module_from_spec(
-    scenario: ScenarioSpec,
-    registry: LayerRegistry | None = None,
-) -> NexuDataModule:
+def create_data_module_from_spec(scenario: ScenarioSpec) -> NexuDataModule:
     """Create a LightningDataModule from a ScenarioSpec.
 
     Returns:
         A ``NexuDataModule`` configured for the scenario.
     """
     if scenario.data.preprocessing.enabled:
-        export_path = materialize_preprocessed_dataset(scenario, registry=registry)
+        export_path = materialize_preprocessed_dataset(scenario)
         batch_size = scenario.data.loader.batch_size or scenario.training.batch_size
         if isinstance(batch_size, AutoBatchSizeSpec):
             batch_size = batch_size.min
@@ -1007,18 +1000,12 @@ def _create_base_data_module_from_spec(scenario: ScenarioSpec) -> NexuDataModule
     return creator.build(scenario.data, default_batch_size=scenario.training.batch_size)
 
 
-def materialize_preprocessed_dataset(
-    scenario: ScenarioSpec,
-    registry: LayerRegistry | None = None,
-) -> Path:
+def materialize_preprocessed_dataset(scenario: ScenarioSpec) -> Path:
     """Materialize the configured preprocessing view and return its export path.
 
     Returns:
         ``Path`` to the directory containing the materialized dataset.
     """
-    if registry is None:
-        registry = get_registry()
-
     preprocessing = scenario.data.preprocessing
     export_path = resolve_preprocessing_path(scenario)
     config_path = export_path / "config.yaml"
@@ -1027,13 +1014,10 @@ def materialize_preprocessed_dataset(
 
     raw_loader = scenario.data.loader
 
-    if raw_loader.backend == "tensor_shards":
-        raw_loader = raw_loader.model_copy(
-            update={
-                "backend": "torch",
-                "params": {},
-            }
-        )
+    if raw_loader.backend.component_name == "tensor_shards":
+        from nexuml.data.loaders.definitions import TorchLoader
+
+        raw_loader = raw_loader.model_copy(update={"backend": TorchLoader()})
 
     raw_scenario = scenario.model_copy(
         update={
@@ -1051,7 +1035,7 @@ def materialize_preprocessed_dataset(
 
     raw_data_module = _create_base_data_module_from_spec(raw_scenario)
     hydrated_raw_scenario = _hydrate_scenario_from_dataset(raw_scenario, raw_data_module)
-    raw_pipeline = compile(hydrated_raw_scenario, registry)
+    raw_pipeline = compile(hydrated_raw_scenario)
     raw_lightning_module = NexuLightningModule(raw_pipeline)
 
     transform = None
@@ -1096,7 +1080,6 @@ def resolve_preprocessing_path(scenario: ScenarioSpec) -> Path:
 
 def create_runtime_artifacts(
     scenario: ScenarioSpec,
-    registry: LayerRegistry | None = None,
     apply_selective_checkpoint: bool = True,
 ) -> RuntimeArtifacts:
     """Compile the pipeline and create the matching Lightning/DataModule runtime.
@@ -1105,12 +1088,9 @@ def create_runtime_artifacts(
         ``RuntimeArtifacts`` containing the compiled pipeline, Lightning module,
         data module, and optional load report.
     """
-    if registry is None:
-        registry = get_registry()
-
-    data_module = create_data_module_from_spec(scenario, registry=registry)
+    data_module = create_data_module_from_spec(scenario)
     hydrated_scenario = _hydrate_scenario_from_dataset(scenario, data_module)
-    pipeline = compile(hydrated_scenario, registry)
+    pipeline = compile(hydrated_scenario)
 
     load_report = None
     if (
@@ -1139,7 +1119,6 @@ def create_runtime_artifacts(
     auto_result = _resolve_auto_batch_size_if_needed(
         scenario=hydrated_scenario,
         lightning_module=lightning_module,
-        registry=registry,
     )
     if auto_result is not None:
         data_module, auto_metadata = auto_result
@@ -1161,7 +1140,6 @@ def _resolve_auto_batch_size_if_needed(
     *,
     scenario: ScenarioSpec,
     lightning_module: NexuLightningModule,
-    registry: LayerRegistry,
 ) -> tuple[NexuDataModule, dict[str, Any]] | None:
     """Probe structured auto training.batch_size and rebuild final datamodule.
 
@@ -1185,7 +1163,7 @@ def _resolve_auto_batch_size_if_needed(
         candidate_scenario = scenario.model_copy(
             update={"training": scenario.training.model_copy(update={"batch_size": candidate})}
         )
-        candidate_data_module = create_data_module_from_spec(candidate_scenario, registry=registry)
+        candidate_data_module = create_data_module_from_spec(candidate_scenario)
         candidate_data_module.setup("fit")
         batch = next(iter(candidate_data_module.train_dataloader()))
         batch = _move_batch_to_device(batch, torch.device("cuda"))
@@ -1205,7 +1183,7 @@ def _resolve_auto_batch_size_if_needed(
             )
         }
     )
-    return create_data_module_from_spec(final_scenario, registry=registry), result.to_dict()
+    return create_data_module_from_spec(final_scenario), result.to_dict()
 
 
 def _move_batch_to_device(value: Any, device: torch.device) -> Any:
@@ -1262,7 +1240,6 @@ def _hydrate_scenario_from_dataset(
 
 def train(
     scenario: ScenarioSpec | None,
-    registry: LayerRegistry | None = None,
     accelerator: str = "auto",
     devices: int | str = "auto",
     log_dir: str | Path = ".experiments",
@@ -1277,7 +1254,6 @@ def train(
     """
     session = NexuSession(
         scenario=scenario,
-        registry=registry,
         accelerator=accelerator,
         devices=devices,
         log_dir=log_dir,
@@ -1311,13 +1287,12 @@ def load_scenario_from_trainer_checkpoint(
                 f"Checkpoint '{checkpoint_path}' does not contain serialized scenario metadata."
             )
         return fallback
-    return ScenarioSpec.model_validate(scenario_data)
+    return ScenarioSpec.model_validate(restore_model_data(scenario_data, ScenarioSpec))
 
 
 def create_runtime_artifacts_from_trainer_checkpoint(
     checkpoint_path: str | Path,
     scenario: ScenarioSpec | None = None,
-    registry: LayerRegistry | None = None,
 ) -> RuntimeArtifacts:
     """Rebuild runtime objects from a Lightning Trainer checkpoint.
 
@@ -1326,11 +1301,10 @@ def create_runtime_artifacts_from_trainer_checkpoint(
     """
     restored_scenario = load_scenario_from_trainer_checkpoint(checkpoint_path, fallback=scenario)
     restored_scenario = restored_scenario.model_copy(update={"checkpoint": None})
-    data_module = create_data_module_from_spec(restored_scenario, registry=registry)
+    data_module = create_data_module_from_spec(restored_scenario)
     lightning_module = NexuLightningModule.load_from_checkpoint(
         checkpoint_path,
         scenario=restored_scenario,
-        registry=registry,
     )
     return RuntimeArtifacts(
         pipeline=lightning_module.pipeline,

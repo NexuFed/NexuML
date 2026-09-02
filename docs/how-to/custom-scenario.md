@@ -30,6 +30,9 @@ from nexuml.core.types import (
     TrainingSpec,
     LoggingSpec,
 )
+from nexuml_library.data.synthetic import SyntheticDataset
+from nexuml_library.layers.loss.reconstruction_loss import ReconstructionLoss
+from nexuml_library.layers.model.linear_encoder import LinearEncoder
 
 
 @scenario("synthetic_ae_tutorial")
@@ -37,11 +40,8 @@ def synthetic_ae_tutorial() -> ScenarioSpec:
     return ScenarioSpec(
         name="synthetic_ae_tutorial",
         data=DataSpec(
-            source_type="synthetic",
-            params={
-                "feature_shape": [64],
-                "num_samples": 1000,
-            },
+            source=SyntheticDataset(feature_shape=(64,), num_samples=1000),
+            input_shapes={"features": [64]},
         ),
         training=TrainingSpec(
             lr=1e-3,
@@ -53,18 +53,23 @@ def synthetic_ae_tutorial() -> ScenarioSpec:
         pipeline=PipelineSpec(stages={
             "encode": [
                 LayerSpec(
-                    type_key="LinearEncoder",
+                    component=LinearEncoder(output_dim=8, hidden_dims=[32]),
                     keys_in=["features"],
                     keys_out=["z"],
-                    params={"input_dim": 64, "output_dim": 8, "hidden_dims": [32]},
+                ),
+            ],
+            "decode": [
+                LayerSpec(
+                    component=LinearEncoder(output_dim=64, hidden_dims=[32]),
+                    keys_in=["z"],
+                    keys_out=["reconstructed"],
                 ),
             ],
             "loss": [
                 LayerSpec(
-                    type_key="reconstruction_loss",
-                    keys_in=["z", "features"],
+                    component=ReconstructionLoss(),
+                    keys_in=["features", "reconstructed"],
                     keys_out=["reconstruction_loss"],
-                    params={"input_dim": 8},
                 ),
             ],
         }),

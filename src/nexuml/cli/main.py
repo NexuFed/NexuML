@@ -72,10 +72,9 @@ def _load_scenario(
         return scenario_fn()
     if config_path:
         from nexuml.core.config import ResolvedConfig
-        from nexuml.core.types import ScenarioSpec
 
         config = ResolvedConfig.load(config_path)
-        return ScenarioSpec.model_validate(config.model_dump())
+        return config.to_scenario()
     if scenario_file:
         from nexuml.core.scenario_loader import load_scenario_file
 
@@ -92,13 +91,11 @@ def scenario_resolve(
 ):
     """Resolve a named scenario to a YAML config file."""
     from nexuml.core.compiler import compile
-    from nexuml.core.registry import get_registry
 
     scenario_fn = _get_scenario_fn(name)
     scenario = scenario_fn()
 
-    registry = get_registry()
-    pipeline = compile(scenario, registry)
+    pipeline = compile(scenario)
 
     if output is None:
         output = Path(f"configs/{name}.yaml")
@@ -114,14 +111,11 @@ def build(
     """Compile and validate a pipeline from a resolved YAML config."""
     from nexuml.core.compiler import compile
     from nexuml.core.config import ResolvedConfig
-    from nexuml.core.registry import get_registry
-    from nexuml.core.types import ScenarioSpec
 
     config = ResolvedConfig.load(config_path)
-    scenario = ScenarioSpec.model_validate(config.model_dump())
+    scenario = config.to_scenario()
 
-    registry = get_registry()
-    pipeline = compile(scenario, registry)
+    pipeline = compile(scenario)
 
     console.print("[green]Pipeline compiled successfully![/green]")
     console.print(f"  Stages: {list(pipeline.stages.keys())}")
@@ -240,9 +234,8 @@ def train_cmd(
             from nexuml.core.compiler import compile as compile_pipeline
             from nexuml.core.diagram import export_mermaid_diagram
             from nexuml.core.log_paths import resolve_logs_root
-            from nexuml.core.registry import get_registry
 
-            pipeline = compile_pipeline(scenario, get_registry())
+            pipeline = compile_pipeline(scenario)
             dspec = scenario.logging.diagram
             output_path = resolve_logs_root(dspec.output_dir) / f"{scenario.name}.md"
             export_mermaid_diagram(
@@ -448,7 +441,6 @@ def smoke(
     from nexuml.core.compiler import compile
     from nexuml.core.export import export_package, infer, load_package
     from nexuml.core.log_paths import resolve_logs_root
-    from nexuml.core.registry import get_registry
     from nexuml.training.lightning import create_data_module_from_spec, train
 
     scenario_fn = _get_scenario_fn(scenario_name)
@@ -464,8 +456,7 @@ def smoke(
 
     # 1. Resolve
     console.print("[blue]1. Resolving scenario...[/blue]")
-    registry = get_registry()
-    pipeline = compile(scenario, registry)
+    pipeline = compile(scenario)
     config_path = Path(f"configs/{scenario_name}.yaml")
     pipeline.resolved_config.save(config_path)
     console.print(f"   Config saved to {config_path}")
@@ -476,7 +467,7 @@ def smoke(
 
     # 3. Train
     console.print("[blue]3. Training...[/blue]")
-    result = train(scenario, registry=registry, enable_progress_bar=True)
+    result = train(scenario, enable_progress_bar=True)
     console.print("   Training complete!")
 
     # 4. Export
@@ -487,7 +478,7 @@ def smoke(
 
     # 5. Reload
     console.print("[blue]5. Reloading...[/blue]")
-    loaded_pipeline, loaded_config, metadata = load_package(export_dir, registry)
+    loaded_pipeline, loaded_config, metadata = load_package(export_dir)
     console.print(f"   Config hash: {metadata.get('config_hash', 'N/A')}")
 
     # 6. Inference
@@ -687,46 +678,24 @@ def registry_list(
         typer.Exit: If *kind* is not one of the recognised values.
     """
     kind = kind.lower()
-    if kind == "layers":
-        from nexuml.core.registry import get_registry
+    component_kinds = {
+        "layers": ("layer", "Registered Layers"),
+        "data": ("data_source", "Registered Data Sources"),
+        "eval": ("eval_algorithm", "Registered Evaluation Algorithms"),
+    }
+    if kind in component_kinds:
+        from nexuml.core.registry import get_component_registry
 
-        registry = get_registry()
-        items = registry.list()
-        table = Table(title="Registered Layers")
-        table.add_column("Type Key", style="cyan")
-        table.add_column("Module", style="green")
-        table.add_column("Constructor Params", style="white")
-        for type_key, cls in sorted(items.items()):
-            module_path = f"{cls.__module__}.{cls.__name__}"
-            sig = inspect.signature(cls.__init__)
-
-            def _ann(p: inspect.Parameter) -> str:
-                return (
-                    p.annotation.__name__
-                    if hasattr(p.annotation, "__name__")
-                    else str(p.annotation)
-                )
-
-            params = [
-                f"{name}: {_ann(p)}"
-                for name, p in sig.parameters.items()
-                if name not in ("self", "input_sizes", "keys_in", "keys_out", "kwargs")
-                and p.default is not inspect.Parameter.empty
-            ]
-            table.add_row(type_key, module_path, ", ".join(params[:5]))
-        console.print(table)
-        _print_discovery_errors(registry, verbose)
-    elif kind == "data":
-        from nexuml.data.registry import get_dataset_registry
-
-        registry = get_dataset_registry()
-        items = registry.list()
-        table = Table(title="Registered Datasets")
-        table.add_column("Type Key", style="cyan")
-        table.add_column("Module", style="green")
-        for type_key, cls in sorted(items.items()):
-            module_path = f"{cls.__module__}.{cls.__name__}"
-            table.add_row(type_key, module_path)
+        registry = get_component_registry()
+        component_kind, title = component_kinds[kind]
+        table = Table(title=title)
+        table.add_column("Name", style="cyan")
+        table.add_column("Version", style="magenta")
+        table.add_column("Type", style="green")
+        table.add_column("Fields", style="white")
+        for entry in registry.entries(kind=component_kind):
+            fields = ", ".join(entry.definition_type.model_json_schema()["properties"])
+            table.add_row(entry.name, entry.version, entry.import_target, fields)
         console.print(table)
         _print_discovery_errors(registry, verbose)
     elif kind == "scenarios":
@@ -741,19 +710,6 @@ def registry_list(
             table.add_row(
                 name, f"{getattr(fn, '__module__', '?')}.{getattr(fn, '__name__', repr(fn))}"
             )
-        console.print(table)
-        _print_discovery_errors(registry, verbose)
-    elif kind == "eval":
-        from nexuml.evaluation.registry import get_eval_registry
-
-        registry = get_eval_registry()
-        items = registry.list()
-        table = Table(title="Registered Evaluation Algorithms")
-        table.add_column("Type Key", style="cyan")
-        table.add_column("Module", style="green")
-        for type_key, cls in sorted(items.items()):
-            module_path = f"{cls.__module__}.{cls.__name__}"
-            table.add_row(type_key, module_path)
         console.print(table)
         _print_discovery_errors(registry, verbose)
     else:
@@ -780,15 +736,14 @@ def backend_list(
             rows.append((row_category, name, implementation))
 
     from nexuml.data.export import get_export_backend, list_export_backends
-    from nexuml.data.loaders import get_loader_backend, list_loader_backends
+    from nexuml.core.registry import get_component_registry
 
     for name in sorted(list_export_backends()):
         backend_cls = get_export_backend(name)
         add("data-export", name, f"{backend_cls.__module__}.{backend_cls.__name__}")
 
-    for name in sorted(list_loader_backends()):
-        backend = get_loader_backend(name)
-        add("data-loader", name, f"{backend.__class__.__module__}.{backend.__class__.__name__}")
+    for entry in get_component_registry().entries(kind="loader_backend"):
+        add("data-loader", entry.name, entry.import_target)
 
     add("training", "lightning", "nexuml.training.lightning.NexuSession")
     add("tracking", "tensorboard", "nexuml.tracking.logger")

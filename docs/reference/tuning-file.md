@@ -8,6 +8,7 @@ The file must still define `scenario() -> ScenarioSpec`. Tuning exports are opti
 
 ```python
 from nexuml.core.types import ScenarioSpec, DataSpec, TrainingSpec
+from nexuml_library.data.synthetic import SyntheticDataset
 
 HYPOTHESIS = "Smaller learning rate converges better on synthetic data"
 PARENT = "baseline_experiment"
@@ -16,7 +17,10 @@ TAGS = ["synthetic", "lr-sweep"]
 def scenario() -> ScenarioSpec:
     return ScenarioSpec(
         name="lr_sweep",
-        data=DataSpec(source_type="synthetic", params={"feature_shape": [32], "num_samples": 500}),
+        data=DataSpec(
+            source=SyntheticDataset(feature_shape=(32,), num_samples=500),
+            input_shapes={"features": [32]},
+        ),
         training=TrainingSpec(lr=1e-3, max_epochs=10, loss_keys={"reconstruction_loss": 1.0}),
     )
 ```
@@ -104,6 +108,8 @@ For architecture parameters that change model structure, define a `build` callab
 
 ```python
 from nexuml.core.types import ScenarioSpec, PipelineSpec, LayerSpec, TrainingSpec, DataSpec
+from nexuml_library.data.synthetic import SyntheticDataset
+from nexuml_library.layers.model.linear_encoder import LinearEncoder
 
 SEARCH_SPACE = {
     "hidden_dim": {"type": "int", "low": 8, "high": 64},
@@ -112,15 +118,17 @@ SEARCH_SPACE = {
 def build(hidden_dim: int = 16) -> ScenarioSpec:
     return ScenarioSpec(
         name="arch_search",
-        data=DataSpec(source_type="synthetic", params={"feature_shape": [64], "num_samples": 500}),
+        data=DataSpec(
+            source=SyntheticDataset(feature_shape=(64,), num_samples=500),
+            input_shapes={"features": [64]},
+        ),
         training=TrainingSpec(lr=1e-3, max_epochs=5, loss_keys={"reconstruction_loss": 1.0}),
         pipeline=PipelineSpec(stages={
             "encode": [
                 LayerSpec(
-                    type_key="linear_encoder",
+                    component=LinearEncoder(output_dim=hidden_dim),
                     keys_in=["features"],
                     keys_out=["z"],
-                    params={"input_dim": 64, "output_dim": hidden_dim},
                 )
             ],
         }),

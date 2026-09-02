@@ -17,7 +17,15 @@ import pkgutil
 import sys
 import traceback
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, TypeVar
+
+from nexuml.core.components import (
+    ComponentDefinition,
+    DataSourceDefinition,
+    EvalAlgorithmDefinition,
+    LayerDefinition,
+    LoaderBackendDefinition,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -118,32 +126,51 @@ def _attach_metadata(obj: Any, kind: str, key: str) -> None:
     setattr(obj, DISCOVERED_ATTR, {"kind": kind, "key": key})
 
 
-def layer(key: str) -> Callable[[Any], Any]:
-    """Decorator to register a PipelineLayer subclass.
+DefinitionT = TypeVar("DefinitionT", bound=ComponentDefinition)
 
-    Returns:
-        Decorator that attaches discovery metadata to *cls*.
-    """
 
-    def decorator(cls: Any) -> Any:
-        _attach_metadata(cls, "layer", key)
+def _component_decorator(
+    key: str,
+    *,
+    kind: str,
+    expected_type: type[ComponentDefinition],
+    version: str,
+) -> Callable[[type[DefinitionT]], type[DefinitionT]]:
+    def decorator(cls: type[DefinitionT]) -> type[DefinitionT]:
+        if not isinstance(cls, type) or not issubclass(cls, expected_type):
+            raise TypeError(f"@{kind} components must inherit {expected_type.__name__}")
+        _attach_metadata(cls, kind, key)
+        cls.component_name = key
+        cls.component_version = version
+
+        from nexuml.core.registry import get_component_registry
+
+        get_component_registry().register(key, cls, kind=kind, version=version)
         return cls
 
     return decorator
 
 
-def data_source(key: str) -> Callable[[Any], Any]:
-    """Decorator to register a dataset class.
+def layer(key: str, *, version: str = "1") -> Callable[[type[DefinitionT]], type[DefinitionT]]:
+    """Register a typed layer definition under a stable persisted identity.
 
     Returns:
-        Decorator that attaches discovery metadata to *cls*.
+        Definition class decorator.
     """
+    return _component_decorator(key, kind="layer", expected_type=LayerDefinition, version=version)
 
-    def decorator(cls: Any) -> Any:
-        _attach_metadata(cls, "data_source", key)
-        return cls
 
-    return decorator
+def data_source(
+    key: str, *, version: str = "1"
+) -> Callable[[type[DefinitionT]], type[DefinitionT]]:
+    """Register a typed data-source definition.
+
+    Returns:
+        Definition class decorator.
+    """
+    return _component_decorator(
+        key, kind="data_source", expected_type=DataSourceDefinition, version=version
+    )
 
 
 def scenario(key: str) -> Callable[[Any], Any]:
@@ -160,18 +187,36 @@ def scenario(key: str) -> Callable[[Any], Any]:
     return decorator
 
 
-def eval_algorithm(key: str) -> Callable[[Any], Any]:
-    """Decorator to register an EvalAlgorithm subclass.
+def eval_algorithm(
+    key: str, *, version: str = "1"
+) -> Callable[[type[DefinitionT]], type[DefinitionT]]:
+    """Register a typed evaluation-algorithm definition.
 
     Returns:
-        Decorator that attaches discovery metadata to *cls*.
+        Definition class decorator.
     """
+    return _component_decorator(
+        key,
+        kind="eval_algorithm",
+        expected_type=EvalAlgorithmDefinition,
+        version=version,
+    )
 
-    def decorator(cls: Any) -> Any:
-        _attach_metadata(cls, "eval_algorithm", key)
-        return cls
 
-    return decorator
+def loader_backend(
+    key: str, *, version: str = "1"
+) -> Callable[[type[DefinitionT]], type[DefinitionT]]:
+    """Register a typed loader-backend definition.
+
+    Returns:
+        Definition class decorator.
+    """
+    return _component_decorator(
+        key,
+        kind="loader_backend",
+        expected_type=LoaderBackendDefinition,
+        version=version,
+    )
 
 
 # ---------------------------------------------------------------------------

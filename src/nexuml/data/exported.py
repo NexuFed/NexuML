@@ -17,12 +17,10 @@ import yaml
 from PIL import Image
 from tensordict import TensorDict
 
-from nexuml.core.discovery import data_source
 from nexuml.data.dataset import _KEEP_DATA, NexuDataset
 from nexuml.data.export import get_export_backend
 
 
-@data_source("ExportedDataset")
 class ExportedDataset(NexuDataset):
     """Load a dataset previously written by ``export_data_module``."""
 

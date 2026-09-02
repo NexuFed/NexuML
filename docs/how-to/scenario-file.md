@@ -17,13 +17,16 @@ NexuML can load a scenario from a plain Python file instead of the built-in regi
 from nexuml.core.types import (
     ScenarioSpec, TrainingSpec, DataSpec, PipelineSpec, LayerSpec
 )
+from nexuml_library.data.synthetic import SyntheticDataset
+from nexuml_library.layers.loss.reconstruction_loss import ReconstructionLoss
+from nexuml_library.layers.model.linear_encoder import LinearEncoder
 
 def scenario() -> ScenarioSpec:
     return ScenarioSpec(
         name="my_experiment",
         data=DataSpec(
-            source_type="synthetic",
-            params={"feature_shape": [64], "num_samples": 1000},
+            source=SyntheticDataset(feature_shape=(64,), num_samples=1000),
+            input_shapes={"features": [64]},
         ),
         training=TrainingSpec(
             lr=1e-3,
@@ -33,26 +36,23 @@ def scenario() -> ScenarioSpec:
         pipeline=PipelineSpec(stages={
             "encode": [
                 LayerSpec(
-                    type_key="LinearEncoder",
+                    component=LinearEncoder(output_dim=8),
                     keys_in=["features"],
                     keys_out=["z"],
-                    params={"input_dim": 64, "output_dim": 8},
                 )
             ],
             "decode": [
                 LayerSpec(
-                    type_key="LinearEncoder",
+                    component=LinearEncoder(output_dim=64),
                     keys_in=["z"],
                     keys_out=["reconstructed"],
-                    params={"input_dim": 8, "output_dim": 64},
                 )
             ],
             "loss": [
                 LayerSpec(
-                    type_key="ReconstructionLoss",
+                    component=ReconstructionLoss(),
                     keys_in=["features", "reconstructed"],
                     keys_out=["reconstruction_loss"],
-                    params={},
                 )
             ],
         }),

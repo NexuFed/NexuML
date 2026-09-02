@@ -327,6 +327,9 @@ class TensorShardWindowLoader(DataLoader):
 class TensorShardsLoaderBackend:
     """Create split-specific loaders for tensor-shard exports."""
 
+    def __init__(self, definition: Any) -> None:
+        self.definition = definition
+
     def create_loader(
         self,
         module: Any,
@@ -348,17 +351,17 @@ class TensorShardsLoaderBackend:
                 "tensor_shards manages prefetch internally; loader_spec.num_workers is ignored"
             )
 
-        params = module.loader_spec.params
+        config = self.definition
         return TensorShardWindowLoader(
             dataset=dataset,
             split=split,
             batch_size=int(batch_size),
-            shards_per_window=int(params.get("shards_per_window", 6)),
-            prefetch_windows=int(params.get("prefetch_windows", 2)),
-            prefetch_workers=int(params.get("prefetch_workers", 2)),
-            shuffle_shards=bool(params.get("shuffle_shards", shuffle)),
-            shuffle_samples=bool(params.get("shuffle_samples", shuffle)),
-            pin_memory=bool(params.get("pin_memory", False)),
-            drop_last=bool(params.get("drop_last", False)),
-            seed=int(params.get("seed", module.seed)),
+            shards_per_window=config.shards_per_window,
+            prefetch_windows=config.prefetch_windows,
+            prefetch_workers=config.prefetch_workers,
+            shuffle_shards=shuffle if config.shuffle_shards is None else config.shuffle_shards,
+            shuffle_samples=shuffle if config.shuffle_samples is None else config.shuffle_samples,
+            pin_memory=config.pin_memory,
+            drop_last=config.drop_last,
+            seed=module.seed if config.seed is None else config.seed,
         )

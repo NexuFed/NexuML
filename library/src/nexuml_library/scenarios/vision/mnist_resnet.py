@@ -4,6 +4,8 @@ from __future__ import annotations
 from nexuml.core.discovery import scenario
 
 from nexuml.core.types import DataSpec, DatasetSpec, ScenarioSpec
+from nexuml_library.data.image.fashionmnist import FashionMNISTDataset
+from nexuml_library.data.image.mnist import MNISTDataset
 from nexuml_library.scenarios.data.roots import resolve_data_root
 from nexuml_library.scenarios.evaluation.base import classification_evaluation
 from nexuml_library.scenarios.model.resnet_classifier import resnet_classifier
@@ -18,17 +20,14 @@ def mnist_data(download: bool = True, root: str = "mnist") -> DataSpec:
     """
     resolved_root = resolve_data_root(root)
     return DataSpec(
-        source_type="mnist",
         datasets=[
             DatasetSpec(
-                type_key="MNISTDataset",
-                params={"root": str(resolved_root), "train": True, "download": download},
+                source=MNISTDataset(root=resolved_root, train=True, download=download),
                 modality="image",
                 split_type="fit",
             ),
             DatasetSpec(
-                type_key="MNISTDataset",
-                params={"root": str(resolved_root), "train": False, "download": download},
+                source=MNISTDataset(root=resolved_root, train=False, download=download),
                 modality="image",
                 split_type="test",
             ),
@@ -47,17 +46,14 @@ def fashionmnist_data(download: bool = True, root: str = "fashionmnist") -> Data
     """
     resolved_root = resolve_data_root(root)
     return DataSpec(
-        source_type="fashionmnist",
         datasets=[
             DatasetSpec(
-                type_key="FashionMNISTDataset",
-                params={"root": str(resolved_root), "train": True, "download": download},
+                source=FashionMNISTDataset(root=resolved_root, train=True, download=download),
                 modality="image",
                 split_type="fit",
             ),
             DatasetSpec(
-                type_key="FashionMNISTDataset",
-                params={"root": str(resolved_root), "train": False, "download": download},
+                source=FashionMNISTDataset(root=resolved_root, train=False, download=download),
                 modality="image",
                 split_type="test",
             ),
@@ -138,7 +134,6 @@ def _image_resnet_scenario(
     return ScenarioSpec(
         name=name,
         pipeline=resnet_classifier(
-            num_classes=10,
             resnet_type=resnet_type,
             pretrained=pretrained,
             cifar_stem=cifar_stem,

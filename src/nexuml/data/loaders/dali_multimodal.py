@@ -179,7 +179,7 @@ class ExternalSampleIterator:
 
 
 @pipeline_def
-def external_source_pipeline(external_source: Iterable, *, num_outputs: int):
+def external_source_pipeline(external_source: Iterable, *, num_outputs: int) -> Any:
     """Build a DALI pipeline backed by an external Python source.
 
     Returns:
@@ -210,7 +210,7 @@ def audio_file_pipeline(
     shard_id: int,
     num_shards: int,
     layout: str | None,
-):
+) -> Any:
     """Build a DALI pipeline that decodes audio files from paths.
 
     Returns:
@@ -255,7 +255,7 @@ def image_file_pipeline(
     shard_id: int,
     num_shards: int,
     layout: str | None,
-):
+) -> Any:
     """Build a DALI pipeline that decodes image files from paths.
 
     Returns:
@@ -282,7 +282,7 @@ def text_file_pipeline(
     shuffle: bool,
     shard_id: int,
     num_shards: int,
-):
+) -> Any:
     """Build a DALI pipeline that reads text files as byte strings.
 
     Returns:
@@ -311,7 +311,7 @@ def video_file_pipeline(
     sequence_length: int,
     layout: str | None,
     reader_device: str,
-):
+) -> Any:
     """Build a DALI pipeline that decodes video files from paths.
 
     Returns:
@@ -343,7 +343,7 @@ def numpy_file_pipeline(
     shuffle: bool,
     shard_id: int,
     num_shards: int,
-):
+) -> Any:
     """Build a DALI pipeline that loads numpy array files from paths.
 
     Returns:
@@ -388,7 +388,7 @@ def webdataset_pipeline(
     shard_id: int,
     num_shards: int,
     components: list[WebDatasetComponentSpec],
-):
+) -> Any:
     """Build a DALI pipeline that reads a WebDataset tar archive.
 
     Returns:

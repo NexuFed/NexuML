@@ -9,15 +9,26 @@ import torch
 import torch.nn as nn
 
 from nexuml.core.base_layer import PipelineLayer
+from nexuml.core.components import LayerBuildContext, LayerDefinition
 
 
 @layer("LatentClassificationHead")
-class LatentClassificationHead(PipelineLayer):
+class LatentClassificationHead(LayerDefinition):
     """Classification head operating on latent vectors.
 
     Produces logits for multiclass or multilabel classification.
     """
 
+    hidden_dims: list[int] | None = None
+
+    def build(self, context: LayerBuildContext) -> PipelineLayer:
+        return _LatentClassificationHeadRuntime(
+            hidden_dims=self.hidden_dims,
+            **context.runtime_kwargs(num_classes=context.num_classes or 10),
+        )
+
+
+class _LatentClassificationHeadRuntime(PipelineLayer):
     def __init__(
         self,
         input_sizes: dict[str, tuple],

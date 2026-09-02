@@ -10,6 +10,8 @@ from nexuml.core.discovery import (
     discover_library_packages,
     scan_all,
 )
+from nexuml.core.registry import ComponentRegistry, get_component_registry
+from nexuml.core.serialization import lower_component, restore_component
 
 
 def test_scan_all_returns_items():
@@ -19,12 +21,11 @@ def test_scan_all_returns_items():
     assert scanner.by_kind("scenario")
 
 
-def test_registry_has_no_conflicting_keys(
-    layer_registry, dataset_registry, scenario_registry, eval_registry
-):
-    for registry in (layer_registry, dataset_registry, scenario_registry, eval_registry):
-        items = registry.list()
-        assert len(items) == len(set(items.keys()))
+def test_registry_has_unique_component_identities():
+    identities = [
+        (entry.kind, entry.name, entry.version) for entry in get_component_registry().entries()
+    ]
+    assert len(identities) == len(set(identities))
 
 
 def test_scanner_records_errors_without_aborting():
@@ -111,3 +112,31 @@ def test_discover_entry_point_packages_skips_failed_loads(monkeypatch):
 
     packages = discover_entry_point_packages()
     assert packages == []
+
+
+def test_entry_point_component_identity_round_trip(
+    isolated_library_config, minimal_local_library, monkeypatch
+):
+    class FakeEntryPoint:
+        value = minimal_local_library.package_name
+        group = "nexuml.libraries"
+
+        def load(self):
+            return object()
+
+    monkeypatch.syspath_prepend(str(minimal_local_library.root))
+    monkeypatch.setattr(
+        "importlib.metadata.entry_points",
+        lambda group=None: [FakeEntryPoint()] if group == "nexuml.libraries" else [],
+    )
+
+    registry = ComponentRegistry()
+    registry.scan()
+    definition_type = registry.get_type("layer", minimal_local_library.layer_key)
+    definition = definition_type.model_validate({"scale": 3.0})
+    monkeypatch.setattr("nexuml.core.serialization.get_component_registry", lambda: registry)
+
+    restored = restore_component(kind="layer", value=lower_component(definition))
+
+    assert type(restored) is definition_type
+    assert restored.model_dump()["scale"] == 3.0

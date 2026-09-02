@@ -1,17 +1,17 @@
-"""Loader backend protocol and registry."""
+"""Loader backend protocol and typed materialization helpers."""
 
 from __future__ import annotations
 
-import logging
 from typing import Any, Protocol
 
 from torch.utils.data import WeightedRandomSampler
 
-logger = logging.getLogger(__name__)
+from nexuml.core.components import LoaderBackendDefinition
+from nexuml.core.registry import get_component_registry
 
 
 class LoaderBackend(Protocol):
-    """Backend interface for creating split-specific loaders."""
+    """Runtime protocol implemented by loader backends."""
 
     def create_loader(
         self,
@@ -24,57 +24,19 @@ class LoaderBackend(Protocol):
     ) -> Any: ...
 
 
-_LOADER_BACKENDS: dict[str, LoaderBackend] = {}
-
-
-def register_loader_backend(name: str, backend: LoaderBackend) -> None:
-    """Register a dataloader backend implementation."""
-    _LOADER_BACKENDS[name] = backend
-
-
-def get_loader_backend(name: str) -> LoaderBackend:
-    """Retrieve a registered loader backend by name.
+def get_loader_backend(definition: LoaderBackendDefinition) -> LoaderBackend:
+    """Materialize a loader backend definition.
 
     Returns:
-        The loader backend registered under ``name``.
-
-    Raises:
-        KeyError: If no backend is registered under that name.
+        Runtime loader backend.
     """
-    _ensure_default_backends()
-    if name not in _LOADER_BACKENDS:
-        available = ", ".join(sorted(_LOADER_BACKENDS))
-        raise KeyError(f"Loader backend '{name}' is not registered. Available: [{available}]")
-    return _LOADER_BACKENDS[name]
+    return definition.build()
 
 
 def list_loader_backends() -> list[str]:
-    """Return names of all registered loader backends."""
-    _ensure_default_backends()
-    return sorted(_LOADER_BACKENDS.keys())
+    """List registered loader backend identities.
 
-
-def _ensure_default_backends() -> None:
-    """Lazily register built-in backends without overwriting existing entries."""
-    if "torch" not in _LOADER_BACKENDS:
-        from nexuml.data.loaders.torch_backend import TorchLoaderBackend
-
-        register_loader_backend("torch", TorchLoaderBackend())
-
-    if "dali" not in _LOADER_BACKENDS:
-        try:
-            from nexuml.data.loaders.dali_backend import DaliLoaderBackend
-
-            register_loader_backend("dali", DaliLoaderBackend())
-        except ImportError:
-            logger.debug("DALI not available; 'dali' backend not registered")
-
-    if "tensor_shards" not in _LOADER_BACKENDS:
-        from nexuml.data.loaders.tensor_shards_backend import (
-            TensorShardsLoaderBackend,
-        )
-
-        register_loader_backend(
-            "tensor_shards",
-            TensorShardsLoaderBackend(),
-        )
+    Returns:
+        Stable loader backend names.
+    """
+    return [entry.name for entry in get_component_registry().entries(kind="loader_backend")]

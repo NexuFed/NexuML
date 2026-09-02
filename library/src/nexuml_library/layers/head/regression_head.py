@@ -9,12 +9,21 @@ import torch
 import torch.nn as nn
 
 from nexuml.core.base_layer import PipelineLayer
+from nexuml.core.components import LayerBuildContext, LayerDefinition
 
 
 @layer("LatentRegressionHead")
-class LatentRegressionHead(PipelineLayer):
+class LatentRegressionHead(LayerDefinition):
     """Regression head operating on latent vectors."""
 
+    num_outputs: int = 1
+    hidden_dims: list[int] | None = None
+
+    def build(self, context: LayerBuildContext) -> PipelineLayer:
+        return _LatentRegressionHeadRuntime(**context.runtime_kwargs(), **self.model_dump())
+
+
+class _LatentRegressionHeadRuntime(PipelineLayer):
     def __init__(
         self,
         input_sizes: dict[str, tuple],

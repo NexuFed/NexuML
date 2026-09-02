@@ -7,8 +7,8 @@ The NexuML registry stores discovered layers, data sources, scenarios, and eval 
 ### List by kind
 
 ```bash
-nexuml registry list layers       # PipelineLayer subclasses
-nexuml registry list data         # data source classes
+nexuml registry list layers       # LayerDefinition subclasses
+nexuml registry list data         # DataSourceDefinition subclasses
 nexuml registry list scenarios    # scenario functions
 nexuml registry list eval         # evaluation algorithm classes
 ```
@@ -27,15 +27,17 @@ In verbose mode, any modules that failed to import during scanning are shown wit
 ```
               Registered Layers
 ┏━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━┓
-┃ Type Key         ┃ Module                              ┃ Constructor Params ┃
-┡━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━┩
-│ linear_encoder   │ nexuml_library.layers.feature...    │ input_dim, ...     │
-└──────────────────┴─────────────────────────────────────┴────────────────────┘
+┃ Name             ┃ Version ┃ Type                               ┃ Fields          ┃
+┡━━━━━━━━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━┩
+│ LinearEncoder    │ 1       │ nexuml_library.layers.model...     │ hidden_dims, ...│
+└──────────────────┴─────────┴────────────────────────────────────┴─────────────────┘
 ```
 
-- **Type Key** — the string used in `LayerSpec(type_key=...)` or `DataSpec(source_type=...)`
-- **Module** — the Python module where the decorator was applied
-- **Constructor Params** — inferred from the class `__init__` signature
+- **Name and Version** - stable persisted identity
+- **Type** - concrete definition class registered by the decorator
+- **Fields** - component schema fields from `model_json_schema()`
+
+Python imports the concrete definition directly. The stable identity is used for YAML restoration and inspection.
 
 ## Troubleshooting missing elements
 

@@ -122,16 +122,16 @@ Load an exported dataset in a new scenario using the `ExportedDataset` data sour
 
 ```python
 from nexuml.core.types import ScenarioSpec, DataSpec, TrainingSpec
+from nexuml_library.data.exported import ExportedDataset
 
 ScenarioSpec(
     name="train_on_export",
     data=DataSpec(
-        source_type="ExportedDataset",
-        params={
-            "path": "./exported_data/",
-            "x_keys": ["features"],
-            "y_keys": ["target"],
-        },
+        source=ExportedDataset(
+            root="./exported_data/",
+            feature_keys=["features"],
+            label_keys=["target"],
+        ),
     ),
     training=TrainingSpec(lr=1e-3, max_epochs=10, loss_keys={"classification_loss": 1.0}),
     ...
@@ -142,17 +142,16 @@ ScenarioSpec(
 
 ```python
 DataSpec(
-    source_type="ExportedDataset",
-    params={
-        "path": "./preprocessed_data/",
-        "x_keys": ["z"],            # the pre-extracted embedding key
-        "y_keys": ["target"],
-        "preprocessed": True,       # skip pipeline stages up to the export boundary
-    },
+    source=ExportedDataset(
+        root="./preprocessed_data/",
+        feature_keys=["z"],
+        label_keys=["target"],
+    ),
+    skip_pipeline_stages=["features", "encode"],
 )
 ```
 
-When `preprocessed=True`, the `skip_pipeline_stages` list in the scenario is populated to skip stages that were already applied before export.
+Set `skip_pipeline_stages` to the stages already applied before export.
 
 ## Full example
 
@@ -171,7 +170,7 @@ ls ./cache/synthetic_ae/
 # config.yaml  metadata.parquet  train/  val/
 
 # 3. Train a classifier on the cached embeddings
-# (scenario file uses DataSpec(source_type="ExportedDataset", ...))
+# (scenario file uses DataSpec(source=ExportedDataset(...)))
 nexuml train --scenario-file classifier_on_cache.py
 ```
 

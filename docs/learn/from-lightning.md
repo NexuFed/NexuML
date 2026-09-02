@@ -7,7 +7,7 @@ If you already use PyTorch Lightning, NexuML should feel familiar. This page map
 | PyTorch Lightning | NexuML equivalent | Notes |
 |---|---|---|
 | `LightningModule` | `PipelineLayer` (one per stage) | NexuML composes many layers into a single compiled module |
-| `LightningDataModule` | `DataSpec` + registered data source | Data source resolved by `source_type` key |
+| `LightningDataModule` | `DataSpec` + typed data definition | Definition builds the dataset runtime |
 | `Trainer(...)` | `TrainingSpec` | Optimizer, scheduler, max epochs declared in spec |
 | `ModelCheckpoint` callback | `CheckpointLoadSpec` | Resume from checkpoint using `--trainer-checkpoint` |
 | Training script | `ScenarioSpec` + `nexuml train` | CLI replaces the training script |

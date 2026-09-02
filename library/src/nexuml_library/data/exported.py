@@ -19,12 +19,24 @@ from PIL import Image
 from tensordict import TensorDict
 
 from nexuml.data.dataset import _KEEP_DATA, NexuDataset
+from nexuml.core.components import DataSourceDefinition
 
 
 @data_source("ExportedDataset")
-class ExportedDataset(NexuDataset):
+class ExportedDataset(DataSourceDefinition):
     """Load a dataset previously written by ``export_data_module``."""
 
+    root: str | Path
+    split: str | list[str] | None = None
+    feature_keys: list[str] | None = None
+    label_keys: list[str] | None = None
+    label_prefix: str = "label__"
+
+    def build(self) -> NexuDataset:
+        return _ExportedDatasetRuntime(**self.model_dump())
+
+
+class _ExportedDatasetRuntime(NexuDataset):
     def __init__(
         self,
         root: str | Path,
@@ -255,7 +267,7 @@ class ExportedDataset(NexuDataset):
         self,
         meta: pd.DataFrame,
         data=_KEEP_DATA,
-    ) -> "ExportedDataset":
+    ) -> "_ExportedDatasetRuntime":
         clone = copy.copy(self)
         clone.meta = meta.reset_index(drop=True)
         if data is not _KEEP_DATA:

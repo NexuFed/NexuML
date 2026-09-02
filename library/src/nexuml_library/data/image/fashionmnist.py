@@ -11,12 +11,23 @@ import torch
 from tensordict import TensorDict
 
 from nexuml.data.dataset import NexuDataset
+from nexuml.core.components import DataSourceDefinition
 
 
 @data_source("FashionMNISTDataset")
-class FashionMNISTDataset(NexuDataset):
+class FashionMNISTDataset(DataSourceDefinition):
     """In-memory FashionMNIST dataset backed by ``self.data`` and metadata labels."""
 
+    root: str | Path = "data/fashionmnist"
+    train: bool = True
+    download: bool = False
+    split: str | None = None
+
+    def build(self) -> NexuDataset:
+        return _FashionMNISTDatasetRuntime(**self.model_dump())
+
+
+class _FashionMNISTDatasetRuntime(NexuDataset):
     LABEL_NAMES = ["category"]
 
     def __init__(

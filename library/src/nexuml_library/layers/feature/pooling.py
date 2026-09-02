@@ -7,6 +7,7 @@ from typing import Literal, cast
 import torch
 
 from nexuml.core.base_layer import PipelineLayer
+from nexuml.core.components import LayerBuildContext, LayerDefinition
 from nexuml.core.discovery import layer
 
 #: Aliases for the canonical pooling types — accept the spec spelling
@@ -18,10 +19,10 @@ _POOLING_ALIASES: dict[str, str] = {
 
 
 @layer("TokenPool")
-class TokenPool(PipelineLayer):
+class TokenPool(LayerDefinition):
     """Pool tokens along a specified dimension.
 
-    Args:
+    Attributes:
         dim: Dimension to pool over (negative indexing supported, e.g. -2 for time).
         pooling_type:
             - "mean": average over the pool dim
@@ -38,6 +39,16 @@ class TokenPool(PipelineLayer):
         skip_first: Skip the first token (e.g. CLS token) before pooling.
     """
 
+    dim: int = -2
+    pooling_type: Literal["mean", "max", "std", "mean_std", "cls", "multilayer"] = "mean"
+    remove_dim: bool = True
+    skip_first: bool = False
+
+    def build(self, context: LayerBuildContext) -> PipelineLayer:
+        return _TokenPoolRuntime(**context.runtime_kwargs(), **self.model_dump())
+
+
+class _TokenPoolRuntime(PipelineLayer):
     def __init__(
         self,
         dim: int = -2,
@@ -171,15 +182,24 @@ class TokenPool(PipelineLayer):
 
 
 @layer("AttentionPool")
-class AttentionPool(PipelineLayer):
+class AttentionPool(LayerDefinition):
     """Learned attention pooling using a query token.
 
-    Args:
+    Attributes:
         dim: Token dimension to pool over.
         remove_dim: Whether to remove the pooled dimension.
         n_heads: Number of attention heads.
     """
 
+    dim: int = -2
+    remove_dim: bool = True
+    n_heads: int = 8
+
+    def build(self, context: LayerBuildContext) -> PipelineLayer:
+        return _AttentionPoolRuntime(**context.runtime_kwargs(), **self.model_dump())
+
+
+class _AttentionPoolRuntime(PipelineLayer):
     def __init__(
         self,
         dim: int = -2,
@@ -208,17 +228,26 @@ class AttentionPool(PipelineLayer):
 
 
 @layer("AttentiveStatisticsPool")
-class AttentiveStatisticsPool(PipelineLayer):
+class AttentiveStatisticsPool(LayerDefinition):
     """Attentive Statistics Pooling (Okabe et al., 2018).
 
     Computes attention-weighted mean and std, then projects to input dim.
 
-    Args:
+    Attributes:
         dim: Dimension to pool over.
         remove_dim: Whether to remove the pooled dimension.
         hidden_dim: Hidden dimension for the attention MLP.
     """
 
+    dim: int = -2
+    remove_dim: bool = True
+    hidden_dim: int = 128
+
+    def build(self, context: LayerBuildContext) -> PipelineLayer:
+        return _AttentiveStatisticsPoolRuntime(**context.runtime_kwargs(), **self.model_dump())
+
+
+class _AttentiveStatisticsPoolRuntime(PipelineLayer):
     def __init__(
         self,
         dim: int = -2,

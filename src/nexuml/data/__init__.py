@@ -2,12 +2,14 @@
 
 from nexuml.data.creator import NexuDataCreator
 from nexuml.data.dataset import NexuDataset
-from nexuml.data.loaders import register_loader_backend
+from nexuml.data.loaders.definitions import DaliLoader, TensorShardsLoader, TorchLoader
 from nexuml.data.module import NexuDataModule
 
 __all__ = [
+    "DaliLoader",
     "NexuDataCreator",
     "NexuDataModule",
     "NexuDataset",
-    "register_loader_backend",
+    "TensorShardsLoader",
+    "TorchLoader",
 ]

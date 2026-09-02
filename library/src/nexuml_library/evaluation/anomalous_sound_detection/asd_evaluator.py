@@ -16,6 +16,7 @@ import torch
 from tensordict import NonTensorData, TensorDict
 
 from nexuml.core.discovery import eval_algorithm
+from nexuml.core.components import EvalAlgorithmDefinition, EvalBuildContext
 from nexuml.evaluation.algorithm import EvalAlgorithm
 from nexuml_library.evaluation.anomalous_sound_detection._metrics import (
     _binary_f1,
@@ -65,13 +66,27 @@ def _axis_values_to_list(val: Any) -> list[Any]:
 
 
 @eval_algorithm("anomaly_evaluator")
-class AnomalyEvaluator(EvalAlgorithm):
+class AnomalyEvaluator(EvalAlgorithmDefinition):
     """Reporting algorithm: computes AUC, pAUC, and DCASE metrics.
 
     Reads anomaly_score from the pipeline output TensorDict. Does not produce
     any score keys — score production is handled by pipeline layers.
     """
 
+    score_key: str = "anomaly_score"
+    decision_key: str | None = None
+    group_keys: list[str] | None = None
+    dcase_metric_axes: dict[str, str] | None = None
+    max_fpr: float = 0.1
+
+    def build(self, context: EvalBuildContext) -> EvalAlgorithm:
+        return _AnomalyEvaluatorRuntime(
+            label_key=context.label_key or "y_true",
+            **self.model_dump(),
+        )
+
+
+class _AnomalyEvaluatorRuntime(EvalAlgorithm):
     def __init__(
         self,
         score_key: str = "anomaly_score",
@@ -164,9 +179,22 @@ class AnomalyEvaluator(EvalAlgorithm):
 
 
 @eval_algorithm("anomaly_visualizer")
-class AnomalyVisualizer(EvalAlgorithm):
+class AnomalyVisualizer(EvalAlgorithmDefinition):
     """Diagnostic visualization consuming declared score, feature, and grouping axes."""
 
+    score_key: str = "anomaly_score"
+    group_keys: list[str] | None = None
+    max_plot_samples: int = 2000
+
+    def build(self, context: EvalBuildContext) -> EvalAlgorithm:
+        return _AnomalyVisualizerRuntime(
+            feature_key=context.feature_key or "latent",
+            label_key=context.label_key or "y_true",
+            **self.model_dump(),
+        )
+
+
+class _AnomalyVisualizerRuntime(EvalAlgorithm):
     def __init__(
         self,
         score_key: str = "anomaly_score",

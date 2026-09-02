@@ -1,25 +1,26 @@
 """Log Mel Band Energy (LMBE) feature extractor layer."""
 
 from __future__ import annotations
-from nexuml.core.discovery import layer
-
 import logging
 
 import torch
+from pydantic import Field
 
 from nexuml.core.base_layer import PipelineLayer
+from nexuml.core.components import LayerBuildContext, LayerDefinition
+from nexuml.core.discovery import layer
 
 logger = logging.getLogger(__name__)
 
 
 @layer("LMBE")
-class LMBE(PipelineLayer):
+class LMBE(LayerDefinition):
     """Compute Log Mel Band Energies from a raw waveform.
 
     Uses torchaudio's MelSpectrogram + AmplitudeToDB pipeline.
     Optionally falls back to librosa for compatibility.
 
-    Args:
+    Attributes:
         n_mels: Number of Mel filterbanks.
         n_fft: FFT size.
         hop_length: Number of samples between frames.
@@ -33,8 +34,28 @@ class LMBE(PipelineLayer):
         use_librosa: Use librosa backend instead of torchaudio.
     """
 
+    sample_rate: int = Field(default=16000, gt=0)
+    n_mels: int = Field(default=128, gt=0)
+    n_fft: int = Field(default=1024, gt=0)
+    hop_length: int = Field(default=512, gt=0)
+    win_length: int | None = Field(default=None, gt=0)
+    power: int = Field(default=2, gt=0)
+    fmin: int = Field(default=0, ge=0)
+    fmax: int = Field(default=8000, gt=0)
+    mel_scale: str = "slaney"
+    pad_mode: str = "constant"
+    use_librosa: bool = False
+    to_db: bool = True
+    normalize: bool = False
+
+    def build(self, context: LayerBuildContext) -> PipelineLayer:
+        return _LMBERuntime(**context.runtime_kwargs(), **self.model_dump())
+
+
+class _LMBERuntime(PipelineLayer):
     def __init__(
         self,
+        sample_rate: int,
         n_mels: int = 128,
         n_fft: int = 1024,
         hop_length: int = 512,
@@ -42,10 +63,6 @@ class LMBE(PipelineLayer):
         power: int = 2,
         fmin: int = 0,
         fmax: int = 8000,
-        sr: int | None = None,
-        sample_rate: int | None = None,
-        # Common alias used by scenarios/configs; previously silently dropped.
-        sampling_rate: int | None = None,
         mel_scale: str = "slaney",
         pad_mode: str = "constant",
         use_librosa: bool = False,
@@ -54,12 +71,7 @@ class LMBE(PipelineLayer):
         **kwargs,
     ):
         super().__init__(**kwargs)
-        resolved_sr = (
-            sample_rate
-            if sample_rate is not None
-            else (sr if sr is not None else (sampling_rate if sampling_rate is not None else 16000))
-        )
-        self.sr = resolved_sr
+        self.sr = sample_rate
         self.power = power
         self.use_librosa = use_librosa
         self.mel_scale = mel_scale

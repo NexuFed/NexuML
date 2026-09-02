@@ -1,163 +1,94 @@
-# Add a custom layer
+# Add A Custom Layer
 
-This guide walks through adding a custom `PipelineLayer` to a library and using it from a `ScenarioSpec`.
+A custom layer has one public immutable definition and, when runtime state is needed, one private `PipelineLayer` implementation in the same module.
 
-## Prerequisites
-
-- NexuML installed (`uv sync`)
-- A library root registered with `nexuml library add` or installed via entry-point
-- For a new library: see [Register a library](register-library.md)
-
-## 1. Create the layer file
-
-Place the layer under `layers/<category>/` inside your library package:
-
-```
-my_library/
-└── src/
-    └── my_library/
-        ├── __init__.py
-        └── layers/
-            ├── __init__.py
-            └── feature/
-                ├── __init__.py
-                └── my_normalizer.py
-```
+## Define The Component
 
 ```python
-# my_library/src/my_library/layers/feature/my_normalizer.py
 import torch
-from nexuml.core.discovery import layer
+
 from nexuml.core.base_layer import PipelineLayer
+from nexuml.core.components import LayerBuildContext, LayerDefinition
+from nexuml.core.discovery import layer
 
 
-@layer("my_normalizer")
-class MyNormalizer(PipelineLayer):
-    """L2-normalize a feature tensor."""
-
-    def forward_tensor(self, features: torch.Tensor) -> torch.Tensor:
-        return torch.nn.functional.normalize(features, dim=-1)
-```
-
-## 2. Expose through package imports (optional)
-
-If you want IDE completion and clean imports, re-export from `__init__.py`:
-
-```python
-# my_library/src/my_library/layers/__init__.py
-from my_library.layers.feature.my_normalizer import MyNormalizer
-
-__all__ = ["MyNormalizer"]
-```
-
-The `@layer` decorator attaches metadata to the class regardless of import path. Discovery scans module-by-module so you don't need explicit re-exports for registration to work — they help IDEs.
-
-## 3. Register the local root
-
-If your library is not installed as a package:
-
-```bash
-nexuml library add my_library
-```
-
-Or install it:
-
-```bash
-uv pip install --link-mode=copy -e my_library
-```
-
-## 4. Verify registration
-
-```bash
-nexuml registry list layers
-```
-
-You should see `my_normalizer` in the output:
-
-```
-┏━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━┓
-┃ Type Key       ┃ Module                                                  ┃ Constructor Params ┃
-┡━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━┩
-│ my_normalizer  │ my_library.layers.feature.my_normalizer                 │                    │
-└────────────────┴─────────────────────────────────────────────────────────┴────────────────────┘
-```
-
-If the layer doesn't appear, run with `--verbose` to see import errors:
-
-```bash
-nexuml registry list layers --verbose
-```
-
-## 5. Use in a scenario
-
-Reference the layer by `type_key` in a `LayerSpec`:
-
-```python
-from nexuml.core.types import ScenarioSpec, PipelineSpec, LayerSpec, DataSpec, TrainingSpec
-
-ScenarioSpec(
-    name="normalized_ae",
-    data=DataSpec(source_type="synthetic", params={"feature_shape": [64], "num_samples": 500}),
-    training=TrainingSpec(lr=1e-3, max_epochs=5, loss_keys={"reconstruction_loss": 1.0}),
-    pipeline=PipelineSpec(stages={
-        "preprocess": [
-            LayerSpec(
-                type_key="my_normalizer",
-                keys_in=["features"],
-                keys_out=["features"],
-            ),
-        ],
-        "encode": [
-            LayerSpec(
-                type_key="linear_encoder",
-                keys_in=["features"],
-                keys_out=["z"],
-                params={"input_dim": 64, "output_dim": 8},
-            ),
-        ],
-    }),
-)
-```
-
-Or train from a trusted file:
-
-```bash
-nexuml train --scenario-file scenario.py
-```
-
-## Layer constructor parameters
-
-If your layer needs constructor arguments, declare them in `__init__`:
-
-```python
 @layer("scaled_relu")
-class ScaledReLU(PipelineLayer):
-    def __init__(self, scale: float = 1.0):
-        super().__init__()
+class ScaledReLU(LayerDefinition):
+    """Scale a ReLU activation."""
+
+    scale: float = 1.0
+
+    def build(self, context: LayerBuildContext) -> PipelineLayer:
+        return _ScaledReLURuntime(scale=self.scale, **context.runtime_kwargs())
+
+
+class _ScaledReLURuntime(PipelineLayer):
+    def __init__(self, scale: float, **kwargs):
+        super().__init__(**kwargs)
         self.scale = scale
 
-    def forward_tensor(self, x: torch.Tensor) -> torch.Tensor:
+    def forward_tensor(self, x: torch.Tensor, y=None) -> torch.Tensor:
         return torch.relu(x) * self.scale
 ```
 
-Pass them via `LayerSpec.params`:
+`ScaledReLU` declares semantic configuration. `_ScaledReLURuntime` owns mutable execution state. Input shapes, TensorDict keys, labels, shared storage, and scheduling come from `LayerBuildContext`, not definition fields.
+
+Pydantic validates definition values immediately:
 
 ```python
-LayerSpec(type_key="scaled_relu", keys_in=["x"], keys_out=["x"], params={"scale": 2.0})
+ScaledReLU(scale=2.0)
+ScaledReLU.model_json_schema()
 ```
 
-## Expected output
+## Use It In Python
 
-After running `nexuml train --scenario-file scenario.py`, training proceeds normally with your custom layer in the pipeline.
+```python
+from nexuml.core.types import LayerSpec
+from my_library.layers.scaled_relu import ScaledReLU
 
-## Implementation map
+layer = LayerSpec(
+    component=ScaledReLU(scale=2.0),
+    keys_in=["features"],
+    keys_out=["activated"],
+)
+```
 
-- `src/nexuml/core/discovery.py` — `@layer` decorator, `Scanner`
-- `src/nexuml/core/base_layer.py` — `PipelineLayer` base class
-- `src/nexuml/core/registry.py` — layer registry
+Do not look the component up by its decorator name in Python. The registered name is for discovery, CLI inspection, and persisted YAML identity.
 
-## See also
+## Register The Library
+
+For local development:
+
+```bash
+nexuml library add /path/to/my_library
+nexuml registry list layers
+```
+
+For an installed package:
+
+```toml
+[project.entry-points."nexuml.libraries"]
+my-library = "my_library"
+```
+
+The registry output reports `scaled_relu`, version `1`, its concrete type, and the `scale` field sourced from `model_json_schema()`.
+
+## Persistence
+
+A resolved config stores stable identity rather than a module path:
+
+```yaml
+component:
+  type: scaled_relu
+  version: '1'
+  params:
+    scale: 2.0
+```
+
+The library must be discoverable when that YAML is restored.
+
+## See Also
 
 - [Discovery decorators](../reference/decorators.md)
-- [Custom composed scenario](custom-scenario.md)
-- [Registry inspection](../reference/registry.md)
+- [Custom data source](custom-data-source.md)
+- [Custom library](custom-library.md)

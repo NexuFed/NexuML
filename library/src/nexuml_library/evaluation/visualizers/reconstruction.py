@@ -14,6 +14,7 @@ import torch.nn.functional as F
 from tensordict import TensorDict
 
 from nexuml.evaluation.algorithm import EvalAlgorithm
+from nexuml.core.components import EvalAlgorithmDefinition, EvalBuildContext
 from nexuml.evaluation.storage import ReservoirTensorDictBuffer
 from nexuml_library.evaluation.visualizers._plotting import format_label, log_figure
 
@@ -21,11 +22,25 @@ logger = logging.getLogger(__name__)
 
 
 @eval_algorithm("reconstruction_visualizer")
-class ReconstructionVisualizer(EvalAlgorithm):
+class ReconstructionVisualizer(EvalAlgorithmDefinition):
     """Shows side-by-side original vs reconstructed samples."""
 
-    type_key = "reconstruction_visualizer"
+    reconstructed_key: str
+    mask_key: str | None = None
+    label_keys: list[str] | None = None
+    n_samples: int = 8
+    patch_size: int | tuple[int, int] | None = None
+    storage_backend: str = "memory"
+    storage_path: str | None = None
 
+    def build(self, context: EvalBuildContext) -> EvalAlgorithm:
+        return _ReconstructionVisualizerRuntime(
+            feature_key=context.feature_key,
+            **self.model_dump(),
+        )
+
+
+class _ReconstructionVisualizerRuntime(EvalAlgorithm):
     def __init__(
         self,
         feature_key: str | None = None,

@@ -7,11 +7,12 @@ from pathlib import Path
 from pydantic import Field
 from ruamel.yaml import YAML
 
+from nexuml.core.serialization import lower_model, restore_model_data
 from nexuml.core.types import PipelineSpec, ScenarioSpec
 
 
 class ResolvedConfig(ScenarioSpec):
-    """Backward-compatible alias for a fully resolved scenario document."""
+    """Fully resolved, portable scenario document."""
 
     name: str = ""
     pipeline: PipelineSpec = Field(default_factory=PipelineSpec)
@@ -20,7 +21,7 @@ class ResolvedConfig(ScenarioSpec):
     def from_yaml(cls, yaml_str: str) -> "ResolvedConfig":
         yaml = YAML()
         data = yaml.load(yaml_str) or {}
-        return cls.model_validate(data)
+        return cls.model_validate(restore_model_data(data, cls))
 
     def to_yaml(self) -> str:
         yaml = YAML()
@@ -29,7 +30,7 @@ class ResolvedConfig(ScenarioSpec):
         import io
 
         stream = io.StringIO()
-        yaml.dump(self.model_dump(mode="json"), stream)
+        yaml.dump(lower_model(self), stream)
         return stream.getvalue()
 
     def save(self, path: Path) -> None:
@@ -42,7 +43,7 @@ class ResolvedConfig(ScenarioSpec):
 
     @classmethod
     def from_scenario(cls, scenario: ScenarioSpec) -> "ResolvedConfig":
-        return cls.model_validate(scenario.model_dump())
+        return cls(**{name: getattr(scenario, name) for name in ScenarioSpec.model_fields})
 
     def to_scenario(self) -> ScenarioSpec:
-        return ScenarioSpec.model_validate(self.model_dump())
+        return ScenarioSpec(**{name: getattr(self, name) for name in ScenarioSpec.model_fields})

@@ -11,6 +11,7 @@ Evaluation in NexuML runs automatically at the end of `nexuml train`. Post-train
 
 ```python
 from nexuml.core.types import ScenarioSpec, EvaluationSpec, EvalAlgorithmSpec
+from nexuml_library.evaluation.anomalous_sound_detection.asd_evaluator import AnomalyEvaluator
 
 ScenarioSpec(
     name="my_scenario",
@@ -18,9 +19,8 @@ ScenarioSpec(
         metrics=["mse", "mae"],
         algorithms=[
             EvalAlgorithmSpec(
-                type="knn1",
-                feature_key="z",
-                label_key="target",
+                algorithm=AnomalyEvaluator(score_key="anomaly_score"),
+                label_key="y_true",
             ),
         ],
         test_result_metrics="none",   # "none", "all", or list of metric names
@@ -41,9 +41,8 @@ ScenarioSpec(
 
 | Field | Type | Description |
 |---|---|---|
-| `type` | `str` | Registered eval algorithm key (e.g. `"knn1"`, `"gmm"`) |
-| `name` | `str \| None` | Display name in results (defaults to `type`) |
-| `params` | `dict` | Parameters forwarded to the algorithm constructor |
+| `algorithm` | `EvalAlgorithmDefinition` | Typed algorithm configuration |
+| `name` | `str \| None` | Display name in results |
 | `enabled` | `bool` | Set `False` to skip this algorithm |
 | `axis_keys` | `list[AxisKeySpec]` | Keys for grouping evaluation results |
 | `feature_key` | `str \| None` | TensorDict key for input features |
@@ -91,24 +90,24 @@ This is required when `nexuml tune --metric` references an evaluation metric suc
 
 ## Custom eval algorithms
 
-Register a custom algorithm with `@eval_algorithm`:
+Register a typed custom definition with `@eval_algorithm`:
 
 ```python
+from nexuml.core.components import EvalAlgorithmDefinition, EvalBuildContext
 from nexuml.core.discovery import eval_algorithm
 
 @eval_algorithm("my_eval")
-class MyEval:
-    def fit(self, features, labels):
-        self.mean_ = features.mean(0)
+class MyEval(EvalAlgorithmDefinition):
+    scale: float = 1.0
 
-    def score(self, features):
-        return ((features - self.mean_) ** 2).sum(-1)
+    def build(self, context: EvalBuildContext):
+        return _MyEvalRuntime(scale=self.scale)
 ```
 
 Use in a scenario:
 
 ```python
-EvalAlgorithmSpec(type="my_eval", feature_key="z")
+EvalAlgorithmSpec(algorithm=MyEval(scale=2.0), feature_key="z")
 ```
 
 ## Inspect available algorithms

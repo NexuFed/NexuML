@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from nexuml.core.types import DataSpec, DatasetSpec
+from nexuml_library.data.image.cifar import CIFAR100Dataset, CIFAR10Dataset
 from nexuml_library.scenarios.data.roots import resolve_data_root
 
 
@@ -17,11 +18,9 @@ def cifar10_data(
     """
     resolved_root = resolve_data_root(root)
     return DataSpec(
-        source_type="cifar10",
         datasets=[
             DatasetSpec(
-                type_key="CIFAR10Dataset",
-                params={"root": str(resolved_root), "train": True, "download": download},
+                source=CIFAR10Dataset(root=resolved_root, train=True, download=download),
                 modality="image",
                 split_type="all",
             ),
@@ -43,11 +42,9 @@ def cifar100_data(
     """
     resolved_root = resolve_data_root(root)
     return DataSpec(
-        source_type="cifar100",
         datasets=[
             DatasetSpec(
-                type_key="CIFAR100Dataset",
-                params={"root": str(resolved_root), "train": True, "download": download},
+                source=CIFAR100Dataset(root=resolved_root, train=True, download=download),
                 modality="image",
                 split_type="all",
             ),

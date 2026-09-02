@@ -5,9 +5,11 @@ from __future__ import annotations
 from typing import Any
 
 import torch
+from pydantic import Field
 from tensordict import TensorDict
 
 from nexuml.core.discovery import layer
+from nexuml.core.components import LayerBuildContext, LayerDefinition
 from nexuml.core.post_train_layer import PostTrainFitLayer
 from nexuml_library.evaluation.anomalous_sound_detection.decision import (
     DecisionRule,
@@ -17,12 +19,28 @@ from nexuml_library.layers.head._td_utils import get_fit_mask_from_td
 
 
 @layer("decision_rule_pipeline_layer")
-class DecisionRulePipelineLayer(PostTrainFitLayer):
+class DecisionRulePipelineLayer(LayerDefinition):
     """Fits a decision threshold on train scores; emits binary decisions at inference.
 
     Replaces DecisionRuleAlgorithm as a proper pipeline layer.
     """
 
+    rule_type: str = "percentile"
+    rule_params: dict = Field(default_factory=dict)
+    fit_mask_key: str | None = None
+    fit_label_key: str | None = None
+    normal_label_value: int | float = 0
+
+    def build(self, context: LayerBuildContext) -> PostTrainFitLayer:
+        return _DecisionRulePipelineLayerRuntime(
+            score_key=context.keys_in[0],
+            decision_key=context.keys_out[0],
+            **context.runtime_kwargs(),
+            **self.model_dump(),
+        )
+
+
+class _DecisionRulePipelineLayerRuntime(PostTrainFitLayer):
     def __init__(
         self,
         score_key: str = "anomaly_score",

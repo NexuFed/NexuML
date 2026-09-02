@@ -8,11 +8,12 @@ from typing import cast
 from tensordict import TensorDict
 
 from nexuml.core.base_layer import PipelineLayer
+from nexuml.core.components import LayerBuildContext, LayerDefinition
 from nexuml.core.discovery import layer
 
 
 @layer("ClassificationLoss")
-class ClassificationLoss(PipelineLayer):
+class ClassificationLoss(LayerDefinition):
     """Computes classification loss from logits and labels.
 
     keys_in: [logits_key]
@@ -20,6 +21,18 @@ class ClassificationLoss(PipelineLayer):
     Reads labels from y TensorDict using label_key.
     """
 
+    loss_type: str = "cross_entropy"
+    label_smoothing: float = 0.0
+
+    def build(self, context: LayerBuildContext) -> PipelineLayer:
+        return _ClassificationLossRuntime(
+            loss_type=self.loss_type,
+            label_smoothing=self.label_smoothing,
+            **context.runtime_kwargs(),
+        )
+
+
+class _ClassificationLossRuntime(PipelineLayer):
     def __init__(
         self,
         input_sizes: dict[str, tuple],
@@ -72,8 +85,13 @@ class ClassificationLoss(PipelineLayer):
 
 
 @layer("LogitsToClass")
-class LogitsToClass(PipelineLayer):
+class LogitsToClass(LayerDefinition):
     """Converts class logits to predicted class integers via argmax."""
 
+    def build(self, context: LayerBuildContext) -> PipelineLayer:
+        return _LogitsToClassRuntime(**context.runtime_kwargs())
+
+
+class _LogitsToClassRuntime(PipelineLayer):
     def forward_tensor(self, x: torch.Tensor, y: torch.Tensor | None = None) -> torch.Tensor:
         return x.argmax(dim=-1).float()
