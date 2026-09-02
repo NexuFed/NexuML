@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from nexuml.core.types import DataSpec, DatasetSpec, TargetSpec
-from nexuml_library.data.synthetic import SyntheticDataset
+from nexuml_library.data.synthetic import SyntheticDataset, TargetConfig
 
 
 def synthetic_vector_data(
@@ -20,17 +20,17 @@ def synthetic_vector_data(
     Returns:
         DataSpec: Synthetic dataset specification.
     """
-    target_dicts = []
+    target_configs = []
     for t in targets or []:
-        d = {
-            "type": t.type,
-            "key": t.key,
-            "num_classes": t.num_classes,
-            "num_outputs": t.num_outputs,
-            "positive_fraction": t.positive_fraction,
-            "label_density": 0.3,
-        }
-        target_dicts.append(d)
+        target_configs.append(
+            TargetConfig(
+                type=t.type,
+                key=t.key,
+                num_classes=t.num_classes,
+                num_outputs=t.num_outputs,
+                positive_fraction=t.positive_fraction,
+            )
+        )
 
     return DataSpec(
         targets=targets or [],
@@ -47,7 +47,7 @@ def synthetic_vector_data(
                     noise_type=noise_type,
                     num_clusters=num_clusters,
                     seed=seed,
-                    targets=target_dicts,
+                    targets=target_configs,
                     feature_key=feature_key,
                 ),
             )

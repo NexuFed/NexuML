@@ -47,7 +47,7 @@ def audioset_data(
                 f"Resolved root: {root}. Expected layout: {expected_hf_audioset_layout(root)}. "
                 "Set NEXUML_DATA_ROOT, pass data_root, or call audioset_data(download=True)."
             )
-    len_seconds = clip_num_samples / float(sample_rate)
+    len_seconds = clip_num_samples / sample_rate
     datasets = [
         DatasetSpec(
             source=AudiosetDataset(

@@ -422,7 +422,7 @@ def _decode_webdataset_component(
         array = np.asarray(Image.open(io.BytesIO(payload)))
         return torch.from_numpy(_layout_from_payload(array, layout, modality).copy())
     if encoding == "wav":
-        import soundfile as sf  # ty: ignore[unresolved-import]
+        import soundfile as sf
 
         audio, _sample_rate = sf.read(io.BytesIO(payload), dtype="float32", always_2d=False)
         return torch.from_numpy(_layout_from_payload(np.asarray(audio), layout, modality).copy())

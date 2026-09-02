@@ -71,6 +71,7 @@ class LayerDefinition(ComponentDefinition):
     """Semantic configuration that materializes a pipeline layer."""
 
     kind = "layer"
+    requires_post_train_fit: ClassVar[bool] = False
 
     @abstractmethod
     def build(self, context: LayerBuildContext) -> Any:

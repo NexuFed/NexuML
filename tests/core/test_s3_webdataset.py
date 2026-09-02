@@ -13,6 +13,7 @@ import torch
 import yaml
 
 from nexuml.core.types import LoaderSpec, ScenarioSpec
+from nexuml.data.loaders.definitions import DaliLoader
 from nexuml.data.export.webdataset import WebDatasetBackend
 from nexuml.data.exported import ExportedDataset
 
@@ -216,7 +217,9 @@ def test_dali_materializes_s3_paths_and_preserves_rank_sharding(monkeypatch):
 
     monkeypatch.setattr(dali_multimodal, "build_webdataset_loader", build_webdataset_loader)
 
-    module = SimpleNamespace(loader_spec=LoaderSpec(backend="dali", batch_size=8, num_workers=1))
+    module = SimpleNamespace(
+        loader_spec=LoaderSpec(backend=DaliLoader(), batch_size=8, num_workers=1)
+    )
     dali_backend.DaliLoaderBackend().create_loader(module, dataset, split="train")
 
     assert Path(captured["shard_paths"][0]).read_bytes() == b"train tar"

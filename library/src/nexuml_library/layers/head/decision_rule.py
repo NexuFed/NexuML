@@ -25,6 +25,8 @@ class DecisionRulePipelineLayer(LayerDefinition):
     Replaces DecisionRuleAlgorithm as a proper pipeline layer.
     """
 
+    requires_post_train_fit = True
+
     rule_type: str = "percentile"
     rule_params: dict = Field(default_factory=dict)
     fit_mask_key: str | None = None

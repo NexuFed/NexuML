@@ -110,7 +110,7 @@ class AudiosetDataset(DataSourceDefinition):
     data_dir: str | Path = "data/audioset/eval"
     meta_dir: str | Path = "data/AudioSet/meta"
     perform_checks: bool = True
-    len_seconds: int = 5
+    len_seconds: float = 5.0
     sample_rate: int = 16000
 
     def build(self) -> NexuDataset:
@@ -128,7 +128,7 @@ class _AudiosetDatasetRuntime(NexuDataset):
         data_dir: Union[str, Path] = "data/audioset/eval",
         meta_dir: Union[str, Path] = "data/AudioSet/meta",
         perform_checks: bool = True,
-        len_seconds: int = 5,
+        len_seconds: float = 5.0,
         sample_rate: int = 16000,
     ):
         self.data_dir = Path(data_dir)
