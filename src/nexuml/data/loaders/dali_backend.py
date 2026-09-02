@@ -261,14 +261,17 @@ class DaliLoaderBackend:
                         dtype="int64",
                     )
                 )
-                shard_paths = [
-                    str(root_dataset.root / rel_path)
-                    for rel_path in cast(list[str], root_dataset.extra.get("shards", []) or [])
-                ]
-                index_paths = [
-                    str(root_dataset.root / rel_path)
-                    for rel_path in cast(list[str], root_dataset.extra.get("index_paths", []) or [])
-                ] or None
+                # DALI's S3 client only supports virtual-host addressing. Stage through
+                # boto3 so path-style S3-compatible endpoints remain usable.
+                shard_paths = root_dataset._materialize_webdataset_paths(
+                    cast(list[str], root_dataset.extra.get("shards", []) or [])
+                )
+                index_paths = (
+                    root_dataset._materialize_webdataset_paths(
+                        cast(list[str], root_dataset.extra.get("index_paths", []) or [])
+                    )
+                    or None
+                )
                 loader = build_webdataset_loader(
                     shard_paths=shard_paths,
                     index_paths=index_paths,

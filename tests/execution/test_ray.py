@@ -134,26 +134,58 @@ def test_connect_uses_working_dir_and_uv(monkeypatch):
     ray = pytest.importorskip("ray")
     captured = {}
 
+    monkeypatch.setenv("AWS_ENDPOINT_URL", "http://seaweed-s3:8333")
+    monkeypatch.setenv("AWS_ACCESS_KEY_ID", "anonymous")
+    monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "anonymous")
     monkeypatch.setattr(ray, "is_initialized", lambda: False)
     monkeypatch.setattr(ray, "init", lambda **kwargs: captured.update(kwargs))
+    monkeypatch.setattr(
+        ray,
+        "get_runtime_context",
+        lambda: SimpleNamespace(
+            runtime_env={**captured["runtime_env"], "working_dir": "gcs://project.zip"}
+        ),
+    )
 
     scenario = ScenarioSpec.model_validate(
         {
             "name": "cluster",
             "execution": {
                 "kind": "ray",
+                "storage_path": "s3://runs/nexuml",
                 "target": {
                     "kind": "cluster",
                     "address": "ray://cluster:10001",
                     "working_dir": ".",
+                    "py_executable": (
+                        "uv run --python 3.12 --locked --extra ray --extra s3 --extra dali python"
+                    ),
                 },
             },
         }
     )
     assert isinstance(scenario.execution, RayExecutionSpec)
 
-    ray_execution._connect(scenario.execution)
+    runtime_env = ray_execution._connect(scenario.execution)
 
     assert captured["address"] == "ray://cluster:10001"
     assert captured["runtime_env"]["working_dir"] == "."
-    assert captured["runtime_env"]["py_executable"] == "uv run"
+    assert runtime_env["working_dir"] == "gcs://project.zip"
+    assert captured["runtime_env"]["py_executable"] == (
+        "uv run --python 3.12 --locked --extra ray --extra s3 --extra dali python"
+    )
+    assert captured["runtime_env"]["env_vars"] == {
+        "RAY_ENABLE_UV_RUN_RUNTIME_ENV": "0",
+        "RAY_TRAIN_V2_ENABLED": "1",
+        "RAY_TRAIN_WORKER_GROUP_START_TIMEOUT_S": "600",
+        "TIMEOUT_FOR_SPECIFIC_SERVER_S": "600",
+        "AWS_ACCESS_KEY_ID": "anonymous",
+        "AWS_SECRET_ACCESS_KEY": "anonymous",
+        "AWS_ENDPOINT_URL": "http://seaweed-s3:8333",
+        "AWS_REQUEST_CHECKSUM_CALCULATION": "WHEN_REQUIRED",
+        "AWS_RESPONSE_CHECKSUM_VALIDATION": "WHEN_REQUIRED",
+    }
+    run_config = ray_execution._run_config(scenario, scenario.execution, runtime_env)
+    assert run_config.worker_runtime_env == runtime_env
+    assert run_config.storage_path == "runs/nexuml"
+    assert run_config.storage_filesystem.type_name == "s3"

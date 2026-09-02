@@ -166,6 +166,7 @@ class RayClusterTarget(SpecModel):
     kind: Literal["cluster"] = "cluster"
     address: str = "auto"
     working_dir: str | None = "."
+    py_executable: str | None = None
 
 
 class RayExecutionSpec(SpecModel):

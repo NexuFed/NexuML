@@ -6,9 +6,9 @@ import dataclasses
 import logging
 import tempfile
 from collections.abc import Callable, Iterable, Sequence
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 from pathlib import Path
-from typing import TypeAlias
+from typing import TypeAlias, overload
 
 import pandas as pd
 import torch
@@ -30,6 +30,42 @@ BatchTransform: TypeAlias = Callable[
 ]
 
 
+@overload
+def export_data_module(
+    data_module: NexuDataModule,
+    path: Path,
+    *,
+    backend: str = "numpy",
+    splits: Sequence[str] | None = None,
+    transform: BatchTransform | None = None,
+    x_keys: Sequence[str] | None = None,
+    y_keys: Sequence[str] | None = None,
+    include_labels: bool = True,
+    label_prefix: str = "label__",
+    dtype: object | None = None,
+    device: torch.device | str | None = None,
+    **backend_kwargs: object,
+) -> Path: ...
+
+
+@overload
+def export_data_module(
+    data_module: NexuDataModule,
+    path: str,
+    *,
+    backend: str = "numpy",
+    splits: Sequence[str] | None = None,
+    transform: BatchTransform | None = None,
+    x_keys: Sequence[str] | None = None,
+    y_keys: Sequence[str] | None = None,
+    include_labels: bool = True,
+    label_prefix: str = "label__",
+    dtype: object | None = None,
+    device: torch.device | str | None = None,
+    **backend_kwargs: object,
+) -> Path | str: ...
+
+
 def export_data_module(
     data_module: NexuDataModule,
     path: str | Path,
@@ -43,7 +79,7 @@ def export_data_module(
     label_prefix: str = "label__",
     dtype: object | None = None,
     device: torch.device | str | None = None,
-    **backend_kwargs,
+    **backend_kwargs: object,
 ) -> Path | str:
     """Export the data exactly as seen through a configured data module.
 
@@ -69,51 +105,47 @@ def export_data_module(
         ],
         ignore_index=True,
     )
-    common = dict(
-        backend=backend,
-        num_samples=num_samples,
-        metadata=metadata,
-        modality=getattr(data_module.dataset, "modality", "audio"),
-        label_names=getattr(data_module.dataset, "label_names", []),
-        num_classes=getattr(data_module.dataset, "num_classes", {}),
-        source_datasets=list(
-            getattr(getattr(data_module, "dataset", None), "meta_data_list", {}).keys()
-        ),
-        batch_iterables=[
-            (
-                split_name,
-                data_module._loader(dataset_split, split=split_name, shuffle=False),
-            )
-            for split_name, dataset_split in split_datasets
-        ],
-        transform=transform,
-        x_keys=x_keys,
-        y_keys=y_keys,
-        include_labels=include_labels,
-        label_prefix=label_prefix,
-        dtype=dtype,
-        device=device,
-    )
-
     path_text = str(path)
-    if is_s3_uri(path_text):
+    remote = is_s3_uri(path_text)
+    if remote:
         if backend != "webdataset":
             raise ValueError("S3 dataset export currently supports backend='webdataset' only")
-        remote_kwargs = {**backend_kwargs, "s3_uri": path_text}
-        with tempfile.TemporaryDirectory(prefix="nexuml-webdataset-") as temp_dir:
-            _export_batches(
-                export_dir=Path(temp_dir),
-                backend_kwargs=remote_kwargs,
-                **common,
-            )
-        return path_text
+        backend_kwargs["s3_uri"] = path_text
 
-    export_dir = Path(path)
-    return _export_batches(
-        export_dir=export_dir,
-        backend_kwargs=backend_kwargs,
-        **common,
-    )
+    with ExitStack() as stack:
+        export_dir = (
+            Path(stack.enter_context(tempfile.TemporaryDirectory(prefix="nexuml-webdataset-")))
+            if remote
+            else Path(path)
+        )
+        result = _export_batches(
+            export_dir=export_dir,
+            backend=backend,
+            num_samples=num_samples,
+            metadata=metadata,
+            modality=getattr(data_module.dataset, "modality", "audio"),
+            label_names=getattr(data_module.dataset, "label_names", []),
+            num_classes=getattr(data_module.dataset, "num_classes", {}),
+            source_datasets=list(
+                getattr(getattr(data_module, "dataset", None), "meta_data_list", {}).keys()
+            ),
+            batch_iterables=[
+                (
+                    split_name,
+                    data_module._loader(dataset_split, split=split_name, shuffle=False),
+                )
+                for split_name, dataset_split in split_datasets
+            ],
+            transform=transform,
+            x_keys=x_keys,
+            y_keys=y_keys,
+            include_labels=include_labels,
+            label_prefix=label_prefix,
+            dtype=dtype,
+            device=device,
+            backend_kwargs=backend_kwargs,
+        )
+    return path_text if remote else result
 
 
 def _export_batches(

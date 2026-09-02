@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import builtins
 import importlib
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
@@ -79,9 +80,7 @@ class S3Client:
             raise RuntimeError("S3 support requires the nexuml[s3] extra") from error
 
         session = (
-            boto3.session.Session(profile_name=self.profile)
-            if self.profile
-            else boto3.Session()
+            boto3.session.Session(profile_name=self.profile) if self.profile else boto3.Session()
         )
         kwargs: dict[str, Any] = {}
         if self.endpoint_url:
@@ -116,7 +115,7 @@ class S3Client:
         path = source if isinstance(source, S3Path) else S3Path.parse(source)
         self._get_client().download_file(path.bucket, path.key, str(destination))
 
-    def list(self, prefix: str | S3Path) -> list[S3Path]:
+    def list(self, prefix: str | S3Path) -> builtins.list[S3Path]:
         """List object paths below an S3 prefix.
 
         Returns:

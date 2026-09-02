@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import os
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, cast
 
 import lightning as L
 
@@ -35,8 +36,7 @@ def _ray_strategy(name: str, params: dict[str, Any]) -> Any:
     if name == "deepspeed":
         return RayDeepSpeedStrategy(**params)
     raise RayExecutionError(
-        "Ray supports training.strategy values 'auto', 'ddp', 'fsdp', or 'deepspeed'; "
-        f"got {name!r}"
+        f"Ray supports training.strategy values 'auto', 'ddp', 'fsdp', or 'deepspeed'; got {name!r}"
     )
 
 
@@ -70,7 +70,7 @@ def _prepare_session_trainer(session: Any) -> L.Trainer:
         devices="auto",
         strategy=_ray_strategy(training.strategy, training.strategy_params),
         plugins=[RayLightningEnvironment()],
-        precision=training.precision,  # ty: ignore[invalid-argument-type]
+        precision=training.precision,
         default_root_dir=str(session.log_dir),
         enable_progress_bar=session.enable_progress_bar,
         enable_model_summary=False,
@@ -177,13 +177,17 @@ def _scaling_config(execution: RayExecutionSpec) -> Any:
 
     resources = dict(execution.resources_per_worker)
     return ScalingConfig(
-        num_workers=execution.workers,
+        num_workers=cast(Any, execution.workers),
         use_gpu=resources.get("GPU", 0) > 0,
         resources_per_worker=resources,
     )
 
 
-def _run_config(scenario: ScenarioSpec, execution: RayExecutionSpec) -> Any:
+def _run_config(
+    scenario: ScenarioSpec,
+    execution: RayExecutionSpec,
+    worker_runtime_env: dict[str, Any],
+) -> Any:
     """Build Ray's native run configuration.
 
     Returns:
@@ -197,11 +201,44 @@ def _run_config(scenario: ScenarioSpec, execution: RayExecutionSpec) -> Any:
     except ImportError as error:
         raise RayExecutionError("Ray execution requires the nexuml[ray] extra") from error
 
-    return RunConfig(name=scenario.name, storage_path=execution.storage_path)
+    storage_path = execution.storage_path
+    endpoint = os.getenv("AWS_ENDPOINT_URL_S3") or os.getenv("AWS_ENDPOINT_URL")
+    storage_filesystem = None
+    if storage_path and storage_path.startswith("s3://") and endpoint:
+        from pyarrow.fs import S3FileSystem
+
+        scheme, separator, endpoint_override = endpoint.partition("://")
+        if not separator:
+            scheme = "https"
+            endpoint_override = endpoint
+        access_key = os.getenv("AWS_ACCESS_KEY_ID")
+        secret_key = os.getenv("AWS_SECRET_ACCESS_KEY")
+        anonymous = access_key == secret_key == "anonymous"
+        storage_filesystem = S3FileSystem(
+            access_key=None if anonymous else access_key,
+            secret_key=None if anonymous else secret_key,
+            session_token=os.getenv("AWS_SESSION_TOKEN"),
+            anonymous=anonymous,
+            region=os.getenv("AWS_REGION", os.getenv("AWS_DEFAULT_REGION")),
+            scheme=scheme,
+            endpoint_override=endpoint_override.rstrip("/"),
+            background_writes=False,
+        )
+        storage_path = storage_path.removeprefix("s3://").partition("?")[0]
+
+    return cast(Any, RunConfig)(
+        name=scenario.name,
+        storage_path=storage_path,
+        storage_filesystem=storage_filesystem,
+        worker_runtime_env=worker_runtime_env,
+    )
 
 
-def _connect(execution: RayExecutionSpec) -> None:
+def _connect(execution: RayExecutionSpec) -> dict[str, Any]:
     """Connect to the configured existing cluster without wrapping Ray Jobs.
+
+    Returns:
+        Runtime environment shared by the Ray Client server and Train workers.
 
     Raises:
         RayExecutionError: If Ray is unavailable.
@@ -211,19 +248,43 @@ def _connect(execution: RayExecutionSpec) -> None:
     except ImportError as error:
         raise RayExecutionError("Ray execution requires the nexuml[ray] extra") from error
 
-    if ray.is_initialized():
-        return
+    if os.getenv("AWS_ENDPOINT_URL_S3") or os.getenv("AWS_ENDPOINT_URL"):
+        os.environ.setdefault("AWS_REQUEST_CHECKSUM_CALCULATION", "WHEN_REQUIRED")
+        os.environ.setdefault("AWS_RESPONSE_CHECKSUM_VALIDATION", "WHEN_REQUIRED")
 
-    runtime_env: dict[str, Any] = {"env_vars": {"RAY_TRAIN_V2_ENABLED": "1"}}
+    env_vars = {
+        name: os.environ[name]
+        for name in (
+            "AWS_ACCESS_KEY_ID",
+            "AWS_SECRET_ACCESS_KEY",
+            "AWS_SESSION_TOKEN",
+            "AWS_DEFAULT_REGION",
+            "AWS_REGION",
+            "AWS_ENDPOINT_URL",
+            "AWS_ENDPOINT_URL_S3",
+            "AWS_CA_BUNDLE",
+            "AWS_REQUEST_CHECKSUM_CALCULATION",
+            "AWS_RESPONSE_CHECKSUM_VALIDATION",
+        )
+        if name in os.environ
+    }
+    runtime_env: dict[str, Any] = {
+        "env_vars": {
+            "RAY_ENABLE_UV_RUN_RUNTIME_ENV": "0",
+            "RAY_TRAIN_V2_ENABLED": "1",
+            "RAY_TRAIN_WORKER_GROUP_START_TIMEOUT_S": "600",
+            "TIMEOUT_FOR_SPECIFIC_SERVER_S": "600",
+            **env_vars,
+        }
+    }
     working_dir = execution.target.working_dir
     if working_dir:
-        runtime_env.update(
-            {
-                "working_dir": working_dir,
-                "py_executable": "uv run",
-            }
-        )
-    ray.init(address=execution.target.address, runtime_env=runtime_env)
+        runtime_env["working_dir"] = working_dir
+    if execution.target.py_executable:
+        runtime_env["py_executable"] = execution.target.py_executable
+    if not ray.is_initialized():
+        ray.init(address=execution.target.address, runtime_env=runtime_env)
+    return dict(ray.get_runtime_context().runtime_env)
 
 
 def run_ray(scenario: ScenarioSpec) -> Any:
@@ -241,7 +302,7 @@ def run_ray(scenario: ScenarioSpec) -> Any:
         raise RayExecutionError("run_ray requires scenario.execution.kind='ray'")
 
     _ensure_distributed_semantics(scenario)
-    _connect(execution)
+    runtime_env = _connect(execution)
     try:
         from ray.train.torch import TorchTrainer
     except ImportError as error:
@@ -251,7 +312,7 @@ def run_ray(scenario: ScenarioSpec) -> Any:
         train_loop_per_worker=train_loop_per_worker,
         train_loop_config={"scenario": scenario.model_dump(mode="json")},
         scaling_config=_scaling_config(execution),
-        run_config=_run_config(scenario, execution),
+        run_config=_run_config(scenario, execution, runtime_env),
     )
     return trainer.fit()
 

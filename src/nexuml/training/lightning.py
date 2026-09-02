@@ -1234,10 +1234,19 @@ def _hydrate_scenario_from_dataset(
     if len(dataset) == 0:
         return scenario
 
-    x_sample, _y_sample = dataset[0]
+    feature_shapes = cast(dict[str, tuple[int, ...]], getattr(dataset, "feature_shapes", {}))
     input_shapes = {
-        key: list(value.shape) for key, value in x_sample.items() if isinstance(value, torch.Tensor)
+        key: list(feature_shapes[key])
+        for key in getattr(dataset, "x_keys", feature_shapes)
+        if key in feature_shapes
     }
+    if not input_shapes:
+        x_sample, _y_sample = dataset[0]
+        input_shapes = {
+            key: list(value.shape)
+            for key, value in x_sample.items()
+            if isinstance(value, torch.Tensor)
+        }
     merged_input_shapes = dict(scenario.data.input_shapes)
     for key, shape in input_shapes.items():
         if key not in merged_input_shapes:

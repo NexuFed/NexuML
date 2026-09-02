@@ -84,7 +84,7 @@ export = [
     "soundfile>=0.12",
 ]
 ray = [
-    "ray[default,train]==2.58.0",
+    "ray[default,train]==2.57.0",
 ]
 s3 = [
     "boto3>=1.34",
@@ -126,6 +126,7 @@ output = "reports/coverage.xml"
 target-version = "py312"
 src = ["src", "library/src"]
 line-length = 100
+extend-exclude = ["*.md"]
 
 [tool.ruff.lint]
 preview = true

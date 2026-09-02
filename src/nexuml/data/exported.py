@@ -6,12 +6,12 @@ import copy
 import io
 import json
 import tarfile
+import tempfile
 from pathlib import Path
 from typing import Any, cast
 
 import numpy as np
 import pandas as pd
-import soundfile as sf
 import torch
 import yaml
 from PIL import Image
@@ -50,9 +50,7 @@ class ExportedDataset(NexuDataset):
             if is_s3_uri(root_text)
             else None
         )
-        self.root: Path | S3Path = (
-            S3Path.parse(root_text) if self._s3 is not None else Path(root)
-        )
+        self.root: Path | S3Path = S3Path.parse(root_text) if self._s3 is not None else Path(root)
 
         config = yaml.safe_load(self._read_text("config.yaml")) or {}
         self.config = cast(dict[str, Any], config)
@@ -120,6 +118,11 @@ class ExportedDataset(NexuDataset):
         self._mmap_arrays: dict[str, np.ndarray] = {}
         self._tensordict_memmap: TensorDict | None = None
         self._webdataset_index: dict[str, dict[str, Any]] | None = None
+        self._webdataset_tempdir = (
+            tempfile.TemporaryDirectory(prefix="nexuml-webdataset-")
+            if self._s3 is not None
+            else None
+        )
         self._cached_export_idx: int | None = None
         self._cached_payload: dict[str, torch.Tensor] | None = None
 
@@ -168,6 +171,22 @@ class ExportedDataset(NexuDataset):
             paths = self.extra.get(key)
             if isinstance(paths, list):
                 self.extra[key] = [str(path) for path in paths if str(path).startswith(prefix)]
+
+    def _materialize_webdataset_paths(self, relative_paths: list[str]) -> list[str]:
+        if self._s3 is None:
+            return [str(self.root / relative_path) for relative_path in relative_paths]
+
+        assert isinstance(self.root, S3Path)
+        assert self._webdataset_tempdir is not None
+        local_root = Path(self._webdataset_tempdir.name)
+        materialized = []
+        for relative_path in relative_paths:
+            destination = local_root / relative_path
+            if not destination.exists():
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                self._s3.download_file(self.root / relative_path, destination)
+            materialized.append(str(destination))
+        return materialized
 
     def _load_metadata(self, config: dict[str, Any]) -> pd.DataFrame:
         extra = cast(dict[str, Any], config.get("extra", {}) or {})
@@ -254,9 +273,7 @@ class ExportedDataset(NexuDataset):
         root = self._local_root()
         return {
             stored_key: torch.from_numpy(
-                np.load(
-                    root / "data" / stored_key / f"{export_idx:08d}.npy", allow_pickle=False
-                )
+                np.load(root / "data" / stored_key / f"{export_idx:08d}.npy", allow_pickle=False)
             )
             for stored_key in {*self._stored_x_keys.values(), *self._stored_y_keys.values()}
         }
@@ -277,9 +294,7 @@ class ExportedDataset(NexuDataset):
     def _webdataset_payload(self, export_idx: int) -> dict[str, torch.Tensor]:
         root = self._local_root()
         if self._webdataset_index is None:
-            index_name = str(
-                self.extra.get("sample_index_file", "data/webdataset_index.json")
-            )
+            index_name = str(self.extra.get("sample_index_file", "data/webdataset_index.json"))
             index_path = root / index_name
             self._webdataset_index = json.loads(index_path.read_text())
 
@@ -409,6 +424,8 @@ def _decode_webdataset_component(
         array = np.asarray(Image.open(io.BytesIO(payload)))
         return torch.from_numpy(_layout_from_payload(array, layout, modality).copy())
     if encoding == "wav":
+        import soundfile as sf  # ty: ignore[unresolved-import]
+
         audio, _sample_rate = sf.read(io.BytesIO(payload), dtype="float32", always_2d=False)
         return torch.from_numpy(_layout_from_payload(np.asarray(audio), layout, modality).copy())
     if encoding == "mp4":

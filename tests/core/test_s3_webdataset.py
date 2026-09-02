@@ -4,6 +4,7 @@ import io
 import tarfile
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
@@ -11,7 +12,7 @@ import pytest
 import torch
 import yaml
 
-from nexuml.core.types import LoaderSpec
+from nexuml.core.types import LoaderSpec, ScenarioSpec
 from nexuml.data.export.webdataset import WebDatasetBackend
 from nexuml.data.exported import ExportedDataset
 
@@ -28,6 +29,11 @@ class FakeS3:
         data = Path(source).read_bytes()
         self.objects[key] = data
         self.uploads.append((bucket, key, data))
+
+    def download_file(self, bucket, key, destination):
+        destination = Path(destination)
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(self.objects[key])
 
     def put_object(self, *, Bucket, Key, Body):
         self.objects[Key] = bytes(Body)
@@ -143,6 +149,10 @@ def _remote_dataset_objects() -> dict[str, bytes]:
     return {
         "dataset/config.yaml": yaml.safe_dump(config).encode(),
         "dataset/metadata.csv": metadata.encode(),
+        "dataset/data/shards/train/shard-000000.tar": b"train tar",
+        "dataset/data/shards/train/shard-000000.idx": b"train idx",
+        "dataset/data/shards/val/shard-000000.tar": b"val tar",
+        "dataset/data/shards/val/shard-000000.idx": b"val idx",
     }
 
 
@@ -159,6 +169,22 @@ def test_remote_exported_dataset_keeps_s3_paths_and_rejects_python_tensor_reads(
         dataset[0]
 
 
+def test_scenario_hydration_uses_exported_feature_shapes_without_sample_reads():
+    from nexuml.training.lightning import _hydrate_scenario_from_dataset
+
+    dataset = ExportedDataset(
+        "s3://bucket/dataset",
+        s3_client=FakeS3(_remote_dataset_objects()),
+    )
+
+    hydrated = _hydrate_scenario_from_dataset(
+        ScenarioSpec(name="remote"),
+        cast(Any, SimpleNamespace(dataset=dataset)),
+    )
+
+    assert hydrated.data.input_shapes == {"features": [3]}
+
+
 def test_remote_split_only_exposes_its_webdataset_shards():
     dataset = ExportedDataset(
         "s3://bucket/dataset",
@@ -170,7 +196,7 @@ def test_remote_split_only_exposes_its_webdataset_shards():
     assert train.extra["index_paths"] == ["data/shards/train/shard-000000.idx"]
 
 
-def test_dali_receives_s3_paths_and_rank_sharding(monkeypatch):
+def test_dali_materializes_s3_paths_and_preserves_rank_sharding(monkeypatch):
     dataset = ExportedDataset(
         "s3://bucket/dataset",
         s3_client=FakeS3(_remote_dataset_objects()),
@@ -193,11 +219,7 @@ def test_dali_receives_s3_paths_and_rank_sharding(monkeypatch):
     module = SimpleNamespace(loader_spec=LoaderSpec(backend="dali", batch_size=8, num_workers=1))
     dali_backend.DaliLoaderBackend().create_loader(module, dataset, split="train")
 
-    assert captured["shard_paths"] == [
-        "s3://bucket/dataset/data/shards/train/shard-000000.tar"
-    ]
-    assert captured["index_paths"] == [
-        "s3://bucket/dataset/data/shards/train/shard-000000.idx"
-    ]
+    assert Path(captured["shard_paths"][0]).read_bytes() == b"train tar"
+    assert Path(captured["index_paths"][0]).read_bytes() == b"train idx"
     assert captured["global_rank"] == 2
     assert captured["world_size"] == 4
