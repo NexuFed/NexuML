@@ -61,7 +61,7 @@ The YAML is the reproducible record of the experiment. Checking it into version 
 
 ### `evaluate` — measure performance
 
-Evaluation can run inline at the end of training (configured in `EvaluationSpec`) or separately. The evaluation algorithm is a registered component resolved by `EvalAlgorithmSpec.type`.
+Evaluation can run inline at the end of training (configured in `EvaluationSpec`) or separately. `EvalAlgorithmSpec.algorithm` contains the typed algorithm definition.
 
 ### `export` — package for inference
 
@@ -70,7 +70,7 @@ Evaluation can run inline at the end of training (configured in `EvaluationSpec`
 ## Why this design?
 
 - **Reproducibility:** The resolved YAML captures every hyperparameter, so experiments can be re-run from the file alone.
-- **Composability:** `PipelineSpec` layers are independent, tested units. You can swap layers by changing `type_key`.
+- **Composability:** `PipelineSpec` layers are independent, tested units. You can swap their concrete component definitions.
 - **Separation of concerns:** Data, model, training, and evaluation are each their own spec. Changing the optimizer does not touch the layer definitions.
 - **Framework integration:** The Lightning training loop is unchanged. NexuML adds the layer-contract system and discovery on top.
 

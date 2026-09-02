@@ -41,7 +41,7 @@ The function accepts parameters with defaults. During `resolve`, NexuML calls th
 
 ## Data
 
-`cifar10_data(...)` returns a `DataSpec` with `source_type` set to the key registered by the CIFAR data source. The data source handles downloading, train/val/test splitting, and batching.
+`cifar10_data(...)` returns a `DataSpec` containing a typed CIFAR data definition. The data source handles downloading, train/val/test splitting, and batching.
 
 The resolved config stores all data parameters so training is reproducible from the YAML alone.
 
@@ -49,12 +49,12 @@ The resolved config stores all data parameters so training is reproducible from 
 
 `resnet_classifier(...)` returns a `PipelineSpec` whose `stages` list contains `LayerSpec` entries:
 
-| `type_key` | `keys_in` | `keys_out` | Role |
+| Component | `keys_in` | `keys_out` | Role |
 |---|---|---|---|
 | `resnet18` (or variant) | `{"x": "image"}` | `["features"]` | Backbone feature extraction |
 | `classification-head` | `{"x": "features"}` | `["logits", "classification_loss"]` | Class scores + loss |
 
-Each `type_key` resolves to a registered `@layer` class. `keys_in` and `keys_out` define the TensorDict key contracts that NexuML validates at `build` time.
+Each component is a concrete typed layer definition. `keys_in` and `keys_out` define the TensorDict key contracts that NexuML validates at `build` time.
 
 ## Training
 

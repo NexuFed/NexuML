@@ -96,12 +96,13 @@ Set `data.loader.batch_size=None` (the default) to allow probing.
 from nexuml.core.types import (
     ScenarioSpec, TrainingSpec, AutoBatchSizeSpec, DataSpec, LoggingSpec
 )
+from nexuml_library.data.synthetic import SyntheticDataset
 
 ScenarioSpec(
     name="auto_batch_demo",
     data=DataSpec(
-        source_type="synthetic",
-        params={"feature_shape": [128], "num_samples": 2000},
+        source=SyntheticDataset(feature_shape=(128,), num_samples=2000),
+        input_shapes={"features": [128]},
     ),
     training=TrainingSpec(
         lr=1e-3,

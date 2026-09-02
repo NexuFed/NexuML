@@ -1,6 +1,5 @@
 """Synthetic dataset for testing architectures without real data."""
 
-from __future__ import annotations
 from nexuml.core.discovery import data_source
 
 import math
@@ -9,12 +8,14 @@ from dataclasses import dataclass
 from typing import Any
 
 import torch
+from pydantic import Field
 from tensordict import TensorDict
 
 from nexuml.data.dataset import NexuDataset
+from nexuml.core.components import DataSourceDefinition
 
 
-@dataclass
+@dataclass(frozen=True)
 class TargetConfig:
     """Configuration for a synthetic target."""
 
@@ -27,7 +28,7 @@ class TargetConfig:
 
 
 @data_source("synthetic")
-class SyntheticDataset(NexuDataset):
+class SyntheticDataset(DataSourceDefinition):
     """Universal synthetic tensor dataset for architecture testing.
 
     Generates arbitrary feature tensors with optional targets:
@@ -37,6 +38,19 @@ class SyntheticDataset(NexuDataset):
     - multi-output regression targets (linear combination + noise)
     """
 
+    feature_shape: tuple[int, ...] = (128,)
+    num_samples: int = 1000
+    noise_type: str = "gaussian"
+    num_clusters: int | None = None
+    targets: list[TargetConfig] = Field(default_factory=list)
+    seed: int = 42
+    feature_key: str = "features"
+
+    def build(self) -> NexuDataset:
+        return _SyntheticDatasetRuntime(**self.model_dump())
+
+
+class _SyntheticDatasetRuntime(NexuDataset):
     def __init__(
         self,
         feature_shape: tuple[int, ...] = (128,),

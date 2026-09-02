@@ -17,21 +17,29 @@ import torch
 import torch.nn.functional as F
 
 from nexuml.core.base_layer import PipelineLayer
+from nexuml.core.components import LayerBuildContext, LayerDefinition
 from nexuml.core.discovery import layer
 
 
 @layer("L2Normalize")
-class L2Normalize(PipelineLayer):
+class L2Normalize(LayerDefinition):
     """L2-normalize the last dimension of the input.
 
     Stateless — no trainable parameters and no fitted state. Equivalent
     to ``torch.nn.functional.normalize(x, p=2, dim=-1, eps=eps)``.
 
-    Args:
+    Attributes:
         eps: Small epsilon added to the denominator to avoid division by
             zero. Defaults to ``1e-12`` (matches ``F.normalize`` default).
     """
 
+    eps: float = 1e-12
+
+    def build(self, context: LayerBuildContext) -> PipelineLayer:
+        return _L2NormalizeRuntime(eps=self.eps, **context.runtime_kwargs())
+
+
+class _L2NormalizeRuntime(PipelineLayer):
     def __init__(self, eps: float = 1e-12, **kwargs) -> None:
         super().__init__(**kwargs)
         self.eps = float(eps)

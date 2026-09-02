@@ -5,6 +5,8 @@ from __future__ import annotations
 from typing import Literal
 
 from nexuml.core.types import DatasetSpec, DataSpec, LoaderSpec
+from nexuml.data.loaders.definitions import DaliLoader
+from nexuml_library.data.audioset.audioset import AudiosetDataset
 from nexuml_library.data.audioset.audioset_hf_download import (
     download_hf_audioset,
     expected_hf_audioset_layout,
@@ -48,27 +50,25 @@ def audioset_data(
     len_seconds = clip_num_samples / float(sample_rate)
     datasets = [
         DatasetSpec(
-            type_key="AudiosetDataset",
-            params={
-                "data_dir": str(root / train_subset),
-                "meta_dir": str(root / "metadata"),
-                "perform_checks": perform_checks,
-                "len_seconds": len_seconds,
-                "sample_rate": sample_rate,
-            },
+            source=AudiosetDataset(
+                data_dir=root / train_subset,
+                meta_dir=root / "metadata",
+                perform_checks=perform_checks,
+                len_seconds=len_seconds,
+                sample_rate=sample_rate,
+            ),
             modality="audio",
             split_type="fit",
             max_samples=max_samples,
         ),
         DatasetSpec(
-            type_key="AudiosetDataset",
-            params={
-                "data_dir": str(root / "eval"),
-                "meta_dir": str(root / "metadata"),
-                "perform_checks": perform_checks,
-                "len_seconds": len_seconds,
-                "sample_rate": sample_rate,
-            },
+            source=AudiosetDataset(
+                data_dir=root / "eval",
+                meta_dir=root / "metadata",
+                perform_checks=perform_checks,
+                len_seconds=len_seconds,
+                sample_rate=sample_rate,
+            ),
             modality="audio",
             split_type="test",
             max_samples=max_samples,
@@ -76,20 +76,13 @@ def audioset_data(
     ]
 
     return DataSpec(
-        source_type="audioset",
         datasets=datasets,
         loader=LoaderSpec(
-            backend="dali",
+            backend=DaliLoader(),
             batch_size=batch_size,
             num_workers=num_workers,
             persistent_workers=num_workers > 0,
         ),
-        params={
-            "data_root": str(root),
-            "sample_rate": sample_rate,
-            "download": download,
-            "expected_layout": expected_hf_audioset_layout(root),
-        },
         feature_key="waveform",
         input_shapes={"waveform": [clip_num_samples]},
         num_classes=num_classes,

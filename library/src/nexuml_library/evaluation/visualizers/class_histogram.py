@@ -11,6 +11,7 @@ import numpy as np
 from tensordict import TensorDict
 
 from nexuml.evaluation.algorithm import EvalAlgorithm
+from nexuml.core.components import EvalAlgorithmDefinition, EvalBuildContext
 from nexuml_library.evaluation.visualizers._plotting import (
     apply_axis_style,
     format_label,
@@ -21,11 +22,19 @@ logger = logging.getLogger(__name__)
 
 
 @eval_algorithm("class_histogram")
-class ClassHistogramVisualizer(EvalAlgorithm):
+class ClassHistogramVisualizer(EvalAlgorithmDefinition):
     """Bar chart of class label distribution in train and test sets."""
 
-    type_key = "class_histogram"
+    title: str | None = None
 
+    def build(self, context: EvalBuildContext) -> EvalAlgorithm:
+        return _ClassHistogramVisualizerRuntime(
+            label_key=context.label_key or "y_true",
+            title=self.title,
+        )
+
+
+class _ClassHistogramVisualizerRuntime(EvalAlgorithm):
     def __init__(self, label_key: str = "y_true", title: str | None = None) -> None:
         self.label_key = label_key
         self.title = title

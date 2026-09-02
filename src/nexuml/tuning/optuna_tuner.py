@@ -72,7 +72,6 @@ def build_objective(
     except ImportError:
         raise ImportError("Install optuna: pip install optuna")
 
-    from nexuml.core.registry import get_registry
     from nexuml.training.lightning import train
 
     def objective(trial: optuna.Trial) -> float | list[float]:
@@ -88,10 +87,8 @@ def build_objective(
 
         logger.info(f"Trial {trial.number}: {trial.params}")
 
-        registry = get_registry()
         result = train(
             scenario,
-            registry=registry,
             enable_progress_bar=enable_progress_bar,
             run_name=f"trial_{trial.number}",
         )

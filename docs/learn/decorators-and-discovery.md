@@ -1,135 +1,91 @@
-# Decorators and discovery
+# Decorators And Discovery
 
-NexuML uses a decorator-based registry system. You mark Python classes or functions with decorators, and NexuML discovers and loads them automatically from installed packages.
+NexuML decorators attach stable persisted identities to typed definitions. Python code imports and constructs the definition class directly; discovery is needed for CLI listing and for restoring YAML.
 
-## The four decorators
+## Component Decorators
 
-### `@scenario("key")`
+`@layer`, `@data_source`, and `@eval_algorithm` decorate the corresponding definition role:
 
-Makes a scenario available to CLI commands by name.
+```python
+from nexuml.core.base_layer import PipelineLayer
+from nexuml.core.components import LayerBuildContext, LayerDefinition
+from nexuml.core.discovery import layer
+
+
+@layer("scaled_relu")
+class ScaledReLU(LayerDefinition):
+    scale: float = 1.0
+
+    def build(self, context: LayerBuildContext) -> PipelineLayer:
+        return _ScaledReLURuntime(scale=self.scale, **context.runtime_kwargs())
+
+
+class _ScaledReLURuntime(PipelineLayer):
+    def __init__(self, scale: float, **kwargs):
+        super().__init__(**kwargs)
+        self.scale = scale
+
+    def forward_tensor(self, x, y=None):
+        return x.relu() * self.scale
+```
+
+Use the class directly in Python:
+
+```python
+LayerSpec(
+    component=ScaledReLU(scale=2.0),
+    keys_in=["features"],
+    keys_out=["activated"],
+)
+```
+
+The decorator registers `scaled_relu@1`, allowing YAML restoration without persisting a Python import path.
+
+## Scenario Decorator
+
+`@scenario` remains a recipe registry for CLI lookup:
 
 ```python
 from nexuml.core.discovery import scenario
 from nexuml.core.types import ScenarioSpec
 
-@scenario("my-classifier")
-def my_classifier() -> ScenarioSpec:
-    return ScenarioSpec(...)
+
+@scenario("my-experiment")
+def my_experiment() -> ScenarioSpec:
+    return ScenarioSpec(name="my-experiment")
 ```
 
-After installation, `nexuml registry list scenarios` will show `my-classifier`, and `nexuml resolve my-classifier` will call this function.
+## Discovery Sources
 
-### `@layer("key")`
+Each CLI run scans fresh from:
 
-Registers a `PipelineLayer` class so it can be referenced by `LayerSpec(type_key="key")`.
+1. The built-in `nexuml_library` package.
+2. Installed packages declaring a `nexuml.libraries` entry point.
+3. Local roots configured with `nexuml library add <path>`.
 
-```python
-from nexuml.core.discovery import layer
-from nexuml.core.pipeline import PipelineLayer
+One broken module is recorded as a `DiscoveryError`; unrelated valid components remain available.
 
-@layer("my-backbone")
-class MyBackbone(PipelineLayer):
-    def forward(self, x):
-        ...
-```
-
-In a scenario:
-
-```python
-LayerSpec(type_key="my-backbone", keys_in={"x": "image"}, keys_out=["features"])
-```
-
-### `@data_source("key")`
-
-Registers a dataset source so it can be referenced by `DataSpec(source_type="key")`.
-
-```python
-from nexuml.core.discovery import data_source
-
-@data_source("my-dataset")
-class MyDataset:
-    ...
-```
-
-In a scenario:
-
-```python
-DataSpec(source_type="my-dataset")
-```
-
-### `@eval_algorithm("key")`
-
-Registers an evaluation algorithm so it can be referenced by `EvaluationSpec(type="key")`.
-
-```python
-from nexuml.core.discovery import eval_algorithm
-
-@eval_algorithm("classification")
-class ClassificationEval:
-    ...
-```
-
-In a scenario:
-
-```python
-EvaluationSpec(type="classification")
-```
-
-## How discovery works
-
-When a NexuML CLI command runs, it scans for registered components from three sources:
-
-1. **Installed packages via entry points.** Any Python package that declares a `nexuml.libraries` entry point group is scanned. This is how the base library (`nexuml_library`) is discovered.
-
-2. **Local library roots.** Directories added with `nexuml library add <path>` are scanned for packages. Useful during development before packaging.
-
-3. **Direct imports.** Importing a module with decorated classes or functions registers them immediately.
-
-## Verify discovery
-
-After installing or adding a library, verify that its components are discovered:
+## Verify Discovery
 
 ```bash
-# List registered scenarios
-nexuml registry list scenarios
-
-# List registered layers
 nexuml registry list layers
-
-# List registered data sources
 nexuml registry list data
-
-# List registered eval algorithms
 nexuml registry list eval
+nexuml registry list scenarios
 ```
 
-If a component is missing, check that:
-- The package is installed in the same environment as `nexuml`.
-- The package declares the `nexuml.libraries` entry point (for installed packages).
-- The local root path is correctly added (`nexuml library list` to verify).
+The component commands show the stable name, version, concrete type, and Pydantic fields. Use `--verbose` to inspect discovery failures.
 
-## Development workflow
-
-During development, before packaging a library, use local roots:
-
-```bash
-nexuml library add /path/to/my-library/src
-nexuml registry list scenarios   # should now include your scenarios
-```
-
-When ready to distribute, add the entry point to `pyproject.toml`:
+For distribution:
 
 ```toml
 [project.entry-points."nexuml.libraries"]
 my-library = "my_library"
 ```
 
-## Next steps
+## See Also
 
-- [Decorator reference](../reference/decorators.md) — compact reference for all decorators
-- [Library discovery explanation](../explanation/library-discovery.md) — deep dive on the discovery mechanism
-- [Add a custom layer](../how-to/custom-layer.md) — implement and register a layer
+- [Decorator reference](../reference/decorators.md)
+- [Add a custom layer](../how-to/custom-layer.md)
 - [Add a custom data source](../how-to/custom-data-source.md)
-- [Register a library](../how-to/register-library.md) — entry-point distribution
-- [Manage local library roots](../how-to/library-cli.md) — `nexuml library add/delete/list`
-- [Registry inspection reference](../reference/registry.md)
+- [Add a custom eval algorithm](../how-to/custom-eval-algorithm.md)

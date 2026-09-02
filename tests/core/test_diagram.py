@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from nexuml.core.compiler import compile
 from nexuml.core.diagram import build_pipeline_mermaid_diagram, export_mermaid_diagram
-from nexuml.core.registry import get_registry
 from nexuml.core.types import LayerSpec, PipelineSpec, ScenarioSpec, TrainingSpec
+from nexuml_library.layers.model.linear_encoder import LinearEncoder
 from nexuml_library.scenarios.data.synthetic import synthetic_vector_data
 
 
@@ -16,10 +16,9 @@ def _make_scenario() -> ScenarioSpec:
             stages={
                 "encode": [
                     LayerSpec(
-                        type_key="LinearEncoder",
+                        component=LinearEncoder(output_dim=4),
                         keys_in=["features"],
                         keys_out=["latent"],
-                        params={"output_dim": 4},
                     ),
                 ],
             }
@@ -31,7 +30,7 @@ def _make_scenario() -> ScenarioSpec:
 
 def test_build_pipeline_mermaid_diagram():
     scenario = _make_scenario()
-    pipeline = compile(scenario, get_registry())
+    pipeline = compile(scenario)
     diagram = build_pipeline_mermaid_diagram(pipeline)
     assert "flowchart" in diagram
     assert "encode" in diagram
@@ -39,7 +38,7 @@ def test_build_pipeline_mermaid_diagram():
 
 def test_export_mermaid_diagram(tmp_path):
     scenario = _make_scenario()
-    pipeline = compile(scenario, get_registry())
+    pipeline = compile(scenario)
     path = tmp_path / "diagram.md"
     export_mermaid_diagram(pipeline, path)
     assert path.exists()

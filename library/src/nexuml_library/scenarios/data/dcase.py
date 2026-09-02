@@ -7,6 +7,8 @@ from pydantic import BaseModel
 from pathlib import Path
 
 from nexuml.core.types import DataSpec, DatasetSpec, LoaderSpec
+from nexuml.data.loaders.definitions import DaliLoader
+from nexuml_library.data.dcaset2.dcase2026 import DCASE2026T2Dataset, DCASET2Dataset
 from nexuml_library.scenarios.data.roots import resolve_data_root
 
 logger = logging.getLogger(__name__)
@@ -276,10 +278,10 @@ def dcase_data(
         }
         if spec.year == 2020:
             common["section_keyword"] = "id"
+        definition_type = DCASE2026T2Dataset if spec.year == 2026 else DCASET2Dataset
         datasets.append(
             DatasetSpec(
-                type_key="DCASE2026T2Dataset" if spec.year == 2026 else "DCASET2Dataset",
-                params=common,
+                source=definition_type.model_validate(common),
                 modality="audio",
                 split_type="fit",
             )
@@ -298,25 +300,23 @@ def dcase_data(
         }
         if spec.year == 2020:
             common["section_keyword"] = "id"
+        definition_type = DCASE2026T2Dataset if spec.year == 2026 else DCASET2Dataset
         datasets.append(
             DatasetSpec(
-                type_key="DCASE2026T2Dataset" if spec.year == 2026 else "DCASET2Dataset",
-                params={**common, "train": False},
+                source=definition_type.model_validate({**common, "train": False}),
                 modality="audio",
                 split_type="test",
             )
         )
 
     return DataSpec(
-        source_type="dcase",
         datasets=datasets,
         loader=LoaderSpec(
-            backend="dali",
+            backend=DaliLoader(),
             batch_size=batch_size,
             num_workers=num_workers,
             persistent_workers=num_workers > 0,
         ),
-        params={"data_root": str(root)},
         input_shapes={"waveform": [clip_num_samples]},
         num_classes=len(all_machine_types) * 2 if all_machine_types else None,
         merge_labels={

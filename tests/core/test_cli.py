@@ -9,8 +9,10 @@ import pytest
 from typer.testing import CliRunner
 
 from nexuml.cli.main import app
+from nexuml.core.components import LayerBuildContext, LayerDefinition
 from nexuml.core.discovery import discover_local_packages, scan_all
-from nexuml.core.registry import LayerRegistry
+from nexuml.core.registry import ComponentRegistry
+from nexuml.core.serialization import lower_component, restore_component
 
 runner = CliRunner()
 
@@ -65,7 +67,9 @@ def test_library_list():
     assert result.exit_code == 0
 
 
-def test_library_add_persists_and_is_discoverable(isolated_library_config, minimal_local_library):
+def test_library_add_persists_and_is_discoverable(
+    isolated_library_config, minimal_local_library, monkeypatch
+):
     root = minimal_local_library.root
 
     result = runner.invoke(app, ["library", "add", str(root)])
@@ -89,9 +93,24 @@ def test_library_add_persists_and_is_discoverable(isolated_library_config, minim
         item.key == minimal_local_library.eval_key for item in scanner.by_kind("eval_algorithm")
     )
 
-    fresh_registry = LayerRegistry()
-    fresh_registry.scan()
-    assert minimal_local_library.layer_key in fresh_registry.list()
+    fresh_registry = ComponentRegistry()
+    fresh_registry.scan([minimal_local_library.package_name])
+    definition_type = fresh_registry.get_type("layer", minimal_local_library.layer_key)
+    definition = definition_type.model_validate({"scale": 2.0})
+
+    monkeypatch.setattr("nexuml.core.serialization.get_component_registry", lambda: fresh_registry)
+    lowered = lower_component(definition)
+    restored = restore_component(kind="layer", value=lowered)
+    assert isinstance(restored, LayerDefinition)
+    runtime = restored.build(
+        LayerBuildContext(
+            input_sizes={"features": (2,)},
+            keys_in=["features"],
+            keys_out=["scaled"],
+        )
+    )
+
+    assert runtime.scale == 2.0
 
 
 def test_library_delete_removes_root_and_registry_keys(

@@ -12,6 +12,7 @@ import torch
 from tensordict import TensorDict
 
 from nexuml.evaluation.algorithm import EvalAlgorithm
+from nexuml.core.components import EvalAlgorithmDefinition, EvalBuildContext
 from nexuml.evaluation.storage import ReservoirTensorDictBuffer
 from nexuml_library.evaluation.visualizers._plotting import (
     apply_axis_style,
@@ -23,15 +24,28 @@ logger = logging.getLogger(__name__)
 
 
 @eval_algorithm("latent_visualizer")
-class LatentVisualizer(EvalAlgorithm):
+class LatentVisualizer(EvalAlgorithmDefinition):
     """Visualizes latent space using t-SNE or UMAP projection.
 
     Uses reservoir sampling to handle large datasets efficiently.
     Train and test samples are projected together and colored by label/split.
     """
 
-    type_key = "latent_visualizer"
+    method: str = "tsne"
+    max_samples: int = 2000
+    perplexity: int = 30
+    storage_backend: str = "memory"
+    storage_path: str | None = None
 
+    def build(self, context: EvalBuildContext) -> EvalAlgorithm:
+        return _LatentVisualizerRuntime(
+            feature_key=context.feature_key or "latent",
+            label_key=context.label_key or "y_true",
+            **self.model_dump(),
+        )
+
+
+class _LatentVisualizerRuntime(EvalAlgorithm):
     def __init__(
         self,
         feature_key: str = "latent",

@@ -7,8 +7,8 @@ import torch
 from tensordict import TensorDict
 
 from nexuml.core.compiler import compile
-from nexuml.core.registry import get_registry
 from nexuml.core.types import DataSpec, LayerSpec, PipelineSpec, ScenarioSpec, TrainingSpec
+from nexuml_library.layers.model.linear_encoder import LinearEncoder
 from nexuml_library.scenarios.data.synthetic import synthetic_vector_data
 
 
@@ -19,10 +19,9 @@ def _simple_scenario() -> ScenarioSpec:
             stages={
                 "encode": [
                     LayerSpec(
-                        type_key="LinearEncoder",
+                        component=LinearEncoder(output_dim=4),
                         keys_in=["features"],
                         keys_out=["latent"],
-                        params={"output_dim": 4},
                     ),
                 ],
             }
@@ -34,14 +33,14 @@ def _simple_scenario() -> ScenarioSpec:
 
 def test_compiler_success():
     scenario = _simple_scenario()
-    pipeline = compile(scenario, get_registry())
+    pipeline = compile(scenario)
     assert pipeline.stages
     assert "latent" in pipeline.input_sizes
 
 
 def test_compiler_forward_on_compiled_pipeline():
     scenario = _simple_scenario()
-    pipeline = compile(scenario, get_registry())
+    pipeline = compile(scenario)
     x = TensorDict({"features": torch.randn(2, 16)}, batch_size=[2])
     x_out, _ = pipeline(x, None)
     assert "latent" in x_out.keys()
@@ -54,16 +53,15 @@ def test_compiler_key_contract_failure():
             stages={
                 "encode": [
                     LayerSpec(
-                        type_key="LinearEncoder",
+                        component=LinearEncoder(output_dim=4),
                         keys_in=["not_features"],
                         keys_out=["latent"],
-                        params={"output_dim": 4},
                     ),
                 ],
             }
         ),
         training=TrainingSpec(max_epochs=1, batch_size=4),
-        data=DataSpec(params={"feature_shape": [16]}),
+        data=DataSpec(input_shapes={"features": [16]}),
     )
     with pytest.raises(Exception):  # KeyError or ValueError during shape propagation
-        compile(scenario, get_registry())
+        compile(scenario)

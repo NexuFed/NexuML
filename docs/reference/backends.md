@@ -61,10 +61,12 @@ Selected via `data.loader.backend` in `DataSpec.loader` (`LoaderSpec`).
 
 ```python
 from nexuml.core.types import DataSpec, LoaderSpec
+from nexuml.data.loaders.definitions import TorchLoader
+from my_library.data import MyDataset
 
 DataSpec(
-    source_type="my_dataset",
-    loader=LoaderSpec(backend="torch", num_workers=4),
+    source=MyDataset(),
+    loader=LoaderSpec(backend=TorchLoader(), num_workers=4),
 )
 ```
 
@@ -135,16 +137,19 @@ After registration, use `--backend my_backend` with `nexuml export-dataset`.
 ### Custom data-loader backend
 
 ```python
-from nexuml.data.loaders import register_loader_backend, LoaderBackend
+from nexuml.core.components import LoaderBackendDefinition
+from nexuml.core.discovery import loader_backend
+from nexuml.data.loaders import LoaderBackend
 
-class MyLoaderBackend(LoaderBackend):
-    def build_dataloader(self, dataset, batch_size, num_workers, **kwargs):
-        ...
+@loader_backend("my_loader")
+class MyLoader(LoaderBackendDefinition):
+    queue_depth: int = 2
 
-register_loader_backend("my_loader", MyLoaderBackend)
+    def build(self) -> LoaderBackend:
+        return _MyLoaderBackend(queue_depth=self.queue_depth)
 ```
 
-Use via `LoaderSpec(backend="my_loader")`.
+Use via `LoaderSpec(backend=MyLoader(queue_depth=4))`.
 
 !!! note "Kubernetes training"
     No Kubernetes training-execution backend is implemented. The `training` category exposes only `lightning`. If a future change implements Kubernetes execution, this page will be updated.

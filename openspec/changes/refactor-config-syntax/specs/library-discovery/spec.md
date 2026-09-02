@@ -8,9 +8,17 @@ The system SHALL discover typed component definitions and scenario recipes from 
 - **THEN** the system SHALL register that definition type in the common component registry using the explicit decorator key and version
 - **AND** normal Python scenario authoring SHALL use the definition class directly rather than the key string.
 
+#### Scenario: Decorated layer is discovered
+- **WHEN** a scanned library module contains a `LayerDefinition` class decorated as a layer
+- **THEN** the system SHALL register that definition type in the common component registry using the decorator key and version.
+
 #### Scenario: Decorated data source definition is discovered
 - **WHEN** a scanned library module contains a `DataSourceDefinition` class decorated as a data source
 - **THEN** the system SHALL register that definition type in the common component registry using the explicit decorator key and version.
+
+#### Scenario: Decorated data source is discovered
+- **WHEN** a scanned library module contains a `DataSourceDefinition` class decorated as a data source
+- **THEN** the system SHALL register that definition type in the common component registry using the decorator key and version.
 
 #### Scenario: Decorated scenario is discovered
 - **WHEN** a scanned library module contains a function decorated as a scenario
@@ -21,6 +29,10 @@ The system SHALL discover typed component definitions and scenario recipes from 
 - **WHEN** a scanned library module contains an `EvalAlgorithmDefinition` class decorated as an evaluation algorithm
 - **THEN** the system SHALL register that definition type in the common component registry using the explicit decorator key and version.
 
+#### Scenario: Decorated evaluation algorithm is discovered
+- **WHEN** a scanned library module contains an `EvalAlgorithmDefinition` class decorated as an evaluation algorithm
+- **THEN** the system SHALL register that definition type in the common component registry using the decorator key and version.
+
 #### Scenario: Registered loader backend definition is discovered
 - **WHEN** a scanned library exposes a registered `LoaderBackendDefinition`
 - **THEN** the system SHALL make that definition type available through the same component identity/discovery mechanism used for other typed component roles.
@@ -29,6 +41,10 @@ The system SHALL discover typed component definitions and scenario recipes from 
 The system SHALL reject conflicting registration identities for the same component kind/name/version when they refer to different definition types.
 
 #### Scenario: Two libraries define the same layer identity
+- **WHEN** two discovered layer definitions use the same registration key and version and are not the same definition class
+- **THEN** registry loading SHALL fail with an error identifying both definition modules/types.
+
+#### Scenario: Two libraries define same layer key
 - **WHEN** two discovered layer definitions use the same registration key and version and are not the same definition class
 - **THEN** registry loading SHALL fail with an error identifying both definition modules/types.
 

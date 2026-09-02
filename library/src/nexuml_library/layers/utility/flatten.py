@@ -7,12 +7,18 @@ from nexuml.core.discovery import layer
 import torch
 
 from nexuml.core.base_layer import PipelineLayer
+from nexuml.core.components import LayerBuildContext, LayerDefinition
 
 
 @layer("Flatten")
-class Flatten(PipelineLayer):
+class Flatten(LayerDefinition):
     """Flattens arbitrary input dimensions to a 1D vector."""
 
+    def build(self, context: LayerBuildContext) -> PipelineLayer:
+        return _FlattenRuntime(**context.runtime_kwargs())
+
+
+class _FlattenRuntime(PipelineLayer):
     def __init__(
         self,
         input_sizes: dict[str, tuple],

@@ -11,12 +11,23 @@ import torch
 from tensordict import TensorDict
 
 from nexuml.data.dataset import NexuDataset
+from nexuml.core.components import DataSourceDefinition
 
 
 @data_source("MNISTDataset")
-class MNISTDataset(NexuDataset):
+class MNISTDataset(DataSourceDefinition):
     """In-memory MNIST dataset backed by ``self.data`` and metadata labels."""
 
+    root: str | Path = "data/mnist"
+    train: bool = True
+    download: bool = False
+    split: str | None = None
+
+    def build(self) -> NexuDataset:
+        return _MNISTDatasetRuntime(**self.model_dump())
+
+
+class _MNISTDatasetRuntime(NexuDataset):
     LABEL_NAMES = ["digit"]
 
     def __init__(

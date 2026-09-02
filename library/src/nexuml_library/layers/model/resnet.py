@@ -10,6 +10,7 @@ import torch
 import torch.nn as nn
 
 from nexuml.core.base_layer import PipelineLayer
+from nexuml.core.components import LayerBuildContext, LayerDefinition
 
 logger = logging.getLogger(__name__)
 
@@ -23,20 +24,29 @@ _RESNET_TYPES = {
 
 
 @layer("ResNet")
-class ResNet(PipelineLayer):
+class ResNet(LayerDefinition):
     """ResNet backbone that emits feature embeddings.
 
     Wraps ``torchvision.models.resnet*`` and replaces the final
     fully-connected layer with an identity so downstream heads
     can operate on embeddings.
 
-    Args:
+    Attributes:
         resnet_type: Architecture variant (e.g. ``"resnet18"``).
         pretrained: Whether to load pretrained ImageNet weights.
         cifar_stem: Use a CIFAR-friendly stem (3x3 stride-1, no maxpool).
             Defaults to ``False`` when pretrained, ``True`` otherwise.
     """
 
+    resnet_type: str = "resnet18"
+    pretrained: bool = False
+    cifar_stem: bool | None = None
+
+    def build(self, context: LayerBuildContext) -> PipelineLayer:
+        return _ResNetRuntime(**context.runtime_kwargs(), **self.model_dump())
+
+
+class _ResNetRuntime(PipelineLayer):
     def __init__(
         self,
         input_sizes: dict[str, tuple],

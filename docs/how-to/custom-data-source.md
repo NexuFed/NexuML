@@ -1,136 +1,78 @@
-# Add a custom data source
+# Add A Custom Data Source
 
-This guide walks through adding a custom dataset to a library and using it from a `ScenarioSpec` via `DataSpec(source_type=...)`.
-
-## Prerequisites
-
-- NexuML installed
-- A library root registered with `nexuml library add` or an installed entry-point package
-- For a new library: see [Register a library](register-library.md)
-
-## 1. Create the dataset file
-
-Place the dataset under `data/` inside your library package:
-
-```
-my_library/
-└── src/
-    └── my_library/
-        ├── __init__.py
-        └── data/
-            ├── __init__.py
-            └── my_dataset.py
-```
+The public data source is an immutable `DataSourceDefinition`. It builds a private mutable `NexuDataset` runtime.
 
 ```python
-# my_library/src/my_library/data/my_dataset.py
+import torch
+from tensordict import TensorDict
+
+from nexuml.core.components import DataSourceDefinition
 from nexuml.core.discovery import data_source
 from nexuml.data.dataset import NexuDataset
-from tensordict import TensorDict
-import torch
 
 
 @data_source("my_dataset")
-class MyDataset(NexuDataset):
-    """Small labeled tensor dataset."""
+class MyDataset(DataSourceDefinition):
+    num_samples: int = 1000
+    feature_dim: int = 64
+    seed: int = 42
 
-    def __init__(
-        self,
-        num_samples: int = 1000,
-        feature_dim: int = 64,
-        seed: int = 42,
-        feature_key: str = "features",
-    ):
-        self.feature_key = feature_key
+    def build(self) -> NexuDataset:
+        return _MyDatasetRuntime(**self.model_dump())
+
+
+class _MyDatasetRuntime(NexuDataset):
+    def __init__(self, num_samples: int, feature_dim: int, seed: int):
         super().__init__(label_names=["label"])
-
         generator = torch.Generator().manual_seed(seed)
-        self._features = torch.randn(num_samples, feature_dim, generator=generator)
-        self._labels = torch.randint(0, 10, (num_samples,), generator=generator)
+        self.features = torch.randn(num_samples, feature_dim, generator=generator)
+        self.labels = torch.randint(0, 10, (num_samples,), generator=generator)
 
     def __len__(self) -> int:
-        return len(self._features)
+        return len(self.features)
 
-    def __getitem__(self, idx: int) -> tuple[TensorDict, TensorDict]:
-        x = TensorDict({self.feature_key: self._features[idx]}, batch_size=[])
-        y = TensorDict({"label": self._labels[idx]}, batch_size=[])
+    def __getitem__(self, index: int) -> tuple[TensorDict, TensorDict]:
+        x = TensorDict({"features": self.features[index]}, batch_size=[])
+        y = TensorDict({"label": self.labels[index]}, batch_size=[])
         return x, y
 ```
 
-## 2. Register the local root or install the package
+Use the definition directly:
 
-For local development:
+```python
+from nexuml.core.types import DataSpec, DatasetSpec
+from my_library.data.my_dataset import MyDataset
 
-```bash
-nexuml library add my_library
+data = DataSpec(
+    source=MyDataset(num_samples=2000, feature_dim=64),
+    input_shapes={"features": [64]},
+)
+
+data_list = DataSpec(
+    datasets=[DatasetSpec(source=MyDataset(num_samples=2000))],
+    input_shapes={"features": [64]},
+)
 ```
 
-For installable packages, declare the entry point:
+Split, modality, preprocessing, label merging, loader policy, and graph input shapes stay on `DataSpec` or `DatasetSpec`. Dataset-specific values stay on `MyDataset`.
 
-```toml
-[project.entry-points."nexuml.libraries"]
-my-library = "my_library"
-```
-
-## 3. Verify registration
+Verify discovery with:
 
 ```bash
+nexuml library add /path/to/my_library
 nexuml registry list data
 ```
 
-You should see `my_dataset` in the output. If it doesn't appear, run with `--verbose` to see import errors.
+YAML stores `type: my_dataset`, `version: '1'`, and validated parameters. It does not store the Python import path.
 
-## 4. Use in a scenario
+## Dataset Contract
 
-Reference the dataset by `source_type` in a `DataSpec`:
+- `build()` returns a `NexuDataset` runtime.
+- Runtime `__getitem__` returns `(x: TensorDict, y: TensorDict | None)`.
+- Loaded tensors and mutable dataset state stay off the public definition.
 
-```python
-from nexuml.core.discovery import scenario
-from nexuml.core.types import ScenarioSpec, DataSpec, TrainingSpec
-
-@scenario("my_dataset_baseline")
-def my_dataset_baseline() -> ScenarioSpec:
-    return ScenarioSpec(
-        name="my_dataset_baseline",
-        data=DataSpec(
-            source_type="my_dataset",
-            params={"num_samples": 2000, "feature_dim": 64},
-        ),
-        training=TrainingSpec(
-            lr=1e-3,
-            max_epochs=5,
-            batch_size=64,
-            loss_keys={"loss": 1.0},
-        ),
-    )
-```
-
-Or use it from a trusted scenario file:
-
-```python
-from nexuml.core.types import ScenarioSpec, DataSpec, TrainingSpec
-
-def scenario() -> ScenarioSpec:
-    return ScenarioSpec(
-        name="my_dataset_file",
-        data=DataSpec(source_type="my_dataset", params={"num_samples": 500}),
-        training=TrainingSpec(max_epochs=2, loss_keys={"loss": 1.0}),
-    )
-```
-
-```bash
-nexuml train --scenario-file my_experiment.py
-```
-
-## Dataset contract
-
-- Inherit from `NexuDataset` (or implement the same `__getitem__` contract).
-- Return `(x: TensorDict, y: TensorDict | None)` from `__getitem__`.
-- `x` contains input tensors (commonly under the `features` key).
-- `y` contains label tensors. Use `super().__init__(label_names=[...])` to declare them.
-
-## See also
+## See Also
 
 - [Discovery decorators](../reference/decorators.md)
-- [Register a library](register-library.md)
-- [Custom library end-to-end tutorial](custom-library.md)
+- [Custom layer](custom-layer.md)
+- [Custom library](custom-library.md)

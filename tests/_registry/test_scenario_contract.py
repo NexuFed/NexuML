@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from typing import Callable
+from typing import Callable, Never
 
 import pytest
 
 from nexuml.core.compiler import compile
-from nexuml.core.registry import get_registry
 from nexuml.core.types import ScenarioSpec
 
 # Scenarios known to be untestable with this generic contract.
@@ -20,7 +19,7 @@ _SKIP_ALLOWLIST: dict[str, str] = {
 }
 
 
-def _scenario_skip_or_fail(key: str, exc: Exception) -> None:
+def _scenario_skip_or_fail(key: str, exc: Exception) -> Never:
     """Skip allowlisted scenarios; fail others with rich, actionable context."""
     if key not in _SKIP_ALLOWLIST:
         raise AssertionError(
@@ -59,9 +58,8 @@ def test_scenario_compiles(
     except TypeError as exc:
         _scenario_skip_or_fail(scenario_key, exc)
 
-    registry = get_registry()
     try:
-        compile(scenario, registry)
+        compile(scenario)
     except (ValueError, KeyError, TypeError, RuntimeError) as exc:
         _scenario_skip_or_fail(scenario_key, exc)
 

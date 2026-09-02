@@ -20,10 +20,10 @@ from nexuml.core.export import (
     infer,
     load_package,
 )
-from nexuml.core.registry import LayerRegistry, get_registry
 from nexuml.core.types import LayerSpec, PipelineSpec, ScenarioSpec, TrainingSpec
 from nexuml.data.export.runner import export_data_module
 from nexuml.training.lightning import create_data_module_from_spec
+from nexuml_library.layers.model.linear_encoder import LinearEncoder
 from nexuml_library.scenarios.data.synthetic import synthetic_vector_data
 
 
@@ -34,18 +34,16 @@ def _make_simple_scenario() -> ScenarioSpec:
             stages={
                 "encode": [
                     LayerSpec(
-                        type_key="LinearEncoder",
+                        component=LinearEncoder(hidden_dims=[8], output_dim=4),
                         keys_in=["features"],
                         keys_out=["latent"],
-                        params={"hidden_dims": [8], "output_dim": 4},
                     ),
                 ],
                 "decode": [
                     LayerSpec(
-                        type_key="LinearEncoder",
+                        component=LinearEncoder(hidden_dims=[8], output_dim=16),
                         keys_in=["latent"],
                         keys_out=["reconstructed"],
-                        params={"hidden_dims": [8], "output_dim": 16},
                     ),
                 ],
             }
@@ -58,7 +56,7 @@ def _make_simple_scenario() -> ScenarioSpec:
 @pytest.fixture
 def compiled_pipeline(tmp_path):
     scenario = _make_simple_scenario()
-    return compile(scenario, get_registry())
+    return compile(scenario)
 
 
 def test_export_package_and_reload(compiled_pipeline, tmp_path):
@@ -66,7 +64,7 @@ def test_export_package_and_reload(compiled_pipeline, tmp_path):
     export_package(compiled_pipeline, export_dir)
     assert (export_dir / "pipeline.package").exists()
 
-    loaded, config, metadata = load_package(export_dir, get_registry())
+    loaded, config, metadata = load_package(export_dir)
     assert loaded is not None
     assert metadata.get("schema_version") == 2
 
@@ -329,9 +327,14 @@ def test_custom_layer_package_export_and_clean_load(tmp_path):
     (pkg_dir / "__init__.py").write_text("")
     (pkg_dir / "layers.py").write_text(
         "import torch\n"
-        "from tensordict import TensorDict\n"
-        "from nexuml.core.base_layer import PipelineLayer\n\n"
-        "class CustomLinear(PipelineLayer):\n"
+        "from nexuml.core.base_layer import PipelineLayer\n"
+        "from nexuml.core.components import LayerBuildContext, LayerDefinition\n"
+        "from nexuml.core.discovery import layer\n\n"
+        "@layer('CustomLinear')\n"
+        "class CustomLinear(LayerDefinition):\n"
+        "    def build(self, context: LayerBuildContext):\n"
+        "        return _CustomLinearRuntime(**context.runtime_kwargs())\n\n"
+        "class _CustomLinearRuntime(PipelineLayer):\n"
         "    def __init__(self, **kwargs):\n"
         "        super().__init__(**kwargs)\n"
         "        self.linear = torch.nn.Linear(16, 4)\n"
@@ -343,19 +346,15 @@ def test_custom_layer_package_export_and_clean_load(tmp_path):
     try:
         from custom_test_pkg.layers import CustomLinear  # ty: ignore[unresolved-import]
 
-        registry = LayerRegistry()
-        registry.register("CustomLinear", CustomLinear)
-
         scenario = ScenarioSpec(
             name="test_custom_layer",
             pipeline=PipelineSpec(
                 stages={
                     "encode": [
                         LayerSpec(
-                            type_key="CustomLinear",
+                            component=CustomLinear(),
                             keys_in=["features"],
                             keys_out=["latent"],
-                            params={},
                         ),
                     ]
                 }
@@ -363,7 +362,7 @@ def test_custom_layer_package_export_and_clean_load(tmp_path):
             training=TrainingSpec(max_epochs=1, batch_size=4, loss_keys={"latent_sum": 1.0}),
             data=synthetic_vector_data(feature_shape=(16,), num_samples=32),
         )
-        pipeline = compile(scenario, registry)
+        pipeline = compile(scenario)
 
         export_dir = tmp_path / "exported"
         export_package(pipeline, export_dir, include_modules=["custom_test_pkg.**"])
@@ -411,8 +410,14 @@ def test_explicit_include_modules_package_dynamic_import(tmp_path):
     (helper_dir / "ops.py").write_text("def scale(x):\n    return x * 3.0\n")
     (custom_dir / "layers.py").write_text(
         "import torch\n"
-        "from nexuml.core.base_layer import PipelineLayer\n\n"
-        "class DynamicImportLayer(PipelineLayer):\n"
+        "from nexuml.core.base_layer import PipelineLayer\n"
+        "from nexuml.core.components import LayerBuildContext, LayerDefinition\n"
+        "from nexuml.core.discovery import layer\n\n"
+        "@layer('DynamicImportLayer')\n"
+        "class DynamicImportLayer(LayerDefinition):\n"
+        "    def build(self, context: LayerBuildContext):\n"
+        "        return _DynamicImportLayerRuntime(**context.runtime_kwargs())\n\n"
+        "class _DynamicImportLayerRuntime(PipelineLayer):\n"
         "    def __init__(self, **kwargs):\n"
         "        super().__init__(**kwargs)\n"
         "        self.linear = torch.nn.Linear(16, 4)\n"
@@ -425,18 +430,15 @@ def test_explicit_include_modules_package_dynamic_import(tmp_path):
     try:
         from custom_dynamic_pkg.layers import DynamicImportLayer  # ty: ignore[unresolved-import]
 
-        registry = LayerRegistry()
-        registry.register("DynamicImportLayer", DynamicImportLayer)
         scenario = ScenarioSpec(
             name="test_dynamic_include",
             pipeline=PipelineSpec(
                 stages={
                     "encode": [
                         LayerSpec(
-                            type_key="DynamicImportLayer",
+                            component=DynamicImportLayer(),
                             keys_in=["features"],
                             keys_out=["latent"],
-                            params={},
                         ),
                     ]
                 }
@@ -444,7 +446,7 @@ def test_explicit_include_modules_package_dynamic_import(tmp_path):
             training=TrainingSpec(max_epochs=1, batch_size=4, loss_keys={"latent_sum": 1.0}),
             data=synthetic_vector_data(feature_shape=(16,), num_samples=32),
         )
-        pipeline = compile(scenario, registry)
+        pipeline = compile(scenario)
         export_dir = tmp_path / "exported_dynamic"
 
         export_package(
@@ -677,6 +679,7 @@ def test_tensor_shards_do_not_mix_splits(
 def test_tensor_shards_window_loader(tmp_path):
     from nexuml.core.types import LoaderSpec
     from nexuml.data.exported import ExportedDataset
+    from nexuml.data.loaders.definitions import TensorShardsLoader
     from nexuml.data.module import NexuDataModule
 
     scenario = _make_simple_scenario()
@@ -695,16 +698,15 @@ def test_tensor_shards_window_loader(tmp_path):
     data_module = NexuDataModule(
         dataset=dataset,
         loader_spec=LoaderSpec(
-            backend="tensor_shards",
+            backend=TensorShardsLoader(
+                shards_per_window=2,
+                prefetch_windows=1,
+                prefetch_workers=1,
+                shuffle_shards=False,
+                shuffle_samples=False,
+            ),
             batch_size=5,
             num_workers=0,
-            params={
-                "shards_per_window": 2,
-                "prefetch_windows": 1,
-                "prefetch_workers": 1,
-                "shuffle_shards": False,
-                "shuffle_samples": False,
-            },
         ),
         split_by_column=True,
     )

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from nexuml.core.discovery import scenario
 from nexuml.core.types import LoaderSpec, PreprocessingSpec, ScenarioSpec
+from nexuml.data.loaders.definitions import TensorShardsLoader
 from nexuml_library.scenarios.data.roots import resolve_data_root
 from nexuml_library.scenarios.vision.mnist_resnet import mnist_resnet
 
@@ -44,20 +45,19 @@ def mnist_resnet_shards(
     sharded_data = base.data.model_copy(
         update={
             "loader": LoaderSpec(
-                backend="tensor_shards",
+                backend=TensorShardsLoader(
+                    shards_per_window=shards_per_window,
+                    prefetch_windows=prefetch_windows,
+                    prefetch_workers=prefetch_workers,
+                    shuffle_shards=shuffle_shards,
+                    shuffle_samples=shuffle_samples,
+                    pin_memory=pin_memory,
+                    drop_last=False,
+                    seed=42,
+                ),
                 batch_size=batch_size,
                 num_workers=0,
                 shuffle_train=True,
-                params={
-                    "shards_per_window": shards_per_window,
-                    "prefetch_windows": prefetch_windows,
-                    "prefetch_workers": prefetch_workers,
-                    "shuffle_shards": shuffle_shards,
-                    "shuffle_samples": shuffle_samples,
-                    "pin_memory": pin_memory,
-                    "drop_last": False,
-                    "seed": 42,
-                },
             ),
             "preprocessing": PreprocessingSpec(
                 enabled=True,

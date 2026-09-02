@@ -1,155 +1,72 @@
-# Add a custom eval algorithm
+# Add A Custom Eval Algorithm
 
-This guide walks through adding a custom post-training evaluation algorithm to a library and using it from an `EvaluationSpec`.
-
-## Prerequisites
-
-- NexuML installed
-- A library root registered with `nexuml library add` or an installed entry-point package
-- For a new library: see [Register a library](register-library.md)
-
-## 1. Create the eval-algorithm file
-
-Place the algorithm under `evaluation/` inside your library package:
-
-```
-my_library/
-└── src/
-    └── my_library/
-        ├── __init__.py
-        └── evaluation/
-            ├── __init__.py
-            └── my_eval.py
-```
+The public algorithm definition stores semantic configuration. A private `EvalAlgorithm` runtime accumulates mutable evaluation state.
 
 ```python
-# my_library/src/my_library/evaluation/my_eval.py
 import torch
 from tensordict import TensorDict
 
+from nexuml.core.components import EvalAlgorithmDefinition, EvalBuildContext
 from nexuml.core.discovery import eval_algorithm
 from nexuml.evaluation.algorithm import EvalAlgorithm
 
 
 @eval_algorithm("l2_error")
-class L2ErrorEval(EvalAlgorithm):
-    """Compute mean L2 error between a feature key and a prediction key."""
+class L2Error(EvalAlgorithmDefinition):
+    prediction_key: str = "reconstructed"
 
-    def __init__(self, feature_key: str = "features", prediction_key: str = "reconstruction"):
+    def build(self, context: EvalBuildContext) -> EvalAlgorithm:
+        return _L2ErrorRuntime(
+            feature_key=context.feature_key or "features",
+            prediction_key=self.prediction_key,
+        )
+
+
+class _L2ErrorRuntime(EvalAlgorithm):
+    def __init__(self, feature_key: str, prediction_key: str):
         self.feature_key = feature_key
         self.prediction_key = prediction_key
-        self._sum = 0.0
-        self._count = 0
+        self.total = 0.0
+        self.count = 0
 
     def eval_batch(self, x: TensorDict, y: TensorDict | None) -> None:
-        pred = x[self.prediction_key]
-        target = x[self.feature_key]
-        diff = (pred - target).flatten(start_dim=1)
-        self._sum += torch.norm(diff, dim=1).sum().item()
-        self._count += diff.shape[0]
+        difference = (x[self.prediction_key] - x[self.feature_key]).flatten(start_dim=1)
+        self.total += torch.norm(difference, dim=1).sum().item()
+        self.count += difference.shape[0]
 
     def results(self) -> dict[str, float]:
-        return {"l2_error": self._sum / max(1, self._count)}
+        return {"l2_error": self.total / max(1, self.count)}
 ```
 
-## 2. Register the local root or install the package
-
-For local development:
-
-```bash
-nexuml library add my_library
-```
-
-For installable packages, declare the entry point:
-
-```toml
-[project.entry-points."nexuml.libraries"]
-my-library = "my_library"
-```
-
-## 3. Verify registration
-
-```bash
-nexuml registry list eval
-```
-
-You should see `l2_error` in the output.
-
-## 4. Use in a scenario
-
-Reference the algorithm by `type` in an `EvalAlgorithmSpec`:
+Use the definition directly while routing stays on `EvalAlgorithmSpec`:
 
 ```python
-from nexuml.core.discovery import scenario
-from nexuml.core.types import (
-    ScenarioSpec,
-    DataSpec,
-    TrainingSpec,
-    PipelineSpec,
-    LayerSpec,
-    EvaluationSpec,
-    EvalAlgorithmSpec,
-)
+from nexuml.core.types import EvalAlgorithmSpec, EvaluationSpec
+from my_library.evaluation.l2_error import L2Error
 
-@scenario("eval_tutorial")
-def eval_tutorial() -> ScenarioSpec:
-    return ScenarioSpec(
-        name="eval_tutorial",
-        data=DataSpec(source_type="synthetic", params={"feature_shape": [64], "num_samples": 500}),
-        training=TrainingSpec(
-            lr=1e-3,
-            max_epochs=5,
-            batch_size=64,
-            loss_keys={"reconstruction_loss": 1.0},
-        ),
-        pipeline=PipelineSpec(stages={
-            "encode": [
-                LayerSpec(
-                    type_key="linear_encoder",
-                    keys_in=["features"],
-                    keys_out=["z"],
-                    params={"input_dim": 64, "output_dim": 8},
-                ),
-            ],
-            "decode": [
-                LayerSpec(
-                    type_key="linear_decoder",
-                    keys_in=["z"],
-                    keys_out=["reconstruction"],
-                    params={"input_dim": 8, "output_dim": 64},
-                ),
-            ],
-            "loss": [
-                LayerSpec(
-                    type_key="reconstruction_loss",
-                    keys_in=["reconstruction", "features"],
-                    keys_out=["reconstruction_loss"],
-                    params={"input_dim": 64},
-                ),
-            ],
-        }),
-        evaluation=EvaluationSpec(
-            algorithms=[
-                EvalAlgorithmSpec(
-                    type="l2_error",
-                    params={"feature_key": "features", "prediction_key": "reconstruction"},
-                ),
-            ],
-            test_result_metrics=["l2_error"],
-        ),
-    )
+evaluation = EvaluationSpec(
+    algorithms=[
+        EvalAlgorithmSpec(
+            algorithm=L2Error(prediction_key="reconstructed"),
+            feature_key="features",
+        )
+    ],
+    test_result_metrics=["l2_error"],
+)
 ```
 
-## Eval-algorithm contract
+`enabled`, `name`, axis keys, feature keys, and label keys remain on the surrounding spec because they describe evaluation placement. Algorithm-specific values remain on the definition.
 
-- Inherit from `EvalAlgorithm`.
-- Implement `results() -> dict[str, float]`.
-- Optionally override `fit_batch`, `fit_end`, `eval_batch`, and `eval_end` to accumulate statistics across batches.
-- Read from the pipeline output `TensorDict` (`x`) and labels (`y`).
-- Return result keys that can be surfaced via `evaluation.test_result_metrics` for tuning or logging.
+Verify discovery with `nexuml registry list eval`. YAML uses the stable `l2_error@1` identity and validated parameters, while Python imports `L2Error` directly.
 
-## See also
+## Runtime Contract
+
+- `build(context)` returns an `EvalAlgorithm`.
+- The runtime implements `results()`.
+- Mutable accumulators stay on the runtime, not the definition.
+
+## See Also
 
 - [Discovery decorators](../reference/decorators.md)
-- [Register a library](register-library.md)
-- [Custom library end-to-end tutorial](custom-library.md)
+- [Evaluate](evaluate.md)
+- [Custom library](custom-library.md)

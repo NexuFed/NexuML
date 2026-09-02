@@ -4,13 +4,16 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeVar
 
 import torch
 
 logger = logging.getLogger(__name__)
+
+_ExportBackendT = TypeVar("_ExportBackendT", bound="ExportBackend")
 
 
 @dataclass
@@ -93,14 +96,16 @@ class ExportBackend(ABC):
 _BACKEND_REGISTRY: dict[str, type[ExportBackend]] = {}
 
 
-def register_export_backend(name: str):
+def register_export_backend(
+    name: str,
+) -> Callable[[type[_ExportBackendT]], type[_ExportBackendT]]:
     """Decorator to register an export backend.
 
     Returns:
         A decorator that registers the backend class and returns it.
     """
 
-    def decorator(cls: type[ExportBackend]) -> type[ExportBackend]:
+    def decorator(cls: type[_ExportBackendT]) -> type[_ExportBackendT]:
         if name in _BACKEND_REGISTRY:
             logger.warning("Overwriting export backend '%s'", name)
         _BACKEND_REGISTRY[name] = cls
