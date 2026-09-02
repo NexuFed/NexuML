@@ -4,22 +4,209 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
 
 permissions:
-  contents: write   # required to create a release
+  contents: read
 
 jobs:
-  release:
-    runs-on: ika-runner
+  validate:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-        with:
-          fetch-depth: 0   # full history so GitHub can diff against the previous tag
 
-      - name: Create GitHub Release
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "latest"
+
+      - name: Validate release tag
+        if: github.event_name == 'push'
+        run: |
+          python - "$GITHUB_REF_NAME" <<'PY'
+          import re
+          import sys
+          import tomllib
+          from pathlib import Path
+
+          tag = sys.argv[1]
+          if re.fullmatch(r"v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)", tag) is None:
+              raise SystemExit(f"Invalid stable release tag: {tag!r}")
+          versions = [
+              tomllib.loads(path.read_text())["project"]["version"]
+              for path in (Path("pyproject.toml"), Path("library/pyproject.toml"))
+          ]
+          if versions[0] != versions[1] or tag != f"v{versions[0]}":
+              raise SystemExit(f"Release tag {tag!r} does not match project versions {versions}")
+          PY
+
+      - name: Install source environment
+        run: uv sync --all-packages --extra dev --extra all --extra dali --locked
+
+      - name: Run source gates
+        env:
+          CUDA_VISIBLE_DEVICES: ""
+          DISABLE_MKDOCS_2_WARNING: "true"
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+          uv run ty check
+          uv run pytest -m "not slow"
+          uv run mkdocs build --strict
+
+      - name: Build distributions
+        run: |
+          uv build --package nexuml --out-dir dist/nexuml --clear
+          uv build --package nexuml-library --out-dir dist/nexuml-library --clear
+
+      - name: Validate distributions
+        run: |
+          uvx twine check dist/nexuml/* dist/nexuml-library/*
+          NEXUML_DIST_ROOT=dist uvx pytest -c /dev/null --rootdir=tests/packaging --confcutdir=tests/packaging -q tests/packaging/test_distribution_artifacts.py
+
+      - name: Rebuild wheels from source distributions
+        run: |
+          uv build dist/nexuml/nexuml-*.tar.gz --wheel --out-dir dist/rebuilt/nexuml --clear
+          uv build dist/nexuml-library/nexuml_library-*.tar.gz --wheel --out-dir dist/rebuilt/nexuml-library --clear
+          uvx twine check dist/rebuilt/nexuml/* dist/rebuilt/nexuml-library/*
+
+      - name: Smoke test core wheel
+        env:
+          CUDA_VISIBLE_DEVICES: ""
+        run: |
+          uv venv --no-config --python 3.12 .venv-core
+          uv pip install --no-config --python .venv-core/bin/python --default-index https://pypi.org/simple pytest dist/nexuml/*.whl
+          env -u PYTHONPATH NEXUML_INSTALLED_DIST_TEST=1 .venv-core/bin/python -I -m pytest -c /dev/null --rootdir=tests/packaging --confcutdir=tests/packaging -q tests/packaging/test_installed_distributions.py -k core
+
+      - name: Smoke test core and library wheels
+        env:
+          CUDA_VISIBLE_DEVICES: ""
+        run: |
+          uv venv --no-config --python 3.12 .venv-library
+          uv pip install --no-config --python .venv-library/bin/python --default-index https://pypi.org/simple pytest dist/nexuml/*.whl dist/nexuml-library/*.whl
+          env -u PYTHONPATH NEXUML_INSTALLED_DIST_TEST=1 .venv-library/bin/python -I -m pytest -c /dev/null --rootdir=tests/packaging --confcutdir=tests/packaging -q tests/packaging/test_installed_distributions.py -k library
+
+      - name: Upload validated distributions
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-distributions
+          path: |
+            dist/nexuml/*.whl
+            dist/nexuml/*.tar.gz
+            dist/nexuml-library/*.whl
+            dist/nexuml-library/*.tar.gz
+          if-no-files-found: error
+
+  publish-testpypi:
+    if: github.event_name == 'workflow_dispatch'
+    needs: validate
+    runs-on: ubuntu-latest
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/nexuml
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: python-distributions
+          path: dist
+
+      - name: Publish core to TestPyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/nexuml/
+          repository-url: https://test.pypi.org/legacy/
+
+      - name: Publish library to TestPyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/nexuml-library/
+          repository-url: https://test.pypi.org/legacy/
+
+  verify-testpypi:
+    if: github.event_name == 'workflow_dispatch'
+    needs: publish-testpypi
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "latest"
+
+      - name: Download NexuML wheels from TestPyPI
+        run: |
+          uv venv --seed --python 3.12 .venv-download
+          .venv-download/bin/python -m pip download --no-deps --only-binary=:all: --dest test-dist --index-url https://test.pypi.org/simple nexuml==0.2.0 nexuml-library==0.2.0
+
+      - name: Verify TestPyPI core install
+        env:
+          CUDA_VISIBLE_DEVICES: ""
+        run: |
+          uv venv --no-config --python 3.12 .venv-core
+          uv pip install --no-config --python .venv-core/bin/python --default-index https://pypi.org/simple --find-links test-dist pytest nexuml==0.2.0
+          env -u PYTHONPATH NEXUML_INSTALLED_DIST_TEST=1 .venv-core/bin/python -I -m pytest -c /dev/null --rootdir=tests/packaging --confcutdir=tests/packaging -q tests/packaging/test_installed_distributions.py -k core
+
+      - name: Verify TestPyPI library extra install
+        env:
+          CUDA_VISIBLE_DEVICES: ""
+        run: |
+          uv venv --no-config --python 3.12 .venv-library
+          uv pip install --no-config --python .venv-library/bin/python --default-index https://pypi.org/simple --find-links test-dist pytest "nexuml[library]==0.2.0"
+          env -u PYTHONPATH NEXUML_INSTALLED_DIST_TEST=1 .venv-library/bin/python -I -m pytest -c /dev/null --rootdir=tests/packaging --confcutdir=tests/packaging -q tests/packaging/test_installed_distributions.py -k library
+
+  publish-pypi:
+    if: github.event_name == 'push'
+    needs: validate
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/nexuml
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: python-distributions
+          path: dist
+
+      - name: Publish core to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/nexuml/
+
+      - name: Publish library to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/nexuml-library/
+
+  github-release:
+    if: github.event_name == 'push'
+    needs: publish-pypi
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: python-distributions
+          path: dist
+
+      - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
-          gh release create "${GITHUB_REF_NAME}" \
-            --title "${GITHUB_REF_NAME}" \
+          gh release create "$GITHUB_REF_NAME" dist/nexuml/* dist/nexuml-library/* \
+            --title "$GITHUB_REF_NAME" \
             --generate-notes

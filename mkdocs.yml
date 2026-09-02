@@ -142,5 +142,6 @@ nav:
   - Development:
     - development/index.md
     - Install for development: development/install.md
+    - Publish a release: development/release.md
     - Development setup: how-to/development.md
     - Enable GitHub Pages: how-to/github-pages.md

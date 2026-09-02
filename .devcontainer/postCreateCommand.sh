@@ -64,7 +64,7 @@ echo "Compute capability is $CC"
 
 if [ -z "$CC" ] || [ "$CC" -le 70 ]; then
     echo "Installing legacy torch package for ${CC} <= 7.0"
-    uv pip install -r /workspace/requirements.txt;
+    uv sync --all-extras;
     uv pip uninstall torch torchvision torchaudio;
     uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu126;
 else

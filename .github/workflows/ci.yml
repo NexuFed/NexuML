@@ -27,8 +27,8 @@ jobs:
         run: |
           uv venv
           source .venv/bin/activate
-          uv pip install -e ".[dev,all]"
-          uv pip install -e "./library"
+          uv pip install -e ".[dev,all,dali]"
+          uv pip install -e "./library[all]"
           echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
           echo "VIRTUAL_ENV=$PWD/.venv" >> "$GITHUB_ENV"
 
@@ -64,8 +64,8 @@ jobs:
         run: |
           uv venv --python "${{ matrix.python-version }}"
           source .venv/bin/activate
-          uv pip install -e ".[dev,all]"
-          uv pip install -e "./library"
+          uv pip install -e ".[dev,all,dali]"
+          uv pip install -e "./library[all]"
           echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
           echo "VIRTUAL_ENV=$PWD/.venv" >> "$GITHUB_ENV"
 
@@ -74,11 +74,69 @@ jobs:
           CUDA_VISIBLE_DEVICES: ""
         run: pytest --cov=nexuml --cov=nexuml_library --cov-report=term-missing --cov-report=xml:reports/coverage.xml
 
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "latest"
+
+      - name: Build distributions
+        run: |
+          uv build --package nexuml --out-dir dist/nexuml --clear
+          uv build --package nexuml-library --out-dir dist/nexuml-library --clear
+
+      - name: Validate distributions
+        run: |
+          uvx twine check dist/nexuml/* dist/nexuml-library/*
+          NEXUML_DIST_ROOT=dist uvx pytest -c /dev/null --rootdir=tests/packaging --confcutdir=tests/packaging -q tests/packaging/test_distribution_artifacts.py
+
+      - name: Rebuild wheels from source distributions
+        run: |
+          uv build dist/nexuml/nexuml-*.tar.gz --wheel --out-dir dist/rebuilt/nexuml --clear
+          uv build dist/nexuml-library/nexuml_library-*.tar.gz --wheel --out-dir dist/rebuilt/nexuml-library --clear
+          uvx twine check dist/rebuilt/nexuml/* dist/rebuilt/nexuml-library/*
+
+      - name: Smoke test core wheel
+        env:
+          CUDA_VISIBLE_DEVICES: ""
+        run: |
+          uv venv --no-config --python 3.12 .venv-core
+          uv pip install --no-config --python .venv-core/bin/python --default-index https://pypi.org/simple pytest dist/nexuml/*.whl
+          env -u PYTHONPATH NEXUML_INSTALLED_DIST_TEST=1 .venv-core/bin/python -I -m pytest -c /dev/null --rootdir=tests/packaging --confcutdir=tests/packaging -q tests/packaging/test_installed_distributions.py -k core
+
+      - name: Smoke test core and library wheels
+        env:
+          CUDA_VISIBLE_DEVICES: ""
+        run: |
+          uv venv --no-config --python 3.12 .venv-library
+          uv pip install --no-config --python .venv-library/bin/python --default-index https://pypi.org/simple pytest dist/nexuml/*.whl dist/nexuml-library/*.whl
+          env -u PYTHONPATH NEXUML_INSTALLED_DIST_TEST=1 .venv-library/bin/python -I -m pytest -c /dev/null --rootdir=tests/packaging --confcutdir=tests/packaging -q tests/packaging/test_installed_distributions.py -k library
+
+      - name: Upload validated distributions
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-distributions
+          path: |
+            dist/nexuml/*.whl
+            dist/nexuml/*.tar.gz
+            dist/nexuml-library/*.whl
+            dist/nexuml-library/*.tar.gz
+          if-no-files-found: error
+
   required-ci:
     name: CI
     needs:
       - static
       - test
+      - package
     if: ${{ always() }}
     runs-on: ika-runner
 
@@ -87,11 +145,13 @@ jobs:
         env:
           STATIC_RESULT: ${{ needs.static.result }}
           TEST_RESULT: ${{ needs.test.result }}
+          PACKAGE_RESULT: ${{ needs.package.result }}
         run: |
           echo "static: $STATIC_RESULT"
           echo "test:   $TEST_RESULT"
+          echo "package: $PACKAGE_RESULT"
 
-          if [ "$STATIC_RESULT" != "success" ] || [ "$TEST_RESULT" != "success" ]; then
+          if [ "$STATIC_RESULT" != "success" ] || [ "$TEST_RESULT" != "success" ] || [ "$PACKAGE_RESULT" != "success" ]; then
             echo "One or more required CI jobs failed."
             exit 1
           fi

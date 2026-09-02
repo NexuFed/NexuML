@@ -7,11 +7,11 @@
 <img alt="Python" src="https://img.shields.io/badge/python-3.12%2B-blue?style=flat-square&logo=python">
 <img alt="PyTorch" src="https://img.shields.io/badge/PyTorch-compatible-ee4c2c?style=flat-square&logo=pytorch&logoColor=white">
 <img alt="Status" src="https://img.shields.io/badge/status-preview-orange?style=flat-square">
-<img alt="Install" src="https://img.shields.io/badge/install-from%20GitHub-black?style=flat-square&logo=github">
+<img alt="PyPI" src="https://img.shields.io/pypi/v/nexuml?style=flat-square&logo=pypi">
 
 <!-- <img alt="Tests" src="https://img.shields.io/github/actions/workflow/status/NexuFed/NexuML/tests.yml?branch=main&style=flat-square&label=tests">
 <img alt="Docs" src="https://img.shields.io/badge/docs-online-blue?style=flat-square">
-<img alt="PyPI" src="https://img.shields.io/pypi/v/YOUR_PACKAGE_NAME?style=flat-square&logo=pypi"> -->
+-->
 
 <br/>
 <br/>
@@ -39,31 +39,19 @@ A modular deep learning pipeline framework built on PyTorch Lightning and Tensor
 
 ## Install
 
-Directly from GitHub, without cloning:
+Install the core framework from PyPI:
 
 ```bash
-uv pip install "nexuml[all] @ git+https://github.com/NexuFed/NexuML.git"
-uv pip install "nexuml-library @ git+https://github.com/NexuFed/NexuML.git#subdirectory=library"
+uv pip install nexuml
 ```
 
-Or after cloning:
+Core includes the framework and CLI. Add the optional base library for bundled components and scenarios:
 
 ```bash
-uv pip install --link-mode=copy -e ".[dev,all]"
-uv pip install --link-mode=copy -e "./library"
+uv pip install "nexuml[library]"
 ```
 
-Or with uv sync:
-
-```bash
-uv sync --all-extras
-source .venv/bin/activate
-```
-
-### Serve the docs locally
-```bash
-uv run mkdocs serve
-```
+See the [installation guide](https://nexufed.github.io/NexuML/start/install/) for CUDA and DALI setup. Contributors should use the [development install](https://nexufed.github.io/NexuML/development/install/).
 
 ## Public library allow-list
 

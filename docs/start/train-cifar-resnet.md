@@ -2,7 +2,7 @@
 
 This tutorial walks you through the complete NexuML workflow using the built-in `cifar-resnet` scenario: resolve a config, build and inspect the pipeline, train with Lightning, and export a portable model package.
 
-**Prerequisite:** [Install NexuML](install.md) first.
+**Prerequisite:** [Install NexuML with the base library](install.md) first using `uv pip install "nexuml[library]"`.
 
 ## 1. List available scenarios
 
