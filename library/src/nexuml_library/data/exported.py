@@ -1,4 +1,4 @@
-"""Compatibility import for the core exported dataset implementation."""
+"""Expose the core exported dataset to base-library discovery."""
 
 from nexuml.data.exported import ExportedDataset
 

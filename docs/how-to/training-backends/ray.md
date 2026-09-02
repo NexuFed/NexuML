@@ -161,12 +161,12 @@ from nexuml.data.exported import ExportedDataset
 dataset = ExportedDataset("s3://my-bucket/datasets/my-dataset")
 ```
 
-For S3 exports, `ExportedDataset` loads only `config.yaml` and metadata. Tensor payloads are intentionally read by DALI, not one-by-one through Python/boto3. Remote exports also avoid the local-only per-sample Python WebDataset index; the tar/index lists in `config.yaml` are sufficient for DALI.
+For S3 exports, `ExportedDataset` loads `config.yaml`, metadata, and the small DALI `.idx` files. Tensor payloads remain in S3 and are read directly by DALI rather than downloaded through Python/boto3. Remote exports also avoid the per-sample Python WebDataset index; the tar/index lists in `config.yaml` are sufficient for DALI.
 
-NexuML passes the `s3://...tar` and `s3://...idx` paths directly to the existing DALI WebDataset reader and preserves DALI sharding with `shard_id=global_rank` and `num_shards=world_size`.
+NexuML passes each `s3://...tar` path directly to the existing DALI WebDataset reader. DALI's WebDataset index parser requires local files, so NexuML stages only the corresponding `.idx` files in a worker-local temporary directory. DALI still owns sharding through `shard_id=global_rank` and `num_shards=world_size`.
 
-!!! warning "Verify direct S3 WebDataset support in the target DALI environment"
-    DALI supports S3 in several readers, but current `readers.webdataset` documentation does not explicitly guarantee cloud URLs. NexuML therefore keeps this boundary deliberately thin: direct URLs are the intended path, and a real target-environment integration test must confirm them before production use. If that combination needs a fallback, add the smallest worker-local shard materializer rather than a second cache/capability framework.
+!!! warning "Verify direct S3 tar support in the target DALI environment"
+    DALI supports S3 in several readers, but current `readers.webdataset` documentation does not explicitly guarantee cloud URLs. NexuML therefore keeps this boundary deliberately thin: direct tar URLs are the intended path, and a real target-environment integration test must confirm them before production use. If that combination needs a fallback, add the smallest bounded adapter demonstrated by that test rather than a second cache/capability framework.
 
 S3 credentials are resolved by boto3's normal AWS/provider credential chain and are not stored in scenario configuration.
 

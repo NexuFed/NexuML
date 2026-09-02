@@ -590,6 +590,7 @@ class NexuSession:
         devices: int | str = "auto",
         log_dir: str | Path = ".experiments",
         enable_progress_bar: bool = True,
+        enable_loggers: bool = True,
         trainer_checkpoint: str | Path | None = None,
         run_name: str | None = None,
     ) -> None:
@@ -601,6 +602,7 @@ class NexuSession:
         self.devices = devices
         self.log_dir = resolve_logs_root(log_dir)
         self.enable_progress_bar = enable_progress_bar
+        self.enable_loggers = enable_loggers
         self.trainer_checkpoint = (
             Path(trainer_checkpoint) if trainer_checkpoint is not None else None
         )
@@ -921,14 +923,22 @@ class NexuSession:
         from nexuml.tracking.logger import create_loggers
         from nexuml.training.callbacks import build_callbacks
 
-        self._trainer_loggers = create_loggers(
-            getattr(self.scenario, "logging", None),
-            run_name=self.run_name or self.scenario.name,
-        )
+        if self.enable_loggers:
+            self._trainer_loggers = create_loggers(
+                getattr(self.scenario, "logging", None),
+                run_name=self.run_name or self.scenario.name,
+            )
+        else:
+            from lightning.pytorch.loggers.logger import DummyLogger
+
+            self._trainer_loggers = [DummyLogger()]
         self._trainer_callbacks = build_callbacks(getattr(self.scenario, "callbacks", []))
 
     def _log_run_metadata_artifacts(self) -> None:
         if self._run_metadata_logged:
+            return
+        if not self.enable_loggers:
+            self._run_metadata_logged = True
             return
         if not self.trainer_loggers:
             self._run_metadata_logged = True

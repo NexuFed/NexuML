@@ -21,6 +21,7 @@ class FakeS3:
     def __init__(self, objects: dict[str, bytes] | None = None):
         self.objects = dict(objects or {})
         self.uploads: list[tuple[str, str, bytes]] = []
+        self.downloads: list[tuple[str, str]] = []
 
     def get_object(self, *, Bucket, Key):
         return {"Body": io.BytesIO(self.objects[Key])}
@@ -31,6 +32,7 @@ class FakeS3:
         self.uploads.append((bucket, key, data))
 
     def download_file(self, bucket, key, destination):
+        self.downloads.append((bucket, key))
         destination = Path(destination)
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_bytes(self.objects[key])
@@ -196,10 +198,11 @@ def test_remote_split_only_exposes_its_webdataset_shards():
     assert train.extra["index_paths"] == ["data/shards/train/shard-000000.idx"]
 
 
-def test_dali_materializes_s3_paths_and_preserves_rank_sharding(monkeypatch):
+def test_dali_streams_s3_shards_and_materializes_indexes(monkeypatch):
+    s3 = FakeS3(_remote_dataset_objects())
     dataset = ExportedDataset(
         "s3://bucket/dataset",
-        s3_client=FakeS3(_remote_dataset_objects()),
+        s3_client=s3,
     ).get_split("train")
 
     import nexuml.data.loaders.dali_backend as dali_backend
@@ -219,7 +222,8 @@ def test_dali_materializes_s3_paths_and_preserves_rank_sharding(monkeypatch):
     module = SimpleNamespace(loader_spec=LoaderSpec(backend="dali", batch_size=8, num_workers=1))
     dali_backend.DaliLoaderBackend().create_loader(module, dataset, split="train")
 
-    assert Path(captured["shard_paths"][0]).read_bytes() == b"train tar"
+    assert captured["shard_paths"] == ["s3://bucket/dataset/data/shards/train/shard-000000.tar"]
     assert Path(captured["index_paths"][0]).read_bytes() == b"train idx"
+    assert s3.downloads == [("bucket", "dataset/data/shards/train/shard-000000.idx")]
     assert captured["global_rank"] == 2
     assert captured["world_size"] == 4
