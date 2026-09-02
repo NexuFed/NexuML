@@ -1,170 +1,61 @@
 # Backends
 
-NexuML uses multiple independent backend registries — one per concern. There is no single unified "backend" concept. Use `nexuml backend list` to see what is available in your environment.
+`nexuml backend list` is the runtime catalog for several independent extension points. "Backend" is not one universal interface; each category belongs to a different concern.
 
 ```bash
 nexuml backend list
+nexuml backend list data-loader
+nexuml backend list data-export
 ```
 
-```
-                          Available Backends
-┏━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃ Category        ┃ Name              ┃ Implementation                         ┃
-┡━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
-│ data-export     │ numpy             │ nexuml.data.export.numpy_files         │
-│ data-export     │ numpy_mmap        │ nexuml.data.export.numpy_mmap          │
-│ data-export     │ tensordict_memmap │ nexuml.data.export.tensordict_memmap   │
-│ data-export     │ torch             │ nexuml.data.export.torch_files         │
-│ data-export     │ webdataset        │ nexuml.data.export.webdataset          │
-│ data-loader     │ dali              │ nexuml.data.loaders.dali_backend       │
-│ data-loader     │ torch             │ nexuml.data.loaders.torch_backend      │
-│ eval-storage    │ memmap            │ nexuml.evaluation.storage              │
-│ eval-storage    │ memory            │ nexuml.evaluation.storage              │
-│ pipeline-export │ onnx              │ nexuml.core.export.export_onnx         │
-│ pipeline-export │ package           │ nexuml.core.export.export_package      │
-│ pipeline-export │ safetensors       │ nexuml.core.export.export_safetensors  │
-│ tracking        │ dvclive           │ nexuml.tracking.logger                 │
-│ tracking        │ mlflow            │ nexuml.tracking.logger                 │
-│ tracking        │ tensorboard       │ nexuml.tracking.logger                 │
-│ training        │ lightning         │ nexuml.training.lightning.NexuSession  │
-└─────────────────┴───────────────────┴────────────────────────────────────────┘
-```
+!!! important "Catalog vs dependency health"
+    The command lists registered backend definitions/implementations. A listed optional backend can still require a third-party package at materialization time. For example, `DaliLoader` is registered even when `nvidia.dali` is not importable.
 
-## Backend categories
+## Data loaders
 
-### `data-export` — dataset export backends
+| Name | Role |
+| --- | --- |
+| `torch` | standard PyTorch loading |
+| `dali` | NVIDIA DALI loader; optional platform-specific runtime |
+| `tensor_shards` | windowed loading from materialized tensor shards |
 
-Selected with `--backend` on `nexuml export-dataset`.
+See [Data loading](../how-to/data-loading.md).
 
-| Name | Description |
-|---|---|
-| `numpy` | One `.npy` file per key per sample. Portable and readable everywhere. |
-| `numpy_mmap` | Memory-mapped `.npy` files. Efficient for large datasets. |
-| `torch` | PyTorch `.pt` tensors per sample. |
-| `tensordict_memmap` | TensorDict memory-mapped format. Best for TensorDict-native pipelines. |
-| `webdataset` | WebDataset `.tar` shards. Best for streaming and distributed training. |
+## Dataset export
 
-```bash
-nexuml export-dataset my-scenario --backend numpy_mmap --output ./cache/
-```
+Built-in data-export names currently include:
 
-Default backend: `numpy`.
+- `numpy`
+- `numpy_mmap`
+- `torch`
+- `tensordict_memmap`
+- `webdataset`
+- `tensor_shards`
 
-### `data-loader` — dataloader backends
+See [Dataset export](../how-to/export-dataset.md).
 
-Selected via `data.loader.backend` in `DataSpec.loader` (`LoaderSpec`).
+## Training / execution
 
-| Name | Description |
-|---|---|
-| `torch` | Standard PyTorch `DataLoader`. Always available. |
-| `dali` | NVIDIA DALI accelerated loader. Registered only if the DALI import succeeds. |
+The catalog exposes `lightning` and `ray` in the training category. Conceptually, Lightning remains the canonical session/training lifecycle and Ray changes distributed placement/setup around that lifecycle.
 
-```python
-from nexuml.core.types import DataSpec, LoaderSpec
-from nexuml.data.loaders.definitions import TorchLoader
-from my_library.data import MyDataset
+See [Execution modes](../how-to/training-backends/index.md).
 
-DataSpec(
-    source=MyDataset(),
-    loader=LoaderSpec(backend=TorchLoader(), num_workers=4),
-)
-```
+## Tracking
 
-!!! note "DALI availability"
-    The `dali` data-loader backend is registered only when `nexuml.data.loaders.dali_backend` can be imported. If DALI is not installed, the backend is silently absent — it does not appear in `nexuml backend list`. Install DALI separately following NVIDIA's instructions and then verify with `nexuml backend list`.
+The catalog includes TensorBoard, DVCLive, and MLflow integrations. Their dependencies/configuration are documented in [Tracking and logging](../how-to/tracking.md).
 
-### `training` — training backends
+## Pipeline export
 
-| Name | Description |
-|---|---|
-| `lightning` | PyTorch Lightning `NexuSession`. The only implemented training backend. |
+The catalog includes:
 
-The training backend is selected automatically. `NexuSession` wraps the compiled pipeline as a `LightningModule` and drives training with the Lightning `Trainer`.
+- `package` — primary NexuML train-package artifact;
+- `safetensors` — weight export;
+- `onnx` — inference graph export for supported pipelines.
 
-### `tracking` — experiment tracking backends
+See [Export and reload](../how-to/export.md).
 
-Selected via `LoggingSpec` fields in the scenario.
+## Evaluation temporary storage
 
-| Name | Config field | Description |
-|---|---|---|
-| `tensorboard` | `logging.tensorboard` | TensorBoard scalar logging |
-| `dvclive` | `logging.dvclive` | DVCLive metrics and plots |
-| `mlflow` | `logging.mlflow` | MLflow experiment tracking (runs, artifacts, params) |
+The current alpha code has a naming inconsistency: the backend catalog/internal storage factory uses `memory`, while `DistanceEstimatorSpec.storage_backend` currently declares the literal `ram` alongside `memmap`. Treat that spelling as unstable until the implementation is unified rather than building new user configuration around the mismatch.
 
-See [Tracking and logging](../how-to/tracking.md) for configuration details.
-
-### `eval-storage` — evaluation result storage backends
-
-Selected via `DistanceEstimatorSpec.storage_backend`.
-
-| Name | Description |
-|---|---|
-| `memory` | In-memory storage. Fast but lost after the process exits. |
-| `memmap` | Memory-mapped file. Persists to disk and survives restarts. |
-
-```python
-from nexuml.core.types import DistanceEstimatorSpec
-
-DistanceEstimatorSpec(storage_backend="memmap", storage_path=".experiments/eval_storage/")
-```
-
-### `pipeline-export` — trained pipeline export backends
-
-| Name | Function | Description |
-|---|---|---|
-| `package` | `export_package` | Default: state dict + config YAML + metadata JSON |
-| `safetensors` | `export_safetensors` | SafeTensors format for weights |
-| `onnx` | `export_onnx` | ONNX for cross-framework inference |
-
-See [Model export and reload](../how-to/export.md).
-
-## Custom backends
-
-### Custom data-export backend
-
-```python
-from nexuml.data.export import register_export_backend, ExportBackend
-
-class MyExportBackend(ExportBackend):
-    def write(self, key: str, tensor, split: str, index: int, output_dir: str) -> None:
-        ...
-
-register_export_backend("my_backend", MyExportBackend)
-```
-
-After registration, use `--backend my_backend` with `nexuml export-dataset`.
-
-### Custom data-loader backend
-
-```python
-from nexuml.core.components import LoaderBackendDefinition
-from nexuml.core.discovery import loader_backend
-from nexuml.data.loaders import LoaderBackend
-
-@loader_backend("my_loader")
-class MyLoader(LoaderBackendDefinition):
-    queue_depth: int = 2
-
-    def build(self) -> LoaderBackend:
-        return _MyLoaderBackend(queue_depth=self.queue_depth)
-```
-
-Use via `LoaderSpec(backend=MyLoader(queue_depth=4))`.
-
-!!! note "Kubernetes training"
-    No Kubernetes training-execution backend is implemented. The `training` category exposes only `lightning`. If a future change implements Kubernetes execution, this page will be updated.
-
-## Implementation map
-
-- `src/nexuml/data/export/` — data-export backend implementations
-- `src/nexuml/data/loaders/` — data-loader backend implementations
-- `src/nexuml/training/lightning.py` — `NexuSession` (training backend)
-- `src/nexuml/tracking/logger.py` — tracking backends
-- `src/nexuml/evaluation/storage.py` — eval-storage backends
-- `src/nexuml/core/export.py` — pipeline-export backend functions
-
-## See also
-
-- [Dataset export](../how-to/export-dataset.md)
-- [Model export and reload](../how-to/export.md)
-- [Tracking and logging](../how-to/tracking.md)
+The generated Python API is the exact reference for the currently installed version.

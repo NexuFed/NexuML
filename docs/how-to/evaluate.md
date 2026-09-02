@@ -1,130 +1,83 @@
-# Evaluation
+# Evaluate a model
 
-Evaluation in NexuML runs automatically at the end of `nexuml train`. Post-train pipeline layers are fitted on the training split, then evaluation algorithms score the test split.
+Evaluation is part of the normal `nexuml train` lifecycle; there is no separate top-level `nexuml evaluate` command in the current CLI.
 
-## Prerequisites
+NexuML separates three concerns that are easy to mix together.
 
-- NexuML installed (`uv sync`)
-- A scenario with evaluation algorithms configured
+## 1. Pipeline losses and metrics
 
-## Configuring evaluation
+Pipeline layers can emit named TensorDict values such as `classification_loss`, `accuracy`, or `f1`. `TrainingSpec.loss_keys` selects/weights loss values; `TrainingSpec.metric_keys` selects pipeline metrics to log during train/validation/test.
+
+These are part of the model pipeline itself.
+
+## 2. Post-train fitted pipeline layers
+
+Some score-producing components need the completed training set after gradient training. Such components use the `PostTrainFitLayer` lifecycle.
+
+The canonical local session runs:
+
+```text
+fit
+→ validate
+→ fit each unfitted PostTrainFitLayer over the training loader
+→ test
+```
+
+Fitted pipeline state can then produce values (for example anomaly scores) during the test pipeline pass.
+
+## 3. Evaluation algorithms
+
+`EvaluationSpec.algorithms` contains typed `EvalAlgorithmDefinition` values. They are reporting/analysis consumers of the test pipeline output rather than hidden score-producing model stages.
+
+Example using the base-library anomaly evaluator:
 
 ```python
-from nexuml.core.types import ScenarioSpec, EvaluationSpec, EvalAlgorithmSpec
+from nexuml.core.types import EvalAlgorithmSpec, EvaluationSpec
 from nexuml_library.evaluation.anomalous_sound_detection.asd_evaluator import AnomalyEvaluator
 
-ScenarioSpec(
-    name="my_scenario",
-    evaluation=EvaluationSpec(
-        metrics=["mse", "mae"],
-        algorithms=[
-            EvalAlgorithmSpec(
-                algorithm=AnomalyEvaluator(score_key="anomaly_score"),
-                label_key="y_true",
+evaluation = EvaluationSpec(
+    algorithms=[
+        EvalAlgorithmSpec(
+            algorithm=AnomalyEvaluator(
+                score_key="anomaly_score",
+                max_fpr=0.1,
             ),
-        ],
-        test_result_metrics="none",   # "none", "all", or list of metric names
-    ),
-    ...
+            label_key="y_true",
+        )
+    ],
+    test_result_metrics=["auc", "pauc"],
 )
 ```
 
-## How evaluation works
+During test, NexuML:
 
-1. Training completes and the best checkpoint is restored.
-2. Layers implementing `PostTrainPipelineLayer` are fitted on the full training split (e.g. kNN fitting, GMM fitting).
-3. The pipeline runs on the test split with `forward_until` semantics to extract features.
-4. Each registered `EvalAlgorithm` in `evaluation.algorithms` scores the test samples.
-5. Results are logged to MLflow and written to the configured eval storage backend.
+1. runs the compiled pipeline;
+2. attaches declared/available evaluation metadata where required;
+3. calls `eval_batch(x, y)` on each algorithm;
+4. calls `eval_end()` after the test epoch;
+5. calls `visualize(logger)`;
+6. collects scalar values from `results()`.
 
-## `EvalAlgorithmSpec` fields
+The public definition contains immutable semantic configuration. Its private runtime owns mutable accumulators.
 
-| Field | Type | Description |
-|---|---|---|
-| `algorithm` | `EvalAlgorithmDefinition` | Typed algorithm configuration |
-| `name` | `str \| None` | Display name in results |
-| `enabled` | `bool` | Set `False` to skip this algorithm |
-| `axis_keys` | `list[AxisKeySpec]` | Keys for grouping evaluation results |
-| `feature_key` | `str \| None` | TensorDict key for input features |
-| `label_key` | `str \| None` | TensorDict key for ground-truth labels |
+## Route inputs explicitly
 
-## Eval storage backends
+`EvalAlgorithmSpec` owns placement/routing fields such as:
 
-Results are stored using the eval-storage backend specified in `DistanceEstimatorSpec.storage_backend`:
+- `name` and `enabled`;
+- `feature_key` and `label_key`;
+- `axis_keys` for grouped evaluation.
 
-| Backend | Description |
-|---|---|
-| `memory` | In-memory (fast, lost on exit) |
-| `memmap` | Memory-mapped file (persists to disk) |
+Algorithm-specific values stay on the typed algorithm definition.
 
-```python
-from nexuml.core.types import DistanceEstimatorSpec
+## Surface selected results
 
-DistanceEstimatorSpec(
-    storage_backend="memmap",
-    storage_path=".experiments/eval_storage/",
-)
-```
+`EvaluationSpec.test_result_metrics` controls which evaluation scalars are mirrored into test results (`"none"`, `"all"`, or a list). This is useful when another workflow, such as tuning, needs a metric from the evaluation result set.
 
-## Surfacing eval metrics to tuning
+## Distributed execution
 
-By default, evaluation algorithm results are not logged as MLflow metrics accessible to Optuna. To surface specific metrics:
+Ray currently rejects `evaluation.algorithms` because each worker would otherwise accumulate independent rank-local state. See [Ray execution](training-backends/ray.md).
 
-```python
-EvaluationSpec(
-    test_result_metrics=["omega", "auc"],   # logs these as MLflow metrics
-    algorithms=[...],
-)
-```
+## Custom algorithms
 
-Or to surface all evaluation metrics:
-
-```python
-EvaluationSpec(
-    test_result_metrics="all",
-    algorithms=[...],
-)
-```
-
-This is required when `nexuml tune --metric` references an evaluation metric such as `omega`.
-
-## Custom eval algorithms
-
-Register a typed custom definition with `@eval_algorithm`:
-
-```python
-from nexuml.core.components import EvalAlgorithmDefinition, EvalBuildContext
-from nexuml.core.discovery import eval_algorithm
-
-@eval_algorithm("my_eval")
-class MyEval(EvalAlgorithmDefinition):
-    scale: float = 1.0
-
-    def build(self, context: EvalBuildContext):
-        return _MyEvalRuntime(scale=self.scale)
-```
-
-Use in a scenario:
-
-```python
-EvalAlgorithmSpec(algorithm=MyEval(scale=2.0), feature_key="z")
-```
-
-## Inspect available algorithms
-
-```bash
-nexuml registry list eval
-```
-
-## Implementation map
-
-- `src/nexuml/evaluation/` — evaluation orchestration, storage, algorithm base
-- `src/nexuml/core/types.py` — `EvaluationSpec`, `EvalAlgorithmSpec`, `DistanceEstimatorSpec`
-- `src/nexuml/core/post_train_layer.py` — `PostTrainPipelineLayer` base class
-- `src/nexuml/core/discovery.py` — `@eval_algorithm` decorator
-
-## See also
-
-- [Discovery decorators](../reference/decorators.md)
-- [Optuna tuning](tune.md) — surfacing eval metrics via `test_result_metrics`
-- [Tracking and logging](tracking.md)
+Use [Add a custom eval algorithm](custom-eval-algorithm.md) for the definition/runtime contract.

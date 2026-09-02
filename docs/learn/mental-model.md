@@ -1,81 +1,80 @@
 # Mental model
 
-NexuML organises deep learning experiments around a central object called a `ScenarioSpec`. Understanding the lifecycle of a `ScenarioSpec` explains why every CLI command exists and what it does.
+NexuML exists to keep reusable ML implementations separate from the glue code that defines one experiment. The easiest way to reason about it is as four boundaries.
 
-## The lifecycle
+## 1. Define
 
-```
-ScenarioSpec
-    │
-    │ nexuml resolve
-    ▼
-config YAML          ← reproducible, version-controllable
-    │
-    │ nexuml build
-    ▼
-compiled pipeline    ← layers instantiated, tensor contracts validated
-    │
-    │ nexuml train
-    ▼
-trained model        ← Lightning runs the loop, checkpoints written
-    │
-    │ nexuml evaluate (or inline during train)
-    ▼
-evaluation results   ← metrics, confusion matrix, etc.
-    │
-    │ nexuml export
-    ▼
-model package        ← portable, reloadable for inference
+A Python scenario returns a Pydantic `ScenarioSpec`. It directly contains typed component definitions:
+
+```python
+LayerSpec(
+    component=LinearEncoder(hidden_dims=[32], output_dim=8),
+    keys_in=["features"],
+    keys_out=["embedding"],
+)
 ```
 
-## What each step does
+The component owns its semantic configuration. `LayerSpec` owns where that component sits in the TensorDict graph. The same pattern is used for data sources, evaluation algorithms, and loader backends.
 
-### `ScenarioSpec` — declare everything
+## 2. Persist
 
-A `ScenarioSpec` is a Python dataclass that holds every decision about an experiment:
+```bash
+nexuml resolve my-scenario
+```
 
-- **`data`** (`DataSpec`) — where data comes from and how it is split.
-- **`pipeline`** (`PipelineSpec`) — ordered sequence of `LayerSpec` entries.
-- **`training`** (`TrainingSpec`) — optimizer, scheduler, max epochs, loss keys.
-- **`evaluation`** (`EvaluationSpec`) — which evaluation algorithm to run.
-- **`logging`** (`LoggingSpec`) — diagram output, TensorBoard, etc.
-- **`exports`** (`list[ExportSpec]`) — what to export after training.
-- **`checkpoint`** (`CheckpointLoadSpec`) — optional checkpoint to resume from.
-- **`tuning`** (`TuningSpec`) — Optuna search space, if used.
+`resolve` writes a validated YAML representation. Concrete registered definitions are lowered to stable `type`, `version`, and `params` data so the experiment can be reviewed, versioned, and restored later.
 
-A scenario is just a Python function decorated with `@scenario("key")` that returns a `ScenarioSpec`.
+Python code uses concrete classes; registry identities primarily matter at discovery and persistence boundaries.
 
-### `resolve` — compile to YAML
+## 3. Materialize
 
-`nexuml resolve cifar-resnet` calls the scenario function, validates the resulting `ScenarioSpec`, and writes a YAML config to `configs/cifar-resnet.yaml`.
+```bash
+nexuml build configs/my-scenario.yaml
+```
 
-The YAML is the reproducible record of the experiment. Checking it into version control lets you reproduce training exactly.
+The compiler restores the concrete definitions and calls their explicit build boundaries:
 
-### `build` — compile the pipeline
+- `LayerDefinition.build(context)` → `PipelineLayer`
+- `DataSourceDefinition.build()` → `NexuDataset`
+- `EvalAlgorithmDefinition.build(context)` → `EvalAlgorithm`
+- `LoaderBackendDefinition.build()` → loader backend
 
-`nexuml build configs/cifar-resnet.yaml` reads the YAML, instantiates each `LayerSpec` into a concrete `PipelineLayer`, and validates tensor key contracts. This step catches shape mismatches and missing registry keys before any GPU time is spent.
+For ordinary one-input/one-output PyTorch modules, `nn_module(...)` provides the generic layer definition instead of requiring a custom NexuML wrapper.
 
-### `train` — run the Lightning loop
+The result is a `CompiledPipeline` whose ordered stages exchange named values through a TensorDict.
 
-`nexuml train cifar-resnet --max-epochs=2` compiles the pipeline, wraps it in a Lightning `LightningModule`, and hands it to a Lightning `Trainer`. NexuML configures data loaders from `DataSpec`, loss from `TrainingSpec`, and metrics from `EvaluationSpec`.
+## 4. Run
 
-### `evaluate` — measure performance
+```bash
+nexuml train my-scenario
+```
 
-Evaluation can run inline at the end of training (configured in `EvaluationSpec`) or separately. `EvalAlgorithmSpec.algorithm` contains the typed algorithm definition.
+`NexuSession` drives the standard lifecycle through PyTorch Lightning:
 
-### `export` — package for inference
+```text
+fit → validate → fit post-train pipeline layers → test
+```
 
-`nexuml export cifar-resnet --checkpoint <path>` loads the checkpoint, reconstructs the pipeline, and writes a self-contained package to `exported_model/`. The package can be reloaded without the original scenario code.
+Evaluation algorithms consume test outputs and finalize their metrics/artifacts. Scenario logging, callbacks, checkpoint loading, exports, and execution placement are applied around the same lifecycle.
 
-## Why this design?
+Local and Ray execution change **where** the session runs; they do not define a second model/training implementation.
 
-- **Reproducibility:** The resolved YAML captures every hyperparameter, so experiments can be re-run from the file alone.
-- **Composability:** `PipelineSpec` layers are independent, tested units. You can swap their concrete component definitions.
-- **Separation of concerns:** Data, model, training, and evaluation are each their own spec. Changing the optimizer does not touch the layer definitions.
-- **Framework integration:** The Lightning training loop is unchanged. NexuML adds the layer-contract system and discovery on top.
+## The objects to remember
+
+| Object | Responsibility |
+| --- | --- |
+| `ScenarioSpec` | compose one complete experiment |
+| component definitions | immutable, validated semantic configuration |
+| `LayerSpec` / `DataSpec` / `EvalAlgorithmSpec` | graph/routing/placement policy |
+| `TensorDict` | explicit named data flow between pipeline blocks |
+| runtime classes | mutable tensors, modules, datasets, fitted/evaluation state |
+| `ResolvedConfig` | stable persistence boundary |
+| `CompiledPipeline` | executable model graph |
+| `NexuSession` | canonical training/evaluation lifecycle |
 
 ## Next
 
-- [Scenarios](scenarios.md) — anatomy of `ScenarioSpec` fields and types
-- [Coming from Lightning](from-lightning.md) — mapping NexuML concepts to Lightning
-- [Train CIFAR ResNet](../start/train-cifar-resnet.md) — run the lifecycle yourself
+- [Scenarios](scenarios.md)
+- [Architecture](../explanation/architecture.md)
+- [TensorDict data flow](../explanation/tensordict.md)
+- [Tutorials](../tutorials.md)

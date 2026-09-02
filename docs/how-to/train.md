@@ -1,58 +1,65 @@
 # Train a model
 
-## Basic training
+## Train a registered scenario
 
 ```bash
-nexuml train <scenario-name>
-```
-
-## Options
-
-| Option | Description |
-|---|---|
-| `--config` / `-c PATH` | Config YAML path (alternative to scenario name) |
-| `--scenario-file PATH` | Trusted Python file defining `scenario() -> ScenarioSpec` |
-| `--artifact-dir PATH` | Directory for provenance snapshots (used with `--scenario-file`) |
-| `--max-epochs N` | Override `training.max_epochs` |
-| `--trainer-checkpoint PATH` | Lightning checkpoint to resume from |
-| `--override` / `-O key=value` | Override any spec field (repeatable) |
-
-## Examples
-
-```bash
-# Train by scenario name
 nexuml train my-scenario
-
-# From a YAML config
-nexuml train -c configs/my-scenario.yaml
-
-# Override fields
-nexuml train my-scenario -O training.max_epochs=20 -O training.lr=1e-4
-
-# Resume from a checkpoint
-nexuml train my-scenario --trainer-checkpoint .experiments/checkpoints/my-scenario/last.ckpt
-
-# Trusted Python file
-nexuml train --scenario-file my_experiment.py
 ```
+
+## Train resolved YAML
+
+```bash
+nexuml train -c configs/my-scenario.yaml
+```
+
+## Train a trusted local experiment
+
+```bash
+nexuml train --scenario-file experiment.py --artifact-dir artifacts/exp-001
+```
+
+See [Run scenarios](run-scenarios.md) for when to use each source.
+
+## Common overrides
+
+```bash
+nexuml train my-scenario --max-epochs 20
+nexuml train my-scenario -O training.lr=0.0001 -O training.precision=bf16-mixed
+```
+
+Overrides change the scenario used for that command. For reusable experiment changes, prefer expressing the value in the Python scenario and resolving a new configuration.
+
+## Resume the Lightning trainer
+
+```bash
+nexuml train my-scenario --trainer-checkpoint PATH
+```
+
+This is a **full Lightning resume**: model, optimizer/scheduler state, epoch/global step, and compatible callback state come from the trainer checkpoint.
+
+Do not use `CheckpointLoadSpec` for the same purpose. `CheckpointLoadSpec` is the separate selective/pretrained-weight workflow described in [Checkpoints](checkpoints.md).
+
+## Execution placement
+
+The command stays the same when the scenario selects Ray execution:
+
+```bash
+nexuml train my-scenario
+```
+
+`ScenarioSpec.execution` controls whether the canonical session runs locally or through Ray. See [Execution modes](training-backends/index.md).
 
 ## Outputs
 
-| Artifact | Default location |
-|---|---|
-| Checkpoints | `.experiments/checkpoints/<scenario>/` |
-| TensorBoard | `.experiments/tensorboard/` |
-| MLflow | `.experiments/mlflow.db` |
-| Mermaid diagram | `.experiments/diagrams/<scenario>.md` |
+NexuML does not require one hard-coded output directory layout for every project. Outputs are driven by the scenario:
 
-## Automatic batch size
+- checkpoint callbacks decide checkpoint creation and location;
+- `LoggingSpec` controls TensorBoard/MLflow/DVCLive/diagram outputs;
+- `ExportSpec(kind="train_package")` can package the live trained model after a local run;
+- `--artifact-dir` stores provenance for trusted scenario-file runs.
 
-Set `training.batch_size` to an `AutoBatchSizeSpec` to let NexuML probe the largest batch that fits in GPU memory. See [Automatic batch size](auto-batch-size.md).
+Use [Environment roots](../reference/environment.md) for default root resolution and the relevant guide for each output type.
 
-## See also
+## Exact options
 
-- [CLI lifecycle](cli-lifecycle.md) — all commands
-- [Checkpoints](checkpoints.md) — resume and selective loading
-- [Tracking and logging](tracking.md)
-- [Automatic batch size](auto-batch-size.md)
-- [Export a model package](export.md)
+The CLI is generated from the implementation. Use [CLI reference](../reference/cli.md) instead of copied option tables.

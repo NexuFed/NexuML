@@ -1,182 +1,58 @@
-# Optuna hyperparameter tuning
+# Tune with Optuna
 
-NexuML integrates with [Optuna](https://optuna.readthedocs.io/) for hyperparameter search via `nexuml tune`.
-
-## Prerequisites
-
-- NexuML installed
-- Optuna installed (included with `uv pip install nexuml[tuning]` or `uv pip install optuna`)
-- A registered scenario or a trusted Python scenario file
-
-## Supported scenario sources
-
-`nexuml tune` accepts **exactly one** of:
-
-| Source | Example | Notes |
-|---|---|---|
-| Registered scenario name | `nexuml tune my-scenario` | Discovered from libraries/entry points |
-| Trusted scenario file | `nexuml tune --scenario-file my_experiment.py` | Supports `SEARCH_SPACE`, `build(**params)` |
-
-`nexuml tune` does **not** accept resolved YAML configs via `--config` / `-c`. Use `--scenario-file` for Python-driven tuning or register a scenario that contains a `TuningSpec`.
-
-## Basic usage
+Install the optional integration:
 
 ```bash
-# Tune a registered scenario
+uv pip install "nexuml[tuning]"
+```
+
+`nexuml tune` accepts either a registered scenario or a trusted Python scenario file. It does not tune from resolved YAML because structural/Python search-space logic is not represented by that persistence format.
+
+## Registered scenario
+
+```bash
 nexuml tune my-scenario --n-trials 30
-
-# Tune a trusted Python file
-nexuml tune --scenario-file my_experiment.py --n-trials 20
 ```
 
-## Full option reference
-
-| Option | Description |
-|---|---|
-| `SCENARIO_NAME` | Registered scenario name (alternative to `--scenario-file`) |
-| `--scenario-file PATH` | Trusted Python file defining `scenario()` |
-| `--artifact-dir PATH` | Directory for provenance snapshots |
-| `--n-trials N` | Number of Optuna trials (overrides `TuningSpec.n_trials`) |
-| `--metric TEXT` | Metric key to optimize (overrides `TuningSpec.metric_key`) |
-| `--direction TEXT` | `minimize` or `maximize` (overrides `TuningSpec.directions`) |
-| `--storage TEXT` | Optuna storage path (overrides `TuningSpec.storage`) |
-| `--prune` / `--no-prune` | Enable/disable Optuna pruning |
-| `--override` / `-O key=value` | Override any scenario field (repeatable) |
-
-## `TuningSpec` reference
-
-Configure tuning defaults inside a `ScenarioSpec`:
+`ScenarioSpec.tuning` can provide defaults such as trial count, direction, metric key, storage, and pruning policy:
 
 ```python
-from nexuml.core.types import ScenarioSpec, TuningSpec
+from nexuml.core.types import TuningSpec
 
-ScenarioSpec(
-    name="my_scenario",
-    tuning=TuningSpec(
-        n_trials=50,                      # default number of trials
-        directions=["minimize"],          # "minimize" or "maximize"; list for multi-objective
-        metric_key="val/loss",            # metric to optimize
-        storage=".experiments/optuna/optuna.log",  # Optuna storage path
-        prune=False,                      # enable Optuna pruning
-    ),
-    ...
+TuningSpec(
+    n_trials=30,
+    directions=["minimize"],
+    metric_key="val/loss",
+    storage="sqlite:///.experiments/optuna/study.db",
+    prune=False,
 )
 ```
 
-CLI flags `--metric`, `--direction`, and `--storage` override the corresponding `TuningSpec` fields. `--n-trials` always overrides `TuningSpec.n_trials` when provided.
+CLI options can override those run-level values. Use the generated [CLI reference](../reference/cli.md) for exact flags.
 
-## Default search space
-
-When no `SEARCH_SPACE` is defined, tuning uses the built-in default:
-
-```python
-DEFAULT_SEARCH_SPACE = {
-    "training.lr": {"type": "float", "low": 1e-5, "high": 1e-2, "log": True},
-    "training.batch_size": {"type": "categorical", "choices": [32, 64, 128]},
-}
-```
-
-Only `training.lr` and `training.batch_size` are in the default search space.
-
-## Custom search spaces
-
-See the [Tuning file reference](../reference/tuning-file.md) for the full search-space format, including:
-
-- Scalar dotted-path entries (`training.lr`, `training.max_epochs`)
-- Conditional `when` branches
-- `derived` entries
-- Structural `build(**params)` parameters
-
-## Correctness constraints
-
-### Metric key must exist
-
-The metric key must appear in logged metrics or evaluation results during training. If a trial completes without logging the requested metric, Optuna raises a tuning error.
-
-For evaluation metrics such as `omega` or `auc`:
-
-1. Make sure the evaluation algorithm computes and logs the metric.
-2. Surface it to test results via `evaluation.test_result_metrics`:
-
-```python
-from nexuml.core.types import EvaluationSpec
-
-EvaluationSpec(
-    test_result_metrics=["omega"],   # surfaces eval metrics as logged metrics
-    algorithms=[...],
-)
-```
-
-### Pruning
+## Trusted file and custom search space
 
 ```bash
-nexuml tune my-scenario --prune
+nexuml tune --scenario-file experiment.py --n-trials 20
 ```
 
-Optuna pruners stop underperforming trials early. Intermediate values must be reported by the Lightning callbacks (this requires the trainer to call `trial.report()` during validation steps). Pruning is disabled by default.
+A trusted file can expose `SEARCH_SPACE`, `TUNING_SPEC`, and a structural `build(**params)` factory. Conditional and derived search-space entries are also Python-only.
 
-### Storage
+Use [Tuning file reference](../reference/tuning-file.md) for the exact format rather than duplicating that schema here.
 
-By default, tuning results are persisted to `.experiments/optuna/optuna.log`. To use a SQLite database (required for the Optuna dashboard):
+## Metric selection
 
-```bash
-nexuml tune my-scenario \
-  --n-trials 50 \
-  --storage sqlite:///.experiments/optuna/study.db
-```
+The optimized metric must actually be emitted by the run. Typical pipeline validation metrics use keys such as `val/loss`.
 
-Visualize with the Optuna dashboard:
+If the objective comes from a post-training evaluation algorithm, configure `evaluation.test_result_metrics` so the selected evaluation scalar is mirrored into the test result surface consumed by the tuning workflow.
 
-```bash
-pip install optuna-dashboard
-optuna-dashboard sqlite:///.experiments/optuna/study.db
-```
+## Tracking
 
-### MLflow study runs
-
-Each Optuna trial is logged to MLflow as a nested run under the parent study run. The best trial's parameters and metric value are logged to the parent run.
-
-## Example — full tuning run
-
-```bash
-nexuml tune synthetic_ae_tutorial \
-  --n-trials 20 \
-  --metric val/loss \
-  --direction minimize \
-  --storage sqlite:///.experiments/optuna/ae_study.db \
-  --no-prune
-```
-
-Expected output:
-
-```
-Trial 1 finished with value: 0.3241
-Trial 2 finished with value: 0.2987
-...
-Best trial: 14, value: 0.1823
-Best params: {'training.lr': 0.003, 'training.batch_size': 128}
-```
-
-## Expected artifacts
-
-After tuning:
-
-| Artifact | Location |
-|---|---|
-| Optuna study | `--storage` path (`.experiments/optuna/optuna.log` by default) |
-| MLflow runs | `.experiments/mlflow.db` |
-| Best checkpoint | `.experiments/checkpoints/<scenario>/` |
-
-## Implementation map
-
-- `src/nexuml/tuning/optuna_tuner.py` — `DEFAULT_SEARCH_SPACE`, `build_objective`, tuning loop
-- `src/nexuml/core/types.py` — `TuningSpec`
-- `src/nexuml/core/scenario_loader.py` — `SEARCH_SPACE`, `TUNING_SPEC`, `build` loading
-- `src/nexuml/cli/main.py` — `tune` command
+When MLflow is configured, NexuML can record study/trial runs through the tracking integration. MLflow itself is optional; install/configure it separately from Optuna.
 
 ## See also
 
-- [Tuning file reference](../reference/tuning-file.md)
 - [Trusted scenario files](scenario-file.md)
-- [CLI lifecycle](cli-lifecycle.md)
-- [Tracking and logging](tracking.md)
+- [Tuning file reference](../reference/tuning-file.md)
+- [Evaluation](evaluate.md)
+- [Tracking](tracking.md)

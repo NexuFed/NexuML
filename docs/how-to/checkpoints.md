@@ -1,127 +1,78 @@
-# Checkpoints
+# Checkpoints and weight reuse
 
-NexuML uses PyTorch Lightning's checkpoint system. This guide covers saving, resuming from, and selectively loading checkpoints.
+NexuML exposes three different checkpoint-related operations. Keeping them separate avoids ambiguous "load checkpoint" behavior.
 
-## Prerequisites
+## 1. Create Lightning checkpoints
 
-- NexuML installed (`uv sync`)
-- A scenario that has been trained (or is in progress)
-
-## Where checkpoints are saved
-
-Lightning checkpoints are saved automatically during training to:
-
-```
-.experiments/checkpoints/<scenario-name>/
-├── last.ckpt
-└── epoch=4-step=250.ckpt
-```
-
-The exact path depends on `NEXUML_LOGS_ROOT` and any `ModelCheckpoint` callback configuration. Add callbacks to the scenario to customize:
+Checkpoint creation is a Lightning callback concern:
 
 ```python
-from nexuml.core.types import ScenarioSpec, CallbackSpec
+from nexuml.core.types import CallbackSpec
 
-ScenarioSpec(
-    name="my_scenario",
-    callbacks=[
-        CallbackSpec(
-            type="checkpoint",
-            params={
-                "monitor": "val/loss",
-                "mode": "min",
-                "save_top_k": 3,
-                "filename": "{epoch:02d}-{val/loss:.4f}",
-            },
-        ),
-    ],
-    ...
-)
+callbacks = [
+    CallbackSpec(
+        type="checkpoint",
+        params={
+            "monitor": "val/loss",
+            "mode": "min",
+            "save_top_k": 1,
+            "save_last": True,
+        },
+    )
+]
 ```
 
-## Resume training from a checkpoint
+Set `dirpath` in the callback if the project needs a specific location. Otherwise do not write code that assumes a particular `version_0/...` path.
+
+## 2. Resume a Lightning training run
 
 ```bash
-nexuml train my-scenario --trainer-checkpoint .experiments/checkpoints/my-scenario/last.ckpt
+nexuml train my-scenario --trainer-checkpoint /path/to/last.ckpt
 ```
 
-This resumes the full Lightning trainer state: epoch count, optimizer state, LR scheduler state, and model weights.
+This restores the Lightning trainer state: model state, optimizer/scheduler state, epoch/global step, and compatible callback state. A compatible NexuML scenario is persisted in the checkpoint and can be recovered for checkpoint-only resume.
 
-## Fine-tune from a package or checkpoint
+Use this when the intent is **continue the same training run**.
 
-To selectively load weights from a previously exported package or checkpoint (without resuming the trainer state), use `CheckpointLoadSpec`:
+## 3. Reuse selected model weights
 
-```python
-from nexuml.core.types import ScenarioSpec, CheckpointLoadSpec
-
-ScenarioSpec(
-    name="fine_tuned",
-    checkpoint=CheckpointLoadSpec(
-        source="packages/pretrained/state_dict.pt",
-        include=[],              # empty = load all layers
-        exclude=["head"],        # skip the classification head (will train from scratch)
-        allow_missing=True,      # new layers without pretrained weights are OK
-        allow_shape_mismatch=True,   # mismatched shapes are logged and skipped
-        freeze_loaded=False,     # set True to freeze pretrained weights during training
-    ),
-    ...
-)
-```
-
-## `CheckpointLoadSpec` fields
-
-| Field | Type | Default | Description |
-|---|---|---|---|
-| `source` | `str \| None` | `None` | Path to a state dict `.pt` file or exported package directory |
-| `include` | `list[str]` | `[]` | Stage/layer name prefixes to include (empty = all) |
-| `exclude` | `list[str]` | `[]` | Stage/layer name prefixes to exclude |
-| `allow_missing` | `bool` | `True` | If `True`, layers in the model with no matching key in the checkpoint are initialized normally |
-| `allow_shape_mismatch` | `bool` | `True` | If `True`, keys with mismatched shapes are logged as warnings and skipped |
-| `freeze_loaded` | `bool` | `False` | If `True`, parameters loaded from the checkpoint are frozen (no gradient) |
-
-## Selective loading examples
-
-### Load encoder only, train new head
+Use `CheckpointLoadSpec` when the intent is **initialize a new scenario from previous weights**, not resume the old trainer:
 
 ```python
-CheckpointLoadSpec(
-    source="packages/pretrained/state_dict.pt",
-    include=["encode"],    # load only the "encode" pipeline stage
-    exclude=[],
+from nexuml.core.types import CheckpointLoadSpec
+
+checkpoint = CheckpointLoadSpec(
+    source="packages/pretrained",
+    include=["stages.Encoder.*"],
+    exclude=["*.Head.*"],
     allow_missing=True,
+    allow_shape_mismatch=True,
+    freeze_loaded=False,
 )
 ```
 
-### Transfer learning with frozen backbone
+`include` and `exclude` are glob patterns matched against the actual compiled pipeline `state_dict()` keys. They are not semantic stage aliases. Check the state-dict key names before writing a narrow pattern for a particular model.
 
-```python
-CheckpointLoadSpec(
-    source="packages/backbone/state_dict.pt",
-    include=["backbone"],
-    freeze_loaded=True,    # backbone weights frozen during fine-tuning
-    allow_missing=True,
-)
-```
+Supported sources include exported package directories and compatible state/weight artifacts handled by the export loader.
 
-## Export after training
+## `CheckpointLoadSpec`
 
-After training, export the pipeline to a portable package:
+| Field | Meaning |
+| --- | --- |
+| `source` | artifact/checkpoint path |
+| `include` | optional glob allow-list |
+| `exclude` | optional glob deny-list |
+| `allow_missing` | permit target keys with no loaded source value |
+| `allow_shape_mismatch` | skip incompatible source shapes instead of failing |
+| `freeze_loaded` | freeze parameters that were successfully loaded |
 
-```bash
-nexuml export my-scenario --checkpoint .experiments/checkpoints/my-scenario/best.ckpt
-```
+## Which one do I want?
 
-See [Model export and reload](export.md) for the full export API.
+| Goal | Mechanism |
+| --- | --- |
+| save best/last during training | checkpoint `CallbackSpec` |
+| continue an interrupted run | `--trainer-checkpoint` |
+| transfer learning / initialize a new architecture | `CheckpointLoadSpec` |
+| distribute a trained model | [Export package](export.md) |
 
-## Implementation map
-
-- `src/nexuml/core/types.py` — `CheckpointLoadSpec`, `CallbackSpec`
-- `src/nexuml/training/lightning.py` — Lightning checkpoint resume, selective loading
-- `src/nexuml/cli/main.py` — `--trainer-checkpoint` flag on `train`
-- `src/nexuml/core/export.py` — `load_package` for package-as-checkpoint-source
-
-## See also
-
-- [Train a model](train.md)
-- [Model export and reload](export.md)
-- [Tracking and logging](tracking.md)
+The [Coming from Lightning](../learn/from-lightning.md) page shows the same distinction in Lightning terms.

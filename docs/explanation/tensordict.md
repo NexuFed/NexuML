@@ -1,44 +1,62 @@
 # TensorDict data flow
 
-NexuML uses [TensorDict](https://github.com/pytorch/tensordict) as the universal data container flowing through every pipeline layer.
+TensorDict is the common named data container flowing through a NexuML pipeline. It lets a pipeline expose intermediate representations without turning every model into a long positional-argument chain.
 
-## What is a TensorDict?
-
-A `TensorDict` is a dictionary-like object whose values are tensors. It supports batching, stacking, and device transfers like a single tensor.
+## Named tensors instead of one anonymous tensor
 
 ```python
 from tensordict import TensorDict
 
-td = TensorDict({"audio": waveform, "label": labels}, batch_size=[32])
+td = TensorDict(
+    {
+        "waveform": waveform,
+        "class": labels,
+    },
+    batch_size=[32],
+)
 ```
 
-## How data flows through a pipeline
+A pipeline can then build a visible data flow:
 
-Each `PipelineLayer` receives a `TensorDict` and returns a `TensorDict`:
-
+```text
+waveform
+   ↓ feature extractor
+spectrogram
+   ↓ encoder
+embedding
+   ↓ head
+logits
+   ↓ loss / metrics
+classification_loss, accuracy, f1
 ```
-Input TensorDict ──► Layer 1 (feature extractor) ──► Layer 2 (head) ──► Loss
-      {audio, label}      {audio, embedding, label}       {logits, label}
+
+## Layer contracts
+
+`LayerSpec` declares which TensorDict keys a component consumes and produces:
+
+```python
+LayerSpec(
+    component=MyEncoder(width=128),
+    keys_in=["spectrogram"],
+    keys_out=["embedding"],
+)
 ```
 
-Layers are free to:
-- **Add keys** — e.g., a feature extractor adds `embedding`
-- **Keep keys** — pass-through keys unchanged
-- **Remove keys** — prune keys no longer needed
+The runtime `PipelineLayer` reads/writes those keys as it executes. The compiler also uses the declared graph and dummy shape propagation to catch many missing-key/shape problems while materializing the pipeline rather than waiting for a long training run.
 
-## Key contracts
+## Why this matters
 
-The compiler validates that every key consumed by a layer is produced by an earlier layer. This is the TensorDict equivalent of type-checking: if layer B requires `embedding` but no previous layer produces it, the build fails at resolve time — not at training time.
+- **Explicit flow** — model wiring is visible in the scenario and diagrams.
+- **Reusable intermediates** — heads, losses, metrics, evaluation, or exports can consume a named representation.
+- **Batch/device behavior** — TensorDict moves/slices related tensors together.
+- **Less glue code** — components agree on named contracts instead of a project-specific tuple convention.
 
-## Benefits
+## x and y
 
-- **Explicit data flow** — the pipeline diagram shows exactly which keys travel between layers
-- **No hidden state** — intermediate tensors are named, inspectable, and debuggable
-- **Device-agnostic** — `td.to(device)` moves all tensors at once
-- **Batch-safe** — slicing, stacking, and cat work across the whole dict simultaneously
+NexuML data loaders generally produce `(x: TensorDict, y: TensorDict | None)`. The pipeline primarily transforms `x`, while labels can remain in `y` and be routed to components through `LayerSpec.label_key`/related routing options where needed.
 
 ## See also
 
+- [Mental model](../learn/mental-model.md)
 - [Architecture](architecture.md)
 - [Pipeline diagrams](diagrams.md)
-- [`nexuml.core.pipeline`](../reference/api/nexuml/core/pipeline.md)

@@ -2,10 +2,13 @@
 
 ---
 
-## Documentation paths
+## Choose your path
 
-- **New users** → [Install](start/install.md) · [Train CIFAR ResNet](start/train-cifar-resnet.md)
-- **Learn the framework** → [Mental model](learn/mental-model.md) · [Scenarios](learn/scenarios.md) · [Decorators](learn/decorators-and-discovery.md)
-- **Coming from Lightning** → [Lightning mapping](learn/from-lightning.md)
-- **How-to guides** → [Core workflow](how-to/cli-lifecycle.md) · [Scenario authoring](how-to/define-scenario.md) · [Library extension](how-to/custom-layer.md)
-- **Reference** → [CLI](reference/cli.md) · [API](reference/api/) · [ScenarioSpec](reference/scenario-spec.md) · [Decorators](reference/decorators.md)
+The documentation is deliberately split by intent so you do not need to read it front to back.
+
+- **New to NexuML** → [Get started](start/index.md), then continue with the [hands-on tutorials](tutorials.md).
+- **Building your own model or library** → use the [Tutorials](tutorials.md) as the progressive learning path and the [Guides](how-to/index.md) when you need a specific task.
+- **Trying to understand the design** → start with the [Mental model](learn/mental-model.md), then read [Architecture](explanation/architecture.md) and [TensorDict data flow](explanation/tensordict.md).
+- **Already using PyTorch Lightning** → see [Coming from Lightning](learn/from-lightning.md).
+- **Looking up an exact field, command, decorator, or backend** → go directly to [Reference](reference/index.md).
+- **Contributing to NexuML itself** → use the [Development](development/index.md) section.

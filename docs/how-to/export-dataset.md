@@ -1,187 +1,89 @@
 # Export a dataset
 
-`nexuml export-dataset` extracts a dataset view to disk for fast re-use, offline analysis, or training a different model on pre-extracted features.
+`nexuml export-dataset` persists a dataset view for reuse, analysis, shared storage, or a different loading strategy.
 
-## Prerequisites
+Use the generated [CLI reference](../reference/cli.md) for every flag. The common workflows are below.
 
-- NexuML installed (`uv sync`)
-- A registered scenario or config YAML
-- Sufficient disk space for the export
-
-## Raw dataset export
-
-Export the raw (pre-pipeline) feature and label tensors:
+## Export raw batches
 
 ```bash
 nexuml export-dataset my-scenario \
-  --output ./exported_data/ \
+  -o exported-data \
   --backend numpy \
   --split train \
   --split val
 ```
 
-Full option reference:
+Choose feature/label keys with repeated `--x-key` / `--y-key` options when you do not want the complete batch view.
 
-| Option | Description |
-|---|---|
-| `SCENARIO_NAME` | Registered scenario name |
-| `--config` / `-c PATH` | Config YAML path (alternative to scenario name) |
-| `--output` / `-o PATH` | Export directory (default: `exported_dataset`) |
-| `--backend TEXT` | Export backend name (default: `numpy`) |
-| `--split TEXT` | Split to export (`train`, `val`, `test`). Repeatable. |
-| `--x-key TEXT` | TensorDict x keys to persist. Repeatable. Default: all. |
-| `--y-key TEXT` | Label TensorDict keys to persist. Repeatable. Default: all. |
-| `--labels` / `--no-labels` | Include label TensorDict in the export (default: `--labels`) |
-| `--dtype TEXT` | Optional storage dtype (e.g. `float16`) passed to the backend |
-
-## Preprocessed dataset export
-
-Run the compiled pipeline up to a preprocessing boundary and export the intermediate tensors:
+## Export an intermediate pipeline view
 
 ```bash
 nexuml export-dataset my-scenario \
-  --output ./preprocessed_data/ \
-  --backend numpy_mmap \
-  --split train \
-  --split val \
-  --split test \
+  -o prepared-data \
+  --backend tensor_shards \
   --preprocess \
-  --preprocess-until-key z
+  --preprocess-until-key embedding
 ```
 
-| Option | Description |
-|---|---|
-| `--preprocess` / `--no-preprocess` | Run the pipeline before exporting (default: `--no-preprocess`) |
-| `--preprocess-until-key TEXT` | TensorDict key marking the preprocessing boundary. Repeatable. |
+With preprocessing enabled, NexuML compiles the pipeline and uses `forward_until` semantics until the requested x keys exist, then writes that transformed view.
 
-When `--preprocess` is set, NexuML runs the compiled pipeline with `forward_until` semantics: each layer is executed in order and processing stops once all `--preprocess-until-key` keys exist in the TensorDict. This lets you cache partially-processed representations (e.g. spectrogram features) without running the full model.
+The same concept can be declared in `DataSpec.preprocessing` so materialization becomes part of the scenario's data workflow.
 
-## Available export backends
+## Export backends
 
-| Backend | Description |
-|---|---|
-| `numpy` | One `.npy` file per key per sample |
-| `numpy_mmap` | Memory-mapped `.npy` files for large datasets |
-| `torch` | PyTorch `.pt` tensors |
-| `tensordict_memmap` | TensorDict memory-mapped format |
-| `webdataset` | WebDataset `.tar` shards |
+The built-in registry currently includes:
 
-Select with `--backend`. See [Backends](../reference/backends.md) for details.
+| Backend | Intended use |
+| --- | --- |
+| `numpy` | simple per-sample NumPy files |
+| `numpy_mmap` | contiguous memory-mapped NumPy storage |
+| `torch` | Torch tensor payloads |
+| `tensordict_memmap` | TensorDict-native memory-mapped storage |
+| `webdataset` | tar shards, including S3 export support |
+| `tensor_shards` | fixed-shape sample shards for the windowed tensor-shard loader |
 
-## Export layout reference
-
-After export, the output directory contains:
-
-```
-exported_data/
-├── config.yaml          # ExportConfig: backend, x_keys, y_keys, dtype, splits
-├── metadata.parquet     # Per-sample metadata (metadata.csv as fallback)
-├── train/
-│   └── data/            # Per-sample or per-shard files (layout is backend-specific)
-├── val/
-│   └── data/
-└── test/
-    └── data/
-```
-
-### `config.yaml` (ExportConfig)
-
-```yaml
-backend: numpy
-x_keys: [features]
-y_keys: [target]
-key_specs:
-  features: {dtype: float32, shape: [64]}
-  target: {dtype: int64, shape: []}
-extra:
-  transform_applied: false      # true when --preprocess was used
-splits:
-  train:
-    num_samples: 700
-    label_prefix: "label__"
-  val:
-    num_samples: 150
-```
-
-Key fields:
-
-| Field | Description |
-|---|---|
-| `backend` | Backend used for this export |
-| `x_keys` | Feature keys in the TensorDict |
-| `y_keys` | Label keys; stored with `label__` prefix in the data directory |
-| `key_specs` | dtype and shape per key |
-| `extra.transform_applied` | `true` when `--preprocess` was used |
-| `splits.<name>.label_prefix` | Prefix applied to label keys in the stored files |
-
-## Reuse with `ExportedDataset`
-
-Load an exported dataset in a new scenario using the `ExportedDataset` data source (registered as `"ExportedDataset"`):
-
-### Raw export reuse
-
-```python
-from nexuml.core.types import ScenarioSpec, DataSpec, TrainingSpec
-from nexuml_library.data.exported import ExportedDataset
-
-ScenarioSpec(
-    name="train_on_export",
-    data=DataSpec(
-        source=ExportedDataset(
-            root="./exported_data/",
-            feature_keys=["features"],
-            label_keys=["target"],
-        ),
-    ),
-    training=TrainingSpec(lr=1e-3, max_epochs=10, loss_keys={"classification_loss": 1.0}),
-    ...
-)
-```
-
-### Preprocessed export reuse
-
-```python
-DataSpec(
-    source=ExportedDataset(
-        root="./preprocessed_data/",
-        feature_keys=["z"],
-        label_keys=["target"],
-    ),
-    skip_pipeline_stages=["features", "encode"],
-)
-```
-
-Set `skip_pipeline_stages` to the stages already applied before export.
-
-## Full example
+Inspect the runtime instead of relying on a copied list:
 
 ```bash
-# 1. Export training and validation splits
-nexuml export-dataset synthetic-ae-tutorial \
-  --output ./cache/synthetic_ae/ \
-  --backend numpy_mmap \
-  --split train \
-  --split val \
-  --preprocess \
-  --preprocess-until-key z
-
-# 2. Verify the layout
-ls ./cache/synthetic_ae/
-# config.yaml  metadata.parquet  train/  val/
-
-# 3. Train a classifier on the cached embeddings
-# (scenario file uses DataSpec(source=ExportedDataset(...)))
-nexuml train --scenario-file classifier_on_cache.py
+nexuml backend list data-export
 ```
 
-## Implementation map
+## Export metadata
 
-- `src/nexuml/data/export/` — export backend implementations
-- `src/nexuml/cli/main.py` — `export-dataset` command
-- `library/src/nexuml_library/data/exported.py` — `ExportedDataset` data source
+Every export writes a `config.yaml` describing the format/writer, sample count, modality, logical x/y keys, label prefix, feature shapes, key-level storage metadata, source datasets, and backend-specific `extra` information. Dataset metadata is stored alongside it (normally Parquet, with CSV fallback where applicable).
 
-## See also
+Treat that schema as an export contract generated by NexuML rather than hand-editing it.
 
-- [Backends](../reference/backends.md)
-- [Model export and reload](export.md)
-- [Trusted scenario files](scenario-file.md)
+## Reuse an export
+
+The base library exposes a typed `ExportedDataset` definition:
+
+```python
+from nexuml.core.types import DataSpec, LoaderSpec
+from nexuml.data.loaders.definitions import TorchLoader
+from nexuml_library.data.exported import ExportedDataset
+
+DataSpec(
+    source=ExportedDataset(
+        root="./exported-data",
+        feature_keys=["features"],
+        label_keys=["target"],
+    ),
+    loader=LoaderSpec(backend=TorchLoader()),
+)
+```
+
+For a view that already ran early model/preprocessing stages, use `data.skip_pipeline_stages` to avoid applying those stages again.
+
+## S3 WebDataset
+
+The `webdataset` exporter can write to an `s3://` destination and accepts S3 endpoint/region/profile options. Remote `ExportedDataset` currently supports WebDataset exports. With the DALI loader, remote shard/index files are staged to worker-local temporary storage before DALI reads them.
+
+See [Ray execution](training-backends/ray.md) for the distributed path.
+
+## Tensor shards
+
+`tensor_shards` are storage shards, not fixed training batches. `TensorShardsLoader` can window/prefetch those shards and still form the configured runtime batch size independently.
+
+See [Data loading](data-loading.md).

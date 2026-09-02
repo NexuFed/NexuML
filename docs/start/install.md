@@ -3,71 +3,91 @@
 ## Prerequisites
 
 - Python 3.12+
-- [uv](https://docs.astral.sh/uv/) installed
+- `uv` or another Python package installer
 
-## Install into your own project
+You do **not** need to clone the NexuML repository to use it.
 
-You do **not** need to clone the NexuML repository to use it. Create or activate your project environment, then install the core framework from PyPI.
+## Recommended installation
+
+Install NexuML together with the reusable base library used by the built-in examples:
 
 ```bash
-# Create and activate a virtual environment
 uv venv
 source .venv/bin/activate
-
-# Install the core framework and CLI
-uv pip install nexuml
-
-# Optional: add bundled components and scenarios
 uv pip install "nexuml[library]"
 ```
 
-The core framework and CLI work without `nexuml-library`. Install the `library` extra when you want the bundled reusable layers, data sources, evaluation algorithms, and scenarios used by the tutorials.
+This installs two distributions:
 
-## Verify the install
+- `nexuml` — the framework, CLI, compiler, data/runtime infrastructure, evaluation runtime, and integrations.
+- `nexuml-library` — reusable datasets, model/loss/metric components, evaluation definitions, and example scenarios discovered through the `nexuml.libraries` entry point.
+
+Verify the installation:
 
 ```bash
 nexuml --help
+nexuml registry list scenarios
+nexuml backend list
 ```
 
-You should see the `nexuml` command with subcommands `resolve`, `build`, `train`, `export`, `smoke`, `registry`, and others.
+## Core-only installation
 
-## Verify the base library scenarios
-
-If you installed `nexuml[library]`, run:
+If your project supplies all library components itself, install only the framework:
 
 ```bash
-nexuml registry list scenarios
+uv pip install nexuml
 ```
 
-You should see `cifar-resnet` and other scenarios from the base library.
+A core-only environment intentionally does not contain the built-in `nexuml_library` scenarios.
 
-## CUDA and DALI
+## Optional integrations
 
-The default installation resolves PyTorch from the public Python package index. For a specific CUDA build, install the matching PyTorch packages from the [official PyTorch selector](https://pytorch.org/get-started/locally/) before installing NexuML.
+Core integrations are installed only when requested. Examples:
 
-NVIDIA DALI is a separate, Linux-only extra served from NVIDIA's package index:
+```bash
+uv pip install "nexuml[tracking]"
+uv pip install "nexuml[tuning]"
+uv pip install "nexuml[export]"
+uv pip install "nexuml[ray]"
+uv pip install "nexuml[s3]"
+```
+
+`nexuml[all]` installs the normal user-facing core integrations and the base library, but intentionally excludes development tooling and DALI.
+
+The base library has additional feature extras for optional datasets/models/evaluation tooling when a component needs them, for example `nexuml-library[audio]`, `nexuml-library[data]`, `nexuml-library[pretrained]`, and `nexuml-library[eval]`.
+
+## CUDA and PyTorch
+
+The default NexuML installation resolves PyTorch from the public package index. If you need a particular CUDA build, install the matching PyTorch packages using the official PyTorch installation instructions before installing NexuML.
+
+NexuML does not encode a project-specific CUDA wheel index into the published package metadata.
+
+## NVIDIA DALI
+
+DALI is a separate Linux/platform-specific integration. Install it only on a compatible environment:
 
 ```bash
 uv pip install "nexuml[dali]" --index https://pypi.nvidia.com
+python -c "import nvidia.dali"
 ```
 
-DALI is intentionally not included by `nexuml[all]` because its availability depends on the host platform and CUDA setup.
+`nexuml backend list data-loader` lists the registered `DaliLoader` definition, but it is a **catalog command**, not an import/driver health check. A scenario that selects DALI validates the actual optional dependency when the loader runtime is built.
 
-## Set environment variables (optional)
+See [Data loading](../how-to/data-loading.md) for Torch/DALI/tensor-shard selection.
+
+## Environment roots
+
+Two optional environment variables provide convenient roots:
 
 ```bash
 export NEXUML_DATA_ROOT=/path/to/datasets
 export NEXUML_LOGS_ROOT=/path/to/logs
 ```
 
-When `NEXUML_LOGS_ROOT` is set, training logs and checkpoints are written there instead of `.experiments/` in the current directory.
+See [Environment roots](../reference/environment.md) for the exact resolution rules.
 
-## Next step
+## Next
 
-[Train CIFAR ResNet](train-cifar-resnet.md) — run your first model end-to-end.
+Continue with [Your first scenario](train-cifar-resnet.md).
 
----
-
-## Development install
-
-If you plan to modify NexuML itself, use the [development install](../development/install.md) for clone, `uv sync --all-extras`, and editable-library instructions.
+If you plan to modify NexuML itself, use the [development install](../development/install.md) instead of the PyPI workflow above.

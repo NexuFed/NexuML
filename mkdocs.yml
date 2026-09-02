@@ -50,10 +50,10 @@ plugins:
   - mkdocstrings:
       handlers:
         python:
-          paths: [src, library/src, external, external/*, external/*/src]
+          paths: [src, library/src]
           options:
             docstring_style: google
-            show_source: true
+            show_source: false
             show_root_heading: true
             show_symbol_type_heading: true
             show_symbol_type_toc: true
@@ -79,69 +79,66 @@ markdown_extensions:
 
 nav:
   - Home: index.md
-  - Start here:
+  - Get started:
     - start/index.md
-    - Install: start/install.md
-    - Train CIFAR ResNet: start/train-cifar-resnet.md
-  - Learn NexuML:
-    - learn/index.md
-    - Mental model: learn/mental-model.md
-    - Coming from Lightning: learn/from-lightning.md
-    - Scenarios: learn/scenarios.md
-    - Decorators and discovery: learn/decorators-and-discovery.md
-    - CIFAR ResNet walkthrough: learn/cifar-resnet-walkthrough.md
-  - How-to guides:
+    - Installation: start/install.md
+    - Your first scenario: start/train-cifar-resnet.md
+  - Tutorials: tutorials.md
+  - Guides:
     - how-to/index.md
     - Core workflow:
       - CLI lifecycle: how-to/cli-lifecycle.md
-      - Run scenarios: how-to/run-scenarios.md
-      - Train a model: how-to/train.md
-      - Training backends:
-        - Overview: how-to/training-backends/index.md
-        - Ray: how-to/training-backends/ray.md
-      - Evaluate a model: how-to/evaluate.md
-      - Export a model package: how-to/export.md
-      - Checkpoints: how-to/checkpoints.md
-    - Scenario authoring:
+    - Scenarios and configuration:
       - Define a scenario: how-to/define-scenario.md
+      - Run scenarios: how-to/run-scenarios.md
       - Trusted scenario files: how-to/scenario-file.md
-      - Custom composed scenario: how-to/custom-scenario.md
-      - Custom library end-to-end: how-to/custom-library.md
+    - Training and evaluation:
+      - Train a model: how-to/train.md
+      - Evaluate a model: how-to/evaluate.md
+      - Checkpoints: how-to/checkpoints.md
+      - Automatic batch size: how-to/auto-batch-size.md
     - Data:
+      - Choose a data loader: how-to/data-loading.md
       - Export a dataset: how-to/export-dataset.md
-    - Library extension:
+    - Experimentation:
+      - Tracking and logging: how-to/tracking.md
+      - Optuna tuning: how-to/tune.md
+    - Model export:
+      - Export and reload: how-to/export.md
+    - Execution:
+      - Overview: how-to/training-backends/index.md
+      - Ray: how-to/training-backends/ray.md
+    - Extending NexuML:
+      - Custom library: how-to/custom-library.md
       - Add a custom layer: how-to/custom-layer.md
       - Add a custom data source: how-to/custom-data-source.md
       - Add a custom eval algorithm: how-to/custom-eval-algorithm.md
       - Register a library: how-to/register-library.md
       - Manage local library roots: how-to/library-cli.md
-    - Optimization:
-      - Optuna tuning: how-to/tune.md
-      - Automatic batch size: how-to/auto-batch-size.md
-    - Advanced operations:
-      - Tracking and logging: how-to/tracking.md
-      - Autoresearch: how-to/autoresearch.md
-      - Docker & Kubernetes: how-to/deploy.md
   - Concepts:
     - explanation/index.md
-    - Core concepts:
-      - Architecture: explanation/architecture.md
-      - TensorDict data flow: explanation/tensordict.md
-      - Pipeline diagrams: explanation/diagrams.md
-      - Library discovery: explanation/library-discovery.md
+    - Mental model: learn/mental-model.md
+    - Architecture: explanation/architecture.md
+    - TensorDict data flow: explanation/tensordict.md
+    - Scenarios and configuration: learn/scenarios.md
+    - Components and discovery: learn/decorators-and-discovery.md
+    - Coming from Lightning: learn/from-lightning.md
+    - Pipeline diagrams: explanation/diagrams.md
+    - Library discovery: explanation/library-discovery.md
   - Reference:
     - reference/index.md
-    - API: reference/api/
     - CLI: reference/cli.md
-    - ScenarioSpec: reference/scenario-spec.md
-    - Tuning file: reference/tuning-file.md
+    - Scenario and config: reference/scenario-spec.md
     - Decorators: reference/decorators.md
     - Registry inspection: reference/registry.md
     - Backends: reference/backends.md
     - Environment roots: reference/environment.md
+    - Tuning file: reference/tuning-file.md
+    - Python API: reference/api/
   - Development:
     - development/index.md
     - Install for development: development/install.md
-    - Publish a release: development/release.md
     - Development setup: how-to/development.md
-    - Enable GitHub Pages: how-to/github-pages.md
+    - Publish a release: development/release.md
+    - Experimental autoresearch: how-to/autoresearch.md
+    - Publish docs: how-to/github-pages.md

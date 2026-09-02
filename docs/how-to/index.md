@@ -1,44 +1,50 @@
-# How-to guides
+# Guides
 
-Task-oriented recipes for practitioners who know what they want to achieve. Each page follows a consistent structure: prerequisites, runnable example, expected output, and links to reference.
+Guides answer a specific "how do I ...?" question. They are not intended to be read in order. If you are learning NexuML for the first time, use the [Tutorials](../tutorials.md) instead.
 
 ## Core workflow
 
-- [CLI lifecycle](cli-lifecycle.md) — the full resolve → build → train → export command flow
-- [Run scenarios](run-scenarios.md) — all ways to execute a scenario (name, config, scenario file)
-- [Train a model](train.md) — run Lightning training with options and overrides
-- [Training backends](training-backends/index.md) — choose local or distributed Ray execution
-- [Ray training](training-backends/ray.md) — Ray Train, Ray Jobs, DDP/FSDP/DeepSpeed, and S3 data
-- [Evaluate a model](evaluate.md) — post-training evaluation algorithms
-- [Export a model package](export.md) — create and reload portable inference packages
-- [Checkpoints](checkpoints.md) — resume, fine-tune, and selective checkpoint loading
+- [CLI lifecycle](cli-lifecycle.md) — how resolve, build, train, export, and smoke fit together.
 
-## Scenario authoring
+## Scenarios and configuration
 
-- [Define a scenario](define-scenario.md) — compose data, model, training, and evaluation specs
-- [Trusted scenario files](scenario-file.md) — local Python file workflow and security notes
-- [Write a custom composed scenario](custom-scenario.md) — full tutorial
+- [Define a scenario](define-scenario.md) — compose data, pipeline, training, and evaluation.
+- [Run scenarios](run-scenarios.md) — registered scenarios, resolved YAML, and trusted Python files.
+- [Trusted scenario files](scenario-file.md) — local Python experiment files and provenance snapshots.
+
+## Training and evaluation
+
+- [Train a model](train.md) — run the Lightning lifecycle and apply common overrides.
+- [Evaluate a model](evaluate.md) — pipeline metrics, post-train layers, and evaluation algorithms.
+- [Checkpoints](checkpoints.md) — distinguish Lightning resume from selective weight loading.
+- [Automatic batch size](auto-batch-size.md) — probe CUDA batch sizes at runtime.
 
 ## Data
 
-- [Export a dataset](export-dataset.md) — export feature/label views to disk
+- [Choose a data loader](data-loading.md) — Torch, DALI, and tensor-shard loading.
+- [Export a dataset](export-dataset.md) — persist raw or partially processed dataset views for reuse.
 
-## Library extension
+## Experimentation
 
-- [Add a custom layer](custom-layer.md) — implement and register a `PipelineLayer` with `@layer`
-- [Add a custom data source](custom-data-source.md) — implement and register a dataset with `@data_source`
-- [Add a custom eval algorithm](custom-eval-algorithm.md) — implement and register eval logic with `@eval_algorithm`
-- [Register a library](register-library.md) — distribute via `nexuml.libraries` entry-point
-- [Manage local library roots](library-cli.md) — `nexuml library add/delete/list` for development
-- [Custom library end-to-end](custom-library.md) — full tutorial building a library package
+- [Tracking and logging](tracking.md) — TensorBoard, MLflow, DVCLive, and diagrams.
+- [Optuna tuning](tune.md) — hyperparameter and structural search.
 
-## Optimization
+## Model export
 
-- [Optuna tuning](tune.md) — hyperparameter search with `nexuml tune`
-- [Automatic batch size](auto-batch-size.md) — CUDA memory probing for optimal batch size
+- [Export a model package](export.md) — package, reload, inference, and alternative weight formats.
 
-## Advanced operations
+## Execution
 
-- [Tracking and logging](tracking.md) — TensorBoard, DVCLive, MLflow integration
-- [Autoresearch](autoresearch.md) — Claude-driven iterative experiment loops
-- [Docker & Kubernetes](deploy.md) — containerised training and scheduling
+- [Execution modes](training-backends/index.md) — local vs Ray placement while keeping one NexuML lifecycle.
+- [Ray execution](training-backends/ray.md) — existing clusters, Ray Jobs, distributed strategies, and shared data.
+
+## Extending NexuML
+
+- [Build a custom library](custom-library.md) — package structure and the definition/runtime split.
+- [Add a custom layer](custom-layer.md) — direct `nn_module(...)` vs registered `LayerDefinition`.
+- [Add a custom data source](custom-data-source.md) — `DataSourceDefinition` → `NexuDataset`.
+- [Add a custom eval algorithm](custom-eval-algorithm.md) — `EvalAlgorithmDefinition` → `EvalAlgorithm`.
+- [Register a library](register-library.md) — distribute components through the `nexuml.libraries` entry point.
+- [Manage local library roots](library-cli.md) — develop a library without installing it first.
+
+For exact command flags and Pydantic/API fields, use [Reference](../reference/index.md) rather than copying reference tables into task guides.

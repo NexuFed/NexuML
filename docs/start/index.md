@@ -1,30 +1,25 @@
-# Start here
+# Get started
 
-Choose the path that fits your goal.
+This section is intentionally small. Its job is to get NexuML installed, show the scenario → config → pipeline flow, and then point you to the right learning path.
 
-## I'm new to NexuML
+## 1. Install NexuML
 
-1. [Install NexuML](install.md) — set up your environment and install the framework.
-2. [Train CIFAR ResNet](train-cifar-resnet.md) — run your first model end-to-end.
-3. [Learn the mental model](../learn/mental-model.md) — understand how NexuML organises training.
+Follow [Installation](install.md). For the built-in example scenarios, install `nexuml[library]`.
 
-## I know PyTorch Lightning
+## 2. Inspect your first scenario
 
-Read [Coming from Lightning](../learn/from-lightning.md) to see how NexuML maps onto Lightning concepts.
+Follow [Your first scenario](train-cifar-resnet.md) to discover `cifar-resnet`, resolve it to YAML, and build the pipeline before spending any GPU time.
 
-## I want to write a scenario
+## 3. Learn by building your own library
 
-1. Read [Scenarios](../learn/scenarios.md) to understand `ScenarioSpec`.
-2. Read [Decorators and discovery](../learn/decorators-and-discovery.md) to learn `@scenario`, `@layer`, and friends.
-3. Follow [Define a scenario](../how-to/define-scenario.md) for a step-by-step task guide.
+After the first run, move to the [NexuML Tutorials](../tutorials.md). The tutorials are the primary progressive learning material: they start with a small external MNIST library and then add native DALI audio loading and model composition.
 
-## I want to extend the library
+## Where to go after that
 
-1. [Add a custom layer](../how-to/custom-layer.md)
-2. [Add a custom data source](../how-to/custom-data-source.md)
-3. [Register a library](../how-to/register-library.md)
-4. [Custom library end-to-end](../how-to/custom-library.md) — full walkthrough building a library package.
+- **I want to create my own scenario** → [Define a scenario](../how-to/define-scenario.md)
+- **I want to understand the architecture** → [Mental model](../learn/mental-model.md)
+- **I want to add my own dataset/model/evaluation code** → [Build a custom library](../how-to/custom-library.md)
+- **I want to train, evaluate, tune, or export** → [Guides](../how-to/index.md)
+- **I need the exact API or CLI syntax** → [Reference](../reference/index.md)
 
-## I want the API or CLI reference
-
-Go directly to [Reference](../reference/index.md).
+You do not need to read every concept page before using NexuML. Learn the framework through the tutorials and use Concepts/Reference when a question comes up.

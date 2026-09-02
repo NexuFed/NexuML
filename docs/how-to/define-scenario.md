@@ -1,130 +1,95 @@
 # Define a scenario
 
-A *scenario* is a pure-Python object that declares the full spec for data, pipeline, training, and evaluation. NexuML compiles it into a runnable pipeline at resolve time.
+A scenario is a Python recipe that returns a Pydantic `ScenarioSpec`. It composes the data, TensorDict pipeline, training/evaluation policy, and optional logging/export/execution settings for one experiment.
 
-## 1. Create a scenario function
-
-Use the `@scenario` decorator from `nexuml.core.discovery` and return a `ScenarioSpec`:
+## Minimal registered scenario
 
 ```python
-# my_library/scenarios/my_scenario.py
 from nexuml.core.discovery import scenario
-from nexuml.core.types import (
-    ScenarioSpec,
-    PipelineSpec,
-    LayerSpec,
-    DataSpec,
-    TrainingSpec,
-)
+from nexuml.core.types import DataSpec, LayerSpec, LoaderSpec, PipelineSpec, ScenarioSpec, TrainingSpec
+from nexuml.data.loaders.definitions import TorchLoader
 from nexuml_library.data.synthetic import SyntheticDataset
 from nexuml_library.layers.loss.reconstruction_loss import ReconstructionLoss
 from nexuml_library.layers.model.linear_encoder import LinearEncoder
 
-@scenario("my-scenario")
-def my_scenario() -> ScenarioSpec:
+
+@scenario("my-autoencoder")
+def my_autoencoder() -> ScenarioSpec:
     return ScenarioSpec(
-        name="my-scenario",
+        name="my-autoencoder",
         data=DataSpec(
             source=SyntheticDataset(feature_shape=(64,), num_samples=1000),
             input_shapes={"features": [64]},
+            loader=LoaderSpec(backend=TorchLoader()),
+        ),
+        pipeline=PipelineSpec(
+            stages={
+                "Encoder": [
+                    LayerSpec(
+                        component=LinearEncoder(hidden_dims=[32], output_dim=8),
+                        keys_in=["features"],
+                        keys_out=["latent"],
+                    )
+                ],
+                "Decoder": [
+                    LayerSpec(
+                        component=LinearEncoder(hidden_dims=[32], output_dim=64),
+                        keys_in=["latent"],
+                        keys_out=["reconstructed"],
+                    )
+                ],
+                "Loss": [
+                    LayerSpec(
+                        component=ReconstructionLoss(),
+                        keys_in=["features", "reconstructed"],
+                        keys_out=["reconstruction_loss"],
+                    )
+                ],
+            }
         ),
         training=TrainingSpec(
-            lr=1e-3,
-            max_epochs=10,
-            batch_size=64,
+            max_epochs=5,
             loss_keys={"reconstruction_loss": 1.0},
         ),
-        pipeline=PipelineSpec(stages={
-            "encode": [
-                LayerSpec(
-                    component=LinearEncoder(output_dim=8, hidden_dims=[32]),
-                    keys_in=["features"],
-                    keys_out=["z"],
-                ),
-            ],
-            "decode": [
-                LayerSpec(
-                    component=LinearEncoder(output_dim=64, hidden_dims=[32]),
-                    keys_in=["z"],
-                    keys_out=["reconstructed"],
-                ),
-            ],
-            "loss": [
-                LayerSpec(
-                    component=ReconstructionLoss(),
-                    keys_in=["features", "reconstructed"],
-                    keys_out=["reconstruction_loss"],
-                ),
-            ],
-        }),
     )
 ```
 
-Decorating the function registers it under the given name. No separate registration function is required.
+Python uses concrete typed definitions directly. `LayerSpec` owns graph wiring; component definitions own component-specific semantic parameters.
 
-## 2. Add to a library
+`TorchLoader()` is selected explicitly here so the example does not depend on the optional DALI installation.
 
-Place the module inside an installable package or a local library root:
+## Make the scenario discoverable
 
-```
-my_library/
-├── pyproject.toml
-└── src/
-    └── my_library/
-        ├── __init__.py
-        ├── layers/
-        │   └── __init__.py
-        └── scenarios/
-            ├── __init__.py
-            └── my_scenario.py
-```
-
-For installable packages, declare the entry point in `pyproject.toml`:
+For an installed library, expose its package with the entry point:
 
 ```toml
 [project.entry-points."nexuml.libraries"]
 my-library = "my_library"
 ```
 
-The entry-point value must be the importable package name. NexuML scans the package tree and discovers all decorated elements automatically.
-
-## 3. Verify and run
+During local development you can instead register a path:
 
 ```bash
-# Local-root workflow
 nexuml library add /path/to/my_library
-
-# Verify registration
-nexuml registry list scenarios
-
-# Run by name
-nexuml resolve my-scenario
-nexuml train my-scenario
 ```
 
-## ScenarioSpec fields
+## Verify the recipe
 
-A complete `ScenarioSpec` contains:
+```bash
+nexuml registry list scenarios
+nexuml resolve my-autoencoder
+nexuml build configs/my-autoencoder.yaml
+nexuml train my-autoencoder
+```
 
-| Field | Purpose |
-|---|---|
-| `name` | Scenario identifier |
-| `pipeline` | `PipelineSpec` with named stages of `LayerSpec` |
-| `data` | `DataSpec` for source, splits, loader, targets |
-| `training` | `TrainingSpec` for optimizer, scheduler, epochs, batch size |
-| `evaluation` | `EvaluationSpec` for metrics and eval algorithms |
-| `logging` | `LoggingSpec` for TensorBoard / MLflow / DVCLive / diagrams |
-| `callbacks` | List of `CallbackSpec` for Lightning callbacks |
-| `tuning` | `TuningSpec` defaults for `nexuml tune` |
-| `checkpoint` | `CheckpointLoadSpec` for resume/fine-tune |
-| `exports` | List of `ExportSpec` artifacts to produce after training |
+## What belongs on the scenario?
 
-See the full annotated reference: [ScenarioSpec](../reference/scenario-spec.md).
+`ScenarioSpec` is the composition root. Major sections include pipeline, data, training, evaluation, logging, callbacks, tuning, checkpoint/weight-loading policy, exports, and execution placement.
+
+Do not duplicate the full field table here. Use [Scenario and config reference](../reference/scenario-spec.md) and the generated Python API for exact fields/defaults.
 
 ## See also
 
-- [Run scenarios](run-scenarios.md)
+- [Scenarios concept](../learn/scenarios.md)
+- [Build a custom library](custom-library.md)
 - [Trusted scenario files](scenario-file.md)
-- [ScenarioSpec reference](../reference/scenario-spec.md)
-- [Architecture explanation](../explanation/architecture.md)
-- [Discovery decorators](../reference/decorators.md)

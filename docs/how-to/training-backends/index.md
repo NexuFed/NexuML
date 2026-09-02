@@ -1,19 +1,32 @@
-# Training backends
+# Execution modes
 
-NexuML has one training lifecycle and two execution choices.
+NexuML has one model/training lifecycle and different places where that lifecycle can run.
 
-| Execution | What runs the training loop | Where it runs |
+| Execution | Placement | Training lifecycle |
 | --- | --- | --- |
-| Local | PyTorch Lightning | Current process |
-| Ray | PyTorch Lightning through Ray Train | Ray workers |
+| Local | current process | `NexuSession.run()` |
+| Ray | Ray Train workers | the same `NexuSession.run()` with Ray-aware Lightning setup |
 
-`NexuSession.run()` remains the canonical fit → validate → post-train → test lifecycle in both cases. Ray changes placement and distributed process setup; it does not introduce another NexuML training implementation.
+Local execution is the `ScenarioSpec` default:
 
-Local execution is the default and needs no additional configuration:
+```python
+from nexuml.core.types import LocalExecutionSpec
 
-```yaml
-execution:
-  kind: local
+execution = LocalExecutionSpec()
 ```
 
-Use the [Ray training backend](ray.md) when a scenario should run across an existing Ray cluster or a temporary KubeRay cluster.
+Ray is selected through the scenario rather than through a second training API:
+
+```python
+from nexuml.core.types import RayClusterTarget, RayExecutionSpec
+
+execution = RayExecutionSpec(
+    target=RayClusterTarget(address="ray://ray.example.org:10001"),
+    workers=4,
+    resources_per_worker={"CPU": 4, "GPU": 1},
+)
+```
+
+Training behavior such as epochs, precision, optimizer, and Lightning strategy remains in `TrainingSpec`. Execution configuration describes placement/resources.
+
+See [Ray execution](ray.md) for the supported distributed boundary and current restrictions.
