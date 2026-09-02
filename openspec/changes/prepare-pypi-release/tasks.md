@@ -32,7 +32,7 @@
 - [x] 4.2 Validate every artifact's metadata and long description with a standard package metadata checker and verify no warnings or errors remain.
 - [x] 4.3 Inspect wheel and source-distribution contents and verify each contains its package source, README metadata, Apache license, and required non-Python package data such as library YAML resources.
 - [x] 4.4 Build a wheel from each generated source distribution in a clean environment and verify the rebuilt wheel passes the same metadata and installation checks.
-- [ ] 4.5 Test the core wheel using public-index CPU dependencies on a clean hosted Linux runner and verify repository-local PyTorch or NVIDIA index configuration is not required for the default installation.
+- [x] 4.5 Test the core wheel using public-index CPU dependencies on a clean hosted Linux runner and verify repository-local PyTorch or NVIDIA index configuration is not required for the default installation.
 
 ## 5. User Documentation
 
