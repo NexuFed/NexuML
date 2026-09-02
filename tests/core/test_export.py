@@ -12,8 +12,10 @@ import pytest
 import torch
 from tensordict import TensorDict
 
+from nexuml import NnModuleLayer, nn_module
 from nexuml.core.compiler import compile
 from nexuml.core.export import (
+    _discover_pipeline_module_packages,
     export_onnx,
     export_package,
     export_safetensors,
@@ -395,6 +397,80 @@ print("CUSTOM_OK")
                 f"Package structure:\n{_diagnose_package(export_dir / 'pipeline.package')}"
             )
         assert "CUSTOM_OK" in result.stdout
+    finally:
+        sys.path.remove(str(tmp_path))
+
+
+def test_direct_custom_module_package_export_and_clean_load(tmp_path):
+    pkg_dir = tmp_path / "direct_test_pkg"
+    pkg_dir.mkdir()
+    (pkg_dir / "__init__.py").write_text("")
+    (pkg_dir / "layers.py").write_text(
+        "import torch\n\n"
+        "class CustomScale(torch.nn.Module):\n"
+        "    def __init__(self, factor: float):\n"
+        "        super().__init__()\n"
+        "        self.weight = torch.nn.Parameter(torch.tensor(factor))\n"
+        "    def forward(self, x):\n"
+        "        return x * self.weight\n"
+    )
+
+    sys.path.insert(0, str(tmp_path))
+    try:
+        from direct_test_pkg.layers import CustomScale  # ty: ignore[unresolved-import]
+
+        scenario = ScenarioSpec(
+            name="test_direct_custom_module",
+            pipeline=PipelineSpec(
+                stages={
+                    "model": [
+                        LayerSpec(
+                            component=nn_module(torch.nn.Linear, 4, 4),
+                            keys_in=["features"],
+                            keys_out=["hidden"],
+                        ),
+                        LayerSpec(
+                            component=nn_module(CustomScale, factor=3.0),
+                            keys_in=["hidden"],
+                            keys_out=["scaled"],
+                        ),
+                    ]
+                }
+            ),
+            training=TrainingSpec(max_epochs=1, batch_size=2),
+            data=synthetic_vector_data(feature_shape=(4,), num_samples=8),
+        )
+        pipeline = compile(scenario)
+        assert _discover_pipeline_module_packages(pipeline) == {"direct_test_pkg"}
+
+        export_dir = tmp_path / "exported_direct"
+        export_package(pipeline, export_dir)
+        loaded, config, _metadata = load_package(export_dir)
+        assert list(loaded.state_dict()) == list(pipeline.state_dict())
+        component = config.pipeline.stages["model"][1].component
+        assert isinstance(component, NnModuleLayer)
+        assert component.factory == "direct_test_pkg.layers:CustomScale"
+
+        script = f'''
+import torch
+from tensordict import TensorDict
+from torch.package.package_importer import PackageImporter
+pkg = PackageImporter("{export_dir / "pipeline.package"}")
+payload = pkg.load_pickle("nexuml_export", "artifact.pkl")
+pipeline = payload["pipeline"]
+x = TensorDict({{"features": torch.ones(2, 4)}}, batch_size=[2])
+x_out, _ = pipeline(x, None)
+assert x_out["scaled"].shape == (2, 4)
+assert torch.isfinite(x_out["scaled"]).all()
+print("DIRECT_CUSTOM_OK")
+'''
+        result = _run_in_clean_subprocess(script, export_dir)
+        if result.returncode != 0:
+            raise AssertionError(
+                f"Direct custom clean load failed:\n{result.stderr}\n"
+                f"Package structure:\n{_diagnose_package(export_dir / 'pipeline.package')}"
+            )
+        assert "DIRECT_CUSTOM_OK" in result.stdout
     finally:
         sys.path.remove(str(tmp_path))
 

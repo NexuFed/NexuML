@@ -39,32 +39,34 @@ This works well as a transport representation but poorly as a Python API:
 
 NexuFL `feature/nex-207-cifar-experiments` demonstrates the desired boundary. Its public configuration graph contains real immutable Pydantic component values such as `FedAvg()`, `IIDDistribution(...)`, and `LocalExecution()`. The registry stores identity/import metadata, and generic lowering converts concrete component types to a neutral identity only when persistence/transport requires it.
 
-NexuML must adopt the same *principle*, not the same concrete implementation. A NexuFL method component can naturally be an immutable domain object. A NexuML `PipelineLayer` is a mutable `torch.nn.Module` with runtime state, instantiated child modules, epoch/lifecycle state, input shape information, shared storage, and graph wiring. Therefore NexuML needs a clean definition/runtime split.
+NexuML must adopt the same *principle*, not the same concrete implementation. A NexuFL method component can naturally be an immutable domain object. A NexuML `PipelineLayer` is a mutable `torch.nn.Module` with runtime state, instantiated child modules, epoch/lifecycle state, input shape information, shared storage, and graph wiring. Therefore NexuML needs a clean definition/runtime split for semantic components. Ordinary external one-input/one-output PyTorch modules do not need a bespoke definition/runtime pair: one immutable universal definition can persist an importable factory and one shared runtime adapter can own the resulting mutable module.
 
 ## Design principles
 
 The implementation SHALL optimize for these principles, in order:
 
-1. **Typed Python first.** The normal Python authoring API uses concrete component definition objects.
+1. **Typed Python first.** The normal Python authoring API uses concrete component definition objects or a real importable PyTorch factory passed to the typed `nn_module(...)` helper.
 2. **Serialization is a boundary.** Stable strings are introduced when dumping/loading config, not while authoring Python.
 3. **Definition and runtime have different jobs.** Immutable semantic config is not a mutable `nn.Module`.
 4. **One owner for each concern.** Definition owns component config; graph spec owns wiring; compiler context owns runtime inputs; registry owns identity; runtime owns execution state.
 5. **Explicit beats reflective.** Build contexts replace constructor-signature inspection.
 6. **Discovery stays dynamic and simple.** Preserve NexuML entry-point/local-root scanning rather than adding hard-coded imports.
-7. **No compatibility architecture.** Migrate the repository atomically and delete old selector syntax instead of supporting two systems.
-8. **No abstraction without a current role.** Do not wrap external framework classes or invent future plugin systems merely to make the design look uniform.
+7. **No compatibility architecture.** Migrate the repository atomically and delete old selector syntax and redundant trivial wrappers instead of supporting two systems.
+8. **No abstraction without a current role.** Use one universal adapter for ordinary external PyTorch modules; do not create module-specific wrappers or invent future plugin systems merely to make the design look uniform.
 
 ## Goals
 
 - Python scenarios use navigable component symbols such as `LMBE(...)` rather than string selectors.
+- Python scenarios can use ordinary importable PyTorch modules as `nn_module(torch.nn.Dropout, p=0.5)` without adding each module to `nexuml_library` or the component registry.
 - Component-specific parameters are typed Pydantic fields with defaults, validation, documentation, and generated JSON schema.
 - Mutable runtime classes remain ordinary PyTorch/NexuML runtime implementations.
 - Runtime-only inputs are supplied explicitly by the compiler/materializer.
-- YAML remains portable, readable, and independent of Python import paths.
+- YAML remains portable and readable. Registered semantic components remain independent of Python import paths; the single `NnModule` component explicitly persists its external factory import target and JSON-safe constructor values.
 - YAML round-trips restore the same concrete definition classes.
 - One lean registry supports NexuML-owned component roles without duplicating registry logic.
 - Existing entry-point and local-library discovery remains the extension mechanism.
 - Built-in scenarios and custom-library docs show one canonical authoring style.
+- The existing `TorchModuleAdapter` becomes the one runtime implementation for direct modules satisfying the narrow tensor contract.
 - Current compiler/registry reflection that exists solely because parameters were erased into dicts is removed.
 
 ## Non-goals
@@ -76,7 +78,8 @@ The implementation SHALL optimize for these principles, in order:
 - Do not create a version migration engine. Version is identity metadata only in NEX-211.
 - Do not rename every existing component registration key. Keep existing stable keys unless a concrete collision/invalid key requires a change.
 - Do not turn scenario functions into component definitions. A scenario remains a recipe/composition function.
-- Do not introduce NexuML wrappers for every `torch.optim`, scheduler, or Lightning callback class.
+- Do not introduce module-specific NexuML wrappers for ordinary `torch.nn.Module`, `torch.optim`, scheduler, or Lightning callback classes.
+- Do not support live module instances, lambdas, closures, local definitions, constructor reflection, generated schemas, arbitrary objects, multiple inputs/outputs, label injection, or implicit build-context injection in `nn_module(...)`.
 - Do not preserve the old selector-based Python/YAML syntax through compatibility aliases or translators.
 
 ## Target mental model
@@ -122,9 +125,44 @@ LMBE(n_mels=64)
 
 The exact stable registration key may remain `"LMBE"` in NEX-211. Lowercase examples in discussion describe the persistence concept, not a requirement to rename all keys during this refactor.
 
+Direct PyTorch authoring uses the same outer definition/runtime boundary without a module-specific definition:
+
+```text
+Python authoring
+────────────────────────────────────
+
+nn_module(torch.nn.Dropout, p=0.5)
+      │
+      │ normalize import target + JSON-safe values
+      ▼
+NnModuleLayer(
+  factory="torch.nn.modules.dropout:Dropout",
+  kwargs={"p": 0.5},
+)
+      │
+      │ build with exactly one input/output key
+      ▼
+TorchModuleAdapter(
+  module=torch.nn.Dropout(p=0.5),
+)
+
+
+Persistence
+────────────────────────────────────
+
+name="NnModule", version="1",
+params={
+  "factory": "torch.nn.modules.dropout:Dropout",
+  "args": [],
+  "kwargs": {"p": 0.5},
+}
+```
+
+`NnModuleLayer` is the Python definition class returned by the helper; `NnModule` is its stable registered component identity written to resolved config. The nested factory target is an explicit external implementation reference, not a derived component identity. Resolved configurations containing such targets are trusted inputs because compilation imports and invokes Python code.
+
 ## Core decisions
 
-### D1 — Public component classes are immutable definitions
+### D1 — Public semantic component classes are immutable definitions
 
 Add a minimal base in `src/nexuml/core/components.py`:
 
@@ -223,6 +261,8 @@ The private runtime owns:
 The definition SHALL NOT contain tensors, live modules, open resources, dataset bytes, shared storage, trainer objects, registries, or other runtime state.
 
 Do not attempt multiple inheritance between Pydantic definitions and PyTorch runtime classes.
+
+For an ordinary external module selected through `nn_module(...)`, `NnModuleLayer` is the immutable definition and the existing `TorchModuleAdapter` is the shared mutable runtime. The external module is assigned as an ordinary child module of that adapter. Do not create `_DropoutRuntime`, `_IdentityLayerRuntime`, or another module-specific runtime when the shared adapter supplies all required behavior.
 
 ### D3 — Graph wiring stays on graph specs
 
@@ -335,6 +375,8 @@ Keep NexuML's current discovery strengths:
 - explicit decorators;
 - no persistent object cache.
 
+The universal `NnModule` definition is core infrastructure and must be imported through the public core package before YAML restoration. External factories referenced by `nn_module(...)` are not discovered components and do not receive registry entries, entry points, or local-library registration requirements.
+
 Repurpose component decorators to register definition classes:
 
 ```python
@@ -389,7 +431,30 @@ pipeline:
           normalize: false
 ```
 
-The exact formatting may use an internal `component` node if doing so materially simplifies the serializer, but the external contract MUST remain compact and obvious. Do not expose Python import paths. Do not require users to write Pydantic discriminator implementation details.
+The exact formatting may use an internal `component` node if doing so materially simplifies the serializer, but the external contract MUST remain compact and obvious. Registered semantic components do not expose Python import paths. Do not require users to write Pydantic discriminator implementation details.
+
+The universal direct-module representation is the deliberate exception for an external implementation:
+
+```python
+LayerSpec(
+    component=nn_module(torch.nn.Dropout, p=0.5),
+    keys_in=["features"],
+    keys_out=["features"],
+)
+```
+
+```yaml
+component:
+  type: NnModule
+  version: "1"
+  params:
+    factory: torch.nn.modules.dropout:Dropout
+    args: []
+    kwargs:
+      p: 0.5
+```
+
+The helper resolves the real callable's defining module and qualified name, verifies that the target re-imports to the same object, and stores only recursively JSON-safe values. It rejects live modules, lambdas, closures, local/nested definitions, bound instance methods, `__main__` targets, tensors, dtype/device objects, callables as constructor values, non-string mapping keys, and non-finite numbers. It does not instantiate a module merely to discover configuration and does not inspect constructor signatures.
 
 For a data source, prefer an explicit nested source object rather than parallel selector/params fields:
 
@@ -508,19 +573,33 @@ The registry/CLI may expose that schema by looking up the definition type. It SH
 
 Do not add `ConfigModel` attributes or generated Pydantic subclasses.
 
+`NnModuleLayer.model_json_schema()` describes the universal `factory`/`args`/`kwargs` transport fields, not every external factory's constructor. Python authoring may preserve callable argument checking through a `ParamSpec` helper where the configured type checker supports class/factory callable inference; restored YAML validates portable value shape, then factory invocation validates the external constructor during materialization. Do not synthesize per-factory Pydantic schema or use runtime signature inspection to close that deliberate gap.
+
 ### D12 — Scope by component role
 
 NEX-211 converts the NexuML-owned plugin roles where the framework currently loses type information into a selector plus arbitrary params.
 
 #### Layers
 
-Target:
+Registered semantic target:
 
 ```python
 LayerSpec(component=LMBE(...), keys_in=[...], keys_out=[...])
 ```
 
-Public definition builds private `PipelineLayer` runtime.
+Public definition builds a private/shared `PipelineLayer` runtime.
+
+Ordinary external module target:
+
+```python
+LayerSpec(
+    component=nn_module(torch.nn.Linear, 128, 64),
+    keys_in=["features"],
+    keys_out=["embedding"],
+)
+```
+
+This path supports exactly one input tensor and one output tensor. It passes only explicit persisted arguments to the factory. Context-derived dimensions use a suitable importable lazy module where available; behavior that needs deliberate `LayerBuildContext`, label/metadata routing, custom lifecycle, or richer TensorDict semantics remains a registered definition.
 
 #### Data sources / dataset entries
 
@@ -542,7 +621,7 @@ Keep `@scenario` functions returning `ScenarioSpec`. Scenarios compose definitio
 
 #### External framework references
 
-Do not create wrappers solely to eliminate every string in the config. `OptimizerSpec.type`, `SchedulerSpec.type`, and callback references may remain explicit import/known-alias references where the configured object belongs to PyTorch/Lightning rather than to the NexuML library component system.
+Do not create module-specific wrappers solely to eliminate every string in the config. Ordinary one-input/one-output PyTorch modules use the single `nn_module(...)` boundary. `OptimizerSpec.type`, `SchedulerSpec.type`, and callback references may remain explicit import/known-alias references where the configured object belongs to PyTorch/Lightning rather than to the NexuML library component system.
 
 ### D13 — Compiler becomes simpler
 
@@ -596,6 +675,18 @@ LayerSpec(
 
 No manual registry call, duplicated config model, or string selector is needed in normal Python authoring. Installed entry-point and local-root discovery makes the stable YAML identity restorable.
 
+If the custom behavior is already an importable `torch.nn.Module` or factory with exactly one tensor input/output and JSON-safe constructor values, no NexuML library registration is needed:
+
+```python
+LayerSpec(
+    component=nn_module(MyTorchModule, scale=0.5),
+    keys_in=["features"],
+    keys_out=["features"],
+)
+```
+
+The factory's source must remain importable for YAML reconstruction. Self-contained package export must inspect wrapped child modules so custom module source is interned under the existing export policy while runtime dependencies remain external.
+
 ### D15 — Migration is atomic; legacy syntax is removed
 
 This repository does not need a compatibility layer for unreleased/rapidly evolving configuration APIs.
@@ -611,8 +702,9 @@ Remove/replace:
 - loader backend selector + backend-specific arbitrary `params`
 - constructor-reflection validation made obsolete by typed definitions
 - old docs/examples/tests that teach selector-based Python authoring
+- the redundant `IdentityLayer`, `Dropout`, and `Flatten` registered definitions/runtimes, replaced by direct `torch.nn.Identity`, `torch.nn.Dropout`, and `torch.nn.Flatten(start_dim=1, end_dim=-1)` factories
 
-Do not keep `type_key` as an alias to `component`, accept both formats, add `model_validator(mode="before")` translators, or retain old registry APIs solely because old tests call them. Update the tests to the intended architecture.
+Do not keep `type_key` as an alias to `component`, accept both formats, add `model_validator(mode="before")` translators, retain old registry APIs solely because old tests call them, or preserve aliases/translators for the removed trivial wrapper identities. Update the tests to the intended architecture.
 
 ### D16 — Keep registration keys stable during this refactor
 
@@ -670,13 +762,17 @@ src/nexuml/core/
 │   └── LoaderSpec(backend=...)
 ├── config.py
 │   └── ResolvedConfig YAML boundary
+├── torch_adapter.py
+│   ├── nn_module()
+│   ├── NnModuleLayer
+│   └── TorchModuleAdapter
 └── compiler.py
     └── definition.build(context)
 ```
 
 It is acceptable to keep serialization helpers in `config.py` if a separate module would contain only a few trivial functions; choose the smaller result. Do not create a package hierarchy such as `components/base.py`, `components/registry.py`, `components/serialization.py`, `components/context.py` unless file size/real cyclic dependency pressure proves it necessary.
 
-Component library modules should colocate definition and private runtime:
+Semantic component library modules should colocate definition and private runtime:
 
 ```text
 library/src/nexuml_library/layers/feature/lmbe.py
@@ -685,6 +781,8 @@ library/src/nexuml_library/layers/feature/lmbe.py
 ```
 
 This avoids parallel definition/runtime directory trees and keeps navigation local.
+
+Trivial external modules do not get a component library module. Their single core adapter is the intended implementation location.
 
 ## Reference implementation guidance from NexuFL
 
@@ -695,6 +793,7 @@ Use the following ideas from `NexuFL` branch `feature/nex-207-cifar-experiments`
 - lean identity registry from `src/nexufl/library/registry_direct.py`;
 - boundary lowering/restoration from `src/nexufl/core/lowering.py`;
 - generic concrete-type round-trip testing from `tests/direct/test_components.py`.
+- its coarse-grained `NexuMLPackage` boundary as evidence that one registered adapter can own arbitrary external mutable runtime without registering every contained implementation; NexuML applies that principle narrowly at the layer boundary for simple modules.
 
 Do NOT copy:
 
@@ -730,9 +829,9 @@ Rejected because runtime-only arguments pollute component schema, static analysi
 
 Rejected because PyTorch modules have mutable state, parameters, submodules, hooks, and construction semantics incompatible with an immutable portable domain value.
 
-### G — Persist import paths
+### G — Persist import paths as registered component identity
 
-Rejected because module refactors would break config even when the public component identity is unchanged. Explicit registration names are the persistence API.
+Rejected because module refactors would break config even when the public component identity is unchanged. Explicit registration names remain the persistence API for semantic components. `NnModule` is a single explicit external-framework exception: its stable component identity remains registered, while its factory target is persisted as a parameter because reconstructing unregistered external code requires an import reference.
 
 ### H — Keep old and new syntax concurrently
 
@@ -740,7 +839,7 @@ Rejected because it creates two mental models, duplicated tests, validators/tran
 
 ### I — Build a universal plugin framework for every configurable object
 
-Rejected. Only NexuML-owned registered plugin roles are converted. External optimizer/scheduler/callback references stay simple unless a separate concrete need justifies changing them.
+Rejected. `nn_module(...)` is a narrow adapter for one-input/one-output PyTorch modules, not a universal plugin framework. NexuML-owned semantic roles remain typed definitions, and external optimizer/scheduler/callback references stay simple.
 
 ## Risks and mitigations
 
@@ -768,21 +867,42 @@ Mitigation: keep base definitions/contexts dependency-light, use forward annotat
 
 Mitigation: preserve the ownership rule. If a setting controls placement/wiring/batching/splitting rather than the semantic component implementation, leave it on the surrounding spec/context.
 
+### R7 — External factory target changes or is unavailable
+
+Mitigation: validate that a Python-authored factory round-trips through its module/qualified-name target before accepting the definition. On YAML materialization, fail with the target and import cause. Treat resolved YAML containing external factories as trusted input and document that portability requires the dependency/source to be importable.
+
+### R8 — Generic direct modules exceed the routing contract
+
+Mitigation: enforce exactly one input key, one output key, no label consumption, one `torch.Tensor` result, and no implicit context injection. Direct authors to registered definitions rather than growing reflection, signature adaptation, or generic multi-output conventions.
+
+### R9 — Wrapped custom source is hidden behind the core adapter
+
+Mitigation: package discovery inspects child modules held by pipeline layers, not only each outer `PipelineLayer` class. Keep PyTorch/third-party runtime modules external and intern custom source under the existing export policy.
+
+### R10 — Removing trivial wrappers breaks old identities and state paths
+
+Mitigation: make the break explicit and atomic. Do not preserve Python aliases, registry aliases, YAML translators, or checkpoint-key rewriting. Existing self-contained package artifacts retain their packaged implementation; sidecar reconstruction uses the new canonical configuration only.
+
 ## Validation criteria
 
 The implementation is accepted only if all of the following are true:
 
 - Python examples contain concrete component objects, not registry key strings, for NexuML-owned plugin roles.
+- Ordinary one-input/one-output PyTorch modules can be authored through `nn_module(real_factory, ...)` without a module-specific NexuML definition or registry entry.
 - Ctrl/Cmd-clicking a component symbol reaches the class that declares its configuration fields and documentation.
+- Ctrl/Cmd-clicking a direct-module factory reaches the real external implementation, and `ty` behavior for the `ParamSpec` helper is verified/documented.
 - Component parameter typos are rejected by Pydantic without compiling the pipeline.
 - `LMBE.model_json_schema()` (and equivalents) exposes real component parameters.
 - `ResolvedConfig.to_yaml()` emits plain portable YAML with explicit component identity/version/params.
 - `ResolvedConfig.from_yaml()` restores exact concrete definition classes through discovery/registry lookup.
+- Direct-module YAML round-trips deterministically through the stable `NnModule` identity and an importable factory target with JSON-safe values.
 - compiler materialization uses `definition.build(context)` rather than runtime constructor reflection.
 - graph wiring is not duplicated into every definition.
 - one common component registry is the source of component identity.
 - installed/local custom library discovery still works without a persistent cache or hard-coded built-in list.
 - old selector-based authoring syntax is removed from framework types, base library scenarios, docs, and tests.
+- redundant `IdentityLayer`, `Dropout`, and `Flatten` wrappers and identities are removed without compatibility aliases.
+- wrapped direct modules participate normally in state dictionaries, training/evaluation mode, device movement, shape propagation, and self-contained package source discovery.
 - no compatibility parser/aliases for old config syntax are added.
 - no unrelated training/data/evaluation behavior changes are bundled into NEX-211.
 - tests remain focused and generic rather than growing one test file per migrated component.

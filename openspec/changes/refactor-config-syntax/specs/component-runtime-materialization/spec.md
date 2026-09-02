@@ -55,3 +55,35 @@ The materialization design SHALL avoid reflective or generated abstractions that
 - **WHEN** a component role needs an additional framework-owned runtime input
 - **THEN** that input MAY be added deliberately to the role-specific materialization context
 - **AND** the context SHALL NOT become a generic dependency-injection/service-locator container.
+
+### Requirement: Direct PyTorch modules use one universal runtime adapter
+The system SHALL materialize the universal `NnModuleLayer` definition by resolving its importable factory, constructing one `torch.nn.Module`, and wrapping that module with the shared `TorchModuleAdapter`.
+
+#### Scenario: Direct module is compiled
+- **WHEN** the compiler processes `nn_module(torch.nn.Linear, 4, 2)` with one input key and one output key
+- **THEN** materialization SHALL construct `torch.nn.Linear(4, 2)`
+- **AND** the resulting module SHALL be assigned as a child of `TorchModuleAdapter`
+- **AND** its parameters, buffers, training mode, device movement, and state dictionary SHALL participate in the compiled pipeline normally.
+
+#### Scenario: Direct module key contract is invalid
+- **WHEN** a universal direct module is configured with anything other than exactly one input key and one output key
+- **THEN** materialization SHALL fail with a clear direct-module contract error
+- **AND** SHALL NOT inspect the module's forward signature to infer routing.
+
+#### Scenario: Direct module attempts label consumption
+- **WHEN** a universal direct module is configured with label routing
+- **THEN** materialization SHALL fail and direct the author to a registered `LayerDefinition`
+- **AND** SHALL NOT guess how labels should be passed to the external module.
+
+#### Scenario: Factory result is invalid
+- **WHEN** the stored factory does not return a `torch.nn.Module`, or the wrapped module does not return one `torch.Tensor`
+- **THEN** materialization/execution SHALL fail with an error identifying the violated direct-module contract.
+
+### Requirement: Direct-module factories receive no implicit runtime injection
+The universal direct-module path SHALL invoke the configured factory only with its explicitly persisted positional and keyword arguments.
+
+#### Scenario: Module needs inferred dimensions
+- **WHEN** an ordinary module needs a dimension that is only known during pipeline compilation
+- **THEN** the author MAY use an appropriate importable lazy PyTorch module factory
+- **AND** the framework SHALL NOT inspect constructor names or inject `LayerBuildContext` values into arbitrary factories
+- **AND** a component requiring deliberate context access SHALL remain a registered `LayerDefinition`.

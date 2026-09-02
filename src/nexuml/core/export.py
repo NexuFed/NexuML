@@ -239,13 +239,14 @@ def _discover_pipeline_module_packages(pipeline: CompiledPipeline) -> set[str]:
     """
     packages: set[str] = set()
     for _stage, _name, layer in pipeline.iter_layers():
-        module_name = getattr(layer.__class__, "__module__", None)
-        if not module_name:
-            continue
-        top = module_name.split(".")[0]
-        if top in ("nexuml", "nexuml_library") or _is_runtime_module(top):
-            continue
-        packages.add(top)
+        for module in layer.modules():
+            module_name = getattr(module.__class__, "__module__", None)
+            if not module_name:
+                continue
+            top = module_name.split(".")[0]
+            if top in ("nexuml", "nexuml_library") or _is_runtime_module(top):
+                continue
+            packages.add(top)
     return packages
 
 

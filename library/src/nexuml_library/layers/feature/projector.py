@@ -129,31 +129,6 @@ class _LinearRuntime(PipelineLayer):
         return self.model(x)
 
 
-@layer("Dropout")
-class Dropout(LayerDefinition):
-    """Dropout regularization layer.
-
-    Attributes:
-        p: Dropout probability.
-    """
-
-    p: float = 0.5
-
-    def build(self, context: LayerBuildContext) -> PipelineLayer:
-        return _DropoutRuntime(p=self.p, **context.runtime_kwargs())
-
-
-class _DropoutRuntime(PipelineLayer):
-    def __init__(self, p: float = 0.5, **kwargs):
-        super().__init__(**kwargs)
-        assert len(self.keys_in) == 1, "Dropout requires exactly one input key."
-        assert len(self.keys_out) == 1, "Dropout requires exactly one output key."
-        self.dropout = torch.nn.Dropout(p)
-
-    def forward_tensor(self, x: torch.Tensor, y: torch.Tensor | None = None) -> torch.Tensor:
-        return self.dropout(x)
-
-
 @layer("Conv1dProjector")
 class Conv1dProjector(LayerDefinition):
     """Pointwise Conv1d projector for sequence inputs (B, T, C).

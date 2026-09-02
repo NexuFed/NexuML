@@ -54,11 +54,11 @@ The system SHALL reject conflicting registration identities for the same compone
 - **AND** SHALL NOT create duplicate registry entries.
 
 ### Requirement: Core and base library separation
-The system SHALL keep framework component-definition/runtime infrastructure in the `nexuml` core package and reusable concrete component definitions in the separate same-repository base library package.
+The system SHALL keep framework component-definition/runtime infrastructure, including the universal direct-module adapter, in the `nexuml` core package and reusable concrete semantic component definitions in the separate same-repository base library package.
 
 #### Scenario: Core package is installed alone
 - **WHEN** only the core package is installed
-- **THEN** NexuML framework commands and component base/registry/serialization infrastructure SHALL remain available without requiring the base library package.
+- **THEN** NexuML framework commands, component base/registry/serialization infrastructure, and `nn_module(...)` SHALL remain available without requiring the base library package.
 
 #### Scenario: Base library package is installed
 - **WHEN** the same-repository base library package is installed
@@ -68,3 +68,21 @@ The system SHALL keep framework component-definition/runtime infrastructure in t
 - **WHEN** a user imports a concrete component such as `LMBE` from the base library
 - **THEN** that public symbol SHALL be the typed authoring definition
 - **AND** any mutable runtime implementation required by the definition SHOULD remain an implementation detail of the component module.
+
+### Requirement: Direct PyTorch modules do not require library discovery
+An importable PyTorch module factory used through `nn_module(...)` SHALL NOT need a module-specific registration decorator, component registry entry, entry point, or configured local library root.
+
+#### Scenario: Installed framework module is used directly
+- **WHEN** Python authoring passes an installed importable factory such as `torch.nn.Dropout` to `nn_module(...)`
+- **THEN** only the universal core `NnModule` definition SHALL be registered
+- **AND** normal library scanning SHALL NOT register or enumerate `torch.nn.Dropout` as a NexuML component.
+
+#### Scenario: Direct-module YAML is restored in a fresh process
+- **WHEN** resolved YAML contains the built-in `NnModule` identity
+- **THEN** the core package SHALL make that universal definition available before component restoration
+- **AND** restoration SHALL NOT depend on `nexuml_library` package scanning.
+
+#### Scenario: Wrapped custom module is exported
+- **WHEN** an importable custom `torch.nn.Module` is materialized inside `TorchModuleAdapter` and a self-contained package is exported
+- **THEN** package source discovery SHALL inspect wrapped child modules as well as outer pipeline-layer classes
+- **AND** custom source SHALL be included under the existing package policy while runtime dependencies such as PyTorch remain external.

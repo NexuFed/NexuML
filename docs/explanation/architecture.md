@@ -18,6 +18,18 @@ The public `LinearEncoder` value declares configurable fields, defaults, validat
 
 Definitions are frozen portable values with no tensors, modules, loaded data, trainer state, or shared storage.
 
+Ordinary one-input/one-output tensor modules share one core definition and runtime:
+
+```python
+LayerSpec(
+    component=nn_module(torch.nn.Linear, 128, 64),
+    keys_in=["features"],
+    keys_out=["embedding"],
+)
+```
+
+`NnModuleLayer` stores the importable factory target and JSON-safe constructor values. Its `build()` method invokes only those explicit values and places the resulting `torch.nn.Module` inside `TorchModuleAdapter`. Modules needing labels, metadata, build context, custom lifecycle, or richer input/output routing remain registered semantic definitions.
+
 ## Identity Registry
 
 Decorators assign explicit `(kind, name, version)` identities. The common `ComponentRegistry` owns only identity lookup, reverse lookup, deterministic listing, and conflict diagnostics. It does not inspect runtime constructors or validate parameter dictionaries.
@@ -37,7 +49,9 @@ component:
     output_dim: 8
 ```
 
-Restoration discovers the component and performs exact kind/name/version lookup followed by `definition_type.model_validate(params)`. No Python import path or runtime object is persisted.
+Restoration discovers the component and performs exact kind/name/version lookup followed by `definition_type.model_validate(params)`. Registered semantic definitions persist no Python import path or runtime object.
+
+`NnModule` is the explicit external-code exception: its stable component identity contains a top-level `module:name` factory target. Constructor values are recursively limited to JSON-safe primitives, lists, and string-key mappings. Compiling this trusted config imports and invokes that target; it does not support live instances, lambdas, closures, local definitions, or constructor reflection.
 
 ## Materialization
 
@@ -74,6 +88,8 @@ The compiled pipeline routes a `TensorDict` through ordered stages. PyTorch Ligh
 ## Discovery
 
 Each CLI run scans the built-in library, installed `nexuml.libraries` entry points, and configured local roots. Errors from one module are collected without hiding unrelated components. There is no persistent discovery cache or hard-coded module list.
+
+Direct module factories are not discovered or registered individually. Self-contained export inspects modules nested inside `TorchModuleAdapter` so custom source is packaged while PyTorch and other runtime dependencies remain external. The former `IdentityLayer`, `Dropout`, and `Flatten` component identities have no aliases; their direct PyTorch equivalents use `nn_module(...)`.
 
 ## Ownership
 

@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
-### Requirement: Component strings exist only in serialized configuration
-The system SHALL lower concrete component definitions to stable registered identities when producing portable YAML/JSON configuration and SHALL restore those identities to concrete definition types when loading configuration.
+### Requirement: Registered component identities become strings only at serialization boundaries
+The system SHALL lower concrete component definitions to stable registered identities when producing portable YAML/JSON configuration and SHALL restore those identities to concrete definition types when loading configuration. The universal direct-module definition MAY contain an explicit external factory import target because that target is a parameter of the stable `NnModule` component rather than the component's registry identity.
 
 #### Scenario: Typed layer is serialized
 - **WHEN** Python config contains `LayerSpec(component=LMBE(n_mels=64), ...)`
@@ -69,3 +69,56 @@ The system SHALL treat the explicit decorator/registry key as the persisted iden
 - **WHEN** a Python definition class is renamed but its explicit registered identity is intentionally preserved
 - **THEN** the serialized identity SHALL remain the explicit registered identity
 - **AND** the serializer SHALL NOT derive the persisted key from `__name__`.
+
+### Requirement: Direct PyTorch module factories have one portable representation
+The system SHALL serialize every direct PyTorch module through the single stable `NnModule` component identity plus the factory's import target and JSON-safe positional/keyword constructor values.
+
+#### Scenario: Direct module is serialized
+- **WHEN** Python config contains `nn_module(torch.nn.Dropout, p=0.5)`
+- **THEN** serialized config SHALL contain the stable `NnModule` identity and version
+- **AND** its parameters SHALL contain an importable target for `torch.nn.Dropout`, an empty positional argument list, and `p: 0.5`
+- **AND** it SHALL NOT create or require a `Dropout` registry entry.
+
+#### Scenario: Direct module is restored
+- **WHEN** NexuML loads serialized `NnModule` data
+- **THEN** registry restoration SHALL first recreate `NnModuleLayer`
+- **AND** compilation SHALL resolve and invoke the stored external factory target
+- **AND** the referenced dependency/source module SHALL be importable in the reconstruction environment.
+
+#### Scenario: Equivalent direct-module config is serialized repeatedly
+- **WHEN** the same factory target and equivalent constructor values are lowered more than once
+- **THEN** the emitted plain data and config hash input SHALL be deterministic
+- **AND** SHALL NOT contain object IDs, source-machine absolute paths, callable representations, or other process-local identity.
+
+### Requirement: Direct-module constructor values are strictly portable
+The `nn_module(...)` helper SHALL accept only values that can be represented and restored without executable-object serialization.
+
+#### Scenario: Portable constructor values are supplied
+- **WHEN** constructor values contain null, booleans, integers, finite floats, strings, lists/tuples of supported values, or mappings with string keys and supported values
+- **THEN** the helper SHALL normalize and store them as YAML/JSON-safe data.
+
+#### Scenario: Unsupported constructor value is supplied
+- **WHEN** a constructor value contains a tensor, module instance, dtype/device object, callable, set, non-string mapping key, NaN/infinity, or another unsupported live object
+- **THEN** helper construction SHALL fail before the scenario is accepted
+- **AND** SHALL NOT use pickle, constructor introspection, or component-specific serialization to preserve it.
+
+#### Scenario: Factory cannot be imported stably
+- **WHEN** the factory is a lambda, closure, local/nested definition, bound instance method, `__main__` object, or another target that cannot be re-imported by module and qualified name
+- **THEN** helper construction SHALL fail with an actionable portability error.
+
+### Requirement: External factory loading is a trusted-config operation
+Resolved configuration containing external direct-module targets SHALL be treated as trusted input because reconstruction imports and invokes Python code.
+
+#### Scenario: Direct-module YAML is compiled
+- **WHEN** a caller loads and compiles resolved YAML containing an external factory target
+- **THEN** documentation and errors SHALL make the executable import boundary explicit
+- **AND** the system SHALL validate factory importability and output type
+- **AND** SHALL NOT claim that syntactic YAML validation makes the referenced code safe.
+
+### Requirement: Removed trivial wrappers are not compatibility identities
+The direct-module migration SHALL not retain old registry identities solely to load `IdentityLayer`, `Dropout`, or `Flatten` configuration.
+
+#### Scenario: Removed wrapper identity is loaded
+- **WHEN** serialized configuration references one of the removed wrapper identities
+- **THEN** ordinary unknown-component validation SHALL reject it
+- **AND** NexuML SHALL NOT translate it automatically to `NnModule`.

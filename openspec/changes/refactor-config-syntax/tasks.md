@@ -40,7 +40,7 @@
 - [x] 5.2 Lower a definition through reverse registry lookup to stable `type`/`version`/validated `params` plain data.
 - [x] 5.3 Restore serialized component data by exact kind/name/version lookup followed by `definition_type.model_validate(params)`.
 - [x] 5.4 Ensure serialized values are YAML/JSON safe, including current supported path-like values.
-- [x] 5.5 Do not serialize concrete Python module/import paths.
+- [x] 5.5 Do not serialize Python import paths as registered semantic component identities; the later direct-module extension may persist an external factory target as a parameter of one stable universal component.
 - [x] 5.6 Do not create component-specific serializer branches; the concrete Pydantic definition remains the field/schema source of truth.
 - [x] 5.7 Do not create a recursive NexuFL-style component-plan graph unless a current NexuML component demonstrably requires nested registered definitions.
 - [x] 5.8 Write exact version identity but do not add version migration/upgrade machinery.
@@ -132,7 +132,7 @@
 
 - [x] 15.1 Repository-search for `LayerSpec(type_key`, layer `params`, `source_type`, dataset `type_key`, old eval algorithm selector syntax, loader backend param bags, and obsolete registry `validate_params`; all remaining matches must be intentional serialization/reference/docs-history cases.
 - [x] 15.2 Repository-search for `inspect.signature` in component construction paths and remove uses that only support deleted selector/param reflection.
-- [x] 15.3 Confirm there is no generated `ConfigModel`, dynamic Pydantic model factory, metaclass config system, import-path persistence, hard-coded built-in discovery list, or compatibility parser.
+- [x] 15.3 Confirm there is no generated `ConfigModel`, dynamic Pydantic model factory, metaclass config system, import-path persistence for registered semantic component identity, hard-coded built-in discovery list, or compatibility parser.
 - [x] 15.4 Run focused tests for component definitions/serialization/compiler/discovery first.
 - [x] 15.5 Run the normal non-slow test suite with `uv run pytest` (use repository markers/optional dependencies appropriately; do not require external data/GPU tests for this syntax refactor unless an existing CI job does).
 - [x] 15.6 Run `uv run ruff check src library/src tests`.
@@ -140,3 +140,34 @@
 - [x] 15.8 Run documentation checks/build used by the repository if touched docs are covered by CI.
 - [x] 15.9 Run `openspec validate refactor-config-syntax --strict` (or the installed OpenSpec CLI's equivalent strict validation command).
 - [x] 15.10 Review the final diff specifically for unnecessary new abstractions and delete any layer that does not have a clear current responsibility described in `design.md`.
+
+## 16. Add the portable direct PyTorch module path
+
+- [x] 16.1 Extend `src/nexuml/core/torch_adapter.py` with one registered `NnModuleLayer` definition that stores a stable external factory target plus JSON-safe positional and keyword constructor values.
+- [x] 16.2 Add the public `nn_module(factory, *args, **kwargs)` helper with `ParamSpec`/module return typing so Python authoring uses and navigates the real factory symbol.
+- [x] 16.3 Validate that Python-authored factories are top-level/importable and re-resolve to the same object; reject live module instances, lambdas, closures, local/nested definitions, bound instance methods, `__main__` targets, and other process-local callables.
+- [x] 16.4 Normalize and validate constructor values recursively; support only null, booleans, integers, finite floats, strings, lists/tuples, and string-key mappings composed from those values.
+- [x] 16.5 Materialize the factory without constructor reflection or implicit `LayerBuildContext` injection, require a `torch.nn.Module` result, and reuse the existing `TorchModuleAdapter` as the mutable runtime.
+- [x] 16.6 Enforce the initial direct-module contract of exactly one input key, one output key, no label consumption, and one tensor result with actionable errors.
+- [x] 16.7 Export `nn_module` and `NnModuleLayer` from the intended public core/root API and prove the universal definition is registered before fresh-process YAML restoration without depending on `nexuml_library` discovery.
+- [x] 16.8 Keep `LayerSpec`, compiler dispatch, generic component lowering/restoration, and registry APIs unchanged unless a failing focused test proves a minimal integration change is required.
+
+## 17. Remove redundant wrappers and preserve package behavior
+
+- [x] 17.1 Remove the registered `Dropout` definition and `_DropoutRuntime`; use `nn_module(torch.nn.Dropout, p=...)` as the canonical replacement.
+- [x] 17.2 Remove the registered `IdentityLayer` definition and `_IdentityLayerRuntime`; use `nn_module(torch.nn.Identity)` as the canonical replacement.
+- [x] 17.3 Remove the registered `Flatten` definition/runtime/module; use `nn_module(torch.nn.Flatten, start_dim=1, end_dim=-1)` so the batch-preserving behavior remains explicit.
+- [x] 17.4 Do not add Python aliases, registry aliases, YAML translators, or checkpoint-key rewriting for removed trivial wrappers; update repository-owned callers directly if any are introduced or found.
+- [x] 17.5 Extend self-contained export source discovery to inspect wrapped child-module classes as well as outer `PipelineLayer` classes, while keeping PyTorch and other runtime dependencies external.
+- [x] 17.6 Preserve registered definitions for context-, label-, metadata-, lifecycle-, multi-input-, multi-output-, loss-, metric-, and other NexuML-specific semantics; do not force them through the universal adapter.
+
+## 18. Prove and document the direct-module boundary
+
+- [x] 18.1 Add focused tests for helper target capture, JSON-safe normalization, factory/output validation, key/label contract failures, TensorDict forwarding, train/eval propagation, device/state-dictionary behavior, and compiler shape propagation.
+- [x] 18.2 Add a deterministic `ScenarioSpec -> ResolvedConfig -> YAML -> ResolvedConfig -> compile` round-trip using a standard PyTorch module and assert equivalent factory values and state-dictionary keys.
+- [x] 18.3 Add export/reload and direct `torch.package` coverage for a standard module plus one importable custom `torch.nn.Module`, including clean source-package discovery through the adapter.
+- [x] 18.4 Verify `ty` behavior for the `ParamSpec` helper with valid and invalid module constructor arguments; document constructor typing as best-effort if the configured checker cannot preserve class/factory callable inference without reflection.
+- [x] 18.5 Update custom-layer, decorator/discovery, scenario-spec, and architecture documentation to prefer `nn_module(...)` for ordinary tensor modules and registered definitions for richer NexuML behavior.
+- [x] 18.6 Document factory importability, JSON-safe argument limits, trusted-config execution, dependency requirements, intentional removal of the three old wrapper identities, and the lack of live-instance/lambda support.
+- [x] 18.7 Run focused direct-module/compiler/registry/export tests, then `uv run pytest`, `uv run ruff check src library/src tests`, `uv run ty check`, and the repository documentation build.
+- [x] 18.8 Run strict OpenSpec validation and review the final diff for accidental factory reflection, generated schemas, compatibility machinery, or expansion beyond the one-tensor adapter contract.

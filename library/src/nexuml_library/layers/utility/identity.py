@@ -12,22 +12,6 @@ from nexuml.core.components import LayerBuildContext, LayerDefinition
 from nexuml.core.discovery import layer
 
 
-@layer("IdentityLayer")
-class IdentityLayer(LayerDefinition):
-    """Passthrough layer — returns input unchanged."""
-
-    def build(self, context: LayerBuildContext) -> PipelineLayer:
-        return _IdentityLayerRuntime(**context.runtime_kwargs())
-
-
-class _IdentityLayerRuntime(PipelineLayer):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
-    def forward_tensor(self, x: torch.Tensor, y: torch.Tensor | None = None) -> torch.Tensor:
-        return x
-
-
 @layer("MergeLayer")
 class MergeLayer(LayerDefinition):
     """Merge multiple input tensors into one by concatenation along the last axis."""

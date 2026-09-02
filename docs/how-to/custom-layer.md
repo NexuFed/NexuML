@@ -1,6 +1,46 @@
 # Add A Custom Layer
 
-A custom layer has one public immutable definition and, when runtime state is needed, one private `PipelineLayer` implementation in the same module.
+Use `nn_module(...)` for an ordinary importable PyTorch module with one tensor input and one tensor output. Register a typed `LayerDefinition` only when the layer needs NexuML-specific context, labels, metadata, lifecycle behavior, or richer routing.
+
+## Prefer A Direct Module
+
+```python
+import torch
+
+from nexuml import nn_module
+from nexuml.core.types import LayerSpec
+
+layer = LayerSpec(
+    component=nn_module(torch.nn.Dropout, p=0.5),
+    keys_in=["features"],
+    keys_out=["regularized"],
+)
+```
+
+The factory symbol remains navigable and needs no component decorator or custom library registration. `nn_module` uses `ParamSpec`, so static checkers can validate constructor arguments when the factory provides annotations. NexuML does not inspect the constructor at runtime.
+
+Resolved YAML uses the one core `NnModule` identity:
+
+```yaml
+component:
+  type: NnModule
+  version: '1'
+  params:
+    factory: torch.nn.modules.dropout:Dropout
+    args: []
+    kwargs:
+      p: 0.5
+```
+
+The factory must be a top-level importable class or function, and its dependency must be installed when the config is compiled. Arguments may contain only null, booleans, integers, finite floats, strings, lists or tuples, and string-key mappings composed from those values. Live module instances, lambdas, closures, local definitions, tensors, devices, dtypes, callables, and other process-local values are rejected.
+
+Resolved config is trusted input: compiling it imports and invokes the recorded Python factory. Syntax validation does not make external code safe.
+
+The old `IdentityLayer`, `Dropout`, and `Flatten` component identities are intentionally removed. Use `nn_module(torch.nn.Identity)`, `nn_module(torch.nn.Dropout, ...)`, and `nn_module(torch.nn.Flatten, start_dim=1, end_dim=-1)`.
+
+## Register Richer Behavior
+
+A registered custom layer has one public immutable definition and, when runtime state is needed, one private `PipelineLayer` implementation in the same module.
 
 ## Define The Component
 

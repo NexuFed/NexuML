@@ -53,3 +53,22 @@ If loader backends are public extension points after NEX-211, the documentation 
 - **WHEN** a Python example configures a registered loader backend
 - **THEN** the example SHALL pass a concrete backend definition to `LoaderSpec`
 - **AND** the serialized example SHALL show its stable registered identity.
+
+### Requirement: Direct PyTorch module authoring is documented
+The layer extension documentation SHALL distinguish ordinary direct PyTorch modules from registered NexuML semantic layers.
+
+#### Scenario: User wraps an ordinary PyTorch module
+- **WHEN** documentation shows a one-input/one-output module such as `torch.nn.Dropout`
+- **THEN** it SHALL prefer `LayerSpec(component=nn_module(torch.nn.Dropout, p=0.5), ...)`
+- **AND** explain that the module factory remains directly navigable and needs no module-specific decorator or library registration
+- **AND** show the corresponding stable `NnModule` YAML representation.
+
+#### Scenario: User chooses between direct and registered authoring
+- **WHEN** documentation introduces custom layers
+- **THEN** it SHALL direct ordinary importable tensor-to-tensor modules to `nn_module(...)`
+- **AND** direct context-, label-, metadata-, lifecycle-, multi-input-, or multi-output-dependent behavior to a registered typed `LayerDefinition`.
+
+#### Scenario: User reviews direct-module portability limits
+- **WHEN** documentation explains resolved config/export behavior
+- **THEN** it SHALL state that factories must be top-level/importable, constructor values must be YAML/JSON-safe, and external targets are trusted executable references
+- **AND** SHALL state that live module instances, lambdas, closures, and local definitions are unsupported.

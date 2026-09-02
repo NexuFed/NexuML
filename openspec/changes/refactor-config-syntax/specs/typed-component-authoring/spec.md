@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Typed component definitions are the primary Python authoring API
-The system SHALL represent NexuML-owned configurable library components as concrete typed definition values in Python rather than registry selector strings plus arbitrary parameter dictionaries.
+The system SHALL represent NexuML-owned configurable library components as concrete typed definition values in Python rather than registry selector strings plus arbitrary parameter dictionaries. Ordinary external PyTorch modules that satisfy the direct-module contract MAY instead be authored through the typed `nn_module(...)` helper without a module-specific NexuML definition.
 
 #### Scenario: User authors a pipeline layer
 - **WHEN** a user adds an LMBE layer to a Python `PipelineSpec`
@@ -75,9 +75,41 @@ The system SHALL apply the typed-definition authoring model to current NexuML-ow
 - **AND** common loader policy SHALL remain on `LoaderSpec`.
 
 ### Requirement: External framework references are not wrapped without need
-The system SHALL NOT require every configurable external framework class to become a NexuML component definition.
+The system SHALL NOT require every configurable external framework class to become a module-specific NexuML component definition.
 
 #### Scenario: User selects a PyTorch optimizer or Lightning callback
 - **WHEN** configuration references an external optimizer, scheduler, or callback class through an existing explicit import/alias mechanism
 - **THEN** NEX-211 MAY leave that mechanism unchanged
 - **AND** SHALL NOT introduce NexuML wrapper classes solely to remove every string from configuration.
+
+### Requirement: Ordinary PyTorch modules can be authored directly
+The system SHALL provide one universal `nn_module(factory, *args, **kwargs)` authoring helper for importable factories that construct ordinary `torch.nn.Module` values without requiring each factory/module type to be added to `nexuml_library` or registered separately.
+
+#### Scenario: User adds a standard PyTorch module
+- **WHEN** a user authors `LayerSpec(component=nn_module(torch.nn.Dropout, p=0.5), ...)`
+- **THEN** the Python configuration SHALL contain a real navigable `torch.nn.Dropout` symbol
+- **AND** the helper SHALL return the single registered universal layer definition
+- **AND** no `Dropout`-specific NexuML definition or registry entry SHALL be required.
+
+#### Scenario: User navigates a direct module
+- **WHEN** a user navigates the factory symbol passed to `nn_module(...)`
+- **THEN** the IDE SHALL resolve that real Python class/function rather than a registry selector string
+- **AND** the helper signature SHOULD preserve the factory constructor signature for static checking where the configured type checker supports `ParamSpec` callable inference.
+
+#### Scenario: User supplies a live module instance
+- **WHEN** a user passes an already-created `torch.nn.Module` instance instead of an importable factory and portable constructor values
+- **THEN** construction SHALL fail with an error explaining that live instances cannot be reconstructed from resolved YAML
+- **AND** the system SHALL NOT silently pickle or introspect that instance to synthesize configuration.
+
+### Requirement: Direct modules remain a narrow external-module path
+The direct-module helper SHALL be limited to ordinary single-tensor transformations and SHALL NOT replace registered definitions that own NexuML-specific semantics.
+
+#### Scenario: Layer requires NexuML-specific behavior
+- **WHEN** a layer consumes labels or metadata, requires compiler-derived context in its constructor, publishes auxiliary outputs, accepts multiple tensors, returns non-tensor structures, or owns custom lifecycle behavior
+- **THEN** it SHALL use a registered typed `LayerDefinition` and an appropriate runtime implementation
+- **AND** the universal direct-module path SHALL NOT add reflection or generic hooks to emulate those behaviors.
+
+#### Scenario: Redundant built-in wrappers are removed
+- **WHEN** the direct-module path is available
+- **THEN** `IdentityLayer`, `Dropout`, and `Flatten` SHALL be replaced by `nn_module(torch.nn.Identity)`, `nn_module(torch.nn.Dropout, ...)`, and `nn_module(torch.nn.Flatten, start_dim=1, end_dim=-1)` respectively
+- **AND** compatibility aliases for their old Python symbols SHALL NOT remain.

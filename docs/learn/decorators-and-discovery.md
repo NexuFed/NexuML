@@ -41,6 +41,24 @@ LayerSpec(
 
 The decorator registers `scaled_relu@1`, allowing YAML restoration without persisting a Python import path.
 
+## When No Decorator Is Needed
+
+Ordinary importable PyTorch modules with exactly one tensor input and output use the core helper directly:
+
+```python
+import torch
+
+from nexuml import nn_module
+
+LayerSpec(
+    component=nn_module(torch.nn.Dropout, p=0.5),
+    keys_in=["features"],
+    keys_out=["features"],
+)
+```
+
+Only the universal `NnModule@1` definition is registered. `torch.nn.Dropout` remains an external factory target and is not scanned or listed as a NexuML component. Use a registered `LayerDefinition` instead when behavior needs build context, labels, metadata, lifecycle hooks, multiple inputs, or multiple outputs.
+
 ## Scenario Decorator
 
 `@scenario` remains a recipe registry for CLI lookup:

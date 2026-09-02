@@ -77,7 +77,7 @@ def test_definition_values_are_strict_frozen_and_finite() -> None:
     definition = LinearEncoder(output_dim=4)
 
     with pytest.raises(ValidationError):
-        definition.output_dim = 8
+        definition.output_dim = 8  # ty: ignore[invalid-assignment]
     with pytest.raises(ValidationError):
         LinearEncoder.model_validate({"output_dim": 4, "unknown": True})
     with pytest.raises(ValidationError):

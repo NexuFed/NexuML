@@ -49,6 +49,22 @@ pipeline = PipelineSpec(
 
 Graph wiring and compiler values do not belong on the component definition.
 
+An ordinary one-input/one-output PyTorch module can use the universal direct definition:
+
+```python
+import torch
+
+from nexuml import nn_module
+
+layer = LayerSpec(
+    component=nn_module(torch.nn.Flatten, start_dim=1, end_dim=-1),
+    keys_in=["image"],
+    keys_out=["features"],
+)
+```
+
+This path accepts exactly one input key, one output key, no label routing, and one tensor result. Use a registered `LayerDefinition` for richer NexuML semantics.
+
 ## DataSpec
 
 ```python
@@ -89,7 +105,9 @@ Algorithm semantics belong on `algorithm`. Placement fields such as `enabled`, `
 
 ## Persistence
 
-`ResolvedConfig.from_scenario(spec).to_yaml()` lowers every component to stable `type`, `version`, and validated `params`. `ResolvedConfig.from_yaml()` restores concrete definitions through discovery and exact registry lookup. Python module paths and runtime objects are not persisted.
+`ResolvedConfig.from_scenario(spec).to_yaml()` lowers every component to stable `type`, `version`, and validated `params`. `ResolvedConfig.from_yaml()` restores concrete definitions through discovery and exact registry lookup. Registered semantic components do not persist Python module paths or runtime objects.
+
+The universal `NnModule` component stores an external `module:name` factory target and JSON-safe constructor values in its `params`. Loading and compiling that trusted config imports and invokes the factory, so its package must be available. Live instances, lambdas, closures, local definitions, and nonportable constructor values are unsupported.
 
 Removed selector fields are rejected rather than translated.
 
