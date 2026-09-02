@@ -8,17 +8,28 @@ Install the Ray dependency. Add `s3` when using shared S3 storage:
 uv sync --extra ray --extra s3
 ```
 
-The driver and Ray cluster must use compatible Python versions. Pin the exact cluster Python in the Ray target when needed; for example, a cluster running Python 3.12.13 can use:
+## Runtime and version ownership
+
+NexuML defines the Ray integration API, not a specific cluster environment. The `ray` extra declares the Ray releases supported by this NexuML version, while the consuming project chooses the exact environment that matches its target cluster.
+
+Ray requires the application environment to use compatible Ray and Python versions with the target cluster. Keep those exact versions in the consuming project's environment and lockfile rather than in NexuML configuration or documentation.
+
+For a uv-managed application, the Ray worker can reuse that locked project environment:
 
 ```yaml
 execution:
   kind: ray
   target:
     kind: cluster
-    py_executable: uv run --python 3.12.13 --locked --extra ray --extra s3 --extra dali python
+    py_executable: uv run --locked python
 ```
 
-Keep that pin cluster-specific rather than pinning the whole NexuML repository to one Python patch release.
+The separation is intentional:
+
+- NexuML `pyproject.toml` declares supported Python and Ray API ranges.
+- The consuming project's `pyproject.toml`, `.python-version` if desired, and `uv.lock` pin its exact Python and Ray environment.
+- Ray/KubeRay infrastructure selects the matching Ray image, Python version, CUDA/GPU image variant, node selectors, volumes, and other platform settings.
+- `ScenarioSpec` contains only execution placement needed by NexuML; it does not model container images, CUDA versions, Kubernetes policy, or cluster-specific caches.
 
 ## Configure an existing cluster
 
@@ -34,6 +45,7 @@ execution:
     kind: cluster
     address: ray://ray.example.org:10001
     working_dir: .
+    py_executable: uv run --locked python
   workers: 4
   resources_per_worker:
     CPU: 4
@@ -52,10 +64,8 @@ execution:
 Running the normal command connects to the configured cluster and executes a `TorchTrainer`. Each worker reconstructs the scenario, creates the real `NexuSession`, and calls `NexuSession.run()`.
 
 ```bash
-uv run nexuml train --config configs/my-scenario.yaml
+uv run --locked nexuml train --config configs/my-scenario.yaml
 ```
-
-When the cluster requires an exact Python version, run the driver with that version as well, for example `uv run --python 3.12.13 nexuml train ...`.
 
 ## Detached Ray Jobs
 
@@ -63,14 +73,10 @@ NexuML intentionally does not wrap the Ray Jobs lifecycle. Use Ray's native job 
 
 ```bash
 ray job submit --working-dir . -- \
-  uv run nexuml train --config configs/my-scenario.yaml
+  uv run --locked nexuml train --config configs/my-scenario.yaml
 ```
 
-`--working-dir .` lets Ray upload the current project to the cluster. `uv run` then uses the project environment described by `pyproject.toml` and `uv.lock`, so changing NexuML code does not require rebuilding a custom image for every run.
-
-The reference cluster keeps uv's download cache on its existing `ray-data`
-volume. Autoscaled workers still create an isolated project environment, but
-reuse cached wheels instead of downloading the dependency set for every job.
+`--working-dir .` lets Ray upload the current project to the cluster. `uv run` then uses the project environment described by that project's `pyproject.toml` and `uv.lock`, so code and dependency changes do not require rebuilding a custom image for every run.
 
 Use Ray's own commands/API for job status, logs, stopping, and other lifecycle operations rather than a NexuML-specific job handle.
 
@@ -103,7 +109,7 @@ training:
 
 Under Ray, NexuML maps these values to Ray's official `RayDDPStrategy`, `RayFSDPStrategy`, or `RayDeepSpeedStrategy`, plus `RayLightningEnvironment`, `RayTrainReportCallback`, and `prepare_trainer`. There is no NexuML-specific implementation of these distributed strategies.
 
-DeepSpeed itself must be available in the Ray worker environment when that strategy is selected.
+DeepSpeed itself must be available in the consuming project/worker environment when that strategy is selected.
 
 ## Post-train fitted pipeline layers
 
@@ -115,7 +121,7 @@ The backend therefore fails before Ray allocation instead of changing model sema
 
 Ray also currently rejects scenarios with `evaluation.algorithms`. Those algorithms accumulate arbitrary state from test batches, so averaging their final scalar results across rank-local shards is not generally equivalent to evaluating the full dataset once. Scalar Lightning and pipeline metrics such as validation/test loss, accuracy, and F1 remain supported and are reduced across workers.
 
-Keep stateful evaluation algorithms disabled for Ray until NexuML has a globally correct state aggregation/finalization contract. The Ray CIFAR reference scenario follows this rule by retaining its scalar classification metrics while disabling its histogram/t-SNE/UMAP evaluation algorithms.
+Keep stateful evaluation algorithms disabled for Ray until NexuML has a globally correct state aggregation/finalization contract.
 
 ## Shared datasets with S3 WebDataset
 
@@ -160,21 +166,25 @@ For S3 exports, `ExportedDataset` loads only `config.yaml` and metadata. Tensor 
 NexuML passes the `s3://...tar` and `s3://...idx` paths directly to the existing DALI WebDataset reader and preserves DALI sharding with `shard_id=global_rank` and `num_shards=world_size`.
 
 !!! warning "Verify direct S3 WebDataset support in the target DALI environment"
-    DALI supports S3 in several readers, but current `readers.webdataset` documentation does not explicitly guarantee cloud URLs and NVIDIA still tracks cloud-WebDataset support publicly. NexuML therefore keeps this boundary deliberately thin: direct URLs are the intended path, and a real target-environment integration test must confirm them before production use. If that combination needs a fallback, add the smallest worker-local shard materializer rather than a second cache/capability framework.
+    DALI supports S3 in several readers, but current `readers.webdataset` documentation does not explicitly guarantee cloud URLs. NexuML therefore keeps this boundary deliberately thin: direct URLs are the intended path, and a real target-environment integration test must confirm them before production use. If that combination needs a fallback, add the smallest worker-local shard materializer rather than a second cache/capability framework.
 
 S3 credentials are resolved by boto3's normal AWS/provider credential chain and are not stored in scenario configuration.
 
 ## Temporary KubeRay clusters
 
-Temporary Ray clusters are intentionally treated as infrastructure rather than a second execution framework. A KubeRay integration should use an infrastructure-owned `RayJob` template containing image, node selectors, queues, tolerations, service accounts, and autoscaling policy. NexuML only needs to provide the code working-directory URI and entrypoint.
+Temporary Ray clusters are intentionally treated as infrastructure rather than a second execution framework. A KubeRay integration should use an infrastructure-owned `RayJob` template containing the matching Ray/Python/CUDA image plus node selectors, queues, tolerations, service accounts, volumes, and autoscaling policy. NexuML only needs to provide the code working-directory URI and entrypoint.
 
-Until that small template adapter is implemented, use the KubeRay `RayJob` manifest directly with the same `uv run nexuml train ...` entrypoint.
+Until that small template adapter is implemented, use the KubeRay `RayJob` manifest directly with the same `uv run --locked nexuml train ...` entrypoint.
 
 ## Troubleshooting
 
 **Ray imports are missing**
 
 Install `nexuml[ray]` (or `uv sync --extra ray`) in the driver and worker runtime.
+
+**Ray reports a version mismatch**
+
+Pin the consuming project's Ray and Python versions to match the target cluster. For KubeRay, also ensure the head and worker images use the same Ray/Python combination. Do not solve this by pinning NexuML itself to one deployment environment.
 
 **A `PostTrainFitLayer` scenario is rejected**
 
@@ -186,7 +196,7 @@ This is intentional until those algorithms can aggregate their underlying state 
 
 **DeepSpeed strategy fails to initialize**
 
-Install DeepSpeed in the Ray worker environment. NexuML intentionally does not make it a base dependency.
+Install DeepSpeed in the consuming project/worker environment. NexuML intentionally does not make it a base dependency.
 
 **Workers cannot read the S3 dataset**
 

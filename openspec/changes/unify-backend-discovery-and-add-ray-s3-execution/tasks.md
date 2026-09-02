@@ -13,14 +13,15 @@
 - [x] 2.1 Add local/Ray execution configuration to `ScenarioSpec` with local as the default.
 - [x] 2.2 Keep strategy selection in `TrainingSpec`; add `strategy_params` and support `auto`, `ddp`, `fsdp`, `deepspeed` without duplicating the strategy in Ray config.
 - [ ] 2.3 Add a small common Lightning Trainer-kwargs seam so local and Ray construction share NexuML defaults.
-- [x] 2.4 Implement `src/nexuml/execution/ray.py` using Ray 2.58 `TorchTrainer`, `ScalingConfig`, and `RunConfig`.
+- [x] 2.4 Implement `src/nexuml/execution/ray.py` using `TorchTrainer`, `ScalingConfig`, and `RunConfig` from NexuML's supported Ray API range.
 - [x] 2.5 Map Lightning strategies to official `RayDDPStrategy`, `RayFSDPStrategy`, and `RayDeepSpeedStrategy`, plus `RayLightningEnvironment`, `RayTrainReportCallback`, and `prepare_trainer`.
 - [x] 2.6 Ensure each Ray worker reconstructs `ScenarioSpec`, creates the real `NexuSession`, and calls `run()` once.
 - [x] 2.7 Support existing-cluster `ray.init(address=...)` and fixed/elastic worker counts.
 - [x] 2.8 Keep native Ray `Result` as the return value; do not add another result/handle schema.
 - [ ] 2.9 Implement globally correct `PostTrainFitLayer` finalization/state synchronization and remove the temporary Ray safety guard.
 - [x] 2.10 Reject stateful `evaluation.algorithms` under Ray until their underlying state can be aggregated globally; keep scalar Lightning/pipeline metrics distributed normally.
-- [ ] 2.11 Keep KubeRay as a small infrastructure-template adapter only if it can remain infrastructure-agnostic.
+- [x] 2.11 Keep exact Ray/Python/CUDA/image selection outside NexuML config; package metadata declares compatibility while consuming projects/infrastructure pin deployment versions.
+- [ ] 2.12 Keep KubeRay as a small infrastructure-template adapter only if it can remain infrastructure-agnostic.
 
 ## 3. Simplify WebDataset and add `.idx`
 
@@ -50,6 +51,7 @@
 - [x] 6.2 Add `docs/how-to/training-backends/ray.md` covering existing clusters, worker resources, DDP/FSDP/DeepSpeed, S3 WebDataset data, KubeRay, and troubleshooting.
 - [x] 6.3 Prominently document detached execution with `ray job submit --working-dir . -- uv run ...` and state that NexuML intentionally does not wrap Ray Jobs.
 - [x] 6.4 Document WebDataset `.npy` payloads and automatic `.idx` generation.
+- [x] 6.5 Document version ownership without any NexuFed-specific cluster, image, cache, Python patch, or storage endpoint requirements.
 
 ## 7. Focused validation
 

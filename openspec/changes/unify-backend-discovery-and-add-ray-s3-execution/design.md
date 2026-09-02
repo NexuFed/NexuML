@@ -5,7 +5,7 @@
 1. **One training lifecycle.** `NexuSession.run()` remains the only implementation of fit → validate → post-train fit → test.
 2. **Use NexuML's existing seams.** Extend `TrainingSpec`, `ExportBackend`, `ExportedDataset`, and the DALI loader rather than adding parallel frameworks.
 3. **Delegate platform behavior.** Ray owns workers, retries/checkpoints/results, Ray Jobs, process groups, and Lightning integration. DALI owns WebDataset reading and rank sharding. boto3 owns S3 transport and credentials.
-4. **Keep infrastructure out of config.** Kubernetes worker images, node selectors, Kueue, service accounts, tolerations, and cluster topology live in Ray/KubeRay manifests, not NexuML models.
+4. **Keep infrastructure out of config.** Exact Ray/Python/CUDA images, Kubernetes worker images, node selectors, Kueue, service accounts, tolerations, volumes, caches, and cluster topology live in the consuming project or Ray/KubeRay manifests, not NexuML models.
 5. **No compatibility debt.** The existing oversized NEX-154 implementation is replaced rather than wrapped or preserved.
 
 ## Target structure
@@ -68,11 +68,13 @@ execution:
   target:
     kind: cluster
     address: ray://ray.example.org:10001
+    working_dir: .
+    py_executable: uv run --locked python
   workers: 4
   resources_per_worker:
     CPU: 4
     GPU: 1
-  storage_path: s3://nexuml/runs
+  storage_path: s3://my-bucket/nexuml/runs
 ```
 
 Large-model strategies stay in `training`:
@@ -98,6 +100,17 @@ execution:
   kind: ray
   workers: [2, 8]
 ```
+
+## Runtime/version ownership
+
+NexuML declares compatibility, not a deployment image.
+
+- NexuML's package metadata declares the supported Python range and a bounded Ray API range.
+- A consuming project pins the exact Ray and Python versions that match its target cluster, normally through its own `pyproject.toml`, optional `.python-version`, and `uv.lock`.
+- Ray/KubeRay infrastructure selects the exact Ray/Python/CUDA image and all platform scheduling/storage details.
+- `RayClusterTarget.py_executable` is an optional generic Ray runtime hook. It can point at `uv run --locked python` so workers use the consuming project's locked environment; it must not encode a NexuML-owned Python patch release or image tag.
+
+The repository lockfile may resolve one exact Ray version for reproducible NexuML development/CI. That resolved version is not part of the public deployment contract as long as it lies within NexuML's declared compatibility range.
 
 ## Ray execution
 
@@ -129,7 +142,7 @@ No Ray module implements training/evaluation steps.
 
 ### Lightning integration
 
-Ray-specific Trainer construction uses the current official Ray Lightning classes:
+Ray-specific Trainer construction uses the official Ray Lightning integration:
 
 - `RayDDPStrategy` for `auto`/`ddp`;
 - `RayFSDPStrategy` for `fsdp`;
@@ -147,14 +160,24 @@ Interactive/direct execution connects with `ray.init(address=...)` and runs `Tor
 Detached execution is intentionally external to the NexuML API:
 
 ```bash
-ray job submit --working-dir . -- uv run nexuml train <scenario>
+ray job submit --working-dir . -- uv run --locked nexuml train <scenario>
 ```
 
-Ray uploads the working directory and `uv run` resolves the project environment. NexuML does not duplicate working-directory manifests, hashing, staging, job handles, lifecycle calls, or log/status APIs.
+Ray uploads the working directory and `uv run` uses the consuming project's environment. NexuML does not duplicate working-directory manifests, hashing, staging, job handles, lifecycle calls, or log/status APIs.
 
 ### KubeRay
 
-Temporary cluster execution uses one user/infrastructure-owned RayJob template. NexuML may substitute only the code working-directory URI and entrypoint and submit the resulting resource. Kubernetes topology and queueing remain template concerns. This adapter must stay small; if it needs a platform model hierarchy, it is out of scope.
+Temporary cluster execution uses one user/infrastructure-owned RayJob template. NexuML may substitute only the code working-directory URI and entrypoint and submit the resulting resource. The template owns the exact Ray/Python/CUDA image, Kubernetes topology, storage mounts, queues, and scheduling policy. This adapter must stay small; if it needs a platform model hierarchy, it is out of scope.
+
+## Distributed semantic guards
+
+Some NexuML post-training behavior cannot yet be reproduced correctly from independent rank shards.
+
+- `PostTrainFitLayer` scenarios are rejected under Ray until one globally correct fit/finalization state can be produced and synchronized.
+- `evaluation.algorithms` are rejected under Ray until their underlying accumulated state can be combined globally before finalization.
+- Scalar Lightning/pipeline metrics remain distributed normally and may use Lightning/TorchMetrics synchronization.
+
+Failing explicitly is preferable to returning plausible but rank-local results.
 
 ## WebDataset format
 
@@ -226,13 +249,13 @@ num_shards=world_size
 
 DALI therefore remains the sharding authority.
 
-The implementation will use direct `s3://` WebDataset/index paths. A real DALI + S3-compatible integration test is the acceptance check. No speculative direct/cache capability framework is added. If DALI 2.2 cannot consume these paths in the target environment, the direct path remains an explicit integration limitation to resolve with the smallest possible adapter rather than prebuilding a cache subsystem.
+The implementation uses direct `s3://` WebDataset/index paths. A real DALI + S3-compatible integration test is the acceptance check. No speculative direct/cache capability framework is added. If a supported DALI environment cannot consume these paths, resolve that integration limitation with the smallest possible adapter rather than prebuilding a cache subsystem.
 
 ## Dependencies
 
-- `ray[default,train]==2.58.0` as the optional `ray` extra.
-- `boto3` as the optional `s3` extra.
-- current DALI CUDA 12 package remains under the `dali` extra; the code must not embed DALI version profiles.
+- `ray[default,train]>=2.57,<2.59` is the optional Ray compatibility range for this NexuML release. Consuming projects pin the exact cluster-compatible Ray version themselves.
+- `boto3` remains the optional `s3` extra.
+- DALI remains optional; exact CUDA/image selection belongs to the consuming runtime/infrastructure rather than `ScenarioSpec`.
 - `all` includes `ray` and `s3`.
 
 ## Tests
@@ -244,6 +267,7 @@ Keep tests focused on NexuML-owned behavior:
 - worker calls canonical `NexuSession.run()`;
 - fixed and elastic `ScalingConfig` mapping;
 - existing-cluster `ray.init` mapping;
+- distributed-semantic guards;
 - WebDataset writes `.npy` components with pickle disabled;
 - one `.idx` is generated per tar by invoking `wds2idx`;
 - S3 export uploads closed tar/index pairs and final metadata without retaining all shards locally;

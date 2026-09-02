@@ -84,7 +84,7 @@ export = [
     "soundfile>=0.12",
 ]
 ray = [
-    "ray[default,train]==2.57.0",
+    "ray[default,train]>=2.57,<2.59",
 ]
 s3 = [
     "boto3>=1.34",
