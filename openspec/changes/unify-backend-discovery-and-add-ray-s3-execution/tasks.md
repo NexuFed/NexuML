@@ -41,7 +41,7 @@
 ## 5. Connect S3 WebDataset to DALI
 
 - [x] 5.1 Reuse the existing DALI WebDataset loader and decoder path.
-- [x] 5.2 Pass S3 tar/index URLs directly to `fn.readers.webdataset`.
+- [x] 5.2 Pass S3 tar URLs directly to `fn.readers.webdataset` and stage only its locally parsed `.idx` files.
 - [x] 5.3 Preserve DALI rank sharding through `shard_id=global_rank` and `num_shards=world_size`.
 - [ ] 5.4 Add one optional real DALI + S3-compatible integration test; do not add a speculative cache/capability framework.
 
@@ -57,4 +57,4 @@
 
 - [x] 7.1 Add compact unit tests for config, strategy mapping, Ray worker/session reuse, scaling config, WebDataset indexing, and S3 publication.
 - [ ] 7.2 Add at most one optional Ray integration smoke test and one optional S3+DALI integration test.
-- [ ] 7.3 Run the existing test suite plus Ruff and Ty; fix regressions without adding compatibility shims for the discarded NEX-154 implementation.
+- [x] 7.3 Run the existing test suite plus Ruff and Ty; fix regressions without adding compatibility shims for the discarded NEX-154 implementation.

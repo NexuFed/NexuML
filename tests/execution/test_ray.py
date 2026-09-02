@@ -46,8 +46,8 @@ def test_ray_worker_reuses_nexusession_and_reports_final_metrics(monkeypatch):
 
     class FakeSession:
         @classmethod
-        def from_scenario(cls, scenario):
-            calls.append(f"session:{scenario.name}")
+        def from_scenario(cls, scenario, **kwargs):
+            calls.append(f"session:{scenario.name}:{kwargs['enable_loggers']}")
             return cls()
 
         def run(self):
@@ -67,17 +67,42 @@ def test_ray_worker_reuses_nexusession_and_reports_final_metrics(monkeypatch):
         lambda session: calls.append("trainer") or SimpleNamespace(),
     )
     monkeypatch.setattr(ray_train, "report", lambda metrics: reported.update(metrics))
+    monkeypatch.setattr(
+        ray_train,
+        "get_context",
+        lambda: SimpleNamespace(get_world_rank=lambda: 1),
+    )
 
     scenario = ScenarioSpec(name="worker")
     ray_execution.train_loop_per_worker({"scenario": lower_model(scenario)})
 
-    assert calls == ["session:worker", "trainer", "run"]
+    assert calls == ["session:worker:False", "trainer", "run"]
     assert reported == {
         "val/loss": 0.4,
         "test/accuracy": 0.9,
         "test/f1": 0.8,
         "nexuml/completed": 1,
     }
+
+
+def test_disabled_session_loggers_preserve_callbacks(monkeypatch):
+    import nexuml.tracking.logger as logger_module
+    import nexuml.training.callbacks as callbacks_module
+    from nexuml.training.lightning import NexuSession
+
+    monkeypatch.setattr(
+        logger_module,
+        "create_loggers",
+        lambda *_args, **_kwargs: pytest.fail("nonzero worker created loggers"),
+    )
+    monkeypatch.setattr(callbacks_module, "build_callbacks", lambda _specs: ["callback"])
+
+    session = NexuSession.from_scenario(ScenarioSpec(name="worker"), enable_loggers=False)
+
+    loggers = session.trainer_loggers
+    assert isinstance(loggers, list)
+    assert [type(logger).__name__ for logger in loggers] == ["DummyLogger"]
+    assert session.trainer_callbacks == ["callback"]
 
 
 def test_ray_strategy_uses_official_ray_classes(monkeypatch):

@@ -166,7 +166,10 @@ def train_loop_per_worker(config: dict[str, Any]) -> None:
     from nexuml.training.lightning import NexuSession
 
     scenario = ScenarioSpec.model_validate(restore_model_data(config["scenario"], ScenarioSpec))
-    session = NexuSession.from_scenario(scenario)
+    session = NexuSession.from_scenario(
+        scenario,
+        enable_loggers=train.get_context().get_world_rank() == 0,
+    )
     _prepare_session_trainer(session)
     result = session.run()
     train.report(_final_metrics(result))

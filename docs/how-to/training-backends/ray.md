@@ -76,13 +76,18 @@ NexuML dataset
   → WebDataset export
   → S3-compatible storage
   → ExportedDataset
-  → worker-local shard/index staging
+  → direct tar streaming and worker-local index staging
   → DALI WebDataset reader
 ```
 
 Export to S3 with the normal dataset-export command or Python API, then use the base-library `ExportedDataset` definition for the remote root.
 
-For S3-backed WebDataset, the current DALI integration downloads the required tar/index files through NexuML's boto3 S3 client into a worker-local temporary directory before passing local paths to DALI. This is intentional for compatibility with path-style S3-compatible endpoints; the current implementation does **not** rely on DALI directly opening arbitrary `s3://` WebDataset URLs.
+For S3 exports, `ExportedDataset` loads `config.yaml`, metadata, and the small DALI `.idx` files. Tensor payloads remain in S3 and are read directly by DALI rather than downloaded through Python/boto3. Remote exports also avoid the per-sample Python WebDataset index; the tar/index lists in `config.yaml` are sufficient for DALI.
+
+NexuML passes each `s3://...tar` path directly to the existing DALI WebDataset reader. DALI's WebDataset index parser requires local files, so NexuML stages only the corresponding `.idx` files in a worker-local temporary directory. DALI still owns sharding through `shard_id=global_rank` and `num_shards=world_size`.
+
+!!! warning "Verify direct S3 tar support in the target DALI environment"
+    DALI supports S3 in several readers, but current `readers.webdataset` documentation does not explicitly guarantee cloud URLs. NexuML therefore keeps this boundary deliberately thin: direct tar URLs are the intended path, and a real target-environment integration test must confirm them before production use. If that combination needs a fallback, add the smallest bounded adapter demonstrated by that test rather than a second cache/capability framework.
 
 Credentials/endpoints come from the normal AWS/provider environment and supported S3 options, not from persisted secrets in the scenario.
 

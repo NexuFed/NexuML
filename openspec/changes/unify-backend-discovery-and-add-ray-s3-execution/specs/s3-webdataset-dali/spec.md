@@ -39,19 +39,19 @@ The existing export `config.yaml` and metadata table SHALL remain the dataset me
 - **THEN** `config.yaml` and metadata are uploaded to the dataset prefix and are sufficient to discover the shard/index pairs
 
 ### Requirement: DALI remains the loading and sharding authority
-An S3-backed exported WebDataset SHALL expose its shard and index references as `s3://` URLs to the existing DALI WebDataset loader. The loader SHALL continue to use DALI `shard_id=global_rank` and `num_shards=world_size`; NexuML SHALL NOT implement a second Ray-specific data sharding path.
+An S3-backed exported WebDataset SHALL expose its tar references as `s3://` URLs to the existing DALI WebDataset loader and stage only the small index files required by DALI's local index parser. The loader SHALL continue to use DALI `shard_id=global_rank` and `num_shards=world_size`; NexuML SHALL NOT implement a second Ray-specific data sharding path.
 
 #### Scenario: Four Ray workers load one S3 dataset
 - **WHEN** the workers have ranks 0..3 and world size 4
 - **THEN** each worker builds the existing DALI WebDataset reader with its own rank as `shard_id` and 4 as `num_shards`
 
 ### Requirement: Direct DALI S3 support is tested, not abstracted preemptively
-The implementation SHALL pass `s3://` tar/index paths directly to DALI and SHALL include an optional real S3-compatible DALI integration test. NEX-154 SHALL NOT add a direct/cache capability framework or node-cache subsystem before a concrete target-environment limitation demonstrates that it is required.
+The implementation SHALL pass `s3://` tar paths directly to DALI, stage only their small `.idx` files, and include an optional real S3-compatible DALI integration test. NEX-154 SHALL NOT add a direct/cache capability framework or node-cache subsystem before a concrete target-environment limitation demonstrates that it is required.
 
-#### Scenario: Target DALI environment supports direct S3 WebDataset paths
+#### Scenario: Target DALI environment supports direct S3 WebDataset tar paths
 - **WHEN** the optional integration environment is available
-- **THEN** DALI reads the exported S3 tar/index pair directly and yields the expected tensors
+- **THEN** DALI reads each exported S3 tar directly with its staged local index and yields the expected tensors
 
-#### Scenario: Target DALI environment rejects direct S3 WebDataset paths
-- **WHEN** the real integration test demonstrates that the selected DALI/object-store combination cannot consume the S3 tar/index paths
+#### Scenario: Target DALI environment rejects direct S3 WebDataset tar paths
+- **WHEN** the real integration test demonstrates that the selected DALI/object-store combination cannot consume the S3 tar paths
 - **THEN** the limitation is reported explicitly and any follow-up adapter is designed from that measured failure rather than activating a prebuilt generic cache framework

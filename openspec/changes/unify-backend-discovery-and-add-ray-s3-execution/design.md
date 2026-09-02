@@ -238,7 +238,7 @@ Local temporary usage is therefore bounded by approximately one shard.
 
 ## S3 exported dataset and DALI
 
-An S3-backed exported dataset loads only its small `config.yaml` and metadata locally/in memory. Its shard/index references stay as `s3://...` URLs.
+An S3-backed exported dataset loads its small `config.yaml`, metadata, and DALI `.idx` files locally/in memory. Tar references stay as `s3://...` URLs so workers do not download the tensor payloads.
 
 The existing DALI WebDataset loader receives those paths and continues to pass:
 
@@ -249,7 +249,7 @@ num_shards=world_size
 
 DALI therefore remains the sharding authority.
 
-The implementation uses direct `s3://` WebDataset/index paths. A real DALI + S3-compatible integration test is the acceptance check. No speculative direct/cache capability framework is added. If a supported DALI environment cannot consume these paths, resolve that integration limitation with the smallest possible adapter rather than prebuilding a cache subsystem.
+The implementation sends direct `s3://` WebDataset tar paths to DALI and stages only `.idx` files because DALI's WebDataset index parser uses local file I/O. A real DALI + S3-compatible integration test is the acceptance check. No speculative direct/cache capability framework is added. If a supported DALI environment cannot consume the tar paths, resolve that integration limitation with the smallest bounded adapter rather than prebuilding a cache subsystem.
 
 ## Dependencies
 
