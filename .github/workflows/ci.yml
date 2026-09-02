@@ -129,6 +129,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: python-distributions
+          retention-days: 7
           path: |
             dist/nexuml/*.whl
             dist/nexuml/*.tar.gz

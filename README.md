@@ -8,6 +8,8 @@
 <img alt="PyTorch" src="https://img.shields.io/badge/PyTorch-compatible-ee4c2c?style=flat-square&logo=pytorch&logoColor=white">
 <img alt="Status" src="https://img.shields.io/badge/status-alpha-orange?style=flat-square">
 <img alt="PyPI" src="https://img.shields.io/pypi/v/nexuml?style=flat-square&logo=pypi">
+<a href="https://github.com/NexuFed/NexuML/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/NexuFed/NexuML/ci.yml?branch=main&style=flat-square&label=CI"></a>
+<a href="https://github.com/NexuFed/NexuML/actions/workflows/release.yml"><img alt="Release" src="https://img.shields.io/github/actions/workflow/status/NexuFed/NexuML/release.yml?style=flat-square&label=release"></a>
 
 <br/>
 <br/>

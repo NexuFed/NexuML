@@ -60,11 +60,11 @@
 
 ## 7. Trusted Publishing
 
-- [x] 7.1 Add a manually dispatched TestPyPI job using a protected `testpypi` environment and OIDC trusted publishing, and verify its publication jobs reuse artifacts produced by its validation job without a stored API token.
-- [x] 7.2 Add a protected production `pypi` environment and OIDC publication job for release tags, publish core before the dependent library, and verify no upload step can run before all validation gates pass.
+- [x] 7.1 Add manually dispatched TestPyPI jobs using separate protected `testpypi` and `testpypi-library` environments and OIDC trusted publishing, and verify they reuse the exact successful CI artifact without a stored API token.
+- [x] 7.2 Add separate protected production `pypi` and `pypi-library` environments and OIDC publication jobs for release tags, publish core before the dependent library, and verify no upload step can run before all validation gates pass.
 - [x] 7.3 Move GitHub release creation after both PyPI uploads, attach or link the validated distribution artifacts, and verify a failed or partial upload cannot produce a successful GitHub release.
 - [x] 7.4 Document the required PyPI and TestPyPI project ownership, trusted-publisher identities, protected environments, and approvals for both package names; verify maintainers can audit the intended configuration without repository secrets.
-- [ ] 7.5 Create or claim both package projects, configure their pending or existing trusted publishers, create protected `testpypi` and `pypi` GitHub environments with required reviewers, protect `main` with the required CI check, and verify the live settings match the documented identities.
+- [ ] 7.5 Create or claim both package projects, configure their pending or existing trusted publishers, create protected `testpypi`, `testpypi-library`, `pypi`, and `pypi-library` GitHub environments with required reviewers, protect `main` with the required CI check, and verify the live settings match the documented identities.
 
 ## 8. Final Verification
 

@@ -141,10 +141,10 @@ main ancestry + exact-commit check
 tag/version check
         │
         ▼
-build both distributions
+select exact CI artifact
         │
         ▼
-metadata/content/install checks
+separate core/library environment approvals
         │
         ▼
 PyPI Trusted Publishing
@@ -153,7 +153,7 @@ PyPI Trusted Publishing
 GitHub release + artifacts
 ```
 
-Production upload uses a protected GitHub environment and PyPI Trusted Publishing through OIDC, not a stored API token. A production tag is accepted only when its commit is contained in `main` and the required source, supported-Python, package, and strict documentation checks succeeded for that exact commit. A manually dispatched TestPyPI path runs only for a frozen integrated candidate and reuses the same build and validation steps. Its installation check selects TestPyPI for the two NexuML projects and the production index for third-party dependencies.
+Ordinary CI builds and validates both distributions once, then retains the immutable `python-distributions` artifact for seven days. Production upload selects that artifact from a successful CI run for the exact candidate commit and uses separate protected `pypi` and `pypi-library` environments with PyPI Trusted Publishing through OIDC, not a stored API token. A production tag is accepted only when its commit is contained in `main` and the required source, supported-Python, package, and strict documentation checks succeeded for that exact commit. A manually dispatched TestPyPI path runs only for a frozen integrated candidate, reuses the exact CI artifact without rebuilding, and publishes through separate `testpypi` and `testpypi-library` environments. Its installation check selects TestPyPI for the two NexuML projects and the production index for third-party dependencies.
 
 Uploading two PyPI projects cannot be transactional. Core uploads first because the library depends on it; the GitHub release is created only after both uploads succeed. A partial upload is reported explicitly rather than hidden by a successful GitHub release.
 
@@ -214,6 +214,7 @@ Alternative considered: add a checkpoint-directory parameter and keep the curren
 - Lightning-derived checkpoint paths are less fixed than the current CIFAR directory -> Document logger/root placement and verify the first-run guide shows users how to locate `last.ckpt`.
 - TestPyPI candidate files are immutable -> Run the `0.2.0` candidate only after integration, runtime fixes, exact-head checks, and publisher setup are complete.
 - A matching tag can otherwise be created from any branch -> Protect `main` with required checks and enforce `main` ancestry in the workflow rather than relying only on maintainer convention.
+- CI artifacts expire -> Retain the small distribution artifact for seven days and require a current exact-commit artifact before any publishing environment requests approval.
 
 ## Migration Plan
 

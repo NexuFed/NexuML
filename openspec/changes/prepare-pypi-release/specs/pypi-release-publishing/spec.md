@@ -35,7 +35,7 @@ The repository SHALL protect `main` with the required release checks, and the pr
 - **THEN** branch protection requires the release checks to succeed before merge.
 
 ### Requirement: Built artifacts are validated before publication
-The release workflow SHALL build wheels and source distributions for both packages, validate their metadata and contents, and install the built artifacts in isolated environments before publication.
+The required CI workflow SHALL build wheels and source distributions for both packages, validate their metadata and contents, install the built artifacts in isolated environments, and upload the validated files as an immutable artifact. The release workflow SHALL select that artifact from a successful CI run for the exact candidate commit and SHALL NOT rebuild publication files.
 
 #### Scenario: Core-only artifact smoke test succeeds
 - **WHEN** the core wheel is installed into an isolated environment without repository source paths or `nexuml-library`
@@ -54,7 +54,7 @@ The release workflow SHALL build wheels and source distributions for both packag
 - **AND** no GitHub release is created for the failed build.
 
 ### Requirement: Publication uses trusted identity
-Production publication SHALL use PyPI Trusted Publishing with short-lived OpenID Connect credentials and a protected release environment rather than a long-lived repository API token.
+Production publication SHALL use PyPI Trusted Publishing with short-lived OpenID Connect credentials and separate protected `pypi` and `pypi-library` environments rather than a long-lived repository API token.
 
 #### Scenario: Validated production release is published
 - **WHEN** all release checks pass for an authorized release tag
@@ -66,7 +66,7 @@ Production publication SHALL use PyPI Trusted Publishing with short-lived OpenID
 - **THEN** PyPI rejects publication.
 
 ### Requirement: Test publication is available before production
-Maintainers SHALL be able to publish the same validated artifacts from a frozen, integrated candidate commit to TestPyPI and verify installation without triggering a production release. The TestPyPI path SHALL run only after the protected publishing environment and trusted-publisher identity are configured.
+Maintainers SHALL be able to publish the same validated artifacts from a frozen, integrated candidate commit to TestPyPI and verify installation without triggering a production release. The TestPyPI path SHALL run only after the separate protected `testpypi` and `testpypi-library` environments and trusted-publisher identities are configured.
 
 #### Scenario: Maintainer runs the TestPyPI path
 - **WHEN** an authorized maintainer requests a test publication for versioned candidate artifacts
