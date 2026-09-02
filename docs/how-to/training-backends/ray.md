@@ -5,8 +5,20 @@ Ray is an optional execution backend for the existing NexuML Lightning session. 
 Install the Ray dependency. Add `s3` when using shared S3 storage:
 
 ```bash
-uv sync --python 3.12.13 --extra ray --extra s3
+uv sync --extra ray --extra s3
 ```
+
+The driver and Ray cluster must use compatible Python versions. Pin the exact cluster Python in the Ray target when needed; for example, a cluster running Python 3.12.13 can use:
+
+```yaml
+execution:
+  kind: ray
+  target:
+    kind: cluster
+    py_executable: uv run --python 3.12.13 --locked --extra ray --extra s3 --extra dali python
+```
+
+Keep that pin cluster-specific rather than pinning the whole NexuML repository to one Python patch release.
 
 ## Configure an existing cluster
 
@@ -42,6 +54,8 @@ Running the normal command connects to the configured cluster and executes a `To
 ```bash
 uv run nexuml train --config configs/my-scenario.yaml
 ```
+
+When the cluster requires an exact Python version, run the driver with that version as well, for example `uv run --python 3.12.13 nexuml train ...`.
 
 ## Detached Ray Jobs
 
@@ -96,6 +110,12 @@ DeepSpeed itself must be available in the Ray worker environment when that strat
 Ray currently rejects scenarios containing a `PostTrainFitLayer`. NexuML normally fits these layers after gradient training by running a predict pass over the full training set. Under distributed DALI loading, each worker sees only its rank shard, so fitting independently would silently create different fitted state on different workers.
 
 The backend therefore fails before Ray allocation instead of changing model semantics. Keep those scenarios local until NexuML implements global post-train finalization and fitted-state synchronization.
+
+## Evaluation algorithms
+
+Ray also currently rejects scenarios with `evaluation.algorithms`. Those algorithms accumulate arbitrary state from test batches, so averaging their final scalar results across rank-local shards is not generally equivalent to evaluating the full dataset once. Scalar Lightning and pipeline metrics such as validation/test loss, accuracy, and F1 remain supported and are reduced across workers.
+
+Keep stateful evaluation algorithms disabled for Ray until NexuML has a globally correct state aggregation/finalization contract. The Ray CIFAR reference scenario follows this rule by retaining its scalar classification metrics while disabling its histogram/t-SNE/UMAP evaluation algorithms.
 
 ## Shared datasets with S3 WebDataset
 
@@ -159,6 +179,10 @@ Install `nexuml[ray]` (or `uv sync --extra ray`) in the driver and worker runtim
 **A `PostTrainFitLayer` scenario is rejected**
 
 This is intentional until the post-train fit pass can aggregate the complete training set and synchronize one fitted state across all Ray workers. Run that scenario locally for now.
+
+**A scenario with `evaluation.algorithms` is rejected**
+
+This is intentional until those algorithms can aggregate their underlying state globally before finalization. Keep scalar pipeline metrics enabled and disable stateful evaluation algorithms for the Ray run.
 
 **DeepSpeed strategy fails to initialize**
 

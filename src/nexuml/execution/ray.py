@@ -125,8 +125,21 @@ def _ensure_distributed_semantics(scenario: ScenarioSpec) -> None:
     """Reject pipeline phases whose distributed semantics are not defined yet.
 
     Raises:
-        RayExecutionError: If the scenario contains a ``PostTrainFitLayer``.
+        RayExecutionError: If the scenario contains stateful post-training work
+            that cannot yet be aggregated globally across Ray workers.
     """
+    if scenario.evaluation.algorithms:
+        configured = ", ".join(
+            spec.name or spec.type for spec in scenario.evaluation.algorithms
+        )
+        raise RayExecutionError(
+            "Ray execution does not yet support evaluation.algorithms with rank-sharded data: "
+            "evaluation algorithms accumulate state independently on each worker, so reducing "
+            "their final scalars would not reproduce global evaluation semantics. "
+            f"Configured algorithms: {configured}. Keep them disabled for Ray until global "
+            "evaluation-state aggregation is implemented."
+        )
+
     from nexuml.core.post_train_layer import PostTrainFitLayer
     from nexuml.core.registry import get_registry
 

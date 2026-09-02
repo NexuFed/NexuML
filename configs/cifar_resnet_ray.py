@@ -29,7 +29,7 @@
 
 # Train on Ray:
 # export AWS_ENDPOINT_URL="http://seaweedfs-cluster-s3.seaweedfs.svc.cluster.local:8333"
-# uv run --python 3.12 nexuml train --scenario-file configs/cifar_resnet_ray.py
+# uv run --python 3.12.13 nexuml train --scenario-file configs/cifar_resnet_ray.py
 #
 # NexuML forwards the AWS endpoint, credentials, and region to the Ray workers.
 
@@ -83,10 +83,12 @@ def scenario() -> ScenarioSpec:
         },
         storage_path=os.getenv("NEXUML_RAY_STORAGE_PATH"),
     )
+    evaluation = base.evaluation.model_copy(update={"algorithms": []})
     return base.model_copy(
         update={
             "name": "cifar_resnet_ray",
             "data": data,
+            "evaluation": evaluation,
             "execution": execution,
         }
     )

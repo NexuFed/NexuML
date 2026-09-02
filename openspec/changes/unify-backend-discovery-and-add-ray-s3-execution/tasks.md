@@ -19,7 +19,8 @@
 - [x] 2.7 Support existing-cluster `ray.init(address=...)` and fixed/elastic worker counts.
 - [x] 2.8 Keep native Ray `Result` as the return value; do not add another result/handle schema.
 - [ ] 2.9 Implement globally correct `PostTrainFitLayer` finalization/state synchronization and remove the temporary Ray safety guard.
-- [ ] 2.10 Keep KubeRay as a small infrastructure-template adapter only if it can remain infrastructure-agnostic.
+- [x] 2.10 Reject stateful `evaluation.algorithms` under Ray until their underlying state can be aggregated globally; keep scalar Lightning/pipeline metrics distributed normally.
+- [ ] 2.11 Keep KubeRay as a small infrastructure-template adapter only if it can remain infrastructure-agnostic.
 
 ## 3. Simplify WebDataset and add `.idx`
 

@@ -4,7 +4,14 @@ from types import SimpleNamespace
 
 import pytest
 
-from nexuml.core.types import LayerSpec, PipelineSpec, RayExecutionSpec, ScenarioSpec
+from nexuml.core.types import (
+    EvalAlgorithmSpec,
+    EvaluationSpec,
+    LayerSpec,
+    PipelineSpec,
+    RayExecutionSpec,
+    ScenarioSpec,
+)
 from nexuml.execution import ray as ray_execution
 
 
@@ -127,6 +134,18 @@ def test_ray_rejects_post_train_fit_layers_until_global_finalization_exists(monk
     )
 
     with pytest.raises(ray_execution.RayExecutionError, match="PostTrainFitLayer"):
+        ray_execution._ensure_distributed_semantics(scenario)
+
+
+def test_ray_rejects_evaluation_algorithms_until_global_aggregation_exists():
+    scenario = ScenarioSpec(
+        name="distributed-evaluation",
+        evaluation=EvaluationSpec(
+            algorithms=[EvalAlgorithmSpec(type="class_histogram")],
+        ),
+    )
+
+    with pytest.raises(ray_execution.RayExecutionError, match=r"evaluation\.algorithms"):
         ray_execution._ensure_distributed_semantics(scenario)
 
 
