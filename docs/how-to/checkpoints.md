@@ -22,7 +22,7 @@ callbacks = [
 ]
 ```
 
-Set `dirpath` in the callback if the project needs a specific location. Otherwise do not write code that assumes a particular `version_0/...` path.
+Set `dirpath` in the callback if the project needs a specific location. When it is omitted, Lightning writes checkpoints under the active logger's run directory, or under the trainer's `default_root_dir` when no logger is configured. Read `best_model_path` or `last_model_path` from the `ModelCheckpoint` callback after training instead of assuming a particular `version_0/...` path.
 
 ## 2. Resume a Lightning training run
 

@@ -44,3 +44,18 @@ def test_library_distribution() -> None:
     scanner.scan_package("nexuml_library")
     discovered = {(item.kind, item.key) for item in scanner.items}
     assert {("layer", "LinearEncoder"), ("scenario", "cifar-resnet")} <= discovered
+
+    from nexuml.data.creator import NexuDataCreator
+    from nexuml.data.loaders.definitions import TorchLoader
+    from nexuml_library.scenarios.data.synthetic import synthetic_vector_data
+
+    data_spec = synthetic_vector_data(feature_shape=(4,), num_samples=12)
+    assert isinstance(data_spec.loader.backend, TorchLoader)
+
+    data_module = NexuDataCreator().build(data_spec, default_batch_size=4)
+    data_module.setup("fit")
+    features, targets = next(iter(data_module.train_dataloader()))
+    assert features.batch_size == (4,)
+    assert features["features"].shape == (4, 4)
+    assert targets is not None
+    assert targets["reconstruction_target"].shape == (4, 4)

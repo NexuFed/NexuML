@@ -16,9 +16,9 @@ nexuml backend list data-loader
 
 This lists the backend definitions known to NexuML. It does not prove that every optional third-party runtime (for example NVIDIA DALI) can import on the current machine.
 
-## Portable choice for your own scenario
+## Default and explicit selection
 
-Select the Torch backend explicitly when your scenario should work without DALI:
+`LoaderSpec()` uses the portable Torch backend by default. Select it explicitly when the scenario should persist that choice as part of its visible contract:
 
 ```python
 from nexuml.core.types import DataSpec, LoaderSpec
@@ -36,7 +36,7 @@ DataSpec(
 When `LoaderSpec.batch_size` is `None`, the effective batch size comes from `TrainingSpec.batch_size`. Setting an explicit loader batch size takes precedence and disables automatic batch-size probing.
 
 !!! note "Current 0.2 default"
-    `LoaderSpec` currently defaults to `DaliLoader()`. Because DALI is an optional platform-specific dependency, portable user-authored scenarios should select `TorchLoader()` explicitly unless DALI is intentionally required.
+    `LoaderSpec` defaults to `TorchLoader()`. DALI is never selected implicitly.
 
 ## NVIDIA DALI
 

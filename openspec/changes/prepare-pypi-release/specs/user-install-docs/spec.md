@@ -13,7 +13,20 @@ The documentation SHALL present normal-user PyPI installation before development
 
 - **WHEN** a user follows the primary install page and wants the bundled reusable components and scenarios
 - **THEN** the docs instruct them to install the base library with `uv pip install "nexuml[library]"`
-- **AND** the docs explain that the core framework works without this optional library.
+- **AND** the docs explain that the core framework works without this optional library
+- **AND** the first portable built-in training path does not require the separate DALI extra or NVIDIA package index.
+
+#### Scenario: User intentionally selects DALI
+
+- **WHEN** a user chooses a scenario or loader that explicitly requires DALI
+- **THEN** the docs identify DALI as an optional platform-specific backend
+- **AND** provide its separate installation and package-index instructions outside the default first-run path.
+
+#### Scenario: User locates default checkpoints
+
+- **WHEN** the first-run guide trains a scenario with the reusable default callbacks
+- **THEN** the docs explain that Lightning places checkpoints under the configured logger directory or trainer root
+- **AND** tell the user how to identify the resulting run-specific checkpoint path.
 
 #### Scenario: User needs development setup
 

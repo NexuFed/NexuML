@@ -41,8 +41,15 @@ jobs:
       - name: Type check
         run: ty check
 
+      - name: Build documentation
+        env:
+          DISABLE_MKDOCS_2_WARNING: "true"
+        run: mkdocs build --strict
+
   test:
     runs-on: ika-runner-gpu
+    env:
+      CUDA_VISIBLE_DEVICES: ""
     strategy:
       fail-fast: false
       matrix:

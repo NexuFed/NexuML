@@ -40,24 +40,17 @@ At this point you have exercised the most important architectural boundary witho
 Python ScenarioSpec → resolved YAML → typed definitions → CompiledPipeline
 ```
 
-## 4. Train when the configured loader is available
+## 4. Train the scenario
 
-Training uses the loader selected by the scenario's `DataSpec`. In the current 0.2 configuration, `LoaderSpec` defaults to the DALI definition, so install DALI on a compatible Linux environment before training a scenario that leaves the loader implicit:
-
-```bash
-uv pip install "nexuml[dali]" --index https://pypi.nvidia.com
-python -c "import nvidia.dali"
-```
-
-Then run a short training job:
+Training uses the loader selected by the scenario's `DataSpec`. `LoaderSpec` defaults to the portable PyTorch loader, so the standard library installation is enough for scenarios that leave the loader implicit. Run a short training job:
 
 ```bash
 nexuml train cifar-resnet --max-epochs 1
 ```
 
-NexuML uses the same `NexuSession` lifecycle for the run: fit → validate → post-train fitting → test. Logging, checkpoints, and model exports are controlled by the scenario instead of by hard-coded quickstart paths.
+NexuML uses the same `NexuSession` lifecycle for the run: fit → validate → post-train fitting → test. Logging, checkpoints, and model exports are controlled by the scenario instead of by hard-coded quickstart paths. When a checkpoint callback omits `dirpath`, Lightning writes checkpoints under the active logger's run directory, or under the trainer's `default_root_dir` when no logger is configured.
 
-For your own portable scenarios, explicitly select `TorchLoader()` unless you intend to require DALI. See [Data loading](../how-to/data-loading.md).
+Scenarios that need NVIDIA DALI must select `DaliLoader()` explicitly and install the optional integration. See [Data loading](../how-to/data-loading.md) and [Checkpoints](../how-to/checkpoints.md).
 
 ## What you learned
 

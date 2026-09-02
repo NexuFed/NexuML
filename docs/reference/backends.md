@@ -54,8 +54,10 @@ The catalog includes:
 
 See [Export and reload](../how-to/export.md).
 
-## Evaluation temporary storage
+## Evaluation storage
 
-The current alpha code has a naming inconsistency: the backend catalog/internal storage factory uses `memory`, while `DistanceEstimatorSpec.storage_backend` currently declares the literal `ram` alongside `memmap`. Treat that spelling as unstable until the implementation is unified rather than building new user configuration around the mismatch.
+Distance-estimator feature accumulation uses `ram` or `memmap`. `DistanceEstimatorSpec.create_feature_store()` constructs that configured store and applies its path, sample limit, and retention settings.
+
+TensorDict temporary storage is a separate contract that uses `memory` or `memmap`. `ram` and `memory` are intentionally not aliases: each belongs to a different storage family.
 
 The generated Python API is the exact reference for the currently installed version.

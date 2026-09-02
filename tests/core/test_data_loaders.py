@@ -15,6 +15,10 @@ def test_torch_loader_definition_builds_backend():
     assert TorchLoader().build() is not None
 
 
+def test_loader_spec_defaults_to_torch():
+    assert isinstance(LoaderSpec().backend, TorchLoader)
+
+
 def test_torch_data_module():
     dataset = SyntheticDataset(feature_shape=(16,), num_samples=32).build()
     module = NexuDataModule(

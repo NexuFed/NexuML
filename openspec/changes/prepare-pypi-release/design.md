@@ -23,15 +23,20 @@ The existing release workflow creates a GitHub release for any `v*` tag but does
 - Produce complete, independently installable wheels and source distributions.
 - Publish both version `0.2.0` distributions through a validated, trusted release path.
 - Make Apache-2.0 licensing and PyPI installation unambiguous in artifacts and documentation.
+- Make the implicit loader usable with the advertised `nexuml[library]` installation while preserving DALI as an explicit optimized backend.
+- Ensure the published distance-estimator storage configuration reaches its matching feature-store runtime.
+- Keep reusable callback defaults free of scenario-specific paths and prevent publication from an unintegrated or stale commit.
 
 **Non-Goals:**
 
 - Do not make PyTorch, TensorDict, Pydantic, or other dependencies required by the public framework API optional merely to minimize the dependency count.
-- Do not redesign component discovery, training, export formats, or runtime behavior.
+- Do not redesign component discovery, the training lifecycle, evaluation algorithms, or export formats beyond the narrow release-default and storage-wiring corrections described below.
 - Do not relax generated model-export environment snapshots; they intentionally capture exact external runtime versions.
 - Do not bump serialized component identity versions or export schema versions as part of the package release.
 - Do not add upper dependency bounds without evidence of an incompatibility.
 - Do not create a custom release/version management framework.
+- Do not alias `ram` and `memory`; they name different feature-store and TensorDict-storage families.
+- Do not introduce a NexuML run-ID or checkpoint-directory allocation system when Lightning already owns that behavior.
 
 ## Decisions
 
@@ -121,7 +126,7 @@ CI builds wheel and source distributions for each project into separate director
 Two isolated smoke paths install only built artifacts:
 
 1. Core-only: install the core wheel with public dependencies, verify `nexuml-library` is absent, import `nexuml`, inspect version `0.2.0`, run CLI help, and exercise a framework operation that needs no library component.
-2. Core plus library: install both wheels, load installed entry points, and list representative base-library components and scenarios without repository `PYTHONPATH` entries.
+2. Core plus library: install both wheels, load installed entry points, list representative base-library components and scenarios, and create a first batch from a lightweight implicit-loader scenario without DALI or repository `PYTHONPATH` entries.
 
 Editable workspace tests remain useful for development but do not satisfy this release gate.
 
@@ -130,6 +135,9 @@ Editable workspace tests remain useful for development but do not satisfy this r
 The release workflow uses this order:
 
 ```text
+main ancestry + exact-commit check
+        │
+        ▼
 tag/version check
         │
         ▼
@@ -145,7 +153,7 @@ PyPI Trusted Publishing
 GitHub release + artifacts
 ```
 
-Production upload uses a protected GitHub environment and PyPI Trusted Publishing through OIDC, not a stored API token. A manually dispatched TestPyPI path reuses the same build and validation steps. Its installation check selects TestPyPI for the two NexuML projects and the production index for third-party dependencies.
+Production upload uses a protected GitHub environment and PyPI Trusted Publishing through OIDC, not a stored API token. A production tag is accepted only when its commit is contained in `main` and the required source, supported-Python, package, and strict documentation checks succeeded for that exact commit. A manually dispatched TestPyPI path runs only for a frozen integrated candidate and reuses the same build and validation steps. Its installation check selects TestPyPI for the two NexuML projects and the production index for third-party dependencies.
 
 Uploading two PyPI projects cannot be transactional. Core uploads first because the library depends on it; the GitHub release is created only after both uploads succeed. A partial upload is reported explicitly rather than hidden by a successful GitHub release.
 
@@ -160,6 +168,38 @@ uv pip install "nexuml[library]"
 
 The documentation explains that core contains the framework and CLI while the library adds bundled components and scenarios. Git checkout and editable installation move entirely to contributor documentation. CUDA-specific PyTorch and DALI index instructions remain explicit advanced installation guidance because package metadata cannot carry uv's repository-local index configuration.
 
+The portable first-run path does not require DALI. It uses the implicit PyTorch loader and explains that scenarios selecting DALI explicitly require the separate platform-specific installation. Because the reusable checkpoint callback no longer fixes a directory, the first-run guide explains how Lightning derives the checkpoint path from the active logger or trainer root and how to locate the resulting run-specific checkpoint.
+
+### D10 - Use PyTorch as the portable loader default
+
+`LoaderSpec` creates `TorchLoader()` by default. PyTorch is already a mandatory framework dependency, so this makes implicit-loader scenarios runnable from the documented `nexuml[library]` installation without adding a second package index or optional native dependency.
+
+Scenarios designed around DALI's file decoding, sharding, or performance behavior continue to select `DaliLoader()` explicitly. The built-in AudioSet and DCASE scenario fragments already do so; the default change affects portable CIFAR, MNIST, and synthetic data fragments that currently omit a loader.
+
+Alternative considered: include DALI in `nexuml[library]`. Rejected because DALI is platform-specific, uses a separate package index, and is intentionally excluded from the runtime `all` extra.
+
+### D11 - Route distance-estimator storage to feature stores
+
+The two evaluation storage families remain distinct:
+
+```text
+DistanceEstimatorSpec                 TensorDict evaluation buffers
+ram     -> RAMFeatureStore            memory  -> list-backed TensorDict storage
+memmap  -> MemmapFeatureStore         memmap  -> LazyMemmapStorage
+```
+
+`DistanceEstimatorSpec` exposes a feature-store construction boundary that passes `storage_backend`, `storage_path`, `max_samples`, and `retain_storage` to `create_feature_store`. Configuration round trips preserve `ram`; no `ram`/`memory` translation or compatibility alias is added. This turns the existing storage configuration into executable behavior without inventing a concrete distance estimator or conflating it with visualizer and temporary-buffer storage.
+
+Alternative considered: rename `DistanceEstimatorSpec.storage_backend` to `memory`. Rejected because its fields and intended ownership match the feature-store API, where `ram` is already the implemented and tested spelling.
+
+### D12 - Let Lightning own default checkpoint placement
+
+The reusable `default_callbacks()` keeps its checkpoint policy (`monitor`, `mode`, top-k, filename, and last-checkpoint behavior) but omits `dirpath`. Lightning then derives checkpoint placement from the configured logger's versioned directory or from `Trainer.default_root_dir` when no logger determines one.
+
+This removes CIFAR naming from a generic helper and uses logger versioning for run isolation when available without adding framework-specific path allocation. Scenarios that need a stable explicit directory can still supply their own checkpoint callback rather than changing the shared default.
+
+Alternative considered: add a checkpoint-directory parameter and keep the current CIFAR path at the caller. Rejected because it preserves shared state across repeated runs while duplicating path behavior Lightning already provides.
+
 ## Risks / Trade-offs
 
 - Unpinned `nexuml[library]` can select a future incompatible library -> Keep the library's minimum core requirement accurate, follow compatible public APIs, and test the latest published pair before releases.
@@ -169,14 +209,21 @@ The documentation explains that core contains the framework and CLI while the li
 - Two PyPI uploads are not atomic -> Validate everything before upload, publish core first, suppress the GitHub release on partial failure, and publish a corrective patch rather than overwriting immutable artifacts.
 - Apache-2.0 changes downstream rights materially -> Apply the license consistently to repository files, both distribution artifacts, metadata, and documentation in one release.
 - Project names can be claimed before release -> Configure both PyPI projects and trusted publishers before creating the production tag.
+- Changing the loader default changes resolved configs for scenarios that omitted a loader -> Treat it as an intentional pre-`0.2.0` breaking correction, update repository-owned snapshots, and test explicit DALI scenarios separately.
+- Wiring the previously dormant distance-estimator storage can expand into algorithm design -> Expose only feature-store construction, cover both storage backends, and keep concrete estimator implementations out of this release.
+- Lightning-derived checkpoint paths are less fixed than the current CIFAR directory -> Document logger/root placement and verify the first-run guide shows users how to locate `last.ckpt`.
+- TestPyPI candidate files are immutable -> Run the `0.2.0` candidate only after integration, runtime fixes, exact-head checks, and publisher setup are complete.
+- A matching tag can otherwise be created from any branch -> Protect `main` with required checks and enforce `main` ancestry in the workflow rather than relying only on maintainer convention.
 
 ## Migration Plan
 
 1. Update licensing, package metadata, versions, dependency ownership, extras, and runtime version exposure; remove the legacy root requirements file and regenerate `uv.lock`.
-2. Update normal-user and contributor installation documentation and ensure examples distinguish core from the base library.
-3. Add artifact builds and isolated installation tests to ordinary CI, then inspect both wheel and source-distribution contents.
-4. Configure the `nexuml` and `nexuml-library` TestPyPI/PyPI projects, trusted publishers, and protected GitHub environments.
-5. Publish and install the `0.2.0` candidates through TestPyPI.
-6. Push `v0.2.0`; publish core first, library second, then create the GitHub release.
+2. Switch the implicit loader to PyTorch, wire distance-estimator storage to feature stores, and delegate reusable callback checkpoint paths to Lightning.
+3. Update normal-user and contributor documentation and ensure examples distinguish core from the base library, optional DALI, and Lightning-owned checkpoint locations.
+4. Add artifact builds and isolated installation tests to ordinary CI, including a DALI-free first-batch check, then inspect both wheel and source-distribution contents.
+5. Integrate the stacked changes into `main`, resolve conflicts, and obtain successful source, supported-Python, package, and strict documentation checks for the exact candidate commit.
+6. Configure the `nexuml` and `nexuml-library` TestPyPI/PyPI projects, trusted publishers, protected GitHub environments, and production main-ancestry gate.
+7. Publish and install the frozen `0.2.0` candidate through TestPyPI.
+8. Push `v0.2.0` on the validated `main` commit; publish core first, library second, then create the GitHub release.
 
 PyPI artifacts are immutable. If validation missed a release-breaking defect after publication, yank the affected `0.2.0` project release, leave an explanatory release note, fix forward as `0.2.1`, and do not reuse the version or tag.

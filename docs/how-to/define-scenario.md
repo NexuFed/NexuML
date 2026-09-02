@@ -56,7 +56,7 @@ def my_autoencoder() -> ScenarioSpec:
 
 Python uses concrete typed definitions directly. `LayerSpec` owns graph wiring; component definitions own component-specific semantic parameters.
 
-`TorchLoader()` is selected explicitly here so the example does not depend on the optional DALI installation.
+`TorchLoader()` is selected explicitly here to make the scenario's portable loader contract visible; omitting the backend would select the same default. DALI scenarios must select `DaliLoader()` explicitly.
 
 ## Make the scenario discoverable
 

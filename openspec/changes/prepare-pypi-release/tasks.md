@@ -25,6 +25,11 @@
 - [x] 3.3 Extend the core-only artifact test with one lightweight framework operation that uses no library component and verify the existing core/base-library separation requirement is satisfied.
 - [x] 3.4 Add an isolated core-plus-library test that installs both built wheels, loads the `nexuml.libraries` entry point, and verifies representative components and scenarios are discoverable.
 - [x] 3.5 Add focused missing-extra tests for any optional import boundary changed during the audit and verify errors identify the extra or package the user must install.
+- [x] 3.6 Change the implicit `LoaderSpec` backend to `TorchLoader()`, keep DALI-oriented scenarios explicit, and verify focused tests cover the new default and explicit DALI behavior.
+- [x] 3.7 Add a `DistanceEstimatorSpec` feature-store construction path that routes `ram`/`memmap`, path, capacity, and retention settings through `create_feature_store`, and verify the default storage configuration materializes without inventing a concrete estimator.
+- [x] 3.8 Add end-to-end RAM and memmap distance-estimator storage tests plus configuration round trips, and verify TensorDict temporary storage continues to use the separate `memory`/`memmap` contract without aliases.
+- [x] 3.9 Remove `dirpath` from the reusable default checkpoint callback and verify callback construction contains no CIFAR path and Lightning derives placement from the configured logger or trainer root.
+- [x] 3.10 Extend the isolated core-plus-library artifact test with a lightweight implicit-loader scenario and verify its first batch succeeds without DALI or repository source paths.
 
 ## 4. Distribution Artifacts
 
@@ -40,7 +45,8 @@
 - [x] 5.2 Update `docs/start/install.md` and first-run references to use PyPI for normal users while retaining Git checkout and editable installs only in contributor guidance, and verify all commands use shell-safe ASCII quoting.
 - [x] 5.3 Expand `library/README.md` with its purpose, direct and convenience installation commands, framework compatibility policy, and discovery entry point, and verify it renders as valid package long-description Markdown.
 - [x] 5.4 Document CUDA-specific PyTorch selection and DALI's platform/index requirements separately from default installation, and verify the default instructions require no custom package index.
-- [x] 5.5 Run `uv run mkdocs build --strict` and verify the updated documentation builds without warnings or broken links.
+- [x] 5.5 Run `uv run mkdocs build --strict` against the rewritten documentation at the final candidate commit and verify it builds without warnings or broken links.
+- [x] 5.6 Remove the implicit-DALI warnings and first-run DALI installation requirement, distinguish feature-store `ram` from TensorDict-storage `memory`, document Lightning-owned checkpoint locations, and verify the rendered pages match the implemented defaults.
 
 ## 6. CI Artifact Gates
 
@@ -48,18 +54,24 @@
 - [x] 6.2 Upload the validated wheel and source-distribution files as CI artifacts and verify downstream release jobs consume those exact files instead of rebuilding them.
 - [x] 6.3 Add a release version gate that compares a semantic `vX.Y.Z` tag with both project versions and verify mismatched tags fail before artifact upload.
 - [x] 6.4 Keep the existing source tests, Ruff, type checks, and documentation checks required before artifact publication, and verify the release job depends on all relevant successful gates.
+- [ ] 6.5 Make ordinary supported-Python tests deterministic on CI hardware and verify Python 3.12, 3.13, and 3.14 pass for the exact integrated candidate commit rather than auto-selecting an unsupported GPU.
+- [x] 6.6 Add strict documentation validation to the required exact-commit CI evidence and verify documentation-only changes cannot reach release candidacy without a successful `mkdocs build --strict`.
+- [x] 6.7 Require a production tag commit to be contained in `main` and to have successful required checks for the same SHA, and verify feature-branch, conflicted, missing-check, and stale-check cases fail before publication.
 
 ## 7. Trusted Publishing
 
-- [x] 7.1 Add a manually dispatched TestPyPI job using a protected `testpypi` environment and OIDC trusted publishing, and verify it reuses validated CI artifacts without a stored API token.
+- [x] 7.1 Add a manually dispatched TestPyPI job using a protected `testpypi` environment and OIDC trusted publishing, and verify its publication jobs reuse artifacts produced by its validation job without a stored API token.
 - [x] 7.2 Add a protected production `pypi` environment and OIDC publication job for release tags, publish core before the dependent library, and verify no upload step can run before all validation gates pass.
 - [x] 7.3 Move GitHub release creation after both PyPI uploads, attach or link the validated distribution artifacts, and verify a failed or partial upload cannot produce a successful GitHub release.
-- [x] 7.4 Configure or document the required PyPI and TestPyPI project ownership, trusted-publisher identities, protected environments, and approvals for both package names; verify maintainers can audit the configuration without repository secrets.
-- [ ] 7.5 Publish `0.2.0` candidates through the TestPyPI path and verify core-only and `nexuml[library]` installation using TestPyPI for NexuML projects and the production index for third-party dependencies.
+- [x] 7.4 Document the required PyPI and TestPyPI project ownership, trusted-publisher identities, protected environments, and approvals for both package names; verify maintainers can audit the intended configuration without repository secrets.
+- [ ] 7.5 Create or claim both package projects, configure their pending or existing trusted publishers, create protected `testpypi` and `pypi` GitHub environments with required reviewers, protect `main` with the required CI check, and verify the live settings match the documented identities.
 
 ## 8. Final Verification
 
-- [x] 8.1 Run the normal non-slow test suite and all new package-artifact tests, and verify they pass without external datasets or a GPU.
-- [x] 8.2 Run Ruff and the repository type checker over both source trees and verify no errors are introduced by dependency or version changes.
+- [x] 8.1 Run the normal non-slow test suite and all new package-artifact tests after the runtime-default changes, and verify they pass without external datasets, DALI, or a GPU.
+- [x] 8.2 Run Ruff and the repository type checker over both source trees and verify no errors remain, including the read-only component-contract assignment currently reported by CI.
 - [x] 8.3 Run strict OpenSpec validation for `prepare-pypi-release` and verify the proposal, delta specs, design, and completed task evidence remain coherent.
-- [x] 8.4 Review the final package metadata and release workflow against `python-package-distribution` and `pypi-release-publishing`, and verify no production `v0.2.0` tag is created until a maintainer explicitly approves publication.
+- [x] 8.4 Review the final package metadata, portable defaults, and release workflow against `python-package-distribution` and `pypi-release-publishing`, and verify every new scenario has executable evidence.
+- [ ] 8.5 Resolve the stacked PR conflicts, integrate the release candidate into `main`, and verify the exact commit has successful supported-Python, package, static, and strict documentation checks.
+- [ ] 8.6 Publish the frozen `0.2.0` candidate once through the TestPyPI path and verify core-only and `nexuml[library]` installation using TestPyPI for NexuML projects and the production index for third-party dependencies.
+- [ ] 8.7 Confirm the TestPyPI evidence and explicit maintainer approval, then verify no production `v0.2.0` tag is created anywhere except the validated `main` commit.

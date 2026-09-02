@@ -113,7 +113,6 @@ def default_callbacks() -> list[CallbackSpec]:
         CallbackSpec(
             type="checkpoint",
             params={
-                "dirpath": ".experiments/checkpoints/cifar-resnet",
                 "monitor": "val/loss",
                 "mode": "min",
                 "save_top_k": 1,

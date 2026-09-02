@@ -46,6 +46,43 @@ The `nexuml` distribution SHALL expose a `library` extra that installs `nexuml-l
 - **THEN** the dependency graph contains no `nexuml -> nexuml-library -> nexuml` mandatory cycle
 - **AND** the core package does not require one exact `nexuml-library` release.
 
+### Requirement: Base-library defaults are portable
+The default data-loader configuration SHALL use the standard PyTorch loader available in a normal `nexuml[library]` installation. DALI SHALL remain an explicit backend choice for scenarios that require its platform-specific behavior.
+
+#### Scenario: User trains an implicit-loader scenario
+- **WHEN** a user installs `nexuml[library]` without the DALI extra and runs a built-in scenario that does not select a loader
+- **THEN** the scenario uses the standard PyTorch loader
+- **AND** its first data batch can be created without importing NVIDIA DALI.
+
+#### Scenario: Scenario explicitly requires DALI
+- **WHEN** a scenario explicitly selects the DALI loader
+- **THEN** the scenario retains DALI loading behavior
+- **AND** a missing DALI installation produces an actionable optional-dependency error.
+
+### Requirement: Distance-estimator storage configuration is executable
+`DistanceEstimatorSpec` SHALL construct the corresponding feature-store runtime from its `ram` or `memmap` setting, path, capacity, and retention options. The separate TensorDict temporary-storage contract SHALL continue to use `memory` and `memmap`; the two in-memory names SHALL NOT be treated as aliases for one backend family.
+
+#### Scenario: Distance estimator uses RAM feature storage
+- **WHEN** a distance-estimator specification configured with `storage_backend="ram"` constructs its feature store
+- **THEN** fit features can be accumulated through RAM feature storage
+- **AND** the configuration survives serialization and restoration with the `ram` spelling.
+
+#### Scenario: Distance estimator uses memory-mapped feature storage
+- **WHEN** a distance-estimator specification configured with `storage_backend="memmap"` constructs its feature store with a storage path, sample limit, or retention behavior
+- **THEN** those settings control the memory-mapped feature store used during fitting.
+
+#### Scenario: TensorDict temporary storage is selected
+- **WHEN** an evaluation buffer requests in-memory TensorDict storage
+- **THEN** it uses the `memory` spelling independently of distance-estimator feature storage.
+
+### Requirement: Reusable callback defaults are scenario-neutral
+Reusable callback defaults SHALL NOT embed a scenario-specific checkpoint directory. When no explicit checkpoint path is supplied by a scenario, checkpoint placement SHALL follow the configured Lightning logger or trainer root.
+
+#### Scenario: Default callbacks are reused by a scenario
+- **WHEN** a scenario uses the reusable default callback collection without a checkpoint-path override
+- **THEN** the callback configuration contains no CIFAR-specific path
+- **AND** Lightning derives the checkpoint destination from the run's logger or trainer root.
+
 ### Requirement: Published dependencies express runtime compatibility
 Each distribution SHALL declare only dependencies needed by its base runtime or an advertised optional feature. Published dependency metadata SHALL use compatibility constraints rather than development lock versions, except where a documented third-party compatibility requirement necessitates a bounded range.
 

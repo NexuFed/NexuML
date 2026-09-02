@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated, Any, Literal
+from typing import TYPE_CHECKING, Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -12,6 +12,9 @@ from nexuml.core.components import (
     LayerDefinition,
     LoaderBackendDefinition,
 )
+
+if TYPE_CHECKING:
+    from nexuml.evaluation.utils import FeatureStore
 
 
 class AxisKeySpec(BaseModel):
@@ -258,9 +261,9 @@ class LoaderSpec(SpecModel):
 
 
 def _default_loader_backend() -> LoaderBackendDefinition:
-    from nexuml.data.loaders.definitions import DaliLoader
+    from nexuml.data.loaders.definitions import TorchLoader
 
-    return DaliLoader()
+    return TorchLoader()
 
 
 class PreprocessingSpec(SpecModel):
@@ -320,6 +323,21 @@ class DistanceEstimatorSpec(SpecModel):
     storage_path: str | None = None
     max_samples: int | None = None
     retain_storage: bool = False
+
+    def create_feature_store(self) -> FeatureStore:
+        """Create the feature store configured for estimator fitting.
+
+        Returns:
+            Configured feature store runtime.
+        """
+        from nexuml.evaluation.utils import create_feature_store
+
+        return create_feature_store(
+            self.storage_backend,
+            max_samples=self.max_samples,
+            storage_path=self.storage_path,
+            retain_storage=self.retain_storage,
+        )
 
 
 class EvalAlgorithmSpec(SpecModel):
