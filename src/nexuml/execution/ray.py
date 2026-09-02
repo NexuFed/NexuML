@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import os
 from collections.abc import Mapping
+from datetime import datetime, timezone
 from typing import Any, cast
+from uuid import uuid4
 
 import lightning as L
 
@@ -187,6 +189,7 @@ def _run_config(
     scenario: ScenarioSpec,
     execution: RayExecutionSpec,
     worker_runtime_env: dict[str, Any],
+    run_name: str | None = None,
 ) -> Any:
     """Build Ray's native run configuration.
 
@@ -227,7 +230,7 @@ def _run_config(
         storage_path = storage_path.removeprefix("s3://").partition("?")[0]
 
     return cast(Any, RunConfig)(
-        name=scenario.name,
+        name=run_name or scenario.name,
         storage_path=storage_path,
         storage_filesystem=storage_filesystem,
         worker_runtime_env=worker_runtime_env,
@@ -308,11 +311,12 @@ def run_ray(scenario: ScenarioSpec) -> Any:
     except ImportError as error:
         raise RayExecutionError("Ray execution requires the nexuml[ray] extra") from error
 
+    run_name = f"{scenario.name}-{datetime.now(timezone.utc):%Y%m%dT%H%M%SZ}-{uuid4().hex[:8]}"
     trainer = TorchTrainer(
         train_loop_per_worker=train_loop_per_worker,
         train_loop_config={"scenario": scenario.model_dump(mode="json")},
         scaling_config=_scaling_config(execution),
-        run_config=_run_config(scenario, execution, runtime_env),
+        run_config=_run_config(scenario, execution, runtime_env, run_name),
     )
     return trainer.fit()
 

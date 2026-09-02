@@ -2,10 +2,10 @@
 
 Ray is an optional execution backend for the existing NexuML Lightning session. Use it when one scenario should use multiple GPUs/nodes or shared cluster capacity.
 
-Install the optional dependency:
+Install the Ray dependency. Add `s3` when using shared S3 storage:
 
 ```bash
-uv sync --extra ray
+uv sync --python 3.12.13 --extra ray --extra s3
 ```
 
 ## Configure an existing cluster
@@ -53,6 +53,10 @@ ray job submit --working-dir . -- \
 ```
 
 `--working-dir .` lets Ray upload the current project to the cluster. `uv run` then uses the project environment described by `pyproject.toml` and `uv.lock`, so changing NexuML code does not require rebuilding a custom image for every run.
+
+The reference cluster keeps uv's download cache on its existing `ray-data`
+volume. Autoscaled workers still create an isolated project environment, but
+reuse cached wheels instead of downloading the dependency set for every job.
 
 Use Ray's own commands/API for job status, logs, stopping, and other lifecycle operations rather than a NexuML-specific job handle.
 

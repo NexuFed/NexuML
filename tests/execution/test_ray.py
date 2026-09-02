@@ -189,3 +189,8 @@ def test_connect_uses_working_dir_and_uv(monkeypatch):
     assert run_config.worker_runtime_env == runtime_env
     assert run_config.storage_path == "runs/nexuml"
     assert run_config.storage_filesystem.type_name == "s3"
+
+    named_run_config = ray_execution._run_config(
+        scenario, scenario.execution, runtime_env, "cluster-20260902-abcd1234"
+    )
+    assert named_run_config.name == "cluster-20260902-abcd1234"

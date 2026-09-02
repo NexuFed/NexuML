@@ -1,5 +1,5 @@
 # Install:
-# uv sync --python 3.12 --extra dali --extra s3 --extra ray
+# uv sync --python 3.12.13 --extra dali --extra s3 --extra ray
 #
 # Configure:
 # export NEXUML_DATA_ROOT="/mnt/local"
@@ -73,7 +73,7 @@ def scenario() -> ScenarioSpec:
             address=os.environ["NEXUML_RAY_ADDRESS"],
             working_dir=".",
             py_executable=(
-                "uv run --python 3.12 --locked --extra ray --extra s3 --extra dali python"
+                "uv run --python 3.12.13 --locked --extra ray --extra s3 --extra dali python"
             ),
         ),
         workers=int(os.getenv("NEXUML_RAY_WORKERS", "4")),

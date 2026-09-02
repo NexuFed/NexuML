@@ -149,6 +149,7 @@ class NexuLightningModule(L.LightningModule):
                 f"val/{name}",
                 val,
                 prog_bar=self._should_show_in_progress_bar("val", name),
+                sync_dist=True,
             )
         self._log_running_pipeline_metrics("val", x_out)
 
@@ -167,6 +168,7 @@ class NexuLightningModule(L.LightningModule):
                 f"test/{name}",
                 val,
                 prog_bar=self._should_show_in_progress_bar("test", name),
+                sync_dist=True,
             )
         self._log_running_pipeline_metrics("test", x_out)
 
