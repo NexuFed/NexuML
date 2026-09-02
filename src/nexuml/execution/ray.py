@@ -129,9 +129,7 @@ def _ensure_distributed_semantics(scenario: ScenarioSpec) -> None:
             that cannot yet be aggregated globally across Ray workers.
     """
     if scenario.evaluation.algorithms:
-        configured = ", ".join(
-            spec.name or spec.type for spec in scenario.evaluation.algorithms
-        )
+        configured = ", ".join(spec.name or spec.type for spec in scenario.evaluation.algorithms)
         raise RayExecutionError(
             "Ray execution does not yet support evaluation.algorithms with rank-sharded data: "
             "evaluation algorithms accumulate state independently on each worker, so reducing "
