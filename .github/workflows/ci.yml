@@ -51,8 +51,6 @@ jobs:
 
   test:
     runs-on: ika-runner-gpu
-    env:
-      CUDA_VISIBLE_DEVICES: ""
     strategy:
       fail-fast: false
       matrix:
@@ -78,6 +76,9 @@ jobs:
           uv pip install -e "./library[all]"
           echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
           echo "VIRTUAL_ENV=$PWD/.venv" >> "$GITHUB_ENV"
+
+      - name: Verify CUDA availability
+        run: python -c "import torch; assert torch.cuda.is_available(), 'CUDA is unavailable on ika-runner-gpu'"
 
       - name: Run pytest suite with coverage
         run: pytest --cov=nexuml --cov=nexuml_library --cov-report=term-missing --cov-report=xml:reports/coverage.xml

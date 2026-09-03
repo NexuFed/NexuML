@@ -10,7 +10,6 @@ from nexuml.cli.main import app
 runner = CliRunner()
 
 
-@pytest.mark.requires_data
 @pytest.mark.requires_gpu
 def test_smoke_synthetic_scenario():
     result = runner.invoke(
