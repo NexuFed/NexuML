@@ -2414,7 +2414,7 @@ wheels = [
 
 [[package]]
 name = "nexuml"
-version = "0.2.0"
+version = "0.2.1"
 source = { editable = "." }
 dependencies = [
     { name = "lightning" },
@@ -2534,7 +2534,7 @@ provides-extras = ["dev", "audio", "data", "tracking", "tuning", "dali", "export
 
 [[package]]
 name = "nexuml-library"
-version = "0.2.0"
+version = "0.2.1"
 source = { editable = "library" }
 dependencies = [
     { name = "nexuml" },

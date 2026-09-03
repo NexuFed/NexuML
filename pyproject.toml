@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "nexuml"
-version = "0.2.0"
+version = "0.2.1"
 description = "Modular deep learning pipeline framework"
 readme = "README.md"
 requires-python = ">=3.12"

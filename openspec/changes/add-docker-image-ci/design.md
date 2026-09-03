@@ -2,14 +2,14 @@
 
 See `proposal.md` for motivation. The root Dockerfile currently builds from `nvidia/cuda:12.8.1-devel-ubuntu24.04`, installs Python 3.13 and CUDA PyTorch, copies the repository, and installs editable projects into `/env`. It cannot be reproduced from the current checkout because it still reads the removed root `requirements.txt`, installs overlapping dependency sets outside the workspace lock, and attempts to change host `sysctl` values during the build. Its entrypoint is a devcontainer post-create diagnostic script rather than a general container command.
 
-The repository is a public uv workspace with `nexuml` and `nexuml-library`, existing CI on `ika-runner`, and release tags validated as `vX.Y.Z`. GHCR can be written with the repository `GITHUB_TOKEN`; Docker Hub would add an external credential. Because `ika-runner` is persistent and Docker access is effectively host-privileged, untrusted pull-request code must not be built there.
+The repository is a public uv workspace with `nexuml` and `nexuml-library`, existing CI on self-hosted runners, and release tags validated as `vX.Y.Z`. GHCR can be written with the repository `GITHUB_TOKEN`; Docker Hub would add an external credential. The image workflow needs a runner with a working Docker daemon and must not publish untrusted pull-request code.
 
 ## Goals / Non-Goals
 
 **Goals:**
 
 - Produce one Linux AMD64 CUDA development/training image containing every workspace package and extra from `uv.lock`.
-- Validate integrated and manually selected trusted revisions on `ika-runner` and publish trusted pushes to GHCR.
+- Validate integrated and manually selected trusted revisions on `ubuntu-latest` and publish trusted pushes to GHCR.
 - Make app and CUDA compatibility visible in every supported image tag.
 - Give users a copy-pasteable, GPU-aware pull and run path.
 
@@ -17,16 +17,16 @@ The repository is a public uv workspace with `nexuml` and `nexuml-library`, exis
 
 - Do not produce a CPU image, runtime-minimal image, or multi-architecture manifest in this change.
 - Do not enable Docker Hub publication, keyless signing, SBOM policy gates, or vulnerability-policy enforcement.
-- Do not run Docker builds for pull requests on the persistent self-hosted runner.
+- Do not run the expensive Docker build for pull requests.
 - Do not replace Python package installation as the primary user installation path.
 
 ## Decisions
 
-### D1 - Use a separate trusted-ref workflow on `ika-runner`
+### D1 - Use a separate trusted-ref workflow on `ubuntu-latest`
 
 Create `.github/workflows/docker.yml` rather than adding registry permissions and a large CUDA build to the existing source/package CI. Trigger it for `main`, semantic release tags, and manual dispatch. Main and release-tag pushes may publish; manual dispatch builds and verifies only.
 
-Pull requests are deliberately excluded. A Docker build can execute arbitrary commands with access to the self-hosted Docker daemon, so a path filter or skipped login would not make untrusted PR execution safe. If PR image validation is later required, it needs an ephemeral isolated runner or a standard GitHub-hosted runner with enough disk.
+Pull requests are deliberately excluded because the all-extras CUDA build is expensive and does not need registry credentials before integration. The GitHub-hosted runner is ephemeral and provides the Docker daemon required by Buildx.
 
 Alternative considered: add a Docker job to `.github/workflows/ci.yml`. Rejected because it would place an expensive, privileged build on every public pull request and mix package CI with registry permissions.
 
@@ -96,7 +96,7 @@ The GHCR package must be linked to the repository and made public before anonymo
 ## Risks / Trade-offs
 
 - [The all-extras CUDA image may exhaust runner disk or exceed registry upload limits] -> Check free disk before building, keep a single architecture, use bounded Buildx caching, and record the resulting compressed image size.
-- [A compromised trusted branch can control the self-hosted Docker daemon] -> Restrict the workflow to protected `main`, validated tags, and maintainer dispatch; expose no Docker Hub secret.
+- [A trusted build can publish an unintended image] -> Restrict publication to protected `main` and validated tags; expose no Docker Hub secret.
 - [CUDA version text can drift between the workflow and image] -> Pass the workflow value as the build argument and verify the installed runtime before push.
 - [Some optional extras may become incompatible with Python 3.13 or CUDA 12.8] -> Treat the locked all-extras build as the compatibility gate and fail publication rather than dropping an extra silently.
 - [Commented Docker Hub configuration can become stale] -> Keep it minimal, label it unsupported, and require a follow-up validation before activation.
@@ -107,7 +107,7 @@ The GHCR package must be linked to the repository and made public before anonymo
 1. Repair and locally validate the Dockerfile contract without changing any registry state.
 2. Add the trusted-ref workflow and run its build, startup, import, CLI, and CUDA checks locally without publishing.
 3. Merge to protected `main`; its verification gate publishes the first edge and SHA tags only after the image checks pass, then link the GHCR package to the repository and set public visibility.
-4. Once the workflow exists on the default branch, dispatch it manually on `ika-runner` and verify that the manual path records image size and disk headroom without publishing.
+4. Once the workflow exists on the default branch, dispatch it manually on `ubuntu-latest` and verify that the manual path records image size and disk headroom without publishing.
 5. Verify an anonymous pull from a clean environment, then verify semantic CUDA tags on the next validated `vX.Y.Z` release.
 
 Rollback consists of disabling the workflow, removing affected GHCR tags or package versions, and reverting the container documentation. No application data or package-format migration is involved.
