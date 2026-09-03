@@ -31,7 +31,7 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/NexuFed/NexuML"
+Homepage = "https://www.nexufed.ai/"
 Documentation = "https://nexufed.github.io/NexuML/"
 Repository = "https://github.com/NexuFed/NexuML"
 Issues = "https://github.com/NexuFed/NexuML/issues"
