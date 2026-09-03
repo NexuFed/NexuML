@@ -7,7 +7,7 @@
 <img alt="Python" src="https://img.shields.io/badge/python-3.12%2B-blue?style=flat-square&logo=python">
 <img alt="PyTorch" src="https://img.shields.io/badge/PyTorch-compatible-ee4c2c?style=flat-square&logo=pytorch&logoColor=white">
 <img alt="Status" src="https://img.shields.io/badge/status-alpha-orange?style=flat-square">
-<img alt="PyPI" src="https://img.shields.io/pypi/v/nexuml?style=flat-square&logo=pypi">
+<a href="https://test.pypi.org/project/nexuml/"><img alt="TestPyPI" src="https://img.shields.io/badge/TestPyPI-nexuml-blue?style=flat-square&logo=pypi"></a>
 <a href="https://github.com/NexuFed/NexuML/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/NexuFed/NexuML/ci.yml?branch=main&style=flat-square&label=CI"></a>
 <a href="https://github.com/NexuFed/NexuML/actions/workflows/release.yml"><img alt="Release" src="https://img.shields.io/github/actions/workflow/status/NexuFed/NexuML/release.yml?style=flat-square&label=release"></a>
 
@@ -18,7 +18,7 @@
 
 NexuML is a modular PyTorch framework for building machine-learning systems from reusable, typed components connected through explicit TensorDict keys. A `ScenarioSpec` describes data, model pipelines, training, evaluation, logging, export, and execution in one place and can be persisted as validated YAML.
 
-[Documentation](https://nexufed.github.io/NexuML/) · [Hands-on tutorials](https://github.com/NexuFed/NexuMLTutorial) · [PyPI](https://pypi.org/project/nexuml/)
+[Documentation](https://nexufed.github.io/NexuML/) · [Hands-on tutorials](https://github.com/NexuFed/NexuMLTutorial) · [TestPyPI](https://test.pypi.org/project/nexuml/)
 
 </div>
 
@@ -41,30 +41,18 @@ NexuML separates **reusable implementations** from **experiment composition**. D
 
 ## Install
 
+NexuML is currently published on TestPyPI. PyPI remains the fallback for dependencies.
+
 For most users, install the framework together with the reusable base library:
 
 ```bash
-uv pip install "nexuml[library]"
+uv pip install --index https://test.pypi.org/simple --default-index https://pypi.org/simple "nexuml[library]"
 ```
 
 Install only the framework and CLI when you want to provide all components yourself:
 
 ```bash
-uv pip install nexuml
-```
-
-### TestPyPI
-
-After a release candidate is published, install the framework and CLI from TestPyPI with PyPI as the fallback for dependencies:
-
-```bash
 uv pip install --index https://test.pypi.org/simple --default-index https://pypi.org/simple nexuml
-```
-
-Install the framework together with the reusable base library:
-
-```bash
-uv pip install --index https://test.pypi.org/simple --default-index https://pypi.org/simple "nexuml[library]"
 ```
 
 NVIDIA DALI, Ray, tracking, tuning, S3, and export integrations are optional. See the [installation guide](https://nexufed.github.io/NexuML/start/install/) before adding platform-specific extras.
