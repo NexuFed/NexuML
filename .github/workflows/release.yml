@@ -1,9 +1,8 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - "v*"
+  release:
+    types: [published]
   workflow_dispatch:
 
 permissions:
@@ -69,7 +68,7 @@ jobs:
 
           echo "run-id=$ci_run_id" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -89,7 +88,7 @@ jobs:
           ]
           if versions[0] != versions[1]:
               raise SystemExit(f"Project versions do not match: {versions}")
-          if event == "push":
+          if event == "release":
               if re.fullmatch(r"v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)", ref) is None:
                   raise SystemExit(f"Invalid stable release tag: {ref!r}")
               if ref != f"v{versions[0]}":
@@ -102,7 +101,7 @@ jobs:
   publish-testpypi-core:
     if: github.event_name == 'workflow_dispatch'
     needs: validate
-    runs-on: ika-runner
+    runs-on: ubuntu-latest
     environment:
       name: testpypi
       url: https://test.pypi.org/p/nexuml
@@ -110,7 +109,7 @@ jobs:
       actions: read
       id-token: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           name: python-distributions
           path: ${{ env.RELEASE_DIST_DIR }}
@@ -128,7 +127,7 @@ jobs:
     needs:
       - validate
       - publish-testpypi-core
-    runs-on: ika-runner
+    runs-on: ubuntu-latest
     environment:
       name: testpypi-library
       url: https://test.pypi.org/p/nexuml-library
@@ -136,7 +135,7 @@ jobs:
       actions: read
       id-token: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           name: python-distributions
           path: ${{ env.RELEASE_DIST_DIR }}
@@ -158,12 +157,12 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v10.0.1
         with:
           version: "latest"
 
@@ -193,9 +192,9 @@ jobs:
           env -u PYTHONPATH NEXUML_INSTALLED_DIST_TEST=1 .venv-library/bin/python -I -m pytest -c /dev/null --rootdir=tests/packaging --confcutdir=tests/packaging -q tests/packaging/test_installed_distributions.py -k library
 
   publish-pypi-core:
-    if: github.event_name == 'push'
+    if: github.event_name == 'release'
     needs: validate
-    runs-on: ika-runner
+    runs-on: ubuntu-latest
     environment:
       name: pypi
       url: https://pypi.org/p/nexuml
@@ -203,7 +202,7 @@ jobs:
       actions: read
       id-token: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           name: python-distributions
           path: ${{ env.RELEASE_DIST_DIR }}
@@ -216,11 +215,11 @@ jobs:
           packages-dir: ${{ env.RELEASE_DIST_DIR }}/nexuml/
 
   publish-pypi-library:
-    if: github.event_name == 'push'
+    if: github.event_name == 'release'
     needs:
       - validate
       - publish-pypi-core
-    runs-on: ika-runner
+    runs-on: ubuntu-latest
     environment:
       name: pypi-library
       url: https://pypi.org/p/nexuml-library
@@ -228,7 +227,7 @@ jobs:
       actions: read
       id-token: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           name: python-distributions
           path: ${{ env.RELEASE_DIST_DIR }}
@@ -241,7 +240,7 @@ jobs:
           packages-dir: ${{ env.RELEASE_DIST_DIR }}/nexuml-library/
 
   github-release:
-    if: github.event_name == 'push'
+    if: github.event_name == 'release'
     needs:
       - validate
       - publish-pypi-library
@@ -250,20 +249,19 @@ jobs:
       actions: read
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           name: python-distributions
           path: ${{ env.RELEASE_DIST_DIR }}
           github-token: ${{ github.token }}
           run-id: ${{ needs.validate.outputs.ci-run-id }}
 
-      - name: Create GitHub release
+      - name: Upload GitHub release artifacts
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          gh release create "$GITHUB_REF_NAME" \
+          gh release upload "$GITHUB_REF_NAME" \
             "$RELEASE_DIST_DIR"/nexuml/* \
             "$RELEASE_DIST_DIR"/nexuml-library/* \
-            --title "$GITHUB_REF_NAME" \
-            --generate-notes
+            --clobber
