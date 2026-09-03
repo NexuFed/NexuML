@@ -2903,6 +2903,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../../reference/api/nexuml/core/factory/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    factory
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../../reference/api/nexuml/core/log_paths/" class="md-nav__link">
         
   
@@ -8060,7 +8088,14 @@
 <p><code>training.strategy</code> remains the single source of truth. Ray currently maps <code>auto</code>/<code>ddp</code>, <code>fsdp</code>, and <code>deepspeed</code> to Ray's official Lightning strategy integrations.</p>
 <div class="highlight"><pre><span></span><code><span class="n">TrainingSpec</span><span class="p">(</span><span class="n">strategy</span><span class="o">=</span><span class="s2">&quot;ddp&quot;</span><span class="p">)</span>
 </code></pre></div>
-<p>Strategy-specific settings belong in <code>training.strategy_params</code>. Required third-party strategy packages still have to exist in the worker environment.</p>
+<p>For strategy-specific settings, reference Ray's real strategy class:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">ray.train.lightning</span><span class="w"> </span><span class="kn">import</span> <span class="n">RayFSDPStrategy</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">nexuml</span><span class="w"> </span><span class="kn">import</span> <span class="n">strategy</span>
+
+<span class="n">TrainingSpec</span><span class="p">(</span><span class="n">strategy</span><span class="o">=</span><span class="n">strategy</span><span class="p">(</span><span class="n">RayFSDPStrategy</span><span class="p">,</span> <span class="n">state_dict_type</span><span class="o">=</span><span class="s2">&quot;full&quot;</span><span class="p">))</span>
+</code></pre></div>
+<p>The class and its constructor parameters remain navigable and statically checkable. Required third-party strategy packages still have to exist in the worker environment.</p>
 <h2 id="ray-jobs">Ray Jobs<a class="headerlink" href="#ray-jobs" title="Permanent link">&para;</a></h2>
 <p>NexuML intentionally does not wrap the Ray Jobs lifecycle. If the driver itself should run remotely/detached, use Ray's native CLI:</p>
 <div class="highlight"><pre><span></span><code>ray<span class="w"> </span>job<span class="w"> </span>submit<span class="w"> </span>--working-dir<span class="w"> </span>.<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>

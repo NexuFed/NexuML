@@ -2894,6 +2894,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../reference/api/nexuml/core/factory/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    factory
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../reference/api/nexuml/core/log_paths/" class="md-nav__link">
         
   
@@ -8068,11 +8096,11 @@
 </tr>
 <tr>
 <td><code>Trainer(...)</code> training settings</td>
-<td><code>TrainingSpec</code> plus <code>CallbackSpec</code> / <code>LoggingSpec</code></td>
+<td><code>TrainingSpec</code> plus typed factory helpers / <code>LoggingSpec</code></td>
 </tr>
 <tr>
 <td><code>ModelCheckpoint(...)</code></td>
-<td><code>CallbackSpec(type="checkpoint", params={...})</code></td>
+<td><code>callback(ModelCheckpoint, ...)</code></td>
 </tr>
 <tr>
 <td><code>Trainer.fit(..., ckpt_path=...)</code></td>
@@ -8112,7 +8140,7 @@
 <ul>
 <li>Lightning still performs fit, validation, test, precision/device handling, callbacks, logging integration, and checkpoint resume.</li>
 <li><code>training.strategy</code> selects the Lightning strategy. Under Ray execution, NexuML maps supported values to Ray's official Lightning strategies rather than implementing its own distributed training loop.</li>
-<li><code>CallbackSpec</code> can represent known callback aliases or importable Lightning callbacks.</li>
+<li><code>callback(...)</code> captures an importable Lightning callback factory and its typed constructor arguments without creating the runtime callback until training starts.</li>
 </ul>
 <h2 id="what-nexuml-adds">What NexuML adds<a class="headerlink" href="#what-nexuml-adds" title="Permanent link">&para;</a></h2>
 <h3 id="explicit-tensordict-contracts">Explicit TensorDict contracts<a class="headerlink" href="#explicit-tensordict-contracts" title="Permanent link">&para;</a></h3>
@@ -8134,7 +8162,7 @@
 <h2 id="checkpoints-do-not-mix-these-concepts">Checkpoints: do not mix these concepts<a class="headerlink" href="#checkpoints-do-not-mix-these-concepts" title="Permanent link">&para;</a></h2>
 <p>There are three separate operations:</p>
 <ol>
-<li><strong>Create checkpoints</strong> with a checkpoint <code>CallbackSpec</code>.</li>
+<li><strong>Create checkpoints</strong> with <code>callback(ModelCheckpoint, ...)</code>.</li>
 <li><strong>Resume a Lightning run</strong> with <code>--trainer-checkpoint</code>, restoring trainer/optimizer/scheduler state.</li>
 <li><strong>Reuse model weights</strong> with <code>CheckpointLoadSpec</code>, optionally selecting or freezing parameters without resuming the old trainer state.</li>
 </ol>

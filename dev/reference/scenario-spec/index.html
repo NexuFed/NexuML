@@ -2210,6 +2210,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#external-factories" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        External factories
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#checkpoints" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2849,6 +2860,34 @@
     
   
     export
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/nexuml/core/factory/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    factory
   
 
     
@@ -7929,6 +7968,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#external-factories" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        External factories
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#checkpoints" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -8023,7 +8073,7 @@
 </tr>
 <tr>
 <td><code>callbacks</code></td>
-<td>Lightning callback specs</td>
+<td>portable Lightning callback factories created with <code>callback(...)</code></td>
 </tr>
 <tr>
 <td><code>tuning</code></td>
@@ -8082,6 +8132,21 @@
 <h2 id="evaluation">Evaluation<a class="headerlink" href="#evaluation" title="Permanent link">&para;</a></h2>
 <p><code>EvalAlgorithmSpec.algorithm</code> contains a typed <code>EvalAlgorithmDefinition</code>. Placement/routing (<code>name</code>, <code>enabled</code>, axis keys, feature/label keys) stays on the surrounding spec.</p>
 <p>Evaluation algorithms consume test outputs; score-producing stateful model behavior belongs in the pipeline (for example a <code>PostTrainFitLayer</code>).</p>
+<h2 id="external-factories">External factories<a class="headerlink" href="#external-factories" title="Permanent link">&para;</a></h2>
+<p>Python configuration references real framework classes through typed helpers instead of selector strings and parameter dictionaries:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">lightning.pytorch.callbacks</span><span class="w"> </span><span class="kn">import</span> <span class="n">ModelCheckpoint</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">nexuml</span><span class="w"> </span><span class="kn">import</span> <span class="n">callback</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">,</span> <span class="n">scheduler</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">nexuml.core.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">TrainingSpec</span>
+
+<span class="n">training</span> <span class="o">=</span> <span class="n">TrainingSpec</span><span class="p">(</span>
+    <span class="n">optimizer</span><span class="o">=</span><span class="n">optimizer</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">optim</span><span class="o">.</span><span class="n">Adam</span><span class="p">,</span> <span class="n">weight_decay</span><span class="o">=</span><span class="mf">1e-4</span><span class="p">),</span>
+    <span class="n">scheduler</span><span class="o">=</span><span class="n">scheduler</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">optim</span><span class="o">.</span><span class="n">lr_scheduler</span><span class="o">.</span><span class="n">ConstantLR</span><span class="p">,</span> <span class="n">factor</span><span class="o">=</span><span class="mf">0.5</span><span class="p">),</span>
+<span class="p">)</span>
+<span class="n">callbacks</span> <span class="o">=</span> <span class="p">[</span><span class="n">callback</span><span class="p">(</span><span class="n">ModelCheckpoint</span><span class="p">,</span> <span class="n">monitor</span><span class="o">=</span><span class="s2">&quot;val/loss&quot;</span><span class="p">,</span> <span class="n">save_top_k</span><span class="o">=</span><span class="mi">1</span><span class="p">)]</span>
+</code></pre></div>
+<p><code>strategy(...)</code> and <code>writer(...)</code> apply the same rule to configured Lightning strategies and preprocessing export backends. The helper stores only an import target and JSON-safe constructor values; the runtime object is created where its runtime dependencies are available.</p>
 <h2 id="checkpoints">Checkpoints<a class="headerlink" href="#checkpoints" title="Permanent link">&para;</a></h2>
 <p><code>CheckpointLoadSpec</code> is <strong>selective weight reuse</strong>, not the Lightning resume mechanism. Full trainer resume is requested with <code>nexuml train --trainer-checkpoint PATH</code>.</p>
 <p>See <a href="../../how-to/checkpoints/">Checkpoints</a>.</p>
@@ -8094,7 +8159,7 @@
 <p>Training semantics remain in <code>TrainingSpec</code> in both cases.</p>
 <h2 id="persistence">Persistence<a class="headerlink" href="#persistence" title="Permanent link">&para;</a></h2>
 <p><code>ResolvedConfig.from_scenario(...).to_yaml()</code> lowers registered definitions to stable component identity + validated parameter data. Restoration discovers the definition and validates it again.</p>
-<p>Registered semantic definitions do not persist mutable runtime objects. <code>NnModule</code> is the explicit external-factory exception and stores an importable factory target plus JSON-safe constructor values.</p>
+<p>Registered semantic definitions do not persist mutable runtime objects. Direct framework helpers store an importable factory target plus JSON-safe constructor values.</p>
 <p>Removed legacy selector fields are rejected rather than silently translated.</p>
 
 

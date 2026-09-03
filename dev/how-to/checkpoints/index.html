@@ -2870,6 +2870,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../reference/api/nexuml/core/factory/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    factory
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../reference/api/nexuml/core/log_paths/" class="md-nav__link">
         
   
@@ -7969,17 +7997,17 @@
 <p>NexuML exposes three different checkpoint-related operations. Keeping them separate avoids ambiguous "load checkpoint" behavior.</p>
 <h2 id="1-create-lightning-checkpoints">1. Create Lightning checkpoints<a class="headerlink" href="#1-create-lightning-checkpoints" title="Permanent link">&para;</a></h2>
 <p>Checkpoint creation is a Lightning callback concern:</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">nexuml.core.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">CallbackSpec</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">lightning.pytorch.callbacks</span><span class="w"> </span><span class="kn">import</span> <span class="n">ModelCheckpoint</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">nexuml</span><span class="w"> </span><span class="kn">import</span> <span class="n">callback</span>
 
 <span class="n">callbacks</span> <span class="o">=</span> <span class="p">[</span>
-    <span class="n">CallbackSpec</span><span class="p">(</span>
-        <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;checkpoint&quot;</span><span class="p">,</span>
-        <span class="n">params</span><span class="o">=</span><span class="p">{</span>
-            <span class="s2">&quot;monitor&quot;</span><span class="p">:</span> <span class="s2">&quot;val/loss&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;mode&quot;</span><span class="p">:</span> <span class="s2">&quot;min&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;save_top_k&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
-            <span class="s2">&quot;save_last&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
-        <span class="p">},</span>
+    <span class="n">callback</span><span class="p">(</span>
+        <span class="n">ModelCheckpoint</span><span class="p">,</span>
+        <span class="n">monitor</span><span class="o">=</span><span class="s2">&quot;val/loss&quot;</span><span class="p">,</span>
+        <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;min&quot;</span><span class="p">,</span>
+        <span class="n">save_top_k</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">save_last</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
     <span class="p">)</span>
 <span class="p">]</span>
 </code></pre></div>
@@ -8050,7 +8078,7 @@
 <tbody>
 <tr>
 <td>save best/last during training</td>
-<td>checkpoint <code>CallbackSpec</code></td>
+<td><code>callback(ModelCheckpoint, ...)</code></td>
 </tr>
 <tr>
 <td>continue an interrupted run</td>

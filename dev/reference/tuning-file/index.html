@@ -2919,6 +2919,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../api/nexuml/core/factory/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    factory
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../api/nexuml/core/log_paths/" class="md-nav__link">
         
   
@@ -8195,13 +8223,13 @@
 <p>If <code>type</code> is omitted and <code>choices</code> is present, the type defaults to <code>categorical</code>.</p>
 <h3 id="conditional-entries-when">Conditional entries (<code>when</code>)<a class="headerlink" href="#conditional-entries-when" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="n">SEARCH_SPACE</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="s2">&quot;training.optimizer.type&quot;</span><span class="p">:</span> <span class="p">{</span>
+    <span class="s2">&quot;precision&quot;</span><span class="p">:</span> <span class="p">{</span>
         <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;categorical&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;choices&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;torch.optim.Adam&quot;</span><span class="p">,</span> <span class="s2">&quot;torch.optim.SGD&quot;</span><span class="p">],</span>
+        <span class="s2">&quot;choices&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;32-true&quot;</span><span class="p">,</span> <span class="s2">&quot;16-mixed&quot;</span><span class="p">],</span>
         <span class="s2">&quot;when&quot;</span><span class="p">:</span> <span class="p">{</span>
-            <span class="s2">&quot;torch.optim.SGD&quot;</span><span class="p">:</span> <span class="p">{</span>
-                <span class="s2">&quot;training.optimizer.params.momentum&quot;</span><span class="p">:</span> <span class="p">{</span>
-                    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;float&quot;</span><span class="p">,</span> <span class="s2">&quot;low&quot;</span><span class="p">:</span> <span class="mf">0.8</span><span class="p">,</span> <span class="s2">&quot;high&quot;</span><span class="p">:</span> <span class="mf">0.99</span>
+            <span class="s2">&quot;16-mixed&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;batch_size&quot;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;categorical&quot;</span><span class="p">,</span> <span class="s2">&quot;choices&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">64</span><span class="p">,</span> <span class="mi">128</span><span class="p">]</span>
                 <span class="p">},</span>
             <span class="p">}</span>
         <span class="p">},</span>
@@ -8210,14 +8238,25 @@
 </code></pre></div>
 <p><code>when</code> branches activate additional search-space entries depending on the sampled value. This is <strong>Python-only</strong> — not YAML-exportable. Requires <code>--scenario-file</code>.</p>
 <h3 id="derived-entries">Derived entries<a class="headerlink" href="#derived-entries" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="n">SEARCH_SPACE</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="s2">&quot;training.lr&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;float&quot;</span><span class="p">,</span> <span class="s2">&quot;low&quot;</span><span class="p">:</span> <span class="mf">1e-5</span><span class="p">,</span> <span class="s2">&quot;high&quot;</span><span class="p">:</span> <span class="mf">1e-2</span><span class="p">,</span> <span class="s2">&quot;log&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span>
-    <span class="s2">&quot;training.optimizer.params.weight_decay&quot;</span><span class="p">:</span> <span class="p">{</span>
-        <span class="s2">&quot;derived&quot;</span><span class="p">:</span> <span class="s2">&quot;training.lr * 0.01&quot;</span>   <span class="c1"># string expression or callable</span>
-    <span class="p">},</span>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">nexuml</span><span class="w"> </span><span class="kn">import</span> <span class="n">optimizer</span>
+
+<span class="n">SEARCH_SPACE</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;lr&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;float&quot;</span><span class="p">,</span> <span class="s2">&quot;low&quot;</span><span class="p">:</span> <span class="mf">1e-5</span><span class="p">,</span> <span class="s2">&quot;high&quot;</span><span class="p">:</span> <span class="mf">1e-2</span><span class="p">,</span> <span class="s2">&quot;log&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span>
+    <span class="s2">&quot;weight_decay&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;derived&quot;</span><span class="p">:</span> <span class="s2">&quot;lr * 0.01&quot;</span><span class="p">},</span>
 <span class="p">}</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">build</span><span class="p">(</span><span class="n">lr</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">weight_decay</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ScenarioSpec</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">ScenarioSpec</span><span class="p">(</span>
+        <span class="n">name</span><span class="o">=</span><span class="s2">&quot;tuned&quot;</span><span class="p">,</span>
+        <span class="n">training</span><span class="o">=</span><span class="n">TrainingSpec</span><span class="p">(</span>
+            <span class="n">lr</span><span class="o">=</span><span class="n">lr</span><span class="p">,</span>
+            <span class="n">optimizer</span><span class="o">=</span><span class="n">optimizer</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">optim</span><span class="o">.</span><span class="n">Adam</span><span class="p">,</span> <span class="n">weight_decay</span><span class="o">=</span><span class="n">weight_decay</span><span class="p">),</span>
+        <span class="p">),</span>
+    <span class="p">)</span>
 </code></pre></div>
-<p><code>derived</code> entries are computed from other sampled values. They are <strong>Python-only</strong>.</p>
+<p><code>derived</code> entries are computed from other sampled values. They are <strong>Python-only</strong> and are passed to the scenario <code>build</code> callable.</p>
 <h3 id="structural-buildparams-parameters">Structural / <code>build(**params)</code> parameters<a class="headerlink" href="#structural-buildparams-parameters" title="Permanent link">&para;</a></h3>
 <p>For architecture parameters that change model structure, define a <code>build</code> callable. Optuna passes sampled values as keyword arguments:</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">nexuml.core.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">ScenarioSpec</span><span class="p">,</span> <span class="n">PipelineSpec</span><span class="p">,</span> <span class="n">LayerSpec</span><span class="p">,</span> <span class="n">TrainingSpec</span><span class="p">,</span> <span class="n">DataSpec</span>

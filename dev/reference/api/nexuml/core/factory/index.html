@@ -10,31 +10,31 @@
       
       
       
-        <link rel="canonical" href="https://nexufed.github.io/NexuML/dev/reference/api/nexuml_library/layers/loss/reconstruction_loss/">
+        <link rel="canonical" href="https://nexufed.github.io/NexuML/dev/reference/api/nexuml/core/factory/">
       
       
-        <link rel="prev" href="../multilabel_map_metrics/">
+        <link rel="prev" href="../export/">
       
       
-        <link rel="next" href="../regression_loss/">
+        <link rel="next" href="../log_paths/">
       
       
         
       
       
-      <link rel="icon" href="../../../../../../assets/images/favicon.png">
+      <link rel="icon" href="../../../../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.7.6">
     
     
       
-        <title>reconstruction_loss - NexuML</title>
+        <title>factory - NexuML</title>
       
     
     
-      <link rel="stylesheet" href="../../../../../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../../../../assets/stylesheets/main.484c7ddc.min.css">
       
         
-        <link rel="stylesheet" href="../../../../../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../../../../assets/stylesheets/palette.ab4e12ef.min.css">
       
       
 
@@ -53,11 +53,11 @@
       
     
     
-      <link rel="stylesheet" href="../../../../../../assets/_mkdocstrings.css">
+      <link rel="stylesheet" href="../../../../../assets/_mkdocstrings.css">
     
-      <link rel="stylesheet" href="../../../../../../stylesheets/extra.css">
+      <link rel="stylesheet" href="../../../../../stylesheets/extra.css">
     
-    <script>__md_scope=new URL("../../../../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../../../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -82,7 +82,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#nexuml_librarylayerslossreconstruction_loss" class="md-skip">
+        <a href="#nexumlcorefactory" class="md-skip">
           Skip to content
         </a>
       
@@ -100,7 +100,7 @@
 
 <header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../../../../../.." title="NexuML" class="md-header__button md-logo" aria-label="NexuML" data-md-component="logo">
+    <a href="../../../../.." title="NexuML" class="md-header__button md-logo" aria-label="NexuML" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -120,7 +120,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              reconstruction_loss
+              factory
             
           </span>
         </div>
@@ -233,7 +233,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../../../../.." class="md-tabs__link">
+      <a href="../../../../.." class="md-tabs__link">
         
   
   
@@ -252,7 +252,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../../../../../start/" class="md-tabs__link">
+      <a href="../../../../../start/" class="md-tabs__link">
         
   
   
@@ -271,7 +271,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../../../../../tutorials/" class="md-tabs__link">
+      <a href="../../../../../tutorials/" class="md-tabs__link">
         
   
   
@@ -290,7 +290,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../../../../../how-to/" class="md-tabs__link">
+      <a href="../../../../../how-to/" class="md-tabs__link">
         
   
   
@@ -309,7 +309,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../../../../../explanation/" class="md-tabs__link">
+      <a href="../../../../../explanation/" class="md-tabs__link">
         
   
   
@@ -330,7 +330,7 @@
   
   
     <li class="md-tabs__item md-tabs__item--active">
-      <a href="../../../../../" class="md-tabs__link">
+      <a href="../../../../" class="md-tabs__link">
         
   
   
@@ -349,7 +349,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../../../../../development/" class="md-tabs__link">
+      <a href="../../../../../development/" class="md-tabs__link">
         
   
   
@@ -384,7 +384,7 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../../../../../.." title="NexuML" class="md-nav__button md-logo" aria-label="NexuML" data-md-component="logo">
+    <a href="../../../../.." title="NexuML" class="md-nav__button md-logo" aria-label="NexuML" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -414,7 +414,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../.." class="md-nav__link">
+      <a href="../../../../.." class="md-nav__link">
         
   
   
@@ -458,7 +458,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../../../start/" class="md-nav__link ">
+            <a href="../../../../../start/" class="md-nav__link ">
               
   
   
@@ -500,7 +500,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../../start/install/" class="md-nav__link">
+      <a href="../../../../../start/install/" class="md-nav__link">
         
   
   
@@ -528,7 +528,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../../start/train-cifar-resnet/" class="md-nav__link">
+      <a href="../../../../../start/train-cifar-resnet/" class="md-nav__link">
         
   
   
@@ -563,7 +563,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../../tutorials/" class="md-nav__link">
+      <a href="../../../../../tutorials/" class="md-nav__link">
         
   
   
@@ -607,7 +607,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../../../how-to/" class="md-nav__link ">
+            <a href="../../../../../how-to/" class="md-nav__link ">
               
   
   
@@ -701,7 +701,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../../how-to/cli-lifecycle/" class="md-nav__link">
+      <a href="../../../../../how-to/cli-lifecycle/" class="md-nav__link">
         
   
   
@@ -789,7 +789,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../../how-to/define-scenario/" class="md-nav__link">
+      <a href="../../../../../how-to/define-scenario/" class="md-nav__link">
         
   
   
@@ -817,7 +817,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../../how-to/run-scenarios/" class="md-nav__link">
+      <a href="../../../../../how-to/run-scenarios/" class="md-nav__link">
         
   
   
@@ -845,7 +845,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../../how-to/scenario-file/" class="md-nav__link">
+      <a href="../../../../../how-to/scenario-file/" class="md-nav__link">
         
   
   
@@ -933,7 +933,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../../how-to/train/" class="md-nav__link">
+      <a href="../../../../../how-to/train/" class="md-nav__link">
         
   
   
@@ -961,7 +961,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../../how-to/evaluate/" class="md-nav__link">
+      <a href="../../../../../how-to/evaluate/" class="md-nav__link">
         
   
   
@@ -989,7 +989,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../../how-to/checkpoints/" class="md-nav__link">
+      <a href="../../../../../how-to/checkpoints/" class="md-nav__link">
         
   
   
@@ -1017,7 +1017,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../../how-to/auto-batch-size/" class="md-nav__link">
+      <a href="../../../../../how-to/auto-batch-size/" class="md-nav__link">
         
   
   
@@ -1105,7 +1105,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../../how-to/data-loading/" class="md-nav__link">
+      <a href="../../../../../how-to/data-loading/" class="md-nav__link">
         
   
   
@@ -1133,7 +1133,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../../how-to/export-dataset/" class="md-nav__link">
+      <a href="../../../../../how-to/export-dataset/" class="md-nav__link">
         
   
   
@@ -1221,7 +1221,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../../how-to/tracking/" class="md-nav__link">
+      <a href="../../../../../how-to/tracking/" class="md-nav__link">
         
   
   
@@ -1249,7 +1249,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../../how-to/tune/" class="md-nav__link">
+      <a href="../../../../../how-to/tune/" class="md-nav__link">
         
   
   
@@ -1337,7 +1337,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../../how-to/export/" class="md-nav__link">
+      <a href="../../../../../how-to/export/" class="md-nav__link">
         
   
   
@@ -1425,7 +1425,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../../how-to/training-backends/" class="md-nav__link">
+      <a href="../../../../../how-to/training-backends/" class="md-nav__link">
         
   
   
@@ -1453,7 +1453,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../../how-to/training-backends/ray/" class="md-nav__link">
+      <a href="../../../../../how-to/training-backends/ray/" class="md-nav__link">
         
   
   
@@ -1541,7 +1541,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../../how-to/custom-library/" class="md-nav__link">
+      <a href="../../../../../how-to/custom-library/" class="md-nav__link">
         
   
   
@@ -1569,7 +1569,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../../how-to/custom-layer/" class="md-nav__link">
+      <a href="../../../../../how-to/custom-layer/" class="md-nav__link">
         
   
   
@@ -1597,7 +1597,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../../how-to/custom-data-source/" class="md-nav__link">
+      <a href="../../../../../how-to/custom-data-source/" class="md-nav__link">
         
   
   
@@ -1625,7 +1625,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../../how-to/custom-eval-algorithm/" class="md-nav__link">
+      <a href="../../../../../how-to/custom-eval-algorithm/" class="md-nav__link">
         
   
   
@@ -1653,7 +1653,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../../how-to/register-library/" class="md-nav__link">
+      <a href="../../../../../how-to/register-library/" class="md-nav__link">
         
   
   
@@ -1681,7 +1681,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../../how-to/library-cli/" class="md-nav__link">
+      <a href="../../../../../how-to/library-cli/" class="md-nav__link">
         
   
   
@@ -1741,7 +1741,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../../../explanation/" class="md-nav__link ">
+            <a href="../../../../../explanation/" class="md-nav__link ">
               
   
   
@@ -1783,7 +1783,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../../learn/mental-model/" class="md-nav__link">
+      <a href="../../../../../learn/mental-model/" class="md-nav__link">
         
   
   
@@ -1811,7 +1811,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../../explanation/architecture/" class="md-nav__link">
+      <a href="../../../../../explanation/architecture/" class="md-nav__link">
         
   
   
@@ -1839,7 +1839,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../../explanation/tensordict/" class="md-nav__link">
+      <a href="../../../../../explanation/tensordict/" class="md-nav__link">
         
   
   
@@ -1867,7 +1867,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../../learn/scenarios/" class="md-nav__link">
+      <a href="../../../../../learn/scenarios/" class="md-nav__link">
         
   
   
@@ -1895,7 +1895,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../../learn/decorators-and-discovery/" class="md-nav__link">
+      <a href="../../../../../learn/decorators-and-discovery/" class="md-nav__link">
         
   
   
@@ -1923,7 +1923,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../../learn/from-lightning/" class="md-nav__link">
+      <a href="../../../../../learn/from-lightning/" class="md-nav__link">
         
   
   
@@ -1951,7 +1951,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../../explanation/diagrams/" class="md-nav__link">
+      <a href="../../../../../explanation/diagrams/" class="md-nav__link">
         
   
   
@@ -1979,7 +1979,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../../explanation/library-discovery/" class="md-nav__link">
+      <a href="../../../../../explanation/library-discovery/" class="md-nav__link">
         
   
   
@@ -2036,7 +2036,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../../" class="md-nav__link ">
+            <a href="../../../../" class="md-nav__link ">
               
   
   
@@ -2078,7 +2078,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../cli/" class="md-nav__link">
+      <a href="../../../../cli/" class="md-nav__link">
         
   
   
@@ -2106,7 +2106,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../scenario-spec/" class="md-nav__link">
+      <a href="../../../../scenario-spec/" class="md-nav__link">
         
   
   
@@ -2134,7 +2134,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../decorators/" class="md-nav__link">
+      <a href="../../../../decorators/" class="md-nav__link">
         
   
   
@@ -2162,7 +2162,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../registry/" class="md-nav__link">
+      <a href="../../../../registry/" class="md-nav__link">
         
   
   
@@ -2190,7 +2190,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../backends/" class="md-nav__link">
+      <a href="../../../../backends/" class="md-nav__link">
         
   
   
@@ -2218,7 +2218,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../environment/" class="md-nav__link">
+      <a href="../../../../environment/" class="md-nav__link">
         
   
   
@@ -2246,7 +2246,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../tuning-file/" class="md-nav__link">
+      <a href="../../../../tuning-file/" class="md-nav__link">
         
   
   
@@ -2328,8 +2328,10 @@
                 
   
   
+    
   
   
+  
     
     
     
@@ -2340,11 +2342,11 @@
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_8_1" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_8_1" checked>
         
           
           <label class="md-nav__link" for="__nav_6_8_1" id="__nav_6_8_1_label" tabindex="0">
@@ -2365,7 +2367,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_6_8_1_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_6_8_1_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_6_8_1">
             <span class="md-nav__icon md-icon"></span>
             
@@ -2435,7 +2437,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../nexuml/cli/main/" class="md-nav__link">
+      <a href="../../cli/main/" class="md-nav__link">
         
   
   
@@ -2463,7 +2465,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../nexuml/cli/overrides/" class="md-nav__link">
+      <a href="../../cli/overrides/" class="md-nav__link">
         
   
   
@@ -2496,8 +2498,10 @@
                 
   
   
+    
   
   
+  
     
     
     
@@ -2508,11 +2512,11 @@
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_8_1_2" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_8_1_2" checked>
         
           
           <label class="md-nav__link" for="__nav_6_8_1_2" id="__nav_6_8_1_2_label" tabindex="0">
@@ -2533,7 +2537,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_6_8_1_2_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_6_8_1_2_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_6_8_1_2">
             <span class="md-nav__icon md-icon"></span>
             
@@ -2551,7 +2555,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../nexuml/core/base_layer/" class="md-nav__link">
+      <a href="../base_layer/" class="md-nav__link">
         
   
   
@@ -2579,7 +2583,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../nexuml/core/compiler/" class="md-nav__link">
+      <a href="../compiler/" class="md-nav__link">
         
   
   
@@ -2607,7 +2611,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../nexuml/core/components/" class="md-nav__link">
+      <a href="../components/" class="md-nav__link">
         
   
   
@@ -2635,7 +2639,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../nexuml/core/config/" class="md-nav__link">
+      <a href="../config/" class="md-nav__link">
         
   
   
@@ -2663,7 +2667,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../nexuml/core/diagram/" class="md-nav__link">
+      <a href="../diagram/" class="md-nav__link">
         
   
   
@@ -2691,7 +2695,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../nexuml/core/discovery/" class="md-nav__link">
+      <a href="../discovery/" class="md-nav__link">
         
   
   
@@ -2719,7 +2723,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../nexuml/core/export/" class="md-nav__link">
+      <a href="../export/" class="md-nav__link">
         
   
   
@@ -2744,10 +2748,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../../../nexuml/core/factory/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    factory
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -2763,6 +2794,142 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#nexuml.core.factory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-module"></code>&nbsp;factory
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label=" factory">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#nexuml.core.factory.normalize_json_value" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-function"></code>&nbsp;normalize_json_value
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#nexuml.core.factory.resolve_factory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-function"></code>&nbsp;resolve_factory
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#nexuml.core.factory.factory_target" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-function"></code>&nbsp;factory_target
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#nexuml.core.factory.callback" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-function"></code>&nbsp;callback
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#nexuml.core.factory.optimizer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-function"></code>&nbsp;optimizer
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#nexuml.core.factory.scheduler" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-function"></code>&nbsp;scheduler
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#nexuml.core.factory.strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-function"></code>&nbsp;strategy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#nexuml.core.factory.writer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-function"></code>&nbsp;writer
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#nexuml.core.factory.factory_values" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-function"></code>&nbsp;factory_values
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -2775,7 +2942,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../nexuml/core/log_paths/" class="md-nav__link">
+      <a href="../log_paths/" class="md-nav__link">
         
   
   
@@ -2803,7 +2970,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../nexuml/core/pipeline/" class="md-nav__link">
+      <a href="../pipeline/" class="md-nav__link">
         
   
   
@@ -2831,7 +2998,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../nexuml/core/post_train_layer/" class="md-nav__link">
+      <a href="../post_train_layer/" class="md-nav__link">
         
   
   
@@ -2859,7 +3026,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../nexuml/core/provenance/" class="md-nav__link">
+      <a href="../provenance/" class="md-nav__link">
         
   
   
@@ -2887,7 +3054,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../nexuml/core/registry/" class="md-nav__link">
+      <a href="../registry/" class="md-nav__link">
         
   
   
@@ -2915,7 +3082,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../nexuml/core/scenario_loader/" class="md-nav__link">
+      <a href="../scenario_loader/" class="md-nav__link">
         
   
   
@@ -2943,7 +3110,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../nexuml/core/scenario_registry/" class="md-nav__link">
+      <a href="../scenario_registry/" class="md-nav__link">
         
   
   
@@ -2971,7 +3138,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../nexuml/core/schema/" class="md-nav__link">
+      <a href="../schema/" class="md-nav__link">
         
   
   
@@ -2999,7 +3166,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../nexuml/core/serialization/" class="md-nav__link">
+      <a href="../serialization/" class="md-nav__link">
         
   
   
@@ -3027,7 +3194,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../nexuml/core/storage/" class="md-nav__link">
+      <a href="../storage/" class="md-nav__link">
         
   
   
@@ -3055,7 +3222,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../nexuml/core/torch_adapter/" class="md-nav__link">
+      <a href="../torch_adapter/" class="md-nav__link">
         
   
   
@@ -3083,7 +3250,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../nexuml/core/types/" class="md-nav__link">
+      <a href="../types/" class="md-nav__link">
         
   
   
@@ -3171,7 +3338,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../nexuml/data/auto_batch/" class="md-nav__link">
+      <a href="../../data/auto_batch/" class="md-nav__link">
         
   
   
@@ -3199,7 +3366,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../nexuml/data/creator/" class="md-nav__link">
+      <a href="../../data/creator/" class="md-nav__link">
         
   
   
@@ -3227,7 +3394,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../nexuml/data/dataset/" class="md-nav__link">
+      <a href="../../data/dataset/" class="md-nav__link">
         
   
   
@@ -3307,7 +3474,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../nexuml/data/export/backend/" class="md-nav__link">
+      <a href="../../data/export/backend/" class="md-nav__link">
         
   
   
@@ -3335,7 +3502,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../nexuml/data/export/numpy_files/" class="md-nav__link">
+      <a href="../../data/export/numpy_files/" class="md-nav__link">
         
   
   
@@ -3363,7 +3530,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../nexuml/data/export/numpy_mmap/" class="md-nav__link">
+      <a href="../../data/export/numpy_mmap/" class="md-nav__link">
         
   
   
@@ -3391,7 +3558,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../nexuml/data/export/runner/" class="md-nav__link">
+      <a href="../../data/export/runner/" class="md-nav__link">
         
   
   
@@ -3419,7 +3586,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../nexuml/data/export/tensor_shards/" class="md-nav__link">
+      <a href="../../data/export/tensor_shards/" class="md-nav__link">
         
   
   
@@ -3447,7 +3614,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../nexuml/data/export/tensordict_memmap/" class="md-nav__link">
+      <a href="../../data/export/tensordict_memmap/" class="md-nav__link">
         
   
   
@@ -3475,7 +3642,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../nexuml/data/export/torch_files/" class="md-nav__link">
+      <a href="../../data/export/torch_files/" class="md-nav__link">
         
   
   
@@ -3503,7 +3670,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../nexuml/data/export/webdataset/" class="md-nav__link">
+      <a href="../../data/export/webdataset/" class="md-nav__link">
         
   
   
@@ -3539,7 +3706,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../nexuml/data/exported/" class="md-nav__link">
+      <a href="../../data/exported/" class="md-nav__link">
         
   
   
@@ -3567,7 +3734,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../nexuml/data/file_io/" class="md-nav__link">
+      <a href="../../data/file_io/" class="md-nav__link">
         
   
   
@@ -3612,7 +3779,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../nexuml/data/loaders/" class="md-nav__link ">
+            <a href="../../data/loaders/" class="md-nav__link ">
               
   
   
@@ -3654,7 +3821,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../nexuml/data/loaders/dali_backend/" class="md-nav__link">
+      <a href="../../data/loaders/dali_backend/" class="md-nav__link">
         
   
   
@@ -3682,7 +3849,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../nexuml/data/loaders/dali_multimodal/" class="md-nav__link">
+      <a href="../../data/loaders/dali_multimodal/" class="md-nav__link">
         
   
   
@@ -3710,7 +3877,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../nexuml/data/loaders/dali_numpy/" class="md-nav__link">
+      <a href="../../data/loaders/dali_numpy/" class="md-nav__link">
         
   
   
@@ -3738,7 +3905,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../nexuml/data/loaders/dali_numpy_external/" class="md-nav__link">
+      <a href="../../data/loaders/dali_numpy_external/" class="md-nav__link">
         
   
   
@@ -3766,7 +3933,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../nexuml/data/loaders/dali_wav/" class="md-nav__link">
+      <a href="../../data/loaders/dali_wav/" class="md-nav__link">
         
   
   
@@ -3794,7 +3961,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../nexuml/data/loaders/definitions/" class="md-nav__link">
+      <a href="../../data/loaders/definitions/" class="md-nav__link">
         
   
   
@@ -3822,7 +3989,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../nexuml/data/loaders/registry/" class="md-nav__link">
+      <a href="../../data/loaders/registry/" class="md-nav__link">
         
   
   
@@ -3850,7 +4017,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../nexuml/data/loaders/tensor_shards_backend/" class="md-nav__link">
+      <a href="../../data/loaders/tensor_shards_backend/" class="md-nav__link">
         
   
   
@@ -3878,7 +4045,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../nexuml/data/loaders/torch_backend/" class="md-nav__link">
+      <a href="../../data/loaders/torch_backend/" class="md-nav__link">
         
   
   
@@ -3914,7 +4081,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../nexuml/data/module/" class="md-nav__link">
+      <a href="../../data/module/" class="md-nav__link">
         
   
   
@@ -3942,7 +4109,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../nexuml/data/super_dataset/" class="md-nav__link">
+      <a href="../../data/super_dataset/" class="md-nav__link">
         
   
   
@@ -4030,7 +4197,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../nexuml/evaluation/algorithm/" class="md-nav__link">
+      <a href="../../evaluation/algorithm/" class="md-nav__link">
         
   
   
@@ -4058,7 +4225,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../nexuml/evaluation/registry/" class="md-nav__link">
+      <a href="../../evaluation/registry/" class="md-nav__link">
         
   
   
@@ -4086,7 +4253,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../nexuml/evaluation/storage/" class="md-nav__link">
+      <a href="../../evaluation/storage/" class="md-nav__link">
         
   
   
@@ -4114,7 +4281,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../nexuml/evaluation/utils/" class="md-nav__link">
+      <a href="../../evaluation/utils/" class="md-nav__link">
         
   
   
@@ -4202,7 +4369,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../nexuml/execution/ray/" class="md-nav__link">
+      <a href="../../execution/ray/" class="md-nav__link">
         
   
   
@@ -4290,7 +4457,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../nexuml/storage/s3/" class="md-nav__link">
+      <a href="../../storage/s3/" class="md-nav__link">
         
   
   
@@ -4378,7 +4545,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../nexuml/tracking/logger/" class="md-nav__link">
+      <a href="../../tracking/logger/" class="md-nav__link">
         
   
   
@@ -4466,7 +4633,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../nexuml/training/callbacks/" class="md-nav__link">
+      <a href="../../training/callbacks/" class="md-nav__link">
         
   
   
@@ -4494,7 +4661,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../nexuml/training/lightning/" class="md-nav__link">
+      <a href="../../training/lightning/" class="md-nav__link">
         
   
   
@@ -4582,7 +4749,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../nexuml/tuning/optuna_tuner/" class="md-nav__link">
+      <a href="../../tuning/optuna_tuner/" class="md-nav__link">
         
   
   
@@ -4623,8 +4790,6 @@
                 
   
   
-    
-  
   
   
     
@@ -4637,11 +4802,11 @@
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_8_2" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_8_2" >
         
           
           <label class="md-nav__link" for="__nav_6_8_2" id="__nav_6_8_2_label" tabindex="0">
@@ -4662,7 +4827,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_6_8_2_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_6_8_2_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_6_8_2">
             <span class="md-nav__icon md-icon"></span>
             
@@ -4784,7 +4949,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../data/audioset/audioset/" class="md-nav__link">
+      <a href="../../../nexuml_library/data/audioset/audioset/" class="md-nav__link">
         
   
   
@@ -4812,7 +4977,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../data/audioset/audioset_hf_download/" class="md-nav__link">
+      <a href="../../../nexuml_library/data/audioset/audioset_hf_download/" class="md-nav__link">
         
   
   
@@ -4900,7 +5065,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../data/dcaset2/dcase2026/" class="md-nav__link">
+      <a href="../../../nexuml_library/data/dcaset2/dcase2026/" class="md-nav__link">
         
   
   
@@ -4936,7 +5101,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../data/exported/" class="md-nav__link">
+      <a href="../../../nexuml_library/data/exported/" class="md-nav__link">
         
   
   
@@ -5016,7 +5181,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../data/image/cifar/" class="md-nav__link">
+      <a href="../../../nexuml_library/data/image/cifar/" class="md-nav__link">
         
   
   
@@ -5044,7 +5209,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../data/image/fashionmnist/" class="md-nav__link">
+      <a href="../../../nexuml_library/data/image/fashionmnist/" class="md-nav__link">
         
   
   
@@ -5072,7 +5237,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../data/image/mnist/" class="md-nav__link">
+      <a href="../../../nexuml_library/data/image/mnist/" class="md-nav__link">
         
   
   
@@ -5108,7 +5273,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../data/synthetic/" class="md-nav__link">
+      <a href="../../../nexuml_library/data/synthetic/" class="md-nav__link">
         
   
   
@@ -5248,7 +5413,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../evaluation/anomalous_sound_detection/asd_evaluator/" class="md-nav__link">
+      <a href="../../../nexuml_library/evaluation/anomalous_sound_detection/asd_evaluator/" class="md-nav__link">
         
   
   
@@ -5276,7 +5441,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../evaluation/anomalous_sound_detection/decision/" class="md-nav__link">
+      <a href="../../../nexuml_library/evaluation/anomalous_sound_detection/decision/" class="md-nav__link">
         
   
   
@@ -5364,7 +5529,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../evaluation/visualizers/class_histogram/" class="md-nav__link">
+      <a href="../../../nexuml_library/evaluation/visualizers/class_histogram/" class="md-nav__link">
         
   
   
@@ -5392,7 +5557,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../evaluation/visualizers/latent/" class="md-nav__link">
+      <a href="../../../nexuml_library/evaluation/visualizers/latent/" class="md-nav__link">
         
   
   
@@ -5420,7 +5585,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../evaluation/visualizers/reconstruction/" class="md-nav__link">
+      <a href="../../../nexuml_library/evaluation/visualizers/reconstruction/" class="md-nav__link">
         
   
   
@@ -5461,8 +5626,6 @@
                 
   
   
-    
-  
   
   
     
@@ -5475,11 +5638,11 @@
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_8_2_3" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_8_2_3" >
         
           
           <label class="md-nav__link" for="__nav_6_8_2_3" id="__nav_6_8_2_3_label" tabindex="0">
@@ -5500,7 +5663,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_6_8_2_3_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_6_8_2_3_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_6_8_2_3">
             <span class="md-nav__icon md-icon"></span>
             
@@ -5570,7 +5733,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../feature/l2_normalize/" class="md-nav__link">
+      <a href="../../../nexuml_library/layers/feature/l2_normalize/" class="md-nav__link">
         
   
   
@@ -5598,7 +5761,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../feature/lmbe/" class="md-nav__link">
+      <a href="../../../nexuml_library/layers/feature/lmbe/" class="md-nav__link">
         
   
   
@@ -5626,7 +5789,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../feature/pooling/" class="md-nav__link">
+      <a href="../../../nexuml_library/layers/feature/pooling/" class="md-nav__link">
         
   
   
@@ -5654,7 +5817,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../feature/projector/" class="md-nav__link">
+      <a href="../../../nexuml_library/layers/feature/projector/" class="md-nav__link">
         
   
   
@@ -5742,7 +5905,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../head/anomaly_score/" class="md-nav__link">
+      <a href="../../../nexuml_library/layers/head/anomaly_score/" class="md-nav__link">
         
   
   
@@ -5770,7 +5933,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../head/classification_head/" class="md-nav__link">
+      <a href="../../../nexuml_library/layers/head/classification_head/" class="md-nav__link">
         
   
   
@@ -5798,7 +5961,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../head/decision_rule/" class="md-nav__link">
+      <a href="../../../nexuml_library/layers/head/decision_rule/" class="md-nav__link">
         
   
   
@@ -5826,7 +5989,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../head/regression_head/" class="md-nav__link">
+      <a href="../../../nexuml_library/layers/head/regression_head/" class="md-nav__link">
         
   
   
@@ -5859,8 +6022,6 @@
                 
   
   
-    
-  
   
   
     
@@ -5873,11 +6034,11 @@
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_8_2_3_3" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_8_2_3_3" >
         
           
           <label class="md-nav__link" for="__nav_6_8_2_3_3" id="__nav_6_8_2_3_3_label" tabindex="0">
@@ -5898,7 +6059,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_6_8_2_3_3_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_6_8_2_3_3_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_6_8_2_3_3">
             <span class="md-nav__icon md-icon"></span>
             
@@ -5916,7 +6077,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../classification_loss/" class="md-nav__link">
+      <a href="../../../nexuml_library/layers/loss/classification_loss/" class="md-nav__link">
         
   
   
@@ -5944,7 +6105,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../classification_metrics/" class="md-nav__link">
+      <a href="../../../nexuml_library/layers/loss/classification_metrics/" class="md-nav__link">
         
   
   
@@ -5972,7 +6133,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../multilabel_map_metrics/" class="md-nav__link">
+      <a href="../../../nexuml_library/layers/loss/multilabel_map_metrics/" class="md-nav__link">
         
   
   
@@ -5997,37 +6158,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    reconstruction_loss
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../../nexuml_library/layers/loss/reconstruction_loss/" class="md-nav__link">
         
   
   
@@ -6043,54 +6177,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#nexuml_library.layers.loss.reconstruction_loss" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        <code class="doc-symbol doc-symbol-toc doc-symbol-module"></code>&nbsp;reconstruction_loss
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label=" reconstruction_loss">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#nexuml_library.layers.loss.reconstruction_loss.ReconstructionLoss" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        <code class="doc-symbol doc-symbol-toc doc-symbol-class"></code>&nbsp;ReconstructionLoss
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -6103,7 +6189,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../regression_loss/" class="md-nav__link">
+      <a href="../../../nexuml_library/layers/loss/regression_loss/" class="md-nav__link">
         
   
   
@@ -6191,7 +6277,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../model/conv_autoencoder/" class="md-nav__link">
+      <a href="../../../nexuml_library/layers/model/conv_autoencoder/" class="md-nav__link">
         
   
   
@@ -6219,7 +6305,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../model/linear_encoder/" class="md-nav__link">
+      <a href="../../../nexuml_library/layers/model/linear_encoder/" class="md-nav__link">
         
   
   
@@ -6247,7 +6333,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../model/resnet/" class="md-nav__link">
+      <a href="../../../nexuml_library/layers/model/resnet/" class="md-nav__link">
         
   
   
@@ -6335,7 +6421,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../utility/identity/" class="md-nav__link">
+      <a href="../../../nexuml_library/layers/utility/identity/" class="md-nav__link">
         
   
   
@@ -6483,7 +6569,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../scenarios/asd/audioset_conv_ae_clshead/" class="md-nav__link">
+      <a href="../../../nexuml_library/scenarios/asd/audioset_conv_ae_clshead/" class="md-nav__link">
         
   
   
@@ -6511,7 +6597,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../scenarios/asd/conv_ae_toycaremu/" class="md-nav__link">
+      <a href="../../../nexuml_library/scenarios/asd/conv_ae_toycaremu/" class="md-nav__link">
         
   
   
@@ -6539,7 +6625,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../scenarios/asd/dcase_conv_ae_baseline/" class="md-nav__link">
+      <a href="../../../nexuml_library/scenarios/asd/dcase_conv_ae_baseline/" class="md-nav__link">
         
   
   
@@ -6567,7 +6653,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../scenarios/asd/linear_ae_toycaremu/" class="md-nav__link">
+      <a href="../../../nexuml_library/scenarios/asd/linear_ae_toycaremu/" class="md-nav__link">
         
   
   
@@ -6595,7 +6681,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../scenarios/asd/synthetic_conv_ae/" class="md-nav__link">
+      <a href="../../../nexuml_library/scenarios/asd/synthetic_conv_ae/" class="md-nav__link">
         
   
   
@@ -6623,7 +6709,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../scenarios/asd/synthetic_linear_ae/" class="md-nav__link">
+      <a href="../../../nexuml_library/scenarios/asd/synthetic_linear_ae/" class="md-nav__link">
         
   
   
@@ -6711,7 +6797,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../scenarios/data/audioset/" class="md-nav__link">
+      <a href="../../../nexuml_library/scenarios/data/audioset/" class="md-nav__link">
         
   
   
@@ -6739,7 +6825,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../scenarios/data/cifar/" class="md-nav__link">
+      <a href="../../../nexuml_library/scenarios/data/cifar/" class="md-nav__link">
         
   
   
@@ -6767,7 +6853,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../scenarios/data/dcase/" class="md-nav__link">
+      <a href="../../../nexuml_library/scenarios/data/dcase/" class="md-nav__link">
         
   
   
@@ -6795,7 +6881,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../scenarios/data/roots/" class="md-nav__link">
+      <a href="../../../nexuml_library/scenarios/data/roots/" class="md-nav__link">
         
   
   
@@ -6823,7 +6909,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../scenarios/data/synthetic/" class="md-nav__link">
+      <a href="../../../nexuml_library/scenarios/data/synthetic/" class="md-nav__link">
         
   
   
@@ -6911,7 +6997,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../scenarios/evaluation/anomaly/" class="md-nav__link">
+      <a href="../../../nexuml_library/scenarios/evaluation/anomaly/" class="md-nav__link">
         
   
   
@@ -6939,7 +7025,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../scenarios/evaluation/base/" class="md-nav__link">
+      <a href="../../../nexuml_library/scenarios/evaluation/base/" class="md-nav__link">
         
   
   
@@ -7027,7 +7113,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../scenarios/model/conv_ae/" class="md-nav__link">
+      <a href="../../../nexuml_library/scenarios/model/conv_ae/" class="md-nav__link">
         
   
   
@@ -7055,7 +7141,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../scenarios/model/linear_ae/" class="md-nav__link">
+      <a href="../../../nexuml_library/scenarios/model/linear_ae/" class="md-nav__link">
         
   
   
@@ -7083,7 +7169,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../scenarios/model/resnet_classifier/" class="md-nav__link">
+      <a href="../../../nexuml_library/scenarios/model/resnet_classifier/" class="md-nav__link">
         
   
   
@@ -7171,7 +7257,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../scenarios/training/defaults/" class="md-nav__link">
+      <a href="../../../nexuml_library/scenarios/training/defaults/" class="md-nav__link">
         
   
   
@@ -7259,7 +7345,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../scenarios/tune/conv_ae_asd/" class="md-nav__link">
+      <a href="../../../nexuml_library/scenarios/tune/conv_ae_asd/" class="md-nav__link">
         
   
   
@@ -7287,7 +7373,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../scenarios/tune/linear_ae_asd/" class="md-nav__link">
+      <a href="../../../nexuml_library/scenarios/tune/linear_ae_asd/" class="md-nav__link">
         
   
   
@@ -7375,7 +7461,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../scenarios/vision/cifar_resnet/" class="md-nav__link">
+      <a href="../../../nexuml_library/scenarios/vision/cifar_resnet/" class="md-nav__link">
         
   
   
@@ -7403,7 +7489,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../scenarios/vision/mnist_resnet/" class="md-nav__link">
+      <a href="../../../nexuml_library/scenarios/vision/mnist_resnet/" class="md-nav__link">
         
   
   
@@ -7431,7 +7517,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../scenarios/vision/mnist_resnet_shards/" class="md-nav__link">
+      <a href="../../../nexuml_library/scenarios/vision/mnist_resnet_shards/" class="md-nav__link">
         
   
   
@@ -7579,7 +7665,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../training/schedulers/warmup_cosine/" class="md-nav__link">
+      <a href="../../../nexuml_library/training/schedulers/warmup_cosine/" class="md-nav__link">
         
   
   
@@ -7663,7 +7749,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../../../development/" class="md-nav__link ">
+            <a href="../../../../../development/" class="md-nav__link ">
               
   
   
@@ -7705,7 +7791,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../../development/install/" class="md-nav__link">
+      <a href="../../../../../development/install/" class="md-nav__link">
         
   
   
@@ -7733,7 +7819,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../../how-to/development/" class="md-nav__link">
+      <a href="../../../../../how-to/development/" class="md-nav__link">
         
   
   
@@ -7761,7 +7847,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../../development/release/" class="md-nav__link">
+      <a href="../../../../../development/release/" class="md-nav__link">
         
   
   
@@ -7789,7 +7875,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../../how-to/autoresearch/" class="md-nav__link">
+      <a href="../../../../../how-to/autoresearch/" class="md-nav__link">
         
   
   
@@ -7817,7 +7903,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../../how-to/github-pages/" class="md-nav__link">
+      <a href="../../../../../how-to/github-pages/" class="md-nav__link">
         
   
   
@@ -7872,22 +7958,110 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#nexuml_library.layers.loss.reconstruction_loss" class="md-nav__link">
+  <a href="#nexuml.core.factory" class="md-nav__link">
     <span class="md-ellipsis">
       
-        <code class="doc-symbol doc-symbol-toc doc-symbol-module"></code>&nbsp;reconstruction_loss
+        <code class="doc-symbol doc-symbol-toc doc-symbol-module"></code>&nbsp;factory
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label=" reconstruction_loss">
+    <nav class="md-nav" aria-label=" factory">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#nexuml_library.layers.loss.reconstruction_loss.ReconstructionLoss" class="md-nav__link">
+  <a href="#nexuml.core.factory.normalize_json_value" class="md-nav__link">
     <span class="md-ellipsis">
       
-        <code class="doc-symbol doc-symbol-toc doc-symbol-class"></code>&nbsp;ReconstructionLoss
+        <code class="doc-symbol doc-symbol-toc doc-symbol-function"></code>&nbsp;normalize_json_value
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#nexuml.core.factory.resolve_factory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-function"></code>&nbsp;resolve_factory
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#nexuml.core.factory.factory_target" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-function"></code>&nbsp;factory_target
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#nexuml.core.factory.callback" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-function"></code>&nbsp;callback
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#nexuml.core.factory.optimizer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-function"></code>&nbsp;optimizer
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#nexuml.core.factory.scheduler" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-function"></code>&nbsp;scheduler
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#nexuml.core.factory.strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-function"></code>&nbsp;strategy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#nexuml.core.factory.writer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-function"></code>&nbsp;writer
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#nexuml.core.factory.factory_values" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-function"></code>&nbsp;factory_values
       
     </span>
   </a>
@@ -7916,7 +8090,7 @@
 
 
   
-    <a href="https://github.com/NexuFed/NexuML/edit/main/docs/library/src/nexuml_library/layers/loss/reconstruction_loss.py" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/NexuFed/NexuML/edit/main/docs/src/nexuml/core/factory.py" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
     </a>
@@ -7924,22 +8098,22 @@
   
 
 
-<h1 id="nexuml_librarylayerslossreconstruction_loss"><code>nexuml_library.layers.loss.reconstruction_loss</code><a class="headerlink" href="#nexuml_librarylayerslossreconstruction_loss" title="Permanent link">&para;</a></h1>
+<h1 id="nexumlcorefactory"><code>nexuml.core.factory</code><a class="headerlink" href="#nexumlcorefactory" title="Permanent link">&para;</a></h1>
 
 
 <div class="doc doc-object doc-module">
 
 
 
-<h2 id="nexuml_library.layers.loss.reconstruction_loss" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-module"></code>            <span class="doc doc-object-name doc-module-name">nexuml_library.layers.loss.reconstruction_loss</span>
+<h2 id="nexuml.core.factory" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-module"></code>            <span class="doc doc-object-name doc-module-name">nexuml.core.factory</span>
 
 
-<a href="#nexuml_library.layers.loss.reconstruction_loss" class="headerlink" title="Permanent link">&para;</a></h2>
+<a href="#nexuml.core.factory" class="headerlink" title="Permanent link">&para;</a></h2>
 
     <div class="doc doc-contents first">
 
-        <p>Reconstruction loss layer.</p>
+        <p>Portable importable-factory helpers for typed Python configuration.</p>
 
 
 
@@ -7960,56 +8134,537 @@
 
 
 
-<div class="doc doc-object doc-class">
+
+<div class="doc doc-object doc-function">
 
 
+<h3 id="nexuml.core.factory.normalize_json_value" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <span class="doc doc-object-name doc-function-name">normalize_json_value</span>
 
-<h3 id="nexuml_library.layers.loss.reconstruction_loss.ReconstructionLoss" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>            <span class="doc doc-object-name doc-class-name">ReconstructionLoss</span>
 
-
-<a href="#nexuml_library.layers.loss.reconstruction_loss.ReconstructionLoss" class="headerlink" title="Permanent link">&para;</a></h3>
-
+<a href="#nexuml.core.factory.normalize_json_value" class="headerlink" title="Permanent link">&para;</a></h3>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">normalize_json_value</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">JsonValue</span>
+</code></pre></div>
 
     <div class="doc doc-contents ">
-            <p class="doc doc-class-bases">
-              Bases: <code><a class="autorefs autorefs-internal" title="            LayerDefinition (nexuml.core.components.LayerDefinition)" href="../../../../nexuml/core/components/#nexuml.core.components.LayerDefinition">LayerDefinition</a></code></p>
+
+        <p>Normalize one constructor value to portable JSON data.</p>
 
 
-
-        <p>Computes MSE reconstruction loss between original and reconstructed features.</p>
-<p>keys_in should be [original_key, reconstructed_key].
-keys_out should be [loss_key].</p>
-
-
-
-
-
-
-
-
-
-
-
-<div class="doc doc-children">
-
-
-
-
-
-
-
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="nexuml.core.factory.JsonValue">JsonValue</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Normalized JSON value.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
 
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="ValueError">ValueError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If the value cannot be represented portably.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
-
-
-  </div>
 
     </div>
 
 </div>
 
+<div class="doc doc-object doc-function">
+
+
+<h3 id="nexuml.core.factory.resolve_factory" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <span class="doc doc-object-name doc-function-name">resolve_factory</span>
+
+
+<a href="#nexuml.core.factory.resolve_factory" class="headerlink" title="Permanent link">&para;</a></h3>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">resolve_factory</span><span class="p">(</span>
+    <span class="n">target</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;factory&quot;</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="nb">object</span><span class="p">]</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Resolve a portable <code>module:name</code> target.</p>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="collections.abc.Callable">Callable</span>[..., <span title="object">object</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Imported callable.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="TypeError">TypeError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If the imported target is not callable.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="ValueError">ValueError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If the target is malformed or cannot be imported.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="nexuml.core.factory.factory_target" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <span class="doc doc-object-name doc-function-name">factory_target</span>
+
+
+<a href="#nexuml.core.factory.factory_target" class="headerlink" title="Permanent link">&para;</a></h3>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">factory_target</span><span class="p">(</span>
+    <span class="n">factory</span><span class="p">:</span> <span class="nb">object</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;factory&quot;</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Return and verify the portable target for an importable callable.</p>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Portable <code>module:name</code> target.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="TypeError">TypeError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If <em>factory</em> is not callable.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="ValueError">ValueError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If <em>factory</em> cannot be re-imported safely.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="nexuml.core.factory.callback" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <span class="doc doc-object-name doc-function-name">callback</span>
+
+
+<a href="#nexuml.core.factory.callback" class="headerlink" title="Permanent link">&para;</a></h3>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">callback</span><span class="p">(</span>
+    <span class="n">factory</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[</span><span class="n">P</span><span class="p">,</span> <span class="n">Callback</span><span class="p">],</span>
+    <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">args</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">kwargs</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CallbackSpec</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Configure an importable Lightning callback factory.</p>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="            CallbackSpec (nexuml.core.types.CallbackSpec)" href="../types/#nexuml.core.types.CallbackSpec">CallbackSpec</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Portable callback specification.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="nexuml.core.factory.optimizer" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <span class="doc doc-object-name doc-function-name">optimizer</span>
+
+
+<a href="#nexuml.core.factory.optimizer" class="headerlink" title="Permanent link">&para;</a></h3>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">optimizer</span><span class="p">(</span>
+    <span class="n">factory</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[</span><span class="n">Concatenate</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">P</span><span class="p">],</span> <span class="n">Optimizer</span><span class="p">],</span>
+    <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">args</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">kwargs</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">OptimizerSpec</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Configure an optimizer factory; model parameters are supplied at runtime.</p>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="            OptimizerSpec (nexuml.core.types.OptimizerSpec)" href="../types/#nexuml.core.types.OptimizerSpec">OptimizerSpec</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Portable optimizer specification.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="nexuml.core.factory.scheduler" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <span class="doc doc-object-name doc-function-name">scheduler</span>
+
+
+<a href="#nexuml.core.factory.scheduler" class="headerlink" title="Permanent link">&para;</a></h3>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">scheduler</span><span class="p">(</span>
+    <span class="n">factory</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[</span>
+        <span class="n">Concatenate</span><span class="p">[</span><span class="n">Optimizer</span><span class="p">,</span> <span class="n">P</span><span class="p">],</span> <span class="n">LRScheduler</span>
+    <span class="p">],</span>
+    <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">args</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">kwargs</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SchedulerSpec</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Configure a scheduler factory; its optimizer is supplied at runtime.</p>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="            SchedulerSpec (nexuml.core.types.SchedulerSpec)" href="../types/#nexuml.core.types.SchedulerSpec">SchedulerSpec</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Portable scheduler specification.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="nexuml.core.factory.strategy" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <span class="doc doc-object-name doc-function-name">strategy</span>
+
+
+<a href="#nexuml.core.factory.strategy" class="headerlink" title="Permanent link">&para;</a></h3>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">strategy</span><span class="p">(</span>
+    <span class="n">factory</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[</span><span class="n">P</span><span class="p">,</span> <span class="n">Strategy</span><span class="p">],</span>
+    <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">args</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">kwargs</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">StrategySpec</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Configure an importable Lightning strategy factory.</p>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="            StrategySpec (nexuml.core.types.StrategySpec)" href="../types/#nexuml.core.types.StrategySpec">StrategySpec</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Portable strategy specification.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="nexuml.core.factory.writer" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <span class="doc doc-object-name doc-function-name">writer</span>
+
+
+<a href="#nexuml.core.factory.writer" class="headerlink" title="Permanent link">&para;</a></h3>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">writer</span><span class="p">(</span>
+    <span class="n">factory</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[</span><span class="n">P</span><span class="p">,</span> <span class="n">ExportBackend</span><span class="p">],</span>
+    <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">args</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">kwargs</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">WriterSpec</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Configure an importable dataset export backend factory.</p>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="            WriterSpec (nexuml.core.types.WriterSpec)" href="../types/#nexuml.core.types.WriterSpec">WriterSpec</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Portable writer specification.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="TypeError">TypeError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If <em>factory</em> is not an export backend class.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="nexuml.core.factory.factory_values" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <span class="doc doc-object-name doc-function-name">factory_values</span>
+
+
+<a href="#nexuml.core.factory.factory_values" class="headerlink" title="Permanent link">&para;</a></h3>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">factory_values</span><span class="p">(</span>
+    <span class="n">factory</span><span class="p">:</span> <span class="nb">object</span><span class="p">,</span>
+    <span class="n">args</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">object</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
+    <span class="n">kwargs</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">object</span><span class="p">],</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">object</span><span class="p">]</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Build validated Pydantic field values for a factory helper.</p>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="dict">dict</span>[<span title="str">str</span>, <span title="object">object</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Factory target and constructor arguments.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
 
 
 
@@ -8067,10 +8722,10 @@ keys_out should be [loss_key].</p>
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../../../../../..", "features": ["navigation.tabs", "navigation.sections", "navigation.instant", "navigation.instant.prefetch", "search.suggest", "search.highlight", "content.code.copy", "content.action.edit", "toc.follow"], "search": "../../../../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "latest", "provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../../../..", "features": ["navigation.tabs", "navigation.sections", "navigation.instant", "navigation.instant.prefetch", "search.suggest", "search.highlight", "content.code.copy", "content.action.edit", "toc.follow"], "search": "../../../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "latest", "provider": "mike"}}</script>
     
     
-      <script src="../../../../../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../../../../assets/javascripts/bundle.79ae519e.min.js"></script>
       
     
   </body>

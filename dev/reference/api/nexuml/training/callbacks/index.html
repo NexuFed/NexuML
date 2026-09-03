@@ -2749,6 +2749,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../core/factory/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    factory
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../core/log_paths/" class="md-nav__link">
         
   
@@ -4512,39 +4540,6 @@
   
     <nav class="md-nav" aria-label=" callbacks">
       <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#nexuml.training.callbacks.register_callback" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        <code class="doc-symbol doc-symbol-toc doc-symbol-function"></code>&nbsp;register_callback
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#nexuml.training.callbacks.get_callback_path" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        <code class="doc-symbol doc-symbol-toc doc-symbol-function"></code>&nbsp;get_callback_path
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#nexuml.training.callbacks.list_callbacks" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        <code class="doc-symbol doc-symbol-toc doc-symbol-function"></code>&nbsp;list_callbacks
-      
-    </span>
-  </a>
-  
-</li>
         
           <li class="md-nav__item">
   <a href="#nexuml.training.callbacks.build_callbacks" class="md-nav__link">
@@ -7887,39 +7882,6 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#nexuml.training.callbacks.register_callback" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        <code class="doc-symbol doc-symbol-toc doc-symbol-function"></code>&nbsp;register_callback
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#nexuml.training.callbacks.get_callback_path" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        <code class="doc-symbol doc-symbol-toc doc-symbol-function"></code>&nbsp;get_callback_path
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#nexuml.training.callbacks.list_callbacks" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        <code class="doc-symbol doc-symbol-toc doc-symbol-function"></code>&nbsp;list_callbacks
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#nexuml.training.callbacks.build_callbacks" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -7975,7 +7937,7 @@
 
     <div class="doc doc-contents first">
 
-        <p>Callback factory and registry for NexuML training.</p>
+        <p>Build configured Lightning callbacks.</p>
 
 
 
@@ -8000,100 +7962,19 @@
 <div class="doc doc-object doc-function">
 
 
-<h3 id="nexuml.training.callbacks.register_callback" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <span class="doc doc-object-name doc-function-name">register_callback</span>
-
-
-<a href="#nexuml.training.callbacks.register_callback" class="headerlink" title="Permanent link">&para;</a></h3>
-<div class="doc-signature highlight"><pre><span></span><code><span class="nf">register_callback</span><span class="p">(</span><span class="n">alias</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">dotted_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
-</code></pre></div>
-
-    <div class="doc doc-contents ">
-
-        <p>Register a callback alias to a fully qualified class path.</p>
-
-
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-function">
-
-
-<h3 id="nexuml.training.callbacks.get_callback_path" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <span class="doc doc-object-name doc-function-name">get_callback_path</span>
-
-
-<a href="#nexuml.training.callbacks.get_callback_path" class="headerlink" title="Permanent link">&para;</a></h3>
-<div class="doc-signature highlight"><pre><span></span><code><span class="nf">get_callback_path</span><span class="p">(</span><span class="n">alias</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span>
-</code></pre></div>
-
-    <div class="doc doc-contents ">
-
-        <p>Look up the dotted path for a callback alias.</p>
-
-
-    <p><span class="doc-section-title">Returns:</span></p>
-    <table>
-      <thead>
-        <tr>
-          <th>Type</th>
-          <th>Description</th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-                  <code><span title="str">str</span> | None</code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Dotted import path for the alias, or <code>None</code> if not registered.</p>
-              </div>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-function">
-
-
-<h3 id="nexuml.training.callbacks.list_callbacks" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <span class="doc doc-object-name doc-function-name">list_callbacks</span>
-
-
-<a href="#nexuml.training.callbacks.list_callbacks" class="headerlink" title="Permanent link">&para;</a></h3>
-<div class="doc-signature highlight"><pre><span></span><code><span class="nf">list_callbacks</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span>
-</code></pre></div>
-
-    <div class="doc doc-contents ">
-
-        <p>Return a copy of the current callback registry.</p>
-
-
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-function">
-
-
 <h3 id="nexuml.training.callbacks.build_callbacks" class="doc doc-heading">
 <code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <span class="doc doc-object-name doc-function-name">build_callbacks</span>
 
 
 <a href="#nexuml.training.callbacks.build_callbacks" class="headerlink" title="Permanent link">&para;</a></h3>
-<div class="doc-signature highlight"><pre><span></span><code><span class="nf">build_callbacks</span><span class="p">(</span><span class="n">callback_specs</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">build_callbacks</span><span class="p">(</span>
+    <span class="n">callback_specs</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">CallbackSpec</span><span class="p">],</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">Callback</span><span class="p">]</span>
 </code></pre></div>
 
     <div class="doc doc-contents ">
 
-        <p>Instantiate Lightning callbacks from a list of CallbackSpec objects.</p>
+        <p>Instantiate Lightning callbacks from portable factory specs.</p>
 
 
     <p><span class="doc-section-title">Returns:</span></p>
@@ -8107,7 +7988,7 @@
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code><span title="list">list</span>[<span title="typing.Any">Any</span>]</code>
+                  <code><span title="list">list</span>[<span title="lightning.pytorch.callbacks.Callback">Callback</span>]</code>
             </td>
             <td>
               <div class="doc-md-description">
