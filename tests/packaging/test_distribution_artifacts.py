@@ -113,9 +113,7 @@ def test_distribution_artifacts() -> None:
         )
 
     core = _metadata(core_wheel, "nexuml", CORE_VERSION, core_raw_metadata)
-    library = _metadata(
-        library_wheel, "nexuml-library", LIBRARY_VERSION, library_raw_metadata
-    )
+    library = _metadata(library_wheel, "nexuml-library", LIBRARY_VERSION, library_raw_metadata)
     core_requires = core.get_all("Requires-Dist", [])
     library_requires = library.get_all("Requires-Dist", [])
 

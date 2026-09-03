@@ -89,6 +89,24 @@ def test_export_onnx(compiled_pipeline, tmp_path):
     assert path.exists()
 
 
+@pytest.mark.requires_optional("onnxscript")
+def test_export_onnx_uses_dataset_source_shape(monkeypatch, tmp_path):
+    scenario = _make_simple_scenario()
+    scenario = scenario.model_copy(
+        update={"data": scenario.data.model_copy(update={"input_shapes": {}})}
+    )
+    pipeline = compile(scenario)
+    captured = {}
+
+    def capture_input(_wrapper, args, _path, **_kwargs):
+        captured["shape"] = tuple(args[0].shape)
+
+    monkeypatch.setattr(torch.onnx, "export", capture_input)
+    export_onnx(pipeline, tmp_path / "model.onnx")
+
+    assert captured["shape"] == (1, 16)
+
+
 def test_infer(compiled_pipeline):
     x = TensorDict({"features": torch.randn(1, 16)}, batch_size=[1])
     x_out = infer(compiled_pipeline, x)

@@ -979,7 +979,10 @@ def export_onnx(
     path.parent.mkdir(parents=True, exist_ok=True)
     config = pipeline.resolved_config
     input_key = input_key or config.data.feature_key
-    source_shape = getattr(config.data.source, "feature_shape", (128,))
+    source = config.data.source
+    if source is None and config.data.datasets:
+        source = config.data.datasets[0].source
+    source_shape = getattr(source, "feature_shape", (128,))
     input_shape = tuple(config.data.input_shapes.get(input_key) or source_shape)
     dummy = torch.randn(1, *input_shape)
     wrapper = _OnnxWrapper(pipeline, input_key=input_key, output_key=output_key)

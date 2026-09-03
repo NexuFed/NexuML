@@ -16,7 +16,7 @@
 - [x] 2.7 Check TorchCodec's actual Torch/TorchAudio compatibility requirement, replace `torchcodec==0.10.0` with the broadest proven feature constraint or document why the exact constraint must remain, and verify the relevant feature installation resolves.
 - [x] 2.8 Preserve `ray[default,train]>=2.57,<2.59`, keep DALI separately requested, exclude development tooling and DALI from the user runtime `all` extra, and verify the published extras match those boundaries.
 - [x] 2.9 Delete the repository-root `requirements.txt`, update any repository references to use project metadata or the lockfile, and verify generated model-export `requirements.txt` behavior remains covered by export tests.
-- [ ] 2.10 Regenerate `uv.lock` from the revised workspace metadata and verify `uv lock --check` and a clean `uv sync --all-extras` succeed after the final dependency-constraint review.
+- [x] 2.10 Regenerate `uv.lock` from the revised workspace metadata and verify `uv lock --check` and a clean `uv sync --all-extras` succeed after the final dependency-constraint review.
 
 ## 3. Import and Installation Boundaries
 
@@ -70,7 +70,7 @@
 
 - [x] 8.1 Run the normal non-slow test suite and all new package-artifact tests after the runtime-default changes, and verify they pass without external datasets, DALI, or a GPU.
 - [x] 8.2 Run Ruff and the repository type checker over both source trees and verify no errors remain, including the read-only component-contract assignment currently reported by CI.
-- [ ] 8.3 Run strict OpenSpec validation for `prepare-pypi-release` after the same-minor compatibility follow-up and verify the proposal, delta specs, design, and task evidence remain coherent.
+- [x] 8.3 Run strict OpenSpec validation for `prepare-pypi-release` after the same-minor compatibility follow-up and verify the proposal, delta specs, design, and task evidence remain coherent.
 - [x] 8.4 Review the final package metadata, portable defaults, and release workflow against `python-package-distribution` and `pypi-release-publishing`, and verify every new scenario has executable evidence.
 - [ ] 8.5 Resolve the stacked PR conflicts, integrate the release candidate into `main`, and verify the exact commit has successful supported-Python, package, static, and strict documentation checks.
 - [ ] 8.6 Publish the frozen `0.2.0` candidate once through the TestPyPI path and verify core-only and `nexuml[library]` installation using TestPyPI for NexuML projects and the production index for third-party dependencies.

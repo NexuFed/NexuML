@@ -79,8 +79,8 @@ ENV TZ=Europe/Berlin
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 RUN echo "**** Creating user ****"
-# [Optional] Delete existing user for ubuntu >= 23.04
-RUN userdel -r ubuntu # Comment in when using UBUNTU 24.04 in devcontainer.json
+# Ubuntu 24.04 images normally reserve UID 1000 for this account.
+RUN if id -u ubuntu >/dev/null 2>&1; then userdel -r ubuntu; fi
 # [Optional] Set the default user. Omit if you want to keep the default as root.
 RUN addgroup --gid 1000 $USERNAME
 RUN adduser --disabled-password --gecos "" --uid $UID --gid $GID $USERNAME

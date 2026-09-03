@@ -24,4 +24,4 @@
 - [ ] 4.2 Run the now-default-branch workflow manually on `ika-runner`, verify the build and image checks pass without a GPU or registry publication, and record the compressed image size and available runner disk headroom.
 - [ ] 4.3 Pull the main SHA image anonymously in a clean environment, inspect its OCI source/revision/version/license labels, and run the documented non-GPU and GPU startup checks.
 - [ ] 4.4 On the validated `v0.2.0` release commit, verify `0.2.0-cuda12.8.1`, `0.2-cuda12.8.1`, and the SHA tag resolve to the same tested image content while an unqualified `latest` tag remains unpublished.
-- [ ] 4.5 Run `openspec validate add-docker-image-ci --strict` and verify the implementation, documentation, and recorded workflow evidence satisfy every container-distribution and user-install scenario.
+- [x] 4.5 Run `openspec validate add-docker-image-ci --strict` and verify the implementation, documentation, and recorded workflow evidence satisfy every container-distribution and user-install scenario.

@@ -23,6 +23,9 @@ jobs:
         with:
           version: "latest"
 
+      - name: Verify lockfile
+        run: uv lock --check
+
       - name: Install nexuml + library
         run: |
           uv venv
@@ -124,6 +127,17 @@ jobs:
           uv venv --no-config --python 3.12 .venv-library
           uv pip install --no-config --python .venv-library/bin/python --default-index https://pypi.org/simple pytest dist/nexuml/*.whl dist/nexuml-library/*.whl
           env -u PYTHONPATH NEXUML_INSTALLED_DIST_TEST=1 .venv-library/bin/python -I -m pytest -c /dev/null --rootdir=tests/packaging --confcutdir=tests/packaging -q tests/packaging/test_installed_distributions.py -k library
+
+      - name: Smoke test rebuilt wheels
+        env:
+          CUDA_VISIBLE_DEVICES: ""
+        run: |
+          uv venv --no-config --python 3.12 .venv-rebuilt-core
+          uv pip install --no-config --python .venv-rebuilt-core/bin/python --default-index https://pypi.org/simple pytest dist/rebuilt/nexuml/*.whl
+          env -u PYTHONPATH NEXUML_INSTALLED_DIST_TEST=1 .venv-rebuilt-core/bin/python -I -m pytest -c /dev/null --rootdir=tests/packaging --confcutdir=tests/packaging -q tests/packaging/test_installed_distributions.py -k core
+          uv venv --no-config --python 3.12 .venv-rebuilt-library
+          uv pip install --no-config --python .venv-rebuilt-library/bin/python --default-index https://pypi.org/simple pytest dist/rebuilt/nexuml/*.whl dist/rebuilt/nexuml-library/*.whl
+          env -u PYTHONPATH NEXUML_INSTALLED_DIST_TEST=1 .venv-rebuilt-library/bin/python -I -m pytest -c /dev/null --rootdir=tests/packaging --confcutdir=tests/packaging -q tests/packaging/test_installed_distributions.py -k library
 
       - name: Upload validated distributions
         uses: actions/upload-artifact@v4
