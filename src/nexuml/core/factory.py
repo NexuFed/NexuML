@@ -179,8 +179,15 @@ def writer(factory: Callable[P, ExportBackend], *args: P.args, **kwargs: P.kwarg
 
     Returns:
         Portable writer specification.
+
+    Raises:
+        TypeError: If *factory* is not an export backend class.
     """
     from nexuml.core.types import WriterSpec
+    from nexuml.data.export.backend import ExportBackend
+
+    if not isinstance(factory, type) or not issubclass(factory, ExportBackend):
+        raise TypeError("writer() requires an ExportBackend class")
 
     return WriterSpec.from_factory(factory, *args, **kwargs)
 

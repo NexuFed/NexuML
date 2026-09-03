@@ -25,6 +25,10 @@ from nexuml_library.layers.head.decision_rule import DecisionRulePipelineLayer
 from nexuml_library.scenarios.training.defaults import default_training
 
 
+def _writer_function() -> TensorShardsBackend:
+    return TensorShardsBackend()
+
+
 def test_training_factory_helpers_build_runtime_objects() -> None:
     parameter = torch.nn.Parameter(torch.ones(1))
     optimizer_spec = optimizer(torch.optim.Adam, betas=(0.8, 0.9))
@@ -71,6 +75,11 @@ def test_default_training_accepts_typed_optimizer_factory() -> None:
     parameter = torch.nn.Parameter(torch.ones(1))
 
     assert isinstance(spec.optimizer.build([parameter]), torch.optim.SGD)
+
+
+def test_writer_rejects_function_factories() -> None:
+    with pytest.raises(TypeError, match="requires an ExportBackend class"):
+        writer(_writer_function)
 
 
 @pytest.mark.parametrize(
