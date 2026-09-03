@@ -40,7 +40,7 @@
 - [x] 5.2 Lower a definition through reverse registry lookup to stable `type`/`version`/validated `params` plain data.
 - [x] 5.3 Restore serialized component data by exact kind/name/version lookup followed by `definition_type.model_validate(params)`.
 - [x] 5.4 Ensure serialized values are YAML/JSON safe, including current supported path-like values.
-- [x] 5.5 Do not serialize Python import paths as registered semantic component identities; the later direct-module extension may persist an external factory target as a parameter of one stable universal component.
+- [x] 5.5 Do not serialize Python import paths as registered semantic component identities; direct framework specs may persist external factory targets and JSON-safe constructor values.
 - [x] 5.6 Do not create component-specific serializer branches; the concrete Pydantic definition remains the field/schema source of truth.
 - [x] 5.7 Do not create a recursive NexuFL-style component-plan graph unless a current NexuML component demonstrably requires nested registered definitions.
 - [x] 5.8 Write exact version identity but do not add version migration/upgrade machinery.
@@ -171,3 +171,11 @@
 - [x] 18.6 Document factory importability, JSON-safe argument limits, trusted-config execution, dependency requirements, intentional removal of the three old wrapper identities, and the lack of live-instance/lambda support.
 - [x] 18.7 Run focused direct-module/compiler/registry/export tests, then `uv run pytest`, `uv run ruff check src library/src tests`, `uv run ty check`, and the repository documentation build.
 - [x] 18.8 Run strict OpenSpec validation and review the final diff for accidental factory reflection, generated schemas, compatibility machinery, or expansion beyond the one-tensor adapter contract.
+
+## 19. Remove remaining authoring-time parameter bags
+
+- [x] 19.1 Add one shared portable factory spec and typed helpers for optimizer, scheduler, callback, strategy, and preprocessing-writer factories.
+- [x] 19.2 Replace `type`/`params`, `strategy_params`, and `writer_params` authoring with real importable symbols and direct constructor arguments.
+- [x] 19.3 Replace the nested decision-rule selector/parameter bag and remove unused distance-estimator `type`/`params` fields.
+- [x] 19.4 Migrate defaults, tests, docs, the autoresearch skill, and active workspace specs; retain `params` only for serialized component transport or unrelated runtime data.
+- [x] 19.5 Run focused tests, full static checks, docs/OpenSpec validation, and repository-wide legacy-syntax searches.

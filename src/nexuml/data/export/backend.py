@@ -129,6 +129,23 @@ def get_export_backend(name: str) -> type[ExportBackend]:
     return _BACKEND_REGISTRY[name]
 
 
+def get_export_backend_name(backend_type: type[ExportBackend]) -> str:
+    """Return the registered name for an export backend class.
+
+    Returns:
+        Registered backend name.
+
+    Raises:
+        KeyError: If the backend class is not registered.
+    """
+    for name, registered_type in _BACKEND_REGISTRY.items():
+        if registered_type is backend_type:
+            return name
+    raise KeyError(
+        f"Export backend {backend_type.__module__}.{backend_type.__qualname__} is not registered"
+    )
+
+
 def list_export_backends() -> list[str]:
     """Return names of all registered export backends."""
     return sorted(_BACKEND_REGISTRY.keys())

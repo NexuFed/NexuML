@@ -21,6 +21,7 @@ from nexuml.data.dataset import NexuDataset
 from nexuml.data.export.backend import ExportConfig, get_export_backend
 from nexuml.data.module import NexuDataModule
 from nexuml.storage.s3 import is_s3_uri
+from nexuml.core.types import WriterSpec
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +36,7 @@ def export_data_module(
     data_module: NexuDataModule,
     path: Path,
     *,
-    backend: str = "numpy",
+    backend: str | WriterSpec = "numpy",
     splits: Sequence[str] | None = None,
     transform: BatchTransform | None = None,
     x_keys: Sequence[str] | None = None,
@@ -53,7 +54,7 @@ def export_data_module(
     data_module: NexuDataModule,
     path: str,
     *,
-    backend: str = "numpy",
+    backend: str | WriterSpec = "numpy",
     splits: Sequence[str] | None = None,
     transform: BatchTransform | None = None,
     x_keys: Sequence[str] | None = None,
@@ -70,7 +71,7 @@ def export_data_module(
     data_module: NexuDataModule,
     path: str | Path,
     *,
-    backend: str = "numpy",
+    backend: str | WriterSpec = "numpy",
     splits: Sequence[str] | None = None,
     transform: BatchTransform | None = None,
     x_keys: Sequence[str] | None = None,
@@ -106,9 +107,10 @@ def export_data_module(
         ignore_index=True,
     )
     path_text = str(path)
+    backend_name = backend.backend_name() if isinstance(backend, WriterSpec) else backend
     remote = is_s3_uri(path_text)
     if remote:
-        if backend != "webdataset":
+        if backend_name != "webdataset":
             raise ValueError("S3 dataset export currently supports backend='webdataset' only")
         backend_kwargs["s3_uri"] = path_text
 
@@ -151,7 +153,7 @@ def export_data_module(
 def _export_batches(
     *,
     export_dir: Path,
-    backend: str,
+    backend: str | WriterSpec,
     num_samples: int,
     metadata: pd.DataFrame,
     modality: str,
@@ -175,6 +177,7 @@ def _export_batches(
 
     Raises:
         ValueError: If no samples, batches, dtype metadata, or backend are available.
+        TypeError: If a writer factory does not return an export backend.
     """
     export_dir.mkdir(parents=True, exist_ok=True)
     if num_samples == 0:
@@ -232,15 +235,25 @@ def _export_batches(
                                 for key in stored_keys
                                 if key.startswith(label_prefix)
                             ]
-                            backend_cls = get_export_backend(backend)
-                            backend_instance = backend_cls(
-                                modality=modality,
-                                x_keys=resolved_x_keys,
-                                y_keys=resolved_y_keys,
-                                transform_applied=transform is not None,
-                                label_prefix=label_prefix,
+                            runtime_kwargs = {
+                                "modality": modality,
+                                "x_keys": resolved_x_keys,
+                                "y_keys": resolved_y_keys,
+                                "transform_applied": transform is not None,
+                                "label_prefix": label_prefix,
                                 **backend_kwargs,
-                            )
+                            }
+                            if isinstance(backend, WriterSpec):
+                                backend_instance = backend.build(**runtime_kwargs)
+                            else:
+                                backend_instance = get_export_backend(backend)(**runtime_kwargs)
+                            from nexuml.data.export.backend import ExportBackend
+
+                            if not isinstance(backend_instance, ExportBackend):
+                                raise TypeError(
+                                    "Writer factory must return ExportBackend, "
+                                    f"got {type(backend_instance).__name__}"
+                                )
                             backend_instance.initialize(
                                 export_dir,
                                 num_samples,
@@ -292,10 +305,11 @@ def _export_batches(
         backend_key_specs=backend_meta.get("key_specs", {}),
     )
 
+    backend_name = backend.backend_name() if isinstance(backend, WriterSpec) else backend
     config = ExportConfig(
         format_version=2,
-        backend=backend,
-        writer=backend,
+        backend=backend_name,
+        writer=backend_name,
         num_samples=num_samples,
         label_names=list(label_names),
         num_classes=dict(num_classes),
@@ -326,7 +340,9 @@ def _export_batches(
     if callable(publish_metadata):
         publish_metadata(config_path, metadata_path)
 
-    logger.info("Export complete: %s (backend=%s, samples=%d)", export_dir, backend, num_samples)
+    logger.info(
+        "Export complete: %s (backend=%s, samples=%d)", export_dir, backend_name, num_samples
+    )
     return export_dir
 
 

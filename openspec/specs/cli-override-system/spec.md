@@ -14,8 +14,8 @@ The `train` and `tune` CLI commands SHALL accept a repeatable `--override key.pa
 - **THEN** the scenario's `training.max_epochs` SHALL be set to 10 before compilation
 
 #### Scenario: Nested override
-- **WHEN** `nexuml train my-scenario --override training.scheduler.params.warmup_epochs=5` is executed
-- **THEN** the scheduler's `warmup_epochs` param SHALL be set to 5
+- **WHEN** `nexuml train my-scenario --override training.scheduler.kwargs.warmup_epochs=5` is executed
+- **THEN** the scheduler factory's `warmup_epochs` constructor argument SHALL be set to 5
 
 #### Scenario: Multiple overrides
 - **WHEN** multiple `--override` flags are provided

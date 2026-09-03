@@ -44,15 +44,15 @@ The system SHALL validate that `group_keys`, `normalize_keys`, and `reduce_keys`
 ### Requirement: EvalAlgorithmSpec exposes feature_key and label_key at top level
 `EvalAlgorithmSpec` SHALL expose `feature_key: str | None = None` and `label_key: str | None = None` as top-level typed fields. These fields define the primary input tensor key and target label key used by the evaluation algorithm.
 
-When `feature_key` or `label_key` is None, algorithm implementations SHALL fall back to `params.get("feature_key")` / `params.get("label_key")` for backward compatibility.
+Algorithm-specific constructor values SHALL live on the typed `EvalAlgorithmDefinition`; implementations SHALL NOT fall back to a removed untyped parameter bag.
 
 #### Scenario: feature_key at top level
 - **WHEN** an `EvalAlgorithmSpec` is constructed with `feature_key="latent_asd"`
-- **THEN** `spec.feature_key == "latent_asd"` is accessible without reading `spec.params`
+- **THEN** `spec.feature_key == "latent_asd"` is directly accessible
 
-#### Scenario: Backward-compatible fallback
-- **WHEN** an `EvalAlgorithmSpec` has `feature_key=None` but `params={"feature_key": "latent"}`
-- **THEN** algorithm implementations that check `spec.feature_key or spec.params.get("feature_key")` resolve to `"latent"`
+#### Scenario: No routing key is configured
+- **WHEN** an `EvalAlgorithmSpec` has `feature_key=None`
+- **THEN** the algorithm receives no top-level feature-key override and no legacy parameter bag is consulted
 
 ### Requirement: Reusable evaluation primitives are key-agnostic
 Reusable anomaly-detection evaluation algorithms SHALL operate on declared generic keys and SHALL NOT require hard-coded DCASE vocabulary such as machine, section, domain, or view unless those names are supplied by the scenario contract.

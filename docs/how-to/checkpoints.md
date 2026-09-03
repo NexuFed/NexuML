@@ -7,17 +7,17 @@ NexuML exposes three different checkpoint-related operations. Keeping them separ
 Checkpoint creation is a Lightning callback concern:
 
 ```python
-from nexuml.core.types import CallbackSpec
+from lightning.pytorch.callbacks import ModelCheckpoint
+
+from nexuml import callback
 
 callbacks = [
-    CallbackSpec(
-        type="checkpoint",
-        params={
-            "monitor": "val/loss",
-            "mode": "min",
-            "save_top_k": 1,
-            "save_last": True,
-        },
+    callback(
+        ModelCheckpoint,
+        monitor="val/loss",
+        mode="min",
+        save_top_k=1,
+        save_last=True,
     )
 ]
 ```
@@ -70,7 +70,7 @@ Supported sources include exported package directories and compatible state/weig
 
 | Goal | Mechanism |
 | --- | --- |
-| save best/last during training | checkpoint `CallbackSpec` |
+| save best/last during training | `callback(ModelCheckpoint, ...)` |
 | continue an interrupted run | `--trainer-checkpoint` |
 | transfer learning / initialize a new architecture | `CheckpointLoadSpec` |
 | distribute a trained model | [Export package](export.md) |

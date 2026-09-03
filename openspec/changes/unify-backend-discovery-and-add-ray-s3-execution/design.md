@@ -82,7 +82,6 @@ Large-model strategies stay in `training`:
 ```yaml
 training:
   strategy: fsdp
-  strategy_params: {}
 ```
 
 or:
@@ -90,7 +89,6 @@ or:
 ```yaml
 training:
   strategy: deepspeed
-  strategy_params: {}
 ```
 
 Elastic worker counts use Ray's native representation instead of a separate topology enum:

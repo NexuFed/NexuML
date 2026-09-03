@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator, Sequence
-from typing import Any, cast
+from typing import Any
 
 import torch
 import torch.nn as nn
@@ -11,6 +11,7 @@ from tensordict import TensorDict
 
 from nexuml.core.base_layer import PipelineLayer
 from nexuml.core.config import ResolvedConfig
+from nexuml.core.types import OptimizerSpec, SchedulerSpec
 
 
 class CompiledPipeline(nn.Module):
@@ -36,12 +37,14 @@ class CompiledPipeline(nn.Module):
         self.metric_keys = metric_keys
         self.resolved_config = resolved_config
         self._optimizer_spec = optimizer_spec or {
-            "type": "torch.optim.Adam",
-            "params": {"lr": 1e-3},
+            "factory": "torch.optim.adam:Adam",
+            "args": [],
+            "kwargs": {"lr": 1e-3},
         }
         self._scheduler_spec = scheduler_spec or {
-            "type": "torch.optim.lr_scheduler.ConstantLR",
-            "params": {"factor": 1.0, "total_iters": 0},
+            "factory": "torch.optim.lr_scheduler:ConstantLR",
+            "args": [],
+            "kwargs": {"factor": 1.0, "total_iters": 0},
         }
         self.input_sizes = input_sizes or {}
 
@@ -104,18 +107,24 @@ class CompiledPipeline(nn.Module):
         )
 
     def create_optimizer(self) -> torch.optim.Optimizer:
-        cls_path = cast(str, self._optimizer_spec["type"])
-        params = cast(dict[str, Any], self._optimizer_spec.get("params", {}))
-        optimizer_cls = _resolve_class(cls_path)
-        return optimizer_cls(self.parameters(), **params)
+        optimizer = OptimizerSpec.model_validate(self._optimizer_spec).build(self.parameters())
+        if not isinstance(optimizer, torch.optim.Optimizer):
+            raise TypeError(
+                "Optimizer factory must return torch.optim.Optimizer, "
+                f"got {type(optimizer).__name__}"
+            )
+        return optimizer
 
     def create_scheduler(
         self, optimizer: torch.optim.Optimizer
     ) -> torch.optim.lr_scheduler.LRScheduler:
-        cls_path = cast(str, self._scheduler_spec["type"])
-        params = cast(dict[str, Any], self._scheduler_spec.get("params", {}))
-        scheduler_cls = _resolve_class(cls_path)
-        return scheduler_cls(optimizer, **params)
+        scheduler = SchedulerSpec.model_validate(self._scheduler_spec).build(optimizer)
+        if not isinstance(scheduler, torch.optim.lr_scheduler.LRScheduler):
+            raise TypeError(
+                "Scheduler factory must return torch.optim.lr_scheduler.LRScheduler, "
+                f"got {type(scheduler).__name__}"
+            )
+        return scheduler
 
     def call_layer_hook(self, hook_name: str) -> None:
         """Propagate a lifecycle hook to all pipeline layers."""
@@ -132,24 +141,6 @@ class CompiledPipeline(nn.Module):
                 hook = getattr(layer, hook_name, None)
                 if callable(hook):
                     hook()
-
-
-def _resolve_class(dotted_path: str) -> type:
-    """Resolve a dotted class path like 'torch.optim.Adam'.
-
-    Returns:
-        The resolved class object.
-
-    Raises:
-        ValueError: If the path cannot be split into module and attribute.
-    """
-    parts = dotted_path.rsplit(".", 1)
-    if len(parts) == 2:
-        import importlib
-
-        module = importlib.import_module(parts[0])
-        return getattr(module, parts[1])
-    raise ValueError(f"Cannot resolve class path: {dotted_path}")
 
 
 def _has_required_keys(

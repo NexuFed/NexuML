@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Annotated, Any, Literal
+from collections.abc import Callable, Mapping
+from typing import TYPE_CHECKING, Annotated, Any, Literal, Self, cast
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -12,6 +13,7 @@ from nexuml.core.components import (
     LayerDefinition,
     LoaderBackendDefinition,
 )
+from nexuml.core.factory import factory_values, normalize_json_value, resolve_factory
 
 if TYPE_CHECKING:
     from nexuml.evaluation.utils import FeatureStore
@@ -63,6 +65,64 @@ class SpecModel(BaseModel):
         return super().__eq__(other)
 
 
+class FactorySpec(SpecModel):
+    """Portable constructor configuration authored through a typed factory helper."""
+
+    factory: str
+    args: list[object] = Field(default_factory=list)
+    kwargs: dict[str, object] = Field(default_factory=dict)
+
+    @field_validator("args", mode="before")
+    @classmethod
+    def _validate_args(cls, value: Any) -> list[object]:
+        if not isinstance(value, (list, tuple)):
+            raise ValueError("args must be a list or tuple")
+        return [normalize_json_value(item, f"args[{index}]") for index, item in enumerate(value)]
+
+    @field_validator("kwargs", mode="before")
+    @classmethod
+    def _validate_kwargs(cls, value: Any) -> dict[str, object]:
+        if not isinstance(value, Mapping):
+            raise ValueError("kwargs must be a mapping")
+        normalized = normalize_json_value(value, "kwargs")
+        assert isinstance(normalized, dict)
+        return cast(dict[str, object], normalized)
+
+    @classmethod
+    def from_factory(cls, factory: object, *args: object, **kwargs: object) -> Self:
+        """Capture an importable factory and portable constructor arguments.
+
+        Returns:
+            Validated factory specification.
+        """
+        return cls(**cast(Any, factory_values(factory, args, kwargs, label=cls.__name__)))
+
+    def resolve(self) -> Callable[..., object]:
+        """Resolve the configured import target.
+
+        Returns:
+            Imported callable.
+        """
+        return resolve_factory(self.factory, label=type(self).__name__)
+
+    def build(self, *runtime_args: object, **runtime_kwargs: object) -> object:
+        """Construct the configured object with any runtime-supplied arguments.
+
+        Returns:
+            Constructed runtime object.
+
+        Raises:
+            TypeError: If construction fails.
+        """
+        kwargs = {**self.kwargs, **runtime_kwargs}
+        try:
+            return self.resolve()(*runtime_args, *self.args, **kwargs)
+        except Exception as exc:
+            raise TypeError(
+                f"Could not construct {type(self).__name__} from {self.factory!r}: {exc}"
+            ) from exc
+
+
 class LayerSpec(SpecModel):
     """Specification for a single layer in the pipeline."""
 
@@ -83,18 +143,24 @@ class PipelineSpec(SpecModel):
     stages: dict[str, list[LayerSpec]] = Field(default_factory=dict)
 
 
-class OptimizerSpec(SpecModel):
+_DEFAULT_OPTIMIZER_KWARGS: dict[str, object] = {"lr": 1e-3}
+
+
+class OptimizerSpec(FactorySpec):
     """Specification for an optimizer."""
 
-    type: str = "torch.optim.Adam"
-    params: dict[str, Any] = Field(default_factory=lambda: {"lr": 1e-3})
+    factory: str = "torch.optim.adam:Adam"
+    kwargs: dict[str, object] = Field(default_factory=lambda: dict(_DEFAULT_OPTIMIZER_KWARGS))
 
 
-class SchedulerSpec(SpecModel):
+_DEFAULT_SCHEDULER_KWARGS: dict[str, object] = {"factor": 1.0, "total_iters": 0}
+
+
+class SchedulerSpec(FactorySpec):
     """Specification for a learning rate scheduler."""
 
-    type: str = "torch.optim.lr_scheduler.ConstantLR"
-    params: dict[str, Any] = Field(default_factory=lambda: {"factor": 1.0, "total_iters": 0})
+    factory: str = "torch.optim.lr_scheduler:ConstantLR"
+    kwargs: dict[str, object] = Field(default_factory=lambda: dict(_DEFAULT_SCHEDULER_KWARGS))
     warmup: str | int | None = None
 
     def resolve_warmup(self, max_epochs: int) -> int:
@@ -116,6 +182,10 @@ class SchedulerSpec(SpecModel):
             pct = float(w[:-1]) / 100.0
             return max(1, round(pct * max_epochs))
         return max(1, int(w))
+
+
+class StrategySpec(FactorySpec):
+    """Specification for an importable Lightning strategy."""
 
 
 class AutoBatchSizeSpec(SpecModel):
@@ -157,8 +227,7 @@ class TrainingSpec(SpecModel):
     lr: float = 1e-3
     accelerator: str = "auto"
     devices: str | int = "auto"
-    strategy: str = "auto"
-    strategy_params: dict[str, Any] = Field(default_factory=dict)
+    strategy: str | StrategySpec = "auto"
     precision: str | int = "32-true"
 
     @field_validator("batch_size")
@@ -266,6 +335,28 @@ def _default_loader_backend() -> LoaderBackendDefinition:
     return TorchLoader()
 
 
+class WriterSpec(FactorySpec):
+    """Specification for an importable dataset export backend."""
+
+    factory: str = "nexuml.data.export.numpy_files:NumpyBackend"
+
+    def backend_name(self) -> str:
+        """Return the stable registry name for the configured backend class.
+
+        Returns:
+            Registered export backend name.
+
+        Raises:
+            TypeError: If the configured factory is not an export backend class.
+        """
+        from nexuml.data.export.backend import ExportBackend, get_export_backend_name
+
+        backend_type = self.resolve()
+        if not isinstance(backend_type, type) or not issubclass(backend_type, ExportBackend):
+            raise TypeError(f"Writer factory must be an ExportBackend class, got {backend_type!r}")
+        return get_export_backend_name(backend_type)
+
+
 class PreprocessingSpec(SpecModel):
     """Optional preprocessing stage contract."""
 
@@ -279,10 +370,7 @@ class PreprocessingSpec(SpecModel):
     y_keys: list[str] | None = None
     include_labels: bool = True
     label_prefix: str = "label__"
-    writer: Literal[
-        "webdataset", "tensordict_memmap", "numpy", "numpy_mmap", "torch", "tensor_shards"
-    ] = "numpy"
-    writer_params: dict[str, Any] = Field(default_factory=dict)
+    writer: WriterSpec = Field(default_factory=lambda: WriterSpec())
     overwrite: bool = False
 
 
@@ -314,8 +402,6 @@ class DataSpec(SpecModel):
 class DistanceEstimatorSpec(SpecModel):
     """Specification for a distance estimator used in anomaly detection."""
 
-    type: str = "mahalanobis"
-    params: dict[str, Any] = Field(default_factory=dict)
     group_label_keys: list[str] = Field(default_factory=list)
     missing_label_policy: Literal["error", "skip", "unknown"] = "error"
     fallback_policy: Literal["error", "parent", "global", "parent_or_global"] = "error"
@@ -423,11 +509,8 @@ class LoggingSpec(SpecModel):
     log_system_metrics: bool = False
 
 
-class CallbackSpec(SpecModel):
+class CallbackSpec(FactorySpec):
     """Specification for a training callback."""
-
-    type: str  # dotted path or known alias: "checkpoint", "lr_monitor", etc.
-    params: dict[str, Any] = Field(default_factory=dict)
 
 
 class TuningSpec(SpecModel):

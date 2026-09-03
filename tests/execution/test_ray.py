@@ -4,6 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from nexuml import strategy
 from nexuml.core.types import (
     EvalAlgorithmSpec,
     EvaluationSpec,
@@ -22,7 +23,7 @@ def test_ray_execution_config_is_placement_only():
     scenario = ScenarioSpec.model_validate(
         {
             "name": "distributed",
-            "training": {"strategy": "fsdp", "strategy_params": {"cpu_offload": False}},
+            "training": {"strategy": "fsdp"},
             "execution": {
                 "kind": "ray",
                 "target": {"kind": "cluster", "address": "ray://cluster:10001"},
@@ -122,9 +123,16 @@ def test_ray_strategy_uses_official_ray_classes(monkeypatch):
     monkeypatch.setattr(lightning, "RayFSDPStrategy", FSDP)
     monkeypatch.setattr(lightning, "RayDeepSpeedStrategy", DeepSpeed)
 
-    assert isinstance(ray_execution._ray_strategy("ddp", {}), DDP)
-    assert isinstance(ray_execution._ray_strategy("fsdp", {"state_dict_type": "full"}), FSDP)
-    assert isinstance(ray_execution._ray_strategy("deepspeed", {"stage": 2}), DeepSpeed)
+    assert isinstance(ray_execution._ray_strategy("ddp"), DDP)
+    assert isinstance(ray_execution._ray_strategy("fsdp"), FSDP)
+    assert isinstance(ray_execution._ray_strategy("deepspeed"), DeepSpeed)
+
+
+def test_ray_strategy_accepts_typed_factory():
+    lightning = pytest.importorskip("ray.train.lightning")
+    configured = strategy(lightning.RayFSDPStrategy, state_dict_type="full")
+
+    assert isinstance(ray_execution._ray_strategy(configured), lightning.RayFSDPStrategy)
 
 
 def test_ray_rejects_post_train_fit_layers_until_global_finalization_exists():

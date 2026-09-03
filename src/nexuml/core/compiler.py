@@ -117,14 +117,15 @@ def compile(scenario: ScenarioSpec) -> CompiledPipeline:
         loss_keys=scenario.training.loss_keys,
         metric_keys=scenario.training.metric_keys,
         resolved_config=resolved_config,
-        optimizer_spec={
-            "type": scenario.training.optimizer.type,
-            "params": {**scenario.training.optimizer.params, "lr": scenario.training.lr},
-        },
-        scheduler_spec={
-            "type": scenario.training.scheduler.type,
-            "params": scenario.training.scheduler.params,
-        },
+        optimizer_spec=scenario.training.optimizer.model_copy(
+            update={
+                "kwargs": {
+                    **scenario.training.optimizer.kwargs,
+                    "lr": scenario.training.lr,
+                }
+            }
+        ).model_dump(),
+        scheduler_spec=scenario.training.scheduler.model_dump(),
         input_sizes=dict(pipeline_dims),
     )
 

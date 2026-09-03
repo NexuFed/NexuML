@@ -13,7 +13,9 @@ from nexuml.core.components import LayerBuildContext, LayerDefinition
 from nexuml.core.post_train_layer import PostTrainFitLayer
 from nexuml_library.evaluation.anomalous_sound_detection.decision import (
     DecisionRule,
-    create_decision_rule,
+    DecisionRuleSpec,
+    PercentileThresholdRule,
+    decision_rule,
 )
 from nexuml_library.layers.head._td_utils import get_fit_mask_from_td
 
@@ -27,8 +29,7 @@ class DecisionRulePipelineLayer(LayerDefinition):
 
     requires_post_train_fit = True
 
-    rule_type: str = "percentile"
-    rule_params: dict = Field(default_factory=dict)
+    rule: DecisionRuleSpec = Field(default_factory=lambda: decision_rule(PercentileThresholdRule))
     fit_mask_key: str | None = None
     fit_label_key: str | None = None
     normal_label_value: int | float = 0
@@ -38,17 +39,19 @@ class DecisionRulePipelineLayer(LayerDefinition):
             score_key=context.keys_in[0],
             decision_key=context.keys_out[0],
             **context.runtime_kwargs(),
-            **self.model_dump(),
+            rule=self.rule,
+            fit_mask_key=self.fit_mask_key,
+            fit_label_key=self.fit_label_key,
+            normal_label_value=self.normal_label_value,
         )
 
 
 class _DecisionRulePipelineLayerRuntime(PostTrainFitLayer):
     def __init__(
         self,
+        rule: DecisionRuleSpec,
         score_key: str = "anomaly_score",
         decision_key: str = "decision",
-        rule_type: str = "percentile",
-        rule_params: dict | None = None,
         fit_mask_key: str | None = None,
         fit_label_key: str | None = None,
         normal_label_value: int | float = 0,
@@ -65,8 +68,7 @@ class _DecisionRulePipelineLayerRuntime(PostTrainFitLayer):
         )
         self.score_key = score_key
         self.decision_key = decision_key
-        self.rule_type = rule_type
-        self.rule_params = dict(rule_params or {})
+        self.rule = rule
         self.fit_mask_key = fit_mask_key
         self.fit_label_key = fit_label_key
         self.normal_label_value = normal_label_value
@@ -83,7 +85,10 @@ class _DecisionRulePipelineLayerRuntime(PostTrainFitLayer):
         self._acc_scores.append(scores[mask])
 
     def finalize_fit(self) -> None:
-        self._rule = create_decision_rule(self.rule_type, **self.rule_params)
+        rule = self.rule.build()
+        if not isinstance(rule, DecisionRule):
+            raise TypeError(f"Decision rule factory returned {type(rule).__name__}")
+        self._rule = rule
         all_scores = torch.cat(self._acc_scores, dim=0) if self._acc_scores else torch.zeros(0)
         self._rule.fit(all_scores)
         self._acc_scores = []

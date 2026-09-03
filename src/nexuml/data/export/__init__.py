@@ -4,6 +4,7 @@ from nexuml.data.export.backend import (
     ExportBackend,
     ExportConfig,
     get_export_backend,
+    get_export_backend_name,
     list_export_backends,
     register_export_backend,
 )
@@ -27,6 +28,7 @@ __all__ = [
     "TensorShardsBackend",
     "export_data_module",
     "get_export_backend",
+    "get_export_backend_name",
     "list_export_backends",
     "register_export_backend",
 ]

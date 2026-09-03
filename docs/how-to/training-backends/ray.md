@@ -45,7 +45,17 @@ Each worker restores the typed scenario, creates the normal `NexuSession`, and e
 TrainingSpec(strategy="ddp")
 ```
 
-Strategy-specific settings belong in `training.strategy_params`. Required third-party strategy packages still have to exist in the worker environment.
+For strategy-specific settings, reference Ray's real strategy class:
+
+```python
+from ray.train.lightning import RayFSDPStrategy
+
+from nexuml import strategy
+
+TrainingSpec(strategy=strategy(RayFSDPStrategy, state_dict_type="full"))
+```
+
+The class and its constructor parameters remain navigable and statically checkable. Required third-party strategy packages still have to exist in the worker environment.
 
 ## Ray Jobs
 

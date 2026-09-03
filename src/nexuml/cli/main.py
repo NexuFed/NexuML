@@ -206,9 +206,9 @@ def train_cmd(
         scenario.training.max_epochs = max_epochs
         if (
             scenario.training.scheduler is not None
-            and "max_epochs" in scenario.training.scheduler.params
+            and "max_epochs" in scenario.training.scheduler.kwargs
         ):
-            scenario.training.scheduler.params["max_epochs"] = max_epochs
+            scenario.training.scheduler.kwargs["max_epochs"] = max_epochs
 
     if scenario is not None and override:
         from nexuml.cli.overrides import apply_overrides

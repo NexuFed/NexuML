@@ -680,8 +680,9 @@ def _flatten_optimizer_spec(optimizer_spec: dict[str, Any]) -> dict[str, Any]:
     if not optimizer_spec:
         return {"type": "adam", "lr": 1e-3}
 
-    opt_type = str(optimizer_spec.get("type", "adam")).rsplit(".", 1)[-1].lower()
-    params = dict(optimizer_spec.get("params", {}))
+    target = str(optimizer_spec.get("factory") or optimizer_spec.get("type", "adam"))
+    opt_type = target.rsplit(":", 1)[-1].rsplit(".", 1)[-1].lower()
+    params = dict(optimizer_spec.get("kwargs") or optimizer_spec.get("params", {}))
     flattened = {"type": opt_type}
 
     if "lr" in params:

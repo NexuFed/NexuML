@@ -34,7 +34,7 @@ The system SHALL use `DCASET2Dataset` as the DCASE Task 2 dataset key and SHALL 
 
 #### Scenario: DCASE T2 resolves under global root
 - **WHEN** `NEXUML_DATA_ROOT=/mnt/local` and the DCASE T2 data builder uses its default root
-- **THEN** it produces dataset specs with `type_key: DCASET2Dataset` and root `/mnt/local/DCASET2`
+- **THEN** it produces dataset specs with `source=DCASET2Dataset(root="/mnt/local/DCASET2", ...)`
 
 ### Requirement: Clear missing dataset diagnostics
 The system SHALL report missing datasets with the resolved path, expected layout, and available recovery action such as setting `NEXUML_DATA_ROOT` or enabling a supported download.
@@ -42,4 +42,3 @@ The system SHALL report missing datasets with the resolved path, expected layout
 #### Scenario: Missing dataset without download
 - **WHEN** a dataset root does not exist and download is disabled
 - **THEN** the user receives an error that includes the resolved path and guidance for providing or downloading the data
-

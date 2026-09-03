@@ -2,7 +2,18 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 
+import torch
+from lightning.pytorch.callbacks import (
+    DeviceStatsMonitor,
+    EarlyStopping,
+    LearningRateMonitor,
+    ModelCheckpoint,
+    RichProgressBar,
+)
+
+from nexuml import callback, optimizer, scheduler
 from nexuml.core.types import (
     AutoBatchSizeSpec,
     BatchSizeSpec,
@@ -12,8 +23,6 @@ from nexuml.core.types import (
     ExportSpec,
     LoggingSpec,
     MLflowSpec,
-    OptimizerSpec,
-    SchedulerSpec,
     TensorBoardSpec,
     TrainingSpec,
     TuningSpec,
@@ -34,7 +43,7 @@ def default_training(
     max_epochs: int = 10,
     loss_keys: dict[str, float] | None = None,
     metric_keys: list[str] | None = None,
-    optimizer_type: str = "torch.optim.Adam",
+    optimizer_factory: Callable[..., torch.optim.Optimizer] = torch.optim.Adam,
 ) -> TrainingSpec:
     """Create a default TrainingSpec.
 
@@ -44,11 +53,8 @@ def default_training(
     """
     resolved_batch_size = batch_size if batch_size is not None else DEFAULT_AUTO_BATCH_SIZE
     return TrainingSpec(
-        optimizer=OptimizerSpec(type=optimizer_type, params={"lr": lr}),
-        scheduler=SchedulerSpec(
-            type="torch.optim.lr_scheduler.ConstantLR",
-            params={"factor": 1.0, "total_iters": 0},
-        ),
+        optimizer=optimizer(optimizer_factory, lr=lr),
+        scheduler=scheduler(torch.optim.lr_scheduler.ConstantLR, factor=1.0, total_iters=0),
         loss_keys=loss_keys or {"reconstruction_loss": 1.0},
         metric_keys=metric_keys or [],
         max_epochs=max_epochs,
@@ -103,29 +109,18 @@ def default_callbacks() -> list[CallbackSpec]:
         list[CallbackSpec]: Default callbacks for training.
     """
     return [
-        CallbackSpec(
-            type="early_stopping",
-            params={"monitor": "val/loss", "patience": 5},
+        callback(EarlyStopping, monitor="val/loss", patience=5),
+        callback(LearningRateMonitor),
+        callback(
+            ModelCheckpoint,
+            monitor="val/loss",
+            mode="min",
+            save_top_k=1,
+            filename="{epoch:02d}-{val_loss:.4f}",
+            save_last=True,
         ),
-        CallbackSpec(
-            type="lr_monitor",
-        ),
-        CallbackSpec(
-            type="checkpoint",
-            params={
-                "monitor": "val/loss",
-                "mode": "min",
-                "save_top_k": 1,
-                "filename": "{epoch:02d}-{val_loss:.4f}",
-                "save_last": True,
-            },
-        ),
-        CallbackSpec(
-            type="rich_progress",
-        ),
-        CallbackSpec(
-            type="device_stats",
-        ),
+        callback(RichProgressBar),
+        callback(DeviceStatsMonitor),
     ]
 
 

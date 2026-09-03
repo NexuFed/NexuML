@@ -12,7 +12,7 @@
 | `data` | typed source(s), split policy, loader, shapes/classes, preprocessing/materialization |
 | `evaluation` | post-training evaluation algorithms and result selection |
 | `logging` | TensorBoard/MLflow/DVCLive/diagram configuration or `None` |
-| `callbacks` | Lightning callback specs |
+| `callbacks` | portable Lightning callback factories created with `callback(...)` |
 | `tuning` | Optuna run defaults or `None` |
 | `checkpoint` | selective/pretrained weight-loading policy or `None` |
 | `exports` | requested model artifacts |
@@ -74,6 +74,26 @@ An explicit `LoaderSpec.batch_size` overrides `TrainingSpec.batch_size`. Leave i
 
 Evaluation algorithms consume test outputs; score-producing stateful model behavior belongs in the pipeline (for example a `PostTrainFitLayer`).
 
+## External factories
+
+Python configuration references real framework classes through typed helpers instead of selector strings and parameter dictionaries:
+
+```python
+import torch
+from lightning.pytorch.callbacks import ModelCheckpoint
+
+from nexuml import callback, optimizer, scheduler
+from nexuml.core.types import TrainingSpec
+
+training = TrainingSpec(
+    optimizer=optimizer(torch.optim.Adam, weight_decay=1e-4),
+    scheduler=scheduler(torch.optim.lr_scheduler.ConstantLR, factor=0.5),
+)
+callbacks = [callback(ModelCheckpoint, monitor="val/loss", save_top_k=1)]
+```
+
+`strategy(...)` and `writer(...)` apply the same rule to configured Lightning strategies and preprocessing export backends. The helper stores only an import target and JSON-safe constructor values; the runtime object is created where its runtime dependencies are available.
+
 ## Checkpoints
 
 `CheckpointLoadSpec` is **selective weight reuse**, not the Lightning resume mechanism. Full trainer resume is requested with `nexuml train --trainer-checkpoint PATH`.
@@ -93,6 +113,6 @@ Training semantics remain in `TrainingSpec` in both cases.
 
 `ResolvedConfig.from_scenario(...).to_yaml()` lowers registered definitions to stable component identity + validated parameter data. Restoration discovers the definition and validates it again.
 
-Registered semantic definitions do not persist mutable runtime objects. `NnModule` is the explicit external-factory exception and stores an importable factory target plus JSON-safe constructor values.
+Registered semantic definitions do not persist mutable runtime objects. Direct framework helpers store an importable factory target plus JSON-safe constructor values.
 
 Removed legacy selector fields are rejected rather than silently translated.

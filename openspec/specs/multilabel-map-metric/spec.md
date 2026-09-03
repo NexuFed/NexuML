@@ -9,7 +9,7 @@ The system SHALL register a pipeline layer with type key `MultiLabelMAPMetrics` 
 
 #### Scenario: Layer discovery
 - **WHEN** the layer registry scans for available layers
-- **THEN** `MultiLabelMAPMetrics` is discoverable and instantiable via `LayerSpec(type_key="MultiLabelMAPMetrics")`.
+- **THEN** `MultiLabelMAPMetrics` is discoverable and instantiable via `LayerSpec(component=MultiLabelMAPMetrics(...), ...)`.
 
 ### Requirement: Multi-label mAP Computation
 The layer SHALL compute mAP using `torchmetrics.classification.MultilabelAveragePrecision` over accumulated batches.
