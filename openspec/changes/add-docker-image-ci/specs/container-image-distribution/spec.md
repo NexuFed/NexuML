@@ -25,7 +25,7 @@ The container image SHALL build and complete its installation checks without acc
 
 #### Scenario: Trusted runner has no GPU assigned
 
-- **WHEN** the image workflow runs on `ika-runner` without exposing a GPU to the build
+- **WHEN** the image workflow runs on `ubuntu-latest` without exposing a GPU to the build
 - **THEN** image construction and package verification complete without invoking GPU hardware.
 
 #### Scenario: User starts a GPU container
@@ -35,22 +35,22 @@ The container image SHALL build and complete its installation checks without acc
 
 ### Requirement: Trusted container workflow
 
-The repository SHALL provide a dedicated container workflow that runs on `ika-runner` for pushes to `main`, semantic `vX.Y.Z` tags, and explicit manual dispatches. The workflow SHALL NOT execute Docker builds from pull-request code on the persistent self-hosted runner.
+The repository SHALL provide a dedicated container workflow that runs on `ubuntu-latest` for pushes to `main`, semantic `vX.Y.Z` tags, and explicit manual dispatches. The workflow SHALL NOT execute the expensive Docker build from pull-request code.
 
 #### Scenario: Integrated change reaches main
 
 - **WHEN** a commit is pushed to `main`
-- **THEN** `ika-runner` builds and verifies the container from that exact commit.
+- **THEN** `ubuntu-latest` builds and verifies the container from that exact commit.
 
 #### Scenario: Maintainer validates a revision manually
 
 - **WHEN** a maintainer dispatches the workflow for a trusted revision
-- **THEN** `ika-runner` builds and verifies the image without publishing registry tags.
+- **THEN** `ubuntu-latest` builds and verifies the image without publishing registry tags.
 
 #### Scenario: Pull request changes the Docker build
 
 - **WHEN** unmerged pull-request code changes the Dockerfile or workspace dependencies
-- **THEN** the container workflow does not execute that code through the self-hosted Docker daemon.
+- **THEN** the container workflow does not execute that code or expose registry publication credentials.
 
 ### Requirement: Verification precedes publication
 

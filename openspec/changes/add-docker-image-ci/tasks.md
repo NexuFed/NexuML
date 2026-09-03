@@ -7,7 +7,7 @@
 
 ## 2. Trusted Image Workflow
 
-- [x] 2.1 Add `.github/workflows/docker.yml` for `main`, semantic `vX.Y.Z` tags, and manual dispatch on `ika-runner`, with concurrency cancellation and no pull-request trigger; verify the parsed workflow exposes only those events and runner labels.
+- [x] 2.1 Add `.github/workflows/docker.yml` for `main`, semantic `vX.Y.Z` tags, and manual dispatch on `ubuntu-latest`, with concurrency cancellation and no pull-request trigger; verify the parsed workflow exposes only those events and runner labels.
 - [x] 2.2 Configure Docker metadata and OCI labels for `ghcr.io/nexufed/nexuml`, generating CUDA-suffixed edge, semantic minor/full, and immutable SHA tags; verify fixture refs for `main` and `v0.2.0` produce the tag sets required by the spec and no bare `latest`.
 - [x] 2.3 Build and load one Linux AMD64 image, execute all image checks before registry authentication, and conditionally publish only successful `main` and release-tag push runs using `GITHUB_TOKEN`; verify manual dispatch performs no login or push and a forced failed check reaches no publish step.
 - [x] 2.4 Add a minimal disabled Docker Hub image target and login example using `vars.DOCKERHUB_USERNAME` and `secrets.DOCKERHUB_TOKEN`, and verify active workflow evaluation contains no Docker Hub authentication or push.
@@ -21,7 +21,7 @@
 ## 4. End-to-End Validation And Publication
 
 - [ ] 4.1 Merge through protected `main`, verify the image checks gate publication of matching `edge-cuda12.8.1` and `sha-<short-sha>-cuda12.8.1` images, then link the GHCR package to `NexuFed/NexuML` and make it public.
-- [ ] 4.2 Run the now-default-branch workflow manually on `ika-runner`, verify the build and image checks pass without a GPU or registry publication, and record the compressed image size and available runner disk headroom.
+- [ ] 4.2 Run the now-default-branch workflow manually on `ubuntu-latest`, verify the build and image checks pass without a GPU or registry publication, and record the compressed image size and available runner disk headroom.
 - [ ] 4.3 Pull the main SHA image anonymously in a clean environment, inspect its OCI source/revision/version/license labels, and run the documented non-GPU and GPU startup checks.
 - [ ] 4.4 On the validated `v0.2.0` release commit, verify `0.2.0-cuda12.8.1`, `0.2-cuda12.8.1`, and the SHA tag resolve to the same tested image content while an unqualified `latest` tag remains unpublished.
 - [x] 4.5 Run `openspec validate add-docker-image-ci --strict` and verify the implementation, documentation, and recorded workflow evidence satisfy every container-distribution and user-install scenario.
