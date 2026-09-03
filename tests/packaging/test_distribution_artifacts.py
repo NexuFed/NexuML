@@ -1,12 +1,19 @@
 import os
 import tarfile
+import tomllib
 import zipfile
 from email.parser import BytesParser
 from pathlib import Path
 
 import pytest
 
-VERSION = "0.2.0"
+
+def _project_version(path: Path) -> str:
+    return tomllib.loads(path.read_text())["project"]["version"]
+
+
+CORE_VERSION = _project_version(Path("pyproject.toml"))
+LIBRARY_VERSION = _project_version(Path("library/pyproject.toml"))
 
 pytestmark = pytest.mark.skipif(
     "NEXUML_DIST_ROOT" not in os.environ,
@@ -48,11 +55,11 @@ def _require_names(names: set[str], suffixes: tuple[str, ...], artifact: Path) -
         assert any(name.endswith(suffix) for name in names), f"{artifact} is missing *{suffix}"
 
 
-def _metadata(path: Path, expected_name: str, raw: bytes):
+def _metadata(path: Path, expected_name: str, expected_version: str, raw: bytes):
     message = BytesParser().parsebytes(raw)
     expected = {
         "Name": expected_name,
-        "Version": VERSION,
+        "Version": expected_version,
         "License-Expression": "Apache-2.0",
         "License-File": "LICENSE",
         "Maintainer": "NexuFed AI",
@@ -73,10 +80,10 @@ def test_distribution_artifacts() -> None:
     core_dir = root / "nexuml"
     library_dir = root / "nexuml-library"
 
-    core_wheel = _only(core_dir, f"nexuml-{VERSION}-*.whl")
-    core_sdist = _only(core_dir, f"nexuml-{VERSION}.tar.gz")
-    library_wheel = _only(library_dir, f"nexuml_library-{VERSION}-*.whl")
-    library_sdist = _only(library_dir, f"nexuml_library-{VERSION}.tar.gz")
+    core_wheel = _only(core_dir, f"nexuml-{CORE_VERSION}-*.whl")
+    core_sdist = _only(core_dir, f"nexuml-{CORE_VERSION}.tar.gz")
+    library_wheel = _only(library_dir, f"nexuml_library-{LIBRARY_VERSION}-*.whl")
+    library_sdist = _only(library_dir, f"nexuml_library-{LIBRARY_VERSION}.tar.gz")
 
     core_wheel_names, core_raw_metadata, core_license = _wheel_files(core_wheel)
     library_wheel_names, library_raw_metadata, library_license = _wheel_files(library_wheel)
@@ -105,8 +112,10 @@ def test_distribution_artifacts() -> None:
             f"{artifact}: packaged license differs from LICENSE"
         )
 
-    core = _metadata(core_wheel, "nexuml", core_raw_metadata)
-    library = _metadata(library_wheel, "nexuml-library", library_raw_metadata)
+    core = _metadata(core_wheel, "nexuml", CORE_VERSION, core_raw_metadata)
+    library = _metadata(
+        library_wheel, "nexuml-library", LIBRARY_VERSION, library_raw_metadata
+    )
     core_requires = core.get_all("Requires-Dist", [])
     library_requires = library.get_all("Requires-Dist", [])
 
@@ -114,8 +123,20 @@ def test_distribution_artifacts() -> None:
         requirement.startswith("nexuml-library") and "extra ==" not in requirement
         for requirement in core_requires
     )
-    assert "nexuml-library; extra == 'library'" in core_requires
-    assert any(requirement.startswith("nexuml>=0.2") for requirement in library_requires)
+    assert any(
+        requirement.startswith("nexuml-library")
+        and ">=0.2" in requirement
+        and "<0.3" in requirement
+        and "extra == 'library'" in requirement
+        for requirement in core_requires
+    )
+    assert any(
+        requirement.startswith("nexuml")
+        and ">=0.2" in requirement
+        and "<0.3" in requirement
+        and "extra ==" not in requirement
+        for requirement in library_requires
+    )
 
     forbidden = ("rapids", "numba", "psutil", "huggingface-hub", "ffmpeg", "einops", "omegaconf")
     assert not any(

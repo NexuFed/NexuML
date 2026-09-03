@@ -7,8 +7,8 @@
 
 ## 2. Dependency Ownership
 
-- [x] 2.1 Remove `nexuml-library` from mandatory core dependencies, add unpinned `nexuml-library` under the core `library` extra, and verify resolved core metadata has no mandatory library requirement.
-- [x] 2.2 Change the library's framework requirement to the one-way minimum `nexuml>=0.2`, and verify the two built dependency graphs contain no mandatory cycle or exact cross-package pin.
+- [x] 2.1 Remove `nexuml-library` from mandatory core dependencies, add `nexuml-library>=0.2,<0.3` under the core `library` extra, and verify resolved core metadata has no mandatory library requirement or exact cross-package pin.
+- [x] 2.2 Change the library's framework requirement to the one-way same-minor range `nexuml>=0.2,<0.3`, and verify the two built dependency graphs contain no mandatory cycle, no exact cross-package pin, and cannot mix a future breaking 0.3 distribution into the 0.2 release line.
 - [x] 2.3 Audit every declared dependency against direct, delayed, and plugin imports; move library-owned requirements such as TorchAudio, TorchVision, and TorchMetrics out of mandatory core metadata, and verify each active declaration has a current runtime owner.
 - [x] 2.4 Keep core-owned optional integrations in their feature extras, move audio/data/pretrained/evaluation requirements to the library metadata where used, and verify representative feature imports either succeed with their extra or fail with an actionable extra-specific message.
 - [x] 2.5 Comment out confirmed-unused root declarations for `rapids`, `numba`, and `psutil` with concise reasons, and verify none appears in the core wheel's `Requires-Dist` metadata.
@@ -43,7 +43,7 @@
 
 - [x] 5.1 Update the root README installation section and badges to present `uv pip install nexuml` and `uv pip install "nexuml[library]"`, and verify the rendered README explains the core/library distinction.
 - [x] 5.2 Update `docs/start/install.md` and first-run references to use PyPI for normal users while retaining Git checkout and editable installs only in contributor guidance, and verify all commands use shell-safe ASCII quoting.
-- [x] 5.3 Expand `library/README.md` with its purpose, direct and convenience installation commands, framework compatibility policy, and discovery entry point, and verify it renders as valid package long-description Markdown.
+- [x] 5.3 Expand `library/README.md` with its purpose, direct and convenience installation commands, same-minor framework compatibility policy, and discovery entry point, and verify it renders as valid package long-description Markdown.
 - [x] 5.4 Document CUDA-specific PyTorch selection and DALI's platform/index requirements separately from default installation, and verify the default instructions require no custom package index.
 - [x] 5.5 Run `uv run mkdocs build --strict` against the rewritten documentation at the final candidate commit and verify it builds without warnings or broken links.
 - [x] 5.6 Remove the implicit-DALI warnings and first-run DALI installation requirement, distinguish feature-store `ram` from TensorDict-storage `memory`, document Lightning-owned checkpoint locations, and verify the rendered pages match the implemented defaults.

@@ -34,17 +34,18 @@ The mandatory dependencies of `nexuml` SHALL NOT include `nexuml-library`, and t
 - **AND** the NexuML CLI can display its help and perform framework operations that do not require library-provided components.
 
 ### Requirement: Base library is an optional one-way extension
-The `nexuml` distribution SHALL expose a `library` extra that installs `nexuml-library` without an exact distribution-version pin. The `nexuml-library` distribution SHALL depend on a compatible minimum `nexuml` version without creating a dependency from core back to the library.
+The `nexuml` distribution SHALL expose a `library` extra that installs the compatible `nexuml-library` minor line without an exact release pin. For the 0.2 line, both cross-package requirements SHALL be bounded to `>=0.2,<0.3`. The `nexuml-library` distribution SHALL depend on the same compatible NexuML minor line without making the library a mandatory core dependency.
 
 #### Scenario: User requests the base library through core
-- **WHEN** a user installs `nexuml[library]`
-- **THEN** the environment contains both distributions
+- **WHEN** a user installs `nexuml[library]` from the 0.2 release line
+- **THEN** the environment contains both 0.2-compatible distributions
 - **AND** library-provided components and scenarios are discoverable through the standard installed-library entry point.
 
 #### Scenario: Dependency metadata is resolved
-- **WHEN** an installer resolves either distribution
-- **THEN** the dependency graph contains no `nexuml -> nexuml-library -> nexuml` mandatory cycle
-- **AND** the core package does not require one exact `nexuml-library` release.
+- **WHEN** an installer resolves either 0.2 distribution
+- **THEN** the dependency graph contains no mandatory `nexuml -> nexuml-library -> nexuml` cycle
+- **AND** neither distribution requires one exact release of the other
+- **AND** a future breaking `0.3` distribution is not selected into the 0.2 compatibility line.
 
 ### Requirement: Base-library defaults are portable
 The default data-loader configuration SHALL use the standard PyTorch loader available in a normal `nexuml[library]` installation. DALI SHALL remain an explicit backend choice for scenarios that require its platform-specific behavior.
@@ -84,7 +85,7 @@ Reusable callback defaults SHALL NOT embed a scenario-specific checkpoint direct
 - **AND** Lightning derives the checkpoint destination from the run's logger or trainer root.
 
 ### Requirement: Published dependencies express runtime compatibility
-Each distribution SHALL declare only dependencies needed by its base runtime or an advertised optional feature. Published dependency metadata SHALL use compatibility constraints rather than development lock versions, except where a documented third-party compatibility requirement necessitates a bounded range.
+Each distribution SHALL declare only dependencies needed by its base runtime or an advertised optional feature. Published dependency metadata SHALL use compatibility constraints rather than development lock versions, except where a documented third-party or same-project compatibility requirement necessitates a bounded range.
 
 #### Scenario: Core metadata is inspected
 - **WHEN** a user inspects the core wheel's `Requires-Dist` entries

@@ -7,7 +7,7 @@ NexuML cannot be published safely to PyPI while its two distributions depend on 
 - Replace the proprietary license with Apache License 2.0 for both distributions and publish SPDX-compatible package metadata.
 - Release both `nexuml` and `nexuml-library` as version `0.2.0`, expose the installed core version consistently, and require release tags to match distribution metadata.
 - **BREAKING** Remove `nexuml-library` from the mandatory `nexuml` dependencies so a default core installation no longer installs built-in components and scenarios.
-- Add an unpinned `nexuml[library]` convenience extra while retaining the one-way `nexuml-library -> nexuml>=0.2` framework dependency.
+- Add a same-minor `nexuml[library]` convenience extra (`nexuml-library>=0.2,<0.3`) while retaining the one-way `nexuml-library -> nexuml>=0.2,<0.3` framework dependency. This prevents future breaking minor releases from being resolved into an older 0.2 environment without adding an exact cross-package pin.
 - Move required dependencies to the distribution or optional feature that imports them, preserve intentional compatibility ranges such as Ray's, and comment out currently unused declarations with a short reason rather than deleting them.
 - Remove the repository-root legacy `requirements.txt`; keep `pyproject.toml` as public dependency metadata and `uv.lock` as the exact development/CI resolution.
 - Keep generated model-export `requirements.txt` snapshots, serialized component versions, and export schema versions unchanged because they are separate compatibility contracts.

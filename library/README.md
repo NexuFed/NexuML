@@ -14,4 +14,4 @@ Or install it through the framework convenience extra:
 uv pip install "nexuml[library]"
 ```
 
-The library requires `nexuml>=0.2` and advertises its package through the `nexuml.libraries` entry-point group, so installed components and scenarios are discovered automatically. Feature-specific dependencies are available through the `audio`, `data`, `pretrained`, `eval`, and `all` extras.
+The 0.2 release line requires `nexuml>=0.2,<0.3` and advertises its package through the `nexuml.libraries` entry-point group, so installed components and scenarios are discovered automatically. Feature-specific dependencies are available through the `audio`, `data`, `pretrained`, `eval`, and `all` extras.

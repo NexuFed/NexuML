@@ -25,14 +25,14 @@ def test_core_distribution() -> None:
     import nexuml
     import torch.nn as nn
 
-    assert nexuml.__version__ == importlib.metadata.version("nexuml") == "0.2.0"
+    assert nexuml.__version__ == importlib.metadata.version("nexuml")
     assert nexuml.nn_module(nn.Identity).factory == "torch.nn.modules.linear:Identity"
     subprocess.run([sys.executable, "-I", "-m", "nexuml", "--help"], check=True)
 
 
 def test_library_distribution() -> None:
     _assert_no_source_paths()
-    assert importlib.metadata.version("nexuml-library") == "0.2.0"
+    assert importlib.metadata.version("nexuml-library") == importlib.metadata.version("nexuml")
     entry_points = importlib.metadata.entry_points(group="nexuml.libraries")
     base = next((entry for entry in entry_points if entry.name == "base"), None)
     assert base is not None and base.value == "nexuml_library"

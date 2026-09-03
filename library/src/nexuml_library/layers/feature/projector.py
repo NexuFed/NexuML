@@ -37,13 +37,11 @@ class Linear(LayerDefinition):
 
     Attributes:
         target_dim: Output dimension. If None, uses output_sizes.
-        output_dim: Backward-compatible alias for target_dim.
         hidden_dim: Hidden layer size (for n_layers > 1).
-        hidden_dims: Backward-compatible explicit hidden-layer sizes. When
-            provided, overrides hidden_dim/n_layers for layer construction.
+        hidden_dims: Explicit hidden-layer sizes. When provided, overrides
+            hidden_dim/n_layers for layer construction.
         n_layers: Number of linear layers.
         linear_bias: Whether to use bias.
-        bias: Backward-compatible alias for linear_bias.
         activation: Dotted class path, e.g. "torch.nn.GELU".
         normalization: Dotted class path, e.g. "torch.nn.BatchNorm1d".
         skip_last_activation: Skip activation after the last layer.

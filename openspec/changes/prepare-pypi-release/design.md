@@ -33,30 +33,32 @@ The existing release workflow creates a GitHub release for any `v*` tag but does
 - Do not redesign component discovery, the training lifecycle, evaluation algorithms, or export formats beyond the narrow release-default and storage-wiring corrections described below.
 - Do not relax generated model-export environment snapshots; they intentionally capture exact external runtime versions.
 - Do not bump serialized component identity versions or export schema versions as part of the package release.
-- Do not add upper dependency bounds without evidence of an incompatibility.
+- Do not add arbitrary upper dependency bounds without evidence of incompatibility. The explicit `>=0.2,<0.3` bound between the two NexuML distributions is the compatibility contract for a project that may make breaking changes at minor releases before 1.0.
 - Do not create a custom release/version management framework.
 - Do not alias `ram` and `memory`; they name different feature-store and TensorDict-storage families.
 - Do not introduce a NexuML run-ID or checkpoint-directory allocation system when Lightning already owns that behavior.
 
 ## Decisions
 
-### D1 - Use a one-way optional library dependency
+### D1 - Use a one-way optional library dependency with a same-minor compatibility line
 
-The target graph is:
+The target graph for 0.2 is:
 
 ```text
-nexuml[library] ──optional──▶ nexuml-library
-                                  │
-                                  └──requires──▶ nexuml>=0.2
+nexuml[library] ──optional >=0.2,<0.3──▶ nexuml-library
+                                           │
+                                           └──requires──▶ nexuml>=0.2,<0.3
 ```
 
 `nexuml` removes `nexuml-library` from mandatory dependencies and adds:
 
 ```toml
-library = ["nexuml-library"]
+library = ["nexuml-library>=0.2,<0.3"]
 ```
 
-The convenience extra deliberately has no exact library version. `nexuml-library` retains a minimum compatible core dependency, `nexuml>=0.2`, because it imports framework APIs. No dependency points from core back to the library.
+`nexuml-library` depends on `nexuml>=0.2,<0.3` because it imports framework APIs. The range deliberately allows compatible patch releases while preventing a future breaking 0.3 release from being resolved into a 0.2 environment. No dependency points from mandatory core requirements back to the library, and neither distribution uses an exact cross-package version pin.
+
+Alternative considered: leave the convenience extra and framework dependency open-ended above `0.2`. Rejected because NexuML is pre-1.0 and may use a new minor release for breaking API changes; an old 0.2 core must not silently resolve a future 0.3 library, or vice versa.
 
 Alternative considered: rename the framework to `nexuml-core` and make `nexuml` a meta-package. Rejected because the existing package already has the correct framework/library boundary and discovery behavior; renaming adds migration cost without solving an unmet requirement.
 
@@ -68,7 +70,7 @@ The dependency audit uses these rules:
 - A package used only by `nexuml_library` moves to the library distribution.
 - A package used only when a named optional feature is invoked belongs to that feature extra and is imported lazily with an actionable error.
 - Development lock versions remain in `uv.lock`, not in wheel metadata.
-- Exact or upper-bounded public constraints remain only when an existing documented compatibility requirement justifies them. The bounded Ray API range is preserved.
+- Exact or upper-bounded public constraints remain only when an existing documented compatibility requirement justifies them. This includes the 0.2 same-minor NexuML/core-library contract and the bounded Ray API range.
 
 The initial known moves include `torchaudio`, `torchvision`, and `torchmetrics` out of mandatory core metadata because their code ownership is in the base library. Existing audio, data, pretrained, and evaluation dependencies are audited with the same ownership rule rather than copied into both distributions. Core-owned optional integrations such as tracking, tuning, export, Ray, S3, and DALI remain core extras.
 
@@ -125,7 +127,7 @@ CI builds wheel and source distributions for each project into separate director
 
 Two isolated smoke paths install only built artifacts:
 
-1. Core-only: install the core wheel with public dependencies, verify `nexuml-library` is absent, import `nexuml`, inspect version `0.2.0`, run CLI help, and exercise a framework operation that needs no library component.
+1. Core-only: install the core wheel with public dependencies, verify `nexuml-library` is absent, import `nexuml`, inspect its installed version, run CLI help, and exercise a framework operation that needs no library component.
 2. Core plus library: install both wheels, load installed entry points, list representative base-library components and scenarios, and create a first batch from a lightweight implicit-loader scenario without DALI or repository `PYTHONPATH` entries.
 
 Editable workspace tests remain useful for development but do not satisfy this release gate.
@@ -202,7 +204,7 @@ Alternative considered: add a checkpoint-directory parameter and keep the curren
 
 ## Risks / Trade-offs
 
-- Unpinned `nexuml[library]` can select a future incompatible library -> Keep the library's minimum core requirement accurate, follow compatible public APIs, and test the latest published pair before releases.
+- Same-minor cross-package ranges intentionally allow patch-version mixing -> Keep the public 0.2 API compatible across patch releases and test the latest published core/library pair before each release.
 - Commented dependency declarations can become stale clutter -> Require a reason on each comment and revisit them after the first stable public release.
 - Moving dependencies can expose eager optional imports -> Use isolated core/library wheel tests and delay imports only at actual optional feature boundaries.
 - Custom PyTorch/NVIDIA indexes are not propagated by wheel metadata -> Test public-index CPU installation and document accelerator-specific installation separately.

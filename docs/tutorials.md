@@ -17,8 +17,8 @@ The current tutorial work is structured as:
 
 The progression mirrors how NexuML is intended to be learned: first understand reusable blocks and explicit data flow, then add more sophisticated data and execution features only when you need them.
 
-!!! warning "Use a tutorial revision compatible with your NexuML version"
-    The current `feature/nex-210-audio-example` tutorial work predates the NexuML 0.2 typed-component configuration refactor. NexuML 0.2 rejects the legacy selector/parameter-bag syntax. Do not mix that older tutorial revision with a 0.2 installation until the tutorial branch has been migrated.
+!!! note "Version compatibility"
+    The tutorial repository evolves alongside NexuML. Use a tutorial revision intended for the NexuML version installed in your project; tutorial branches declare their framework dependency in `pyproject.toml` and document any branch-specific requirements.
 
 ## Documentation vs tutorials
 

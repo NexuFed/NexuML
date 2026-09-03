@@ -19,7 +19,7 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
-    "nexuml>=0.2",
+    "nexuml>=0.2,<0.3",
     "torchaudio>=2.0",
     "torchmetrics>=1.0",
     "torchvision>=0.15",
