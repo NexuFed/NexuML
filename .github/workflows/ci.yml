@@ -70,6 +70,8 @@ jobs:
           echo "VIRTUAL_ENV=$PWD/.venv" >> "$GITHUB_ENV"
 
       - name: Run pytest suite with coverage
+        env:
+          CUDA_VISIBLE_DEVICES: ""
         run: pytest --cov=nexuml --cov=nexuml_library --cov-report=term-missing --cov-report=xml:reports/coverage.xml
 
   required-ci:

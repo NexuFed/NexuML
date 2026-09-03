@@ -185,8 +185,6 @@ def train_cmd(
     Raises:
         typer.Exit: If input validation fails or training encounters an error.
     """
-    from nexuml.training.lightning import NexuSession
-
     scenario = None
     loaded_file = None
     if scenario_name or config_path or scenario_file:
@@ -258,6 +256,45 @@ def train_cmd(
         except Exception as exc:
             console.print(f"[yellow]Warning: diagram export failed: {exc}[/yellow]")
 
+    if scenario is not None:
+        from nexuml.core.types import RayExecutionSpec
+
+        if isinstance(scenario.execution, RayExecutionSpec):
+            if trainer_checkpoint is not None:
+                console.print(
+                    "[red]--trainer-checkpoint is a local Lightning option; "
+                    "Ray recovery is managed by Ray RunConfig.[/red]"
+                )
+                raise typer.Exit(1)
+            from nexuml.execution import run_ray
+
+            ray_result = run_ray(scenario)
+            if loaded_file is not None and artifact_dir is not None:
+                from nexuml.core.provenance import snapshot_scenario_file_run
+
+                snapshot_scenario_file_run(
+                    loaded_file,
+                    artifact_dir,
+                    command="train",
+                    command_args={
+                        "scenario_file": str(scenario_file),
+                        "max_epochs": max_epochs,
+                        "execution": "ray",
+                    },
+                )
+            console.print("[green]Ray training complete![/green]")
+            metrics = getattr(ray_result, "metrics", None)
+            if metrics:
+                console.print(f"  Metrics: {metrics}")
+            if scenario.exports:
+                console.print(
+                    "[yellow]Scenario model exports are currently local-only; "
+                    "use Ray run/checkpoint storage for distributed runs.[/yellow]"
+                )
+            return
+
+    from nexuml.training.lightning import NexuSession
+
     session = NexuSession(
         scenario=scenario,
         trainer_checkpoint=trainer_checkpoint,
@@ -302,9 +339,7 @@ def train_cmd(
 def export_dataset_cmd(
     scenario_name: Optional[str] = typer.Argument(None, help="Scenario name"),
     config_path: Optional[Path] = typer.Option(None, "--config", "-c", help="Config YAML path"),
-    output: Path = typer.Option(
-        Path("exported_dataset"), "--output", "-o", help="Export directory"
-    ),
+    output: str = typer.Option("exported_dataset", "--output", "-o", help="Path or s3:// URI"),
     backend: str = typer.Option("numpy", "--backend", help="Dataset export backend"),
     split: list[str] | None = typer.Option(
         None,
@@ -341,8 +376,18 @@ def export_dataset_cmd(
         "--dtype",
         help="Optional storage dtype passed to the export backend, e.g. float16.",
     ),
+    samples_per_shard: int = typer.Option(
+        256, "--samples-per-shard", help="Samples per WebDataset tar shard"
+    ),
+    s3_endpoint_url: str | None = typer.Option(
+        None, "--s3-endpoint-url", help="Optional S3-compatible endpoint"
+    ),
+    s3_region: str | None = typer.Option(None, "--s3-region", help="Optional S3 region"),
+    s3_profile: str | None = typer.Option(
+        None, "--s3-profile", help="Optional AWS credential profile name"
+    ),
 ):
-    """Export a dataset view to disk from a scenario or config.
+    """Export a dataset view to disk or S3 from a scenario or config.
 
     Raises:
         typer.Exit: If preprocessing is enabled without --preprocess-until-key.
@@ -377,7 +422,18 @@ def export_dataset_cmd(
     else:
         console.print("[blue]Exporting raw data-module batches (no preprocessing).[/blue]")
 
-    export_data_module(
+    backend_kwargs: dict[str, Any] = {}
+    if backend == "webdataset":
+        backend_kwargs.update(
+            {
+                "samples_per_shard": samples_per_shard,
+                "s3_endpoint_url": s3_endpoint_url,
+                "s3_region": s3_region,
+                "s3_profile": s3_profile,
+            }
+        )
+
+    result = export_data_module(
         runtime.data_module,
         output,
         backend=backend,
@@ -387,8 +443,9 @@ def export_dataset_cmd(
         y_keys=y_key,
         include_labels=include_labels,
         dtype=dtype,
+        **backend_kwargs,
     )
-    console.print(f"[green]Dataset exported to {output}[/green]")
+    console.print(f"[green]Dataset exported to {result}[/green]")
 
 
 @app.command(name="export", help="Export a trained pipeline")
@@ -453,8 +510,6 @@ def smoke(
 
     scenario_fn = _get_scenario_fn(scenario_name)
 
-    # Only pass download=True when the scenario accepts it (avoid TypeError
-    # on scenarios that do not declare a download parameter).
     sig = inspect.signature(scenario_fn)
     kwargs: dict[str, Any] = {}
     if "download" in sig.parameters:
@@ -462,7 +517,6 @@ def smoke(
     scenario = scenario_fn(**kwargs)
     scenario.training.max_epochs = max_epochs
 
-    # 1. Resolve
     console.print("[blue]1. Resolving scenario...[/blue]")
     registry = get_registry()
     pipeline = compile(scenario, registry)
@@ -470,27 +524,22 @@ def smoke(
     pipeline.resolved_config.save(config_path)
     console.print(f"   Config saved to {config_path}")
 
-    # 2. Build (already done in compile)
     console.print("[blue]2. Pipeline built successfully[/blue]")
     console.print(f"   Stages: {list(pipeline.stages.keys())}")
 
-    # 3. Train
     console.print("[blue]3. Training...[/blue]")
     result = train(scenario, registry=registry, enable_progress_bar=True)
     console.print("   Training complete!")
 
-    # 4. Export
     console.print("[blue]4. Exporting...[/blue]")
     export_dir = resolve_logs_root(f".experiments/{scenario_name}_export")
     export_package(result.pipeline, export_dir)
     console.print(f"   Exported to {export_dir}")
 
-    # 5. Reload
     console.print("[blue]5. Reloading...[/blue]")
     loaded_pipeline, loaded_config, metadata = load_package(export_dir, registry)
     console.print(f"   Config hash: {metadata.get('config_hash', 'N/A')}")
 
-    # 6. Inference
     console.print("[blue]6. Running inference...[/blue]")
     data_module = create_data_module_from_spec(scenario)
     data_module.setup()
@@ -791,6 +840,7 @@ def backend_list(
         add("data-loader", name, f"{backend.__class__.__module__}.{backend.__class__.__name__}")
 
     add("training", "lightning", "nexuml.training.lightning.NexuSession")
+    add("training", "ray", "nexuml.execution.ray.run_ray")
     add("tracking", "tensorboard", "nexuml.tracking.logger")
     add("tracking", "dvclive", "nexuml.tracking.logger")
     add("tracking", "mlflow", "nexuml.tracking.logger")
@@ -812,10 +862,6 @@ def backend_list(
         table.add_row(*row)
     console.print(table)
 
-
-# ---------------------------------------------------------------------------
-# Library subcommands
-# ---------------------------------------------------------------------------
 
 library_app = typer.Typer(help="Manage local library roots")
 app.add_typer(library_app, name="library")
@@ -886,5 +932,4 @@ def library_list():
 if __name__ == "__main__":
     app()
 
-# Expose as a Click command for mkdocs-click documentation generation
 click_app = typer.main.get_command(app)

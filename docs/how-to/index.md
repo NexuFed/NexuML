@@ -7,6 +7,8 @@ Task-oriented recipes for practitioners who know what they want to achieve. Each
 - [CLI lifecycle](cli-lifecycle.md) — the full resolve → build → train → export command flow
 - [Run scenarios](run-scenarios.md) — all ways to execute a scenario (name, config, scenario file)
 - [Train a model](train.md) — run Lightning training with options and overrides
+- [Training backends](training-backends/index.md) — choose local or distributed Ray execution
+- [Ray training](training-backends/ray.md) — Ray Train, Ray Jobs, DDP/FSDP/DeepSpeed, and S3 data
 - [Evaluate a model](evaluate.md) — post-training evaluation algorithms
 - [Export a model package](export.md) — create and reload portable inference packages
 - [Checkpoints](checkpoints.md) — resume, fine-tune, and selective checkpoint loading

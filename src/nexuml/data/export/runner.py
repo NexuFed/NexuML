@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import dataclasses
 import logging
+import tempfile
 from collections.abc import Callable, Iterable, Sequence
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 from pathlib import Path
-from typing import TypeAlias
+from typing import TypeAlias, overload
 
 import pandas as pd
 import torch
@@ -19,6 +20,7 @@ from tqdm.auto import tqdm
 from nexuml.data.dataset import NexuDataset
 from nexuml.data.export.backend import ExportConfig, get_export_backend
 from nexuml.data.module import NexuDataModule
+from nexuml.storage.s3 import is_s3_uri
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +28,42 @@ BatchTransform: TypeAlias = Callable[
     [TensorDict, TensorDict | None],
     tuple[TensorDict, TensorDict | None],
 ]
+
+
+@overload
+def export_data_module(
+    data_module: NexuDataModule,
+    path: Path,
+    *,
+    backend: str = "numpy",
+    splits: Sequence[str] | None = None,
+    transform: BatchTransform | None = None,
+    x_keys: Sequence[str] | None = None,
+    y_keys: Sequence[str] | None = None,
+    include_labels: bool = True,
+    label_prefix: str = "label__",
+    dtype: object | None = None,
+    device: torch.device | str | None = None,
+    **backend_kwargs: object,
+) -> Path: ...
+
+
+@overload
+def export_data_module(
+    data_module: NexuDataModule,
+    path: str,
+    *,
+    backend: str = "numpy",
+    splits: Sequence[str] | None = None,
+    transform: BatchTransform | None = None,
+    x_keys: Sequence[str] | None = None,
+    y_keys: Sequence[str] | None = None,
+    include_labels: bool = True,
+    label_prefix: str = "label__",
+    dtype: object | None = None,
+    device: torch.device | str | None = None,
+    **backend_kwargs: object,
+) -> Path | str: ...
 
 
 def export_data_module(
@@ -41,20 +79,17 @@ def export_data_module(
     label_prefix: str = "label__",
     dtype: object | None = None,
     device: torch.device | str | None = None,
-    **backend_kwargs,
-) -> Path:
+    **backend_kwargs: object,
+) -> Path | str:
     """Export the data exactly as seen through a configured data module.
 
     Returns:
-        Path to the export directory.
+        Local export path, or the original S3 URI for a remote WebDataset export.
 
     Raises:
-        ValueError: If there are no samples to export.
+        ValueError: If there are no samples or an unsupported remote backend is requested.
     """
     data_module.setup()
-    export_dir = Path(path)
-    export_dir.mkdir(parents=True, exist_ok=True)
-
     split_datasets = _resolve_data_module_splits(data_module, splits)
     num_samples = sum(len(dataset_split) for _, dataset_split in split_datasets)
     if num_samples == 0:
@@ -70,34 +105,47 @@ def export_data_module(
         ],
         ignore_index=True,
     )
+    path_text = str(path)
+    remote = is_s3_uri(path_text)
+    if remote:
+        if backend != "webdataset":
+            raise ValueError("S3 dataset export currently supports backend='webdataset' only")
+        backend_kwargs["s3_uri"] = path_text
 
-    return _export_batches(
-        export_dir=export_dir,
-        backend=backend,
-        num_samples=num_samples,
-        metadata=metadata,
-        modality=getattr(data_module.dataset, "modality", "audio"),
-        label_names=getattr(data_module.dataset, "label_names", []),
-        num_classes=getattr(data_module.dataset, "num_classes", {}),
-        source_datasets=list(
-            getattr(getattr(data_module, "dataset", None), "meta_data_list", {}).keys()
-        ),
-        batch_iterables=[
-            (
-                split_name,
-                data_module._loader(dataset_split, split=split_name, shuffle=False),
-            )
-            for split_name, dataset_split in split_datasets
-        ],
-        transform=transform,
-        x_keys=x_keys,
-        y_keys=y_keys,
-        include_labels=include_labels,
-        label_prefix=label_prefix,
-        dtype=dtype,
-        device=device,
-        backend_kwargs=backend_kwargs,
-    )
+    with ExitStack() as stack:
+        export_dir = (
+            Path(stack.enter_context(tempfile.TemporaryDirectory(prefix="nexuml-webdataset-")))
+            if remote
+            else Path(path)
+        )
+        result = _export_batches(
+            export_dir=export_dir,
+            backend=backend,
+            num_samples=num_samples,
+            metadata=metadata,
+            modality=getattr(data_module.dataset, "modality", "audio"),
+            label_names=getattr(data_module.dataset, "label_names", []),
+            num_classes=getattr(data_module.dataset, "num_classes", {}),
+            source_datasets=list(
+                getattr(getattr(data_module, "dataset", None), "meta_data_list", {}).keys()
+            ),
+            batch_iterables=[
+                (
+                    split_name,
+                    data_module._loader(dataset_split, split=split_name, shuffle=False),
+                )
+                for split_name, dataset_split in split_datasets
+            ],
+            transform=transform,
+            x_keys=x_keys,
+            y_keys=y_keys,
+            include_labels=include_labels,
+            label_prefix=label_prefix,
+            dtype=dtype,
+            device=device,
+            backend_kwargs=backend_kwargs,
+        )
+    return path_text if remote else result
 
 
 def _export_batches(
@@ -120,6 +168,14 @@ def _export_batches(
     device: torch.device | str | None,
     backend_kwargs: dict[str, object],
 ) -> Path:
+    """Write already-resolved split batches to one local/staging directory.
+
+    Returns:
+        Local export/staging directory.
+
+    Raises:
+        ValueError: If no samples, batches, dtype metadata, or backend are available.
+    """
     export_dir.mkdir(parents=True, exist_ok=True)
     if num_samples == 0:
         raise ValueError("No samples to export")
@@ -194,20 +250,12 @@ def _export_batches(
 
                         assert backend_instance is not None
                         if not split_started:
-                            start_split = getattr(
-                                backend_instance,
-                                "start_split",
-                                None,
-                            )
+                            start_split = getattr(backend_instance, "start_split", None)
                             if callable(start_split):
                                 start_split(split_name)
-
                             split_started = True
 
-                        backend_instance.save_batch(
-                            export_index,
-                            payload,
-                        )
+                        backend_instance.save_batch(export_index, payload)
                         export_index += current_batch_size
                         progress.update(current_batch_size)
 
@@ -270,8 +318,13 @@ def _export_batches(
         },
     )
 
-    with open(export_dir / "config.yaml", "w") as handle:
+    config_path = export_dir / "config.yaml"
+    with open(config_path, "w") as handle:
         yaml.dump(dataclasses.asdict(config), handle, default_flow_style=False, sort_keys=False)
+
+    publish_metadata = getattr(backend_instance, "publish_export_metadata", None)
+    if callable(publish_metadata):
+        publish_metadata(config_path, metadata_path)
 
     logger.info("Export complete: %s (backend=%s, samples=%d)", export_dir, backend, num_samples)
     return export_dir

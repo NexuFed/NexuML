@@ -149,6 +149,7 @@ class NexuLightningModule(L.LightningModule):
                 f"val/{name}",
                 val,
                 prog_bar=self._should_show_in_progress_bar("val", name),
+                sync_dist=True,
             )
         self._log_running_pipeline_metrics("val", x_out)
 
@@ -167,6 +168,7 @@ class NexuLightningModule(L.LightningModule):
                 f"test/{name}",
                 val,
                 prog_bar=self._should_show_in_progress_bar("test", name),
+                sync_dist=True,
             )
         self._log_running_pipeline_metrics("test", x_out)
 
@@ -588,6 +590,7 @@ class NexuSession:
         devices: int | str = "auto",
         log_dir: str | Path = ".experiments",
         enable_progress_bar: bool = True,
+        enable_loggers: bool = True,
         trainer_checkpoint: str | Path | None = None,
         run_name: str | None = None,
     ) -> None:
@@ -599,6 +602,7 @@ class NexuSession:
         self.devices = devices
         self.log_dir = resolve_logs_root(log_dir)
         self.enable_progress_bar = enable_progress_bar
+        self.enable_loggers = enable_loggers
         self.trainer_checkpoint = (
             Path(trainer_checkpoint) if trainer_checkpoint is not None else None
         )
@@ -919,14 +923,22 @@ class NexuSession:
         from nexuml.tracking.logger import create_loggers
         from nexuml.training.callbacks import build_callbacks
 
-        self._trainer_loggers = create_loggers(
-            getattr(self.scenario, "logging", None),
-            run_name=self.run_name or self.scenario.name,
-        )
+        if self.enable_loggers:
+            self._trainer_loggers = create_loggers(
+                getattr(self.scenario, "logging", None),
+                run_name=self.run_name or self.scenario.name,
+            )
+        else:
+            from lightning.pytorch.loggers.logger import DummyLogger
+
+            self._trainer_loggers = [DummyLogger()]
         self._trainer_callbacks = build_callbacks(getattr(self.scenario, "callbacks", []))
 
     def _log_run_metadata_artifacts(self) -> None:
         if self._run_metadata_logged:
+            return
+        if not self.enable_loggers:
+            self._run_metadata_logged = True
             return
         if not self.trainer_loggers:
             self._run_metadata_logged = True
@@ -1234,10 +1246,19 @@ def _hydrate_scenario_from_dataset(
     if len(dataset) == 0:
         return scenario
 
-    x_sample, _y_sample = dataset[0]
+    feature_shapes = cast(dict[str, tuple[int, ...]], getattr(dataset, "feature_shapes", {}))
     input_shapes = {
-        key: list(value.shape) for key, value in x_sample.items() if isinstance(value, torch.Tensor)
+        key: list(feature_shapes[key])
+        for key in getattr(dataset, "x_keys", feature_shapes)
+        if key in feature_shapes
     }
+    if not input_shapes:
+        x_sample, _y_sample = dataset[0]
+        input_shapes = {
+            key: list(value.shape)
+            for key, value in x_sample.items()
+            if isinstance(value, torch.Tensor)
+        }
     merged_input_shapes = dict(scenario.data.input_shapes)
     for key, shape in input_shapes.items():
         if key not in merged_input_shapes:

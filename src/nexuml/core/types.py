@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -143,6 +143,7 @@ class TrainingSpec(SpecModel):
     accelerator: str = "auto"
     devices: str | int = "auto"
     strategy: str = "auto"
+    strategy_params: dict[str, Any] = Field(default_factory=dict)
     precision: str | int = "32-true"
 
     @field_validator("batch_size")
@@ -151,6 +152,58 @@ class TrainingSpec(SpecModel):
         if isinstance(value, int) and value <= 0:
             raise ValueError("training.batch_size must be positive")
         return value
+
+
+class LocalExecutionSpec(SpecModel):
+    """Run the scenario in the current process."""
+
+    kind: Literal["local"] = "local"
+
+
+class RayClusterTarget(SpecModel):
+    """Existing Ray cluster used by the thin Ray Train backend."""
+
+    kind: Literal["cluster"] = "cluster"
+    address: str = "auto"
+    working_dir: str | None = "."
+    py_executable: str | None = None
+
+
+class RayExecutionSpec(SpecModel):
+    """Ray placement configuration; training semantics stay in ``TrainingSpec``."""
+
+    kind: Literal["ray"] = "ray"
+    target: RayClusterTarget = Field(default_factory=RayClusterTarget)
+    workers: int | tuple[int, int] = 1
+    resources_per_worker: dict[str, float] = Field(default_factory=lambda: {"CPU": 1.0})
+    storage_path: str | None = None
+
+    @field_validator("workers")
+    @classmethod
+    def validate_workers(cls, value: int | tuple[int, int]) -> int | tuple[int, int]:
+        if isinstance(value, int):
+            if value < 1:
+                raise ValueError("execution.workers must be positive")
+            return value
+        minimum, maximum = value
+        if minimum < 1 or maximum < minimum:
+            raise ValueError("execution.workers range must satisfy 1 <= min <= max")
+        return value
+
+    @field_validator("resources_per_worker")
+    @classmethod
+    def validate_resources(cls, value: dict[str, float]) -> dict[str, float]:
+        if not value:
+            raise ValueError("execution.resources_per_worker must not be empty")
+        if any(not key.strip() or amount <= 0 for key, amount in value.items()):
+            raise ValueError("execution resources must have names and positive amounts")
+        return value
+
+
+ExecutionSpec = Annotated[
+    LocalExecutionSpec | RayExecutionSpec,
+    Field(discriminator="kind"),
+]
 
 
 class TargetSpec(SpecModel):
@@ -388,3 +441,4 @@ class ScenarioSpec(SpecModel):
     tuning: TuningSpec | None = None
     checkpoint: CheckpointLoadSpec | None = None
     exports: list[ExportSpec] = Field(default_factory=list)
+    execution: ExecutionSpec = Field(default_factory=LocalExecutionSpec)

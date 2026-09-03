@@ -235,3 +235,5 @@ external/
 
 # Graphify
 graphify-out/
+
+configs/

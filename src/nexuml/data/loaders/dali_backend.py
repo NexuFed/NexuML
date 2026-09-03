@@ -262,13 +262,16 @@ class DaliLoaderBackend:
                     )
                 )
                 shard_paths = [
-                    str(root_dataset.root / rel_path)
-                    for rel_path in cast(list[str], root_dataset.extra.get("shards", []) or [])
+                    str(root_dataset.root / relative_path)
+                    for relative_path in cast(list[str], root_dataset.extra.get("shards", []) or [])
                 ]
-                index_paths = [
-                    str(root_dataset.root / rel_path)
-                    for rel_path in cast(list[str], root_dataset.extra.get("index_paths", []) or [])
-                ] or None
+                # DALI streams S3 tar archives but opens WebDataset indexes as local files.
+                index_paths = (
+                    root_dataset._materialize_webdataset_paths(
+                        cast(list[str], root_dataset.extra.get("index_paths", []) or [])
+                    )
+                    or None
+                )
                 loader = build_webdataset_loader(
                     shard_paths=shard_paths,
                     index_paths=index_paths,
