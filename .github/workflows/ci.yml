@@ -77,8 +77,17 @@ jobs:
           echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
           echo "VIRTUAL_ENV=$PWD/.venv" >> "$GITHUB_ENV"
 
-      - name: Verify CUDA availability
-        run: python -c "import torch; assert torch.cuda.is_available(), 'CUDA is unavailable on ika-runner-gpu'"
+      - name: Verify CUDA execution
+        run: |
+          python - <<'PY'
+          import torch
+
+          assert torch.cuda.is_available(), "CUDA is unavailable on ika-runner-gpu"
+          capability = torch.cuda.get_device_capability()
+          print(f"GPU: {torch.cuda.get_device_name()} (CC {capability[0]}.{capability[1]})")
+          print(f"PyTorch: {torch.__version__}; architectures: {torch.cuda.get_arch_list()}")
+          assert torch.ones(1, device="cuda").item() == 1
+          PY
 
       - name: Run pytest suite with coverage
         run: pytest --cov=nexuml --cov=nexuml_library --cov-report=term-missing --cov-report=xml:reports/coverage.xml
