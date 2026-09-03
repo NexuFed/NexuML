@@ -1,40 +1,20 @@
-"""Pure-logic tests for nexuml.training.callbacks."""
+"""Pure-logic tests for NexuML callback configuration."""
 
 from __future__ import annotations
 
-from types import SimpleNamespace
-
+from lightning.pytorch.callbacks import LearningRateMonitor, ModelCheckpoint
 from nexuml_library.scenarios.training.defaults import default_callbacks
 
-from nexuml.training.callbacks import (
-    _resolve_callback_path_params,
-    build_callbacks,
-    get_callback_path,
-    list_callbacks,
-    register_callback,
-)
+from nexuml import callback
+from nexuml.core.types import CallbackSpec
+from nexuml.training.callbacks import _resolve_callback_path_params, build_callbacks
 
 
-def test_get_callback_path_known_alias():
-    assert get_callback_path("checkpoint") == "lightning.pytorch.callbacks.ModelCheckpoint"
+def test_callback_helper_captures_importable_factory() -> None:
+    spec = callback(ModelCheckpoint, monitor="val/loss", save_top_k=1)
 
-
-def test_get_callback_path_missing_alias():
-    assert get_callback_path("not_registered") is None
-
-
-def test_list_callbacks_returns_copy():
-    registry = list_callbacks()
-    assert isinstance(registry, dict)
-    assert "checkpoint" in registry
-    # Mutating the returned dict must not affect the registry.
-    registry["new"] = "value"
-    assert get_callback_path("new") is None
-
-
-def test_register_callback():
-    register_callback("my_callback", "some.module.Class")
-    assert get_callback_path("my_callback") == "some.module.Class"
+    assert spec.factory == "lightning.pytorch.callbacks.model_checkpoint:ModelCheckpoint"
+    assert spec.kwargs == {"monitor": "val/loss", "save_top_k": 1}
 
 
 def test_resolve_callback_path_params(tmp_path, monkeypatch):
@@ -45,17 +25,18 @@ def test_resolve_callback_path_params(tmp_path, monkeypatch):
     assert str(resolved["dirpath"]).startswith(str(tmp_path))
 
 
-def test_build_callbacks_with_lightning_alias():
-    specs = [SimpleNamespace(type="lr_monitor", params={})]
-    callbacks = build_callbacks(specs)
+def test_build_callbacks_from_typed_factory():
+    callbacks = build_callbacks([callback(LearningRateMonitor)])
+
     assert len(callbacks) == 1
-    assert type(callbacks[0]).__name__ == "LearningRateMonitor"
+    assert isinstance(callbacks[0], LearningRateMonitor)
 
 
-def test_build_callbacks_unknown_type_logs_warning(caplog):
-    specs = [SimpleNamespace(type="not.a.real.Class", params={})]
-    callbacks = build_callbacks(specs)
-    assert callbacks == []
+def test_build_callbacks_invalid_factory_logs_warning(caplog):
+    specs = [CallbackSpec(factory="not.a.real:Class")]
+
+    assert build_callbacks(specs) == []
+    assert "Could not build callback" in caplog.text
 
 
 def test_build_callbacks_empty_list():
@@ -63,8 +44,9 @@ def test_build_callbacks_empty_list():
 
 
 def test_default_checkpoint_callback_defers_path_to_lightning():
-    spec = next(spec for spec in default_callbacks() if spec.type == "checkpoint")
-    assert "dirpath" not in spec.params
+    spec = next(spec for spec in default_callbacks() if spec.factory.endswith(":ModelCheckpoint"))
+    assert "dirpath" not in spec.kwargs
 
-    callback = build_callbacks([spec])[0]
-    assert callback.dirpath is None
+    built = build_callbacks([spec])[0]
+    assert isinstance(built, ModelCheckpoint)
+    assert built.dirpath is None

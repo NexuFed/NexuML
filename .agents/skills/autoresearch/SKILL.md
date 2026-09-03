@@ -211,10 +211,10 @@ Artifacts: .experiments/agent/
 
 When no existing layer fits:
 
-1. Write it in `src/nexumodular/library/layers/<category>/my_layer.py`
-2. Register it: `@register_layer("my_layer")`
-3. Export from `src/nexumodular/library/layers/<category>/__init__.py`
-4. Use it in the experiment via `LayerSpec(type_key="my_layer", ...)`
+1. Write a typed `LayerDefinition` in `library/src/nexuml_library/layers/<category>/my_layer.py`
+2. Register it: `@layer("my_layer")`
+3. Export the definition where the library's public imports require it
+4. Use it in the experiment via `LayerSpec(component=MyLayer(...), ...)`
 5. Record in the research log: `New component: my_layer (src/...)`
 
 Keep new layers minimal. If the experiment fails, the layer can be removed

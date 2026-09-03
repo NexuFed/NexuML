@@ -32,7 +32,7 @@ The scenario learning page SHALL explain the main `ScenarioSpec` fields using im
 #### Scenario: User reads layer explanation
 
 - **WHEN** the page explains a `LayerSpec`
-- **THEN** it explains that `type_key` resolves to a registered layer and `keys_in` / `keys_out` define TensorDict key contracts.
+- **THEN** it explains that `component` contains a typed layer definition and `keys_in` / `keys_out` define TensorDict key contracts.
 
 ### Requirement: Registered Scenario Versus Scenario File
 

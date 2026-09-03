@@ -74,13 +74,18 @@ The system SHALL apply the typed-definition authoring model to current NexuML-ow
 - **THEN** it SHALL use a concrete `LoaderBackendDefinition` value for backend identity and backend-specific parameters
 - **AND** common loader policy SHALL remain on `LoaderSpec`.
 
-### Requirement: External framework references are not wrapped without need
-The system SHALL NOT require every configurable external framework class to become a module-specific NexuML component definition.
+### Requirement: External framework factories use typed portable helpers
+The system SHALL NOT require every configurable external framework class to become a module-specific NexuML component definition, but Python authoring SHALL reference the real factory symbol instead of a selector-plus-params bag.
 
 #### Scenario: User selects a PyTorch optimizer or Lightning callback
-- **WHEN** configuration references an external optimizer, scheduler, or callback class through an existing explicit import/alias mechanism
-- **THEN** NEX-211 MAY leave that mechanism unchanged
-- **AND** SHALL NOT introduce NexuML wrapper classes solely to remove every string from configuration.
+- **WHEN** configuration references an external optimizer, scheduler, or callback class
+- **THEN** it SHALL use the corresponding `optimizer(...)`, `scheduler(...)`, or `callback(...)` helper with the real importable factory symbol and direct constructor arguments
+- **AND** SHALL NOT introduce one NexuML wrapper class per external implementation.
+
+#### Scenario: User configures a strategy or preprocessing writer
+- **WHEN** strategy- or writer-specific constructor settings are required
+- **THEN** Python authoring SHALL use `strategy(RealStrategy, ...)` or `writer(RealBackend, ...)`
+- **AND** SHALL NOT expose `strategy_params` or `writer_params` dictionaries.
 
 ### Requirement: Ordinary PyTorch modules can be authored directly
 The system SHALL provide one universal `nn_module(factory, *args, **kwargs)` authoring helper for importable factories that construct ordinary `torch.nn.Module` values without requiring each factory/module type to be added to `nexuml_library` or registered separately.

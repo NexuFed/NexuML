@@ -83,7 +83,7 @@ The documentation site SHALL include a highest-priority developer guide for crea
 
 #### Scenario: User adds a custom layer
 - **WHEN** a user follows the custom-layer guide
-- **THEN** the guide shows how to create a layer under a `layers/<category>/` package, decorate it with `@layer("...")`, expose it through package imports where needed, inspect it with `nexuml registry list layers`, and use it from `LayerSpec(type_key=...)`
+- **THEN** the guide shows how to create a typed definition under a `layers/<category>/` package, decorate it with `@layer("...")`, expose it through package imports where needed, inspect it with `nexuml registry list layers`, and use it from `LayerSpec(component=MyLayer(...), ...)`
 
 #### Scenario: User writes a custom composed scenario
 - **WHEN** a user follows the composed-scenario tutorial

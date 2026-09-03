@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Registered component identities become strings only at serialization boundaries
-The system SHALL lower concrete component definitions to stable registered identities when producing portable YAML/JSON configuration and SHALL restore those identities to concrete definition types when loading configuration. The universal direct-module definition MAY contain an explicit external factory import target because that target is a parameter of the stable `NnModule` component rather than the component's registry identity.
+The system SHALL lower concrete component definitions to stable registered identities when producing portable YAML/JSON configuration and SHALL restore those identities to concrete definition types when loading configuration. Direct framework specs MAY contain an explicit external factory import target plus JSON-safe constructor values because those factories are not registered NexuML semantic component identities.
 
 #### Scenario: Typed layer is serialized
 - **WHEN** Python config contains `LayerSpec(component=LMBE(n_mels=64), ...)`
@@ -90,8 +90,16 @@ The system SHALL serialize every direct PyTorch module through the single stable
 - **THEN** the emitted plain data and config hash input SHALL be deterministic
 - **AND** SHALL NOT contain object IDs, source-machine absolute paths, callable representations, or other process-local identity.
 
+### Requirement: Other direct framework factories share the portable representation
+Optimizers, schedulers, callbacks, strategies, preprocessing writers, and nested decision rules SHALL use role-specific typed helpers backed by the same `factory`/`args`/`kwargs` portable shape.
+
+#### Scenario: Callback factory is serialized
+- **WHEN** Python config contains `callback(ModelCheckpoint, monitor="val/loss")`
+- **THEN** serialized config SHALL contain the importable `ModelCheckpoint` target and direct constructor values
+- **AND** restoration SHALL recreate a callback factory spec without importing a live callback object into the config graph.
+
 ### Requirement: Direct-module constructor values are strictly portable
-The `nn_module(...)` helper SHALL accept only values that can be represented and restored without executable-object serialization.
+Direct factory helpers SHALL accept only values that can be represented and restored without executable-object serialization.
 
 #### Scenario: Portable constructor values are supplied
 - **WHEN** constructor values contain null, booleans, integers, finite floats, strings, lists/tuples of supported values, or mappings with string keys and supported values
@@ -107,7 +115,7 @@ The `nn_module(...)` helper SHALL accept only values that can be represented and
 - **THEN** helper construction SHALL fail with an actionable portability error.
 
 ### Requirement: External factory loading is a trusted-config operation
-Resolved configuration containing external direct-module targets SHALL be treated as trusted input because reconstruction imports and invokes Python code.
+Resolved configuration containing external factory targets SHALL be treated as trusted input because reconstruction imports and invokes Python code.
 
 #### Scenario: Direct-module YAML is compiled
 - **WHEN** a caller loads and compiles resolved YAML containing an external factory target

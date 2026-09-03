@@ -31,7 +31,7 @@ The documentation SHALL explain `@layer`.
 #### Scenario: User adds a custom layer
 
 - **WHEN** the docs introduce `@layer("key")`
-- **THEN** they explain that the decorated `PipelineLayer` becomes available through `LayerSpec(type_key="key")`.
+- **THEN** they explain that the decorated `LayerDefinition` is used directly through `LayerSpec(component=MyLayer(...), ...)` and its key identifies persisted configuration.
 
 ### Requirement: Data Source Decorator Explained
 
@@ -40,7 +40,7 @@ The documentation SHALL explain `@data_source`.
 #### Scenario: User adds a custom dataset source
 
 - **WHEN** the docs introduce `@data_source("key")`
-- **THEN** they explain that the decorated source becomes available through `DataSpec(source_type="key")`.
+- **THEN** they explain that the decorated data-source definition is used directly through `DataSpec(source=MySource(...))` and its key identifies persisted configuration.
 
 ### Requirement: Evaluation Algorithm Decorator Explained
 
@@ -49,7 +49,7 @@ The documentation SHALL explain `@eval_algorithm`.
 #### Scenario: User adds evaluation logic
 
 - **WHEN** the docs introduce `@eval_algorithm("key")`
-- **THEN** they explain that the decorated evaluation algorithm becomes available through `EvalAlgorithmSpec(type="key")` or the implementation-current evaluation spec field.
+- **THEN** they explain that the decorated evaluation definition is used directly through `EvalAlgorithmSpec(algorithm=MyAlgorithm(...))` and its key identifies persisted configuration.
 
 ### Requirement: Registry Verification Commands
 

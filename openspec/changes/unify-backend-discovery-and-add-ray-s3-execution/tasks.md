@@ -11,7 +11,7 @@
 ## 2. Add the thin Ray training backend
 
 - [x] 2.1 Add local/Ray execution configuration to `ScenarioSpec` with local as the default.
-- [x] 2.2 Keep strategy selection in `TrainingSpec`; add `strategy_params` and support `auto`, `ddp`, `fsdp`, `deepspeed` without duplicating the strategy in Ray config.
+- [x] 2.2 Keep strategy selection in `TrainingSpec`; support `auto`, `ddp`, `fsdp`, `deepspeed`, plus typed direct strategy factories without duplicating the strategy in Ray config.
 - [ ] 2.3 Add a small common Lightning Trainer-kwargs seam so local and Ray construction share NexuML defaults.
 - [x] 2.4 Implement `src/nexuml/execution/ray.py` using `TorchTrainer`, `ScalingConfig`, and `RunConfig` from NexuML's supported Ray API range.
 - [x] 2.5 Map Lightning strategies to official `RayDDPStrategy`, `RayFSDPStrategy`, and `RayDeepSpeedStrategy`, plus `RayLightningEnvironment`, `RayTrainReportCallback`, and `prepare_trainer`.

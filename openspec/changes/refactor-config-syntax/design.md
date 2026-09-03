@@ -61,7 +61,7 @@ The implementation SHALL optimize for these principles, in order:
 - Component-specific parameters are typed Pydantic fields with defaults, validation, documentation, and generated JSON schema.
 - Mutable runtime classes remain ordinary PyTorch/NexuML runtime implementations.
 - Runtime-only inputs are supplied explicitly by the compiler/materializer.
-- YAML remains portable and readable. Registered semantic components remain independent of Python import paths; the single `NnModule` component explicitly persists its external factory import target and JSON-safe constructor values.
+- YAML remains portable and readable. Registered semantic components remain independent of Python import paths; direct framework specs explicitly persist external factory import targets and JSON-safe constructor values.
 - YAML round-trips restore the same concrete definition classes.
 - One lean registry supports NexuML-owned component roles without duplicating registry logic.
 - Existing entry-point and local-library discovery remains the extension mechanism.
@@ -78,7 +78,7 @@ The implementation SHALL optimize for these principles, in order:
 - Do not create a version migration engine. Version is identity metadata only in NEX-211.
 - Do not rename every existing component registration key. Keep existing stable keys unless a concrete collision/invalid key requires a change.
 - Do not turn scenario functions into component definitions. A scenario remains a recipe/composition function.
-- Do not introduce module-specific NexuML wrappers for ordinary `torch.nn.Module`, `torch.optim`, scheduler, or Lightning callback classes.
+- Do not introduce one module-specific NexuML wrapper per ordinary `torch.nn.Module`, optimizer, scheduler, callback, strategy, writer, or decision-rule class.
 - Do not support live module instances, lambdas, closures, local definitions, constructor reflection, generated schemas, arbitrary objects, multiple inputs/outputs, label injection, or implicit build-context injection in `nn_module(...)`.
 - Do not preserve the old selector-based Python/YAML syntax through compatibility aliases or translators.
 
@@ -573,7 +573,7 @@ The registry/CLI may expose that schema by looking up the definition type. It SH
 
 Do not add `ConfigModel` attributes or generated Pydantic subclasses.
 
-`NnModuleLayer.model_json_schema()` describes the universal `factory`/`args`/`kwargs` transport fields, not every external factory's constructor. Python authoring may preserve callable argument checking through a `ParamSpec` helper where the configured type checker supports class/factory callable inference; restored YAML validates portable value shape, then factory invocation validates the external constructor during materialization. Do not synthesize per-factory Pydantic schema or use runtime signature inspection to close that deliberate gap.
+`NnModuleLayer.model_json_schema()` and `FactorySpec.model_json_schema()` describe the shared `factory`/`args`/`kwargs` transport fields, not every external factory's constructor. Python authoring preserves callable argument checking through `ParamSpec` helpers where the configured type checker supports class/factory callable inference; restored YAML validates portable value shape, then factory invocation validates the external constructor during materialization. Do not synthesize per-factory Pydantic schema or use runtime signature inspection to close that deliberate gap.
 
 ### D12 — Scope by component role
 
@@ -621,7 +621,7 @@ Keep `@scenario` functions returning `ScenarioSpec`. Scenarios compose definitio
 
 #### External framework references
 
-Do not create module-specific wrappers solely to eliminate every string in the config. Ordinary one-input/one-output PyTorch modules use the single `nn_module(...)` boundary. `OptimizerSpec.type`, `SchedulerSpec.type`, and callback references may remain explicit import/known-alias references where the configured object belongs to PyTorch/Lightning rather than to the NexuML library component system.
+Do not create module-specific wrappers solely to eliminate every string in the config. Ordinary one-input/one-output PyTorch modules use the single `nn_module(...)` boundary. Optimizers, schedulers, callbacks, strategies, preprocessing writers, and nested decision rules use small role helpers that capture their real factory symbol and direct constructor arguments into one shared portable `FactorySpec` shape.
 
 ### D13 — Compiler becomes simpler
 
@@ -831,7 +831,7 @@ Rejected because PyTorch modules have mutable state, parameters, submodules, hoo
 
 ### G — Persist import paths as registered component identity
 
-Rejected because module refactors would break config even when the public component identity is unchanged. Explicit registration names remain the persistence API for semantic components. `NnModule` is a single explicit external-framework exception: its stable component identity remains registered, while its factory target is persisted as a parameter because reconstructing unregistered external code requires an import reference.
+Rejected because module refactors would break config even when the public component identity is unchanged. Explicit registration names remain the persistence API for semantic components. Direct framework factories are the explicit exception: their portable specs persist an import target because reconstructing unregistered external code requires one.
 
 ### H — Keep old and new syntax concurrently
 
@@ -839,7 +839,7 @@ Rejected because it creates two mental models, duplicated tests, validators/tran
 
 ### I — Build a universal plugin framework for every configurable object
 
-Rejected. `nn_module(...)` is a narrow adapter for one-input/one-output PyTorch modules, not a universal plugin framework. NexuML-owned semantic roles remain typed definitions, and external optimizer/scheduler/callback references stay simple.
+Rejected. `nn_module(...)` remains a narrow adapter for one-input/one-output PyTorch modules, not a universal plugin framework. NexuML-owned semantic roles remain typed definitions; the shared factory transport only delays construction of directly referenced importable framework objects.
 
 ## Risks and mitigations
 

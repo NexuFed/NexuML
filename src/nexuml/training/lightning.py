@@ -19,7 +19,13 @@ from nexuml.core.compiler import compile
 from nexuml.core.log_paths import resolve_logs_root
 from nexuml.core.pipeline import CompiledPipeline
 from nexuml.core.serialization import lower_model, restore_model_data
-from nexuml.core.types import AutoBatchSizeSpec, EvalAlgorithmSpec, ScenarioSpec, TrainingSpec
+from nexuml.core.types import (
+    AutoBatchSizeSpec,
+    EvalAlgorithmSpec,
+    ScenarioSpec,
+    StrategySpec,
+    TrainingSpec,
+)
 from nexuml.data.auto_batch import resolve_with_probe
 from nexuml.data.dataset import NexuDataset
 from nexuml.data.export import export_data_module
@@ -739,7 +745,9 @@ class NexuSession:
         tr: TrainingSpec = self.scenario.training
         resolved_accelerator = self.accelerator if self.accelerator != "auto" else tr.accelerator
         resolved_devices = self.devices if self.devices != "auto" else tr.devices
-        resolved_strategy = tr.strategy if tr.strategy != "auto" else "auto"
+        resolved_strategy = (
+            cast(Any, tr.strategy.build()) if isinstance(tr.strategy, StrategySpec) else tr.strategy
+        )
         resolved_precision = tr.precision if tr.precision != "32-true" else "32-true"
 
         self._trainer = L.Trainer(
@@ -1067,7 +1075,6 @@ def materialize_preprocessed_dataset(scenario: ScenarioSpec) -> Path:
         y_keys=preprocessing.y_keys,
         include_labels=preprocessing.include_labels,
         label_prefix=preprocessing.label_prefix,
-        **preprocessing.writer_params,
     )
     return export_path
 
@@ -1086,7 +1093,7 @@ def resolve_preprocessing_path(scenario: ScenarioSpec) -> Path:
         / "preprocessed"
         / scenario.name
         / preprocessing.target_view
-        / preprocessing.writer
+        / preprocessing.writer.backend_name()
     )
 
 

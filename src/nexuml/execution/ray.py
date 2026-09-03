@@ -11,14 +11,14 @@ from uuid import uuid4
 import lightning as L
 
 from nexuml.core.serialization import lower_model, restore_model_data
-from nexuml.core.types import RayExecutionSpec, ScenarioSpec
+from nexuml.core.types import RayExecutionSpec, ScenarioSpec, StrategySpec
 
 
 class RayExecutionError(RuntimeError):
     """Raised when a Ray execution request cannot be represented cleanly."""
 
 
-def _ray_strategy(name: str, params: dict[str, Any]) -> Any:
+def _ray_strategy(config: str | StrategySpec) -> Any:
     """Map the NexuML strategy to Ray's official Lightning strategy.
 
     Returns:
@@ -27,19 +27,23 @@ def _ray_strategy(name: str, params: dict[str, Any]) -> Any:
     Raises:
         RayExecutionError: If Ray is unavailable or the strategy is unsupported.
     """
+    if isinstance(config, StrategySpec):
+        return config.build()
+
     try:
         from ray.train.lightning import RayDDPStrategy, RayDeepSpeedStrategy, RayFSDPStrategy
     except ImportError as error:
         raise RayExecutionError("Ray execution requires the nexuml[ray] extra") from error
 
-    if name in {"auto", "ddp"}:
-        return RayDDPStrategy(**params)
-    if name == "fsdp":
-        return RayFSDPStrategy(**params)
-    if name == "deepspeed":
-        return RayDeepSpeedStrategy(**params)
+    if config in {"auto", "ddp"}:
+        return RayDDPStrategy()
+    if config == "fsdp":
+        return RayFSDPStrategy()
+    if config == "deepspeed":
+        return RayDeepSpeedStrategy()
     raise RayExecutionError(
-        f"Ray supports training.strategy values 'auto', 'ddp', 'fsdp', or 'deepspeed'; got {name!r}"
+        "Ray supports training.strategy values 'auto', 'ddp', 'fsdp', or 'deepspeed', "
+        f"or a typed strategy(...); got {config!r}"
     )
 
 
@@ -71,7 +75,7 @@ def _prepare_session_trainer(session: Any) -> L.Trainer:
         max_epochs=training.max_epochs,
         accelerator=resolved_accelerator,
         devices="auto",
-        strategy=_ray_strategy(training.strategy, training.strategy_params),
+        strategy=_ray_strategy(training.strategy),
         plugins=[RayLightningEnvironment()],
         precision=training.precision,
         default_root_dir=str(session.log_dir),

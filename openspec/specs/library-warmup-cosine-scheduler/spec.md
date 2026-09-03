@@ -4,12 +4,12 @@ Define the library warmup cosine scheduler: importable by dotted path, linear wa
 
 ## Requirements
 
-### Requirement: Library warmup cosine scheduler is importable by dotted path
-The library SHALL provide a `WarmupCosineLR` scheduler at `nexuml_library.training.schedulers.WarmupCosineLR` that can be instantiated by NexuML's existing dotted-path scheduler resolution.
+### Requirement: Library warmup cosine scheduler is importable directly
+The library SHALL provide a navigable `WarmupCosineLR` scheduler at `nexuml_library.training.schedulers.WarmupCosineLR` that can be configured through NexuML's typed `scheduler(...)` helper.
 
-#### Scenario: SchedulerSpec uses library scheduler path
-- **WHEN** a scenario defines `SchedulerSpec(type="nexuml_library.training.schedulers.WarmupCosineLR", params={"warmup_epochs": 2, "max_epochs": 100, "min_lr": 1e-6})`
-- **THEN** NexuML SHALL be able to resolve and instantiate the scheduler without any scheduler decorator or registry.
+#### Scenario: Scenario uses library scheduler symbol
+- **WHEN** a scenario defines `scheduler(WarmupCosineLR, warmup_epochs=2, max_epochs=100, min_lr=1e-6)`
+- **THEN** NexuML SHALL preserve the real factory symbol and typed constructor arguments while resolving and instantiating the scheduler without any scheduler decorator or registry.
 
 ### Requirement: Scheduler performs linear warmup then cosine decay
 The scheduler SHALL increase learning rates linearly during the configured warmup period and then apply cosine decay for the remaining configured epoch horizon.
@@ -30,7 +30,7 @@ The scheduler SHALL treat `min_lr` as an absolute learning-rate floor for each o
 - **THEN** each parameter group's learning rate SHALL approach `min_lr` rather than `base_lr * min_lr`.
 
 ### Requirement: Scheduler parameters are explicit
-The scheduler SHALL require its timing and floor parameters through `SchedulerSpec.params`, including `max_epochs`, without requiring NexuML core to infer them from `TrainingSpec`.
+The scheduler SHALL require its timing and floor parameters as direct `scheduler(...)` constructor arguments, including `max_epochs`, without requiring NexuML core to infer them from `TrainingSpec`.
 
 #### Scenario: Core package remains unchanged
 - **WHEN** the warmup cosine scheduler is added to the library

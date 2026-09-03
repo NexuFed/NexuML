@@ -10,8 +10,8 @@ NexuML does not replace Lightning's training loop. It adds a typed experiment de
 | one model graph | `CompiledPipeline` with ordered stages and explicit TensorDict key contracts |
 | custom `LightningModule` | `NexuLightningModule`, created by `NexuSession` around the compiled pipeline |
 | `LightningDataModule` | `NexuDataModule`, built from `DataSpec` and a typed loader backend |
-| `Trainer(...)` training settings | `TrainingSpec` plus `CallbackSpec` / `LoggingSpec` |
-| `ModelCheckpoint(...)` | `CallbackSpec(type="checkpoint", params={...})` |
+| `Trainer(...)` training settings | `TrainingSpec` plus typed factory helpers / `LoggingSpec` |
+| `ModelCheckpoint(...)` | `callback(ModelCheckpoint, ...)` |
 | `Trainer.fit(..., ckpt_path=...)` | `nexuml train ... --trainer-checkpoint PATH` for full Lightning-state resume |
 | loading pretrained weights | `CheckpointLoadSpec` for selective weight reuse/freeze policies |
 | training script | `ScenarioSpec` + `nexuml train` |
@@ -42,7 +42,7 @@ The scenario is configuration, not the mutable runtime. Layer/data/evaluation de
 
 - Lightning still performs fit, validation, test, precision/device handling, callbacks, logging integration, and checkpoint resume.
 - `training.strategy` selects the Lightning strategy. Under Ray execution, NexuML maps supported values to Ray's official Lightning strategies rather than implementing its own distributed training loop.
-- `CallbackSpec` can represent known callback aliases or importable Lightning callbacks.
+- `callback(...)` captures an importable Lightning callback factory and its typed constructor arguments without creating the runtime callback until training starts.
 
 ## What NexuML adds
 
@@ -78,7 +78,7 @@ The decorator identity is used for discovery and YAML restoration; normal Python
 
 There are three separate operations:
 
-1. **Create checkpoints** with a checkpoint `CallbackSpec`.
+1. **Create checkpoints** with `callback(ModelCheckpoint, ...)`.
 2. **Resume a Lightning run** with `--trainer-checkpoint`, restoring trainer/optimizer/scheduler state.
 3. **Reuse model weights** with `CheckpointLoadSpec`, optionally selecting or freezing parameters without resuming the old trainer state.
 

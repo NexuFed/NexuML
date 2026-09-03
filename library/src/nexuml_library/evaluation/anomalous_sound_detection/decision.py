@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import math
-from typing import Any
+from collections.abc import Callable
+from typing import ParamSpec
 
 import torch
 import torch.nn as nn
+
+from nexuml.core.types import FactorySpec
 
 
 class DecisionRule(nn.Module):
@@ -32,6 +35,10 @@ class DecisionRule(nn.Module):
             v = float(buf.item())
             return None if v != v else v  # nan → None
         return buf
+
+
+class DecisionRuleSpec(FactorySpec):
+    """Portable constructor configuration for a decision rule."""
 
 
 class QuantileThresholdRule(DecisionRule):
@@ -140,43 +147,15 @@ class GammaPercentileRule(DecisionRule):
         return (scores.float().flatten() >= threshold).long()
 
 
-class UnsupportedDecisionRule(DecisionRule):
-    """Placeholder for declared but unavailable threshold rules."""
-
-    def __init__(self, rule_name: str) -> None:
-        super().__init__()
-        self.rule_name = rule_name
-
-    def fit(self, train_scores: torch.Tensor) -> None:
-        raise NotImplementedError(
-            f"Decision rule '{self.rule_name}' is not supported in this build."
-        )
-
-    def forward(self, scores: torch.Tensor) -> torch.Tensor:
-        raise NotImplementedError(
-            f"Decision rule '{self.rule_name}' is not supported in this build."
-        )
+P = ParamSpec("P")
 
 
-_DECISION_REGISTRY: dict[str, type[DecisionRule]] = {
-    "quantile": QuantileThresholdRule,
-    "percentile": PercentileThresholdRule,
-    "gamma_percentile": GammaPercentileRule,
-}
-
-
-def create_decision_rule(type: str, **params: Any) -> DecisionRule:
-    """Instantiate a decision rule by registry key.
+def decision_rule(
+    factory: Callable[P, DecisionRule], *args: P.args, **kwargs: P.kwargs
+) -> DecisionRuleSpec:
+    """Configure an importable decision-rule factory.
 
     Returns:
-        The requested ``DecisionRule`` instance.
-
-    Raises:
-        ValueError: If *type* is not a recognised registry key.
+        Portable decision-rule specification.
     """
-    if type in {"gpd_evt", "fixed_fpr"}:
-        return UnsupportedDecisionRule(type)
-    cls = _DECISION_REGISTRY.get(type)
-    if cls is None:
-        raise ValueError(f"Unknown decision rule '{type}'. Available: {sorted(_DECISION_REGISTRY)}")
-    return cls(**params)
+    return DecisionRuleSpec.from_factory(factory, *args, **kwargs)

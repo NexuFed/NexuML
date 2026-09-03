@@ -73,13 +73,13 @@ If `type` is omitted and `choices` is present, the type defaults to `categorical
 
 ```python
 SEARCH_SPACE = {
-    "training.optimizer.type": {
+    "precision": {
         "type": "categorical",
-        "choices": ["torch.optim.Adam", "torch.optim.SGD"],
+        "choices": ["32-true", "16-mixed"],
         "when": {
-            "torch.optim.SGD": {
-                "training.optimizer.params.momentum": {
-                    "type": "float", "low": 0.8, "high": 0.99
+            "16-mixed": {
+                "batch_size": {
+                    "type": "categorical", "choices": [64, 128]
                 },
             }
         },
@@ -92,15 +92,26 @@ SEARCH_SPACE = {
 ### Derived entries
 
 ```python
+import torch
+
+from nexuml import optimizer
+
 SEARCH_SPACE = {
-    "training.lr": {"type": "float", "low": 1e-5, "high": 1e-2, "log": True},
-    "training.optimizer.params.weight_decay": {
-        "derived": "training.lr * 0.01"   # string expression or callable
-    },
+    "lr": {"type": "float", "low": 1e-5, "high": 1e-2, "log": True},
+    "weight_decay": {"derived": "lr * 0.01"},
 }
+
+def build(lr: float, weight_decay: float) -> ScenarioSpec:
+    return ScenarioSpec(
+        name="tuned",
+        training=TrainingSpec(
+            lr=lr,
+            optimizer=optimizer(torch.optim.Adam, weight_decay=weight_decay),
+        ),
+    )
 ```
 
-`derived` entries are computed from other sampled values. They are **Python-only**.
+`derived` entries are computed from other sampled values. They are **Python-only** and are passed to the scenario `build` callable.
 
 ### Structural / `build(**params)` parameters
 
