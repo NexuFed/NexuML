@@ -11,16 +11,29 @@ import torch.nn.functional as F
 from tensordict import TensorDict
 
 from nexuml.core.base_layer import PipelineLayer
+from nexuml.core.components import LayerBuildContext, LayerDefinition
 
 
 @layer("ReconstructionLoss")
-class ReconstructionLoss(PipelineLayer):
+class ReconstructionLoss(LayerDefinition):
     """Computes MSE reconstruction loss between original and reconstructed features.
 
     keys_in should be [original_key, reconstructed_key].
     keys_out should be [loss_key].
     """
 
+    norm_pix_loss: bool = False
+    match_min_length: bool = False
+    patch_size: int | tuple[int, int] | None = None
+    use_mask_loss: bool = False
+    inverse_mask: bool = True
+    num_tokens: int = 0
+
+    def build(self, context: LayerBuildContext) -> PipelineLayer:
+        return _ReconstructionLossRuntime(**context.runtime_kwargs(), **self.model_dump())
+
+
+class _ReconstructionLossRuntime(PipelineLayer):
     def __init__(
         self,
         input_sizes: dict[str, tuple],

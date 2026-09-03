@@ -4,23 +4,61 @@ build-backend = "hatchling.build"
 
 [project]
 name = "nexuml-library"
-version = "0.1.0"
+version = "0.2.0"
 description = "Base reusable library for NexuML"
 readme = "README.md"
 requires-python = ">=3.12"
-license = { text = "Proprietary" }
-license-files = [
-    "LICENSE",
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+maintainers = [{ name = "NexuFed AI" }]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
-    "nexuml>=0.1.0",
+    "nexuml>=0.2,<0.3",
+    "torchaudio>=2.0",
+    "torchmetrics>=1.0",
+    "torchvision>=0.15",
+    # Unused: retained as comments for the 0.2.0 dependency audit.
+    # "huggingface_hub>=0.22",
+    # "ffmpeg",
+    # "einops",
+    # "omegaconf",
+]
+
+[project.urls]
+Homepage = "https://github.com/NexuFed/NexuML"
+Documentation = "https://nexufed.github.io/NexuML/"
+Repository = "https://github.com/NexuFed/NexuML"
+Issues = "https://github.com/NexuFed/NexuML/issues"
+Releases = "https://github.com/NexuFed/NexuML/releases"
+
+[project.optional-dependencies]
+audio = [
+    "librosa>=0.10",
+    "soundfile>=0.12",
+]
+data = [
     "datasets>=2.18",
-    "huggingface_hub>=0.22",
-    "torchcodec==0.10.0",
+    # TorchCodec 0.11-0.15 support the locked Torch 2.11 release line.
+    "torchcodec>=0.11,<0.16",
     "tqdm>=4.66",
-    "ffmpeg",
-    "einops",
-    "omegaconf",
+]
+pretrained = [
+    "timm>=1.0",
+    "transformers>=4.0",
+]
+eval = [
+    "matplotlib>=3.8",
+    "scikit-learn>=1.4",
+    "umap-learn>=0.5",
+]
+all = [
+    "nexuml-library[audio,data,pretrained,eval]",
 ]
 
 [project.entry-points."nexuml.libraries"]

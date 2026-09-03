@@ -1,0 +1,170 @@
+name: Docker image
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    tags: ["v*.*.*"]
+
+concurrency:
+  group: docker-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  CUDA_VERSION: 12.8.1
+  IMAGE_NAME: ghcr.io/nexufed/nexuml
+  LOCAL_IMAGE: nexuml:ci
+  PYTHON_VERSION: "3.13"
+  UBUNTU_VERSION: "24.04"
+
+jobs:
+  build:
+    runs-on: ika-runner
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Validate trusted revision
+        run: |
+          git fetch --no-tags origin main:refs/remotes/origin/main
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+
+      - name: Validate release tag
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          python3 - "$REF_NAME" <<'PY'
+          import re
+          import sys
+          import tomllib
+          from pathlib import Path
+
+          tag = sys.argv[1]
+          if re.fullmatch(r"v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)", tag) is None:
+              raise SystemExit(f"Invalid release tag: {tag!r}")
+          version = tomllib.loads(Path("pyproject.toml").read_text())["project"]["version"]
+          if tag != f"v{version}":
+              raise SystemExit(f"Release tag {tag!r} does not match NexuML {version!r}")
+          PY
+
+      # Docker Hub mirror (disabled): add docker.io/${{ vars.DOCKERHUB_USERNAME }}/nexuml
+      # as a second image below, then enable the login step after configuring its token.
+      - name: Generate image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          flavor: latest=false
+          tags: |
+            type=edge,branch=main,suffix=-cuda${{ env.CUDA_VERSION }}
+            type=semver,pattern={{version}},suffix=-cuda${{ env.CUDA_VERSION }}
+            type=semver,pattern={{major}}.{{minor}},suffix=-cuda${{ env.CUDA_VERSION }}
+            type=sha,format=short,prefix=sha-,suffix=-cuda${{ env.CUDA_VERSION }}
+          labels: |
+            org.opencontainers.image.title=NexuML
+            org.opencontainers.image.description=Complete NexuML CUDA development and training environment
+            org.opencontainers.image.vendor=NexuFed AI
+            org.opencontainers.image.licenses=Apache-2.0
+            org.opencontainers.image.base.name=nvidia/cuda:${{ env.CUDA_VERSION }}-devel-ubuntu${{ env.UBUNTU_VERSION }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Record runner capacity
+        run: |
+          df -h .
+          docker system df
+
+      - name: Build local image
+        uses: docker/build-push-action@v6
+        with:
+          build-args: |
+            CUDA_VERSION=${{ env.CUDA_VERSION }}
+            PYTHON_VERSION=${{ env.PYTHON_VERSION }}
+            UBUNTU_VERSION=${{ env.UBUNTU_VERSION }}
+          cache-from: type=gha,scope=nexuml-cuda
+          cache-to: type=gha,mode=min,scope=nexuml-cuda
+          context: .
+          labels: ${{ steps.meta.outputs.labels }}
+          load: true
+          platforms: linux/amd64
+          push: false
+          tags: ${{ env.LOCAL_IMAGE }}
+
+      - name: Verify local image
+        env:
+          EXPECTED_CUDA: ${{ env.CUDA_VERSION }}
+          EXPECTED_PYTHON: ${{ env.PYTHON_VERSION }}
+        run: |
+          expected_version=$(python3 - <<'PY'
+          import tomllib
+          from pathlib import Path
+
+          print(tomllib.loads(Path("pyproject.toml").read_text())["project"]["version"])
+          PY
+          )
+
+          docker run --rm \
+            --entrypoint /bin/bash \
+            -e EXPECTED_CUDA \
+            -e EXPECTED_PYTHON \
+            -e EXPECTED_VERSION="$expected_version" \
+            "$LOCAL_IMAGE" -lc '
+              python - <<"PY"
+          import importlib.metadata
+          import os
+          import sys
+
+          import nexuml
+          import nexuml_library
+          import torch
+
+          assert sys.version_info[:2] == tuple(map(int, os.environ["EXPECTED_PYTHON"].split(".")))
+          assert os.environ["NEXUML_CUDA_VERSION"] == os.environ["EXPECTED_CUDA"]
+          assert torch.version.cuda == ".".join(os.environ["EXPECTED_CUDA"].split(".")[:2])
+          assert importlib.metadata.version("nexuml") == os.environ["EXPECTED_VERSION"]
+          assert importlib.metadata.version("nexuml-library") == os.environ["EXPECTED_VERSION"]
+          PY
+              uv pip check
+              nexuml --help >/dev/null
+            '
+          docker run --rm "$LOCAL_IMAGE"
+          docker image inspect "$LOCAL_IMAGE" --format 'Image size: {{.Size}} bytes'
+          df -h .
+
+      # - name: Log in to Docker Hub
+      #   if: github.event_name == 'push'
+      #   uses: docker/login-action@v3
+      #   with:
+      #     username: ${{ vars.DOCKERHUB_USERNAME }}
+      #     password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Log in to GHCR
+        if: github.event_name == 'push'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish verified image
+        if: github.event_name == 'push'
+        env:
+          TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          while IFS= read -r tag; do
+            [ -z "$tag" ] && continue
+            docker tag "$LOCAL_IMAGE" "$tag"
+            docker push "$tag"
+          done <<< "$TAGS"

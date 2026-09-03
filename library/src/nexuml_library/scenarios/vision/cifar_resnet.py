@@ -54,19 +54,16 @@ def cifar_resnet(
         data = cifar10_data(
             download=download,
         )
-        num_classes = 10
     elif dataset == "cifar100":
         data = cifar100_data(
             download=download,
         )
-        num_classes = 100
     else:
         raise ValueError(f"Unknown dataset '{dataset}'. Use 'cifar10' or 'cifar100'.")
 
     return ScenarioSpec(
         name="cifar_resnet",
         pipeline=resnet_classifier(
-            num_classes=num_classes,
             resnet_type=resnet_type,
             pretrained=pretrained,
             cifar_stem=cifar_stem,

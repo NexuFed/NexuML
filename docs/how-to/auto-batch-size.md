@@ -1,140 +1,66 @@
 # Automatic batch size
 
-NexuML can automatically find the largest training batch size that fits in GPU memory using binary search with CUDA forward/backward probing.
+NexuML can probe candidate training batch sizes on CUDA before the full run starts.
 
-!!! warning "CUDA required"
-    Automatic batch-size probing requires a CUDA-capable GPU. Attempting it on CPU raises a `RuntimeError`.
-
-## Prerequisites
-
-- NexuML installed (`uv sync`)
-- CUDA-capable GPU
-- `data.loader.batch_size` must **not** be set (an explicit loader batch size disables auto-probing)
-
-## Basic configuration
+## Configure it
 
 ```python
-from nexuml.core.types import ScenarioSpec, TrainingSpec, AutoBatchSizeSpec
+from nexuml.core.types import AutoBatchSizeSpec, DataSpec, LoaderSpec, TrainingSpec
+from nexuml.data.loaders.definitions import TorchLoader
 
-ScenarioSpec(
-    name="my_scenario",
-    training=TrainingSpec(
-        batch_size=AutoBatchSizeSpec(
-            mode="auto",
-            min=8,
-            max=256,
-            candidates="power_of_two",
-            safety="previous_power_of_two",
-            margin=0.8,
-        ),
-        lr=1e-3,
-        max_epochs=50,
-        loss_keys={"reconstruction_loss": 1.0},
+training = TrainingSpec(
+    batch_size=AutoBatchSizeSpec(
+        min=8,
+        max=256,
+        candidates="power_of_two",
+        safety="previous_power_of_two",
+        margin=0.8,
+    )
+)
+
+data = DataSpec(
+    source=MyDataset(...),
+    loader=LoaderSpec(
+        backend=TorchLoader(),
+        batch_size=None,
     ),
-    ...
 )
 ```
 
-## `AutoBatchSizeSpec` fields
+`data.loader.batch_size` must remain `None`. An explicit loader batch size takes precedence over `TrainingSpec.batch_size` and therefore disables the auto probe.
 
-| Field | Type | Default (spec) | Description |
-|---|---|---|---|
-| `mode` | `"auto"` | `"auto"` | Must be `"auto"` to enable probing |
-| `min` | `int` | `1` | Minimum candidate batch size |
-| `max` | `int` | `128` | Maximum candidate batch size |
-| `candidates` | `"power_of_two"` | `"power_of_two"` | Candidate generation strategy |
-| `safety` | `"largest"` \| `"previous_power_of_two"` \| `"margin"` | `"previous_power_of_two"` | Selection policy after probing |
-| `margin` | `float (0,1]` | `0.8` | Memory fraction threshold (used only with `safety="margin"`) |
+## CUDA is required
+
+The runtime raises an error when automatic batch-size probing is requested without CUDA.
 
 ## How probing works
 
-1. NexuML generates power-of-two candidates between `min` and `max` (e.g. `[8, 16, 32, 64, 128, 256]`).
-2. Starting from the largest candidate, it runs a single forward + backward pass.
-3. If CUDA out-of-memory (OOM) occurs, it backs off to the next smaller candidate.
-4. The selected batch size is determined by `safety`:
-   - `"largest"` — use the largest candidate that did not OOM.
-   - `"previous_power_of_two"` — use one step smaller than the largest that fit (leaves headroom for longer sequences or larger validation batches).
-   - `"margin"` — use the largest candidate whose peak memory is below `margin × GPU_total`.
+For the current `power_of_two` candidate strategy, NexuML:
 
-## Safety policy comparison
+1. generates the bounded candidate set between `min` and `max`;
+2. probes the candidates in ascending order with one forward/backward batch on CUDA;
+3. records success, CUDA OOM, peak memory, and `over_margin` where applicable;
+4. selects a final size from the successful candidates according to `safety`;
+5. rebuilds the final data module with the selected training batch size.
 
-| Policy | Behaviour | When to use |
-|---|---|---|
-| `"largest"` | Maximum throughput, no headroom | Fixed-length inputs, tight GPU |
-| `"previous_power_of_two"` | One step smaller than largest | Variable-length sequences, safer default |
-| `"margin"` | Peak memory ≤ `margin × total` | When you have a memory estimate to target |
+This is an exhaustive candidate probe, **not a binary search**.
 
-## Defaults: spec vs. library
+## Safety policies
 
-The `AutoBatchSizeSpec` defaults and the library's `DEFAULT_AUTO_BATCH_SIZE` differ:
+- `largest` — choose the largest successful candidate.
+- `previous_power_of_two` — choose the next lower successful candidate when one exists.
+- `margin` — candidates whose measured peak allocation exceeds `margin × total GPU memory` are excluded; choose the largest remaining candidate.
 
-| Setting | `AutoBatchSizeSpec` default | `DEFAULT_AUTO_BATCH_SIZE` (library) |
-|---|---|---|
-| `min` | `1` | `8` |
-| `max` | `128` | `128` |
-| `safety` | `"previous_power_of_two"` | `"margin"` |
-| `margin` | `0.8` | `0.8` |
+The probe result, attempts, device metadata, and selected batch size are included in runtime metadata.
 
-`DEFAULT_AUTO_BATCH_SIZE` is defined in `nexuml_library.scenarios.training.defaults` and is the value used by pre-built library scenarios when no explicit `batch_size` is specified. If you define your own `AutoBatchSizeSpec`, the spec defaults apply.
+## Defaults
 
-## Precedence
+`AutoBatchSizeSpec` itself defaults to `min=1`, `max=128`, `safety="previous_power_of_two"`, and `margin=0.8`.
 
-An explicit loader batch size always takes precedence and disables auto-probing:
-
-```python
-from nexuml.core.types import LoaderSpec
-
-# This DISABLES auto-probing even if training.batch_size is AutoBatchSizeSpec
-DataSpec(loader=LoaderSpec(batch_size=64))
-```
-
-Set `data.loader.batch_size=None` (the default) to allow probing.
-
-## Example
-
-```python
-from nexuml.core.types import (
-    ScenarioSpec, TrainingSpec, AutoBatchSizeSpec, DataSpec, LoggingSpec
-)
-
-ScenarioSpec(
-    name="auto_batch_demo",
-    data=DataSpec(
-        source_type="synthetic",
-        params={"feature_shape": [128], "num_samples": 2000},
-    ),
-    training=TrainingSpec(
-        lr=1e-3,
-        max_epochs=10,
-        batch_size=AutoBatchSizeSpec(mode="auto", min=8, max=512, safety="margin"),
-        loss_keys={"reconstruction_loss": 1.0},
-    ),
-)
-```
-
-Run:
-
-```bash
-nexuml train --scenario-file auto_batch_demo.py
-```
-
-Expected output during startup:
-
-```
-Probing batch sizes: [8, 16, 32, 64, 128, 256, 512]
-  batch_size=512: OOM
-  batch_size=256: OK (peak 14.2 GB / 16.0 GB)
-  batch_size=128: OK (peak 7.3 GB / 16.0 GB)
-Selected batch size: 128 (margin policy, 0.8 threshold)
-```
-
-## Implementation map
-
-- `src/nexuml/data/auto_batch.py` — CUDA probing logic
-- `src/nexuml/core/types.py` — `AutoBatchSizeSpec`
-- `library/src/nexuml_library/scenarios/training/defaults.py` — `DEFAULT_AUTO_BATCH_SIZE`
+The optional base library also defines `DEFAULT_AUTO_BATCH_SIZE` for its scenario helpers. Those library defaults are a convenience policy, not the core model defaults.
 
 ## See also
 
-- [Train a model](train.md)
-- [CLI lifecycle](cli-lifecycle.md)
+- [Train](train.md)
+- [Data loading](data-loading.md)
+- [Scenario/config reference](../reference/scenario-spec.md)

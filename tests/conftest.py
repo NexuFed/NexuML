@@ -12,11 +12,10 @@ import torch
 from tensordict import TensorDict
 
 from nexuml.core.discovery import scan_all
-from nexuml.core.registry import get_registry
+from nexuml.core.registry import get_component_registry
 from nexuml.core.scenario_registry import get_scenario_registry
 from nexuml.data.auto_batch import cuda_device_info
-from nexuml.data.registry import get_dataset_registry
-from nexuml.evaluation.registry import get_eval_registry
+from nexuml.data.dataset import NexuDataset
 from nexuml_library.data.synthetic import SyntheticDataset
 
 
@@ -44,27 +43,15 @@ def pytest_runtest_setup(item: pytest.Item) -> None:
 
 
 @pytest.fixture(scope="session")
-def layer_registry():
-    """Default layer registry, fully loaded."""
-    return get_registry()
+def component_registry():
+    """Default component identity registry, fully loaded."""
+    return get_component_registry()
 
 
 @pytest.fixture(scope="session")
 def scenario_registry():
     """Default scenario registry, fully loaded."""
     return get_scenario_registry()
-
-
-@pytest.fixture(scope="session")
-def dataset_registry():
-    """Default dataset registry, fully loaded."""
-    return get_dataset_registry()
-
-
-@pytest.fixture(scope="session")
-def eval_registry():
-    """Default evaluation-algorithm registry, fully loaded."""
-    return get_eval_registry()
 
 
 @pytest.fixture(scope="session")
@@ -84,13 +71,13 @@ def synthetic_dataset(
     feature_shape: tuple[int, ...] = (16,),
     num_samples: int = 32,
     seed: int = 0,
-):
+) -> NexuDataset:
     """Small synthetic dataset for fast, deterministic tests."""
-    return SyntheticDataset(feature_shape=feature_shape, num_samples=num_samples, seed=seed)
+    return SyntheticDataset(feature_shape=feature_shape, num_samples=num_samples, seed=seed).build()
 
 
 @pytest.fixture
-def synthetic_batch(synthetic_dataset: SyntheticDataset, batch_size: int = 4):
+def synthetic_batch(synthetic_dataset: NexuDataset, batch_size: int = 4):
     """Batched (x, y) TensorDict pair from the synthetic dataset."""
     xs: list[TensorDict] = []
     ys: list[TensorDict | None] = []
@@ -145,16 +132,38 @@ def minimal_local_library(tmp_path):
     (pkg_dir / "items.py").write_text(
         f'''
 from nexuml.core.discovery import data_source, eval_algorithm, layer, scenario
+from nexuml.core.base_layer import PipelineLayer
+from nexuml.core.components import (
+    DataSourceDefinition,
+    EvalAlgorithmDefinition,
+    EvalBuildContext,
+    LayerBuildContext,
+    LayerDefinition,
+)
+from nexuml.evaluation.algorithm import EvalAlgorithm
 
 
 @layer("{pkg_name}.layer")
-class MinimalLayer:
-    pass
+class MinimalLayer(LayerDefinition):
+    scale: float = 1.0
+
+    def build(self, context: LayerBuildContext):
+        return _MinimalLayerRuntime(scale=self.scale, **context.runtime_kwargs())
+
+
+class _MinimalLayerRuntime(PipelineLayer):
+    def __init__(self, scale: float, **kwargs):
+        super().__init__(**kwargs)
+        self.scale = scale
+
+    def forward_tensor(self, x, y=None):
+        return x * self.scale
 
 
 @data_source("{pkg_name}.dataset")
-class MinimalDataset:
-    pass
+class MinimalDataset(DataSourceDefinition):
+    def build(self):
+        return object()
 
 
 @scenario("{pkg_name}.scenario")
@@ -163,8 +172,14 @@ def minimal_scenario():
 
 
 @eval_algorithm("{pkg_name}.eval")
-class MinimalEval:
-    pass
+class MinimalEval(EvalAlgorithmDefinition):
+    def build(self, context: EvalBuildContext):
+        return _MinimalEvalRuntime()
+
+
+class _MinimalEvalRuntime(EvalAlgorithm):
+    def results(self):
+        return {{}}
 '''
     )
     return SimpleNamespace(
@@ -181,23 +196,22 @@ class MinimalEval:
 def small_pipeline_spec():
     """Small pipeline spec: linear encoder + reconstruction loss."""
     from nexuml.core.types import LayerSpec, PipelineSpec
+    from nexuml_library.layers.model.linear_encoder import LinearEncoder
 
     return PipelineSpec(
         stages={
             "encode": [
                 LayerSpec(
-                    type_key="linear_encoder",
+                    component=LinearEncoder(hidden_dims=[32], output_dim=8),
                     keys_in=["features"],
                     keys_out=["latent"],
-                    params={"hidden_dims": [32], "latent_dim": 8},
                 ),
             ],
             "decode": [
                 LayerSpec(
-                    type_key="linear_encoder",
+                    component=LinearEncoder(hidden_dims=[32], output_dim=16),
                     keys_in=["latent"],
                     keys_out=["reconstructed"],
-                    params={"hidden_dims": [32], "latent_dim": 16},
                 ),
             ],
         }

@@ -8,12 +8,20 @@ from typing import cast
 from tensordict import TensorDict
 
 from nexuml.core.base_layer import PipelineLayer
+from nexuml.core.components import LayerBuildContext, LayerDefinition
 
 
 @layer("AnomalyScore")
-class AnomalyScore(PipelineLayer):
+class AnomalyScore(LayerDefinition):
     """Compute a per-sample anomaly score from original and reconstructed tensors."""
 
+    reduction: str = "mean"
+
+    def build(self, context: LayerBuildContext) -> PipelineLayer:
+        return _AnomalyScoreRuntime(reduction=self.reduction, **context.runtime_kwargs())
+
+
+class _AnomalyScoreRuntime(PipelineLayer):
     def __init__(
         self,
         input_sizes: dict[str, tuple],

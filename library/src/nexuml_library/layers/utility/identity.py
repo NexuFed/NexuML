@@ -8,24 +8,21 @@ import torch
 from tensordict import TensorDict
 
 from nexuml.core.base_layer import PipelineLayer
+from nexuml.core.components import LayerBuildContext, LayerDefinition
 from nexuml.core.discovery import layer
 
 
-@layer("IdentityLayer")
-class IdentityLayer(PipelineLayer):
-    """Passthrough layer — returns input unchanged."""
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
-    def forward_tensor(self, x: torch.Tensor, y: torch.Tensor | None = None) -> torch.Tensor:
-        return x
-
-
 @layer("MergeLayer")
-class MergeLayer(PipelineLayer):
+class MergeLayer(LayerDefinition):
     """Merge multiple input tensors into one by concatenation along the last axis."""
 
+    dim: int = -2
+
+    def build(self, context: LayerBuildContext) -> PipelineLayer:
+        return _MergeLayerRuntime(dim=self.dim, **context.runtime_kwargs())
+
+
+class _MergeLayerRuntime(PipelineLayer):
     def __init__(self, dim: int = -2, **kwargs):
         super().__init__(**kwargs)
 
@@ -53,15 +50,22 @@ class MergeLayer(PipelineLayer):
 
 
 @layer("AdditiveNoise")
-class AdditiveNoise(PipelineLayer):
+class AdditiveNoise(LayerDefinition):
     """Adds Gaussian noise scaled by the input's standard deviation.
 
     Useful as a data augmentation layer (noise only applied during training).
 
-    Args:
+    Attributes:
         noise_level: Noise scale relative to the input std.
     """
 
+    noise_level: float = 0.1
+
+    def build(self, context: LayerBuildContext) -> PipelineLayer:
+        return _AdditiveNoiseRuntime(noise_level=self.noise_level, **context.runtime_kwargs())
+
+
+class _AdditiveNoiseRuntime(PipelineLayer):
     def __init__(self, noise_level: float = 0.1, **kwargs):
         super().__init__(**kwargs)
         self.noise_level = noise_level

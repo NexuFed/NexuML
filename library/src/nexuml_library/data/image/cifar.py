@@ -11,12 +11,23 @@ import torch
 from tensordict import TensorDict
 
 from nexuml.data.dataset import NexuDataset
+from nexuml.core.components import DataSourceDefinition
 
 
 @data_source("CIFAR10Dataset")
-class CIFAR10Dataset(NexuDataset):
+class CIFAR10Dataset(DataSourceDefinition):
     """CIFAR-10 dataset backed by ``self.data`` and metadata labels."""
 
+    root: str | Path = "data/cifar10"
+    train: bool = True
+    download: bool = False
+    split: str | None = None
+
+    def build(self) -> NexuDataset:
+        return _CIFAR10DatasetRuntime(**self.model_dump())
+
+
+class _CIFAR10DatasetRuntime(NexuDataset):
     LABEL_NAMES = ["class_labels"]
     NUM_CLASSES = 10
 
@@ -90,9 +101,19 @@ class CIFAR10Dataset(NexuDataset):
 
 
 @data_source("CIFAR100Dataset")
-class CIFAR100Dataset(CIFAR10Dataset):
+class CIFAR100Dataset(DataSourceDefinition):
     """CIFAR-100 dataset backed by ``self.data`` and metadata labels."""
 
+    root: str | Path = "data/cifar100"
+    train: bool = True
+    download: bool = False
+    split: str | None = None
+
+    def build(self) -> NexuDataset:
+        return _CIFAR100DatasetRuntime(**self.model_dump())
+
+
+class _CIFAR100DatasetRuntime(_CIFAR10DatasetRuntime):
     NUM_CLASSES = 100
 
     def __init__(

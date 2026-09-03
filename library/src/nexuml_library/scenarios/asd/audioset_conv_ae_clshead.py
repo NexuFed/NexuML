@@ -4,6 +4,9 @@ from __future__ import annotations
 from nexuml.core.discovery import scenario
 
 from nexuml.core.types import LayerSpec, ScenarioSpec
+from nexuml_library.layers.head.classification_head import LatentClassificationHead
+from nexuml_library.layers.loss.classification_loss import ClassificationLoss
+from nexuml_library.layers.loss.classification_metrics import ClassificationMetrics
 from nexuml_library.scenarios.data.audioset import audioset_data
 from nexuml_library.scenarios.evaluation.base import classification_evaluation
 from nexuml_library.scenarios.model.conv_ae import conv_ae_lmbe
@@ -45,31 +48,24 @@ def audioset_conv_ae_clshead(
     )
     pipeline.stages.setdefault("Heads", []).append(
         LayerSpec(
-            type_key="LatentClassificationHead",
+            component=LatentClassificationHead(),
             keys_in=["latent"],
             keys_out=["class_logits"],
-            params={"num_classes": num_classes},
         )
     )
     pipeline.stages["Loss"].extend(
         [
             LayerSpec(
-                type_key="ClassificationLoss",
+                component=ClassificationLoss(loss_type="cross_entropy"),
                 keys_in=["class_logits"],
                 keys_out=["classification_loss"],
-                params={
-                    "loss_type": "cross_entropy",
-                    "label_key": "class",
-                },
+                label_key="class",
             ),
             LayerSpec(
-                type_key="ClassificationMetrics",
+                component=ClassificationMetrics(metrics=["accuracy", "f1"]),
                 keys_in=["class_logits"],
                 keys_out=["accuracy", "f1"],
-                params={
-                    "label_key": "class",
-                    "metrics": ["accuracy", "f1"],
-                },
+                label_key="class",
             ),
         ]
     )

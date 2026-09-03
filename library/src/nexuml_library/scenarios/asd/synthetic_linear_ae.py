@@ -85,7 +85,6 @@ def synthetic_linear_ae_multiclass(
             input_dim=input_dim,
             hidden_dims=hidden_dims,
             latent_dim=latent_dim,
-            num_classes=num_classes,
         ),
         training=default_training(
             lr=lr,
@@ -130,7 +129,6 @@ def synthetic_linear_ae_multilabel(
             input_dim=input_dim,
             hidden_dims=hidden_dims,
             latent_dim=latent_dim,
-            num_classes=num_classes,
         ),
         training=default_training(
             lr=lr,

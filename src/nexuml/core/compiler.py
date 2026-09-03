@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import inspect
 import logging
 from typing import Any, cast
 
@@ -11,45 +10,44 @@ import torch.nn as nn
 from tensordict import TensorDict
 
 from nexuml.core.base_layer import PipelineLayer
+from nexuml.core.components import LayerBuildContext
 from nexuml.core.config import ResolvedConfig
 from nexuml.core.pipeline import CompiledPipeline
-from nexuml.core.registry import LayerRegistry, get_registry
 from nexuml.core.types import ScenarioSpec
 
 logger = logging.getLogger(__name__)
 
 
-def compile(
-    scenario: ScenarioSpec,
-    registry: LayerRegistry | None = None,
-) -> CompiledPipeline:
+def compile(scenario: ScenarioSpec) -> CompiledPipeline:
     """Compile a ScenarioSpec into a runnable CompiledPipeline.
 
     Steps:
       1. Iterate pipeline stages in order
-      2. For each LayerSpec: resolve meta_in, instantiate via registry, capture meta_out
+      2. For each LayerSpec: resolve meta_in, materialize its definition, capture meta_out
       3. Run dummy forward for shape propagation
       4. Return assembled CompiledPipeline
 
     Returns:
         Compiled pipeline ready for training or inference.
-    """
-    if registry is None:
-        registry = get_registry()
 
+    Raises:
+        TypeError: If a definition does not build a ``PipelineLayer``.
+    """
     # Track accumulated shapes and metadata
     pipeline_dims: dict[str, tuple] = {}
     metadata: dict[str, Any] = {}
     stages = nn.ModuleDict()
 
-    # Initialize input dims from data spec. New scenarios should declare explicit
-    # input_shapes; older synthetic scenarios still fall back to feature_shape.
+    # Initialize input dims from data spec or a source definition's declared shape.
     if scenario.data.input_shapes:
         pipeline_dims.update(
             {key: tuple(shape) for key, shape in scenario.data.input_shapes.items()}
         )
     else:
-        feature_shape = tuple(scenario.data.params.get("feature_shape", (128,)))
+        source = scenario.data.source
+        if source is None and scenario.data.datasets:
+            source = scenario.data.datasets[0].source
+        feature_shape = tuple(getattr(source, "feature_shape", (128,)))
         pipeline_dims[scenario.data.feature_key] = feature_shape
 
     for stage_name, layer_specs in scenario.pipeline.stages.items():
@@ -60,37 +58,37 @@ def compile(
         stage_layers = nn.ModuleDict()
 
         for i, spec in enumerate(layer_specs):
-            # Resolve meta_in: inject metadata values into params
-            resolved_params = dict(spec.params)
+            resolved_metadata: dict[str, Any] = {}
             if spec.meta_in:
                 for param_name, meta_key in spec.meta_in.items():
                     if meta_key in metadata:
-                        resolved_params[param_name] = metadata[meta_key]
+                        resolved_metadata[param_name] = metadata[meta_key]
                     else:
                         logger.warning(
                             f"meta_in key '{meta_key}' not found in metadata for "
-                            f"{spec.type_key}. Available: {list(metadata.keys())}"
+                            f"{type(spec.component).__name__}. Available: {list(metadata.keys())}"
                         )
 
-            # Auto-inject num_classes from data spec when the layer accepts it
-            # but it wasn't explicitly provided (or was set to None).
-            if scenario.data.num_classes is not None:
-                layer_cls = registry.get(spec.type_key)
-                sig = inspect.signature(layer_cls.__init__)
-                if "num_classes" in sig.parameters and resolved_params.get("num_classes") is None:
-                    resolved_params["num_classes"] = scenario.data.num_classes
-
-            # Instantiate layer
             keys_in_val: list[str] = (
                 list(spec.keys_in.values()) if isinstance(spec.keys_in, dict) else spec.keys_in
             )
-            layer = registry.instantiate(
-                spec.type_key,
-                input_sizes=dict(pipeline_dims),
+            context = LayerBuildContext(
+                input_sizes=pipeline_dims,
                 keys_in=keys_in_val,
                 keys_out=spec.keys_out,
-                **resolved_params,
+                label_key=spec.label_key,
+                label_in_x=spec.label_in_x,
+                num_classes=scenario.data.num_classes,
+                metadata=resolved_metadata,
+                delay_epochs=spec.delay_epochs,
+                update_every_n_epochs=spec.update_every_n_epochs,
             )
+            layer = spec.component.build(context)
+            if not isinstance(layer, PipelineLayer):
+                raise TypeError(
+                    f"{type(spec.component).__name__}.build() must return PipelineLayer, "
+                    f"got {type(layer).__name__}"
+                )
 
             # Shape propagation via dummy forward
             updated_dims = _propagate_shapes(layer, pipeline_dims)
@@ -104,10 +102,10 @@ def compile(
                     else:
                         logger.warning(
                             f"meta_out attribute '{attr_name}' not found on "
-                            f"{spec.type_key} instance"
+                            f"{type(spec.component).__name__} instance"
                         )
 
-            layer_key = f"{i:02d}_{spec.type_key}"
+            layer_key = f"{i:02d}_{spec.component.component_name}"
             stage_layers[layer_key] = layer
 
         stages[stage_name] = stage_layers

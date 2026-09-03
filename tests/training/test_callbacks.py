@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+from nexuml_library.scenarios.training.defaults import default_callbacks
+
 from nexuml.training.callbacks import (
     _resolve_callback_path_params,
     build_callbacks,
@@ -58,3 +60,11 @@ def test_build_callbacks_unknown_type_logs_warning(caplog):
 
 def test_build_callbacks_empty_list():
     assert build_callbacks([]) == []
+
+
+def test_default_checkpoint_callback_defers_path_to_lightning():
+    spec = next(spec for spec in default_callbacks() if spec.type == "checkpoint")
+    assert "dirpath" not in spec.params
+
+    callback = build_callbacks([spec])[0]
+    assert callback.dirpath is None

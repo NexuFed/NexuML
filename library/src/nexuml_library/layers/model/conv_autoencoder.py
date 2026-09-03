@@ -12,6 +12,7 @@ import torch.nn.functional as F
 from tensordict import TensorDict
 
 from nexuml.core.base_layer import PipelineLayer
+from nexuml.core.components import LayerBuildContext, LayerDefinition
 
 
 def _activation(name: str) -> nn.Module:
@@ -78,9 +79,20 @@ def _up_block(
 
 
 @layer("ConvolutionalEncoder")
-class ConvolutionalEncoder(PipelineLayer):
+class ConvolutionalEncoder(LayerDefinition):
     """Encode a 2D tensor into a latent vector."""
 
+    output_dim: int = 128
+    channel_schedule: list[int] | None = None
+    kernel_sizes: list[int | tuple[int, int]] | None = None
+    strides: list[int | tuple[int, int]] | None = None
+    activation: str = "relu"
+
+    def build(self, context: LayerBuildContext) -> PipelineLayer:
+        return _ConvolutionalEncoderRuntime(**context.runtime_kwargs(), **self.model_dump())
+
+
+class _ConvolutionalEncoderRuntime(PipelineLayer):
     def __init__(
         self,
         input_sizes: dict[str, tuple],
@@ -137,9 +149,17 @@ class ConvolutionalEncoder(PipelineLayer):
 
 
 @layer("VariationalLatent")
-class VariationalLatent(PipelineLayer):
+class VariationalLatent(LayerDefinition):
     """Variational bottleneck layer emitting latent sample, moments, and KL loss."""
 
+    latent_dim: int = 32
+    beta: float = 1.0
+
+    def build(self, context: LayerBuildContext) -> PipelineLayer:
+        return _VariationalLatentRuntime(**context.runtime_kwargs(), **self.model_dump())
+
+
+class _VariationalLatentRuntime(PipelineLayer):
     def __init__(
         self,
         input_sizes: dict[str, tuple],
@@ -188,9 +208,25 @@ class VariationalLatent(PipelineLayer):
 
 
 @layer("ConvolutionalDecoder")
-class ConvolutionalDecoder(PipelineLayer):
+class ConvolutionalDecoder(LayerDefinition):
     """Decode a latent vector back into a 2D tensor."""
 
+    output_shape: tuple[int, ...]
+    channel_schedule: list[int] | None = None
+    kernel_sizes: list[int | tuple[int, int]] | None = None
+    strides: list[int | tuple[int, int]] | None = None
+    activation: str = "relu"
+
+    def build(self, context: LayerBuildContext) -> PipelineLayer:
+        decoder_shape = context.metadata.get("decoder_shape")
+        if decoder_shape is None:
+            raise ValueError("ConvolutionalDecoder requires decoder_shape metadata")
+        return _ConvolutionalDecoderRuntime(
+            **context.runtime_kwargs(), decoder_shape=decoder_shape, **self.model_dump()
+        )
+
+
+class _ConvolutionalDecoderRuntime(PipelineLayer):
     def __init__(
         self,
         input_sizes: dict[str, tuple],

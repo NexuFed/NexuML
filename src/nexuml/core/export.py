@@ -26,7 +26,7 @@ from torch.package.package_importer import PackageImporter
 from nexuml.core.compiler import compile as compile_pipeline
 from nexuml.core.config import ResolvedConfig
 from nexuml.core.pipeline import CompiledPipeline
-from nexuml.core.registry import LayerRegistry, get_registry
+from nexuml.core.serialization import lower_model, restore_model_data
 from nexuml.core.types import CheckpointLoadSpec, ScenarioSpec
 
 logger = logging.getLogger(__name__)
@@ -207,7 +207,7 @@ def _package_payload(
     packaged_pipeline = copy.deepcopy(pipeline).cpu().eval()
     return {
         "pipeline": packaged_pipeline,
-        "resolved_config": pipeline.resolved_config.model_dump(mode="json"),
+        "resolved_config": lower_model(pipeline.resolved_config),
         "metadata": _make_json_safe(metadata),
         "state_dict": {k: v.detach().cpu() for k, v in pipeline.state_dict().items()},
         "training_state": training_state or {},
@@ -239,13 +239,14 @@ def _discover_pipeline_module_packages(pipeline: CompiledPipeline) -> set[str]:
     """
     packages: set[str] = set()
     for _stage, _name, layer in pipeline.iter_layers():
-        module_name = getattr(layer.__class__, "__module__", None)
-        if not module_name:
-            continue
-        top = module_name.split(".")[0]
-        if top in ("nexuml", "nexuml_library") or _is_runtime_module(top):
-            continue
-        packages.add(top)
+        for module in layer.modules():
+            module_name = getattr(module.__class__, "__module__", None)
+            if not module_name:
+                continue
+            top = module_name.split(".")[0]
+            if top in ("nexuml", "nexuml_library") or _is_runtime_module(top):
+                continue
+            packages.add(top)
     return packages
 
 
@@ -663,9 +664,10 @@ def _infer_io_keys(config: ResolvedConfig) -> tuple[list[str], list[str]]:
 
     for stage_layers in config.pipeline.stages.values():
         for layer_spec in stage_layers:
-            label_key = layer_spec.params.get("label_key")
-            if isinstance(label_key, str):
-                y_candidates.append(label_key)
+            if isinstance(layer_spec.label_key, str):
+                y_candidates.append(layer_spec.label_key)
+            elif layer_spec.label_key:
+                y_candidates.extend(layer_spec.label_key)
 
     y_keys = list(dict.fromkeys(y_candidates))
     if not y_keys:
@@ -698,9 +700,9 @@ def _normalize_config(config: Any) -> ResolvedConfig | None:
     if isinstance(config, ResolvedConfig):
         return config
     if hasattr(config, "model_dump"):
-        return ResolvedConfig.model_validate(config.model_dump(mode="json"))
-    if isinstance(config, dict):
         return ResolvedConfig.model_validate(config)
+    if isinstance(config, dict):
+        return ResolvedConfig.model_validate(restore_model_data(config, ResolvedConfig))
     raise TypeError(f"Unsupported packaged config type: {type(config)!r}")
 
 
@@ -820,10 +822,7 @@ def load_weights(
     return report
 
 
-def load_package(
-    path: Path,
-    registry: LayerRegistry | None = None,
-) -> tuple[CompiledPipeline, ResolvedConfig, dict[str, Any]]:
+def load_package(path: Path) -> tuple[CompiledPipeline, ResolvedConfig, dict[str, Any]]:
     """Reload an exported pipeline into the current codebase.
 
     Returns:
@@ -832,9 +831,6 @@ def load_package(
     Raises:
         ValueError: If no scenario config is found in the artifact.
     """
-    if registry is None:
-        registry = get_registry()
-
     state_dict, config, metadata = _load_artifact(Path(path))
     if config is None:
         raise ValueError(f"Cannot reconstruct pipeline from {path}: no scenario config found.")
@@ -848,7 +844,7 @@ def load_package(
         )
 
     scenario = config.to_scenario()
-    pipeline = compile_pipeline(scenario, registry)
+    pipeline = compile_pipeline(scenario)
     pipeline.load_state_dict(state_dict, strict=False)
     return pipeline, config, metadata
 
@@ -879,7 +875,6 @@ def load_inference_package(path: Path) -> tuple[CompiledPipeline, ResolvedConfig
 def load_package_for_training(
     path: Path,
     scenario: ScenarioSpec | None = None,
-    registry: LayerRegistry | None = None,
     checkpoint: CheckpointLoadSpec | None = None,
 ) -> TrainingReload:
     """Reload a package into the current codebase for resume or fine-tuning.
@@ -890,15 +885,12 @@ def load_package_for_training(
     Raises:
         ValueError: If no scenario is provided and the artifact has no packaged config.
     """
-    if registry is None:
-        registry = get_registry()
-
     state_dict, config, metadata = _load_artifact(Path(path))
     scenario = scenario or (config.to_scenario() if config is not None else None)
     if scenario is None:
         raise ValueError("A scenario must be provided when the artifact has no packaged config.")
 
-    pipeline = compile_pipeline(scenario, registry)
+    pipeline = compile_pipeline(scenario)
     report = load_weights(
         pipeline,
         path,
@@ -987,9 +979,11 @@ def export_onnx(
     path.parent.mkdir(parents=True, exist_ok=True)
     config = pipeline.resolved_config
     input_key = input_key or config.data.feature_key
-    input_shape = tuple(
-        config.data.input_shapes.get(input_key) or config.data.params.get("feature_shape", (128,))
-    )
+    source = config.data.source
+    if source is None and config.data.datasets:
+        source = config.data.datasets[0].source
+    source_shape = getattr(source, "feature_shape", (128,))
+    input_shape = tuple(config.data.input_shapes.get(input_key) or source_shape)
     dummy = torch.randn(1, *input_shape)
     wrapper = _OnnxWrapper(pipeline, input_key=input_key, output_key=output_key)
     torch.onnx.export(

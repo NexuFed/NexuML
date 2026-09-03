@@ -2,9 +2,19 @@
 
 from __future__ import annotations
 
-from typing import Annotated, Any, Literal
+from typing import TYPE_CHECKING, Annotated, Any, Literal
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+from nexuml.core.components import (
+    DataSourceDefinition,
+    EvalAlgorithmDefinition,
+    LayerDefinition,
+    LoaderBackendDefinition,
+)
+
+if TYPE_CHECKING:
+    from nexuml.evaluation.utils import FeatureStore
 
 
 class AxisKeySpec(BaseModel):
@@ -27,7 +37,9 @@ class AxisKeySpec(BaseModel):
 
 
 class SpecModel(BaseModel):
-    """Shared base model with compatibility helpers for older call sites/tests."""
+    """Shared base model for scenario specifications."""
+
+    model_config = ConfigDict(extra="forbid")
 
     def to_dict(self) -> dict[str, Any]:
         return self.model_dump()
@@ -54,12 +66,15 @@ class SpecModel(BaseModel):
 class LayerSpec(SpecModel):
     """Specification for a single layer in the pipeline."""
 
-    type_key: str
+    component: LayerDefinition
     keys_in: list[str] | dict[str, str]
     keys_out: list[str]
-    params: dict[str, Any] = Field(default_factory=dict)
+    label_key: str | list[str] | None = None
+    label_in_x: bool = False
     meta_in: dict[str, str] | None = None
     meta_out: dict[str, str] | None = None
+    delay_epochs: int = 0
+    update_every_n_epochs: int = 1
 
 
 class PipelineSpec(SpecModel):
@@ -219,8 +234,7 @@ class TargetSpec(SpecModel):
 class DatasetSpec(SpecModel):
     """Specification for a single dataset in the pipeline."""
 
-    type_key: str
-    params: dict[str, Any] = Field(default_factory=dict)
+    source: DataSourceDefinition
     modality: str = "audio"
     max_samples: int | None = None
     split_type: str = "fit"  # "fit", "all", "keep"
@@ -229,7 +243,7 @@ class DatasetSpec(SpecModel):
 class LoaderSpec(SpecModel):
     """Specification for the data loader."""
 
-    backend: str = "dali"  # e.g. "torch", "dali", or a registered custom backend
+    backend: LoaderBackendDefinition = Field(default_factory=lambda: _default_loader_backend())
     # None defers to TrainingSpec.batch_size; explicit loader values take precedence.
     batch_size: int | None = None
     num_workers: int = 0
@@ -237,7 +251,6 @@ class LoaderSpec(SpecModel):
     persistent_workers: bool = False
     weighted_sampling: bool = False
     shuffle_train: bool = True
-    params: dict[str, Any] = Field(default_factory=dict)
 
     @field_validator("batch_size")
     @classmethod
@@ -245,6 +258,12 @@ class LoaderSpec(SpecModel):
         if value is not None and value <= 0:
             raise ValueError("data.loader.batch_size must be positive")
         return value
+
+
+def _default_loader_backend() -> LoaderBackendDefinition:
+    from nexuml.data.loaders.definitions import TorchLoader
+
+    return TorchLoader()
 
 
 class PreprocessingSpec(SpecModel):
@@ -270,8 +289,7 @@ class PreprocessingSpec(SpecModel):
 class DataSpec(SpecModel):
     """Specification for data configuration."""
 
-    source_type: str = "synthetic"
-    params: dict[str, Any] = Field(default_factory=dict)
+    source: DataSourceDefinition | None = None
     targets: list[TargetSpec] = Field(default_factory=list)
     train_split: float = 0.7
     val_split: float = 0.15
@@ -306,13 +324,27 @@ class DistanceEstimatorSpec(SpecModel):
     max_samples: int | None = None
     retain_storage: bool = False
 
+    def create_feature_store(self) -> FeatureStore:
+        """Create the feature store configured for estimator fitting.
+
+        Returns:
+            Configured feature store runtime.
+        """
+        from nexuml.evaluation.utils import create_feature_store
+
+        return create_feature_store(
+            self.storage_backend,
+            max_samples=self.max_samples,
+            storage_path=self.storage_path,
+            retain_storage=self.retain_storage,
+        )
+
 
 class EvalAlgorithmSpec(SpecModel):
     """Specification for a post-training evaluation algorithm."""
 
-    type: str
+    algorithm: EvalAlgorithmDefinition
     name: str | None = None
-    params: dict[str, Any] = Field(default_factory=dict)
     enabled: bool = True
     axis_keys: list[AxisKeySpec | str] = Field(default_factory=list)
     feature_key: str | None = None
@@ -321,7 +353,7 @@ class EvalAlgorithmSpec(SpecModel):
     def contract_summary(self) -> dict[str, Any]:
         """Return a summary of the key contract for diagnostics."""
         return {
-            "type": self.type,
+            "type": self.algorithm.component_name,
             "name": self.name,
             "feature_key": self.feature_key,
             "label_key": self.label_key,

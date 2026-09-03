@@ -12,7 +12,10 @@ from nexuml.core.types import (
     RayExecutionSpec,
     ScenarioSpec,
 )
+from nexuml.core.serialization import lower_model
 from nexuml.execution import ray as ray_execution
+from nexuml_library.evaluation.visualizers.class_histogram import ClassHistogramVisualizer
+from nexuml_library.layers.head.decision_rule import DecisionRulePipelineLayer
 
 
 def test_ray_execution_config_is_placement_only():
@@ -71,7 +74,7 @@ def test_ray_worker_reuses_nexusession_and_reports_final_metrics(monkeypatch):
     )
 
     scenario = ScenarioSpec(name="worker")
-    ray_execution.train_loop_per_worker({"scenario": scenario.model_dump(mode="json")})
+    ray_execution.train_loop_per_worker({"scenario": lower_model(scenario)})
 
     assert calls == ["session:worker:False", "trainer", "run"]
     assert reported == {
@@ -124,32 +127,14 @@ def test_ray_strategy_uses_official_ray_classes(monkeypatch):
     assert isinstance(ray_execution._ray_strategy("deepspeed", {"stage": 2}), DeepSpeed)
 
 
-def test_ray_rejects_post_train_fit_layers_until_global_finalization_exists(monkeypatch):
-    from nexuml.core.post_train_layer import PostTrainFitLayer
-    import nexuml.core.registry as registry_module
-
-    class FakePostTrain(PostTrainFitLayer):
-        def collect_batch(self, x, y):
-            pass
-
-        def finalize_fit(self):
-            pass
-
-        def _transform_forward(self, x, y):
-            return x, y
-
-    monkeypatch.setattr(
-        registry_module,
-        "get_registry",
-        lambda: SimpleNamespace(get=lambda _key: FakePostTrain),
-    )
+def test_ray_rejects_post_train_fit_layers_until_global_finalization_exists():
     scenario = ScenarioSpec(
         name="post-train",
         pipeline=PipelineSpec(
             stages={
                 "post": [
                     LayerSpec(
-                        type_key="post_train",
+                        component=DecisionRulePipelineLayer(),
                         keys_in=["features"],
                         keys_out=["score"],
                     )
@@ -166,7 +151,7 @@ def test_ray_rejects_evaluation_algorithms_until_global_aggregation_exists():
     scenario = ScenarioSpec(
         name="distributed-evaluation",
         evaluation=EvaluationSpec(
-            algorithms=[EvalAlgorithmSpec(type="class_histogram")],
+            algorithms=[EvalAlgorithmSpec(algorithm=ClassHistogramVisualizer())],
         ),
     )
 

@@ -9,10 +9,11 @@ from typing import cast
 from tensordict import TensorDict
 
 from nexuml.core.base_layer import PipelineLayer
+from nexuml.core.components import LayerBuildContext, LayerDefinition
 
 
 @layer("RegressionLoss")
-class RegressionLoss(PipelineLayer):
+class RegressionLoss(LayerDefinition):
     """Computes MSE regression loss between predictions and targets.
 
     keys_in: [predictions_key]
@@ -20,6 +21,11 @@ class RegressionLoss(PipelineLayer):
     Reads targets from y TensorDict using label_key.
     """
 
+    def build(self, context: LayerBuildContext) -> PipelineLayer:
+        return _RegressionLossRuntime(**context.runtime_kwargs())
+
+
+class _RegressionLossRuntime(PipelineLayer):
     def __init__(
         self,
         input_sizes: dict[str, tuple],

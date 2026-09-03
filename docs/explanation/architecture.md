@@ -1,208 +1,109 @@
-# Architecture: spec / compile / run
+# Architecture: Define, Persist, Materialize, Run
 
-NexuML separates the description of a training pipeline from its execution. The lifecycle has three phases.
+NexuML separates immutable semantic configuration from mutable execution objects.
 
-## 1. Spec
+## Definitions
 
-A *scenario* is a pure-Python dataclass tree. It declares what should happen, not how:
-
-```python
-from nexuml.core.discovery import scenario
-from nexuml.core.types import ScenarioSpec, PipelineSpec, LayerSpec, DataSpec, TrainingSpec
-
-@scenario("my-architecture-example")
-def my_architecture_example() -> ScenarioSpec:
-    return ScenarioSpec(
-        name="my-architecture-example",
-        data=DataSpec(source_type="synthetic", params={"feature_shape": [64], "num_samples": 1000}),
-        pipeline=PipelineSpec(stages={
-            "encode": [
-                LayerSpec(
-                    type_key="LinearEncoder",
-                    keys_in=["features"],
-                    keys_out=["z"],
-                    params={"input_dim": 64, "output_dim": 8},
-                ),
-            ],
-            "loss": [
-                LayerSpec(
-                    type_key="ReconstructionLoss",
-                    keys_in=["z", "features"],
-                    keys_out=["reconstruction_loss"],
-                    params={},
-                ),
-            ],
-        }),
-        training=TrainingSpec(max_epochs=10, loss_keys={"reconstruction_loss": 1.0}),
-    )
-```
-
-No tensors, no PyTorch — just configuration. The resolved spec is serializable to YAML and reloadable without code changes.
-
-## 2. Compile
-
-`nexuml resolve <scenario>` runs the compiler:
-
-1. Resolves layer keys to registered `PipelineLayer` classes.
-2. Validates that tensor key contracts are satisfied (output keys of layer N → input keys of layer N+1).
-3. Writes `configs/<scenario>.yaml` — the canonical, reproducible form of the pipeline.
-
-`nexuml build <config.yaml>` instantiates the compiled pipeline and reports:
-
-- Layer order and tensor shapes
-- Parameter counts per layer
-- A Mermaid flowchart (see [Pipeline diagrams](diagrams.md))
-
-## 3. Run
-
-`nexuml train <scenario>` drives the compiled pipeline through PyTorch Lightning:
-
-- Each forward pass routes a `TensorDict` through the layer sequence.
-- Gradient flow is handled by Lightning's training loop.
-- Callbacks (checkpointing, LR scheduling, early stopping) are declared in the spec.
-
-After training, post-train pipeline layers are fitted on the full training set before evaluation.
-
-## TensorDict data flow
-
-Each layer in the pipeline operates on a `TensorDict` — a dictionary of named tensors. Layers declare their inputs and outputs as key lists:
+Python scenario graphs contain concrete Pydantic definitions:
 
 ```python
 LayerSpec(
-    type_key="linear_encoder",
-    keys_in=["features"],       # reads "features" from the TensorDict
-    keys_out=["z"],             # writes "z" into the TensorDict
-    params={"input_dim": 64, "output_dim": 8},
+    component=LinearEncoder(hidden_dims=[32], output_dim=8),
+    keys_in=["features"],
+    keys_out=["latent"],
 )
 ```
 
-The compiler validates that every `keys_in` key is produced by a prior layer (or the data source) before the pipeline can run. The TensorDict accumulates keys as it flows through stages:
+The public `LinearEncoder` value declares configurable fields, defaults, validation, and schema. `LayerSpec` declares graph wiring. A data source, evaluation algorithm, or loader backend follows the same typed-definition pattern.
 
-```
-data source → TensorDict{"features": Tensor[B, 64]}
-                    ↓ linear_encoder
-              TensorDict{"features": ..., "z": Tensor[B, 8]}
-                    ↓ reconstruction_loss
-              TensorDict{"features": ..., "z": ..., "reconstruction_loss": Tensor[B, 1]}
-```
+Definitions are frozen portable values with no tensors, modules, loaded data, trainer state, or shared storage.
 
-## Package export
-
-After training, the compiled pipeline can be exported to a portable package:
-
-```bash
-nexuml export my-scenario
-```
-
-The package contains `state_dict.pt` (weights), `config.yaml` (full reproducible spec), and `metadata.json` (provenance). Load it anywhere without re-running compilation:
+Ordinary one-input/one-output tensor modules share one core definition and runtime:
 
 ```python
-from nexuml.core.export import load_inference_package
-
-pkg = load_inference_package("packages/my-scenario/")
-output = pkg.infer(tensordict_input)
+LayerSpec(
+    component=nn_module(torch.nn.Linear, 128, 64),
+    keys_in=["features"],
+    keys_out=["embedding"],
+)
 ```
 
-See [Model export and reload](../how-to/export.md).
+`NnModuleLayer` stores the importable factory target and JSON-safe constructor values. Its `build()` method invokes only those explicit values and places the resulting `torch.nn.Module` inside `TorchModuleAdapter`. Modules needing labels, metadata, build context, custom lifecycle, or richer input/output routing remain registered semantic definitions.
 
-## Why this separation?
+## Identity Registry
 
-| Concern | Where it lives |
+Decorators assign explicit `(kind, name, version)` identities. The common `ComponentRegistry` owns only identity lookup, reverse lookup, deterministic listing, and conflict diagnostics. It does not inspect runtime constructors or validate parameter dictionaries.
+
+Scenario functions remain in a separate recipe registry.
+
+## Persistence
+
+At YAML and checkpoint boundaries, generic lowering replaces each definition with stable data:
+
+```yaml
+component:
+  type: LinearEncoder
+  version: '1'
+  params:
+    hidden_dims: [32]
+    output_dim: 8
+```
+
+Restoration discovers the component and performs exact kind/name/version lookup followed by `definition_type.model_validate(params)`. Registered semantic definitions persist no Python import path or runtime object.
+
+`NnModule` is the explicit external-code exception: its stable component identity contains a top-level `module:name` factory target. Constructor values are recursively limited to JSON-safe primitives, lists, and string-key mappings. Compiling this trusted config imports and invokes that target; it does not support live instances, lambdas, closures, local definitions, or constructor reflection.
+
+## Materialization
+
+Each role has one explicit build boundary:
+
+- `LayerDefinition.build(LayerBuildContext)` creates a `PipelineLayer`.
+- `DataSourceDefinition.build()` creates a `NexuDataset`.
+- `EvalAlgorithmDefinition.build(EvalBuildContext)` creates an `EvalAlgorithm`.
+- `LoaderBackendDefinition.build()` creates a loader backend.
+
+Runtime-only values are supplied through the surrounding spec or build context. For layers this includes inferred input shapes, TensorDict keys, labels, class count, metadata, shared storage, and scheduling.
+
+Public definitions and private runtimes are usually colocated:
+
+```python
+@layer("scaled_relu")
+class ScaledReLU(LayerDefinition):
+    scale: float = 1.0
+
+    def build(self, context: LayerBuildContext):
+        return _ScaledReLURuntime(scale=self.scale, **context.runtime_kwargs())
+
+
+class _ScaledReLURuntime(PipelineLayer):
+    ...
+```
+
+## Compile And Run
+
+The compiler propagates shapes and key metadata, constructs `LayerBuildContext`, and calls `spec.component.build(context)` directly. It does not resolve a layer name or inspect `__init__` during normal Python compilation.
+
+The compiled pipeline routes a `TensorDict` through ordered stages. PyTorch Lightning owns training, callbacks, checkpointing, and device execution. Evaluation materializes typed algorithms after training.
+
+## Discovery
+
+Each CLI run scans the built-in library, installed `nexuml.libraries` entry points, and configured local roots. Errors from one module are collected without hiding unrelated components. There is no persistent discovery cache or hard-coded module list.
+
+Direct module factories are not discovered or registered individually. Self-contained export inspects modules nested inside `TorchModuleAdapter` so custom source is packaged while PyTorch and other runtime dependencies remain external. The former `IdentityLayer`, `Dropout`, and `Flatten` component identities have no aliases; their direct PyTorch equivalents use `nn_module(...)`.
+
+## Ownership
+
+| Concern | Owner |
 |---|---|
-| What to run | Scenario spec (Python / YAML) |
-| How to run | PipelineLayer implementations |
-| When to run | Lightning Trainer configuration |
-| Results | MLflow / log directory |
+| Component semantics and validation | Concrete definition |
+| Graph wiring and placement | Scenario specs |
+| Stable persisted identity | Component registry |
+| Runtime construction values | Build context |
+| Mutable execution state | Private runtime |
+| YAML/checkpoint conversion | Generic serialization boundary |
 
-This means scenarios can be versioned, diff'd, and reproduced independently of the code that executes them.
+## See Also
 
-## Project structure
-
-```
-src/nexuml/
-├── cli/                  # Typer CLI (nexuml entrypoint)
-├── core/
-│   ├── types.py          # ScenarioSpec, LayerSpec, PipelineSpec, …
-│   ├── base_layer.py     # PipelineLayer base class (TensorDict forward)
-│   ├── registry.py       # Global layer registry
-│   ├── compiler.py       # ScenarioSpec → CompiledPipeline
-│   ├── pipeline.py       # CompiledPipeline forward / loss
-│   ├── config.py         # ResolvedConfig (save/load YAML)
-│   ├── export.py         # export_package / load_package / infer
-│   ├── discovery.py      # decorators (@layer, @data_source, @scenario, @eval_algorithm)
-│   └── torch_adapter.py  # Lightning module wrapping CompiledPipeline
-├── data/
-│   ├── dataset.py        # NexuDataset (TensorDict-based)
-│   ├── sources/          # Data source implementations
-│   ├── loaders.py        # DataLoader factory
-│   └── module.py         # LightningDataModule
-├── evaluation/
-├── tracking/             # Experiment tracking (extensible)
-└── tuning/               # Hyperparameter tuning (extensible)
-
-library/src/nexuml_library/
-├── layers/               # Registered layers (feature, model, head, …)
-├── data/                 # Data source implementations
-├── scenarios/            # Pre-built scenario functions
-└── evaluation/           # Evaluation algorithm implementations
-```
-
-## Writing a custom layer
-
-```python
-from nexuml.core.discovery import layer
-from nexuml.core.base_layer import PipelineLayer
-import torch
-
-@layer("my_relu")
-class MyReLU(PipelineLayer):
-    def forward_tensor(self, x: torch.Tensor) -> torch.Tensor:
-        return torch.relu(x)
-```
-
-The layer is available in any `LayerSpec` by `type_key = "my_relu"`.
-
-## Writing a custom scenario
-
-```python
-from nexuml.core.discovery import scenario
-from nexuml.core.types import ScenarioSpec, PipelineSpec, LayerSpec, DataSpec, TrainingSpec
-
-@scenario("my_scenario")
-def my_scenario() -> ScenarioSpec:
-    return ScenarioSpec(
-        name="my_scenario",
-        pipeline=PipelineSpec(stages={
-            "encode": [
-                LayerSpec(
-                    type_key="LinearEncoder",
-                    keys_in=["features"],
-                    keys_out=["z"],
-                    params={"input_dim": 64, "output_dim": 8, "hidden_dims": [32]},
-                ),
-            ],
-            "decode": [
-                LayerSpec(
-                    type_key="LinearEncoder",
-                    keys_in=["z"],
-                    keys_out=["reconstructed"],
-                    params={"input_dim": 8, "output_dim": 64, "hidden_dims": [32]},
-                ),
-            ],
-            "loss": [
-                LayerSpec(
-                    type_key="ReconstructionLoss",
-                    keys_in=["features", "reconstructed"],
-                    keys_out=["reconstruction_loss"],
-                    params={},
-                ),
-            ],
-        }),
-        data=DataSpec(source_type="synthetic", params={"feature_shape": [64], "num_samples": 500}),
-        training=TrainingSpec(
-            lr=1e-3, batch_size=32, max_epochs=5, loss_keys={"reconstruction_loss": 1.0}
-        ),
-    )
-```
-
-See [Discovery decorators](../reference/decorators.md), [Define a scenario](../how-to/define-scenario.md), and [Run scenarios](../how-to/run-scenarios.md).
+- [Scenarios](../learn/scenarios.md)
+- [Decorators and discovery](../learn/decorators-and-discovery.md)
+- [Custom layer](../how-to/custom-layer.md)

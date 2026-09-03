@@ -1,92 +1,65 @@
 # Run scenarios
 
-NexuML executes a scenario from one of three sources. This page is the source of truth for how each command accepts scenarios.
+NexuML accepts different scenario sources at different boundaries. Use this page to choose the source; use the generated [CLI reference](../reference/cli.md) for exact flags.
 
-## Scenario sources
+## Supported sources
 
-| Source | `resolve` | `build` | `train` | `tune` | `export` |
-|---|---|---|---|---|---|
-| Registered scenario name | `nexuml resolve <name>` | — | `nexuml train <name>` | `nexuml tune <name>` | `nexuml export <name>` |
-| Resolved YAML config (`-c`) | — | `nexuml build <path>` | `nexuml train -c <path>` | Not supported | — |
-| Trusted Python file (`--scenario-file`) | — | — | `nexuml train --scenario-file <path>` | `nexuml tune --scenario-file <path>` | — |
+| Command | Registered scenario | Resolved YAML | Trusted Python file |
+| --- | --- | --- | --- |
+| `resolve` | yes | — | — |
+| `build` | — | yes | — |
+| `train` | yes | yes | yes |
+| `export-dataset` | yes | yes | — |
+| `tune` | yes | — | yes |
+| `export` | yes | — | — |
+| `smoke` | yes | — | — |
 
-Only one source may be provided per command.
+Only one scenario source may be supplied to a command.
 
-## 1. Registered scenario name
+## Registered scenario
 
-Scenarios decorated with `@scenario` and discovered from `nexuml_library`, entry-point packages, or local library roots are available by name.
+Libraries expose scenario recipes with `@scenario`:
 
 ```bash
 nexuml registry list scenarios
 nexuml resolve my-scenario
-nexuml train my-scenario --max-epochs 10
-nexuml tune my-scenario --n-trials 20
-nexuml export my-scenario
+nexuml train my-scenario
 ```
 
-## 2. Resolved YAML config (`--config` / `-c`)
+Use this for stable, reusable experiment recipes.
 
-`nexuml resolve` writes a reproducible YAML config. That config can be passed to `train` or `build` with `--config` / `-c`:
+## Resolved YAML
+
+`resolve` persists the scenario's typed definitions and surrounding specs:
 
 ```bash
 nexuml resolve my-scenario -o configs/my-scenario.yaml
 nexuml build configs/my-scenario.yaml
-nexuml train -c configs/my-scenario.yaml --max-epochs 10
+nexuml train -c configs/my-scenario.yaml
 ```
 
-`build` requires a resolved YAML path as its positional argument.
+Use YAML when you want an inspectable/versionable frozen configuration rather than re-evaluating the scenario recipe.
 
-## 3. Trusted Python scenario file (`--scenario-file`)
+## Trusted Python file
 
-A plain Python file that defines `scenario() -> ScenarioSpec` can be executed directly:
+For local experiments, a file can expose `scenario() -> ScenarioSpec`:
 
 ```bash
-nexuml train --scenario-file my_experiment.py
-nexuml tune --scenario-file my_experiment.py --n-trials 20
+nexuml train --scenario-file experiment.py
+nexuml tune --scenario-file experiment.py --n-trials 20
 ```
 
-Use `--artifact-dir` to save a provenance snapshot:
-
-```bash
-nexuml train --scenario-file my_experiment.py --artifact-dir ./artifacts/exp-001/
-```
+Use `--artifact-dir` when you want NexuML to snapshot the trusted file and provenance alongside the run.
 
 !!! warning "Trusted execution"
-    Scenario files are executed with `exec()`. Only load files from trusted sources.
+    Scenario files are executed as Python code. Only run files you trust.
 
-## `tune` limitations
+## Checkpoint-only resume
 
-`nexuml tune` supports a registered scenario name **or** `--scenario-file`, but **not** resolved YAML via `--config` / `-c`. This is because tuning relies on Python-side `SEARCH_SPACE`, `TUNING_SPEC`, or `build(**params)` definitions that are not part of the resolved YAML format.
-
-## Common command matrix
-
-```bash
-# Resolve a registered scenario to YAML
-nexuml resolve synthetic-linear-ae-reconstruction
-
-# Inspect the resolved config
-nexuml build configs/synthetic-linear-ae-reconstruction.yaml
-
-# Train by name
-nexuml train synthetic-linear-ae-reconstruction --max-epochs 5
-
-# Train from YAML
-nexuml train -c configs/synthetic-linear-ae-reconstruction.yaml --max-epochs 5
-
-# Train from a trusted Python file
-nexuml train --scenario-file my_experiment.py
-
-# Tune a registered scenario
-nexuml tune synthetic-linear-ae-reconstruction --n-trials 10
-
-# Tune from a trusted Python file
-nexuml tune --scenario-file my_experiment.py --n-trials 10
-```
+`train` also accepts a Lightning trainer checkpoint without a separate scenario source. NexuML can recover the persisted scenario information from a compatible checkpoint. See [Checkpoints](checkpoints.md).
 
 ## See also
 
 - [Define a scenario](define-scenario.md)
 - [Trusted scenario files](scenario-file.md)
-- [Tuning file reference](../reference/tuning-file.md)
-- [Optuna tuning](tune.md)
-- [ScenarioSpec reference](../reference/scenario-spec.md)
+- [CLI reference](../reference/cli.md)

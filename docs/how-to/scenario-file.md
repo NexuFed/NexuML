@@ -1,116 +1,57 @@
 # Trusted Python scenario files
 
-NexuML can load a scenario from a plain Python file instead of the built-in registry. This enables locally-authored experiments and agent-driven experiment loops.
+A trusted Python file is useful for local/agent-driven experiments that should not yet be promoted into a discoverable library recipe.
 
 !!! warning "Trusted execution"
-    Scenario files are executed as Python code with `exec()`. Only load files from trusted sources.
+    NexuML executes scenario files as Python code. Only run files you trust.
 
-## Prerequisites
+## Contract
 
-- NexuML installed
-- The file exposes a callable `scenario()` that returns `ScenarioSpec`
-
-## Minimal example
+The file exposes `scenario() -> ScenarioSpec`:
 
 ```python
-# my_experiment.py
-from nexuml.core.types import (
-    ScenarioSpec, TrainingSpec, DataSpec, PipelineSpec, LayerSpec
-)
+from nexuml.core.types import DataSpec, LoaderSpec, ScenarioSpec, TrainingSpec
+from nexuml.data.loaders.definitions import TorchLoader
+from nexuml_library.data.synthetic import SyntheticDataset
+
 
 def scenario() -> ScenarioSpec:
     return ScenarioSpec(
-        name="my_experiment",
+        name="experiment",
         data=DataSpec(
-            source_type="synthetic",
-            params={"feature_shape": [64], "num_samples": 1000},
+            source=SyntheticDataset(feature_shape=(64,), num_samples=1000),
+            input_shapes={"features": [64]},
+            loader=LoaderSpec(backend=TorchLoader()),
         ),
-        training=TrainingSpec(
-            lr=1e-3,
-            max_epochs=5,
-            loss_keys={"reconstruction_loss": 1.0},
-        ),
-        pipeline=PipelineSpec(stages={
-            "encode": [
-                LayerSpec(
-                    type_key="LinearEncoder",
-                    keys_in=["features"],
-                    keys_out=["z"],
-                    params={"input_dim": 64, "output_dim": 8},
-                )
-            ],
-            "decode": [
-                LayerSpec(
-                    type_key="LinearEncoder",
-                    keys_in=["z"],
-                    keys_out=["reconstructed"],
-                    params={"input_dim": 8, "output_dim": 64},
-                )
-            ],
-            "loss": [
-                LayerSpec(
-                    type_key="ReconstructionLoss",
-                    keys_in=["features", "reconstructed"],
-                    keys_out=["reconstruction_loss"],
-                    params={},
-                )
-            ],
-        }),
+        pipeline=...,
+        training=TrainingSpec(max_epochs=5),
     )
 ```
 
-Run it:
+Run it directly:
 
 ```bash
-nexuml train --scenario-file my_experiment.py
+nexuml train --scenario-file experiment.py
 ```
 
-## Provenance snapshots
-
-Use `--artifact-dir` to save a copy of the file alongside the run outputs:
+## Save provenance
 
 ```bash
-nexuml train --scenario-file my_experiment.py --artifact-dir ./artifacts/exp-001/
+nexuml train \
+  --scenario-file experiment.py \
+  --artifact-dir artifacts/exp-001
 ```
 
-This writes:
+The artifact directory records a source snapshot/hash and run provenance so an exploratory file can be tied to the resulting experiment.
 
-- `artifacts/exp-001/scenario.py` — a copy of the file
-- `artifacts/exp-001/scenario_hash.txt` — SHA-256 of the file source
+## Tuning metadata
 
-## Optional agent metadata exports
-
-Scenario files can export additional constants used by agent-driven workflows:
-
-| Export | Type | Purpose |
-|---|---|---|
-| `HYPOTHESIS` | `str` | Human-readable description of what this experiment tests |
-| `PARENT` | `str` | Name or path of the parent experiment |
-| `TAGS` | `list[str]` or `str` | Labels for grouping and filtering |
-| `SEARCH_SPACE` | `dict` | Optuna search space for `nexuml tune` |
-| `TUNING_SPEC` | `TuningSpec` or `dict` | Tuning configuration |
-| `build` | `callable(**params) -> ScenarioSpec` | Factory for structural/architectural tuning |
-
-## Using with `nexuml tune`
+Trusted scenario files can also expose the tuning metadata documented in [Tuning file reference](../reference/tuning-file.md), including `SEARCH_SPACE`, `TUNING_SPEC`, and an optional structural `build(**params)` factory.
 
 ```bash
-nexuml tune --scenario-file my_experiment.py \
-  --n-trials 20 \
-  --metric val/loss \
-  --direction minimize
+nexuml tune --scenario-file experiment.py --n-trials 20
 ```
 
-For full details on `SEARCH_SPACE`, `TUNING_SPEC`, `build(**params)`, and advanced search-space types, see the [Tuning file reference](../reference/tuning-file.md).
+## When to promote it
 
-## Implementation map
-
-- `src/nexuml/core/scenario_loader.py` — `load_scenario_file`, `LoadedScenarioFile`
-- `src/nexuml/cli/main.py` — `--scenario-file` and `--artifact-dir` options on `train` and `tune`
-- `src/nexuml/core/provenance.py` — snapshot writing
-
-## See also
-
-- [Run scenarios](run-scenarios.md)
-- [Define a scenario](define-scenario.md)
-- [Tuning file reference](../reference/tuning-file.md)
-- [Optuna tuning](tune.md)
+Once a recipe is stable and should be reused by colleagues, move it into an importable library, decorate it with `@scenario`, and expose the package through `nexuml.libraries`. See [Register a library](register-library.md).

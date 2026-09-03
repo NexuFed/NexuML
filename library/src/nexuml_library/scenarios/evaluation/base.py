@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 from nexuml.core.types import EvalAlgorithmSpec, EvaluationSpec
+from nexuml_library.evaluation.visualizers.class_histogram import ClassHistogramVisualizer
+from nexuml_library.evaluation.visualizers.latent import LatentVisualizer
+from nexuml_library.evaluation.visualizers.reconstruction import ReconstructionVisualizer
 
 
-def merge_eval_specs(eval_specs: list[EvaluationSpec]):
+def merge_eval_specs(eval_specs: list[EvaluationSpec]) -> EvaluationSpec:
     """Merge a list of evaluation specs into a single combined spec.
 
     Returns:
@@ -41,14 +44,13 @@ def reconstruction_evaluation(
         metrics=metrics,
         algorithms=[
             EvalAlgorithmSpec(
-                type="reconstruction_visualizer",
-                params={
-                    "feature_key": reconstruction_feature_key,
-                    "reconstructed_key": reconstruction_key,
-                    "mask_key": reconstruction_mask_key,
-                    "patch_size": reconstruction_patch_size,
-                    "label_keys": reconstruction_label_keys,
-                },
+                algorithm=ReconstructionVisualizer(
+                    reconstructed_key=reconstruction_key,
+                    mask_key=reconstruction_mask_key,
+                    patch_size=reconstruction_patch_size,
+                    label_keys=reconstruction_label_keys,
+                ),
+                feature_key=reconstruction_feature_key,
             )
         ],
         test_result_metrics=metrics,
@@ -70,26 +72,18 @@ def classification_evaluation(
         metrics=metrics,
         algorithms=[
             EvalAlgorithmSpec(
-                type="class_histogram",
-                params={"label_key": label_key},
+                algorithm=ClassHistogramVisualizer(),
+                label_key=label_key,
             ),
             EvalAlgorithmSpec(
-                type="latent_visualizer",
-                params={
-                    "feature_key": feature_key,
-                    "label_key": "class",
-                    "method": "tsne",
-                    "max_samples": max_samples,
-                },
+                algorithm=LatentVisualizer(method="tsne", max_samples=max_samples),
+                feature_key=feature_key,
+                label_key=label_key,
             ),
             EvalAlgorithmSpec(
-                type="latent_visualizer",
-                params={
-                    "feature_key": feature_key,
-                    "label_key": "class",
-                    "method": "umap",
-                    "max_samples": max_samples,
-                },
+                algorithm=LatentVisualizer(method="umap", max_samples=max_samples),
+                feature_key=feature_key,
+                label_key=label_key,
             ),
         ],
         test_result_metrics=metrics,

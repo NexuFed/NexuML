@@ -6,7 +6,9 @@ import torch
 import pytest
 
 from nexuml.core.types import LayerSpec, LoaderSpec, PipelineSpec, ScenarioSpec, TrainingSpec
+from nexuml.data.loaders.definitions import TorchLoader
 from nexuml.training.lightning import NexuSession
+from nexuml_library.layers.model.linear_encoder import LinearEncoder
 from nexuml_library.scenarios.data.synthetic import synthetic_vector_data
 
 
@@ -17,18 +19,16 @@ def _make_scenario() -> ScenarioSpec:
             stages={
                 "encode": [
                     LayerSpec(
-                        type_key="LinearEncoder",
+                        component=LinearEncoder(hidden_dims=[8], output_dim=4),
                         keys_in=["features"],
                         keys_out=["latent"],
-                        params={"hidden_dims": [8], "output_dim": 4},
                     ),
                 ],
                 "decode": [
                     LayerSpec(
-                        type_key="LinearEncoder",
+                        component=LinearEncoder(hidden_dims=[8], output_dim=16),
                         keys_in=["latent"],
                         keys_out=["reconstructed"],
-                        params={"hidden_dims": [8], "output_dim": 16},
                     ),
                 ],
             }
@@ -56,7 +56,7 @@ def test_session_setup_orchestrates_without_training(tmp_path):
     running an actual fit loop, so the default suite has training-entry-point
     coverage independent of the slow-marked end-to-end test above."""
     scenario = _make_scenario()
-    scenario.data.loader = LoaderSpec(backend="torch", batch_size=4, num_workers=0)
+    scenario.data.loader = LoaderSpec(backend=TorchLoader(), batch_size=4, num_workers=0)
 
     session = NexuSession.from_scenario(scenario, enable_progress_bar=False, log_dir=tmp_path)
     session.setup()

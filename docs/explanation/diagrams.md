@@ -1,69 +1,46 @@
 # Pipeline diagrams
 
-`nexuml build` and `nexuml train` can both generate Mermaid flowcharts from a compiled pipeline. The diagram shows layers, tensor keys, and parameter counts.
+NexuML can write a Mermaid representation of a compiled pipeline when diagram output is enabled in `LoggingSpec`.
 
-## Generate a diagram
-
-### Via `nexuml build`
-
-```bash
-nexuml resolve my-scenario          # writes configs/my-scenario.yaml
-nexuml build configs/my-scenario.yaml
-```
-
-The Mermaid source is printed to stdout. If `logging.diagram.enabled=true`, it is also saved to `logging.diagram.output_dir/<scenario>.md`.
-
-### Via `nexuml train`
-
-When `logging.diagram.enabled=true` in the scenario, training automatically exports the diagram to `output_dir` after the compile step. No separate `build` call is needed.
-
-## Example diagram
-
-```mermaid
-flowchart TD
-    A["SpecgramLayer\nparams: 0\nin: audio\nout: spectrogram"] --> B
-    B["ResNet18Backbone\nparams: 11M\nin: spectrogram\nout: embedding"] --> C
-    C["ClassifierHead\nparams: 512\nin: embedding\nout: logits"]
-```
-
-## Rendering
-
-The diagram above is rendered by [Mermaid.js](https://mermaid.js.org/) inside Material for MkDocs. In the docs site, all `mermaid` fenced code blocks render as interactive SVGs.
-
-To render locally without the docs site:
-
-```bash
-# Install mermaid-cli
-npm install -g @mermaid-js/mermaid-cli
-mmdc -i diagram.mmd -o diagram.svg
-```
-
-## DiagramSpec configuration
-
-Diagram settings live under `logging.diagram` in your scenario:
+## Configure diagram output
 
 ```python
-from nexuml.core.types import LoggingSpec, DiagramSpec
+from nexuml.core.types import DiagramSpec, LoggingSpec
 
-ScenarioSpec(
-    name="my_scenario",
-    logging=LoggingSpec(
-        diagram=DiagramSpec(
-            enabled=True,        # auto-generate on build
-            depth=2,             # nesting levels (1 = stages only, 2 = stages + layers)
-            direction="TB",      # "TB" (top-down) or "LR" (left-right)
-            show_params=True,    # display parameter counts
-            show_shapes=True,    # label edges with tensor shapes
-            show_metrics=True,   # include metric layers
-            output_dir=".experiments/diagrams",
-        )
-    ),
+logging = LoggingSpec(
+    diagram=DiagramSpec(
+        enabled=True,
+        depth=2,
+        direction="TB",
+        show_params=True,
+        show_shapes=True,
+        show_metrics=True,
+        output_dir=".experiments/diagrams",
+    )
 )
 ```
 
-When `enabled=True`, `nexuml build` writes `<output_dir>/<scenario_name>.md` containing an embedded Mermaid flowchart. If diagram generation fails for any reason, the build continues with a warning — it never breaks compilation.
+## Generate during build
+
+```bash
+nexuml resolve my-scenario
+nexuml build configs/my-scenario.yaml
+```
+
+`build` compiles the pipeline and, when diagram output is enabled, writes `<output_dir>/<scenario-name>.md`. The command itself reports the compiled pipeline summary; it does not rely on printing the full Mermaid source to standard output.
+
+## Generate during training
+
+`nexuml train` performs the same configured diagram export before the training session begins. You do not need a separate `build` invocation just to create the diagram.
+
+Diagram generation is diagnostic: a diagram-export failure is reported as a warning rather than turning a valid pipeline compile into a failure.
+
+## Rendering
+
+Material for MkDocs renders Mermaid code fences directly. The exported `.md` can also be rendered by any Mermaid-compatible tool.
 
 ## See also
 
-- [`nexuml.core.diagram`](../reference/api/nexuml/core/diagram.md)
 - [Architecture](architecture.md)
+- [TensorDict data flow](tensordict.md)
+- [`nexuml.core.diagram`](../reference/api/nexuml/core/diagram.md)

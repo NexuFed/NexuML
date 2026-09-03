@@ -1,23 +1,14 @@
 # Reference
 
-Compact, information-oriented reference for NexuML. These pages document interfaces, commands, and configurations without tutorials or extended explanation.
+Reference pages are lookup material. They document the exact public surfaces and are not intended as a learning path.
 
-## CLI reference
+- [CLI](cli.md) — generated directly from the current Typer commands/options.
+- [Scenario and configuration](scenario-spec.md) — ownership of the top-level Pydantic specs and links to their generated API.
+- [Decorators](decorators.md) — stable component/scenario identities.
+- [Registry inspection](registry.md) — inspect discovered components and scenarios.
+- [Backends](backends.md) — loader/export/training/tracking backend catalog.
+- [Environment roots](environment.md) — data/log root resolution.
+- [Tuning file](tuning-file.md) — Python-only Optuna search-space contract.
+- [Python API](api/) — exhaustive generated module reference for the public `nexuml` and `nexuml_library` packages.
 
-- [CLI reference](cli.md) — all `nexuml` commands and flags, generated from the current implementation.
-
-## Python API reference
-
-- [API reference](api/) — auto-generated from `nexuml` and `nexuml_library` docstrings.
-
-## Spec and config reference
-
-- [ScenarioSpec](scenario-spec.md) — all fields of `ScenarioSpec` and nested spec types.
-- [Tuning file](tuning-file.md) — Optuna search space file format.
-
-## Registry and extension reference
-
-- [Decorators](decorators.md) — `@scenario`, `@layer`, `@data_source`, `@eval_algorithm`.
-- [Registry inspection](registry.md) — `nexuml registry list` commands and output.
-- [Backends](backends.md) — available backend implementations and configuration.
-- [Environment variables](environment.md) — `NEXUML_DATA_ROOT`, `NEXUML_LOGS_ROOT`, and other roots.
+If you are trying to learn the framework, use [Tutorials](../tutorials.md) or [Concepts](../explanation/index.md) instead.

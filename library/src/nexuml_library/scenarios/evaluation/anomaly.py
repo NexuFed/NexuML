@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Any, cast, Literal
+from typing import Literal, cast
 
 from nexuml.core.types import AxisKeySpec, EvalAlgorithmSpec, EvaluationSpec, LayerSpec
+from nexuml_library.evaluation.anomalous_sound_detection.asd_evaluator import AnomalyEvaluator
+from nexuml_library.layers.head.decision_rule import DecisionRulePipelineLayer
+from nexuml_library.layers.loss.classification_metrics import ClassificationMetrics
 
 
 def _axis_spec_for_dcase2026_eval(key: str) -> AxisKeySpec:
@@ -29,15 +32,12 @@ def decision_rule_spec(
     """Return a decision-rule layer that produces *decision_key* from *score_key*."""
     return [
         LayerSpec(
-            type_key="decision_rule_pipeline_layer",
+            component=DecisionRulePipelineLayer(
+                fit_mask_key=fit_mask_key,
+                fit_label_key=fit_label_key,
+            ),
             keys_in=[score_key],
             keys_out=[decision_key],
-            params={
-                "score_key": score_key,
-                "decision_key": decision_key,
-                "fit_mask_key": fit_mask_key,
-                "fit_label_key": fit_label_key,
-            },
         ),
     ]
 
@@ -46,7 +46,6 @@ def classification_metrics_spec(
     score_key: str = "anomaly_score",
     decision_key: str = "decision",
     label_key: str = "anomaly",
-    num_classes: int = 2,
     metrics: list[str] | None = None,
     fit_mask_key: str | None = None,
     fit_label_key: str | None = None,
@@ -65,14 +64,10 @@ def classification_metrics_spec(
             fit_label_key=fit_label_key,
         ),
         LayerSpec(
-            type_key="ClassificationMetrics",
+            component=ClassificationMetrics(metrics=metric_names),
             keys_in=[decision_key],
             keys_out=metric_names,
-            params={
-                "label_key": label_key,
-                "num_classes": num_classes,
-                "metrics": metric_names,
-            },
+            label_key=label_key,
         ),
     ]
     return {"Loss": layers}
@@ -101,22 +96,18 @@ def anomaly_evaluation_spec(
         AxisKeySpec(key=label_key, source="y"),
     ]
 
-    evaluator_params: dict[str, Any] = {
-        "score_key": output_score_key,
-        "label_key": label_key,
-        "group_keys": group_keys,
-        "dcase_metric_axes": dcase_metric_axes,
-        "max_fpr": max_fpr,
-    }
-    if decision_key:
-        evaluator_params["decision_key"] = decision_key
-
     algorithms = [
         EvalAlgorithmSpec(
-            type="anomaly_evaluator",
+            algorithm=AnomalyEvaluator(
+                score_key=output_score_key,
+                decision_key=decision_key,
+                group_keys=group_keys,
+                dcase_metric_axes=dcase_metric_axes,
+                max_fpr=max_fpr,
+            ),
             name="anomaly_eval",
             axis_keys=axis_key_specs_plus_label,
-            params=evaluator_params,
+            label_key=label_key,
         )
     ]
     return EvaluationSpec(

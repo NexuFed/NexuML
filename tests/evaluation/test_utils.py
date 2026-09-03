@@ -5,7 +5,10 @@ from __future__ import annotations
 import pytest
 import torch
 
+from nexuml.core.types import DistanceEstimatorSpec
+from nexuml.evaluation.storage import create_temporary_storage
 from nexuml.evaluation.utils import (
+    MemmapFeatureStore,
     RAMFeatureStore,
     ReservoirSampler,
     create_feature_store,
@@ -57,6 +60,19 @@ def test_create_feature_store_ram():
     assert isinstance(store, RAMFeatureStore)
 
 
+def test_distance_estimator_spec_creates_ram_feature_store():
+    spec = DistanceEstimatorSpec(storage_backend="ram", max_samples=2)
+    restored = DistanceEstimatorSpec.model_validate(spec.model_dump())
+    store = restored.create_feature_store()
+
+    assert restored.storage_backend == "ram"
+    assert isinstance(store, RAMFeatureStore)
+    store.append(torch.randn(3, 4))
+    data = store.as_array()
+    assert data is not None
+    assert data.shape == (2, 4)
+
+
 def test_create_feature_store_memmap(tmp_path):
     store = create_feature_store(
         "memmap",
@@ -71,9 +87,39 @@ def test_create_feature_store_memmap(tmp_path):
     store.cleanup()
 
 
+def test_distance_estimator_spec_creates_memmap_feature_store(tmp_path):
+    storage_path = tmp_path / "estimator-features"
+    spec = DistanceEstimatorSpec(
+        storage_backend="memmap",
+        storage_path=str(storage_path),
+        max_samples=10,
+        retain_storage=True,
+    )
+    restored = DistanceEstimatorSpec.model_validate(spec.model_dump())
+    store = restored.create_feature_store()
+
+    assert restored.storage_backend == "memmap"
+    assert isinstance(store, MemmapFeatureStore)
+    assert store.storage_path == storage_path
+    assert store.max_samples == 10
+    assert store.retain_storage is True
+    store.append(torch.randn(3, 4))
+    data = store.as_array()
+    assert data is not None
+    assert data.shape == (3, 4)
+    store.cleanup()
+
+
 def test_create_feature_store_unknown_backend():
     with pytest.raises(ValueError, match="Unknown feature storage backend"):
         create_feature_store("unknown")
+
+
+def test_in_memory_storage_names_are_not_aliases():
+    with pytest.raises(ValueError, match="Unknown feature storage backend"):
+        create_feature_store("memory")
+    with pytest.raises(ValueError, match="Unknown temporary storage backend"):
+        create_temporary_storage("ram")
 
 
 def test_memmap_feature_store_grows_past_initial_capacity(tmp_path):

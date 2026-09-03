@@ -1,206 +1,133 @@
-"""Layer registry with deterministic dynamic discovery."""
+"""Identity registry for typed component definitions."""
 
-from __future__ import annotations
+from dataclasses import dataclass
 
-import builtins
-import inspect
-import logging
-from typing import Any
-
-import torch.nn as nn
-
-from nexuml.core.base_layer import PipelineLayer
-from nexuml.core.discovery import (
-    DiscoveryError,
-    Scanner,
-    discover_library_packages,
-    register_items,
-)
-
-logger = logging.getLogger(__name__)
+from nexuml.core.components import ComponentDefinition
+from nexuml.core.discovery import DiscoveryError
 
 
-class LayerRegistry:
-    """Registry for pipeline layers with automatic discovery.
+@dataclass(frozen=True, slots=True)
+class ComponentEntry:
+    """Registered stable identity and its concrete definition type."""
 
-    Discovers PipelineLayer subclasses in specified packages and supports
-    manual registration. Validates constructor params against signatures.
-    Also consumes decorated discovery results.
-    """
+    kind: str
+    name: str
+    version: str
+    definition_type: type[ComponentDefinition]
+    import_target: str
+
+
+class ComponentRegistry:
+    """Map stable component identities to concrete definition types."""
 
     def __init__(self) -> None:
-        self._registry: dict[str, type] = {}
-        self._errors: builtins.list[DiscoveryError] = []
+        self._entries: dict[tuple[str, str, str], ComponentEntry] = {}
+        self._by_type: dict[type[ComponentDefinition], ComponentEntry] = {}
+        self._errors: list[DiscoveryError] = []
         self._loaded = False
 
     @property
-    def errors(self) -> builtins.list[DiscoveryError]:
-        """Discovery failures from the last scan (import + registration)."""
+    def errors(self) -> list[DiscoveryError]:
         self.ensure_loaded()
         return list(self._errors)
 
-    def register(self, type_key: str, cls: type) -> None:
-        if type_key in self._registry:
-            existing = self._registry[type_key]
-            if existing is not cls:
-                raise ValueError(
-                    f"Registry conflict: '{type_key}' already registered to "
-                    f"{existing.__module__}.{existing.__name__}, "
-                    f"cannot register {cls.__module__}.{cls.__name__}"
-                )
-        self._registry[type_key] = cls
-
-    def get(self, type_key: str) -> type:
-        self.ensure_loaded()
-        if type_key not in self._registry:
-            available = ", ".join(sorted(self._registry.keys()))
-            raise KeyError(
-                f"Layer type '{type_key}' not found in registry. Available: [{available}]"
-            )
-        return self._registry[type_key]
-
-    def list(self) -> dict[str, type]:
-        self.ensure_loaded()
-        return dict(self._registry)
-
-    def validate_params(self, type_key: str, params: dict[str, Any]) -> dict[str, Any]:
-        """Validate and cast params against the constructor signature.
-
-        Returns:
-            Validated and type-cast parameter dictionary.
-
-        Raises:
-            ValueError: If a required parameter is missing from *params*.
-        """
-        cls = self.get(type_key)
-        sig = inspect.signature(cls.__init__)
-        validated: dict[str, Any] = {}
-
-        # Collect parameter info (skip self and known pipeline params)
-        pipeline_params = {
-            "input_sizes",
-            "keys_in",
-            "keys_out",
-            "label_key",
-            "label_in_x",
-            "num_classes",
-            "kwargs",
-            "output_sizes",
-            "shared_memory",
-            "shared_outputs",
-            "shared_inputs",
-            "delay_epochs",
-            "update_every_n_epochs",
-        }
-
-        for name, param in sig.parameters.items():
-            if name in ("self",) or name in pipeline_params:
-                continue
-            if name in params:
-                value = params[name]
-                # Try to cast to annotated type if available
-                if param.annotation is not inspect.Parameter.empty:
-                    try:
-                        annotation = param.annotation
-                        if annotation in (int, float, str, bool):
-                            value = annotation(value)
-                    except (ValueError, TypeError):
-                        pass
-                validated[name] = value
-            elif param.default is inspect.Parameter.empty:
-                raise ValueError(
-                    f"Required parameter '{name}' missing for layer type '{type_key}'. "
-                    f"Signature: {sig}"
-                )
-
-        # Pass through extra kwargs if **kwargs accepted
-        has_var_keyword = any(
-            p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values()
-        )
-        if has_var_keyword:
-            for k, v in params.items():
-                if k not in validated:
-                    validated[k] = v
-
-        return validated
-
-    def instantiate(
+    def register(
         self,
-        type_key: str,
+        name: str,
+        definition_type: type[ComponentDefinition],
         *,
-        input_sizes: dict[str, tuple],
-        keys_in: builtins.list[str],
-        keys_out: builtins.list[str],
-        **params: Any,
-    ) -> nn.Module:
-        """Instantiate a layer from the registry.
+        kind: str | None = None,
+        version: str | None = None,
+    ) -> None:
+        if not isinstance(definition_type, type) or not issubclass(
+            definition_type, ComponentDefinition
+        ):
+            raise TypeError("registered components must inherit ComponentDefinition")
 
-        Returns:
-            Instantiated ``nn.Module`` (or ``TorchModuleAdapter`` wrapper).
-        """
-        cls = self.get(type_key)
-        validated = self.validate_params(type_key, params)
-
-        if issubclass(cls, PipelineLayer):
-            return cls(
-                input_sizes=input_sizes,
-                keys_in=keys_in,
-                keys_out=keys_out,
-                **validated,
-            )
-        else:
-            # Wrap plain nn.Module in TorchModuleAdapter
-            from nexuml.core.torch_adapter import TorchModuleAdapter
-
-            module = cls(**validated)
-            return TorchModuleAdapter(
-                module=module,
-                input_sizes=input_sizes,
-                keys_in=keys_in,
-                keys_out=keys_out,
+        resolved_kind = kind or definition_type.kind
+        resolved_version = version or definition_type.component_version
+        key = (resolved_kind, name, resolved_version)
+        target = f"{definition_type.__module__}.{definition_type.__qualname__}"
+        existing = self._entries.get(key)
+        if existing is not None:
+            if existing.definition_type is definition_type:
+                return
+            raise ValueError(
+                "Component registry conflict for "
+                f"{resolved_kind!r}/{name!r}/{resolved_version!r}: "
+                f"{existing.import_target} and {target}"
             )
 
-    def scan(self, package_paths: builtins.list[str] | None = None) -> None:
-        """Scan packages for PipelineLayer subclasses and register them.
+        previous = self._by_type.get(definition_type)
+        if previous is not None:
+            raise ValueError(
+                f"Component type {target} is already registered as "
+                f"{previous.kind!r}/{previous.name!r}/{previous.version!r}"
+            )
 
-        Also consumes decorated discovery results from the Scanner.
-        """
-        if package_paths is None:
-            package_paths = discover_library_packages()
+        entry = ComponentEntry(
+            kind=resolved_kind,
+            name=name,
+            version=resolved_version,
+            definition_type=definition_type,
+            import_target=target,
+        )
+        self._entries[key] = entry
+        self._by_type[definition_type] = entry
 
-        # Consume decorated discovery results. Import/registration failures are
-        # collected (not raised) so one broken module cannot hide every layer.
+    def get_entry(self, kind: str, name: str, version: str = "1") -> ComponentEntry:
+        self.ensure_loaded()
+        try:
+            return self._entries[(kind, name, version)]
+        except KeyError as exc:
+            available = ", ".join(
+                f"{entry.name}@{entry.version}" for entry in self.entries(kind=kind)
+            )
+            raise KeyError(
+                f"Unknown component {kind!r}/{name!r}/{version!r}. Available: [{available}]"
+            ) from exc
+
+    def get_type(self, kind: str, name: str, version: str = "1") -> type[ComponentDefinition]:
+        return self.get_entry(kind, name, version).definition_type
+
+    def entry_for_type(self, definition_type: type[ComponentDefinition]) -> ComponentEntry:
+        self.ensure_loaded()
+        try:
+            return self._by_type[definition_type]
+        except KeyError as exc:
+            target = f"{definition_type.__module__}.{definition_type.__qualname__}"
+            raise KeyError(f"Component type {target} is not registered") from exc
+
+    def entries(self, *, kind: str | None = None) -> tuple[ComponentEntry, ...]:
+        self.ensure_loaded()
+        values = self._entries.values()
+        if kind is not None:
+            values = (entry for entry in values if entry.kind == kind)
+        return tuple(sorted(values, key=lambda entry: (entry.kind, entry.name, entry.version)))
+
+    def scan(self, package_paths: list[str] | None = None) -> None:
+        from nexuml.core.discovery import Scanner, discover_library_packages, register_items
+
         scanner = Scanner()
-        for package_path in package_paths:
+        for package_path in package_paths or discover_library_packages():
             scanner.scan_package(package_path)
 
         self._errors = list(scanner.errors)
-        register_items(scanner.by_kind("layer"), self.register, self._errors)
-
+        for kind in ("layer", "data_source", "eval_algorithm", "loader_backend"):
+            register_items(scanner.by_kind(kind), self.register, self._errors)
         self._loaded = True
-        logger.info(
-            "Registry loaded: %d layer(s)%s - %s",
-            len(self._registry),
-            f", {len(self._errors)} error(s)" if self._errors else "",
-            ", ".join(sorted(self._registry.keys())),
-        )
 
     def ensure_loaded(self) -> None:
         if not self._loaded:
             self.scan()
 
 
-# Module-level singleton — lazy initialized
-_default_registry: LayerRegistry | None = None
+_default_registry: ComponentRegistry | None = None
 
 
-def get_registry() -> LayerRegistry:
-    """Get the default layer registry (lazy-initialized singleton).
-
-    Returns:
-        The module-level singleton ``LayerRegistry`` instance.
-    """
+def get_component_registry() -> ComponentRegistry:
+    """Return the process-wide component identity registry."""
     global _default_registry
     if _default_registry is None:
-        _default_registry = LayerRegistry()
+        _default_registry = ComponentRegistry()
     return _default_registry

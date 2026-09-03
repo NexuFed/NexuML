@@ -9,16 +9,28 @@ import torch
 import torch.nn as nn
 
 from nexuml.core.base_layer import PipelineLayer
+from nexuml.core.components import LayerBuildContext, LayerDefinition
 
 
 @layer("LinearEncoder")
-class LinearEncoder(PipelineLayer):
+class LinearEncoder(LayerDefinition):
     """Stacked fully-connected layers with optional batch norm and activation.
 
     Used for both encoder and decoder in linear autoencoders.
     Input is flattened to 2D before processing.
     """
 
+    hidden_dims: list[int] | None = None
+    output_dim: int = 8
+    activation: str = "torch.nn.ReLU"
+    last_activation: bool = False
+    bias: bool = True
+
+    def build(self, context: LayerBuildContext) -> PipelineLayer:
+        return _LinearEncoderRuntime(**context.runtime_kwargs(), **self.model_dump())
+
+
+class _LinearEncoderRuntime(PipelineLayer):
     def __init__(
         self,
         input_sizes: dict[str, tuple],

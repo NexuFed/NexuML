@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from nexuml.core.types import DataSpec, DatasetSpec, TargetSpec
+from nexuml_library.data.synthetic import SyntheticDataset, TargetConfig
 
 
 def synthetic_vector_data(
@@ -19,42 +20,36 @@ def synthetic_vector_data(
     Returns:
         DataSpec: Synthetic dataset specification.
     """
-    target_dicts = []
+    target_configs = []
     for t in targets or []:
-        d = {
-            "type": t.type,
-            "key": t.key,
-            "num_classes": t.num_classes,
-            "num_outputs": t.num_outputs,
-            "positive_fraction": t.positive_fraction,
-            "label_density": 0.3,
-        }
-        target_dicts.append(d)
+        target_configs.append(
+            TargetConfig(
+                type=t.type,
+                key=t.key,
+                num_classes=t.num_classes,
+                num_outputs=t.num_outputs,
+                positive_fraction=t.positive_fraction,
+            )
+        )
 
     return DataSpec(
-        source_type="synthetic",
-        params={
-            "feature_shape": list(feature_shape),
-            "num_samples": num_samples,
-            "noise_type": noise_type,
-            "num_clusters": num_clusters,
-            "seed": seed,
-        },
         targets=targets or [],
+        num_classes=next(
+            (target.num_classes for target in targets or [] if target.num_classes), None
+        ),
         feature_key=feature_key,
         input_shapes={feature_key: list(feature_shape)},
         datasets=[
             DatasetSpec(
-                type_key="synthetic",
-                params={
-                    "feature_shape": list(feature_shape),
-                    "num_samples": num_samples,
-                    "noise_type": noise_type,
-                    "num_clusters": num_clusters,
-                    "seed": seed,
-                    "targets": target_dicts or None,
-                    "feature_key": feature_key,
-                },
+                source=SyntheticDataset(
+                    feature_shape=feature_shape,
+                    num_samples=num_samples,
+                    noise_type=noise_type,
+                    num_clusters=num_clusters,
+                    seed=seed,
+                    targets=target_configs,
+                    feature_key=feature_key,
+                ),
             )
         ],
     )

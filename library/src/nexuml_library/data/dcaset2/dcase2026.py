@@ -29,6 +29,7 @@ from tensordict import TensorDict
 
 from nexuml.data.dataset import NexuDataset
 from nexuml.data.file_io import _download_file, _unzip_file
+from nexuml.core.components import DataSourceDefinition
 
 logger = logging.getLogger(__name__)
 
@@ -126,7 +127,7 @@ def _valid_zip(path: Path) -> bool:
 
 
 @data_source("DCASET2Dataset")
-class DCASET2Dataset(NexuDataset):
+class DCASET2Dataset(DataSourceDefinition):
     """DCASE Task 2 anomalous sound detection dataset.
 
     Builds a metadata DataFrame from the DCASE directory structure and
@@ -139,7 +140,7 @@ class DCASET2Dataset(NexuDataset):
     Label columns: machine (int index), y_true (0=normal,1=anomalous),
                    condition (int), target (0/1).
 
-    Args:
+    Attributes:
         root: Path to the dataset root directory.
         dataset_name: e.g. "DCASE2024T2"
         machine_type: e.g. "ToyCar", "fan", etc.
@@ -151,6 +152,27 @@ class DCASET2Dataset(NexuDataset):
         machine_types: list of all machine types (for machine index mapping)
     """
 
+    root: str | Path | None = None
+    data_root: str | Path | None = None
+    dataset_name: str = "DCASE2024T2"
+    machine_type: str = "ToyCar"
+    section_keyword: str = "section"
+    section_ids: list[str] | None = None
+    data_type: str = "dev"
+    train: bool = True
+    sample_rate: int = 16000
+    clip_num_samples: int | None = None
+    machine_types: list[str] | None = None
+    machine_id: int | None = None
+    machine_label: str | None = None
+    download: bool = False
+    download_manifest: Path | None = None
+
+    def build(self) -> NexuDataset:
+        return _DCASET2DatasetRuntime(**self.model_dump())
+
+
+class _DCASET2DatasetRuntime(NexuDataset):
     LABEL_NAMES = ["y_true", "machine", "target", "section"]
 
     def __init__(
@@ -446,7 +468,7 @@ class DCASET2Dataset(NexuDataset):
         clip_num_samples: int | None = None,
         download: bool = False,
         download_manifest: Path | None = None,
-    ) -> list[DCASET2Dataset]:
+    ) -> list[_DCASET2DatasetRuntime]:
         """Create one DCASET2Dataset per machine type.
 
         Returns:
@@ -701,7 +723,7 @@ def _build_task1_metadata(root_dir: Path) -> pd.DataFrame | None:
 
 
 @data_source("DCASE2026T1Dataset")
-class DCASE2026T1Dataset(NexuDataset):
+class DCASE2026T1Dataset(DataSourceDefinition):
     """DCASE 2026 Task 1 dataset for BSD10k-v1.2 / BSD35k-CS.
 
     Expects a metadata CSV with columns including at least:
@@ -709,7 +731,7 @@ class DCASE2026T1Dataset(NexuDataset):
     Optional columns: ``confidence``, ``uploader``, ``license``, ``title``,
     ``tags``, ``description``, ``clap_embedding``.
 
-    Args:
+    Attributes:
         root: Dataset root directory.
         metadata_csv: Path to metadata CSV relative to root.
         download_mode: One of the DownloadMode literals.
@@ -721,6 +743,22 @@ class DCASE2026T1Dataset(NexuDataset):
         sample_rate: Target audio sample rate.
     """
 
+    root: str | Path
+    metadata_csv: str = "metadata.csv"
+    download_mode: DownloadMode = "disabled"
+    checksum: str | None = None
+    clap_embeddings_dir: str | None = None
+    fold_seed: int = 42
+    fold_id: int | None = None
+    split: str = "fit"
+    sample_rate: int = 16000
+    clip_num_samples: int | None = None
+
+    def build(self) -> NexuDataset:
+        return _DCASE2026T1DatasetRuntime(**self.model_dump())
+
+
+class _DCASE2026T1DatasetRuntime(NexuDataset):
     LABEL_NAMES = ["class_top", "class_second", "confidence"]
 
     def __init__(
@@ -911,6 +949,14 @@ class DCASE2026T2Dataset(DCASET2Dataset):
     not here. DALI loads raw stereo audio as [C, T] via ``dali_layout="CT"``.
     """
 
+    dataset_name: str = "DCASE2026T2"
+    attributes_csv: str | None = None
+
+    def build(self) -> NexuDataset:
+        return _DCASE2026T2DatasetRuntime(**self.model_dump())
+
+
+class _DCASE2026T2DatasetRuntime(_DCASET2DatasetRuntime):
     LABEL_NAMES = ["y_true", "machine", "target", "section"]
 
     def __init__(
@@ -1127,7 +1173,7 @@ def _build_task7_domain_metadata(domain_dir: Path, domain: str) -> pd.DataFrame 
 
 
 @data_source("DCASE2026T7Dataset")
-class DCASE2026T7Dataset(NexuDataset):
+class DCASE2026T7Dataset(DataSourceDefinition):
     """DCASE 2026 Task 7 DIL-DCASE26 dataset.
 
     Expects a root directory with subfolders ``D2/`` and ``D3/`` (and
@@ -1141,6 +1187,19 @@ class DCASE2026T7Dataset(NexuDataset):
     ``get_increment()``.
     """
 
+    root: str | Path
+    domains: list[str] | None = None
+    download_mode: DownloadMode = "disabled"
+    checksum: str | None = None
+    d1_baseline_dir: str | None = None
+    sample_rate: int = 16000
+    clip_num_samples: int | None = None
+
+    def build(self) -> NexuDataset:
+        return _DCASE2026T7DatasetRuntime(**self.model_dump())
+
+
+class _DCASE2026T7DatasetRuntime(NexuDataset):
     LABEL_NAMES = ["class", "domain"]
 
     def __init__(
@@ -1260,7 +1319,7 @@ class DCASE2026T7Dataset(NexuDataset):
                 )
         return pd.DataFrame(rows)
 
-    def get_increment(self, domain: str) -> "DCASE2026T7Dataset":
+    def get_increment(self, domain: str) -> "_DCASE2026T7DatasetRuntime":
         """Return a view containing only the requested domain.
 
         Raises:

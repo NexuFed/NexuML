@@ -1,101 +1,65 @@
-# Train CIFAR ResNet
+# Your first NexuML scenario
 
-This tutorial walks you through the complete NexuML workflow using the built-in `cifar-resnet` scenario: resolve a config, build and inspect the pipeline, train with Lightning, and export a portable model package.
+The goal of this page is to show the core lifecycle without introducing custom component code yet. The `cifar-resnet` scenario comes from the optional `nexuml-library` package.
 
-**Prerequisite:** [Install NexuML](install.md) first.
+**Prerequisite:** install `nexuml[library]` as described in [Installation](install.md).
 
-## 1. List available scenarios
+## 1. Discover scenarios
 
 ```bash
 nexuml registry list scenarios
 ```
 
-You should see `cifar-resnet` in the list. This scenario is provided by the base library (`nexuml_library`) you installed.
+`cifar-resnet` should appear in the output. Scenario functions are recipes discovered from installed libraries; normal Python composition still imports concrete component definitions directly.
 
-**What this means:** NexuML discovers scenarios from installed packages. Each entry was registered with `@scenario("key")`. See [Decorators and discovery](../learn/decorators-and-discovery.md).
-
-## 2. Set data root (CIFAR will download here)
-
-```bash
-export NEXUML_DATA_ROOT=~/nexuml-data
-```
-
-CIFAR-10 is about 170 MB. The first run downloads it; subsequent runs use the cache.
-
-## 3. Resolve the scenario
+## 2. Resolve the scenario
 
 ```bash
 nexuml resolve cifar-resnet
 ```
 
-**What happens:** NexuML calls the `cifar-resnet` scenario function, which builds a `ScenarioSpec` object, then serialises it to a reproducible YAML config.
+This evaluates the Python scenario, validates its `ScenarioSpec`, compiles its component graph, and writes the stable configuration to:
 
-**Artifact:** `configs/cifar-resnet.yaml` — the resolved configuration for this scenario.
+```text
+configs/cifar-resnet.yaml
+```
 
-## 4. Build and inspect the pipeline
+The YAML contains stable component identities and validated parameters rather than live Python objects.
+
+## 3. Build the pipeline
 
 ```bash
 nexuml build configs/cifar-resnet.yaml
 ```
 
-**What happens:** NexuML compiles each `LayerSpec` into a concrete `PipelineLayer`, validates tensor key contracts (`keys_in`/`keys_out`), and reports layer names, tensor shapes, and parameter counts.
+`build` restores the typed definitions, materializes their runtime objects, propagates TensorDict shapes through the pipeline, and reports the compiled stages. If diagram output is enabled by the scenario, it also writes the configured Mermaid diagram.
 
-**Artifact:** Pipeline summary printed to the terminal. If `logging.diagram` is enabled in the config, a Mermaid diagram is also written to your logs directory.
+At this point you have exercised the most important architectural boundary without starting a training job:
 
-## 5. Train
-
-```bash
-nexuml train cifar-resnet --max-epochs=2
+```text
+Python ScenarioSpec → resolved YAML → typed definitions → CompiledPipeline
 ```
 
-**What happens:** NexuML compiles the pipeline, wraps it in a PyTorch Lightning `LightningModule`, and runs the training loop. Progress and metrics appear in the terminal via Lightning's default progress bar.
+## 4. Train the scenario
 
-**Artifacts:**
-- Checkpoints under `.experiments/lightning_logs/version_0/checkpoints/`
-  (or `$NEXUML_LOGS_ROOT/lightning_logs/...` if you set that variable)
-- TensorBoard logs in the same directory
-
-!!! tip "Use `--max-epochs=2` for the first run"
-    CIFAR-10 trains well for demonstration at 2 epochs. Remove the flag or increase it for real experiments.
-
-## 6. Export the model
-
-After training, export the checkpoint to a portable package:
+Training uses the loader selected by the scenario's `DataSpec`. `LoaderSpec` defaults to the portable PyTorch loader, so the standard library installation is enough for scenarios that leave the loader implicit. Run a short training job:
 
 ```bash
-nexuml export cifar-resnet --checkpoint .experiments/lightning_logs/version_0/checkpoints/last.ckpt
+nexuml train cifar-resnet --max-epochs 1
 ```
 
-**What happens:** NexuML reconstructs the pipeline from the scenario, loads the checkpoint weights, and writes a self-contained export package.
+NexuML uses the same `NexuSession` lifecycle for the run: fit → validate → post-train fitting → test. Logging, checkpoints, and model exports are controlled by the scenario instead of by hard-coded quickstart paths. When a checkpoint callback omits `dirpath`, Lightning writes checkpoints under the active logger's run directory, or under the trainer's `default_root_dir` when no logger is configured.
 
-**Artifact:** `exported_model/` directory containing the pipeline and weights.
+Scenarios that need NVIDIA DALI must select `DaliLoader()` explicitly and install the optional integration. See [Data loading](../how-to/data-loading.md) and [Checkpoints](../how-to/checkpoints.md).
 
-!!! note "Checkpoint path"
-    Adjust the checkpoint path if Lightning created `version_1` or later. Check `.experiments/lightning_logs/` for the actual version directory.
+## What you learned
 
-## 7. Smoke test (optional)
+- libraries expose discoverable scenario recipes and typed component definitions;
+- `ScenarioSpec` composes the complete experiment;
+- `resolve` creates a reproducible persisted configuration;
+- `build` materializes and validates the TensorDict pipeline;
+- `train` delegates the actual training lifecycle to Lightning.
 
-The `smoke` command runs the full pipeline in a single call, useful for verifying an install:
+## Next
 
-```bash
-nexuml smoke cifar-resnet --max-epochs=2
-```
-
-This does resolve → build → train → export → reload → infer in sequence and reports any failures.
-
-## What you've learned
-
-| Step | Command | Concept introduced |
-|------|---------|-------------------|
-| List scenarios | `registry list scenarios` | Discovery, registered scenarios |
-| Resolve | `resolve cifar-resnet` | `ScenarioSpec` → YAML config |
-| Build | `build configs/cifar-resnet.yaml` | Pipeline compilation, layer contracts |
-| Train | `train cifar-resnet` | Lightning training loop |
-| Export | `export cifar-resnet --checkpoint ...` | Portable model package |
-
-## Next steps
-
-- [Mental model](../learn/mental-model.md) — understand the full `ScenarioSpec` → resolve → build → train lifecycle
-- [Scenarios](../learn/scenarios.md) — learn how scenarios are structured and how to write your own
-- [CLI reference](../reference/cli.md) — all commands and flags
-- [Export a model package](../how-to/export.md) — reload and run inference from the exported package
+Do not continue by reading every reference page. Build something yourself in the [NexuML Tutorials](../tutorials.md), then return to the [Guides](../how-to/index.md) for individual tasks.

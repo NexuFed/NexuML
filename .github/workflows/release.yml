@@ -4,22 +4,266 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
 
 permissions:
-  contents: write   # required to create a release
+  actions: read
+  checks: read
+  contents: read
+
+env:
+  RELEASE_DIST_DIR: release-dist-${{ github.run_id }}-${{ github.run_attempt }}
 
 jobs:
-  release:
+  validate:
     runs-on: ika-runner
+    outputs:
+      ci-run-id: ${{ steps.ci.outputs.run-id }}
+      version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@v5
         with:
-          fetch-depth: 0   # full history so GitHub can diff against the previous tag
+          fetch-depth: 0
 
-      - name: Create GitHub Release
+      - name: Verify integrated release candidate
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "${GITHUB_REF_NAME}" \
-            --title "${GITHUB_REF_NAME}" \
+          git fetch --no-tags origin main:refs/remotes/origin/main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "Release candidate $GITHUB_SHA is not contained in main."
+            exit 1
+          fi
+
+          successful_checks=$(gh api \
+            -H "Accept: application/vnd.github+json" \
+            "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/check-runs?per_page=100" \
+            --jq '[.check_runs[] | select(.name == "CI" and .app.slug == "github-actions" and .conclusion == "success")] | length')
+          if [ "$successful_checks" -eq 0 ]; then
+            echo "Release candidate $GITHUB_SHA has no successful required CI check."
+            exit 1
+          fi
+
+      - name: Resolve exact CI artifact
+        id: ci
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ci_run_id=$(gh api \
+            -H "Accept: application/vnd.github+json" \
+            "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$GITHUB_SHA&status=success&per_page=100" \
+            --jq '.workflow_runs | sort_by(.created_at) | last | .id // empty')
+          if [ -z "$ci_run_id" ]; then
+            echo "Release candidate $GITHUB_SHA has no successful CI workflow run."
+            exit 1
+          fi
+
+          artifact_count=$(gh api \
+            -H "Accept: application/vnd.github+json" \
+            "repos/$GITHUB_REPOSITORY/actions/runs/$ci_run_id/artifacts?per_page=100" \
+            --jq '[.artifacts[] | select(.name == "python-distributions" and .expired == false)] | length')
+          if [ "$artifact_count" -ne 1 ]; then
+            echo "CI run $ci_run_id has no current python-distributions artifact."
+            exit 1
+          fi
+
+          echo "run-id=$ci_run_id" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Validate release version
+        id: version
+        run: |
+          version=$(python - "$GITHUB_EVENT_NAME" "$GITHUB_REF_NAME" <<'PY'
+          import re
+          import sys
+          import tomllib
+          from pathlib import Path
+
+          event, ref = sys.argv[1:]
+          versions = [
+              tomllib.loads(path.read_text())["project"]["version"]
+              for path in (Path("pyproject.toml"), Path("library/pyproject.toml"))
+          ]
+          if versions[0] != versions[1]:
+              raise SystemExit(f"Project versions do not match: {versions}")
+          if event == "push":
+              if re.fullmatch(r"v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)", ref) is None:
+                  raise SystemExit(f"Invalid stable release tag: {ref!r}")
+              if ref != f"v{versions[0]}":
+                  raise SystemExit(f"Release tag {ref!r} does not match project version {versions[0]!r}")
+          print(versions[0])
+          PY
+          )
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  publish-testpypi-core:
+    if: github.event_name == 'workflow_dispatch'
+    needs: validate
+    runs-on: ika-runner
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/nexuml
+    permissions:
+      actions: read
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: python-distributions
+          path: ${{ env.RELEASE_DIST_DIR }}
+          github-token: ${{ github.token }}
+          run-id: ${{ needs.validate.outputs.ci-run-id }}
+
+      - name: Publish core to TestPyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: ${{ env.RELEASE_DIST_DIR }}/nexuml/
+          repository-url: https://test.pypi.org/legacy/
+
+  publish-testpypi-library:
+    if: github.event_name == 'workflow_dispatch'
+    needs:
+      - validate
+      - publish-testpypi-core
+    runs-on: ika-runner
+    environment:
+      name: testpypi-library
+      url: https://test.pypi.org/p/nexuml-library
+    permissions:
+      actions: read
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: python-distributions
+          path: ${{ env.RELEASE_DIST_DIR }}
+          github-token: ${{ github.token }}
+          run-id: ${{ needs.validate.outputs.ci-run-id }}
+
+      - name: Publish library to TestPyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: ${{ env.RELEASE_DIST_DIR }}/nexuml-library/
+          repository-url: https://test.pypi.org/legacy/
+
+  verify-testpypi:
+    if: github.event_name == 'workflow_dispatch'
+    needs:
+      - validate
+      - publish-testpypi-library
+    runs-on: ika-runner
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "latest"
+
+      - name: Download NexuML wheels from TestPyPI
+        env:
+          VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          uv venv --seed --python 3.12 .venv-download
+          .venv-download/bin/python -m pip download --no-deps --only-binary=:all: --dest test-dist --index-url https://test.pypi.org/simple "nexuml==$VERSION" "nexuml-library==$VERSION"
+
+      - name: Verify TestPyPI core install
+        env:
+          CUDA_VISIBLE_DEVICES: ""
+          VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          uv venv --no-config --python 3.12 .venv-core
+          uv pip install --no-config --python .venv-core/bin/python --default-index https://pypi.org/simple --find-links test-dist pytest "nexuml==$VERSION"
+          env -u PYTHONPATH NEXUML_INSTALLED_DIST_TEST=1 .venv-core/bin/python -I -m pytest -c /dev/null --rootdir=tests/packaging --confcutdir=tests/packaging -q tests/packaging/test_installed_distributions.py -k core
+
+      - name: Verify TestPyPI library extra install
+        env:
+          CUDA_VISIBLE_DEVICES: ""
+          VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          uv venv --no-config --python 3.12 .venv-library
+          uv pip install --no-config --python .venv-library/bin/python --default-index https://pypi.org/simple --find-links test-dist pytest "nexuml[library]==$VERSION"
+          env -u PYTHONPATH NEXUML_INSTALLED_DIST_TEST=1 .venv-library/bin/python -I -m pytest -c /dev/null --rootdir=tests/packaging --confcutdir=tests/packaging -q tests/packaging/test_installed_distributions.py -k library
+
+  publish-pypi-core:
+    if: github.event_name == 'push'
+    needs: validate
+    runs-on: ika-runner
+    environment:
+      name: pypi
+      url: https://pypi.org/p/nexuml
+    permissions:
+      actions: read
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: python-distributions
+          path: ${{ env.RELEASE_DIST_DIR }}
+          github-token: ${{ github.token }}
+          run-id: ${{ needs.validate.outputs.ci-run-id }}
+
+      - name: Publish core to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: ${{ env.RELEASE_DIST_DIR }}/nexuml/
+
+  publish-pypi-library:
+    if: github.event_name == 'push'
+    needs:
+      - validate
+      - publish-pypi-core
+    runs-on: ika-runner
+    environment:
+      name: pypi-library
+      url: https://pypi.org/p/nexuml-library
+    permissions:
+      actions: read
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: python-distributions
+          path: ${{ env.RELEASE_DIST_DIR }}
+          github-token: ${{ github.token }}
+          run-id: ${{ needs.validate.outputs.ci-run-id }}
+
+      - name: Publish library to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: ${{ env.RELEASE_DIST_DIR }}/nexuml-library/
+
+  github-release:
+    if: github.event_name == 'push'
+    needs:
+      - validate
+      - publish-pypi-library
+    runs-on: ika-runner
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: python-distributions
+          path: ${{ env.RELEASE_DIST_DIR }}
+          github-token: ${{ github.token }}
+          run-id: ${{ needs.validate.outputs.ci-run-id }}
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            "$RELEASE_DIST_DIR"/nexuml/* \
+            "$RELEASE_DIST_DIR"/nexuml-library/* \
+            --title "$GITHUB_REF_NAME" \
             --generate-notes

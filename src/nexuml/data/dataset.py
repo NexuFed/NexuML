@@ -151,7 +151,7 @@ class NexuDataset(torch.utils.data.Dataset):
         except Exception:
             return [data[i] for i in indices]
 
-    def take(self, indices: Sequence[int]) -> "NexuDataset":
+    def take(self, indices: Sequence[int]) -> Self:
         if self.meta is None:
             raise ValueError("take() requires a dataset with meta information")
 
@@ -185,7 +185,7 @@ class NexuDataset(torch.utils.data.Dataset):
 
         self.meta = meta.reset_index(drop=True)
 
-    def get_split(self, split: str) -> "NexuDataset":
+    def get_split(self, split: str) -> Self:
         """Return a view of this dataset filtered to a single split.
 
         Returns:

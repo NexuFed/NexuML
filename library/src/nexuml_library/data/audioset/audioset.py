@@ -16,6 +16,7 @@ import torch.nn.functional as F
 from tensordict import TensorDict
 
 from nexuml.data.dataset import NexuDataset
+from nexuml.core.components import DataSourceDefinition
 
 logger = logging.getLogger(__name__)
 _LABEL_COLUMNS = pd.Index(["index", "mid", "display_name"])
@@ -86,7 +87,7 @@ def _load_waveform(file_path: Path) -> tuple[torch.Tensor, int]:
 
 
 @data_source("AudiosetDataset")
-class AudiosetDataset(NexuDataset):
+class AudiosetDataset(DataSourceDefinition):
     """AudioSet dataset source.
 
     Scans <data_dir> for .wav or .npy files. File names must encode labels
@@ -98,7 +99,7 @@ class AudiosetDataset(NexuDataset):
 
     Label columns: class (int index), class_logits (multi-hot list).
 
-    Args:
+    Attributes:
         data_dir: Directory containing audio/feature files.
         meta_dir: Directory for class_labels_indices.csv and the cached meta CSV.
         perform_checks: Whether to verify each file is loadable (slow on first run).
@@ -106,8 +107,18 @@ class AudiosetDataset(NexuDataset):
         sample_rate: Target sample rate for audio loading.
     """
 
-    LABEL_NAMES = ["class", "class_logits"]
+    data_dir: str | Path = "data/audioset/eval"
+    meta_dir: str | Path = "data/AudioSet/meta"
+    perform_checks: bool = True
+    len_seconds: float = 5.0
+    sample_rate: int = 16000
 
+    def build(self) -> NexuDataset:
+        return _AudiosetDatasetRuntime(**self.model_dump())
+
+
+class _AudiosetDatasetRuntime(NexuDataset):
+    LABEL_NAMES = ["class", "class_logits"]
     CLASS_LABELS_URL = (
         "http://storage.googleapis.com/us_audioset/youtube_corpus/v1/csv/class_labels_indices.csv"
     )
@@ -117,7 +128,7 @@ class AudiosetDataset(NexuDataset):
         data_dir: Union[str, Path] = "data/audioset/eval",
         meta_dir: Union[str, Path] = "data/AudioSet/meta",
         perform_checks: bool = True,
-        len_seconds: int = 5,
+        len_seconds: float = 5.0,
         sample_rate: int = 16000,
     ):
         self.data_dir = Path(data_dir)

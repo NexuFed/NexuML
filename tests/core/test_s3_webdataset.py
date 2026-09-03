@@ -13,6 +13,7 @@ import torch
 import yaml
 
 from nexuml.core.types import LoaderSpec, ScenarioSpec
+from nexuml.data.loaders.definitions import DaliLoader
 from nexuml.data.export.webdataset import WebDatasetBackend
 from nexuml.data.exported import ExportedDataset
 
@@ -219,7 +220,9 @@ def test_dali_streams_s3_shards_and_materializes_indexes(monkeypatch):
 
     monkeypatch.setattr(dali_multimodal, "build_webdataset_loader", build_webdataset_loader)
 
-    module = SimpleNamespace(loader_spec=LoaderSpec(backend="dali", batch_size=8, num_workers=1))
+    module = SimpleNamespace(
+        loader_spec=LoaderSpec(backend=DaliLoader(), batch_size=8, num_workers=1)
+    )
     dali_backend.DaliLoaderBackend().create_loader(module, dataset, split="train")
 
     assert captured["shard_paths"] == ["s3://bucket/dataset/data/shards/train/shard-000000.tar"]

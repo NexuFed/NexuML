@@ -1,96 +1,64 @@
 # Library discovery
 
-NexuML discovers layers, data sources, scenarios, and evaluation algorithms at startup by scanning Python packages for objects decorated with `@layer`, `@data_source`, `@scenario`, or `@eval_algorithm`. There is no persistent discovery cache — every NexuML process performs a fresh scan.
+NexuML discovers decorated component definitions and scenario recipes from Python packages at process startup. Discovery gives persisted YAML a stable identity boundary without forcing normal Python code to construct components by string.
 
 ## Discovery sources
 
-NexuML scans three sources in order:
+NexuML scans:
 
-1. **Built-in library** — `nexuml_library`, if installed. This is the public allow-list of open, reusable components.
-2. **Entry-point packages** — packages that declare a `nexuml.libraries` entry point
-3. **Local roots** — directories registered with `nexuml library add`
+1. the optional built-in `nexuml_library` package when installed;
+2. installed packages exposing the `nexuml.libraries` entry-point group;
+3. local package roots registered with `nexuml library add`.
 
-Proprietary components are not in `nexuml_library`; they live in the internal package at `external/`.
-
-```
-nexuml starts
-    │
-    ▼
-scan nexuml_library (if installed)
-    │
-    ▼
-scan nexuml.libraries entry points
-    │
-    ▼
-scan local roots (~/.config/nexuml/libraries.json)
-    │
-    ▼
-registries populated (layers, data sources, scenarios, eval algorithms)
-    │
-    ▼
-nexuml resolve my-scenario → resolved ✓
+```text
+NexuML process
+   ↓
+scan installed/local library packages
+   ↓
+collect decorated definitions + scenario recipes
+   ↓
+component/scenario registries
+   ↓
+CLI inspection and YAML restoration
 ```
 
-## How scanning works
-
-`scan_all()` in `nexuml.core.discovery` walks each package with `pkgutil.walk_packages`, imports every module, and inspects it for objects carrying the `__nexuml_discovered__` attribute (set by the decorators). Import failures are recorded as `DiscoveryError` entries and never abort the scan — one broken module does not hide everything else.
-
-## Entry-point discovery
-
-A library package advertises itself via the `nexuml.libraries` entry-point group in `pyproject.toml`:
+## Entry-point library
 
 ```toml
 [project.entry-points."nexuml.libraries"]
 my-library = "my_library"
 ```
 
-The entry-point value must be the importable package name. NexuML scans the whole package tree. There is no `register()` function requirement — decorators on classes/functions inside the package are sufficient.
+The value is the importable package name. NexuML scans the package tree, so there is no separate central `register_all()` function to maintain.
 
-Install the library:
-
-```bash
-uv pip install --link-mode=copy -e /path/to/my_library
-```
-
-Verify:
-
-```bash
-nexuml library list
-nexuml registry list layers
-```
-
-## Local root discovery
-
-For libraries not yet installable as packages:
+## Local development
 
 ```bash
 nexuml library add /path/to/my_library
+nexuml library list
+nexuml registry list layers --verbose
 ```
 
-Roots are stored in `~/.config/nexuml/libraries.json`. The library must contain a Python package (a directory with `__init__.py`) either at the root or under a `src/` subdirectory.
+Configured roots are rescanned on later NexuML invocations. You do not need to re-add a root after creating another component module.
 
-See [Managing local library roots](../how-to/library-cli.md).
+## Resilient scanning
 
-## No persistent cache
+Import/registration failures are collected as discovery errors instead of hiding unrelated valid components. Use `--verbose` registry output to see tracebacks for failed modules.
 
-Discovery runs fresh on every NexuML invocation. If you add a new layer to an already-registered library, it is available immediately on the next run without re-running any `library add` command.
+Duplicate `(kind, name, version)` component identities are rejected rather than resolved by import order.
 
-## Resilience
+## Python vs persistence
 
-- A module that fails to import is recorded as a `DiscoveryError` and skipped.
-- A duplicate key within the same registry kind raises a `ValueError` at registration time.
-- Use `nexuml registry list layers --verbose` to see import failures.
+Python code should still do this:
 
-## Implementation map
+```python
+LayerSpec(component=MyEncoder(width=128), ...)
+```
 
-- `src/nexuml/core/discovery.py` — `scan_all`, `Scanner`, decorators, `LibraryConfig`, `discover_library_packages`
-- `src/nexuml/core/registry.py` — layer registry
-- `src/nexuml/core/scenario_registry.py` — scenario registry
+not a registry lookup by string. At YAML boundaries, `MyEncoder` is lowered to its decorated stable identity and restored through discovery later.
 
 ## See also
 
-- [Discovery decorators](../reference/decorators.md)
-- [Add a custom layer](../how-to/custom-layer.md)
+- [Components and discovery](../learn/decorators-and-discovery.md)
 - [Register a library](../how-to/register-library.md)
-- [Managing local roots](../how-to/library-cli.md)
 - [Registry inspection](../reference/registry.md)

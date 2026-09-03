@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import random
 from collections.abc import Iterable
+from typing import Any
 
 import numpy as np
 import nvidia.dali.fn as fn
@@ -73,7 +74,7 @@ class PyTorchIterator(DALIGenericIterator):
 def external_source_pipeline(
     external_source: Iterable,
     device: str = "cpu",
-):
+) -> Any:
     """DALI pipeline using external source for flexible data loading.
 
     Returns:

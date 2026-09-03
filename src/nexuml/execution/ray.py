@@ -10,6 +10,7 @@ from uuid import uuid4
 
 import lightning as L
 
+from nexuml.core.serialization import lower_model, restore_model_data
 from nexuml.core.types import RayExecutionSpec, ScenarioSpec
 
 
@@ -129,7 +130,9 @@ def _ensure_distributed_semantics(scenario: ScenarioSpec) -> None:
             that cannot yet be aggregated globally across Ray workers.
     """
     if scenario.evaluation.algorithms:
-        configured = ", ".join(spec.name or spec.type for spec in scenario.evaluation.algorithms)
+        configured = ", ".join(
+            spec.name or spec.algorithm.component_name for spec in scenario.evaluation.algorithms
+        )
         raise RayExecutionError(
             "Ray execution does not yet support evaluation.algorithms with rank-sharded data: "
             "evaluation algorithms accumulate state independently on each worker, so reducing "
@@ -138,14 +141,9 @@ def _ensure_distributed_semantics(scenario: ScenarioSpec) -> None:
             "evaluation-state aggregation is implemented."
         )
 
-    from nexuml.core.post_train_layer import PostTrainFitLayer
-    from nexuml.core.registry import get_registry
-
-    registry = get_registry()
     for stage in scenario.pipeline.stages.values():
         for layer_spec in stage:
-            layer_type = registry.get(layer_spec.type_key)
-            if issubclass(layer_type, PostTrainFitLayer):
+            if layer_spec.component.requires_post_train_fit:
                 raise RayExecutionError(
                     "Ray execution does not yet support PostTrainFitLayer semantics: "
                     "the post-train fit pass must see the full training set rather than one "
@@ -167,7 +165,7 @@ def train_loop_per_worker(config: dict[str, Any]) -> None:
 
     from nexuml.training.lightning import NexuSession
 
-    scenario = ScenarioSpec.model_validate(config["scenario"])
+    scenario = ScenarioSpec.model_validate(restore_model_data(config["scenario"], ScenarioSpec))
     session = NexuSession.from_scenario(
         scenario,
         enable_loggers=train.get_context().get_world_rank() == 0,
@@ -328,7 +326,7 @@ def run_ray(scenario: ScenarioSpec) -> Any:
     run_name = f"{scenario.name}-{datetime.now(timezone.utc):%Y%m%dT%H%M%SZ}-{uuid4().hex[:8]}"
     trainer = TorchTrainer(
         train_loop_per_worker=train_loop_per_worker,
-        train_loop_config={"scenario": scenario.model_dump(mode="json")},
+        train_loop_config={"scenario": lower_model(scenario)},
         scaling_config=_scaling_config(execution),
         run_config=_run_config(scenario, execution, runtime_env, run_name),
     )

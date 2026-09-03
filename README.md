@@ -6,87 +6,108 @@
 
 <img alt="Python" src="https://img.shields.io/badge/python-3.12%2B-blue?style=flat-square&logo=python">
 <img alt="PyTorch" src="https://img.shields.io/badge/PyTorch-compatible-ee4c2c?style=flat-square&logo=pytorch&logoColor=white">
-<img alt="Status" src="https://img.shields.io/badge/status-preview-orange?style=flat-square">
-<img alt="Install" src="https://img.shields.io/badge/install-from%20GitHub-black?style=flat-square&logo=github">
-
-<!-- <img alt="Tests" src="https://img.shields.io/github/actions/workflow/status/NexuFed/NexuML/tests.yml?branch=main&style=flat-square&label=tests">
-<img alt="Docs" src="https://img.shields.io/badge/docs-online-blue?style=flat-square">
-<img alt="PyPI" src="https://img.shields.io/pypi/v/YOUR_PACKAGE_NAME?style=flat-square&logo=pypi"> -->
+<img alt="Status" src="https://img.shields.io/badge/status-alpha-orange?style=flat-square">
+<img alt="PyPI" src="https://img.shields.io/pypi/v/nexuml?style=flat-square&logo=pypi">
+<a href="https://github.com/NexuFed/NexuML/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/NexuFed/NexuML/ci.yml?branch=main&style=flat-square&label=CI"></a>
+<a href="https://github.com/NexuFed/NexuML/actions/workflows/release.yml"><img alt="Release" src="https://img.shields.io/github/actions/workflow/status/NexuFed/NexuML/release.yml?style=flat-square&label=release"></a>
 
 <br/>
 <br/>
 
-**The pipeline-based PyTorch framework.**
+**Composable ML pipelines for reproducible experiments.**
 
-A modular deep learning pipeline framework built on PyTorch Lightning and TensorDict. Define training scenarios declaratively, compile them into type-safe pipelines, train with Lightning, and export portable model packages — all from a single composable API.
+NexuML is a modular PyTorch framework for building machine-learning systems from reusable, typed components connected through explicit TensorDict keys. A `ScenarioSpec` describes data, model pipelines, training, evaluation, logging, export, and execution in one place and can be persisted as validated YAML.
+
+[Documentation](https://nexufed.github.io/NexuML/) · [Hands-on tutorials](https://github.com/NexuFed/NexuMLTutorial) · [PyPI](https://pypi.org/project/nexuml/)
 
 </div>
 
-# NexuML
+## Why NexuML?
 
-[Documentation](https://nexufed.github.io/NexuML/)
+ML projects often start as a clean notebook and gradually collect project-specific dataset code, model wiring, training loops, evaluation scripts, and export logic. Copying a project template improves the folder structure, but it still duplicates implementations and makes experiments harder to reproduce or extend.
 
-## Features
+NexuML separates **reusable implementations** from **experiment composition**. Datasets, model blocks, evaluation algorithms, and loader backends can live in libraries; scenarios assemble those pieces into explicit pipelines without reimplementing the training lifecycle for every project.
 
-- **Registry-based layer discovery** — layers self-register by decorator; the compiler resolves them by key
-- **TensorDict pipelines** — all data flows as named tensors through staged forward passes
-- **Declarative scenarios** — compose data, model, training, and evaluation specs in pure Python
-- **YAML config export/reload** — full pipeline reproducibility without pickle
-- **Lightning training** — gradient accumulation, mixed precision, callbacks, all built in
-- **Portable export** — ship a directory with `state_dict.pt + config.yaml + metadata.json`
-- **CLI** — resolve, build, train, tune, export, and smoke-test from the terminal
-- **Automatic pipeline diagrams** — `nexuml build` generates a Mermaid flowchart of your pipeline architecture
+## Core ideas
+
+- **Typed component definitions** — Python scenarios construct concrete Pydantic definitions directly; stable registry identities are used for discovery and persisted YAML.
+- **TensorDict pipelines** — named tensors flow through ordered stages using explicit `keys_in` and `keys_out` contracts.
+- **Declarative scenarios** — `ScenarioSpec` composes data, pipeline, training, evaluation, logging, checkpoint, export, and execution configuration.
+- **One Lightning lifecycle** — PyTorch Lightning owns the training loop; local and Ray execution reuse the same NexuML session semantics.
+- **Pluggable data paths** — PyTorch, NVIDIA DALI, and tensor-shard loaders plus dataset export to NumPy, mmap, Torch, TensorDict memmap, WebDataset, and tensor shards.
+- **Post-training evaluation** — typed evaluation definitions materialize stateful algorithms while fitted pipeline layers can perform post-train processing before test.
+- **Portable model artifacts** — export a compiled pipeline with weights, resolved configuration, metadata, and dependency information.
+- **CLI workflow** — inspect registries and backends, resolve scenarios, build pipelines, train, tune, export datasets, and package models.
 
 ## Install
 
-Directly from GitHub, without cloning:
+For most users, install the framework together with the reusable base library:
 
 ```bash
-uv pip install "nexuml[all] @ git+https://github.com/NexuFed/NexuML.git"
-uv pip install "nexuml-library @ git+https://github.com/NexuFed/NexuML.git#subdirectory=library"
+uv pip install "nexuml[library]"
 ```
 
-Or after cloning:
+Install only the framework and CLI when you want to provide all components yourself:
 
 ```bash
-uv pip install --link-mode=copy -e ".[dev,all]"
-uv pip install --link-mode=copy -e "./library"
+uv pip install nexuml
 ```
 
-Or with uv sync:
+### TestPyPI
+
+After a release candidate is published, install the framework and CLI from TestPyPI with PyPI as the fallback for dependencies:
 
 ```bash
-uv sync --all-extras
-source .venv/bin/activate
+uv pip install --index https://test.pypi.org/simple --default-index https://pypi.org/simple nexuml
 ```
 
-### Serve the docs locally
-```bash
-uv run mkdocs serve
-```
-
-## Public library allow-list
-
-The public `nexuml_library` package contains only the open, reusable core: public data loaders, layers, training defaults, and the scenarios under `scenarios/vision/`, `scenarios/asd/`, and `scenarios/tune/`.
-
-Add your own libraries to the `external` folder to be also available in the automatic docs.
-
-## Quickstart
+Install the framework together with the reusable base library:
 
 ```bash
-export NEXUML_DATA_ROOT=/mnt/local
-export NEXUML_LOGS_ROOT=/mnt/logs    # optional
-
-scenario=cifar-resnet
-nexuml resolve $scenario                  # compile spec → configs/$scenario.yaml
-nexuml build configs/$scenario.yaml       # inspect layers, shapes, parameter counts
-nexuml train $scenario --max-epochs=50
-nexuml export $scenario --checkpoint      # portable state_dict.pt + config.yaml
+uv pip install --index https://test.pypi.org/simple --default-index https://pypi.org/simple "nexuml[library]"
 ```
 
-## Roadmap
+NVIDIA DALI, Ray, tracking, tuning, S3, and export integrations are optional. See the [installation guide](https://nexufed.github.io/NexuML/start/install/) before adding platform-specific extras.
 
-- Harden and improve the codebase
-- Support distributed training backends
-- Add a UI
-- Extend the library
+## Container image
+
+The complete Linux AMD64 development and training environment is also published with an explicit NexuML and CUDA version:
+
+```bash
+docker pull ghcr.io/nexufed/nexuml:0.2.0-cuda12.8.1
+docker run --rm -it --gpus all ghcr.io/nexufed/nexuml:0.2.0-cuda12.8.1
+```
+
+The image contains both NexuML packages and all optional extras. See the [installation guide](https://nexufed.github.io/NexuML/start/install/#container-image) for host requirements and other tags.
+
+## First look
+
+With the base library installed, inspect a real scenario without starting a training job:
+
+```bash
+nexuml registry list scenarios
+nexuml resolve cifar-resnet
+nexuml build configs/cifar-resnet.yaml
+```
+
+This shows the central NexuML flow: a Python scenario is resolved to a reproducible configuration and then materialized into a validated TensorDict pipeline. Continue with [Get started](https://nexufed.github.io/NexuML/start/) for training requirements.
+
+## Learn by building
+
+The [NexuML Tutorial repository](https://github.com/NexuFed/NexuMLTutorial) is the home for complete hands-on projects. It builds an external NexuML library from scratch rather than hiding the framework behind finished built-in components.
+
+The learning path starts with MNIST library basics, then adds file-backed Speech Commands audio with native DALI loading and demonstrates pipeline composition by swapping a CNN encoder for a Transformer while reusing the rest of the system.
+
+> **Version note:** the tutorial repository evolves independently from NexuML. NexuML 0.2 uses typed component definitions and rejects the legacy selector/parameter-bag syntax, so use a tutorial revision compatible with the NexuML version you install.
+
+## Documentation
+
+- **[Get started](https://nexufed.github.io/NexuML/start/)** — install NexuML and inspect your first scenario.
+- **[Tutorials](https://nexufed.github.io/NexuML/tutorials/)** — complete hands-on projects and the tutorial compatibility note.
+- **[Guides](https://nexufed.github.io/NexuML/how-to/)** — accomplish a specific task such as training, tuning, exporting, or adding a component.
+- **[Concepts](https://nexufed.github.io/NexuML/explanation/)** — understand the architecture, TensorDict data flow, definitions, discovery, and scenarios.
+- **[Reference](https://nexufed.github.io/NexuML/reference/)** — exact CLI, configuration, backend, decorator, and Python API information.
+
+## Extending NexuML
+
+External libraries can provide their own typed layers, data sources, evaluation algorithms, loader backends, and scenarios through the `nexuml.libraries` entry-point group or a local library root. See [Build a custom library](https://nexufed.github.io/NexuML/how-to/custom-library/) for the package structure and component contracts.

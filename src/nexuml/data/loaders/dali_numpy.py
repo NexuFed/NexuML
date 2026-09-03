@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 import nvidia.dali.fn as fn
 import torch
@@ -51,7 +52,7 @@ def numpy_data_pipeline(
     mono: bool = True,
     rnd_crop_size: float | None = None,
     start_sec: float | None = None,
-):
+) -> Any:
     """Load pre-encoded NumPy arrays with DALI native reader.
 
     Returns:

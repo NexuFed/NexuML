@@ -60,7 +60,7 @@ def wav_data_pipeline(
     dont_use_mmap: bool = True,
     rnd_crop_size: float | None = None,
     start_sec: float | None = None,
-):
+) -> Any:
     """Load WAV files with DALI native readers and return audio + file index label.
 
     Returns:

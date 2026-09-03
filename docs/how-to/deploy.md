@@ -1,33 +1,22 @@
-# Docker & Kubernetes
+# Deployment boundary
 
-## Docker
+NexuML intentionally does not prescribe one organization's container registry, Kubernetes cluster, shared filesystem, credentials, or scheduling policy.
 
-Build and push the container image:
+For deployment, separate two concerns:
 
-```bash
-NAME=nexuml
-IMAGE=harbor.ika.rub.de/library/${NAME}:latest
+1. **NexuML artifact/runtime** — package the trained pipeline and install the runtime dependencies recorded by the export.
+2. **Infrastructure** — choose the container image, registry, secrets, volumes/object storage, node placement, ingress, and scheduler appropriate for the target environment.
 
-docker build -f Dockerfile -t ${IMAGE} .
-docker login harbor.ika.rub.de -u student -p Student1234
-docker push ${IMAGE}
-```
+## Package the model
 
-Sync code to shared storage (e.g. JuiceFS):
+See [Export and reload](export.md) for the train-package contract. A package contains the pipeline artifact, state dict, resolved config, metadata, and dependency snapshot needed to reconstruct or directly load the model.
 
-```bash
-rsync -a --info=progress2 --no-perms --no-owner --no-group --delete \
-    ./ /mnt/juicefs/code/nexuml/
-```
+## Containers
 
-## Kubernetes
+Build the consuming application image from its own locked dependency environment. Do not embed site-specific registry credentials or cluster addresses in reusable NexuML scenarios/documentation.
 
-Schedule a PyTorchJob on the cluster:
+## Distributed training
 
-```bash
-kubectl config use-context local
-kubectl delete -f .k8s/pytorchjob.yaml
-kubectl apply -f .k8s/pytorchjob.yaml
-```
+For training on an existing Ray cluster, use [Ray execution](training-backends/ray.md). KubeRay/RayJob cluster manifests remain infrastructure-owned; their entrypoint can invoke the same `nexuml train ...` command.
 
-The job spec at `.k8s/pytorchjob.yaml` defines the worker configuration, resource requests, and environment variables (`NEXUML_DATA_ROOT`, `NEXUML_LOGS_ROOT`).
+This page intentionally contains no organization-specific Kubernetes manifest because those details are deployment policy rather than part of the NexuML public API.

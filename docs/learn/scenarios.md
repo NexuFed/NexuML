@@ -1,152 +1,99 @@
 # Scenarios
 
-A scenario is the central abstraction in NexuML. It declares everything about an experiment — data, model architecture, training configuration, evaluation, and exports — in one composable Python object.
+A scenario is a Python function that returns a `ScenarioSpec`. Python scenarios use concrete, typed component definitions directly. Registry names appear only when a resolved scenario is serialized to YAML.
 
-## What is a scenario?
-
-A scenario is a Python function decorated with `@scenario("key")` that returns a `ScenarioSpec`:
+## Example
 
 ```python
 from nexuml.core.discovery import scenario
-from nexuml.core.types import ScenarioSpec, DataSpec, PipelineSpec, LayerSpec, TrainingSpec
+from nexuml.core.types import LayerSpec, PipelineSpec, ScenarioSpec, TrainingSpec
+from nexuml_library.layers.model.linear_encoder import LinearEncoder
+from nexuml_library.scenarios.data.synthetic import synthetic_vector_data
 
-@scenario("my-classifier")
-def my_classifier() -> ScenarioSpec:
+
+@scenario("my-autoencoder")
+def my_autoencoder() -> ScenarioSpec:
     return ScenarioSpec(
-        name="my_classifier",
-        data=DataSpec(source_type="my-dataset"),
+        name="my-autoencoder",
+        data=synthetic_vector_data(feature_shape=(64,), num_samples=500),
         pipeline=PipelineSpec(
-            stages=[
-                LayerSpec(
-                    type_key="my-backbone",
-                    keys_in={"x": "image"},
-                    keys_out=["features"],
-                ),
-                LayerSpec(
-                    type_key="classification-head",
-                    keys_in={"x": "features"},
-                    keys_out=["logits", "classification_loss"],
-                ),
-            ]
+            stages={
+                "encode": [
+                    LayerSpec(
+                        component=LinearEncoder(hidden_dims=[32], output_dim=8),
+                        keys_in=["features"],
+                        keys_out=["latent"],
+                    )
+                ]
+            }
         ),
         training=TrainingSpec(max_epochs=10),
     )
 ```
 
-After defining this function in an installed library, `nexuml registry list scenarios` will show `my-classifier`, and `nexuml train my-classifier` will run it.
+`LinearEncoder(...)` owns component-specific configuration. `LayerSpec` owns graph placement such as `keys_in` and `keys_out`. The compiler supplies inferred shapes and other runtime values through `LayerBuildContext`.
 
-## `ScenarioSpec` anatomy
+## Data
 
-### `data` — `DataSpec`
-
-Declares the data source and split configuration.
+`DataSpec` accepts typed data definitions either as `source` or in `datasets`:
 
 ```python
-DataSpec(
-    source_type="cifar10",   # resolves to a registered @data_source
-    # Additional fields depend on the registered source
+from nexuml.core.types import DataSpec, DatasetSpec
+from nexuml_library.data.synthetic import SyntheticDataset
+
+data = DataSpec(
+    source=SyntheticDataset(feature_shape=(64,), num_samples=500),
+    input_shapes={"features": [64]},
+)
+
+multi_data = DataSpec(
+    datasets=[DatasetSpec(source=SyntheticDataset(feature_shape=(64,)))],
+    input_shapes={"features": [64]},
 )
 ```
 
-`source_type` is a registry key. The corresponding registered class or function provides the actual dataset.
+## Evaluation And Loading
 
-### `pipeline` — `PipelineSpec`
-
-An ordered list of `LayerSpec` entries. Each layer is resolved from the registry and executed in sequence.
+Evaluation algorithms and loader backends are also typed values:
 
 ```python
-PipelineSpec(
-    stages=[
-        LayerSpec(
-            type_key="resnet18",       # resolves to a registered @layer
-            keys_in={"x": "image"},    # TensorDict key mapping: layer input ← pipeline key
-            keys_out=["features"],     # TensorDict keys this layer writes
-        ),
-        LayerSpec(
-            type_key="classification-head",
-            keys_in={"x": "features"},
-            keys_out=["logits", "classification_loss"],
-        ),
-    ]
+from nexuml.core.types import EvalAlgorithmSpec, EvaluationSpec, LoaderSpec
+from nexuml.data.loaders.definitions import TorchLoader
+from nexuml_library.evaluation.anomalous_sound_detection.asd_evaluator import AnomalyEvaluator
+
+loader = LoaderSpec(backend=TorchLoader(), batch_size=32)
+evaluation = EvaluationSpec(
+    algorithms=[EvalAlgorithmSpec(algorithm=AnomalyEvaluator(), label_key="y_true")]
 )
 ```
 
-`type_key` is a registry key. `keys_in` and `keys_out` define the TensorDict key contracts — NexuML validates these at `build` time.
+## Python And YAML
 
-### `training` — `TrainingSpec`
+Python uses concrete classes for navigation, validation, and schemas. `ResolvedConfig.to_yaml()` lowers each definition to its registered identity:
 
-Optimizer, scheduler, max epochs, loss keys, and metric keys.
-
-```python
-TrainingSpec(
-    max_epochs=10,
-    loss_keys={"classification_loss": 1.0},  # weighted loss terms from TensorDict
-    metric_keys=["accuracy", "f1"],
-)
+```yaml
+component:
+  type: LinearEncoder
+  version: '1'
+  params:
+    hidden_dims: [32]
+    output_dim: 8
 ```
 
-### `evaluation` — `EvaluationSpec`
+`ResolvedConfig.from_yaml()` discovers the registered identity and restores the concrete definition before validation.
 
-Which evaluation algorithm to run at test time.
-
-```python
-EvaluationSpec(type="classification")
-```
-
-### `exports` — `list[ExportSpec]`
-
-Optional list of export actions that run after training.
-
-### `logging` — `LoggingSpec`
-
-Diagram output, TensorBoard, and other logging configuration.
-
-### `checkpoint` — `CheckpointLoadSpec`
-
-Optional checkpoint to load before training (for resuming or fine-tuning).
-
-### `tuning` — `TuningSpec`
-
-Optuna search space for hyperparameter tuning via `nexuml tune`.
-
-## Registered scenarios vs scenario files
-
-### Registered scenario
-
-A scenario registered with `@scenario("key")` is available by name to all CLI commands:
+## Running
 
 ```bash
-nexuml resolve my-classifier
-nexuml train my-classifier --max-epochs=5
+nexuml resolve my-autoencoder
+nexuml build configs/my-autoencoder.yaml
+nexuml train my-autoencoder
 ```
 
-Use this when you want a reusable, discoverable scenario that lives in a library.
+Local trusted files can expose `scenario() -> ScenarioSpec` and run with `nexuml train --scenario-file scenario.py`.
 
-### Trusted Python scenario file (`--scenario-file`)
+## See Also
 
-A local `.py` file that exposes a `scenario() -> ScenarioSpec` function can be passed directly to CLI commands:
-
-```bash
-nexuml train --scenario-file my_experiment.py
-```
-
-The file does not need to be in an installed package. Use this for local experiments and agent-authored scenarios. See [Trusted scenario files](../how-to/scenario-file.md) for details and security considerations.
-
-## Lifecycle summary
-
-```
-@scenario("key")   →   nexuml resolve   →   configs/<key>.yaml
-                   →   nexuml build     →   compiled pipeline (validation)
-                   →   nexuml train     →   trained model + checkpoints
-                   →   nexuml evaluate  →   metrics
-                   →   nexuml export    →   model package
-```
-
-## Next steps
-
-- [Define a scenario](../how-to/define-scenario.md) — step-by-step how-to
-- [Trusted scenario files](../how-to/scenario-file.md) — local Python file workflow
-- [Write a custom composed scenario](../how-to/custom-scenario.md) — full tutorial
-- [Decorators and discovery](decorators-and-discovery.md) — how `@scenario` registers components
-- [`ScenarioSpec` reference](../reference/scenario-spec.md) — all fields
-- Generated API: [`nexuml.core.types`](../reference/api/nexuml/core/types.md)
+- [Define a scenario](../how-to/define-scenario.md)
+- [Decorators and discovery](decorators-and-discovery.md)
+- [`ScenarioSpec` reference](../reference/scenario-spec.md)

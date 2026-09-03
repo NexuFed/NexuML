@@ -9,6 +9,7 @@ from typing import cast
 import torch
 
 from nexuml.core.base_layer import PipelineLayer
+from nexuml.core.components import LayerBuildContext, LayerDefinition
 
 
 def _locate(dotted_path: str | None) -> type | None:
@@ -31,33 +32,44 @@ def _locate(dotted_path: str | None) -> type | None:
 
 
 @layer("Linear")
-class Linear(PipelineLayer):
+class Linear(LayerDefinition):
     """Multi-layer linear projector with optional activation and normalization.
 
-    Args:
+    Attributes:
         target_dim: Output dimension. If None, uses output_sizes.
-        output_dim: Backward-compatible alias for target_dim.
         hidden_dim: Hidden layer size (for n_layers > 1).
-        hidden_dims: Backward-compatible explicit hidden-layer sizes. When
-            provided, overrides hidden_dim/n_layers for layer construction.
+        hidden_dims: Explicit hidden-layer sizes. When provided, overrides
+            hidden_dim/n_layers for layer construction.
         n_layers: Number of linear layers.
         linear_bias: Whether to use bias.
-        bias: Backward-compatible alias for linear_bias.
         activation: Dotted class path, e.g. "torch.nn.GELU".
         normalization: Dotted class path, e.g. "torch.nn.BatchNorm1d".
         skip_last_activation: Skip activation after the last layer.
         flatten_dims: Optional (start, end) dims to flatten before projection.
     """
 
+    target_dim: int | None = None
+    hidden_dim: int = 256
+    hidden_dims: list[int] | None = None
+    n_layers: int = 1
+    linear_bias: bool = True
+    activation: str | None = None
+    normalization: str | None = None
+    skip_last_activation: bool = False
+    flatten_dims: tuple[int, int] | None = None
+
+    def build(self, context: LayerBuildContext) -> PipelineLayer:
+        return _LinearRuntime(**context.runtime_kwargs(), **self.model_dump())
+
+
+class _LinearRuntime(PipelineLayer):
     def __init__(
         self,
         target_dim: int | None = None,
-        output_dim: int | None = None,
         hidden_dim: int = 256,
         hidden_dims: list[int] | None = None,
         n_layers: int = 1,
         linear_bias: bool = True,
-        bias: bool | None = None,
         activation: str | None = None,
         normalization: str | None = None,
         skip_last_activation: bool = False,
@@ -69,11 +81,6 @@ class Linear(PipelineLayer):
         assert len(self.keys_out) == 1, "Linear requires exactly one output key."
 
         input_size = self.input_sizes[cast(list[str], self.keys_in)[0]]
-        if target_dim is None and output_dim is not None:
-            target_dim = output_dim
-        if bias is not None:
-            linear_bias = bias
-
         if target_dim is not None:
             output_size = (target_dim,)
         elif self.output_sizes and self.keys_out[0] in self.output_sizes:
@@ -120,31 +127,13 @@ class Linear(PipelineLayer):
         return self.model(x)
 
 
-@layer("Dropout")
-class Dropout(PipelineLayer):
-    """Dropout regularization layer.
-
-    Args:
-        p: Dropout probability.
-    """
-
-    def __init__(self, p: float = 0.5, **kwargs):
-        super().__init__(**kwargs)
-        assert len(self.keys_in) == 1, "Dropout requires exactly one input key."
-        assert len(self.keys_out) == 1, "Dropout requires exactly one output key."
-        self.dropout = torch.nn.Dropout(p)
-
-    def forward_tensor(self, x: torch.Tensor, y: torch.Tensor | None = None) -> torch.Tensor:
-        return self.dropout(x)
-
-
 @layer("Conv1dProjector")
-class Conv1dProjector(PipelineLayer):
+class Conv1dProjector(LayerDefinition):
     """Pointwise Conv1d projector for sequence inputs (B, T, C).
 
     Equivalent to Linear but uses Conv1d for better memory access patterns.
 
-    Args:
+    Attributes:
         target_dim: Output channel dimension. If None, uses output_sizes.
         hidden_dim: Hidden size for multi-layer projectors.
         n_layers: Number of projection layers.
@@ -153,6 +142,18 @@ class Conv1dProjector(PipelineLayer):
         normalization: Dotted class path for normalization.
     """
 
+    target_dim: int | None = None
+    hidden_dim: int = 256
+    n_layers: int = 1
+    bias: bool = True
+    activation: str | None = None
+    normalization: str | None = None
+
+    def build(self, context: LayerBuildContext) -> PipelineLayer:
+        return _Conv1dProjectorRuntime(**context.runtime_kwargs(), **self.model_dump())
+
+
+class _Conv1dProjectorRuntime(PipelineLayer):
     def __init__(
         self,
         target_dim: int | None = None,
@@ -201,18 +202,28 @@ class Conv1dProjector(PipelineLayer):
 
 
 @layer("LowRankProjector")
-class LowRankProjector(PipelineLayer):
+class LowRankProjector(LayerDefinition):
     """Low-rank factorized projection W ≈ U @ V.
 
     Reduces parameters from O(C*D) to O((C+D)*r) when r << min(C, D).
 
-    Args:
+    Attributes:
         target_dim: Output dimension. If None, uses output_sizes.
         rank: Bottleneck rank.
         bias: Whether to use bias.
         activation: Optional activation between U and V.
     """
 
+    target_dim: int | None = None
+    rank: int = 64
+    bias: bool = True
+    activation: str | None = None
+
+    def build(self, context: LayerBuildContext) -> PipelineLayer:
+        return _LowRankProjectorRuntime(**context.runtime_kwargs(), **self.model_dump())
+
+
+class _LowRankProjectorRuntime(PipelineLayer):
     def __init__(
         self,
         target_dim: int | None = None,

@@ -15,10 +15,11 @@ import torch.nn as nn
 from tensordict import TensorDict
 
 from nexuml.core.base_layer import LightningMode, PipelineLayer
+from nexuml.core.components import LayerBuildContext, LayerDefinition
 
 
 @layer("ClassificationMetrics")
-class ClassificationMetrics(PipelineLayer):
+class ClassificationMetrics(LayerDefinition):
     """Accumulate classification metrics with torchmetrics.
 
     When ``multi_label`` is ``False`` (default) the layer uses multiclass
@@ -33,6 +34,22 @@ class ClassificationMetrics(PipelineLayer):
     tensors with shape ``[batch, num_labels]``.
     """
 
+    metrics: list[str] | None = None
+    average: str = "macro"
+    top_k: int = 1
+    multi_label: bool = False
+
+    def build(self, context: LayerBuildContext) -> PipelineLayer:
+        return _ClassificationMetricsRuntime(
+            metrics=self.metrics,
+            average=self.average,
+            top_k=self.top_k,
+            multi_label=self.multi_label,
+            **context.runtime_kwargs(num_classes=context.num_classes),
+        )
+
+
+class _ClassificationMetricsRuntime(PipelineLayer):
     def __init__(
         self,
         input_sizes: dict[str, tuple],
