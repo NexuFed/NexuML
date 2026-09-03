@@ -55,6 +55,17 @@ uv pip install nexuml
 
 NVIDIA DALI, Ray, tracking, tuning, S3, and export integrations are optional. See the [installation guide](https://nexufed.github.io/NexuML/start/install/) before adding platform-specific extras.
 
+## Container image
+
+The complete Linux AMD64 development and training environment is also published with an explicit NexuML and CUDA version:
+
+```bash
+docker pull ghcr.io/nexufed/nexuml:0.2.0-cuda12.8.1
+docker run --rm -it --gpus all ghcr.io/nexufed/nexuml:0.2.0-cuda12.8.1
+```
+
+The image contains both NexuML packages and all optional extras. See the [installation guide](https://nexufed.github.io/NexuML/start/install/#container-image) for host requirements and other tags.
+
 ## First look
 
 With the base library installed, inspect a real scenario without starting a training job:

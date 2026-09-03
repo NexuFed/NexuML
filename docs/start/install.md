@@ -56,6 +56,26 @@ uv pip install "nexuml[s3]"
 
 The base library has additional feature extras for optional datasets/models/evaluation tooling when a component needs them, for example `nexuml-library[audio]`, `nexuml-library[data]`, `nexuml-library[pretrained]`, and `nexuml-library[eval]`.
 
+## Container image
+
+The GHCR image provides the complete development and training environment when you do not want to assemble the Python and CUDA dependencies yourself. Pull a release using its explicit NexuML and CUDA versions:
+
+```bash
+docker pull ghcr.io/nexufed/nexuml:0.2.0-cuda12.8.1
+```
+
+Run it with NVIDIA GPU access:
+
+```bash
+docker run --rm -it --gpus all ghcr.io/nexufed/nexuml:0.2.0-cuda12.8.1
+```
+
+This Linux AMD64 image contains NexuML 0.2.0, Python 3.13, Ubuntu 24.04, CUDA 12.8.1 development tools, both `nexuml` and `nexuml-library`, and every optional extra from both workspace packages. It is substantially larger than the normal Python installation.
+
+GPU execution requires a compatible NVIDIA host driver and the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html). Building or starting the image without GPU access remains possible, but CUDA workloads require `--gpus all` or a narrower Docker GPU selection.
+
+Release tags use `<nexuml-version>-cuda<cuda-version>`. `edge-cuda12.8.1` tracks `main`, while `sha-<short-sha>-cuda12.8.1` identifies one immutable source revision. Always specify a tag: NexuML does not publish an unqualified `latest` image. GHCR (`ghcr.io/nexufed/nexuml`) is the supported registry; Docker Hub mirroring is not enabled.
+
 ## CUDA and PyTorch
 
 The default NexuML installation resolves PyTorch from the public package index. If you need a particular CUDA build, install the matching PyTorch packages using the official PyTorch installation instructions before installing NexuML.
