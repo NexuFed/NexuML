@@ -41,30 +41,18 @@ NexuML separates **reusable implementations** from **experiment composition**. D
 
 ## Install
 
+NexuML is currently published on TestPyPI. PyPI remains the fallback for dependencies.
+
 For most users, install the framework together with the reusable base library:
 
 ```bash
-uv pip install "nexuml[library]"
+uv pip install --index https://test.pypi.org/simple --default-index https://pypi.org/simple "nexuml[library]"
 ```
 
 Install only the framework and CLI when you want to provide all components yourself:
 
 ```bash
-uv pip install nexuml
-```
-
-### TestPyPI
-
-After a release candidate is published, install the framework and CLI from TestPyPI with PyPI as the fallback for dependencies:
-
-```bash
 uv pip install --index https://test.pypi.org/simple --default-index https://pypi.org/simple nexuml
-```
-
-Install the framework together with the reusable base library:
-
-```bash
-uv pip install --index https://test.pypi.org/simple --default-index https://pypi.org/simple "nexuml[library]"
 ```
 
 NVIDIA DALI, Ray, tracking, tuning, S3, and export integrations are optional. See the [installation guide](https://nexufed.github.io/NexuML/start/install/) before adding platform-specific extras.
