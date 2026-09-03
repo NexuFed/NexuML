@@ -19,7 +19,7 @@ jobs:
       - uses: actions/checkout@v5
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v10.0.1
         with:
           version: "latest"
 
@@ -36,18 +36,28 @@ jobs:
           echo "VIRTUAL_ENV=$PWD/.venv" >> "$GITHUB_ENV"
 
       - name: Lint
+        id: lint
+        continue-on-error: true
         run: ruff check .
 
       - name: Format check
+        id: format
+        continue-on-error: true
         run: ruff format --check .
 
       - name: Type check
+        id: type
+        continue-on-error: true
         run: ty check
 
       - name: Build documentation
         env:
           DISABLE_MKDOCS_2_WARNING: "true"
         run: mkdocs build --strict
+
+      - name: Verify static checks
+        if: ${{ always() && (steps.lint.outcome != 'success' || steps.format.outcome != 'success' || steps.type.outcome != 'success') }}
+        run: exit 1
 
   test:
     runs-on: ika-runner-gpu
@@ -59,12 +69,12 @@ jobs:
       - uses: actions/checkout@v5
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v10.0.1
         with:
           version: "latest"
 
@@ -97,12 +107,12 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v10.0.1
         with:
           version: "latest"
 
@@ -150,7 +160,7 @@ jobs:
           env -u PYTHONPATH NEXUML_INSTALLED_DIST_TEST=1 .venv-rebuilt-library/bin/python -I -m pytest -c /dev/null --rootdir=tests/packaging --confcutdir=tests/packaging -q tests/packaging/test_installed_distributions.py -k library
 
       - name: Upload validated distributions
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: python-distributions
           retention-days: 7
