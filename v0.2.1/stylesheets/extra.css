@@ -1,0 +1,24 @@
+/* NexuFed brand colors: #0a3d74 navy · #188fd5 blue · #20c997 teal */
+
+:root {
+  --md-primary-fg-color:              #188fd5;
+  --md-primary-fg-color--light:       #5bb8ed;
+  --md-primary-fg-color--dark:        #0a3d74;
+  --md-accent-fg-color:               #20c997;
+  --md-accent-fg-color--transparent:  rgba(32, 201, 151, 0.1);
+  --md-accent-bg-color:               #fff;
+  --md-accent-bg-color--light:        rgba(255, 255, 255, 0.7);
+}
+
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color:              #188fd5;
+  --md-primary-fg-color--light:       #5bb8ed;
+  --md-primary-fg-color--dark:        #0a3d74;
+  --md-accent-fg-color:               #20c997;
+  --md-accent-fg-color--transparent:  rgba(32, 201, 151, 0.1);
+  --md-default-bg-color:              #0d1b2e;
+  --md-default-bg-color--light:       rgba(13, 27, 46, 0.54);
+  --md-default-bg-color--lighter:     rgba(13, 27, 46, 0.26);
+  --md-default-bg-color--lightest:    rgba(13, 27, 46, 0.12);
+  --md-code-bg-color:                 #0a1a30;
+}
