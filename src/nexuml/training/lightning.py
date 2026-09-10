@@ -937,6 +937,25 @@ class NexuSession:
 
             self._trainer_loggers = [DummyLogger()]
         self._trainer_callbacks = build_callbacks(getattr(self.scenario, "callbacks", []))
+        if not self._trainer_loggers:
+            from lightning.pytorch.callbacks import DeviceStatsMonitor, LearningRateMonitor
+
+            logger_dependent_callbacks = (DeviceStatsMonitor, LearningRateMonitor)
+            omitted = [
+                type(callback).__name__
+                for callback in self._trainer_callbacks
+                if isinstance(callback, logger_dependent_callbacks)
+            ]
+            if omitted:
+                self._trainer_callbacks = [
+                    callback
+                    for callback in self._trainer_callbacks
+                    if not isinstance(callback, logger_dependent_callbacks)
+                ]
+                logger.warning(
+                    "Skipping logger-dependent callbacks without Lightning loggers: %s",
+                    ", ".join(omitted),
+                )
 
     def _log_run_metadata_artifacts(self) -> None:
         if self._run_metadata_logged:

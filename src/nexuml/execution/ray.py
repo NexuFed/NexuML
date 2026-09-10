@@ -12,6 +12,7 @@ import lightning as L
 
 from nexuml.core.serialization import lower_model, restore_model_data
 from nexuml.core.types import RayExecutionSpec, ScenarioSpec, StrategySpec
+from nexuml.storage.s3 import normalize_s3_env_vars
 
 
 class RayExecutionError(RuntimeError):
@@ -260,8 +261,16 @@ def _connect(execution: RayExecutionSpec) -> dict[str, Any]:
         Runtime environment shared by the Ray Client server and Train workers.
 
     Raises:
-        RayExecutionError: If Ray is unavailable.
+        RayExecutionError: If Ray is unavailable or ``env_vars`` is invalid.
     """
+    target_runtime_env = dict(execution.target.runtime_env)
+    user_env_vars = target_runtime_env.get("env_vars", {})
+    if not isinstance(user_env_vars, Mapping):
+        raise RayExecutionError("Ray target runtime_env.env_vars must be a mapping")
+
+    # Ray reads this flag into ray_constants during import; the worker runtime
+    # env below is too late to disable the driver-side Ray Client UV hook.
+    os.environ["RAY_ENABLE_UV_RUN_RUNTIME_ENV"] = "0"
     try:
         import ray
     except ImportError as error:
@@ -271,7 +280,7 @@ def _connect(execution: RayExecutionSpec) -> dict[str, Any]:
         os.environ.setdefault("AWS_REQUEST_CHECKSUM_CALCULATION", "WHEN_REQUIRED")
         os.environ.setdefault("AWS_RESPONSE_CHECKSUM_VALIDATION", "WHEN_REQUIRED")
 
-    env_vars = {
+    driver_env_vars = {
         name: os.environ[name]
         for name in (
             "AWS_ACCESS_KEY_ID",
@@ -282,27 +291,50 @@ def _connect(execution: RayExecutionSpec) -> dict[str, Any]:
             "AWS_ENDPOINT_URL",
             "AWS_ENDPOINT_URL_S3",
             "AWS_CA_BUNDLE",
+            "NEXUML_S3_VERIFY_SSL",
+            "DALI_S3_NO_VERIFY_SSL",
             "AWS_REQUEST_CHECKSUM_CALCULATION",
             "AWS_RESPONSE_CHECKSUM_VALIDATION",
         )
         if name in os.environ
     }
+    env_vars = normalize_s3_env_vars(
+        {
+            "RAY_ENABLE_UV_RUN_RUNTIME_ENV": "0",
+            "RAY_TRAIN_V2_ENABLED": "1",
+            "RAY_TRAIN_WORKER_GROUP_START_TIMEOUT_S": "600",
+            "TIMEOUT_FOR_SPECIFIC_SERVER_S": "600",
+            **driver_env_vars,
+            **dict(user_env_vars),
+        }
+    )
     runtime_env: dict[str, Any] = {
+        **target_runtime_env,
         "env_vars": {
             "RAY_ENABLE_UV_RUN_RUNTIME_ENV": "0",
             "RAY_TRAIN_V2_ENABLED": "1",
             "RAY_TRAIN_WORKER_GROUP_START_TIMEOUT_S": "600",
             "TIMEOUT_FOR_SPECIFIC_SERVER_S": "600",
             **env_vars,
-        }
+        },
     }
     working_dir = execution.target.working_dir
-    if working_dir:
+    if working_dir is not None:
         runtime_env["working_dir"] = working_dir
-    if execution.target.py_executable:
+    if execution.target.py_executable is not None:
         runtime_env["py_executable"] = execution.target.py_executable
     if not ray.is_initialized():
-        ray.init(address=execution.target.address, runtime_env=runtime_env)
+        ignore_gitignore = user_env_vars.get("RAY_RUNTIME_ENV_IGNORE_GITIGNORE")
+        previous_ignore_gitignore = os.environ.get("RAY_RUNTIME_ENV_IGNORE_GITIGNORE")
+        try:
+            if ignore_gitignore is not None:
+                os.environ["RAY_RUNTIME_ENV_IGNORE_GITIGNORE"] = str(ignore_gitignore)
+            ray.init(address=execution.target.address, runtime_env=runtime_env)
+        finally:
+            if previous_ignore_gitignore is None:
+                os.environ.pop("RAY_RUNTIME_ENV_IGNORE_GITIGNORE", None)
+            else:
+                os.environ["RAY_RUNTIME_ENV_IGNORE_GITIGNORE"] = previous_ignore_gitignore
     return dict(ray.get_runtime_context().runtime_env)
 
 

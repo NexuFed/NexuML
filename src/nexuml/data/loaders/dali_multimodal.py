@@ -18,6 +18,7 @@ from nvidia.dali.plugin.pytorch import DALIGenericIterator, LastBatchPolicy
 from tensordict import TensorDict
 
 import nvidia.dali.fn as fn
+from nexuml.storage.s3 import configure_dali_s3_from_env
 
 
 def _dali_type(name: str) -> Any:
@@ -397,6 +398,7 @@ def webdataset_pipeline(
     Raises:
         ValueError: If a component encoding is unsupported.
     """
+    configure_dali_s3_from_env()
     ext = [component.member_ext for component in components]
     dtypes = [
         _dali_dtype(component.dtype) if component.encoding == "bin" else None

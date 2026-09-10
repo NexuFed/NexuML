@@ -78,7 +78,7 @@ When an experiment reaches its target, promote it:
 ## Export a trained model
 
 ```bash
-nexuml export <scenario> --checkpoint logs/<scenario>/checkpoints/best.ckpt
+nexuml export-model <scenario> --checkpoint logs/<scenario>/checkpoints/best.ckpt
 ```
 
 See [Export a model package](export.md) for the full export and reload workflow.

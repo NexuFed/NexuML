@@ -47,7 +47,7 @@ If the scenario contains `ExportSpec(kind="train_package")`, local training expo
 ## Export an existing checkpoint
 
 ```bash
-nexuml export my-scenario --checkpoint PATH -o packages/my-scenario
+nexuml export-model my-scenario --checkpoint PATH -o packages/my-scenario
 ```
 
 `--checkpoint` is optional syntactically, but omitting it does **not** search for the latest checkpoint. Supply the checkpoint explicitly when the command should package previously trained weights. See [Model export](export.md).

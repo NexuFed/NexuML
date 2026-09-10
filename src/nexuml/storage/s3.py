@@ -4,10 +4,51 @@ from __future__ import annotations
 
 import builtins
 import importlib
+import os
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Any
 from urllib.parse import urlsplit
+
+
+_NEXUML_S3_VERIFY_SSL = "NEXUML_S3_VERIFY_SSL"
+_DALI_S3_NO_VERIFY_SSL = "DALI_S3_NO_VERIFY_SSL"
+
+
+def _parse_verify_ssl(value: str) -> bool:
+    """Parse the shared S3 TLS environment value.
+
+    Returns:
+        Whether TLS verification is enabled.
+
+    Raises:
+        ValueError: If *value* is not ``"0"`` or ``"1"``.
+    """
+    if value not in {"0", "1"}:
+        raise ValueError(f"{_NEXUML_S3_VERIFY_SSL} must be '0' or '1'; got {value!r}")
+    return value == "1"
+
+
+def normalize_s3_env_vars(env_vars: Mapping[str, str]) -> dict[str, str]:
+    """Derive DALI's S3 TLS flag from the effective NexuML setting.
+
+    Returns:
+        A copied environment mapping with the derived DALI setting.
+
+    """
+    normalized = dict(env_vars)
+    if _NEXUML_S3_VERIFY_SSL in normalized:
+        verify_ssl = _parse_verify_ssl(normalized[_NEXUML_S3_VERIFY_SSL])
+        normalized[_DALI_S3_NO_VERIFY_SSL] = "0" if verify_ssl else "1"
+    return normalized
+
+
+def configure_dali_s3_from_env() -> None:
+    """Apply the shared S3 TLS setting before native DALI reader creation."""
+    normalized = normalize_s3_env_vars(os.environ)
+    if _NEXUML_S3_VERIFY_SSL in normalized:
+        os.environ[_DALI_S3_NO_VERIFY_SSL] = normalized[_DALI_S3_NO_VERIFY_SSL]
 
 
 @dataclass(frozen=True, slots=True)
@@ -57,11 +98,13 @@ class S3Client:
         region: str | None = None,
         profile: str | None = None,
         client: Any | None = None,
+        verify: bool | str | None = None,
     ) -> None:
         self.endpoint_url = endpoint_url
         self.region = region
         self.profile = profile
         self._client = client
+        self.verify = verify
 
     def _get_client(self) -> Any:
         """Create the boto3 client on first use.
@@ -74,6 +117,11 @@ class S3Client:
         """
         if self._client is not None:
             return self._client
+        verify = self.verify
+        if verify is None:
+            verify_env = os.getenv(_NEXUML_S3_VERIFY_SSL)
+            if verify_env is not None:
+                verify = _parse_verify_ssl(verify_env)
         try:
             boto3 = importlib.import_module("boto3")
         except ImportError as error:
@@ -87,6 +135,8 @@ class S3Client:
             kwargs["endpoint_url"] = self.endpoint_url
         if self.region:
             kwargs["region_name"] = self.region
+        if verify is not None:
+            kwargs["verify"] = verify
         self._client = session.client("s3", **kwargs)
         return self._client
 
@@ -136,4 +186,10 @@ def is_s3_uri(value: object) -> bool:
     return isinstance(value, str) and value.startswith("s3://")
 
 
-__all__ = ["S3Client", "S3Path", "is_s3_uri"]
+__all__ = [
+    "S3Client",
+    "S3Path",
+    "configure_dali_s3_from_env",
+    "is_s3_uri",
+    "normalize_s3_env_vars",
+]

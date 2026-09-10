@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import importlib
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from typer.testing import CliRunner
@@ -21,6 +23,11 @@ def test_cli_help():
     result = runner.invoke(app, ["--help"])
     assert result.exit_code == 0
     assert "resolve" in result.output
+    assert "export-model" in result.output
+    assert "export-dataset" in result.output
+
+    legacy_result = runner.invoke(app, ["export", "--help"])
+    assert legacy_result.exit_code != 0
 
 
 @pytest.mark.parametrize(
@@ -30,7 +37,7 @@ def test_cli_help():
         ["build", "--help"],
         ["train", "--help"],
         ["export-dataset", "--help"],
-        ["export", "--help"],
+        ["export-model", "--help"],
         ["smoke", "--help"],
         ["tune", "--help"],
         ["registry", "list", "--help"],
@@ -41,6 +48,103 @@ def test_cli_help():
 def test_subcommand_help(args):
     result = runner.invoke(app, args)
     assert result.exit_code == 0, result.output
+
+
+def _write_scenario_file(path: Path) -> Path:
+    path.write_text(
+        "from nexuml.core.types import ScenarioSpec\n\n"
+        "def scenario():\n"
+        "    return ScenarioSpec(name='scenario_file_cli')\n"
+    )
+    return path
+
+
+def test_export_cli_accepts_scenario_file_and_preserves_s3_output(tmp_path, monkeypatch):
+    scenario_file = _write_scenario_file(tmp_path / "scenario.py")
+    checkpoint = tmp_path / "local-last.ckpt"
+    output = "s3://prisma/models/name"
+    captured = {}
+
+    lightning = importlib.import_module("nexuml.training.lightning")
+    export_module = importlib.import_module("nexuml.core.export")
+
+    class FakeSession:
+        pipeline = object()
+        lightning_module = object()
+        trainer = object()
+
+        @classmethod
+        def from_scenario(cls, scenario):
+            return cls()
+
+        def setup(self):
+            return self
+
+    def capture_export(pipeline, path, **kwargs):
+        captured["path"] = path
+
+    monkeypatch.setattr(lightning, "NexuSession", FakeSession)
+    monkeypatch.setattr(export_module, "export_package", capture_export)
+
+    result = runner.invoke(
+        app,
+        [
+            "export-model",
+            "--scenario-file",
+            str(scenario_file),
+            "--checkpoint",
+            str(checkpoint),
+            "--output",
+            output,
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert captured["path"] == output
+
+
+def test_export_cli_rejects_multiple_scenario_selectors(tmp_path):
+    scenario_file = _write_scenario_file(tmp_path / "scenario.py")
+
+    result = runner.invoke(
+        app,
+        [
+            "export-model",
+            "synthetic-linear-ae-reconstruction",
+            "--scenario-file",
+            str(scenario_file),
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "Provide only one of scenario name, --config, or --scenario-file" in result.output
+
+
+def test_export_dataset_cli_accepts_scenario_file(tmp_path, monkeypatch):
+    scenario_file = _write_scenario_file(tmp_path / "scenario.py")
+    data_export = importlib.import_module("nexuml.data.export")
+    lightning = importlib.import_module("nexuml.training.lightning")
+    captured = {}
+
+    def fake_runtime(scenario):
+        captured["scenario"] = scenario
+        return SimpleNamespace(data_module=object(), lightning_module=object())
+
+    def fake_export(data_module, output, **kwargs):
+        captured["output"] = output
+        return output
+
+    monkeypatch.setattr(lightning, "create_runtime_artifacts", fake_runtime)
+    monkeypatch.setattr(data_export, "export_data_module", fake_export)
+
+    result = runner.invoke(
+        app,
+        ["export-dataset", "--scenario-file", str(scenario_file), "--output", "dataset"],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert captured["scenario"].name == "scenario_file_cli"
+    assert captured["output"] == "dataset"
 
 
 def test_registry_list_layers():

@@ -10,7 +10,7 @@ Ensure exported NexuML pipelines carry framework, library, and custom source cod
 The system SHALL export `pipeline.package` so that Python source modules needed to unpickle and train the exported pipeline are included in the package.
 
 #### Scenario: Built-in CIFAR ResNet package loads without NexuML workspace source
-- **WHEN** `nexuml export cifar-resnet --checkpoint <ckpt> -o <dir>` creates `<dir>/pipeline.package`
+- **WHEN** `nexuml export-model cifar-resnet --checkpoint <ckpt> -o <dir>` creates `<dir>/pipeline.package`
 - **AND** a clean Python process has runtime dependencies installed but no `PYTHONPATH` pointing at the NexuML source workspace
 - **THEN** `torch.package.PackageImporter("<dir>/pipeline.package").load_pickle("nexuml_export", "artifact.pkl")` SHALL succeed
 - **AND** the payload SHALL contain `pipeline`, `resolved_config`, `metadata`, and `training_state`

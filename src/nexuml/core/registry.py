@@ -76,9 +76,11 @@ class ComponentRegistry:
         self._by_type[definition_type] = entry
 
     def get_entry(self, kind: str, name: str, version: str = "1") -> ComponentEntry:
-        self.ensure_loaded()
+        key = (kind, name, version)
+        if key not in self._entries:
+            self.ensure_loaded()
         try:
-            return self._entries[(kind, name, version)]
+            return self._entries[key]
         except KeyError as exc:
             available = ", ".join(
                 f"{entry.name}@{entry.version}" for entry in self.entries(kind=kind)
@@ -91,7 +93,8 @@ class ComponentRegistry:
         return self.get_entry(kind, name, version).definition_type
 
     def entry_for_type(self, definition_type: type[ComponentDefinition]) -> ComponentEntry:
-        self.ensure_loaded()
+        if definition_type not in self._by_type:
+            self.ensure_loaded()
         try:
             return self._by_type[definition_type]
         except KeyError as exc:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib
 import json
 import os
 import subprocess
@@ -21,8 +22,15 @@ from nexuml.core.export import (
     export_safetensors,
     infer,
     load_package,
+    load_package_for_training,
 )
-from nexuml.core.types import LayerSpec, PipelineSpec, ScenarioSpec, TrainingSpec
+from nexuml.core.types import (
+    CheckpointLoadSpec,
+    LayerSpec,
+    PipelineSpec,
+    ScenarioSpec,
+    TrainingSpec,
+)
 from nexuml.data.export.runner import export_data_module
 from nexuml.training.lightning import create_data_module_from_spec
 from nexuml_library.layers.model.linear_encoder import LinearEncoder
@@ -338,6 +346,125 @@ def test_export_package_checkpoint_metadata_and_sidecar(compiled_pipeline, tmp_p
     assert checkpoint_meta.get("global_step") == 42
     assert checkpoint_meta.get("best_model_score") == 0.123
     assert checkpoint_meta.get("monitor") == "val/loss"
+
+
+def test_export_package_s3_uploads_files_with_metadata_last(
+    compiled_pipeline, tmp_path, monkeypatch
+):
+    export_module = importlib.import_module("nexuml.core.export")
+    checkpoint_path = tmp_path / "local.ckpt"
+    torch.save({"epoch": 1, "state_dict": {}}, checkpoint_path)
+
+    class RecordingS3:
+        def __init__(self):
+            self.uploads = []
+
+        def upload_file(self, source, destination):
+            self.uploads.append((str(destination), Path(source).read_bytes()))
+
+    client = RecordingS3()
+    monkeypatch.setattr(export_module, "S3Client", lambda: client)
+    uri = "s3://prisma/models/test"
+
+    assert export_package(compiled_pipeline, uri, checkpoint_path=checkpoint_path) == uri
+
+    destinations = [destination for destination, _ in client.uploads]
+    assert destinations[-1] == f"{uri}/metadata.json"
+    assert f"{uri}/resolved_config.yaml" in destinations
+    assert dict(client.uploads)[f"{uri}/lightning.ckpt"] == checkpoint_path.read_bytes()
+    metadata = json.loads(dict(client.uploads)[f"{uri}/metadata.json"])
+    assert metadata["checkpoint"]["source"] == str(checkpoint_path)
+
+
+def test_export_package_s3_upload_failure_cleans_temp_dir(compiled_pipeline, monkeypatch):
+    export_module = importlib.import_module("nexuml.core.export")
+    temp_dirs = []
+    real_temporary_directory = export_module.tempfile.TemporaryDirectory
+
+    class TrackingTemporaryDirectory(real_temporary_directory):
+        def __enter__(self):
+            path = super().__enter__()
+            temp_dirs.append(Path(path))
+            return path
+
+    class FailingS3:
+        def upload_file(self, source, destination):
+            raise OSError("upload failed")
+
+    monkeypatch.setattr(export_module.tempfile, "TemporaryDirectory", TrackingTemporaryDirectory)
+    monkeypatch.setattr(export_module, "S3Client", lambda: FailingS3())
+
+    with pytest.raises(OSError, match="upload failed"):
+        export_package(compiled_pipeline, "s3://prisma/models/failing")
+
+    assert temp_dirs and all(not path.exists() for path in temp_dirs)
+
+
+def test_load_weights_s3_checkpoint_is_strict_and_cleans_temp_dir(
+    compiled_pipeline, tmp_path, monkeypatch
+):
+    export_module = importlib.import_module("nexuml.core.export")
+    checkpoint_path = tmp_path / "lightning.ckpt"
+    torch.save(
+        {
+            "epoch": 1,
+            "state_dict": {
+                f"pipeline.{key}": value.detach().clone()
+                for key, value in compiled_pipeline.state_dict().items()
+            },
+        },
+        checkpoint_path,
+    )
+    uri = "s3://prisma/models/lightning.ckpt"
+    temp_dirs = []
+    real_temporary_directory = export_module.tempfile.TemporaryDirectory
+
+    class TrackingTemporaryDirectory(real_temporary_directory):
+        def __enter__(self):
+            path = super().__enter__()
+            temp_dirs.append(Path(path))
+            return path
+
+    class S3Checkpoint:
+        def __init__(self):
+            self.fail = False
+
+        def download_file(self, source, destination):
+            if self.fail:
+                raise OSError("download failed")
+            Path(destination).write_bytes(checkpoint_path.read_bytes())
+
+    client = S3Checkpoint()
+    monkeypatch.setattr(export_module.tempfile, "TemporaryDirectory", TrackingTemporaryDirectory)
+    monkeypatch.setattr(export_module, "S3Client", lambda: client)
+
+    report = export_module.load_weights(
+        compiled_pipeline,
+        uri,
+        checkpoint=CheckpointLoadSpec(allow_missing=False, allow_shape_mismatch=False),
+    )
+    assert sorted(report.matched) == sorted(compiled_pipeline.state_dict())
+    assert not report.missing
+    assert temp_dirs and all(not path.exists() for path in temp_dirs)
+
+    client.fail = True
+    with pytest.raises(OSError, match="download failed"):
+        export_module.load_weights(compiled_pipeline, uri)
+    assert all(not path.exists() for path in temp_dirs)
+
+
+@pytest.mark.parametrize("loader", [load_package, load_package_for_training])
+def test_s3_package_prefix_is_rejected_before_network(loader, monkeypatch):
+    export_module = importlib.import_module("nexuml.core.export")
+
+    class UnexpectedS3Client:
+        def __init__(self):
+            raise AssertionError("unsupported package prefix must not use S3")
+
+    monkeypatch.setattr(export_module, "S3Client", UnexpectedS3Client)
+
+    with pytest.raises(ValueError, match="single Lightning checkpoint files"):
+        loader("s3://prisma/models/name")
 
 
 def test_custom_layer_package_export_and_clean_load(tmp_path):

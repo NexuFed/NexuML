@@ -11,7 +11,7 @@ NexuML accepts different scenario sources at different boundaries. Use this page
 | `train` | yes | yes | yes |
 | `export-dataset` | yes | yes | — |
 | `tune` | yes | — | yes |
-| `export` | yes | — | — |
+| `export-model` | yes | — | — |
 | `smoke` | yes | — | — |
 
 Only one scenario source may be supplied to a command.

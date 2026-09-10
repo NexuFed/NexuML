@@ -10,7 +10,7 @@ Preserve checkpoint files, normalized metadata, and training state so exported m
 The system SHALL preserve or generate a `lightning.ckpt` sidecar when Lightning checkpoint state is available.
 
 #### Scenario: Export from checkpoint preserves checkpoint
-- **WHEN** `nexuml export <scenario> --checkpoint <path> -o <dir>` is run
+- **WHEN** `nexuml export-model <scenario> --checkpoint <path> -o <dir>` is run
 - **THEN** `<dir>/lightning.ckpt` SHALL exist
 - **AND** it SHALL preserve the original Lightning checkpoint data or a normalized equivalent sufficient for NexuML-side resume/fine-tuning.
 

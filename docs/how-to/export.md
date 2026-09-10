@@ -24,7 +24,7 @@ After `NexuSession.run()` completes, `nexuml train` packages the live trained pi
 Use the standalone command when you already know which Lightning checkpoint should supply the weights:
 
 ```bash
-nexuml export my-scenario \
+nexuml export-model my-scenario \
   --checkpoint /path/to/model.ckpt \
   -o packages/my-model
 ```

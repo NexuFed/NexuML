@@ -41,7 +41,7 @@ The first-run tutorial SHALL explain each command's purpose, expected artifacts,
 
 #### Scenario: User exports the model
 
-- **WHEN** the tutorial runs `nexuml export cifar-resnet`
+- **WHEN** the tutorial runs `nexuml export-model cifar-resnet`
 - **THEN** it explains the portable export package and links to the full export/reload guide.
 
 ### Requirement: Beginner Inconsistencies Removed

@@ -245,12 +245,20 @@ class LocalExecutionSpec(SpecModel):
 
 
 class RayClusterTarget(SpecModel):
-    """Existing Ray cluster used by the thin Ray Train backend."""
+    """Existing Ray cluster used by the thin Ray Train backend.
+
+    ``runtime_env`` is passed to Ray unchanged apart from NexuML's required
+    worker environment variables; nested ``env_vars`` override those defaults.
+    The nested ``env_vars`` value must be a mapping when provided.
+    The explicit ``working_dir`` and ``py_executable`` fields take precedence
+    over same-named nested values.
+    """
 
     kind: Literal["cluster"] = "cluster"
     address: str = "auto"
     working_dir: str | None = "."
     py_executable: str | None = None
+    runtime_env: dict[str, Any] = Field(default_factory=dict)
 
 
 class RayExecutionSpec(SpecModel):

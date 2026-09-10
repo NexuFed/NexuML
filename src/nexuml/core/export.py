@@ -11,6 +11,7 @@ import json
 import logging
 import pkgutil
 import sys
+import tempfile
 from dataclasses import dataclass, field, is_dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -28,6 +29,7 @@ from nexuml.core.config import ResolvedConfig
 from nexuml.core.pipeline import CompiledPipeline
 from nexuml.core.serialization import lower_model, restore_model_data
 from nexuml.core.types import CheckpointLoadSpec, ScenarioSpec
+from nexuml.storage.s3 import S3Client, S3Path, is_s3_uri
 
 logger = logging.getLogger(__name__)
 
@@ -496,19 +498,19 @@ def _extern_runtime_dependencies(exporter: PackageExporter) -> None:
 
 def export_package(
     pipeline: CompiledPipeline,
-    path: Path,
+    path: str | Path,
     metadata: dict[str, Any] | None = None,
     lightning_module: Any | None = None,
     trainer: Any | None = None,
     checkpoint_path: str | Path | None = None,
     include_modules: list[str] | None = None,
     source_metadata: dict[str, Any] | None = None,
-) -> Path:
+) -> Path | str:
     """Export a trained pipeline as a rich package-backed artifact directory.
 
     Args:
         pipeline: Compiled pipeline to export.
-        path: Destination directory.
+        path: Destination directory or S3 prefix.
         metadata: Optional provenance metadata merged into the artifact.
         lightning_module: Optional Lightning module for checkpoint sidecars.
         trainer: Optional Lightning trainer for training-state sidecars.
@@ -519,8 +521,31 @@ def export_package(
             CLI checkpoint path). Merged into *metadata*.
 
     Returns:
-        Path to the created export directory.
+        Local ``Path`` to the created export directory, or the original S3 URI.
     """
+    path_text = str(path)
+    if is_s3_uri(path_text):
+        destination = S3Path.parse(path_text)
+        with tempfile.TemporaryDirectory(prefix="nexuml-export-") as temp_dir:
+            local_path = Path(temp_dir) / "export"
+            export_package(
+                pipeline,
+                local_path,
+                metadata=metadata,
+                lightning_module=lightning_module,
+                trainer=trainer,
+                checkpoint_path=checkpoint_path,
+                include_modules=include_modules,
+                source_metadata=source_metadata,
+            )
+            client = S3Client()
+            for source in sorted(local_path.rglob("*")):
+                if source.is_file() and source.relative_to(local_path) != Path("metadata.json"):
+                    client.upload_file(source, destination / str(source.relative_to(local_path)))
+            client.upload_file(local_path / "metadata.json", destination / "metadata.json")
+        logger.info("Exported pipeline to %s", path_text)
+        return path_text
+
     path = Path(path)
     path.mkdir(parents=True, exist_ok=True)
 
@@ -708,8 +733,20 @@ def _normalize_config(config: Any) -> ResolvedConfig | None:
 
 
 def _load_artifact(
-    source: Path,
+    source: str | Path,
 ) -> tuple[dict[str, torch.Tensor], ResolvedConfig | None, dict[str, Any]]:
+    if is_s3_uri(source):
+        remote = S3Path.parse(str(source))
+        if not remote.key or remote.suffix.lower() not in {".ckpt", ".pt", ".pth"}:
+            raise ValueError(
+                "Remote artifact loading supports single Lightning checkpoint files "
+                "with .ckpt, .pt, or .pth suffixes only"
+            )
+        with tempfile.TemporaryDirectory(prefix="nexuml-s3-checkpoint-") as temp_dir:
+            local_path = Path(temp_dir) / "checkpoint.ckpt"
+            S3Client().download_file(remote, local_path)
+            return _load_artifact(local_path)
+
     source = Path(source)
     if source.is_dir():
         package_path = source / PACKAGE_FILENAME
@@ -782,7 +819,7 @@ def load_weights(
     )
     freeze_loaded = checkpoint.freeze_loaded if freeze_loaded is None else freeze_loaded
 
-    state_dict, _, _ = _load_artifact(Path(source))
+    state_dict, _, _ = _load_artifact(source)
     target_state = pipeline.state_dict()
     filtered_state: dict[str, torch.Tensor] = {}
     report = LoadReport()
@@ -823,7 +860,7 @@ def load_weights(
     return report
 
 
-def load_package(path: Path) -> tuple[CompiledPipeline, ResolvedConfig, dict[str, Any]]:
+def load_package(path: str | Path) -> tuple[CompiledPipeline, ResolvedConfig, dict[str, Any]]:
     """Reload an exported pipeline into the current codebase.
 
     Returns:
@@ -832,7 +869,7 @@ def load_package(path: Path) -> tuple[CompiledPipeline, ResolvedConfig, dict[str
     Raises:
         ValueError: If no scenario config is found in the artifact.
     """
-    state_dict, config, metadata = _load_artifact(Path(path))
+    state_dict, config, metadata = _load_artifact(path)
     if config is None:
         raise ValueError(f"Cannot reconstruct pipeline from {path}: no scenario config found.")
     current_hash = _config_hash(config)
@@ -874,7 +911,7 @@ def load_inference_package(path: Path) -> tuple[CompiledPipeline, ResolvedConfig
 
 
 def load_package_for_training(
-    path: Path,
+    path: str | Path,
     scenario: ScenarioSpec | None = None,
     checkpoint: CheckpointLoadSpec | None = None,
 ) -> TrainingReload:
@@ -886,7 +923,7 @@ def load_package_for_training(
     Raises:
         ValueError: If no scenario is provided and the artifact has no packaged config.
     """
-    state_dict, config, metadata = _load_artifact(Path(path))
+    state_dict, config, metadata = _load_artifact(path)
     scenario = scenario or (config.to_scenario() if config is not None else None)
     if scenario is None:
         raise ValueError("A scenario must be provided when the artifact has no packaged config.")

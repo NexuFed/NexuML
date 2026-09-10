@@ -312,7 +312,7 @@ def train_cmd(
 
         for spec in scenario.exports:
             if spec.kind == "train_package":
-                export_path = Path(spec.output) if spec.output else Path("exported_model")
+                export_path = spec.output or "exported_model"
                 export_package(
                     result.pipeline,
                     export_path,
@@ -332,6 +332,11 @@ def train_cmd(
 def export_dataset_cmd(
     scenario_name: Optional[str] = typer.Argument(None, help="Scenario name"),
     config_path: Optional[Path] = typer.Option(None, "--config", "-c", help="Config YAML path"),
+    scenario_file: Optional[Path] = typer.Option(
+        None,
+        "--scenario-file",
+        help="Trusted Python file exposing scenario() -> ScenarioSpec",
+    ),
     output: str = typer.Option("exported_dataset", "--output", "-o", help="Path or s3:// URI"),
     backend: str = typer.Option("numpy", "--backend", help="Dataset export backend"),
     split: list[str] | None = typer.Option(
@@ -391,7 +396,7 @@ def export_dataset_cmd(
         create_runtime_artifacts,
     )
 
-    scenario = _load_scenario(scenario_name, config_path)
+    scenario = _load_scenario(scenario_name, config_path, scenario_file)
     preprocess_until_key = preprocess_until_key or []
     use_preprocessing = preprocess or bool(preprocess_until_key)
     if use_preprocessing and not preprocess_until_key:
@@ -441,10 +446,18 @@ def export_dataset_cmd(
     console.print(f"[green]Dataset exported to {result}[/green]")
 
 
-@app.command(name="export", help="Export a trained pipeline")
+@app.command(name="export-model", help="Export a trained pipeline")
 def export_cmd(
-    scenario_name: str = typer.Argument(help="Scenario name to train and export"),
-    output: Path = typer.Option(Path("exported_model"), "--output", "-o", help="Export directory"),
+    scenario_name: Optional[str] = typer.Argument(None, help="Scenario name to train and export"),
+    config_path: Optional[Path] = typer.Option(None, "--config", "-c", help="Config YAML path"),
+    scenario_file: Optional[Path] = typer.Option(
+        None,
+        "--scenario-file",
+        help="Trusted Python file exposing scenario() -> ScenarioSpec",
+    ),
+    output: str = typer.Option(
+        "exported_model", "--output", "-o", help="Export directory or S3 URI"
+    ),
     checkpoint: Optional[Path] = typer.Option(
         None, "--checkpoint", help="Optional checkpoint to export"
     ),
@@ -453,8 +466,7 @@ def export_cmd(
     from nexuml.core.export import export_package
     from nexuml.training.lightning import NexuSession
 
-    scenario_fn = _get_scenario_fn(scenario_name)
-    scenario = scenario_fn()
+    scenario = _load_scenario(scenario_name, config_path, scenario_file)
     if scenario.checkpoint is None:
         from nexuml.core.types import CheckpointLoadSpec
 

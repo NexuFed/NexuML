@@ -189,7 +189,7 @@ The documentation site SHALL include a CLI lifecycle guide covering all implemen
 
 #### Scenario: User follows normal lifecycle
 - **WHEN** a user opens the CLI lifecycle page
-- **THEN** it explains `resolve` to YAML, `build` compile/validate plus Mermaid diagram export, `train`, `export-dataset`, `export`, `smoke`, and `tune`
+- **THEN** it explains `resolve` to YAML, `build` compile/validate plus Mermaid diagram export, `train`, `export-dataset`, `export-model`, `smoke`, and `tune`
 
 #### Scenario: User uses trusted Python scenario files
 - **WHEN** a user reads the agent-authored scenario section

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import os
 import tarfile
 from pathlib import Path
 from types import SimpleNamespace
@@ -230,3 +231,38 @@ def test_dali_streams_s3_shards_and_materializes_indexes(monkeypatch):
     assert s3.downloads == [("bucket", "dataset/data/shards/train/shard-000000.idx")]
     assert captured["global_rank"] == 2
     assert captured["world_size"] == 4
+
+
+def test_webdataset_pipeline_derives_dali_tls_before_reader(monkeypatch):
+    import nexuml.data.loaders.dali_multimodal as dali_multimodal
+
+    monkeypatch.setenv("NEXUML_S3_VERIFY_SSL", "0")
+    monkeypatch.setenv("DALI_S3_NO_VERIFY_SSL", "0")
+    observed: list[str] = []
+
+    def webdataset(**_kwargs):
+        observed.append(os.environ["DALI_S3_NO_VERIFY_SSL"])
+        return object()
+
+    monkeypatch.setattr(dali_multimodal.fn.readers, "webdataset", webdataset)
+    monkeypatch.setattr(dali_multimodal.fn.decoders, "numpy", lambda value: value)
+
+    dali_multimodal.webdataset_pipeline(
+        paths=["s3://bucket/shard.tar"],
+        index_paths=None,
+        shuffle=False,
+        shard_id=0,
+        num_shards=1,
+        batch_size=1,
+        num_threads=1,
+        device_id=-1,
+        components=[
+            dali_multimodal.WebDatasetComponentSpec(
+                key="features",
+                member_ext="features.npy",
+                encoding="npy",
+            )
+        ],
+    )
+
+    assert observed == ["1"]
