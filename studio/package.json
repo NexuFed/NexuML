@@ -1,0 +1,45 @@
+{
+  "name": "@nexufed/nexuml-studio",
+  "version": "0.1.0",
+  "description": "Local visual interface for your installed NexuML",
+  "license": "Apache-2.0",
+  "type": "module",
+  "bin": { "nexuml-studio": "bin/studio.mjs" },
+  "engines": { "node": ">=22.13.0" },
+  "files": ["bin", ".next/server", ".next/static", ".next/*.json", ".next/BUILD_ID", "next.config.mjs", "README.md", "LICENSE"],
+  "scripts": {
+    "dev": "next dev --hostname 127.0.0.1",
+    "build": "next build",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint app components model tests bin",
+    "test": "vitest run",
+    "test:browser": "playwright test",
+    "test:package": "node scripts/package-smoke.mjs",
+    "prepack": "npm run build && node scripts/prepare-package.mjs"
+  },
+  "dependencies": {
+    "@base-ui/react": "1.8.0",
+    "@fontsource-variable/geist": "5.3.0",
+    "@fontsource-variable/montserrat": "5.3.0",
+    "@tanstack/react-query": "5.104.1",
+    "@xyflow/react": "12.12.0",
+    "lucide-react": "1.50.0",
+    "next": "16.3.8",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "yaml": "2.9.1",
+    "zustand": "5.0.15"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "@tailwindcss/postcss": "4.3.3",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "eslint": "^9.39.4",
+    "eslint-config-next": "16.3.8",
+    "tailwindcss": "4.3.3",
+    "typescript": "^5.9.3",
+    "vitest": "5.0.3"
+  }
+}

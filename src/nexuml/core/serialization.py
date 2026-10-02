@@ -7,7 +7,7 @@ from pathlib import PurePath
 from types import UnionType
 from typing import Any, Union, cast, get_args, get_origin
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from nexuml.core.components import ComponentDefinition
 from nexuml.core.registry import get_component_registry
@@ -72,23 +72,39 @@ def _lower_value(value: Any) -> Any:
 
 
 def restore_model_data(data: Mapping[str, Any], model_type: type[BaseModel]) -> dict[str, Any]:
-    """Restore nested component definitions before model validation.
+    """Restore definitions, preserving full document locations on component validation errors.
 
     Returns:
         Model data containing concrete component definition instances.
+
     """
     restored = dict(data)
     for name, field in model_type.model_fields.items():
         if name in restored:
-            restored[name] = _restore_value(restored[name], field.annotation)
+            try:
+                restored[name] = _restore_value(restored[name], field.annotation)
+            except ValidationError as exc:
+                located = _located_error(exc, name)
+                raise located from exc
     return restored
+
+
+def _located_error(error: ValidationError, *prefix: str | int) -> ValidationError:
+    return ValidationError.from_exception_data(
+        error.title,
+        [{**item, "loc": (*prefix, *item["loc"])} for item in error.errors(include_url=False)],
+    )
 
 
 def _restore_value(value: Any, annotation: Any) -> Any:
     component_type = _model_subclass(annotation, ComponentDefinition)
     if component_type is not None and isinstance(value, Mapping):
         definition_type = cast(type[ComponentDefinition], component_type)
-        restored = restore_component(kind=definition_type.kind, value=value)
+        try:
+            restored = restore_component(kind=definition_type.kind, value=value)
+        except ValidationError as exc:
+            located = _located_error(exc, "params")
+            raise located from exc
         if not isinstance(restored, component_type):
             raise TypeError(
                 f"Expected {component_type.__name__}, restored {type(restored).__name__}"
@@ -98,9 +114,23 @@ def _restore_value(value: Any, annotation: Any) -> Any:
     origin = get_origin(annotation)
     args = get_args(annotation)
     if origin is list and args and isinstance(value, list):
-        return [_restore_value(item, args[0]) for item in value]
+        items = []
+        for index, item in enumerate(value):
+            try:
+                items.append(_restore_value(item, args[0]))
+            except ValidationError as exc:
+                located = _located_error(exc, index)
+                raise located from exc
+        return items
     if origin is dict and len(args) == 2 and isinstance(value, Mapping):
-        return {key: _restore_value(item, args[1]) for key, item in value.items()}
+        entries = {}
+        for key, item in value.items():
+            try:
+                entries[key] = _restore_value(item, args[1])
+            except ValidationError as exc:
+                located = _located_error(exc, key)
+                raise located from exc
+        return entries
 
     nested_model = _model_subclass(annotation, BaseModel)
     if nested_model is not None and isinstance(value, Mapping):

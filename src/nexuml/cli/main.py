@@ -778,32 +778,9 @@ def backend_list(
     Raises:
         typer.Exit: If *category* does not match any registered backends.
     """
-    rows: list[tuple[str, str, str]] = []
+    from nexuml.core.backends import backend_rows
 
-    def add(row_category: str, name: str, implementation: str) -> None:
-        if category is None or row_category == category:
-            rows.append((row_category, name, implementation))
-
-    from nexuml.data.export import get_export_backend, list_export_backends
-    from nexuml.core.registry import get_component_registry
-
-    for name in sorted(list_export_backends()):
-        backend_cls = get_export_backend(name)
-        add("data-export", name, f"{backend_cls.__module__}.{backend_cls.__name__}")
-
-    for entry in get_component_registry().entries(kind="loader_backend"):
-        add("data-loader", entry.name, entry.import_target)
-
-    add("training", "lightning", "nexuml.training.lightning.NexuSession")
-    add("training", "ray", "nexuml.execution.ray.run_ray")
-    add("tracking", "tensorboard", "nexuml.tracking.logger")
-    add("tracking", "dvclive", "nexuml.tracking.logger")
-    add("tracking", "mlflow", "nexuml.tracking.logger")
-    add("eval-storage", "memory", "nexuml.evaluation.storage")
-    add("eval-storage", "memmap", "nexuml.evaluation.storage")
-    add("pipeline-export", "package", "nexuml.core.export.export_package")
-    add("pipeline-export", "safetensors", "nexuml.core.export.export_safetensors")
-    add("pipeline-export", "onnx", "nexuml.core.export.export_onnx")
+    rows = [row for row in backend_rows() if category is None or row[0] == category]
 
     if category is not None and not rows:
         console.print(f"[red]Unknown backend category or no backends found: {category}[/red]")
@@ -882,6 +859,55 @@ def library_list():
         table.add_row("path", root)
 
     console.print(table)
+
+
+@app.command(name="serve", help="Serve the protected local Studio API (requires nexuml[api])")
+def serve_cmd(
+    directory: Path = typer.Option(
+        Path("."),
+        "--directory",
+        exists=True,
+        file_okay=False,
+        resolve_path=True,
+    ),
+    port: int = typer.Option(8000, "--port", min=1, max=65535),
+    origin: str = typer.Option("http://127.0.0.1:3000", "--origin"),
+    token_file: Optional[Path] = typer.Option(None, "--token-file", exists=True, dir_okay=False),
+):
+    """Start a loopback API using this installation; never install dependencies.
+
+    Raises:
+        typer.Exit: If API dependencies or protected startup settings are missing.
+    """
+    try:
+        import uvicorn
+        import websockets  # noqa: F401 - verify the required WebSocket implementation
+
+        from nexuml.api.app import create_app
+        from nexuml.api.security import Settings, read_token
+    except ImportError as exc:
+        console.print(
+            "Server dependencies missing. Install nexuml[api] in this same environment "
+            "(uv tool install 'nexuml[api]' or uv add 'nexuml[api]').",
+            style="red",
+            markup=False,
+        )
+        raise typer.Exit(1) from exc
+
+    try:
+        settings = Settings(directory=directory, origin=origin, token=read_token(token_file))
+    except (OSError, ValueError) as exc:
+        console.print(str(exc), style="red", markup=False)
+        raise typer.Exit(1) from exc
+
+    console.print("Local API: discovery and build execute trusted Python, not sandboxed code.")
+    uvicorn.run(
+        create_app(settings),
+        host="127.0.0.1",
+        port=port,
+        access_log=False,
+        ws_max_size=65536,
+    )
 
 
 if __name__ == "__main__":

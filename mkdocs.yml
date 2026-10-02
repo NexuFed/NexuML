@@ -88,6 +88,7 @@ nav:
     - how-to/index.md
     - Core workflow:
       - CLI lifecycle: how-to/cli-lifecycle.md
+      - Local Studio API: how-to/local-api.md
     - Scenarios and configuration:
       - Define a scenario: how-to/define-scenario.md
       - Run scenarios: how-to/run-scenarios.md

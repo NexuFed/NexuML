@@ -1,0 +1,36 @@
+import type { Node, Edge } from "@xyflow/react";
+
+export type RecordValue = Record<string, unknown>;
+export type Component = { type: string; version: string; params: RecordValue };
+export type Layer = RecordValue & {
+  component: Component; keys_in: string[] | Record<string, string>; keys_out: string[];
+  label_key?: string | string[] | null; label_in_x?: boolean;
+  meta_in?: Record<string, string> | null; meta_out?: Record<string, string> | null;
+};
+export type Config = RecordValue & {
+  name: string; pipeline: { stages: Record<string, Layer[]> };
+  data: RecordValue & { input_shapes: Record<string, number[]>; feature_key: string;
+    source: Component | null; datasets: { source: Component }[]; targets: { key: string }[] };
+  training: RecordValue & { loss_keys: Record<string, number>; metric_keys: string[] };
+  evaluation: RecordValue & { algorithms: (RecordValue & { algorithm: Component;
+    feature_key?: string; label_key?: string; axis_keys?: (string | { key: string; source: string })[] })[] };
+};
+export type Document = { data: Config; stage_order: string[]; yaml: string; semantic_revision: string;
+  path?: string; base_revision?: string | null };
+export type Schema = { type?: string; title?: string; description?: string; default?: unknown;
+  properties?: Record<string, Schema>; required?: string[]; enum?: unknown[];
+  minimum?: number; maximum?: number; $ref?: string; $defs?: Record<string, Schema> };
+export type Entry = { kind: string; name: string; version: string; schema: Schema; import_target: string };
+export type Catalog = { components: Entry[]; scenarios: { name: string }[]; errors: { module: string; message: string }[];
+  libraries: { roots: string[]; packages: string[] }; schema: Schema; backends: Record<string, { available: boolean }> };
+export type Snapshot = { config: Config; order: string[]; ids: Record<string, string[]>; positions: Record<string, {x:number; y:number}> };
+export type Port = { id: string; key: string; domain: string; field: string; alias?: string };
+export type CardData = RecordValue & { title: string; kind: string; inputs: Port[]; outputs: Port[];
+  stage?: string; index?: number; rank: number; summary?: string };
+export type CardNode = Node<CardData, "card">;
+export type Graph = { nodes: CardNode[]; edges: Edge[]; problems: string[] };
+export type Operation = { id: string; kind: string; status: string; semantic_revision: string;
+  sequence: number; cancellation: boolean; telemetry: string;
+  result?: RecordValue; artifacts: {path:string;kind:string}[] };
+export type Event = { kind: string; sequence?: number; operation_id?: string; partial?:boolean; payload: RecordValue };
+export type ConnectionInfo = { api: string; token: string };

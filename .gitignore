@@ -237,3 +237,12 @@ external/
 graphify-out/
 
 configs/
+
+# Studio build/test dependencies (production assets are included only in npm packs)
+studio/node_modules/
+studio/.next/
+studio/*.tgz
+studio/tsconfig.tsbuildinfo
+studio/playwright-report/
+studio/test-results/
+studio/LICENSE

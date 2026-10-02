@@ -1,0 +1,62 @@
+name: Studio packaged CPU smoke
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "studio/**"
+      - "src/nexuml/api/**"
+      - "src/nexuml/cli/main.py"
+      - "src/nexuml/core/serialization.py"
+      - "pyproject.toml"
+      - "scripts/studio-test-runtime.py"
+      - ".github/workflows/studio.yml"
+
+jobs:
+  packaged:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        mode: [tool, project]
+    runs-on: ${{ matrix.os }}
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+      CUDA_VISIBLE_DEVICES: ""
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: studio/package-lock.json
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@v10.0.1
+      - name: Build Python distributions
+        run: uv build --all --out-dir dist
+      - name: Install and verify isolated built runtime
+        shell: bash
+        run: python scripts/studio-test-runtime.py --wheel dist/nexuml-*.whl --library-wheel dist/nexuml_library-*.whl --output "$RUNNER_TEMP/studio runtime ${{ matrix.mode }}" --mode ${{ matrix.mode }}
+      - name: Install frontend development dependencies
+        working-directory: studio
+        run: npm ci
+      - name: Static and model checks
+        working-directory: studio
+        run: |
+          npm run typecheck
+          npm run lint
+          npm test
+      - name: Install headless test browser
+        working-directory: studio
+        run: npx playwright install chromium --with-deps --only-shell
+      - name: Install tarball offline and exercise actual CPU workflow
+        working-directory: studio
+        run: npm run test:package
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: studio-screenshots-${{ matrix.os }}-${{ matrix.mode }}
+          path: studio/test-results/**/*.png
+          if-no-files-found: ignore
