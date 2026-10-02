@@ -2,6 +2,11 @@ name: CI
 
 on:
   workflow_dispatch:
+    inputs:
+      rl-simulators:
+        description: Run optional visual/MuJoCo RL integration smokes
+        type: boolean
+        default: false
   push:
     branches: [main]
   pull_request:
@@ -61,6 +66,10 @@ jobs:
 
   test:
     runs-on: ika-runner-gpu
+    env:
+      NEXUML_RUN_SIMULATOR_TESTS: "0"
+      NEXUML_RUN_SYSTEM_TESTS: "0"
+      NEXUML_RUN_HARDWARE_TESTS: "0"
     strategy:
       fail-fast: false
       matrix:
@@ -170,6 +179,27 @@ jobs:
             dist/nexuml-library/*.whl
             dist/nexuml-library/*.tar.gz
           if-no-files-found: error
+
+  rl-simulators:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.rl-simulators }}
+    runs-on: ika-runner
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v10.0.1
+        with:
+          version: "latest"
+      - name: Install simulator prerequisites
+        run: |
+          uv venv --python 3.12
+          source .venv/bin/activate
+          uv pip install -e ".[dev,reinforcement]" -e "./library[rendering,mujoco]"
+          echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
+      - name: Run CPU simulator integrations
+        env:
+          NEXUML_RUN_SIMULATOR_TESTS: "1"
+          SDL_VIDEODRIVER: dummy
+          CUDA_VISIBLE_DEVICES: ""
+        run: python -m pytest tests/core/test_simulation_scenarios.py -q
 
   required-ci:
     name: CI

@@ -20,11 +20,14 @@ from pathlib import Path
 from typing import Any, Callable, TypeVar
 
 from nexuml.core.components import (
+    ActionAdapterDefinition,
     ComponentDefinition,
     DataSourceDefinition,
+    EnvironmentDefinition,
     EvalAlgorithmDefinition,
     LayerDefinition,
     LoaderBackendDefinition,
+    RLAlgorithmDefinition,
 )
 
 logger = logging.getLogger(__name__)
@@ -216,6 +219,45 @@ def loader_backend(
         kind="loader_backend",
         expected_type=LoaderBackendDefinition,
         version=version,
+    )
+
+
+def environment(
+    key: str, *, version: str = "1"
+) -> Callable[[type[DefinitionT]], type[DefinitionT]]:
+    """Register a portable environment definition.
+
+    Returns:
+        Definition class decorator.
+    """
+    return _component_decorator(
+        key, kind="environment", expected_type=EnvironmentDefinition, version=version
+    )
+
+
+def action_adapter(
+    key: str, *, version: str = "1"
+) -> Callable[[type[DefinitionT]], type[DefinitionT]]:
+    """Register a deployable action-adapter definition.
+
+    Returns:
+        Definition class decorator.
+    """
+    return _component_decorator(
+        key, kind="action_adapter", expected_type=ActionAdapterDefinition, version=version
+    )
+
+
+def rl_algorithm(
+    key: str, *, version: str = "1"
+) -> Callable[[type[DefinitionT]], type[DefinitionT]]:
+    """Register a checkpointable RL-algorithm definition.
+
+    Returns:
+        Definition class decorator.
+    """
+    return _component_decorator(
+        key, kind="rl_algorithm", expected_type=RLAlgorithmDefinition, version=version
     )
 
 

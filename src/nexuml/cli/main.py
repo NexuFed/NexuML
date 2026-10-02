@@ -203,6 +203,11 @@ def train_cmd(
         raise typer.Exit(1)
 
     if scenario is not None and max_epochs is not None:
+        from nexuml.core.types import TrainingSpec
+
+        if not isinstance(scenario.training, TrainingSpec):
+            console.print("[red]RL uses frames; use --override training.total_frames=...[/red]")
+            raise typer.Exit(1)
         scenario.training.max_epochs = max_epochs
         if (
             scenario.training.scheduler is not None
@@ -314,7 +319,7 @@ def train_cmd(
             if spec.kind == "train_package":
                 export_path = Path(spec.output) if spec.output else Path("exported_model")
                 export_package(
-                    result.pipeline,
+                    result.policy if result.policy is not None else result.pipeline,
                     export_path,
                     lightning_module=result.lightning_module,
                     trainer=result.trainer,
@@ -324,6 +329,8 @@ def train_cmd(
                 console.print(f"[yellow]Skipping unsupported export kind: {spec.kind}[/yellow]")
 
     console.print("[green]Training complete![/green]")
+    if result.interaction_results:
+        console.print(f"  RL evaluation: {result.interaction_results}")
     if result.test_results:
         console.print(f"  Test results: {result.test_results}")
 
@@ -402,6 +409,11 @@ def export_dataset_cmd(
 
     console.print(f"[blue]Preparing dataset export for scenario: {scenario.name}[/blue]")
     runtime = create_runtime_artifacts(scenario)
+    from nexuml.training.lightning import NexuLightningModule
+
+    if runtime.data_module is None or not isinstance(runtime.lightning_module, NexuLightningModule):
+        console.print("[red]Dataset export requires a supervised data-module runtime.[/red]")
+        raise typer.Exit(1)
 
     transform = None
     if use_preprocessing:
@@ -471,7 +483,7 @@ def export_cmd(
         source_metadata["source"] = {"checkpoint": str(checkpoint)}
 
     export_package(
-        session.pipeline,
+        session.runtime.policy if session.runtime.policy is not None else session.pipeline,
         output,
         lightning_module=session.lightning_module,
         trainer=session.trainer,
@@ -524,7 +536,7 @@ def smoke(
 
     console.print("[blue]4. Exporting...[/blue]")
     export_dir = resolve_logs_root(f".experiments/{scenario_name}_export")
-    export_package(result.pipeline, export_dir)
+    export_package(result.policy if result.policy is not None else result.pipeline, export_dir)
     console.print(f"   Exported to {export_dir}")
 
     console.print("[blue]5. Reloading...[/blue]")

@@ -1,8 +1,8 @@
 """Compiler: transforms ScenarioSpec into a runnable CompiledPipeline."""
 
-from __future__ import annotations
-
 import logging
+from collections.abc import Mapping
+from dataclasses import dataclass, field
 from typing import Any, cast
 
 import torch
@@ -13,9 +13,80 @@ from nexuml.core.base_layer import PipelineLayer
 from nexuml.core.components import LayerBuildContext
 from nexuml.core.config import ResolvedConfig
 from nexuml.core.pipeline import CompiledPipeline
-from nexuml.core.types import ScenarioSpec
+from nexuml.core.types import (
+    DataSpec,
+    InteractionContract,
+    PipelineSpec,
+    ScenarioSpec,
+    TrainingSpec,
+)
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True, slots=True)
+class PipelineCompileContext:
+    """Input metadata shared by dataset, policy and algorithm-owned pipelines."""
+
+    input_sizes: Mapping[str, tuple[int, ...]]
+    input_metadata: Mapping[str, Mapping[str, Any]] = field(default_factory=dict)
+    num_classes: int | None = None
+    skip_stages: tuple[str, ...] = ()
+
+
+def compile_context_from_data(data: DataSpec) -> PipelineCompileContext:
+    """Preserve the supervised compiler's existing input inference.
+
+    Returns:
+        Dataset-derived input context, without materializing a dataset.
+    """
+    if data.input_shapes:
+        sizes = {key: tuple(shape) for key, shape in data.input_shapes.items()}
+    else:
+        source = data.source
+        if source is None and data.datasets:
+            source = data.datasets[0].source
+        sizes = {data.feature_key: tuple(getattr(source, "feature_shape", (128,)))}
+    return PipelineCompileContext(
+        input_sizes=sizes,
+        num_classes=data.num_classes,
+        skip_stages=tuple(data.skip_pipeline_stages),
+    )
+
+
+def compile_context_from_interaction(contract: InteractionContract) -> PipelineCompileContext:
+    """Translate explicit tensor observations, never inventing missing leaf shapes.
+
+    Returns:
+        Portable observation context, excluding vectorization dimensions.
+
+    Raises:
+        TypeError: If description is not an interaction contract.
+        ValueError: If an observation declares an unsupported tensor dtype.
+    """
+    if not isinstance(contract, InteractionContract):
+        raise TypeError("EnvironmentDefinition.describe() must return InteractionContract")
+    supported = {
+        "float16",
+        "bfloat16",
+        "float32",
+        "float64",
+        "uint8",
+        "int8",
+        "int16",
+        "int32",
+        "int64",
+        "bool",
+    }
+    for key, leaf in contract.observations.items():
+        if leaf.dtype not in supported:
+            raise ValueError(f"Observation {key!r} has unsupported dtype {leaf.dtype!r}")
+    return PipelineCompileContext(
+        input_sizes={key: leaf.shape for key, leaf in contract.observations.items()},
+        input_metadata={
+            key: leaf.model_dump(mode="json") for key, leaf in contract.observations.items()
+        },
+    )
 
 
 def compile(scenario: ScenarioSpec) -> CompiledPipeline:
@@ -29,29 +100,43 @@ def compile(scenario: ScenarioSpec) -> CompiledPipeline:
 
     Returns:
         Compiled pipeline ready for training or inference.
+    """
+    training = scenario.training if isinstance(scenario.training, TrainingSpec) else None
+    if training is None:
+        assert scenario.interaction is not None
+        context = compile_context_from_interaction(scenario.interaction.environment.describe())
+    else:
+        context = compile_context_from_data(scenario.data)
+    return compile_pipeline(
+        scenario.pipeline,
+        context=context,
+        resolved_config=ResolvedConfig.from_scenario(scenario),
+        training=training,
+    )
+
+
+def compile_pipeline(
+    pipeline: PipelineSpec,
+    *,
+    context: PipelineCompileContext,
+    resolved_config: ResolvedConfig,
+    training: TrainingSpec | None = None,
+) -> CompiledPipeline:
+    """Build one pipeline implementation from data or interaction metadata.
+
+    Omitting ``training`` disables the supervised loss/optimizer path.
+
+    Returns:
+        Compiled neural TensorDict graph.
 
     Raises:
-        TypeError: If a definition does not build a ``PipelineLayer``.
+        TypeError: If a definition does not build a pipeline layer.
     """
-    # Track accumulated shapes and metadata
-    pipeline_dims: dict[str, tuple] = {}
+    pipeline_dims: dict[str, tuple] = dict(context.input_sizes)
     metadata: dict[str, Any] = {}
     stages = nn.ModuleDict()
-
-    # Initialize input dims from data spec or a source definition's declared shape.
-    if scenario.data.input_shapes:
-        pipeline_dims.update(
-            {key: tuple(shape) for key, shape in scenario.data.input_shapes.items()}
-        )
-    else:
-        source = scenario.data.source
-        if source is None and scenario.data.datasets:
-            source = scenario.data.datasets[0].source
-        feature_shape = tuple(getattr(source, "feature_shape", (128,)))
-        pipeline_dims[scenario.data.feature_key] = feature_shape
-
-    for stage_name, layer_specs in scenario.pipeline.stages.items():
-        if stage_name in scenario.data.skip_pipeline_stages:
+    for stage_name, layer_specs in pipeline.stages.items():
+        if stage_name in context.skip_stages:
             logger.info("Skipping pipeline stage '%s' per data.skip_pipeline_stages", stage_name)
             continue
 
@@ -59,6 +144,8 @@ def compile(scenario: ScenarioSpec) -> CompiledPipeline:
 
         for i, spec in enumerate(layer_specs):
             resolved_metadata: dict[str, Any] = {}
+            if context.input_metadata:
+                resolved_metadata["input_metadata"] = dict(context.input_metadata)
             if spec.meta_in:
                 for param_name, meta_key in spec.meta_in.items():
                     if meta_key in metadata:
@@ -72,18 +159,18 @@ def compile(scenario: ScenarioSpec) -> CompiledPipeline:
             keys_in_val: list[str] = (
                 list(spec.keys_in.values()) if isinstance(spec.keys_in, dict) else spec.keys_in
             )
-            context = LayerBuildContext(
+            layer_context = LayerBuildContext(
                 input_sizes=pipeline_dims,
                 keys_in=keys_in_val,
                 keys_out=spec.keys_out,
                 label_key=spec.label_key,
                 label_in_x=spec.label_in_x,
-                num_classes=scenario.data.num_classes,
+                num_classes=context.num_classes,
                 metadata=resolved_metadata,
                 delay_epochs=spec.delay_epochs,
                 update_every_n_epochs=spec.update_every_n_epochs,
             )
-            layer = spec.component.build(context)
+            layer = spec.component.build(layer_context)
             if not isinstance(layer, PipelineLayer):
                 raise TypeError(
                     f"{type(spec.component).__name__}.build() must return PipelineLayer, "
@@ -91,7 +178,7 @@ def compile(scenario: ScenarioSpec) -> CompiledPipeline:
                 )
 
             # Shape propagation via dummy forward
-            updated_dims = _propagate_shapes(layer, pipeline_dims)
+            updated_dims = _propagate_shapes(layer, pipeline_dims, context.input_metadata)
             pipeline_dims.update(updated_dims)
 
             # Capture meta_out
@@ -110,29 +197,31 @@ def compile(scenario: ScenarioSpec) -> CompiledPipeline:
 
         stages[stage_name] = stage_layers
 
-    resolved_config = ResolvedConfig.from_scenario(scenario)
-
     return CompiledPipeline(
         stages=stages,
-        loss_keys=scenario.training.loss_keys,
-        metric_keys=scenario.training.metric_keys,
+        loss_keys=training.loss_keys if training is not None else {},
+        metric_keys=training.metric_keys if training is not None else [],
         resolved_config=resolved_config,
-        optimizer_spec=scenario.training.optimizer.model_copy(
+        optimizer_spec=training.optimizer.model_copy(
             update={
                 "kwargs": {
-                    **scenario.training.optimizer.kwargs,
-                    "lr": scenario.training.lr,
+                    **training.optimizer.kwargs,
+                    "lr": training.lr,
                 }
             }
-        ).model_dump(),
-        scheduler_spec=scenario.training.scheduler.model_dump(),
+        ).model_dump()
+        if training is not None
+        else None,
+        scheduler_spec=training.scheduler.model_dump() if training is not None else None,
         input_sizes=dict(pipeline_dims),
+        supervised_training=training is not None,
     )
 
 
 def _propagate_shapes(
     layer: nn.Module,
     current_dims: dict[str, tuple],
+    input_metadata: Mapping[str, Mapping[str, Any]],
 ) -> dict[str, tuple]:
     """Run a dummy forward pass to infer output shapes.
 
@@ -143,7 +232,12 @@ def _propagate_shapes(
     batch_size = 2
     td_data = {}
     for key, shape in current_dims.items():
-        td_data[key] = torch.randn(batch_size, *shape)
+        leaf = input_metadata.get(key)
+        td_data[key] = (
+            torch.zeros((batch_size, *shape), dtype=getattr(torch, leaf["dtype"]))
+            if leaf is not None
+            else torch.randn(batch_size, *shape)
+        )
 
     x = TensorDict(cast(Any, td_data), batch_size=[batch_size])
     y = None

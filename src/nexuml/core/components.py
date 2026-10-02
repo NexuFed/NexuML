@@ -3,9 +3,16 @@
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, NamedTuple
 
 from pydantic import BaseModel, ConfigDict
+
+if TYPE_CHECKING:
+    from torch import nn
+
+    from nexuml.core.policy import CompiledPolicy
+    from nexuml.core.types import InteractionContract
+    from nexuml.interaction.runtime import EnvironmentRuntime
 
 
 class ComponentDefinition(BaseModel, ABC):
@@ -106,3 +113,61 @@ class LoaderBackendDefinition(ComponentDefinition):
     @abstractmethod
     def build(self) -> Any:
         """Build the loader backend runtime."""
+
+
+@dataclass(frozen=True, slots=True)
+class EnvironmentBuildContext:
+    """Execution-local settings for a training or evaluation environment."""
+
+    purpose: Literal["train", "eval"]
+    seed: int | None = None
+    device: str = "cpu"
+    worker_rank: int = 0
+    num_envs: int = 1
+
+    def __post_init__(self) -> None:
+        if self.purpose not in ("train", "eval"):
+            raise ValueError("environment purpose must be train or eval")
+        if self.num_envs < 1 or self.worker_rank < 0:
+            raise ValueError("num_envs must be positive and worker_rank nonnegative")
+
+
+class EnvironmentDefinition(ComponentDefinition):
+    """Portable environment configuration, never a live simulator or transport."""
+
+    kind = "environment"
+
+    @abstractmethod
+    def describe(self) -> "InteractionContract":
+        """Describe tensor I/O without hardware connections or retained resources."""
+
+    @abstractmethod
+    def build(self, context: EnvironmentBuildContext) -> "EnvironmentRuntime":
+        """Materialize reset/step/close resources at the execution site."""
+
+
+class ActionAdapterDefinition(ComponentDefinition):
+    """Portable configuration for converting neural outputs into valid actions."""
+
+    kind = "action_adapter"
+
+    @abstractmethod
+    def build(self, contract: "InteractionContract") -> "nn.Module":
+        """Build the deployable action adapter, independent of any learner."""
+
+
+class RLAlgorithmBuildContext(NamedTuple):
+    """Learner inputs, deliberately excluding live interaction resources."""
+
+    policy: "CompiledPolicy"
+    contract: "InteractionContract"
+
+
+class RLAlgorithmDefinition(ComponentDefinition):
+    """Portable configuration for a checkpoint-visible reinforcement learner."""
+
+    kind = "rl_algorithm"
+
+    @abstractmethod
+    def build(self, context: RLAlgorithmBuildContext) -> "nn.Module":
+        """Build algorithm-owned checkpointable state, not an environment."""

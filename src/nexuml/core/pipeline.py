@@ -30,6 +30,7 @@ class CompiledPipeline(nn.Module):
         optimizer_spec: dict[str, Any] | None = None,
         scheduler_spec: dict[str, Any] | None = None,
         input_sizes: dict[str, tuple] | None = None,
+        supervised_training: bool = True,
     ):
         super().__init__()
         self.stages = stages
@@ -47,6 +48,7 @@ class CompiledPipeline(nn.Module):
             "kwargs": {"factor": 1.0, "total_iters": 0},
         }
         self.input_sizes = input_sizes or {}
+        self.supervised_training = supervised_training
 
     def iter_layers(self) -> Iterator[tuple[str, str, nn.Module]]:
         """Yield pipeline layers in execution order."""
@@ -107,6 +109,8 @@ class CompiledPipeline(nn.Module):
         )
 
     def create_optimizer(self) -> torch.optim.Optimizer:
+        if not self.supervised_training:
+            raise RuntimeError("Interactive pipelines use algorithm-owned optimizers")
         optimizer = OptimizerSpec.model_validate(self._optimizer_spec).build(self.parameters())
         if not isinstance(optimizer, torch.optim.Optimizer):
             raise TypeError(
@@ -118,6 +122,8 @@ class CompiledPipeline(nn.Module):
     def create_scheduler(
         self, optimizer: torch.optim.Optimizer
     ) -> torch.optim.lr_scheduler.LRScheduler:
+        if not self.supervised_training:
+            raise RuntimeError("Interactive pipelines use algorithm-owned schedulers")
         scheduler = SchedulerSpec.model_validate(self._scheduler_spec).build(optimizer)
         if not isinstance(scheduler, torch.optim.lr_scheduler.LRScheduler):
             raise TypeError(

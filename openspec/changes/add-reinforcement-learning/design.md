@@ -578,6 +578,11 @@ def train_dataloader(self):
 
 One Lightning `training_step` corresponds to one collector rollout batch. PPO may run many minibatch update epochs within that step.
 
+The rollout dataset exposes the finite batch-count upper bound from the remaining
+frame budget. This disables Lightning's eager lookahead for an unsized iterable:
+synchronous collection must not sample the next batch before learner updates and
+policy synchronization. The collector still owns batch rounding and exhaustion.
+
 `total_frames` is the actual training budget. Lightning uses one finite logical fit epoch internally; users do not configure RL in synthetic epochs.
 
 ### D13 - Policy synchronization is explicit for copied-policy collectors
@@ -624,7 +629,22 @@ Ray learner + direct env in each learner worker
 
 Unvalidated nested Ray compositions must fail early.
 
-The first acceptance path is direct collection. Process collection is enabled after testing. Ray collection remains a staged validation path, but its config and policy-sync semantics are designed now.
+The first acceptance path is direct collection. Process collection is enabled after testing.
+Ray collection is enabled only after its opted-in lifecycle/synchronization proof passes,
+limited to a local CPU learner with synchronous CPU collectors. Rollout batch size must
+be divisible by collector count times environments per collector. Ray learner placement,
+asynchronous/GPU collection and nested learner/collector placement remain rejected.
+
+**Approved front-door exception:** direct/process collection uses TorchRL's public
+`Collector` front door. The pinned TorchRL 0.14 Ray backend kills actors without closing
+their environments, including automatic iterator exhaustion. A private lazy subclass
+of its `RayCollector` overrides only actor teardown: request remote collector shutdown,
+wait up to 30 seconds, then use the upstream actor termination hook. Collection and
+weight synchronization remain upstream implementations. Remove this repair when an
+upstream version proves graceful teardown. Caller-owned Ray runtimes remain alive;
+TorchRL's runtime lease manages collector-owned runtimes. Repeated shutdown must not
+auto-initialize another runtime, and a failed/timed-out close still terminates owned
+actors and releases the lease before propagating the error.
 
 ### D15 - PPO remains the reference algorithm
 

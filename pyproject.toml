@@ -84,6 +84,10 @@ export = [
 ray = [
     "ray[default,train]>=2.57,<2.59",
 ]
+reinforcement = [
+    "torchrl>=0.14,<0.15",
+    "gymnasium>=1,<2",
+]
 s3 = [
     "boto3>=1.34",
 ]
@@ -91,7 +95,7 @@ library = [
     "nexuml-library>=0.2,<0.3",
 ]
 all = [
-    "nexuml[library,audio,data,tracking,tuning,export,ray,s3]",
+    "nexuml[library,audio,data,tracking,tuning,export,ray,s3,reinforcement]",
 ]
 
 [project.scripts]
@@ -114,6 +118,9 @@ markers = [
     "requires_gpu: needs a CUDA device",
     "requires_data: needs NEXUML_RUN_DATA_TESTS=1 and a valid NEXUML_DATA_ROOT",
     "requires_optional(name): skipped if optional dependency is not installed",
+    "requires_simulator: opt-in simulator tests (NEXUML_RUN_SIMULATOR_TESTS=1)",
+    "requires_system: opt-in middleware/server tests (NEXUML_RUN_SYSTEM_TESTS=1)",
+    "requires_hardware: manual hardware validation (NEXUML_RUN_HARDWARE_TESTS=1)",
     "conformance_skip(reason): escape hatch for unsupported contract elements",
 ]
 

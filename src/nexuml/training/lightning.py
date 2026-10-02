@@ -18,10 +18,12 @@ from tensordict import TensorDict
 from nexuml.core.compiler import compile
 from nexuml.core.log_paths import resolve_logs_root
 from nexuml.core.pipeline import CompiledPipeline
+from nexuml.core.policy import CompiledPolicy
 from nexuml.core.serialization import lower_model, restore_model_data
 from nexuml.core.types import (
     AutoBatchSizeSpec,
     EvalAlgorithmSpec,
+    ReinforcementLearningSpec,
     ScenarioSpec,
     StrategySpec,
     TrainingSpec,
@@ -33,6 +35,7 @@ from nexuml.data.exported import ExportedDataset
 from nexuml.data.module import NexuDataModule
 from nexuml.evaluation.algorithm import EvalAlgorithm
 from nexuml.evaluation.registry import create_algorithm
+from nexuml.training.reinforcement import NexuRLLightningModule
 
 logger = logging.getLogger("lightning.pytorch.nexuml.training")
 
@@ -569,12 +572,14 @@ class TrainResult:
     """Result of a training run."""
 
     pipeline: CompiledPipeline
-    lightning_module: NexuLightningModule
+    lightning_module: NexuLightningModule | NexuRLLightningModule
     trainer: L.Trainer
     validation_results: list[dict[str, float]] = field(default_factory=list)
     test_results: list[dict[str, float]] = field(default_factory=list)
     load_report: dict[str, list[str]] | None = None
     eval_algorithm_results: dict[str, float] = field(default_factory=dict)
+    policy: CompiledPolicy | None = None
+    interaction_results: dict[str, float] = field(default_factory=dict)
 
 
 @dataclass
@@ -582,9 +587,10 @@ class RuntimeArtifacts:
     """Compiled runtime objects shared by training and dataset export."""
 
     pipeline: CompiledPipeline
-    lightning_module: NexuLightningModule
-    data_module: NexuDataModule
+    lightning_module: NexuLightningModule | NexuRLLightningModule
+    data_module: NexuDataModule | None
     load_report: dict[str, list[str]] | None = None
+    policy: CompiledPolicy | None = None
 
 
 class NexuSession:
@@ -662,12 +668,15 @@ class NexuSession:
         return self.runtime.pipeline
 
     @property
-    def lightning_module(self) -> NexuLightningModule:
+    def lightning_module(self) -> NexuLightningModule | NexuRLLightningModule:
         return self.runtime.lightning_module
 
     @property
     def data_module(self) -> NexuDataModule:
-        return self.runtime.data_module
+        data = self.runtime.data_module
+        if data is None:
+            raise RuntimeError("Reinforcement sessions do not own a NexuDataModule")
+        return data
 
     @property
     def trainer(self) -> L.Trainer:
@@ -714,6 +723,9 @@ class NexuSession:
 
         Returns:
             The ``lightning.Trainer`` instance (creating it on first call).
+
+        Raises:
+            ValueError: If RL requests multiple learner devices.
         """
         if self._trainer is not None:
             return self._trainer
@@ -742,16 +754,22 @@ class NexuSession:
             )
             self._service_info_printed = True
 
-        tr: TrainingSpec = self.scenario.training
+        tr = self.scenario.training
+        reinforcement = isinstance(tr, ReinforcementLearningSpec)
+        max_epochs = 1 if reinforcement else tr.max_epochs
         resolved_accelerator = self.accelerator if self.accelerator != "auto" else tr.accelerator
         resolved_devices = self.devices if self.devices != "auto" else tr.devices
+        if reinforcement:
+            if resolved_devices not in (1, "auto"):
+                raise ValueError("Reinforcement training supports one learner device")
+            resolved_devices = 1
         resolved_strategy = (
             cast(Any, tr.strategy.build()) if isinstance(tr.strategy, StrategySpec) else tr.strategy
         )
         resolved_precision = tr.precision if tr.precision != "32-true" else "32-true"
 
         self._trainer = L.Trainer(
-            max_epochs=tr.max_epochs,
+            max_epochs=max_epochs,
             accelerator=resolved_accelerator,
             devices=resolved_devices,
             strategy=resolved_strategy,
@@ -761,7 +779,7 @@ class NexuSession:
             enable_model_summary=False,
             logger=self.trainer_loggers,
             callbacks=self.trainer_callbacks or None,
-            num_sanity_val_steps=0 if tr.max_epochs == 0 else 2,
+            num_sanity_val_steps=0 if reinforcement or max_epochs == 0 else 2,
             log_every_n_steps=1,
         )
         return self._trainer
@@ -772,11 +790,18 @@ class NexuSession:
         Returns:
             The same ``NexuSession`` instance (for chaining).
         """
-        self.trainer.fit(
-            self.lightning_module,
-            datamodule=self.data_module,
-            ckpt_path=str(self.trainer_checkpoint) if self.trainer_checkpoint is not None else None,
-        )
+        module = self.lightning_module
+        try:
+            self.trainer.fit(
+                module,
+                datamodule=None if isinstance(module, NexuRLLightningModule) else self.data_module,
+                ckpt_path=str(self.trainer_checkpoint)
+                if self.trainer_checkpoint is not None
+                else None,
+            )
+        finally:
+            if isinstance(module, NexuRLLightningModule):
+                module.close_collection()
         return self
 
     def validate(self) -> list[dict[str, float]]:
@@ -784,13 +809,19 @@ class NexuSession:
 
         Returns:
             List of metric dictionaries from the validation stage.
+
+        Raises:
+            RuntimeError: If used for an RL session.
         """
+        module = self.lightning_module
+        if not isinstance(module, NexuLightningModule):
+            raise RuntimeError("Use RL episode evaluation, not dataset validation")
         raw_results = self.trainer.validate(
             self.lightning_module,
             datamodule=self.data_module,
         )
         results: list[dict[str, float]] = [dict(r) for r in raw_results]
-        stage_metrics = self.lightning_module.get_stage_metric_results("val")
+        stage_metrics = module.get_stage_metric_results("val")
         if stage_metrics:
             for result in results:
                 result.update(stage_metrics)
@@ -826,7 +857,13 @@ class NexuSession:
 
         Returns:
             List of metric dictionaries from the test stage.
+
+        Raises:
+            RuntimeError: If used for an RL session.
         """
+        module = self.lightning_module
+        if not isinstance(module, NexuLightningModule):
+            raise RuntimeError("Use RL episode evaluation, not dataset testing")
         if dataloaders is None and datamodule is None:
             datamodule = self.data_module
         raw_results = self.trainer.test(
@@ -835,11 +872,11 @@ class NexuSession:
             datamodule=datamodule,
         )
         results: list[dict[str, float]] = [dict(r) for r in raw_results]
-        stage_metrics = self.lightning_module.get_stage_metric_results("test")
+        stage_metrics = module.get_stage_metric_results("test")
         if stage_metrics:
             for result in results:
                 result.update(stage_metrics)
-        mirrored_eval_metrics = self.lightning_module.test_result_eval_metrics
+        mirrored_eval_metrics = module.test_result_eval_metrics
         if mirrored_eval_metrics:
             for result in results:
                 result.update(mirrored_eval_metrics)
@@ -853,8 +890,28 @@ class NexuSession:
             metric results.
         """
         self.fit()
+        module = self.lightning_module
+        if isinstance(module, NexuRLLightningModule):
+            from nexuml.training.reinforcement import evaluate_policy
+
+            metrics = evaluate_policy(module.policy, self.scenario)
+            for logger_instance in (
+                self.trainer_loggers if isinstance(self.trainer_loggers, list) else []
+            ):
+                logger_instance.log_metrics(metrics, step=self.trainer.global_step)
+            return TrainResult(
+                pipeline=self.pipeline,
+                policy=module.policy,
+                lightning_module=module,
+                trainer=self.trainer,
+                interaction_results=metrics,
+                load_report=self.runtime.load_report,
+            )
         # Skip validation for frozen eval runs (max_epochs=0) — no training happened
-        if self.scenario is not None and self.scenario.training.max_epochs == 0:
+        if (
+            isinstance(self.scenario.training, TrainingSpec)
+            and self.scenario.training.max_epochs == 0
+        ):
             validation_results = []
         else:
             validation_results = self.validate()
@@ -862,7 +919,7 @@ class NexuSession:
         self._fit_post_train_layers(self.data_module.train_dataloader())
 
         test_results = self.test()
-        eval_algorithm_results = self.lightning_module.evaluation_results
+        eval_algorithm_results = module.evaluation_results
         if eval_algorithm_results:
             logger.info("Eval algorithm results: %s", eval_algorithm_results)
 
@@ -988,7 +1045,12 @@ def create_data_module_from_spec(scenario: ScenarioSpec) -> NexuDataModule:
 
     Returns:
         A ``NexuDataModule`` configured for the scenario.
+
+    Raises:
+        ValueError: If the scenario is not dataset-trained.
     """
+    if not isinstance(scenario.training, TrainingSpec):
+        raise ValueError("Dataset training requires TrainingSpec")
     if scenario.data.preprocessing.enabled:
         export_path = materialize_preprocessed_dataset(scenario)
         batch_size = scenario.data.loader.batch_size or scenario.training.batch_size
@@ -1013,9 +1075,14 @@ def _create_base_data_module_from_spec(scenario: ScenarioSpec) -> NexuDataModule
 
     Returns:
         A ``NexuDataModule`` without preprocessing materialization applied.
+
+    Raises:
+        ValueError: If the scenario is not dataset-trained.
     """
     from nexuml.data.creator import NexuDataCreator
 
+    if not isinstance(scenario.training, TrainingSpec):
+        raise ValueError("Dataset training requires TrainingSpec")
     creator = NexuDataCreator()
     return creator.build(scenario.data, default_batch_size=scenario.training.batch_size)
 
@@ -1107,6 +1174,29 @@ def create_runtime_artifacts(
         ``RuntimeArtifacts`` containing the compiled pipeline, Lightning module,
         data module, and optional load report.
     """
+    if isinstance(scenario.training, ReinforcementLearningSpec):
+        if scenario.training.seed is not None:
+            L.seed_everything(scenario.training.seed, workers=True)
+        assert scenario.interaction is not None and scenario.policy is not None
+        contract = scenario.interaction.environment.describe()
+        from nexuml.core.compiler import compile_context_from_interaction, compile_pipeline
+        from nexuml.core.config import ResolvedConfig
+
+        pipeline = compile_pipeline(
+            scenario.pipeline,
+            context=compile_context_from_interaction(contract),
+            resolved_config=ResolvedConfig.from_scenario(scenario),
+        )
+        policy = CompiledPolicy(pipeline, scenario.policy.action_adapter.build(contract), contract)
+        load_report = None
+        if apply_selective_checkpoint and scenario.checkpoint and scenario.checkpoint.source:
+            from nexuml.core.export import load_weights
+
+            load_report = load_weights(
+                pipeline, scenario.checkpoint.source, checkpoint=scenario.checkpoint
+            ).to_dict()
+        module = NexuRLLightningModule(scenario, policy=policy)
+        return RuntimeArtifacts(pipeline, module, None, load_report, policy)
     data_module = create_data_module_from_spec(scenario)
     hydrated_scenario = _hydrate_scenario_from_dataset(scenario, data_module)
     pipeline = compile(hydrated_scenario)
@@ -1170,6 +1260,8 @@ def _resolve_auto_batch_size_if_needed(
         RuntimeError: If CUDA is unavailable when auto batch-size probing is
             requested.
     """
+    if not isinstance(scenario.training, TrainingSpec):
+        return None
     config = scenario.training.batch_size
     if not isinstance(config, AutoBatchSizeSpec):
         return None
@@ -1329,6 +1421,11 @@ def create_runtime_artifacts_from_trainer_checkpoint(
     """
     restored_scenario = load_scenario_from_trainer_checkpoint(checkpoint_path, fallback=scenario)
     restored_scenario = restored_scenario.model_copy(update={"checkpoint": None})
+    if isinstance(restored_scenario.training, ReinforcementLearningSpec):
+        module = NexuRLLightningModule.load_from_checkpoint(
+            checkpoint_path, scenario=restored_scenario
+        )
+        return RuntimeArtifacts(module.pipeline, module, None, None, module.policy)
     data_module = create_data_module_from_spec(restored_scenario)
     lightning_module = NexuLightningModule.load_from_checkpoint(
         checkpoint_path,

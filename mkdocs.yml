@@ -94,6 +94,7 @@ nav:
       - Trusted scenario files: how-to/scenario-file.md
     - Training and evaluation:
       - Train a model: how-to/train.md
+      - Reinforcement learning: how-to/reinforcement-learning.md
       - Evaluate a model: how-to/evaluate.md
       - Checkpoints: how-to/checkpoints.md
       - Automatic batch size: how-to/auto-batch-size.md

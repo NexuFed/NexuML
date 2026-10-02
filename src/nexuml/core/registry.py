@@ -113,7 +113,15 @@ class ComponentRegistry:
             scanner.scan_package(package_path)
 
         self._errors = list(scanner.errors)
-        for kind in ("layer", "data_source", "eval_algorithm", "loader_backend"):
+        for kind in (
+            "layer",
+            "data_source",
+            "eval_algorithm",
+            "loader_backend",
+            "environment",
+            "action_adapter",
+            "rl_algorithm",
+        ):
             register_items(scanner.by_kind(kind), self.register, self._errors)
         self._loaded = True
 

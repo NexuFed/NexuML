@@ -57,8 +57,19 @@ eval = [
     "scikit-learn>=1.4",
     "umap-learn>=0.5",
 ]
+reinforcement = [
+    "nexuml[reinforcement]>=0.2,<0.3",
+]
+rendering = [
+    "nexuml-library[reinforcement]",
+    "gymnasium[classic-control]>=1,<2",
+]
+mujoco = [
+    "nexuml-library[reinforcement]",
+    "gymnasium[mujoco]>=1,<2",
+]
 all = [
-    "nexuml-library[audio,data,pretrained,eval]",
+    "nexuml-library[audio,data,pretrained,eval,reinforcement]",
 ]
 
 [project.entry-points."nexuml.libraries"]

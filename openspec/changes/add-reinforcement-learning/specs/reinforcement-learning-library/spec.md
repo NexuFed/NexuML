@@ -202,6 +202,12 @@ The repository SHALL distinguish:
 
 Normal CI SHALL not download or boot CARLA, Isaac Sim, Gazebo, or other heavy runtimes.
 
+#### Scenario: Normal CPU CI runs without heavy simulators
+
+- **WHEN** the ordinary unit/CPU test tier runs without simulator prerequisites
+- **THEN** configuration and fake-transport tests remain runnable
+- **AND** simulator, special-system, and real-hardware tests require explicit opt-in rather than downloading or starting heavy runtimes.
+
 ### Requirement: Reinforcement dependencies are layered
 
 The root package SHALL define:
@@ -219,6 +225,12 @@ with exact compatible bounds confirmed against the lockfile during implementatio
 The library package SHALL expose a corresponding `reinforcement` optional dependency for maintained RL examples. Simulator-specific Python dependencies such as MuJoCo SHALL be kept in separate extras where practical.
 
 ROS 2, Gazebo, Isaac, and CARLA system installations SHALL NOT be pulled into the base `reinforcement` extra merely to make the scenario catalog complete.
+
+#### Scenario: User installs the reinforcement extra
+
+- **WHEN** a user installs `nexuml[reinforcement]` or `nexuml-library[reinforcement]`
+- **THEN** the compatible TorchRL/Gymnasium stack is available
+- **AND** MuJoCo and ROS 2/Gazebo/Isaac/CARLA prerequisites remain separate optional installations.
 
 ### Requirement: Physical-AI follow-up modes remain possible
 

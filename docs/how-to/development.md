@@ -47,6 +47,13 @@ Gated tests are skipped automatically when their prerequisites are missing:
 - `requires_data` — set `NEXUML_RUN_DATA_TESTS=1` and a valid `NEXUML_DATA_ROOT`.
 - `requires_gpu` — skipped when no CUDA device is available.
 - `requires_optional(name)` — skipped when the optional dependency is missing.
+- `requires_simulator` — opt in with `NEXUML_RUN_SIMULATOR_TESTS=1`.
+- `requires_system` — opt in with `NEXUML_RUN_SYSTEM_TESTS=1` and configured middleware/server.
+- `requires_hardware` — manual only, requires `NEXUML_RUN_HARDWARE_TESTS=1` and operator review.
+
+The CI `rl-simulators` workflow-dispatch input runs optional visual/MuJoCo CPU smokes.
+ROS/Gazebo, CARLA and hardware are never installed or started by normal CI.
+See [Reinforcement learning](reinforcement-learning.md) for exact system prerequisites.
 
 ## Type checking
 

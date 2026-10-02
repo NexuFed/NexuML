@@ -15,6 +15,7 @@ Guides answer a specific "how do I ...?" question. They are not intended to be r
 ## Training and evaluation
 
 - [Train a model](train.md) — run the Lightning lifecycle and apply common overrides.
+- [Reinforcement learning](reinforcement-learning.md) — finite rollouts, complete policies, simulation and ROS boundaries.
 - [Evaluate a model](evaluate.md) — pipeline metrics, post-train layers, and evaluation algorithms.
 - [Checkpoints](checkpoints.md) — distinguish Lightning resume from selective weight loading.
 - [Automatic batch size](auto-batch-size.md) — probe CUDA batch sizes at runtime.

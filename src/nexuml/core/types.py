@@ -3,15 +3,19 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
+from math import prod
 from typing import TYPE_CHECKING, Annotated, Any, Literal, Self, cast
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from nexuml.core.components import (
+    ActionAdapterDefinition,
     DataSourceDefinition,
+    EnvironmentDefinition,
     EvalAlgorithmDefinition,
     LayerDefinition,
     LoaderBackendDefinition,
+    RLAlgorithmDefinition,
 )
 from nexuml.core.factory import factory_values, normalize_json_value, resolve_factory
 
@@ -143,6 +147,69 @@ class PipelineSpec(SpecModel):
     stages: dict[str, list[LayerSpec]] = Field(default_factory=dict)
 
 
+class TensorFieldContract(SpecModel):
+    """Portable tensor leaf; shape excludes environment and inference batch axes."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, allow_inf_nan=False)
+
+    shape: tuple[Annotated[int, Field(strict=True, gt=0)], ...]
+    dtype: str = Field(min_length=1)
+    modality: str = "generic"
+    low: float | list[float] | None = None
+    high: float | list[float] | None = None
+    num_values: int | None = Field(default=None, gt=0)
+    rate_hz: float | None = Field(default=None, gt=0)
+    description: str | None = None
+
+    @model_validator(mode="after")
+    def validate_bounds(self) -> Self:
+        size = prod(self.shape)
+        for name in ("low", "high"):
+            bound = getattr(self, name)
+            if isinstance(bound, list) and len(bound) != size:
+                raise ValueError(f"{name} must contain {size} values for shape {self.shape}")
+        if self.low is not None and self.high is not None:
+            low = self.low if isinstance(self.low, list) else [self.low] * size
+            high = self.high if isinstance(self.high, list) else [self.high] * size
+            if any(lo >= hi for lo, hi in zip(low, high, strict=True)):
+                raise ValueError("low must be less than high for every tensor element")
+        return self
+
+
+class InteractionContract(SpecModel):
+    """Portable observation/action truth, independent of simulator frameworks."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, allow_inf_nan=False)
+
+    observations: dict[str, TensorFieldContract] = Field(min_length=1)
+    actions: dict[str, TensorFieldContract] = Field(min_length=1)
+    action_space: Literal["continuous", "discrete", "multi_discrete", "structured"]
+    num_envs: int = Field(default=1, gt=0)
+    control_period_s: float | None = Field(default=None, gt=0)
+
+    @model_validator(mode="after")
+    def validate_keys(self) -> Self:
+        for fields in (self.observations, self.actions):
+            if any(not key.strip() for key in fields):
+                raise ValueError("interaction field keys must be nonempty")
+        if self.observations.keys() & self.actions.keys():
+            raise ValueError("observation and action keys must be distinct")
+        return self
+
+
+class InteractionSpec(SpecModel):
+    """Interaction source, separate from datasets and learning algorithms."""
+
+    environment: EnvironmentDefinition
+    evaluation_environment: EnvironmentDefinition | None = None
+
+
+class PolicySpec(SpecModel):
+    """Deployable action semantics attached to the scenario's neural pipeline."""
+
+    action_adapter: ActionAdapterDefinition
+
+
 _DEFAULT_OPTIMIZER_KWARGS: dict[str, object] = {"lr": 1e-3}
 
 
@@ -236,6 +303,50 @@ class TrainingSpec(SpecModel):
         if isinstance(value, int) and value <= 0:
             raise ValueError("training.batch_size must be positive")
         return value
+
+
+class CollectorSpec(SpecModel):
+    """Rollout topology and synchronization, independent of learner placement."""
+
+    backend: Literal["direct", "process", "ray"] = "direct"
+    num_collectors: int = Field(default=1, gt=0)
+    num_envs_per_collector: int = Field(default=1, gt=0)
+    sync: bool = True
+    env_device: str = "cpu"
+    storing_device: str = "cpu"
+    policy_device: str = "auto"
+    policy_sync_interval_batches: int = Field(default=1, gt=0)
+
+    @model_validator(mode="after")
+    def validate_topology(self) -> Self:
+        if self.backend == "direct" and self.num_collectors != 1:
+            raise ValueError("direct collection requires num_collectors=1")
+        return self
+
+
+class RLEvaluationSpec(SpecModel):
+    """Fresh episodic policy evaluation, not dataset evaluation phases."""
+
+    episodes: int = Field(default=5, ge=0)
+    deterministic: bool = True
+    seed: int | None = None
+    max_steps_per_episode: int | None = Field(default=None, gt=0)
+
+
+class ReinforcementLearningSpec(SpecModel):
+    """Finite-frame Lightning learning; interaction owns the environment."""
+
+    mode: Literal["reinforcement"] = "reinforcement"
+    algorithm: RLAlgorithmDefinition
+    collector: CollectorSpec = Field(default_factory=CollectorSpec)
+    evaluation: RLEvaluationSpec = Field(default_factory=RLEvaluationSpec)
+    total_frames: int = Field(default=100_000, gt=0)
+    frames_per_batch: int = Field(default=2_048, gt=0)
+    seed: int | None = None
+    accelerator: str = "auto"
+    devices: str | int = "auto"
+    strategy: str | StrategySpec = "auto"
+    precision: str | int = "32-true"
 
 
 class LocalExecutionSpec(SpecModel):
@@ -548,8 +659,10 @@ class ScenarioSpec(SpecModel):
 
     name: str
     pipeline: PipelineSpec = Field(default_factory=PipelineSpec)
-    training: TrainingSpec = Field(default_factory=TrainingSpec)
+    training: TrainingSpec | ReinforcementLearningSpec = Field(default_factory=TrainingSpec)
     data: DataSpec = Field(default_factory=DataSpec)
+    interaction: InteractionSpec | None = None
+    policy: PolicySpec | None = None
     evaluation: EvaluationSpec = Field(default_factory=EvaluationSpec)
     logging: LoggingSpec | None = None
     callbacks: list[CallbackSpec] = Field(default_factory=list)
@@ -557,3 +670,17 @@ class ScenarioSpec(SpecModel):
     checkpoint: CheckpointLoadSpec | None = None
     exports: list[ExportSpec] = Field(default_factory=list)
     execution: ExecutionSpec = Field(default_factory=LocalExecutionSpec)
+
+    @model_validator(mode="after")
+    def validate_reinforcement(self) -> Self:
+        if isinstance(self.training, ReinforcementLearningSpec):
+            if self.interaction is None or self.policy is None:
+                raise ValueError("reinforcement training requires scenario.interaction and policy")
+            if isinstance(self.execution, RayExecutionSpec):
+                # ponytail: single learner; enable Ray placement after distributed lifecycle tests.
+                raise ValueError(
+                    "Ray learner placement for RL is not validated; use local execution"
+                )
+            if self.training.devices not in (1, "auto") or self.training.strategy != "auto":
+                raise ValueError("RL currently supports one learner with training.strategy='auto'")
+        return self
