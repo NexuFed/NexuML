@@ -1,0 +1,55 @@
+import {expect,test} from "@playwright/test";
+
+test("data/layer/evaluation errors focus typed fields; runtime errors retain frozen settings",async({page})=>{
+  page.on("dialog",dialog=>void dialog.accept());
+  await page.goto("/");
+  await page.getByLabel("Config path",{exact:true}).fill(process.env.STUDIO_CONFIG_PATH ?? "tiny.yaml");
+  await page.getByRole("button",{name:"Open YAML",exact:true}).click();
+  await expect(page.getByLabel("Search components")).toBeVisible({timeout:30000});
+  await expect(page.getByRole("button",{name:"Open YAML",exact:true})).toBeEnabled({timeout:30000});
+  const check=async(path:string,field:string,repair:string,hide?:()=>Promise<void>)=>{
+    await page.locator(`input[data-field="${field}"]`).fill("0.5");
+    await hide?.();
+    await page.getByRole("button",{name:"Check fields",exact:true}).click();
+    const problem=page.locator(".problems-list").getByRole("button").filter({hasText:path}).first();
+    await expect(problem).toBeVisible({timeout:30000});
+    await page.getByRole("button",{name:"Training",exact:true}).click();
+    await problem.click();
+    await expect(page.locator(`input[data-field="${field}"]`)).toBeFocused();
+    await page.locator(`input[data-field="${field}"]`).fill(repair);
+  };
+  await page.locator(".properties-panel").getByRole("button",{name:"Advanced",exact:true}).click();
+  await page.getByLabel("Num Classes mode",{exact:true}).selectOption({label:"integer"});
+  await check("data.num_classes","data.num_classes","1",async()=>{
+    await page.locator(".properties-panel").getByRole("button",{name:"Basic",exact:true}).click();
+    await expect(page.locator('input[data-field="data.num_classes"]')).toBeHidden();
+  });
+  await page.getByLabel("Num Classes mode",{exact:true}).selectOption({label:"Not set / default"});
+  await check("data.input_shapes.features.0","data.input_shapes.features.0","8");
+  await page.locator(".outline").getByRole("button",{name:"1. LinearEncoder",exact:true}).first().click();
+  await check("pipeline.stages.Encoder.0.component.params.output_dim","pipeline.stages.Encoder.0.component.params.output_dim","2");
+  await page.locator(".outline").getByRole("button",{name:"reconstruction_visualizer",exact:true}).click();
+  await check("evaluation.algorithms.0.algorithm.params.n_samples","evaluation.algorithms.0.algorithm.params.n_samples","8");
+  await page.locator(".outline").getByRole("button",{name:"1. LinearEncoder",exact:true}).first().click();
+  const input=page.locator('input[data-field="pipeline.stages.Encoder.0.keys_in.0"]');
+  await input.fill("missing-runtime-input");
+  await page.getByRole("button",{name:"Build check (executes code)",exact:true}).click();
+  await expect(page.locator(".build-state")).toContainText("failed",{timeout:30000});
+  await expect(page.locator(".build-state .field-error")).toContainText("missing-runtime-input");
+  await input.fill("features");
+  await page.getByRole("button",{name:"Execution",exact:true}).click();
+  await expect(page.locator(".execution-error")).toContainText("missing-runtime-input");
+  await expect(page.locator(".execution-error")).toContainText("not later draft edits");
+  await page.getByRole("button",{name:"Inspect launch config",exact:true}).click();
+  await expect(page.locator("details").filter({hasText:"Frozen launch configuration"})).toContainText("missing-runtime-input");
+  await page.getByRole("button",{name:"Edit draft settings for a new run",exact:true}).click();
+  await expect(page.locator(".training-view")).toBeVisible();
+  await page.getByRole("button",{name:"Pipeline",exact:true}).click();
+  await expect(input).toHaveValue("features");
+  await page.getByRole("button",{name:"Execution",exact:true}).click();
+  await page.getByRole("button",{name:"Open frozen settings as draft",exact:true}).click();
+  await expect(page.locator(".training-view")).toBeVisible({timeout:30000});
+  await page.getByRole("button",{name:"Pipeline",exact:true}).click();
+  await page.locator(".outline").getByRole("button",{name:"1. LinearEncoder",exact:true}).first().click();
+  await expect(input).toHaveValue("missing-runtime-input");
+});

@@ -8,6 +8,7 @@ from typing import Sequence
 
 import pandas as pd
 import torch
+from pydantic import ConfigDict
 from tensordict import TensorDict
 
 from nexuml.data.dataset import NexuDataset
@@ -17,6 +18,14 @@ from nexuml.core.components import DataSourceDefinition
 @data_source("MNISTDataset")
 class MNISTDataset(DataSourceDefinition):
     """In-memory MNIST dataset backed by ``self.data`` and metadata labels."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "x-nexuml-outputs": [
+                {"domain": "y", "key": "digit"},
+            ]
+        }
+    )
 
     root: str | Path = "data/mnist"
     train: bool = True

@@ -11,6 +11,7 @@ from typing import Any, cast
 import numpy as np
 import torch
 import torch.nn.functional as F
+from pydantic import ConfigDict
 from tensordict import TensorDict
 
 from nexuml.evaluation.algorithm import EvalAlgorithm
@@ -24,6 +25,17 @@ logger = logging.getLogger(__name__)
 @eval_algorithm("reconstruction_visualizer")
 class ReconstructionVisualizer(EvalAlgorithmDefinition):
     """Shows side-by-side original vs reconstructed samples."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "x-nexuml-routing": {
+                "feature_key": {"domain": "x", "required": True},
+                "algorithm.params.reconstructed_key": {"domain": "x", "required": True},
+                "algorithm.params.mask_key": {"domain": "x"},
+                "algorithm.params.label_keys": {"domain": "y"},
+            }
+        }
+    )
 
     reconstructed_key: str
     mask_key: str | None = None

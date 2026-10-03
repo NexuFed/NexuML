@@ -8,6 +8,7 @@ from collections import Counter
 from typing import Any
 
 import numpy as np
+from pydantic import ConfigDict
 from tensordict import TensorDict
 
 from nexuml.evaluation.algorithm import EvalAlgorithm
@@ -24,6 +25,14 @@ logger = logging.getLogger(__name__)
 @eval_algorithm("class_histogram")
 class ClassHistogramVisualizer(EvalAlgorithmDefinition):
     """Bar chart of class label distribution in train and test sets."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "x-nexuml-routing": {
+                "label_key": {"domain": "y", "default": "y_true"},
+            }
+        }
+    )
 
     title: str | None = None
 

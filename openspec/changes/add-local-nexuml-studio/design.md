@@ -34,6 +34,20 @@ There is currently no frontend package, HTTP/WebSocket interface, or durable API
 
 ## Decisions
 
+### UX follow-up: complete the existing workbench interactions
+
+Section 9 of `tasks.md` refines the same local workbench, without changing its ML semantics or corporate appearance:
+
+- Render installed JSON schemas recursively for typed nested settings, union/null choices, collections and installed component identities. Preserve arbitrary factory values with an explicit Expert editor rather than guessing constructor schemas.
+- Route structured diagnostics to their exact configuration field, expanding advanced sections as needed. Runtime errors without a field location remain readable and linked to frozen launch configuration, never falsely attributed to a draft field.
+- Group components from existing kind/module provenance; drop a layer into an ordered stage at a visual position, retaining explicit execution-order controls. Node display names are layout sidecar data only.
+- Connections mutate existing routing fields; deletion does not merely remove a drawn line. Missing required inputs remain visible. Evaluation parameter/default ports and dataset outputs may use presentation metadata on authoritative installed definition schemas; no evaluator construction or dataset loading is required for discovery. Unknown runtime contracts remain labeled unresolved.
+- When clearing an evaluator route would restore its inherited runtime default, removal is explicitly unavailable with an explanation; the user can reroute it or disable that evaluator. Never falsely draw an inherited route as disconnected.
+- Obtain phase/epoch/batch counters from the existing Lightning callback seam, throttling updates. Preparation/downloads without actual totals remain indeterminate; terminal progress is not used to infer training counters.
+- Interpret carriage returns and supported ANSI cursor/erase controls only for safe text presentation. Keep raw process output unchanged on disk; never inject terminal output as HTML or replace structured operation results with parsed logs.
+
+Acceptance includes actual CPU training/reconnect, schema/graph unit checks, focused field-navigation and drag/drop/removal browser checks, and unchanged offline/local installation and ownership boundaries.
+
 ### D1. Split presentation from the installed framework
 
 Add the frontend as `studio/` and the optional Python transport as `src/nexuml/api/`. Both remain in this repository, but ship independently through npm and the Python distribution.

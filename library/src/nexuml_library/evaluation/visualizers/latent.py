@@ -9,6 +9,7 @@ from typing import Any, cast
 
 import numpy as np
 import torch
+from pydantic import ConfigDict, Field
 from tensordict import TensorDict
 
 from nexuml.evaluation.algorithm import EvalAlgorithm
@@ -31,7 +32,15 @@ class LatentVisualizer(EvalAlgorithmDefinition):
     Train and test samples are projected together and colored by label/split.
     """
 
-    method: str = "tsne"
+    model_config = ConfigDict(
+        json_schema_extra={
+            "x-nexuml-routing": {
+                "feature_key": {"domain": "x", "default": "latent"},
+                "label_key": {"domain": "y", "default": "y_true"},
+            }
+        }
+    )
+    method: str = Field(default="tsne", json_schema_extra={"enum": ["tsne", "umap"]})
     max_samples: int = 2000
     perplexity: int = 30
     storage_backend: str = "memory"

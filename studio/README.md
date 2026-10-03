@@ -67,25 +67,41 @@ after confirming their services have stopped. Training records remain under Nexu
 1. Resolve an installed scenario explicitly, or open existing YAML in the selected
    working directory. Resolution imports/calls **trusted Python**, not sandboxed code.
 2. Use Pipeline to inspect data, stage/layer order, key ports, objectives and evaluation.
+   Browse installed components by kind/module categories (for example Pipeline layers →
+   Models → Vision). Drag one onto a stage to append it to that stage, or use its add button.
    Insert from actual installed definition schemas. Use Training for optimizer/scheduler,
    loader, execution, logging/callbacks/checkpoints and exports.
 3. The ordered outline controls execution order. Moving/arranging nodes changes layout
    only. Repeated keys connect to their most recent preceding producer. Alias dictionaries,
    label domains and metadata routing stay editable; dataset metadata/runtime-only keys
    are diagnosed rather than fabricated into a DAG. Buttons/connection selects/position
-   fields provide drag alternatives. Use Undo/Redo for semantic edits.
-4. Basic schema controls handle supported scalars. Complex values and arbitrary factory
-   kwargs use explicit JSON, or the complete YAML editor; no constructor schema is invented.
+   fields provide drag alternatives. Connect an empty + Feature/Label/Loss/Metric input, name outputs
+   in Properties, or reconnect an existing edge. Select an edge and choose Remove connection
+   (or Delete/Backspace); connection selects offer the same removal. Missing required routes
+   remain visible and prevent launch. If removing an evaluator route would restore its runtime
+   default, reroute it or explicitly disable that evaluator instead. Display names are visual
+   sidecar data, never tensor names or execution settings. Use Undo/Redo for routing and names.
+4. Schema controls handle nested models, nullable/union modes, lists, mappings, enums and
+   installed component choices. Execution/checkpoint/logging settings are ordinary forms.
+   Expand **Expert** for raw JSON or use the complete YAML editor; genuinely untyped factory
+   kwargs retain that escape hatch and no constructor schema is invented.
    Valid unrendered fields are retained. Unapplied/invalid YAML is a retained buffer and
    blocks graph edits until Apply or deliberate Discard. Comments/formatting are not preserved.
 5. Check fields validates without compiling. Build check explicitly runs constructors and
    dummy forwards in the selected interpreter. Displayed final key shapes are source-bound
    and become stale after semantic edits. Save uses revision conflicts and a separate
-   `*.studio.json` layout sidecar; an external semantic edit invalidates old placement metadata.
+   `*.studio.json` layout/name sidecar; an external semantic edit invalidates old placement metadata.
+   Click a field-addressable problem to open and focus its inspector/settings field. Runtime
+   errors without a field address remain linked to their frozen source, not guessed draft fields.
+   Failed operations offer **Open frozen settings as draft** to edit their actual launch settings,
+   including after a reload; unsaved draft replacement requires confirmation and never changes the run.
 6. Run reviews the frozen source, settings and output references. Optional local Trainer
    resume reviews the checkpoint-derived scenario (trusted Python input). Confirm once;
    later draft edits do not change this run. One resource-consuming operation is allowed.
-7. Execution shows real scalar curves, process logs, results and reconnect state. Reload
+7. Execution shows native phase/epoch/batch progress, real scalar curves, readable results,
+   process logs and reconnect state. Preparation/downloads without counters use indeterminate
+   activity; carriage-return and supported ANSI progress updates overwrite terminal lines.
+   These logs are not parsed into training counters. Raw output remains downloadable. Reload
    and select the existing operation; it is never relaunched. Visible history is bounded
    to 2,000 events, with a notice; full observations/logs remain on disk.
 8. Stop is available for owned local processes, not Ray workers. It confirms tree exit,
@@ -108,6 +124,9 @@ browser ONNX training or Kubernetes provisioning is implied.
 - **Ownership unknown after restart:** inspect retained logs/artifacts. Resume only from
   an actual checkpoint, as a new invocation; remote worker termination is not assumed.
 - **Missing custom fields:** inspect the registered schema and use structured/YAML fallback.
+- **Unconnected evaluator:** installed schemas may declare parameter/default input routes and
+  dataset label outputs. Dynamic grouping, dataset metadata and undeclared custom contracts
+  remain runtime-only; Studio never constructs an evaluator or loads data just to draw an edge.
 
 ## Development and release checks
 

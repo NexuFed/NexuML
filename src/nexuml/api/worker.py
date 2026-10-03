@@ -197,6 +197,9 @@ def execute(action: str, payload: dict) -> dict:
             "artifacts": [],
             "telemetry": "driver logs and final results; remote cancellation unsupported",
         }
+    observer = Observation(Path(payload["observations"])) if action == "train" else None
+    if observer is not None:
+        observer.record("progress", phase="preparation / data setup")
     session = NexuSession(
         config.to_scenario(),
         trainer_checkpoint=payload.get("trainer_checkpoint"),
@@ -205,7 +208,7 @@ def execute(action: str, payload: dict) -> dict:
     artifacts = []
     if action == "train":
         # Append through the existing public Trainer seam; no new session callback API.
-        session.trainer.callbacks.append(Observation(Path(payload["observations"])))
+        session.trainer.callbacks.append(observer)
         result = session.run()
         callback = session.trainer.checkpoint_callback
         for source in (

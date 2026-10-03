@@ -8,6 +8,7 @@ from typing import Any, cast
 
 import torch
 import torch.nn as nn
+from pydantic import ConfigDict, Field
 
 from nexuml.core.base_layer import PipelineLayer
 from nexuml.core.components import LayerBuildContext, LayerDefinition
@@ -38,7 +39,8 @@ class ResNet(LayerDefinition):
             Defaults to ``False`` when pretrained, ``True`` otherwise.
     """
 
-    resnet_type: str = "resnet18"
+    model_config = ConfigDict(json_schema_extra={"x-nexuml-category": ["Models", "Vision"]})
+    resnet_type: str = Field(default="resnet18", json_schema_extra={"enum": list(_RESNET_TYPES)})
     pretrained: bool = False
     cifar_stem: bool | None = None
 

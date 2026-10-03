@@ -91,6 +91,13 @@ restores that mapping order before model validation. Node positions never belong
 
 Forms consume each installed component's actual schema. Generic Python factory kwargs
 remain structured values; the API does not invent constructor fields/defaults.
+Definition schemas can carry presentation-only `x-nexuml-category` paths,
+`x-nexuml-outputs` declarations (`key`, `domain`), and `x-nexuml-routing` entries keyed
+by an evaluation config path (`domain`, optional actual runtime `default` and `required`).
+The registry returns these unchanged; discovery does not instantiate datasets/evaluators.
+Unknown or dynamic contracts remain runtime-only. Node display names live only in layout sidecars.
+The current graph takes feature outputs from `data.input_shapes`/`feature_key` and label
+outputs from targets/declared `y` outputs; other dataset domains remain runtime-only.
 Validation may import definitions, but does not compile or run a dummy forward.
 YAML comments/formatting and Python source formatting are not preserved; configuration
 meaning, identities/versions, key aliases, evaluation and execution settings are.
@@ -141,6 +148,13 @@ events. Local scalar values come from actual Lightning callbacks. Logs are actua
 output, not parsed progress bars. Ray shows driver logs and returned metrics only; remote
 worker telemetry/cancellation is not invented. Existing Ray evaluation/post-training-fit
 compatibility guards still apply, and the API never provisions a cluster.
+
+Local `progress` payloads expose observed `phase`, `epoch`, `step`, `batch`, `total`, and
+`max_epochs` when available. Batch updates are throttled to four per second plus phase/epoch
+boundaries and final batches. Unknown/nonfinite totals become null, not fabricated percentages.
+Preparation/downloads can precede Trainer callbacks and remain indeterminate. Studio renders
+supported carriage-return/backspace/ANSI cursor/erase updates safely as plain text, bounded to
+1,000 terminal lines and 4,096 columns; raw `logs.txt` is unchanged. This is not a full PTY emulator.
 
 Disconnect only detaches observation. Reconnect from the last sequence; it does not
 relaunch training. Individual frames are bounded; awaited sends apply backpressure

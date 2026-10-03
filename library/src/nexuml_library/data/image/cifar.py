@@ -8,6 +8,7 @@ from typing import Sequence
 
 import pandas as pd
 import torch
+from pydantic import ConfigDict
 from tensordict import TensorDict
 
 from nexuml.data.dataset import NexuDataset
@@ -17,6 +18,14 @@ from nexuml.core.components import DataSourceDefinition
 @data_source("CIFAR10Dataset")
 class CIFAR10Dataset(DataSourceDefinition):
     """CIFAR-10 dataset backed by ``self.data`` and metadata labels."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "x-nexuml-outputs": [
+                {"domain": "y", "key": "class_labels"},
+            ]
+        }
+    )
 
     root: str | Path = "data/cifar10"
     train: bool = True
@@ -103,6 +112,14 @@ class _CIFAR10DatasetRuntime(NexuDataset):
 @data_source("CIFAR100Dataset")
 class CIFAR100Dataset(DataSourceDefinition):
     """CIFAR-100 dataset backed by ``self.data`` and metadata labels."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "x-nexuml-outputs": [
+                {"domain": "y", "key": "class_labels"},
+            ]
+        }
+    )
 
     root: str | Path = "data/cifar100"
     train: bool = True

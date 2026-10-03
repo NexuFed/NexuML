@@ -105,6 +105,13 @@ def test_native_cpu_build_train_replay_and_checkpoint_export(tmp_path):
             assert observed[key] == pytest.approx(reported[key])
         phases = [e["payload"]["phase"] for e in events if e["kind"] == "progress"]
         assert "test" in phases
+        batches = [
+            e["payload"]
+            for e in events
+            if e["kind"] == "progress" and e["payload"].get("phase") == "train"
+        ]
+        assert batches and batches[-1]["batch"] == batches[-1]["total"] > 0
+        assert batches[-1]["max_epochs"] == 1
         assert TOKEN not in json.dumps(done)
         assert (
             client.post(
@@ -239,6 +246,25 @@ def test_logs_root_and_explicit_replay_gap(tmp_path, monkeypatch):
             socket.send_json({"token": TOKEN})
             assert "frame limit" in socket.receive_json()["payload"]["message"]
             assert socket.receive_json()["partial"] is True
+
+
+def test_terminal_overwrite_bytes_survive_observation_and_raw_logs(tmp_path):
+    operations = Operations(Settings(tmp_path, ORIGIN, TOKEN))
+    folder = operations.root / ("b" * 32)
+    folder.mkdir()
+    write_json(folder / "status.json", {"id": folder.name, "status": "running", "sequence": 0})
+    write_json(folder / "response.json", {"fixture": "completed"})
+    raw = b"Download 1%\rDownload 2%\x1b[K\rDownload 100%\r\nReady\n"
+    (folder / "logs.txt").write_bytes(raw)
+    (folder / "events.jsonl").touch()
+    operations.observe(folder, SimpleNamespace(poll=lambda: 0, returncode=0), None)
+    events = [json.loads(line) for line in (folder / "events.jsonl").read_text().splitlines()]
+    assert (
+        "".join(event["payload"]["text"] for event in events if event["kind"] == "log").encode()
+        == raw
+    )
+    assert (folder / "logs.txt").read_bytes() == raw
+    assert operations.status(folder.name)["status"] == "succeeded"
 
 
 def test_build_failure_is_reported_without_changing_field_validation(tmp_path):

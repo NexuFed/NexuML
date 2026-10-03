@@ -9,6 +9,7 @@ from typing import Sequence, cast
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from pydantic import ConfigDict
 from tensordict import TensorDict
 
 from nexuml.core.base_layer import PipelineLayer
@@ -81,6 +82,8 @@ def _up_block(
 @layer("ConvolutionalEncoder")
 class ConvolutionalEncoder(LayerDefinition):
     """Encode a 2D tensor into a latent vector."""
+
+    model_config = ConfigDict(json_schema_extra={"x-nexuml-category": ["Models", "Vision"]})
 
     output_dim: int = 128
     channel_schedule: list[int] | None = None
@@ -210,6 +213,8 @@ class _VariationalLatentRuntime(PipelineLayer):
 @layer("ConvolutionalDecoder")
 class ConvolutionalDecoder(LayerDefinition):
     """Decode a latent vector back into a 2D tensor."""
+
+    model_config = ConfigDict(json_schema_extra={"x-nexuml-category": ["Models", "Vision"]})
 
     output_shape: tuple[int, ...]
     channel_schedule: list[int] | None = None

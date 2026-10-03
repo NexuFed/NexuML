@@ -13,6 +13,7 @@ NexuML already owns scenario configuration, component libraries, pipeline compil
 - Make FastAPI/server dependencies an optional `api` extra, with explicit installation guidance and a clear error when the selected installation lacks them.
 - Apply the supplied Nexus Edge design: `#101010` background, Montserrat/Geist typography, restrained tonal surfaces, and primary actions using `#188FD5` with black text.
 - Support lossless configuration editing, explicit build checks, execution observation across browser reconnects, supported cancellation, and inspection of existing result/artifact outputs.
+- Refine the same workbench into graph-first authoring: categorized drag/drop components, removable key connections, typed nested forms, field-focused errors, native observed progress and in-place terminal rendering; retain JSON/YAML as explicit expert tools.
 - Keep v1 local and single-user. Hosted identities/rights, payment, Kubernetes provisioning, browser ONNX training, collaboration, arbitrary DAG execution, and a tuning UI are non-goals. Existing configured execution backends remain NexuML-owned; no cluster management is added.
 
 ## Capabilities

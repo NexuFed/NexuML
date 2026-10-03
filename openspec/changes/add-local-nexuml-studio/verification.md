@@ -1,7 +1,8 @@
 # Verification — 2026-10-02
 
 **Status: Linux acceptance passed; cross-platform release acceptance pending.**
-`tasks.md` records 37/39 verified tasks. Tasks 7.2 and 8.2 remain open until the
+Initial acceptance recorded 37/39 verified tasks; section 9 adds the approved UX follow-up.
+Tasks 7.2 and 8.2 remain open until the
 packaged macOS/Windows jobs pass and the final portability review is complete.
 
 ## Executed checks
@@ -87,3 +88,71 @@ never normal launcher provisioning.
   provisioning, publication or OpenSpec archival were performed.
 - Owned diagnostic launchers were stopped; explicitly attached APIs are never
   stopped by Studio. Acceptance artifacts/logs remain available for inspection.
+
+## Graph-first UX follow-up — 2026-10-03
+
+The same configuration/editor and execution seam now provide recursive schema forms,
+field-focused diagnostics, categorized drag/drop, sidecar-only names, removable/reconnectable
+routes and native progress/terminal overwrite rendering. No new runtime provisioning,
+configuration format, ML execution backend, account system or frontend dependency was added.
+Section 9 is verified complete; the current checklist is **44/46**, with only the original
+cross-platform release gates 7.2 and 8.2 open.
+
+| Check | Result |
+| --- | --- |
+| `npm test` | 15 passed: schema refs/defaults/unions, routing/order, typed collection connections, names/undo, terminal overwrite/fragmentation/bounds |
+| `npm run typecheck`, `npm run lint` | Passed |
+| Ruff over changed Python definitions/API/tests | Passed |
+| `PYTHONPATH=src:library/src NEXUML_API_WHEEL=… python -m pytest tests/api tests/core tests/training tests/execution tests/cli -q -ra` | 200 passed, 1 existing missing-CIFAR-data skip; built-wheel API/core-only startup included |
+| Built Python wheels compared with current source | Exact match: 82 core and 81 library Python files |
+| `npm run test:package` with final installed project runtime | Passed: production build/pack, offline installation/assets, 3 browser workflows, explicit/PATH/attached launch and ownership cleanup, unchanged installed package metadata, saved YAML readable by CLI |
+| `npm run test:package` with final installed uv-tool runtime | Passed: the same 3 browser workflows and packaged lifecycle/installation invariants |
+| `openspec validate add-local-nexuml-studio --strict`, `git diff --check` | Passed |
+
+Project smoke artifacts: `/tmp/opencode/nexuml packaged smoke pg4l76/`.
+Uv-tool smoke artifacts: `/tmp/opencode/nexuml packaged smoke 03zDqp/`.
+Final Python wheels: `/tmp/opencode/studio-ux-final-dist/`; genuine release-test project
+and uv-tool installations: `/tmp/opencode/studio-ux-final-project/` and
+`/tmp/opencode/studio-ux-final-tool/` (test setup only, never normal launcher provisioning).
+
+Browser acceptance covers:
+
+- Ray/local union settings without launching Ray; custom installed schema controls and
+  invalid Expert buffers retained without changing the draft.
+- Basic-hidden data fields plus nested data/layer/evaluation diagnostics navigate and focus
+  actual typed inputs; real build failure messages remain associated with frozen launch settings.
+  Opening those settings as a draft is explicit and does not mutate the failed operation.
+- Category search, native HTML drag/drop onto a stage header, input connection/removal via
+  accessible selects, keyboard and pointer edge selection/deletion, undo, sidecar naming and save/reopen.
+- Native CPU callbacks, metrics, reconnect and checkpoint-derived export through the installed
+  package. No simulated counters or terminal-to-training telemetry parser is used.
+- Desktop 1440×1000, tablet 1024×900 and mobile 390×844 screenshots; approved background/action
+  colours and no document-level horizontal overflow. Latest screenshots are under
+  `studio/test-results/authoring-typed-settings-e-9cf4e-s-and-removable-key-routing/` and the
+  existing workflow screenshot directory.
+
+Counter unit proof covers throttling, phase transitions, multiple validation loaders,
+final batches and nonfinite totals. Terminal tests cover fragmented ANSI, CRLF, CR/backspace,
+multiline updates and rendering limits; API observation preserves the exact control bytes and
+raw logs. This does not claim a new live MNIST/CIFAR download was exercised. Downloads without
+native totals remain honestly indeterminate, with their actual progress text in the terminal.
+
+Inherited evaluator defaults cannot be disconnected by hiding an edge: removal explains
+that the user must reroute or disable that evaluator. Empty required layer inputs remain
+visible and block UI launch; dynamic dataset/grouping/undeclared keys remain runtime-only.
+
+Intermediate failures were resolved before acceptance: incorrect SVG/overlapping drag targets
+in browser checks, an incorrect nullable-field diagnostic path expectation, an incomplete
+typed test catalog fixture and a typecheck/build race over generated `.next/types`.
+
+Cross-platform packaged acceptance is still unrun; tasks 7.2 and 8.2 remain unchecked.
+OpenChamber browser forwarding still produced `chrome-error://chromewebdata/`; local Playwright
+and server readiness establish local browser functionality, not remote panel access.
+No commit, push, CI dispatch, package publication or OpenSpec archival was performed for this follow-up.
+
+The persistent preview on UI/API ports 41240/41241 was restarted only after checking that
+no observed work was running and verifying its recorded PID/create-time identity. It uses
+the final installed uv-tool Python and npm package. Playwright opened its actual `tiny.yaml`,
+verified Vision categories/typed training settings with no page errors, and captured
+`studio/test-results/ux-preview-desktop.png` and `ux-preview-training.png`. The auxiliary
+41340/41341 test preview was stopped after the same idle/identity checks; logs were retained.

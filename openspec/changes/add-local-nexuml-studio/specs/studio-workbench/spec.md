@@ -125,3 +125,31 @@ Studio SHALL provide visible keyboard focus, labeled controls, alternatives to d
 #### Scenario: User opens Studio on a narrow screen
 - **WHEN** the viewport cannot accommodate the desktop three-pane editor
 - **THEN** navigation exposes the canvas, outline, and inspector separately without obstructing controls or causing document-level horizontal overflow
+
+### Requirement: Graph-first authoring and expert disclosure
+
+Studio SHALL group installed components by kind and module provenance, support drag/drop insertion and accessible alternatives, and edit existing routing when a connection is added, reconnected or removed. Visual display names SHALL be layout-only metadata. Known definition-schema routing metadata SHALL expose evaluator parameter/default inputs and declared dataset labels; unknown runtime-only contracts SHALL remain explicitly unresolved.
+
+#### Scenario: User authors on the canvas
+- **WHEN** a user drops a component into a stage, connects an initially empty input, renames a node and removes a connection
+- **THEN** insertion and routing edit the ordinary ordered configuration, the display name remains layout-only, connection removal is undoable, and node placement never silently reorders execution
+
+#### Scenario: User configures nested typed settings
+- **WHEN** a schema describes nested objects, references, unions, nulls, arrays or mappings
+- **THEN** Studio exposes corresponding typed controls with installed defaults/options and constraints, preserves unrelated values, and reserves raw JSON/YAML for explicit Expert editing or genuinely untyped values
+
+#### Scenario: User follows a validation problem
+- **WHEN** a user activates a field-addressable diagnostic
+- **THEN** Studio opens the correct inspector or settings section, reveals the field and focuses it; a runtime error without a field location is not falsely assigned to a draft field
+
+### Requirement: Native progress and terminal updates
+
+Studio SHALL show actual phase and available epoch/batch counters from native callbacks, use indeterminate activity when totals are unavailable, and render supported terminal overwrite/cursor controls in place without treating terminal text as training telemetry. Raw output SHALL remain available unchanged.
+
+#### Scenario: Preparation emits a terminal download bar
+- **WHEN** a download emits carriage-return or supported ANSI progress updates
+- **THEN** the displayed terminal updates the existing line instead of accumulating bars, completed messages remain readable and Studio does not invent a download percentage
+
+#### Scenario: Training progresses and observation reconnects
+- **WHEN** native callbacks report epoch/batch counters and the browser disconnects then reconnects
+- **THEN** Studio displays replayed actual progress without resubmitting training or guessing counters from terminal output
