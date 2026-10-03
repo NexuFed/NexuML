@@ -1,5 +1,6 @@
 """CPU-only proof of native calls, observation/reconnect, timeout and stop ownership."""
 
+import copy
 import json
 import os
 import subprocess
@@ -65,13 +66,22 @@ def test_native_cpu_build_train_replay_and_checkpoint_export(tmp_path):
         checked = wait_status(client, build.json()["id"])
         assert checked["status"] == "succeeded", checked
         assert checked["result"]["shapes"]["reconstructed"] == [8]
+        original = copy.deepcopy(body)
         launched = client.post("/api/v1/train", json=body)
         assert launched.status_code == 202, launched.text
         identity = launched.json()["id"]
         assert client.post("/api/v1/train", json=body).status_code == 409
         body["data"]["training"]["max_epochs"] = 99
+        stages = body["data"]["pipeline"]["stages"]
+        first, last = body["stage_order"][0], body["stage_order"][-1]
+        stages[last].append(stages[first].pop(0))
+        body["stage_order"].reverse()
+        # Editor transfers/order edits stay separate from the already accepted native run.
+        assert client.post("/api/v1/config/validate", json=body).status_code == 200
         frozen = client.get(f"/api/v1/operations/{identity}/config").json()
         assert frozen["data"]["training"]["max_epochs"] == 1
+        assert frozen["data"] == original["data"]
+        assert frozen["stage_order"] == original["stage_order"]
         endpoint = f"ws://127.0.0.1:8000/api/v1/operations/{identity}/events"
         with client.websocket_connect(endpoint, headers={"Origin": ORIGIN}) as socket:
             socket.send_json({"token": TOKEN})

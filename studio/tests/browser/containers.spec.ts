@@ -1,0 +1,133 @@
+import {expect,test} from "@playwright/test";
+import {parse,stringify} from "yaml";
+
+test("stage containers, explicit transfers/order, gesture undo and sidecar recovery",async({page},testInfo)=>{
+  const failures:string[]=[];page.on("pageerror",error=>failures.push(error.message));page.on("dialog",dialog=>void dialog.accept());
+  await page.goto("/");await page.getByLabel("Config path",{exact:true}).fill(process.env.STUDIO_CONFIG_PATH ?? "tiny.yaml");
+  await page.getByRole("button",{name:"Open YAML",exact:true}).click();await expect(page.getByLabel("Search components")).toBeVisible({timeout:30000});
+  await expect(page.getByRole("button",{name:"Open YAML",exact:true})).toBeEnabled({timeout:30000});
+  const outline=page.locator(".outline");const encoder=page.locator('.react-flow__node[data-id="stage:Encoder"]');
+  const fit=async()=>{await page.getByRole("button",{name:"Fit view",exact:true}).click();await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));};
+  const readYaml=async()=>{await page.getByRole("button",{name:"YAML",exact:true}).click();const text=await page.getByLabel("Scenario YAML").inputValue();await page.getByRole("button",{name:"Close YAML",exact:true}).click();return text;};
+  const original=await readYaml();
+  await page.getByRole("button",{name:"Build check (executes code)",exact:true}).click();await expect(page.locator(".build-state")).toContainText("succeeded",{timeout:30000});
+  await outline.getByRole("button",{name:"1. Encoder",exact:true}).click();await fit();
+  const heading=await encoder.locator(".stage-header").boundingBox();expect(heading).not.toBeNull();
+  const carried=page.locator(".react-flow__node").filter({has:page.locator(".execution-badge",{hasText:"1.1"})});const carriedBefore=await carried.boundingBox(),stageBefore=await encoder.boundingBox();
+  const transform=await encoder.evaluate(element=>getComputedStyle(element).transform);
+  await page.mouse.move(heading!.x+heading!.width/2,heading!.y+heading!.height/2);await page.mouse.down();
+  await page.mouse.move(heading!.x+heading!.width/2+40,heading!.y+heading!.height/2+20,{steps:10});await page.mouse.up();
+  await expect(encoder).not.toHaveCSS("transform",transform);expect(await readYaml()).toBe(original);
+  await expect(page.locator(".build-state")).not.toContainText("stale");
+  await expect(page.getByRole("button",{name:"Undo",exact:true})).toBeEnabled();
+  const carriedAfter=await carried.boundingBox(),stageAfter=await encoder.boundingBox();expect(Math.abs((carriedAfter!.x-carriedBefore!.x)-(stageAfter!.x-stageBefore!.x))).toBeLessThan(2);
+  await page.getByRole("button",{name:"Undo",exact:true}).click();await expect(encoder).toHaveCSS("transform",transform);
+  await expect(page.getByRole("button",{name:"Undo",exact:true})).toBeDisabled();
+  await page.getByRole("button",{name:"Redo",exact:true}).click();
+  await page.locator(".properties-panel summary").filter({hasText:"Container size"}).click();
+  await page.getByLabel("Stage width",{exact:true}).fill("700");await page.getByLabel("Stage height",{exact:true}).fill("1100");
+  await expect(page.locator(".build-state")).not.toContainText("stale");expect(await readYaml()).toBe(original);
+  await fit();
+  const resize=encoder.getByLabel("Resize stage Encoder",{exact:true});await expect(resize).toBeVisible();
+  const sizeBefore=await encoder.boundingBox(),handle=await resize.boundingBox();
+  await page.mouse.move(handle!.x+handle!.width/2,handle!.y+handle!.height/2);await page.mouse.down();await page.mouse.move(handle!.x+handle!.width/2+20,handle!.y+handle!.height/2+20,{steps:8});await page.mouse.up();
+  await expect.poll(async()=> (await encoder.boundingBox())!.width).toBeGreaterThan(sizeBefore!.width);
+  await page.getByRole("button",{name:"Undo",exact:true}).click();await expect.poll(async()=> (await encoder.boundingBox())!.width).toBeCloseTo(sizeBefore!.width,0);
+  // Explicit stage creation: name uniqueness and after-selection insertion, not spatial sorting.
+  await page.getByRole("button",{name:"Stage item",exact:true}).dragTo(page.locator(".react-flow__pane"),{targetPosition:{x:80,y:260}});
+  await expect(page.getByRole("dialog")).toContainText("after Encoder");await page.getByLabel("New stage name",{exact:true}).fill("Encoder");
+  await expect(page.getByRole("button",{name:"Create stage",exact:true})).toBeDisabled();await page.getByLabel("New stage name",{exact:true}).fill("Holding");
+  await page.getByRole("button",{name:"Create stage",exact:true}).click();await expect(outline).toContainText("2. Holding");
+  const holding=page.locator('.react-flow__node[data-id="stage:Holding"]');await expect(holding).toContainText("Drop a layer here");
+  await outline.getByRole("button",{name:"1. LinearEncoder",exact:true}).first().click();
+  const selected=page.locator(".react-flow__node.selected");const identity=await selected.getAttribute("data-id");
+  const child=page.locator(`.react-flow__node[data-id="${identity}"]`);const originalLayerPosition=await child.evaluate(element=>getComputedStyle(element).transform);
+  await page.locator(".properties-panel summary").filter({hasText:"Move / transfer layer"}).click();
+  await page.getByLabel("Transfer destination stage",{exact:true}).selectOption("Holding");await expect(page.locator(".properties-panel")).toContainText("Move to Holding, append");
+  // Unapplied expert buffers survive a membership edit of the same stable layer.
+  await page.locator(".properties-panel summary").filter({hasText:"Expert: Keys In"}).click();await page.getByLabel("Keys In",{exact:true}).fill("not-json");
+  await page.getByRole("button",{name:"Move layer",exact:true}).click();await expect(child.locator(".execution-badge")).toHaveText("2.1");
+  await expect(page.getByLabel("Keys In",{exact:true})).toHaveValue("not-json");await expect(page.locator(".build-state")).toContainText("stale");
+  await page.getByRole("button",{name:"Undo",exact:true}).click();await expect(child.locator(".execution-badge")).toHaveText("1.1");await expect(child).toHaveClass(/selected/);
+  await page.getByRole("button",{name:"Redo",exact:true}).click();await expect(child.locator(".execution-badge")).toHaveText("2.1");
+  await page.getByRole("button",{name:"Undo",exact:true}).click();
+  // Sortable tree transfers/reorders use native list slots; canvas coordinates stay layout-only.
+  await outline.getByRole("button",{name:`Drag layer ${identity} to reorder`,exact:true}).dragTo(outline.locator('[data-order-kind="layer"][data-order-stage="Holding"][data-order-slot="0"]'));
+  await expect(child.locator(".execution-badge")).toHaveText("2.1");await page.getByRole("button",{name:"Undo",exact:true}).click();
+  await page.locator(".stage-order-strip").getByRole("button",{name:"Drag stage Holding to reorder",exact:true}).dragTo(page.locator('.stage-order-strip [data-order-kind="stage"][data-order-slot="0"]'));
+  await expect(page.locator(".stage-order-strip")).toContainText("1. Holding");await page.getByRole("button",{name:"Undo",exact:true}).click();
+  await fit();
+  const layerBox=await child.boundingBox(),holdingBox=await holding.boundingBox();
+  await page.mouse.move(layerBox!.x+layerBox!.width/2,layerBox!.y+layerBox!.height/2);await page.mouse.down();
+  await page.mouse.move(holdingBox!.x+holdingBox!.width/2,holdingBox!.y+holdingBox!.height*.75,{steps:12});
+  await expect(page.locator(".canvas-caption")).toContainText("Holding, append");await page.mouse.up();
+  await expect(child.locator(".execution-badge")).toHaveText("2.1");await expect(child).toHaveClass(/selected/);
+  const containedChild=await child.boundingBox(),container=await holding.boundingBox();
+  expect(containedChild!.x).toBeGreaterThan(container!.x);expect(containedChild!.y+containedChild!.height).toBeLessThan(container!.y+container!.height);
+  await page.getByRole("button",{name:"Undo",exact:true}).click();await expect(child.locator(".execution-badge")).toHaveText("1.1");
+  const semanticBefore=await readYaml(),free=await child.boundingBox();
+  await page.mouse.move(free!.x+free!.width/2,free!.y+free!.height/2);await page.mouse.down();await page.mouse.move(free!.x+free!.width/2+10,free!.y+free!.height/2+10,{steps:8});
+  await expect(page.locator(".canvas-caption")).toContainText("execution order unchanged");await page.mouse.up();await expect(child.locator(".execution-badge")).toHaveText("1.1");expect(await readYaml()).toBe(semanticBefore);
+  await page.getByRole("button",{name:"Undo",exact:true}).click();
+  // Invalid and cancelled pointer drops restore the source with no history entry.
+  const layerHeading=await child.locator(".node-heading").boundingBox();const pane=await page.locator(".react-flow__pane").boundingBox();
+  await page.mouse.move(layerHeading!.x+layerHeading!.width/2,layerHeading!.y+layerHeading!.height/2);await page.mouse.down();await page.mouse.move(pane!.x+10,pane!.y+pane!.height-30,{steps:10});await page.mouse.up();
+  await expect(page.getByRole("status")).toContainText("original placement restored");await expect(child).toHaveCSS("transform",originalLayerPosition);
+  await expect(page.getByRole("button",{name:"Redo",exact:true})).toBeEnabled();
+  await page.mouse.move(layerHeading!.x+layerHeading!.width/2,layerHeading!.y+layerHeading!.height/2);await page.mouse.down();await page.mouse.move(layerHeading!.x+50,layerHeading!.y+70,{steps:5});await page.keyboard.press("Escape");await page.mouse.up();
+  await expect(child).toHaveCSS("transform",originalLayerPosition);await expect(child.locator(".execution-badge")).toHaveText("1.1");
+  await expect(page.getByRole("button",{name:"Redo",exact:true})).toBeEnabled();
+  await outline.getByRole("button",{name:"1. Encoder",exact:true}).click();await page.locator(".properties-panel summary").filter({hasText:"Container size"}).click();
+  await page.getByLabel("Stage width",{exact:true}).fill("700");
+  await page.getByLabel("Config path",{exact:true}).fill(`containers-${Date.now()}.yaml`);await page.getByRole("button",{name:"Save",exact:true}).click();
+  await expect(page.getByRole("status")).toContainText("Configuration and separate layout saved.",{timeout:30000});
+  await page.getByRole("button",{name:"Open YAML",exact:true}).click();await expect(page.getByRole("button",{name:"Open YAML",exact:true})).toBeEnabled({timeout:30000});
+  await outline.getByRole("button",{name:"1. Encoder",exact:true}).click();await page.locator(".properties-panel summary").filter({hasText:"Container size"}).click();await expect(page.getByLabel("Stage width",{exact:true})).toHaveValue("700");
+  await fit();await page.screenshot({path:testInfo.outputPath("stage-containers-desktop.png"),fullPage:true});
+  for(const [width,height,name] of [[1024,900,"tablet"],[390,844,"mobile"]] as const){
+    await page.setViewportSize({width,height});await page.getByRole("button",{name:"Canvas",exact:true}).click();await page.screenshot({path:testInfo.outputPath(`stage-containers-${name}.png`),fullPage:true});
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  }
+  await page.emulateMedia({reducedMotion:"reduce"});await page.getByRole("button",{name:"Properties",exact:true}).click();await expect(page.getByLabel("Stage width",{exact:true})).toBeVisible();
+  expect(failures).toEqual([]);
+});
+
+test("skipped-stage previews, unowned insertion and keyboard placement alternatives",async({page})=>{
+  const failures:string[]=[];page.on("pageerror",error=>failures.push(error.message));
+  await page.goto("/");page.on("dialog",dialog=>void dialog.accept());
+  await page.getByLabel("Config path",{exact:true}).fill(process.env.STUDIO_CONFIG_PATH ?? "tiny.yaml");await page.getByRole("button",{name:"Open YAML",exact:true}).click();
+  await expect(page.getByLabel("Search components")).toBeVisible({timeout:30000});await expect(page.getByRole("button",{name:"Open YAML",exact:true})).toBeEnabled({timeout:30000});
+  await page.locator(".outline").getByRole("button",{name:"Data configuration",exact:true}).click();await page.getByRole("button",{name:"Add stage",exact:true}).press("Enter");
+  await expect(page.getByRole("dialog")).toContainText("Insert last");await page.getByLabel("New stage name",{exact:true}).fill("Last");await page.getByRole("button",{name:"Create stage",exact:true}).press("Enter");
+  await expect(page.locator(".outline")).toContainText("4. Last");await page.getByRole("button",{name:"Undo",exact:true}).press("Enter");
+  await page.getByRole("button",{name:"YAML",exact:true}).click();const config=parse(await page.getByLabel("Scenario YAML").inputValue());
+  config.pipeline.stages.Skipped=[];config.data.skip_pipeline_stages=["Skipped"];
+  await page.getByLabel("Scenario YAML").fill(stringify(config));await page.getByRole("button",{name:"Apply YAML",exact:true}).click();
+  await expect(page.getByRole("status")).toContainText("YAML applied",{timeout:30000});await page.getByRole("button",{name:"Close YAML",exact:true}).click();
+  const outline=page.locator(".outline");const skipped=page.locator('.react-flow__node[data-id="stage:Skipped"]');
+  await outline.getByRole("button",{name:"1. LinearEncoder",exact:true}).first().click();const id=await page.locator(".react-flow__node.selected").getAttribute("data-id");
+  const child=page.locator(`.react-flow__node[data-id="${id}"]`);await page.getByRole("button",{name:"Fit view",exact:true}).click();await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+  const from=await child.boundingBox(),to=await skipped.boundingBox();
+  await page.mouse.move(from!.x+from!.width/2,from!.y+from!.height/2);await page.mouse.down();await page.mouse.move(to!.x+to!.width/2,to!.y+to!.height*.8,{steps:12});
+  await expect(skipped.locator(".node-card.stage")).toHaveClass(/drop-target/);await expect(page.locator(".canvas-caption")).toContainText("Skipped: will not execute");await page.mouse.up();
+  await expect(child).toContainText("Skipped stage");await expect(child.locator(".execution-badge")).toHaveText("4.1");await page.getByRole("button",{name:"Undo",exact:true}).press("Enter");await expect(child.locator(".execution-badge")).toHaveText("1.1");
+  await outline.getByRole("button",{name:"4. Skipped",exact:true}).click();await skipped.getByRole("button",{name:"Add layer",exact:true}).click();
+  await expect(page.getByLabel("Search components")).toBeFocused();await expect(page.getByLabel("Insert into stage",{exact:true})).toHaveValue("Skipped");
+  await expect(page.locator(".components-panel")).toContainText("Skipped destination");await page.getByLabel("Search components").fill("LinearEncoder");
+  const component=page.locator(".component-list").getByRole("button").filter({hasText:"LinearEncoder"}).first();
+  // A new-layer orphan drop cannot silently choose the first stage.
+  await component.dragTo(page.locator(".react-flow__pane"),{targetPosition:{x:10,y:10}});await expect(page.getByRole("dialog")).toContainText("Choose layer destination");
+  await expect(page.getByRole("button",{name:"Insert layer",exact:true})).toBeDisabled();await page.getByLabel("Dropped layer destination",{exact:true}).selectOption("Skipped");
+  await expect(page.getByRole("dialog")).toContainText("Skipped: layer will not execute");await page.getByRole("button",{name:"Insert layer",exact:true}).press("Enter");
+  await expect(skipped).toContainText("1 layers");await page.getByRole("button",{name:"Undo",exact:true}).press("Enter");await expect(skipped).toContainText("Drop a layer here");
+  // Explicit after insertion and ordinary buttons also work without dragging.
+  await page.getByLabel("Insert into stage",{exact:true}).selectOption("Encoder");await page.getByLabel("Layer insertion slot",{exact:true}).selectOption({label:"After layer 1"});await component.press("Enter");
+  const added=page.locator(".react-flow__node.selected");await expect(added.locator(".execution-badge")).toHaveText("1.2");
+  const addedId=await added.getAttribute("data-id");await outline.locator('.outline-stage').first().getByRole("button",{name:"Move LinearEncoder up",exact:true}).last().press("Enter");
+  await expect(page.locator(`.react-flow__node[data-id="${addedId}"] .execution-badge`)).toHaveText("1.1");await page.getByRole("button",{name:"Undo",exact:true}).press("Enter");
+  await page.locator(".properties-panel summary").filter({hasText:"Visual position"}).click();await page.getByLabel("Node position x",{exact:true}).fill("80");await expect(added.locator(".execution-badge")).toHaveText("1.2");
+  await outline.getByRole("button",{name:"1. Encoder",exact:true}).click();await page.locator(".properties-panel summary").filter({hasText:"Container size"}).click();
+  await page.getByLabel("Stage height",{exact:true}).fill("1");expect(Number(await page.getByLabel("Stage height",{exact:true}).inputValue())).toBeGreaterThan(1);
+  await page.getByRole("button",{name:"YAML",exact:true}).click();const after=parse(await page.getByLabel("Scenario YAML").inputValue());
+  expect(after.data.skip_pipeline_stages).toEqual(["Skipped"]);expect(after.pipeline.stages.Encoder[0]).toEqual(config.pipeline.stages.Encoder[0]);expect(after.training).toEqual(config.training);expect(failures).toEqual([]);
+});

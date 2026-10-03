@@ -23,7 +23,7 @@ Studio SHALL present existing scenario sources, component/library discovery, pip
 Studio SHALL show data sources, pipeline stages/layers, objectives, and evaluation relationships in a node graph that projects the existing NexuML configuration. Connections SHALL represent existing key routing; stage and layer execution order SHALL remain explicit and preserved. Graph grouping SHALL be visual only unless the existing configuration already defines the represented behavior.
 
 #### Scenario: User moves a node
-- **WHEN** a user drags a node to another canvas position
+- **WHEN** a user drags a stage container or repositions a layer within its owning stage
 - **THEN** its visual position changes without changing stage or layer execution order
 
 #### Scenario: User changes a connection or execution order
@@ -68,7 +68,7 @@ Graph, inspector, and YAML views SHALL describe one semantic draft. Valid unrend
 
 #### Scenario: User saves and reopens a configuration
 - **WHEN** the configuration and matching layout metadata are saved and reopened
-- **THEN** graph positions are restored while the executable configuration remains usable by the existing CLI without Studio
+- **THEN** graph positions, container sizes and display names are restored while semantic stage membership/order remains in the executable configuration usable by the existing CLI without Studio
 
 ### Requirement: Guided checks and training configuration
 
@@ -112,11 +112,11 @@ Studio SHALL use `#101010` as its base background and `#188FD5` with `#000000` t
 
 ### Requirement: Accessible and responsive editing
 
-Studio SHALL provide visible keyboard focus, labeled controls, alternatives to drag-only node addition/routing/reordering, undo/redo for draft edits, and reduced-motion behavior. The editor SHALL support collapsible/resizable side panels at desktop sizes and non-overlapping single-panel navigation at narrow sizes; execution observation SHALL remain usable on mobile.
+Studio SHALL provide visible keyboard focus, labeled controls, keyboard and single-pointer alternatives to drag-only node addition/routing/reordering/transfers/movement/resizing, undo/redo for draft and layout edits, and reduced-motion behavior. The editor SHALL support collapsible/resizable side panels at desktop sizes and non-overlapping single-panel navigation at narrow sizes; execution observation SHALL remain usable on mobile.
 
 #### Scenario: User edits without dragging
 - **WHEN** a user operates the editor with a keyboard or single-pointer controls
-- **THEN** the user can add/select/configure/connect/reorder components through accessible controls and an ordered outline
+- **THEN** the user can add/select/configure/connect/reorder/transfer components and move/resize stage containers through accessible controls and an ordered Structure outline
 
 #### Scenario: User undoes a configuration edit
 - **WHEN** the user undoes or redoes a routing or property change
@@ -141,6 +141,70 @@ Studio SHALL group installed components by kind and module provenance, support d
 #### Scenario: User follows a validation problem
 - **WHEN** a user activates a field-addressable diagnostic
 - **THEN** Studio opens the correct inspector or settings section, reveals the field and focuses it; a runtime error without a field location is not falsely assigned to a draft field
+
+### Requirement: Stage-container authoring
+
+Studio SHALL represent each configured stage as a movable, resizable canvas container whose layers remain visually associated with that stage. Stage headers SHALL identify execution order and layer count; layer cards SHALL identify their stage/layer execution position independently of free canvas placement. The hierarchy SHALL remain stage-to-layers, not unordered groups or nested executable stages. Stage movement, resizing and within-stage layer placement SHALL be layout-only and SHALL NOT change routing, executable configuration, semantic build validity or an active frozen invocation.
+
+#### Scenario: User moves a stage with layers
+- **WHEN** a user drags a stage header to another canvas position
+- **THEN** the stage and all its layers move together while stage/layer membership, execution order and routing remain unchanged
+
+#### Scenario: User resizes a populated stage
+- **WHEN** a user selects a stage and resizes its container
+- **THEN** resize controls are visible and the stage retains enough space for its header and children rather than clipping or concealing those layers
+
+#### Scenario: User freely arranges layers within a stage
+- **WHEN** a user changes the spatial arrangement of layers inside their owning stage
+- **THEN** their execution-position badges and ordered-list positions remain unchanged, making layout distinct from execution order
+
+#### Scenario: User adds a stage on the canvas
+- **WHEN** a user drops a Stage item from Structure onto the canvas or uses its non-drag addition control
+- **THEN** Studio obtains a unique configuration stage name, states the execution insertion point after the selected stage or last when none is selected, and creates an empty container with Drop a layer here and Add layer affordances without deriving order from its canvas position
+
+#### Scenario: User inserts a new layer
+- **WHEN** a user drops an installed layer into a stage or uses Add layer
+- **THEN** Studio identifies the destination and insertion slot, adds the ordinary layer configuration there, and requires an explicit destination for a drop outside every stage rather than silently choosing an unrelated stage
+
+### Requirement: Previewed layer transfers
+
+Studio SHALL support moving an existing layer between stages using drag/drop and equivalent non-drag controls. A transfer SHALL preview the destination, execution insertion position and any skipped-stage status before commitment. Successful transfers SHALL preserve the layer's settings, key-routing fields, stable editor identity and selection while updating ordinary stage membership/order and contained placement together. Cancellation and invalid drops SHALL preserve the original draft and SHALL NOT leave floating executable layers.
+
+#### Scenario: User transfers a layer into another stage
+- **WHEN** a user drags an existing layer over another stage
+- **THEN** Studio highlights a single destination and shows the proposed before/after position or explicit append position; only a valid completed drop commits that membership/order edit
+
+#### Scenario: User drops a layer outside all stages or cancels
+- **WHEN** a user releases an existing layer outside every stage or cancels a transfer
+- **THEN** Studio restores its original contained placement and semantic membership without creating an undo entry, and explains an invalid drop
+
+#### Scenario: User moves a layer into a skipped stage
+- **WHEN** a proposed destination is skipped by the existing NexuML configuration
+- **THEN** the transfer preview explicitly warns that the layer will not execute there, and a committed transfer retains the visible skipped-stage state without silently changing that setting
+
+#### Scenario: User undoes a layer transfer
+- **WHEN** a user undoes or redoes a completed transfer, including one involving identical layer configurations
+- **THEN** both stage lists, execution positions, visual placement, stable editor identity and selection are restored consistently as one edit
+
+### Requirement: Direct ordered-structure editing
+
+Studio SHALL provide a sortable Structure tree for stage/layer ordering and transfers, plus a labeled canvas execution-order strip for stage reordering. Drag operations SHALL expose insertion markers and equivalent keyboard/single-pointer actions. Canvas layout coordinates SHALL NOT determine execution order. Explicit sequence/membership edits SHALL update the ordinary graph projection and diagnostics, preserve key-routing fields and unrendered settings, and mark previous build evidence stale without automatically sorting dependencies, rewriting routes, compiling or launching work.
+
+#### Scenario: User reorders stages from the canvas or Structure tree
+- **WHEN** a user moves a stage using an execution-order handle in the canvas strip or Structure tree
+- **THEN** the indicated stage sequence and all execution-position badges update in the shared draft without treating that action as a free-layout move or changing within-stage layer order
+
+#### Scenario: User reorders or transfers layers in Structure
+- **WHEN** a user drops a layer row at an explicit insertion marker within or between stages
+- **THEN** the ordinary layer sequence/membership changes at that slot, matching the canvas hierarchy and preserving the layer's editor identity and settings
+
+#### Scenario: A sequence edit invalidates upstream availability
+- **WHEN** a committed sequence/membership edit places a declared input before its producer or changes the applicable preceding writer of a repeated key
+- **THEN** Studio updates the projected producer relationships, explains invalid declared dependencies and marks earlier build evidence stale without silently repairing order/routes; runtime-only contracts remain unresolved until explicitly checked
+
+#### Scenario: User completes a layout or order gesture and saves
+- **WHEN** a user completes movement, resizing or a sequence edit and saves/reopens the configuration
+- **THEN** each completed gesture is one undoable edit, layout metadata remains separate from ordinary ordered YAML, and both canvas and Structure views restore consistently; older matching layout metadata without container sizes uses defaults and stale metadata retains the existing fallback behavior
 
 ### Requirement: Native progress and terminal updates
 

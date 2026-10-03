@@ -106,6 +106,13 @@ Load returns a file `base_revision`; save requires that revision (null only for 
 file). External changes yield HTTP 409 `conflict` without overwriting either version.
 Invalid YAML/fields yield HTTP 422 and leave saved files unchanged. Layout is saved
 separately and should be applied only when its semantic revision matches the config.
+Studio's sidecar keeps stage/layer editor IDs, positions, container sizes and display names.
+Membership and execution order remain in ordinary `pipeline.stages` YAML plus the existing
+ordered transport view; a sidecar is never an executable graph. Header movement, resizing
+and within-stage placement do not invalidate builds. Explicit Structure/order-strip edits
+and previewed cross-stage transfers do; native validation/build remain authoritative.
+Matching older sidecars without sizes use defaults. See the Studio README for gesture,
+insertion-preview, skipped-stage warning and non-drag editing controls.
 
 Transport reads/writes reject traversal and symlink escapes outside the selected working
 directory. Explicitly adding an external library root permits normal trusted discovery,
@@ -148,6 +155,16 @@ events. Local scalar values come from actual Lightning callbacks. Logs are actua
 output, not parsed progress bars. Ray shows driver logs and returned metrics only; remote
 worker telemetry/cancellation is not invented. Existing Ray evaluation/post-training-fit
 compatibility guards still apply, and the API never provisions a cluster.
+
+Training `metrics` events sample actual `train/*` callback scalars during batches,
+throttled alongside progress with first/final batch samples. Validation/test snapshots
+run after module epoch-end metric/evaluator finalization; sanity-check measurements are
+excluded. `training.loss_keys` selects weighted loss outputs, `training.metric_keys`
+selects pipeline metric outputs, and NexuML logs the weighted total as `<phase>/loss`.
+Neither observation nor Studio computes missing accuracy/F1 or changes training logging.
+Other native scalar callback metrics (for example learning-rate monitor values) remain observable.
+Charts use actual optimizer `step` coordinates and retain 2,000 metric snapshots separately
+from log/progress history; single samples render as points and raw history stays on disk.
 
 Local `progress` payloads expose observed `phase`, `epoch`, `step`, `batch`, `total`, and
 `max_epochs` when available. Batch updates are throttled to four per second plus phase/epoch

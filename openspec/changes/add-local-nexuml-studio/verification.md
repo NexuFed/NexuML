@@ -156,3 +156,102 @@ the final installed uv-tool Python and npm package. Playwright opened its actual
 verified Vision categories/typed training settings with no page errors, and captured
 `studio/test-results/ux-preview-desktop.png` and `ux-preview-training.png`. The auxiliary
 41340/41341 test preview was stopped after the same idle/identity checks; logs were retained.
+
+## Live scalar chart correction — 2026-10-03
+
+The previous callback sampled only at epoch end, and validation/test callback hooks ran
+before the module finalized classification/evaluator metrics. A one-point SVG polyline
+was also invisible. Regression tests reproduced both missing batch losses and missing
+finalized accuracy/F1 before the correction.
+
+Training now publishes actual finite `train/*` scalars with throttled batch progress,
+including first/final batches. Validation/test snapshots run after module finalization;
+sanity-check and stale cross-phase values are not reused as new measurements. Charts
+use actual optimizer steps, draw a visible single/latest point, and retain metric history
+separately from verbose logs. NexuML training, loss weighting and metric computation are
+unchanged; CIFAR accuracy/F1 remain validation/test-only pipeline metrics.
+
+- `PYTHONPATH=src:library/src /env/bin/python -m pytest tests/api/test_ux_observation.py tests/api/test_operations.py -q --tb=short`: **14 passed**, including real CPU classification and transport/replay/checkpoint export.
+- `npm test`: **16 passed**; frontend typecheck and lint passed.
+- Ruff over changed Python files, strict OpenSpec validation and `git diff --check`: passed.
+- `npm run test:package`: passed with all **4 browser workflows**, including first-epoch
+  loss updates while running, finalized accuracy/F1, reconnect, and mobile layout. Offline
+  assets/install, saved YAML/CLI build/export, unchanged installation records and
+  owned/attached API shutdown passed. Optional executable-selection checks were not enabled.
+  Artifacts: `/tmp/opencode/nexuml packaged smoke jW2sff/`; current-source API overlay on the
+  existing isolated uv-tool test runtime, without installing/upgrading Python.
+- Initial smoke failures were corrected: unrelated legacy `/env` discovery plugins/slow
+  requests, a synthetic recipe's dataset-list source, and an oversized CPU test timing out
+  and leaving the test API busy. The final test uses small real synthetic tensors/layers
+  with test-only single-thread CPU settings, not simulated values or artificial delays.
+
+The original preview's CIFAR operation `05796c20d5fe48a8b28177b8c3a8cc5f` was confirmed
+running. Its launcher identity matched the recorded PID/create time; it was not stopped
+or modified. Batch samples missing from that old operation cannot be reconstructed.
+The separate current-source preview is on UI/API ports 41340/41341, recorded in
+`/tmp/opencode/nexuml-studio-live-metrics-preview.json`. Its existing runtime and prebuilt
+frontend start without provisioning; desktop/mobile readiness checks passed. Browser panel
+forwarding still fails, independently of local HTTP/Playwright readiness.
+Cross-platform release gates 7.2/8.2 remain open; this correction is not committed,
+pushed, published or archived.
+
+## Stage-container follow-up — 2026-10-03
+
+Tasks 10.1–10.7 are complete; the checklist is **51/53**, with cross-platform release
+gates 7.2/8.2 still open. The changes extend the existing graph/draft rather than adding an execution model:
+stage headers carry their children, resize/position controls edit layout only, and
+Structure/order-strip insertion markers edit native stage/layer lists explicitly.
+Transfers preserve stable identity, selection, configuration and routing. Skipped-stage
+previews warn without changing skip settings; existing orphan/cancelled drops restore
+their source, while new unowned layers require an explicit destination. Positions,
+display names and sizes remain revision-bound sidecar data, not executable YAML.
+
+Focused proof:
+
+- `npm test`: **21 passed**; typecheck/lint passed. Model regressions cover measured
+  containment, integer-like stage names, identical-layer transfers, declared dependency
+  reprojection, one-entry transactions, older sidecars and unrelated settings.
+- `PYTHONPATH=src:library/src OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 /env/bin/python -m pytest tests/api/test_config.py tests/api/test_operations.py tests/api/test_ux_observation.py -q --tb=short`:
+  **17 passed, 8 warnings**. Includes size-sidecar conflicts and native pipeline/order
+  edits leaving an already accepted CPU run frozen. Explicit source paths avoid an
+  unrelated installed checkout; no Python packages were installed or upgraded.
+- Two source UI/API browser workflows passed: header movement carries children,
+  free placement preserves order, resize respects containment, semantic transfers/order
+  stale build evidence while layout edits retain it, and undo/redo preserves identity.
+  Tests cover valid/orphan/Escape/skipped transfers, sortable tree/strip ordering,
+  unique stage creation, explicit before/after/append insertion, empty-stage focus,
+  keyboard alternatives, sidecar save/reopen and retained invalid Expert text.
+- An early packaged failure exposed the canvas pane overlapping diagnostics; containing
+  it within the editor fixed that regression. Pointer checks await Fit view before
+  measuring and refit after expanding a container. The next packaged attempt passed
+  **5/6** workflows but compared an entire library-generated style string: the restored
+  transform matched exactly while React Flow's selected-child z-index differed.
+  Placement checks now assert transforms and retained redo history instead of stacking.
+  Failed artifacts: `/tmp/opencode/nexuml packaged smoke lHo09a/`.
+
+Final Linux proof:
+
+- The packed/offline-installed frontend in `/tmp/opencode/nexuml packaged smoke SPUNdb/`
+  passed **6/6 browser workflows**, including real CPU training/reconnect/export, live
+  scalar charts, typed authoring and both container workflows. Production build,
+  typecheck, lint, **21 frontend tests** and focused Ruff passed.
+- The package runner's tool call was interrupted, so its final exit status is unknown,
+  not reported as a full command pass. Retained attachment-setup artifacts prove it
+  reached the checks after unchanged npm lockfile/Python installation records,
+  saved-YAML CLI build and explicit owned-API shutdown assertions had passed.
+- The missing final attached-API ownership check was verified separately using that
+  same installed package and existing Python runtime with a current-source overlay:
+  launcher shutdown leaves the authenticated attached API alive; the separately owned
+  proof API then stops on explicit cleanup. No rebuild or suite rerun was needed.
+  Evidence: `/tmp/opencode/studio-attached-proof-WInGpW/result.json`.
+- Inspected packaged desktop 1440px, tablet 1024px and mobile 390px screenshots under
+  `studio/test-results/containers-stage-container-84542-e-undo-and-sidecar-recovery/`.
+  Corporate colors/fonts, contained canvas, scrollable order strip and responsive panels
+  remain intact. Browser checks cover keyboard/single-pointer alternatives, focus recovery,
+  reduced-motion handling and absence of document-level horizontal overflow; this is not
+  a comprehensive accessibility certification.
+
+The idle owned debug services on 41440/41441 were stopped after checking the operation
+list and launcher identity. Existing previews on 41240/41241 and 41340/41341 were neither
+stopped nor replaced. No Python packages were installed/upgraded and no commit, push,
+publication, CI dispatch or archival was performed. Cross-platform gates 7.2/8.2 remain open.

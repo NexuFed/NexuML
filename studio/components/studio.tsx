@@ -4,17 +4,18 @@ import type { CSSProperties } from "react";
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { useStore } from "zustand";
 import { Dialog } from "@base-ui/react/dialog";
-import { ArrowDown, ArrowUp, Box, Check, Code2, FolderOpen, Layers, Library, Play, Redo2, Save, Settings2, Undo2, X } from "lucide-react";
+import { Box, Check, Code2, FolderOpen, Layers, Library, Play, Redo2, Save, Settings2, Undo2, X } from "lucide-react";
 import { Canvas } from "./canvas";
 import { ComponentFields, Fields, ValueField } from "./fields";
 import { ComponentBrowser } from "./component-browser";
+import { Structure } from "./structure";
 import { Execution } from "./execution";
 import { Button } from "./ui/button";
 import { createDraftStore, layoutSignature, yamlText } from "../model/draft";
-import { connect, disconnect, moveLayer, newSnapshot, project, signature, validConnection } from "../model/graph";
+import { addStage, connect, disconnect, newSnapshot, placeNode, project, signature, transferLayer, validConnection } from "../model/graph";
 import { schemaDefault } from "../model/schema";
 import { ApiError, request } from "../model/client";
-import type { Catalog, ConnectionInfo, Document, Entry, Operation, RecordValue, Snapshot } from "../model/types";
+import type { Catalog, ConnectionInfo, Document, Entry, Layout, Operation, RecordValue, Snapshot } from "../model/types";
 
 export function Studio() {
   const [client] = useState(()=>new QueryClient({defaultOptions:{queries:{retry:false,refetchOnWindowFocus:false}}}));
@@ -37,7 +38,6 @@ function Workbench() {
   const [rightWidth,setRightWidth]=useState(320);
   const [leftVisible,setLeftVisible]=useState(true);
   const [rightVisible,setRightVisible]=useState(true);
-  const [selected,setSelected]=useState("data");
   const [query,setQuery]=useState("");
   const [file,setFile]=useState("scenario.yaml");
   const [scenario,setScenario]=useState("");
@@ -57,7 +57,13 @@ function Workbench() {
   const [layoutRevision,setLayoutRevision]=useState<string|null>(null);
   const [destinationStage,setDestinationStage]=useState("");
   const [stageName,setStageName]=useState("");
+  const [creation,setCreation]=useState<{position?:{x:number;y:number}}|null>(null);
+  const [insertion,setInsertion]=useState<{entry:Entry;position:{x:number;y:number}}|null>(null);
+  const [insertionSlot,setInsertionSlot]=useState("append");
+  const [transferStage,setTransferStage]=useState("");
+  const [transferSlot,setTransferSlot]=useState("append");
   const draft=state.draft;
+  const selected=draft?.selected ?? "data";
   const graph=useMemo(()=>draft ? project(draft,catalog.data) : null,[draft,catalog.data]);
   const selectedNode=graph?.nodes.find(node=>node.id===selected);
   const currentSignature=draft ? signature(draft) : "";
@@ -88,7 +94,7 @@ function Workbench() {
   };
   const report=(error:unknown)=>{setMessage(error instanceof Error ? error.message : String(error));setErrors(error instanceof ApiError ? error.fields : []);};
   const act=async(action:()=>Promise<void>)=>{if(pending)return;setPending(true);setMessage("");setErrors([]);try{await action();}catch(error){report(error);}finally{setPending(false);}};
-  const replace=(document:Document,layout?:Pick<Snapshot,"positions"|"ids"|"names">)=>{state.load(document,layout);setFile(document.path ?? "scenario.yaml");setSelected("data");setYamlBuffer(null);setLayoutRevision(null);setFocusPath("");};
+  const replace=(document:Document,layout?:Layout)=>{state.load(document,layout);setFile(document.path ?? "scenario.yaml");setYamlBuffer(null);setLayoutRevision(null);setFocusPath("");setDestinationStage("");setInsertionSlot("append");};
   const change=(next:Snapshot)=>{state.change(next);setErrors([]);};
   const edit=async(path:(string|number)[],value:unknown,validate=false)=>{
     const original=store.getState().draft;
@@ -101,6 +107,8 @@ function Workbench() {
         if(signature(store.getState().draft!)!==signature(original))throw new Error("Draft changed during validation; apply again");
         next.positions=store.getState().draft!.positions;
         next.names=store.getState().draft!.names;
+        next.sizes=store.getState().draft!.sizes;
+        next.selected=store.getState().draft!.selected;
       }catch(error){report(error);throw error;}
     }
     change(next);
@@ -108,21 +116,27 @@ function Workbench() {
   const discard=()=>!(dirty || state.blocked) || window.confirm("Replace this unsaved draft and unapplied YAML buffer?");
   const payload=()=>({data:draft!.config,stage_order:draft!.order});
   const defaults=(entry:Entry)=>({type:entry.name,version:entry.version,params:schemaDefault(entry.schema) as RecordValue});
-  const addComponent=(entry:Entry,droppedStage?:string,position?:{x:number;y:number})=>{
+  const slotIndex=(slot:string,count:number)=>slot==="append" ? count : slot.startsWith("after:") ? Number(slot.slice(6))+1 : Number(slot);
+  const addComponent=(entry:Entry,droppedStage?:string,position?:{x:number;y:number},slot?:number)=>{
     if(!draft)return;const next=structuredClone(draft);
     if(entry.kind==="layer"){
+      if(position && !droppedStage){setDestinationStage("");setInsertionSlot("append");setInsertion({entry,position});return;}
       const stage=droppedStage ?? (next.order.includes(destinationStage) ? destinationStage : next.order[0]);
       if(!stage){setMessage("Add a named ordered stage first.");return;}
-      const id=crypto.randomUUID();next.config.pipeline.stages[stage].push({component:defaults(entry),keys_in:[],keys_out:[]});next.ids[stage].push(id);setSelected(id);
+      const index=slot ?? (droppedStage ? next.ids[stage].length : Math.min(slotIndex(insertionSlot,next.ids[stage].length),next.ids[stage].length));
+      const id=crypto.randomUUID();next.config.pipeline.stages[stage].splice(index,0,{component:defaults(entry),keys_in:[],keys_out:[]});next.ids[stage].splice(index,0,id);next.selected=id;
+      // A new ordered insertion does not rearrange the other freely placed layers.
+      for(const node of graph?.nodes ?? [])next.positions[node.id]=node.position;
       if(position){
         const parent=graph?.nodes.find(node=>node.id===`stage:${stage}`)?.position ?? {x:0,y:0};
         const point={x:position.x-parent.x,y:position.y-parent.y};
-        next.positions[id]=droppedStage && point.y<130 ? {x:20,y:130+(next.ids[stage].length-1)*290} : point;
+        next.positions[id]={x:Math.max(20,point.x),y:Math.max(130,point.y)};
       }
-    }else if(entry.kind==="data_source"){next.config.data.source=defaults(entry);setSelected("data");if(position)next.positions.data=position;}
+      else next.positions[id]={x:20,y:Math.max(130,graph?.nodes.find(node=>node.id===`stage:${stage}`)?.data.minHeight ?? 130)};
+    }else if(entry.kind==="data_source"){next.config.data.source=defaults(entry);next.selected="data";if(position)next.positions.data=position;}
     else if(entry.kind==="eval_algorithm"){
       next.config.evaluation.algorithms.push({algorithm:defaults(entry)});
-      setSelected(`evaluation:${next.config.evaluation.algorithms.length-1}`);
+      next.selected=`evaluation:${next.config.evaluation.algorithms.length-1}`;
       if(position)next.positions[`evaluation:${next.config.evaluation.algorithms.length-1}`]=position;
     }else if(entry.kind==="loader_backend") {
       (next.config.data.loader as RecordValue).backend=defaults(entry);
@@ -144,16 +158,21 @@ function Workbench() {
       if(!window.confirm("Remove this stage and its layers?"))return;
       delete next.config.pipeline.stages[node.data.stage!];delete next.ids[node.data.stage!];next.order=next.order.filter(stage=>stage!==node.data.stage);
     }else return;
-    if(node.data.kind!=="evaluation"){delete next.positions[id];delete next.names?.[id];}change(next);setSelected("data");
+    if(node.data.kind!=="evaluation"){delete next.positions[id];delete next.names?.[id];delete next.sizes?.[id];}next.selected="data";change(next);
   };
-  const select=(id:string)=>{setSelected(id);if(window.innerWidth<1280)setPanel("Properties");};
+  const select=(id:string)=>{state.select(id);setTransferStage("");setTransferSlot("append");if(window.innerWidth<1280)setPanel("Properties");};
+  const createStage=(position?:{x:number;y:number})=>{setStageName("");setCreation({position});};
+  const selectedStage=selectedNode?.data.stage;
+  const targetStage=draft?.order.includes(transferStage) ? transferStage : selectedStage ?? "";
+  const stageSkipped=(stage:string)=>(draft?.config.data.skip_pipeline_stages as string[]|undefined)?.includes(stage);
+  const showComponents=(stage:string)=>{setDestinationStage(stage);setInsertionSlot("append");setLeftVisible(true);setPanel("Components");requestAnimationFrame(()=>document.querySelector<HTMLInputElement>('[aria-label="Search components"]')?.focus());};
   const save=()=>act(async()=>{
     const document=await request<Document>(connection!,"/config/save",{...payload(),path:file,
       base_revision:file===state.path ? state.baseRevision : null});
     state.markSaved(document,draft!);
     const layout=await request<{base_revision:string}>(connection!,"/config/layout/save",{path:file,
       base_revision:file===state.path ? layoutRevision : null,semantic_revision:document.semantic_revision,
-      layout:{ids:draft!.ids,positions:draft!.positions,names:draft!.names}});
+      layout:{ids:draft!.ids,positions:draft!.positions,names:draft!.names,sizes:draft!.sizes}});
     state.markLayoutSaved(draft!);setLayoutRevision(layout.base_revision);setMessage("Configuration and separate layout saved.");
   });
 
@@ -183,7 +202,7 @@ function Workbench() {
     <section className="source-bar"><label>Scenario<select aria-label="Discovered scenario" value={scenario} onChange={event=>setScenario(event.target.value)}><option value="">Choose installed recipe…</option>{catalog.data?.scenarios.map(item=><option key={item.name}>{item.name}</option>)}</select></label><Button disabled={pending || !scenario} onClick={()=>{if(discard())void act(async()=>replace(await request<Document>(connection,`/scenarios/${encodeURIComponent(scenario)}/resolve`,{})));}}>Resolve recipe</Button>
       <label>Config path<input aria-label="Config path" value={file} onChange={event=>setFile(event.target.value)}/></label><Button disabled={pending || !file} onClick={()=>{if(discard())void act(async()=>{
         const document=await request<Document>(connection,"/config/load",{path:file});
-        const sidecar=await request<{semantic_revision?:string;layout?:Pick<Snapshot,"positions"|"ids"|"names">;base_revision:string|null}>(connection,"/config/layout/load",{path:file});
+        const sidecar=await request<{semantic_revision?:string;layout?:Layout;base_revision:string|null}>(connection,"/config/layout/load",{path:file});
         replace(document,sidecar.semantic_revision===document.semantic_revision ? sidecar.layout : undefined);setLayoutRevision(sidecar.base_revision);
         if(sidecar.layout && sidecar.semantic_revision!==document.semantic_revision)setMessage("External semantic revision changed. Stale layout ignored.");
       });}}>Open YAML</Button></section>
@@ -199,19 +218,13 @@ function Workbench() {
       <div className={`editor-grid panel-${panel.toLowerCase()} ${leftVisible?"":"hide-components"} ${rightVisible?"":"hide-properties"}`}
         style={{"--left-panel":`${leftVisible?leftWidth:0}px`,"--right-panel":`${rightVisible?rightWidth:0}px`} as CSSProperties}>
         <aside className="components-panel"><div className="section-title"><h2>Components</h2><Box size={16}/></div><input aria-label="Search components" placeholder="Search installed components…" value={query} onChange={event=>setQuery(event.target.value)}/>
-          <label className="field">Insert into stage<select aria-label="Insert into stage" value={destinationStage || draft.order[0] || ""} onChange={event=>setDestinationStage(event.target.value)}>{draft.order.map(stage=><option key={stage}>{stage}</option>)}</select></label>
+          <label className="field">Insert into stage<select aria-label="Insert into stage" value={draft.order.includes(destinationStage) ? destinationStage : draft.order[0] || ""} onChange={event=>{setDestinationStage(event.target.value);setInsertionSlot("append");}}>{draft.order.map(stage=><option key={stage}>{stage}</option>)}</select></label>
+          <label className="field">Layer insertion slot<select aria-label="Layer insertion slot" value={insertionSlot} onChange={event=>setInsertionSlot(event.target.value)}><option value="append">Append (last)</option>{(draft.ids[destinationStage] ?? draft.ids[draft.order[0]] ?? []).map((id,index)=><optgroup key={id} label={`Layer ${index+1}`}><option value={index}>Before layer {index+1}</option><option value={`after:${index}`}>After layer {index+1}</option></optgroup>)}</select></label>
+          {stageSkipped(destinationStage || draft.order[0]) && <p className="field-error">Skipped destination: inserted layers will not execute.</p>}
           <ComponentBrowser entries={catalog.data?.components ?? []} query={query} blocked={state.blocked || pending} add={addComponent}/>
-          <h2>Execution order</h2><div className="outline">
-            <Button aria-pressed={selected==="data"} onClick={()=>select("data")}>Data configuration</Button>
-            {draft.order.map((stage,stageIndex)=><div key={stage} className="outline-stage"><div className="outline-row"><Button onClick={()=>select(`stage:${stage}`)}>{stageIndex+1}. {stage}</Button>
-              <Button aria-label={`Move stage ${stage} up`} disabled={state.blocked || pending || stageIndex===0} onClick={()=>{const next=structuredClone(draft);[next.order[stageIndex-1],next.order[stageIndex]]=[stage,next.order[stageIndex-1]];change(next);}}><ArrowUp size={12}/></Button>
-              <Button aria-label={`Move stage ${stage} down`} disabled={state.blocked || pending || stageIndex===draft.order.length-1} onClick={()=>{const next=structuredClone(draft);[next.order[stageIndex+1],next.order[stageIndex]]=[stage,next.order[stageIndex+1]];change(next);}}><ArrowDown size={12}/></Button></div>
-              {draft.config.pipeline.stages[stage].map((layer,index)=><div className="outline-row" key={draft.ids[stage][index]}><Button aria-pressed={selected===draft.ids[stage][index]} onClick={()=>select(draft.ids[stage][index])}>{index+1}. {layer.component.type}</Button><Button aria-label={`Move ${layer.component.type} up`} disabled={state.blocked || pending || index===0} onClick={()=>change(moveLayer(draft,stage,index,-1))}><ArrowUp size={12}/></Button><Button aria-label={`Move ${layer.component.type} down`} disabled={state.blocked || pending || index===draft.ids[stage].length-1} onClick={()=>change(moveLayer(draft,stage,index,1))}><ArrowDown size={12}/></Button></div>)}
-            </div>)}
-            <Button onClick={()=>select("objectives")}>Objectives & metrics</Button>{draft.config.evaluation.algorithms.map((item,index)=><Button key={index} onClick={()=>select(`evaluation:${index}`)}>{item.algorithm.type}</Button>)}
-          </div><div className="toolbar"><input aria-label="New stage name" placeholder="New stage name" value={stageName} onChange={event=>setStageName(event.target.value)}/><Button disabled={state.blocked || pending || !stageName || draft.order.includes(stageName)} onClick={()=>{const next=structuredClone(draft);next.order.push(stageName);next.config.pipeline.stages={...next.config.pipeline.stages,[stageName]:[]};next.ids={...next.ids,[stageName]:[]};change(next);setStageName("");}}>Add stage</Button></div>
+          <Structure snapshot={draft} selected={selected} select={select} change={change} blocked={state.blocked || pending} report={report} create={()=>createStage()}/>
         </aside>
-        <Canvas snapshot={draft} selected={selected} select={select} change={change} blocked={state.blocked || pending} catalog={catalog.data} insert={addComponent} report={report} remove={removeNode}/>
+        <Canvas snapshot={draft} selected={selected} select={select} change={change} blocked={state.blocked || pending} catalog={catalog.data} insert={addComponent} report={report} remove={removeNode} create={createStage} addLayer={showComponents}/>
         <aside className="properties-panel"><div className="section-title"><h2>Properties</h2><Settings2 size={16}/></div><fieldset disabled={state.blocked || pending}><legend>{selectedNode?.data.title ?? "Select a node"}</legend>
           {selectedNode && <label className="field">Display name<input aria-label="Node display name" placeholder={selectedNode.data.title} value={draft.names?.[selected] ?? ""} onChange={event=>change({...draft,names:{...draft.names,[selected]:event.target.value}})}/><small className="muted">Visual only; output key names below control routing.</small></label>}
           {selectedNode?.data.kind==="data" && <Fields value={draft.config.data} schema={modelSchema("DataSpec")} root={schema} prefix="data." errors={errors} basic={["source","input_shapes","feature_key","datasets","targets","loader"]} {...fieldContext} onChange={(value,validate)=>edit(["data"],value,validate)}/>}
@@ -219,6 +232,10 @@ function Workbench() {
             const {stage,index}=selectedNode.data;const layer=draft.config.pipeline.stages[stage!][index!];
             return <><ComponentFields kind="layer" component={layer.component} errors={errors} {...fieldContext} prefix={`pipeline.stages.${stage}.${index}.component.params.`} onChange={(value,validate)=>edit(["pipeline","stages",stage!,index!,"component"],value,validate)}/>
               <Fields value={Object.fromEntries(Object.entries(layer).filter(([key])=>key!=="component"))} schema={{properties:Object.fromEntries(Object.entries(modelSchema("LayerSpec")?.properties ?? {}).filter(([key])=>key!=="component"))}} root={schema} prefix={`pipeline.stages.${stage}.${index}.`} errors={errors} {...fieldContext} basic={["keys_in","keys_out","label_key","label_in_x","meta_in","meta_out"]} onChange={(value,validate)=>edit(["pipeline","stages",stage!,index!],{...layer,...value},validate)}/>
+              <details><summary>Move / transfer layer</summary><label className="field">Destination stage<select aria-label="Transfer destination stage" value={targetStage} onChange={event=>{setTransferStage(event.target.value);setTransferSlot("append");}}>{draft.order.map(name=><option key={name}>{name}</option>)}</select></label>
+                <label className="field">Execution insertion slot<select aria-label="Transfer insertion slot" value={transferSlot} onChange={event=>setTransferSlot(event.target.value)}><option value="append">Append (last)</option>{draft.ids[targetStage]?.map((id,slot)=><optgroup key={id} label={`Layer ${slot+1}`}><option value={slot}>Before layer {slot+1}</option><option value={`after:${slot}`}>After layer {slot+1}</option></optgroup>)}</select></label>
+                <p>Move to {targetStage}, {transferSlot==="append" ? "append" : transferSlot.startsWith("after:") ? `after layer ${Number(transferSlot.slice(6))+1}` : `before layer ${Number(transferSlot)+1}`}. {stageSkipped(targetStage) && <strong>Skipped: this layer will not execute.</strong>}</p>
+                <Button onClick={()=>change(transferLayer(draft,selected,targetStage,slotIndex(transferSlot,draft.ids[targetStage].length)))}>Move layer</Button></details>
               <Button className="danger" onClick={()=>removeNode(selected)}>Remove layer</Button></>;
           })()}
           {selectedNode?.data.kind==="objective" && <Fields value={{loss_keys:draft.config.training.loss_keys,metric_keys:draft.config.training.metric_keys}} schema={{properties:Object.fromEntries(Object.entries(modelSchema("TrainingSpec")?.properties ?? {}).filter(([key])=>["loss_keys","metric_keys"].includes(key)))}} root={schema} prefix="training." errors={errors} {...fieldContext} onChange={(value,validate)=>edit(["training"],{...draft.config.training,...value},validate)} />}
@@ -226,14 +243,15 @@ function Workbench() {
             const index=selectedNode.data.index!;const item=draft.config.evaluation.algorithms[index];
             return <><ComponentFields kind="eval_algorithm" component={item.algorithm} errors={errors} {...fieldContext} prefix={`evaluation.algorithms.${index}.algorithm.params.`} onChange={(value,validate)=>edit(["evaluation","algorithms",index,"algorithm"],value,validate)}/><Fields value={Object.fromEntries(Object.entries(item).filter(([key])=>key!=="algorithm"))} schema={{properties:Object.fromEntries(Object.entries(modelSchema("EvalAlgorithmSpec")?.properties ?? {}).filter(([key])=>key!=="algorithm"))}} prefix={`evaluation.algorithms.${index}.`} root={schema} errors={errors} {...fieldContext} onChange={(value,validate)=>edit(["evaluation","algorithms",index],{...item,...value},validate)}/><Button className="danger" onClick={()=>removeNode(selected)}>Remove evaluation</Button></>;
           })()}
-          {selectedNode?.data.kind==="stage" && <><p className="muted">Order is changed in the outline, never by placement.</p><Button className="danger" onClick={()=>removeNode(selected)}>Remove stage</Button></>}
+          {selectedNode?.data.kind==="stage" && <><p className="muted">Drag the header to move with layers. Structure / Execution order controls change execution, never canvas placement.</p>{stageSkipped(selectedStage!) && <p className="field-error">Skipped stage: its layers will not execute.</p>}<Button onClick={()=>showComponents(selectedStage!)}>Add layer</Button>
+            <details><summary>Container size</summary>{(["width","height"] as const).map(axis=><label className="field" key={axis}>{axis}<input type="number" aria-label={`Stage ${axis}`} min={axis==="width" ? selectedNode.data.minWidth : selectedNode.data.minHeight} value={Number(selectedNode.style?.[axis])} onChange={event=>change({...draft,sizes:{...draft.sizes,[selected]:{width:Number(selectedNode.style?.width),height:Number(selectedNode.style?.height),[axis]:Math.max(axis==="width" ? selectedNode.data.minWidth! : selectedNode.data.minHeight!,Number(event.target.value))}}})}/></label>)}</details><Button className="danger" onClick={()=>removeNode(selected)}>Remove stage</Button></>}
           {selectedNode && <><details><summary>Key connections (drag alternative)</summary>{selectedNode.data.inputs.map(input=><div className="field" key={input.id}>{input.add ? `Add ${input.domain} input` : `${input.alias ?? input.field}: ${input.key || "Unconnected"}`}<select aria-label={`Connect ${input.key || (input.add ? `new ${input.domain} input` : input.field)}`} value="" onChange={event=>{
             const [source,handle]=JSON.parse(event.target.value);change(connect(draft,{source,sourceHandle:handle,target:selected,targetHandle:input.id},catalog.data));
           }}><option value="">Choose preceding producer…</option>{graph.nodes.flatMap(node=>node.data.outputs.filter(output=>validConnection(draft,{source:node.id,sourceHandle:output.id,target:selected,targetHandle:input.id},catalog.data)).map(output=><option key={`${node.id}:${output.id}`} value={JSON.stringify([node.id,output.id])}>{node.data.title} → {output.key} ({output.domain})</option>))}</select>
             {graph.edges.some(edge=>edge.target===selected && edge.targetHandle===input.id) && <Button disabled={!!input.defaultKey} title={input.defaultKey ? "Inherited runtime default: change the key or disable the evaluator" : "Remove this key route"} aria-label={`Remove connection ${input.key}`} onClick={()=>change(disconnect(draft,[{target:selected,targetHandle:input.id}],catalog.data))}>Remove connection</Button>}
             {input.defaultKey && <small className="muted">Runtime default: {input.defaultKey}; clearing the field restores it.</small>}
           </div>)}</details>
-            <details><summary>Visual position</summary>{["x","y"].map(axis=><label className="field" key={axis}>{axis}<input type="number" aria-label={`Node position ${axis}`} value={selectedNode.position[axis as "x"|"y"]} onChange={event=>change({...draft,positions:{...draft.positions,[selected]:{...selectedNode.position,[axis]:Number(event.target.value)}}})}/></label>)}</details></>}
+            <details><summary>Visual position</summary>{["x","y"].map(axis=><label className="field" key={axis}>{axis}<input type="number" aria-label={`Node position ${axis}`} value={selectedNode.position[axis as "x"|"y"]} onChange={event=>change(placeNode(draft,selected,{...selectedNode.position,[axis]:Number(event.target.value)}))}/></label>)}</details></>}
         </fieldset></aside>
       </div>
     </> : view==="Training" && draft ? <section className="training-view"><div className="view-title"><div><span className="eyebrow">EXISTING SCENARIO SETTINGS</span><h1>Training configuration</h1></div><p className="muted">Changes edit your draft, not a running operation.</p></div><fieldset disabled={state.blocked || pending}>
@@ -252,6 +270,14 @@ function Workbench() {
       <div className="problems-list">{errors.map((error,index)=><Button key={index} onClick={()=>navigate(error.loc)}>{error.loc.join(".")}: {error.message}</Button>)}{graph?.problems.map(problem=><p key={problem}>{problem}</p>)}{catalog.data?.errors.map((error,index)=><p key={index}>{error.module}: {error.message}</p>)}</div>
     </section>
     <footer className="statusbar"><span className="connection-dot"/>Local runtime · NexuML {runtime.data.nexuml_version}<code title={runtime.data.python_executable}>{runtime.data.python_executable}</code><span>Interface 1 · {draft ? `${draft.order.length} ordered stages` : "No scenario selected"}</span></footer>
+    <Dialog.Root open={!!creation} onOpenChange={open=>{if(!open)setCreation(null);}}><Dialog.Portal><Dialog.Backdrop className="dialog-backdrop"/><Dialog.Popup className="dialog-popup"><Dialog.Title>Add ordered stage</Dialog.Title><Dialog.Description>Insert {selectedStage ? `after ${selectedStage}` : "last"}. Canvas position never determines execution order.</Dialog.Description>
+      <label className="field">Stage name<input aria-label="New stage name" value={stageName} onChange={event=>setStageName(event.target.value)}/></label>{draft?.order.includes(stageName.trim()) && <p className="field-error">Stage name already exists.</p>}
+      <div className="toolbar"><Button onClick={()=>setCreation(null)}>Cancel</Button><Button className="primary" disabled={!draft || !stageName.trim() || draft.order.includes(stageName.trim()) || state.blocked || pending} onClick={()=>{change(addStage(draft!,stageName,selectedStage,creation?.position));setCreation(null);}}>Create stage</Button></div>
+    </Dialog.Popup></Dialog.Portal></Dialog.Root>
+    <Dialog.Root open={!!insertion} onOpenChange={open=>{if(!open)setInsertion(null);}}><Dialog.Portal><Dialog.Backdrop className="dialog-backdrop"/><Dialog.Popup className="dialog-popup"><Dialog.Title>Choose layer destination</Dialog.Title><Dialog.Description>This drop is outside every stage. Choose its ordered membership explicitly.</Dialog.Description>
+      <label className="field">Stage<select aria-label="Dropped layer destination" value={destinationStage} onChange={event=>setDestinationStage(event.target.value)}><option value="">Choose a stage…</option>{draft?.order.map(stage=><option key={stage}>{stage}</option>)}</select></label><p>Append to {destinationStage || "chosen stage"}. {stageSkipped(destinationStage) && "Skipped: layer will not execute."}</p>
+      <div className="toolbar"><Button onClick={()=>setInsertion(null)}>Cancel</Button><Button disabled={!destinationStage || state.blocked || pending} onClick={()=>{addComponent(insertion!.entry,destinationStage,undefined,draft!.ids[destinationStage].length);setInsertion(null);}}>Insert layer</Button></div>
+    </Dialog.Popup></Dialog.Portal></Dialog.Root>
     <Dialog.Root open={!!review} onOpenChange={open=>{if(!open&&!pending)setReview(null);}}><Dialog.Portal><Dialog.Backdrop className="dialog-backdrop"/><Dialog.Popup className="dialog-popup"><Dialog.Title>Launch existing NexuML training</Dialog.Title><Dialog.Description>Trusted component constructors and configured callbacks execute local Python. This freezes a source configuration; later draft edits do not change the run.</Dialog.Description>
       {review && <dl className="result-summary"><dt>Scenario</dt><dd>{review.document.data.name}</dd><dt>Backend</dt><dd>{String((review.document.data.execution as RecordValue).kind)}</dd><dt>Epochs</dt><dd>{String(review.document.data.training.max_epochs)}</dd><dt>Batch size</dt><dd>{typeof review.document.data.training.batch_size==="object" ? "Automatic (review Expert settings)" : String(review.document.data.training.batch_size)}</dd><dt>Accelerator / devices</dt><dd>{String(review.document.data.training.accelerator)} / {String(review.document.data.training.devices)}</dd><dt>Resume checkpoint</dt><dd>{checkpoint || "New training"}</dd><dt>Source revision</dt><dd><code>{review.document.semantic_revision}</code></dd></dl>}
       <details><summary>Expert: complete frozen launch settings</summary><pre>{review?.document.yaml}</pre></details>

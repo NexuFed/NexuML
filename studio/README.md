@@ -71,8 +71,21 @@ after confirming their services have stopped. Training records remain under Nexu
    Models → Vision). Drag one onto a stage to append it to that stage, or use its add button.
    Insert from actual installed definition schemas. Use Training for optimizer/scheduler,
    loader, execution, logging/callbacks/checkpoints and exports.
-3. The ordered outline controls execution order. Moving/arranging nodes changes layout
-   only. Repeated keys connect to their most recent preceding producer. Alias dictionaries,
+3. **Structure** and the canvas **Execution order** strip control the native ordered stages
+   and layers. Drag their order handles onto insertion markers, or use move buttons and
+   Properties → **Move / transfer layer** for keyboard/single-pointer editing. Canvas
+   coordinates never schedule execution. Drag a stage header to move it with its children;
+   resize a selected stage from its lower-right control or Properties → **Container size**.
+   Layers move freely inside their stage without reordering. Moving a layer into another
+   highlighted stage previews an explicit append; dropping outside every stage or pressing
+   Escape restores it. Transfer controls/Structure markers also allow explicit insertion slots.
+   Skipped-stage previews warn that moved layers will not execute, without changing skip settings.
+   Add a stage from Structure's **Stage** item (drag or click) or **Add stage**: give it a unique
+   name and review insertion after the selected stage, otherwise last. Empty stages offer
+   **Drop a layer here / Add layer**. New-layer drops outside stages ask for a destination;
+   click insertion uses the visible destination/slot controls. Movement/resizing are layout-only;
+   transfers/reorders change ordinary configuration and make previous build evidence stale.
+   Repeated keys connect to their most recent preceding producer. Alias dictionaries,
    label domains and metadata routing stay editable; dataset metadata/runtime-only keys
    are diagnosed rather than fabricated into a DAG. Buttons/connection selects/position
    fields provide drag alternatives. Connect an empty + Feature/Label/Loss/Metric input, name outputs
@@ -80,7 +93,8 @@ after confirming their services have stopped. Training records remain under Nexu
    (or Delete/Backspace); connection selects offer the same removal. Missing required routes
    remain visible and prevent launch. If removing an evaluator route would restore its runtime
    default, reroute it or explicitly disable that evaluator instead. Display names are visual
-   sidecar data, never tensor names or execution settings. Use Undo/Redo for routing and names.
+   sidecar data, never tensor names or execution settings. Use Undo/Redo for routing, names,
+   completed layout gestures and atomic transfers/order edits. Cancelled gestures create no entry.
 4. Schema controls handle nested models, nullable/union modes, lists, mappings, enums and
    installed component choices. Execution/checkpoint/logging settings are ordinary forms.
    Expand **Expert** for raw JSON or use the complete YAML editor; genuinely untyped factory
@@ -90,7 +104,8 @@ after confirming their services have stopped. Training records remain under Nexu
 5. Check fields validates without compiling. Build check explicitly runs constructors and
    dummy forwards in the selected interpreter. Displayed final key shapes are source-bound
    and become stale after semantic edits. Save uses revision conflicts and a separate
-   `*.studio.json` layout/name sidecar; an external semantic edit invalidates old placement metadata.
+   `*.studio.json` position/size/name sidecar; an external semantic edit invalidates old placement metadata.
+   Matching older sidecars without container sizes use defaults. Membership/order stay in ordinary YAML.
    Click a field-addressable problem to open and focus its inspector/settings field. Runtime
    errors without a field address remain linked to their frozen source, not guessed draft fields.
    Failed operations offer **Open frozen settings as draft** to edit their actual launch settings,
@@ -103,7 +118,18 @@ after confirming their services have stopped. Training records remain under Nexu
    activity; carriage-return and supported ANSI progress updates overwrite terminal lines.
    These logs are not parsed into training counters. Raw output remains downloadable. Reload
    and select the existing operation; it is never relaunched. Visible history is bounded
-   to 2,000 events, with a notice; full observations/logs remain on disk.
+   to 2,000 events, with a notice; charts separately retain 2,000 metric observations
+   so verbose logs do not evict their samples. Full observations/logs remain on disk.
+   Training loss updates during the first epoch from actual batch callbacks (at most
+   four updates/second plus first/final batches). Charts use optimizer steps, and a
+   single measurement is a visible point rather than an invisible line. Validation/test
+   values appear after their phase completes, excluding the preliminary sanity check.
+   Pipeline → **Objectives & metrics** edits `training.loss_keys` (weighted losses) and
+   `training.metric_keys` (outputs to log). NexuML also reports their weighted loss total
+   as `train/loss`, `val/loss`, and `test/loss`. Metrics must be produced by pipeline
+   layers: the CIFAR ClassificationMetrics layer computes accuracy/F1 in validation/test,
+   not training. Scalar evaluator results can also appear when evaluation finishes.
+   Charts reflect the observed run's frozen configuration, not current draft settings.
 8. Stop is available for owned local processes, not Ray workers. It confirms tree exit,
    not a new checkpoint. Artifacts downloads use authorized paths. Export requires a
    completed local source and an actual Trainer checkpoint, not random placeholder weights.

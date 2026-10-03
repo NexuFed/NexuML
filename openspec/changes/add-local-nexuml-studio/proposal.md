@@ -14,6 +14,7 @@ NexuML already owns scenario configuration, component libraries, pipeline compil
 - Apply the supplied Nexus Edge design: `#101010` background, Montserrat/Geist typography, restrained tonal surfaces, and primary actions using `#188FD5` with black text.
 - Support lossless configuration editing, explicit build checks, execution observation across browser reconnects, supported cancellation, and inspection of existing result/artifact outputs.
 - Refine the same workbench into graph-first authoring: categorized drag/drop components, removable key connections, typed nested forms, field-focused errors, native observed progress and in-place terminal rendering; retain JSON/YAML as explicit expert tools.
+- Refine stages into draggable, resizable canvas containers with contained layers, direct stage creation, previewed layer transfers, and sortable Structure/execution-order controls. Preserve NexuML's ordered stages and layers; separate free layout from explicit membership/order edits, keep non-drag alternatives, and do not add unordered groups or nested executable stages.
 - Keep v1 local and single-user. Hosted identities/rights, payment, Kubernetes provisioning, browser ONNX training, collaboration, arbitrary DAG execution, and a tuning UI are non-goals. Existing configured execution backends remain NexuML-owned; no cluster management is added.
 
 ## Capabilities

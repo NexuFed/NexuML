@@ -1,0 +1,49 @@
+import {expect,test} from "@playwright/test";
+import {parseDocument,stringify} from "yaml";
+
+test("real batch loss charts update while training and retain finalized classification metrics on reconnect",async({page},testInfo)=>{
+  const failures:string[]=[];page.on("pageerror",error=>failures.push(error.message));
+  await page.goto("/");
+  await page.getByLabel("Discovered scenario").selectOption("synthetic-linear-ae-multiclass");
+  await page.getByRole("button",{name:"Resolve recipe",exact:true}).click();
+  await expect(page.getByRole("button",{name:"Resolve recipe",exact:true})).toBeEnabled({timeout:30000});
+  await page.getByRole("button",{name:"YAML",exact:true}).click();
+  const config=parseDocument(await page.getByLabel("Scenario YAML").inputValue()).toJS();
+  const source=config.data.source ?? config.data.datasets[0].source;
+  source.params.num_samples=2048;source.params.feature_shape=[8];
+  config.data.input_shapes.features=[8];
+  config.pipeline.stages.Encoder[0].component.params.hidden_dims=[8];
+  config.pipeline.stages.Decoder[0].component.params.hidden_dims=[8];
+  config.pipeline.stages.Decoder[0].component.params.output_dim=8;
+  config.training.max_epochs=3;config.training.batch_size=16;
+  config.training.accelerator="cpu";config.training.devices=1;
+  config.training.metric_keys=["accuracy","f1"];config.evaluation.algorithms=[];
+  await page.getByLabel("Scenario YAML").fill(stringify(config));
+  await page.getByRole("button",{name:"Apply YAML",exact:true}).click();
+  await expect(page.getByRole("status")).toContainText("YAML applied",{timeout:30000});
+  await page.getByRole("button",{name:"Close YAML",exact:true}).click();
+  await page.getByRole("button",{name:"Run…",exact:true}).click();
+  await page.getByRole("button",{name:"Confirm & start training",exact:true}).click();
+  const loss=page.locator(".metric").filter({has:page.locator("span",{hasText:/^train\/loss$/})});
+  await expect(loss).toBeVisible({timeout:30000});
+  await expect(page.locator(".status-grid")).toContainText("running");
+  await expect(loss.locator("circle")).toHaveCount(1);
+  await expect(loss).toContainText("Optimizer step");
+  const first=await loss.locator("svg").getAttribute("aria-label");
+  await expect(loss.locator("svg")).not.toHaveAttribute("aria-label",first!,{timeout:15000});
+  await expect(page.locator(".status-grid")).toContainText("running");
+  await page.screenshot({path:testInfo.outputPath("live-training-loss.png"),fullPage:true});
+  await expect(page.locator(".status-grid")).toContainText("succeeded",{timeout:90000});
+  for(const key of ["val/accuracy","val/f1","test/accuracy","test/f1"]){
+    await expect(page.locator(".metric").filter({has:page.locator("span",{hasText:key})})).toBeVisible();
+  }
+  const identity=await page.getByLabel("Observed operation").inputValue();
+  const retained=await loss.locator("svg").getAttribute("aria-label");
+  await page.reload();await page.getByRole("button",{name:"Execution",exact:true}).click();
+  await page.getByLabel("Observed operation").selectOption(identity);
+  await expect(loss.locator("svg")).toHaveAttribute("aria-label",retained!,{timeout:30000});
+  await page.setViewportSize({width:390,height:844});
+  await page.screenshot({path:testInfo.outputPath("metric-charts-mobile.png"),fullPage:true});
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  expect(failures).toEqual([]);
+});

@@ -111,6 +111,9 @@ test("real CPU config edit/save/check/build/train/reconnect/export and corporate
   await expect(page.getByLabel("Observed operation")).not.toHaveValue("");
   await page.getByRole("button",{name:"Training",exact:true}).click();
   await page.getByLabel("Batch Size",{exact:true}).fill("16");
+  await page.getByRole("button",{name:"Pipeline",exact:true}).click();
+  await page.getByRole("button",{name:"Move stage Encoder down",exact:true}).click();
+  await expect(page.locator(".build-state")).toContainText("stale");
   await page.getByRole("button",{name:"Execution",exact:true}).click();
   await expect(page.locator(".status-grid")).toContainText("succeeded",{timeout:45000});
   await expect(page.locator(".metric")).not.toHaveCount(0);
@@ -118,6 +121,8 @@ test("real CPU config edit/save/check/build/train/reconnect/export and corporate
   await expect(page.getByRole("progressbar",{name:"Operation progress"})).toHaveAttribute("value");
   await page.getByRole("button",{name:"Inspect launch config",exact:true}).click();
   await expect(page.locator("details").filter({hasText:"Frozen launch configuration"})).toContainText("batch_size: 8");
+  const frozenYaml=await page.locator("details").filter({hasText:"Frozen launch configuration"}).innerText();
+  expect(frozenYaml.indexOf("Encoder:")).toBeLessThan(frozenYaml.indexOf("Decoder:"));
   const identity=await page.getByLabel("Observed operation").inputValue();
   await page.reload();
   await page.getByRole("button",{name:"Execution",exact:true}).click();

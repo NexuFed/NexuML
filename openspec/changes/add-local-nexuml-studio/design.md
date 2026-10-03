@@ -173,21 +173,61 @@ React Flow is the renderer and interaction layer. The editable semantic document
 Projection rules:
 
 - Data nodes refer to `data.source`/`data.datasets`; their inspectors edit existing source, target, split, loader, preprocessing, and input-shape fields.
-- Stage groups and layer nodes refer to the ordered `pipeline.stages` placements. Group collapse is visual, not executable composition.
+- Stage containers and layer nodes refer to the ordered `pipeline.stages` placements. Their nesting is stage → layers, not executable stages inside stages; group-style appearance does not make stages unordered. Group collapse is visual, not executable composition.
 - Loss/metric relationships refer to existing pipeline key outputs and `training.loss_keys`/`metric_keys`. Do not invent loss nodes unsupported by the installed catalog.
 - Evaluation nodes refer to `evaluation.algorithms` and their existing feature/label/axis contracts, not fabricated layer placements.
 - Ports represent existing keys. Edges refer to the applicable preceding producer in execution order; preserve input alias dictionaries, label routing, and overwrites. When routing is not fully renderable, retain editable key/metadata fields and show the limitation rather than inventing connectivity.
-- Moving a node only edits layout. Explicit ordered-outline controls edit stage/layer order; invalid forward references remain diagnosable and never become implicitly topologically sorted.
+- Moving a stage container or repositioning a layer within its owning stage only edits layout. A previewed drop into another stage explicitly edits membership/insertion order; sortable Structure controls and the canvas execution-order strip explicitly edit order. Invalid forward references remain diagnosable and never become implicitly topologically sorted.
 
 Stage insertion order is semantic. Return an ordered stage-name view with configuration transport metadata, render from that order rather than JavaScript object enumeration, and restore the mapping in that order before validating/saving. Test integer-like stage names as well as ordinary names. This is representation of existing order, not a new execution specification.
 
-Each open editor keeps stable local selection IDs mapped to existing placements. Save only placement/layout information in a sibling `*.studio.json` sidecar, associated with a semantic configuration revision. Update placement mappings on explicit edits; ignore stale layout metadata after unmatched external edits and fall back to a simple stage-ordered layout. Do not insert editor IDs into `LayerSpec` or misuse persistent array indices after a reorder.
+Each open editor keeps stable local selection IDs mapped to existing placements. Save only placement/layout information (positions, container sizes, editor IDs and display names) in a sibling `*.studio.json` sidecar, associated with a semantic configuration revision. Membership is derived from the ordinary configuration, not an independent saved graph. Preserve layer IDs explicitly across transfers/reorders, including identical component configurations; ignore stale layout metadata after unmatched external edits and fall back to a simple stage-ordered layout. Older sidecars without sizes use default container sizes. Do not insert editor IDs into `LayerSpec` or misuse persistent array indices after a reorder.
 
 Keep one draft shared by graph/inspectors/YAML. Preserve all valid unrendered fields. Invalid YAML remains a separate unapplied buffer until corrected; graph edits are unavailable while applying them would discard that buffer. Matching semantic hashes bind build checks to their source revision. Serialization preserves semantics, not original YAML comments/formatting or Python source code.
 
 Start with deterministic stage-column arrangement, fit view, and a minimap. Avoid an automatic layout dependency unless real branching examples demonstrate that simple layout is insufficient.
 
 **Alternative rejected:** a new graph IR/topological compiler or executable subflow framework. Neither is required to configure the current NexuML model.
+
+### D6a. Stage-container UX follow-up (tasks section 10)
+
+The approved follow-up replaces locked stage frames and visually escaping children with proper containers, without redesigning the corporate shell or changing NexuML execution. The compiler traverses `pipeline.stages` and its layer lists in order, and `CompiledPipeline.iter_layers()` supplies that same sequential runtime order. Connections route keys; they do not schedule layers. Stage names also participate in `data.skip_pipeline_stages`, so stages are not arbitrary unordered annotations.
+
+Keep two visible, synchronized views of the same draft:
+
+```text
+Execution order:  [1 Encoder] → [2 Heads] → [3 Loss]
+                  Drag here to reorder stages
+
+Canvas: freely positioned stage containers
+┌─ 1 Encoder ──────┐       ┌─ 2 Heads ─────────┐
+│ [1.1 ResNet] ──────────────▶ [2.1 Classifier] │
+└──────────────────┘       └──────────────────┘
+```
+
+Canvas positions explain the model; numbered badges and the ordered controls explain execution. Stages have order/count headers and layers have stage/layer position badges, regardless of spatial placement. A stage header is the layout drag target; ports and property controls retain their own interactions. Moving a stage carries its children. Resize handles appear when selected and enforce header/padding plus child bounds, rather than clipping children. Free layer positioning within a stage never changes its execution index.
+
+The gesture contract is deliberately explicit:
+
+| Action | Draft effect |
+|---|---|
+| Drag stage header or resize its container | Layout only; children remain attached and visible |
+| Drag a layer within its owning stage | Layout only; membership/order unchanged |
+| Drop a layer into another highlighted stage | Commit a previewed membership/insertion change |
+| Drop an existing layer outside every stage, or cancel the drag | Restore its original placement; no semantic edit |
+| Drag an order handle in Structure or the execution-order strip | Commit the indicated sequence edit, not a layout move |
+
+Add a Stage item under Structure, separate from the installed component catalog, and retain an Add stage action. Canvas creation asks for a unique ordinary stage name and states the execution insertion point: after the selected stage by default, otherwise last. A canvas coordinate never implicitly determines this order. An empty container offers Drop a layer here / Add layer; component insertion shows its destination and execution slot. Layer drops on unowned canvas space require a destination rather than silently assigning the first stage.
+
+For existing-layer transfers, highlight one destination and show an insertion preview such as Move to Heads, after Classifier. Default to appending when no explicit slot is selected and state that in the preview; use the destination's ordered list, not free node coordinates, to choose before/after. Commit only on a valid drop. A transfer updates the two existing layer lists and stable placement mappings atomically, preserves component/routing settings and selection, and rebases its relative coordinates into the destination container. The skipped-stage state is visible in the preview and inspector, explicitly warning when the moved layer will not execute. No successful drop leaves a floating executable layer or silently nests one stage inside another.
+
+Make the left outline a sortable Structure tree: stage rows reorder stages; layer rows reorder within or transfer between stages. Add a labeled execution-order strip on the canvas for direct stage reordering. Both edit the existing order, not a new scheduling model. Retain keyboard and single-pointer move/transfer actions, labeled handles, position/size controls, focus recovery and reduced-motion behavior; precision dragging is not required.
+
+After an explicit membership/order edit, recompute the ordinary graph projection and declared upstream/repeated-key diagnostics, and mark prior build evidence stale. Explain missing or later producers and unresolved runtime-only keys without silently reconnecting, renaming keys, reordering other nodes, compiling or launching work. Build remains explicit and native validation/compilation remains authoritative. Mere movement/resizing does not invalidate the semantic build revision or affect active frozen runs.
+
+Record one undo entry per completed move, resize, transfer or order gesture, not one per pointer update. Cancellation creates none. Persist positions/sizes/display names only in the matching layout sidecar, and semantic membership/order in ordinary YAML. Save/reopen and undo/redo must synchronize both views and retain existing conflict/stale-sidecar protections.
+
+**Alternatives rejected:** unordered groups/topological scheduling (changes NexuML semantics), spatial sorting (surprising under free layout), arrow-only ordering (poor direct manipulation), and drag-only editing (inaccessible). Reuse the installed graph interaction/resizing primitives before adding dependencies; no runtime or executable schema change is planned.
 
 ### D7. Build a focused, accessible workbench
 
@@ -220,7 +260,7 @@ Interaction decisions:
 - Build is an explicit executable check; schema errors appear beside fields and in a focusable Problems list. Unknown/stale shapes remain labeled; no decorative readiness claims.
 - Run review displays the exact source revision, existing execution selection, training settings, and output references. Launch switches to actual observation without mutating the draft.
 - Execution shows observed lifecycle, scalar curves, logs, results, and available controls. Plot only recorded metrics, identify stale connections/replay gaps, and do not animate fake tensor flow. A lightweight plotting component is sufficient; no GPU plotting requirement.
-- Add/connect/reorder through visible menus/controls and an ordered outline as well as pointer dragging. Maintain undo/redo, visible focus, accessible names, understandable tab order, and reduced motion.
+- Add/connect/reorder through visible menus/controls, a sortable Structure outline and canvas execution-order strip as well as pointer dragging. Keep free layout distinct from semantic drop/order previews. Maintain undo/redo, visible focus, accessible names, understandable tab order, and reduced motion.
 - Desktop panels resize/collapse without covering focus. Below the supplied 1280px desktop breakpoint, switch to tabbed/single-panel canvas/outline/inspector presentation; mobile prioritizes monitoring and configuration forms. Canvas panning is intentional; document-level horizontal overflow is not.
 
 **Alternative rejected:** an overview dashboard as the main entry, putting every scalar setting on the canvas, or requiring precision dragging to complete a workflow.
@@ -288,7 +328,8 @@ Add scripts for frontend typecheck, lint, focused tests, browser tests, build, a
 
 ## Risks / Trade-offs
 
-- **Ordered pipeline vs arbitrary graph expectations** → State execution order in the outline and preserve existing key overwrites; no implicit DAG semantics.
+- **Ordered pipeline vs arbitrary graph expectations** → State execution order in the Structure tree, canvas strip and node badges; preserve existing key overwrites and never infer order from spatial placement.
+- **Containment vs semantic transfers** → Preview the target/insertion slot, reject orphan drops, warn for skipped stages, and commit one undoable membership/layout transaction only on a valid drop.
 - **Arbitrary schemas and factory kwargs** → Support common field types with explicit structured/YAML fallback and backend validation; preserve unrendered fields.
 - **Trusted Python import/build side effects** → Explicit trusted-code boundary, subprocess isolation/timeouts, and no sandbox claims.
 - **uv tool isolation or mismatched installations** → Explicit executable/interpreter selection and runtime identity handshake; no package installation by the launcher.

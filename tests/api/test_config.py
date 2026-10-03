@@ -114,7 +114,12 @@ def test_paths_and_layout(client, tmp_path):
         assert client.post("/api/v1/config/load", json={"path": path}).status_code == 403
     layout = {
         "semantic_revision": "draft-revision",
-        "layout": {"positions": {"node-1": {"x": 4, "y": 8}}},
+        "layout": {
+            "positions": {"stage:Encoder": {"x": 4, "y": 8}},
+            "sizes": {"stage:Encoder": {"width": 800, "height": 900}},
+            "ids": {"Encoder": ["node-1"]},
+            "names": {"node-1": "Visual encoder"},
+        },
         "path": "config.yaml",
         "base_revision": None,
     }
@@ -126,6 +131,13 @@ def test_paths_and_layout(client, tmp_path):
     assert not (tmp_path / "config.yaml").exists()
     assert (
         json.loads((tmp_path / "config.yaml.studio.json").read_text())["layout"] == layout["layout"]
+    )
+    # Layout writes retain the existing conflict guard; no executable YAML is created.
+    layout["base_revision"] = "external-change"
+    assert client.post("/api/v1/config/layout/save", json=layout).status_code == 409
+    assert (
+        client.post("/api/v1/config/layout/load", json={"path": "config.yaml"}).json()["layout"]
+        == loaded["layout"]
     )
 
 

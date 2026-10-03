@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Download, Square } from "lucide-react";
 import { request } from "../model/client";
+import { metricPoints } from "../model/metrics";
 import type { ConnectionInfo, Document, Operation, RecordValue } from "../model/types";
 import { useObservation } from "./use-observation";
 import { Button } from "./ui/button";
@@ -24,7 +25,7 @@ export function Execution({connection, identity, choose, artifacts=false, report
   const total=typeof progress?.total==="number" && Number.isFinite(progress.total) && progress.total>0 ? progress.total : null;
   const batch=typeof progress?.batch==="number" ? progress.batch : null;
   const failure=current?.result?.error as {message?:string;fields?:{loc:(string|number)[];message:string}[]}|undefined;
-  const metrics=observation.events.filter(event=>event.kind==="metrics");
+  const metrics=observation.metrics;
   const keys=[...new Set(metrics.flatMap(event=>Object.keys(event.payload.values as RecordValue ?? {})))];
   const act=async(action:()=>Promise<void>)=>{setActing(true);try {await action();} catch(error){report(error);} finally{setActing(false);}};
   const download=async(index:number,path:string)=>{
@@ -52,13 +53,25 @@ export function Execution({connection, identity, choose, artifacts=false, report
         {!current.cancellation && <span className="muted">Remote stop unsupported. Driver exit does not stop workers.</span>}
         <Button onClick={()=>act(async()=>setLaunch({id:identity,yaml:(await request<Document>(connection,`/operations/${identity}/config`)).yaml}))}>Inspect launch config</Button></div>
       {launch?.id===identity && <details open><summary>Frozen launch configuration</summary><pre>{launch.yaml}</pre></details>}
-      {!artifacts && <><div className="metric-grid">{keys.map(key=>{
-        const points=metrics.map(event=>({step:Number(event.payload.step),value:Number((event.payload.values as RecordValue)?.[key])})).filter(point=>Number.isFinite(point.value));
+      {!artifacts && <><p className="muted">Select losses and metrics in Pipeline → Objectives &amp; metrics (<code>training.loss_keys</code> / <code>training.metric_keys</code>). Total loss is their weighted loss sum. Charts show this run’s reported values, not later draft edits; validation/test metrics appear after those phases complete.</p><div className="metric-grid">{keys.map(key=>{
+        const points=metricPoints(metrics,key);
+        if(!points.length)return null;
         const min=Math.min(...points.map(point=>point.value)), max=Math.max(...points.map(point=>point.value));
+        const firstStep=Math.min(...points.map(point=>point.step)),lastStep=Math.max(...points.map(point=>point.step));
+        const x=(step:number)=>55+(step-firstStep)/Math.max(1,lastStep-firstStep)*325;
+        const y=(value:number)=>min===max ? 55 : 90-(value-min)/(max-min)*70;
+        const latest=points.at(-1)!;
         return <article className="metric" key={key}><span>{key}</span><strong>{points.at(-1)?.value.toPrecision(5)}</strong>
-          <svg viewBox="0 0 400 100" role="img" aria-label={`${key}, ${points.length} observed samples, latest ${points.at(-1)?.value}`}>
-            <polyline fill="none" stroke="currentColor" strokeWidth="2" points={points.map((point,index)=>`${20+index/Math.max(1,points.length-1)*360},${80-(point.value-min)/Math.max(.000001,max-min)*60}`).join(" ")} />
-          </svg><small>Observed callback samples · range {min.toPrecision(3)}–{max.toPrecision(3)}</small></article>;
+          <svg viewBox="0 0 400 140" role="img" aria-label={`${key}, ${points.length} observed samples, latest ${latest.value} at optimizer step ${latest.step}`}>
+            <path className="metric-axis" d="M55 15V100H385"/>
+            <text className="metric-tick" x="48" y="24" textAnchor="end">{max.toPrecision(3)}</text>
+            {min!==max && <text className="metric-tick" x="48" y="94" textAnchor="end">{min.toPrecision(3)}</text>}
+            <polyline fill="none" stroke="currentColor" strokeWidth="2" points={points.map(point=>`${x(point.step)},${y(point.value)}`).join(" ")} />
+            <circle cx={x(latest.step)} cy={y(latest.value)} r="3" fill="currentColor"><title>{latest.value} at step {latest.step}</title></circle>
+            <text className="metric-tick" x="55" y="117">{firstStep}</text>
+            {lastStep!==firstStep && <text className="metric-tick" x="380" y="117" textAnchor="end">{lastStep}</text>}
+            <text className="metric-tick" x="220" y="136" textAnchor="middle">Optimizer step</text>
+          </svg><small>{points.length} observed samples{points.length===1 ? " · waiting for the next measurement" : ""} · range {min.toPrecision(3)}–{max.toPrecision(3)}</small></article>;
       })}{!keys.length && <div className="empty-panel">No scalar samples observed yet. No simulated telemetry.</div>}</div>
         <details open><summary>Process logs</summary><pre className="logs" aria-label="Process logs">{observation.terminal || "Waiting for actual process output…"}</pre></details>
         {observation.truncated && <p className="muted">Showing the latest 2,000 observations. Complete logs remain on disk.</p>}

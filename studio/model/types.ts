@@ -30,10 +30,12 @@ export type Schema = { type?: string; title?: string; description?: string; defa
 export type Entry = { kind: string; name: string; version: string; schema: Schema; import_target: string };
 export type Catalog = { components: Entry[]; scenarios: { name: string }[]; errors: { module: string; message: string }[];
   libraries: { roots: string[]; packages: string[] }; schema: Schema; backends: Record<string, { available: boolean }> };
-export type Snapshot = { config: Config; order: string[]; ids: Record<string, string[]>; positions: Record<string, {x:number; y:number}>; names?:Record<string,string> };
+export type Snapshot = { config: Config; order: string[]; ids: Record<string, string[]>; positions: Record<string, {x:number; y:number}>; sizes?:Record<string,{width:number;height:number}>; names?:Record<string,string>; selected?:string };
+export type Layout = Pick<Snapshot,"ids"|"positions"|"sizes"|"names">;
 export type Port = { id: string; key: string; domain: string; field: string; alias?: string; add?:boolean; collection?:boolean;defaultKey?:string;required?:boolean };
 export type CardData = RecordValue & { title: string; kind: string; inputs: Port[]; outputs: Port[];
-  stage?: string; index?: number; rank: number; summary?: string };
+  stage?: string; index?: number; rank: number; summary?: string; executionPosition?:string;
+  minWidth?:number;minHeight?:number;empty?:boolean;skipped?:boolean };
 export type CardNode = Node<CardData, "card">;
 export type Graph = { nodes: CardNode[]; edges: Edge[]; problems: string[];unconnected?:boolean };
 export type Operation = { id: string; kind: string; status: string; semantic_revision: string;

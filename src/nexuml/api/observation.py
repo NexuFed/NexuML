@@ -54,20 +54,38 @@ class Observation(Callback):
                 + "\n"
             )
 
+    def metrics(self, trainer, prefixes, **payload):
+        values = scalar_values(
+            {
+                key: value
+                for key, value in trainer.callback_metrics.items()
+                if key.startswith(prefixes)
+                or not key.startswith(("train/", "val/", "test/", "eval/"))
+            }
+        )
+        if values:
+            self.record("metrics", trainer, values=values, **payload)
+
     def on_train_epoch_end(self, trainer, pl_module):
-        self.record("metrics", trainer, values=scalar_values(trainer.callback_metrics))
+        self.metrics(trainer, "train/", phase="train")
 
-    def on_validation_epoch_end(self, trainer, pl_module):
-        self.record("metrics", trainer, values=scalar_values(trainer.callback_metrics))
+    def on_validation_end(self, trainer, pl_module):
+        # Module epoch-end hooks finalize accuracy/F1 before this callback runs.
+        if not trainer.sanity_checking:
+            self.metrics(trainer, "val/", phase="validate")
 
-    def on_test_epoch_end(self, trainer, pl_module):
-        self.record("metrics", trainer, values=scalar_values(trainer.callback_metrics))
+    def on_test_end(self, trainer, pl_module):
+        self.metrics(trainer, ("test/", "eval/"), phase="test")
 
     def on_fit_start(self, trainer, pl_module):
         self.record("progress", trainer, phase="fit")
 
     def progress(self, trainer, phase, batch, total, *, force=False):
-        """Publish real counters at most four times per second, plus boundaries."""
+        """Publish real counters at most four times per second, plus boundaries.
+
+        Returns:
+            Whether a progress sample was published on this tick.
+        """
         if isinstance(total, (list, tuple)):
             total = sum(total)
         total = int(total) if isinstance(total, (int, float)) and math.isfinite(total) else None
@@ -83,12 +101,16 @@ class Observation(Callback):
                 total=total,
                 max_epochs=trainer.max_epochs,
             )
+            return True
+        return False
 
     def on_train_epoch_start(self, trainer, pl_module):
         self.progress(trainer, "train", 0, trainer.num_training_batches, force=True)
 
     def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
-        self.progress(trainer, "train", batch_idx + 1, trainer.num_training_batches)
+        published = self.progress(trainer, "train", batch_idx + 1, trainer.num_training_batches)
+        if published or batch_idx == 0:
+            self.metrics(trainer, "train/", phase="train", batch=batch_idx + 1)
 
     def on_validation_epoch_start(self, trainer, pl_module):
         self.completed = 0

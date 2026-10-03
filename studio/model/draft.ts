@@ -1,7 +1,7 @@
 import { createStore } from "zustand/vanilla";
 import { stringify } from "yaml";
 import { newSnapshot, signature } from "./graph";
-import type { Document, Snapshot } from "./types";
+import type { Document, Layout, Snapshot } from "./types";
 
 export function yamlText(snapshot: Snapshot): string {
   const stages = new Map(snapshot.order.map(stage => [stage, snapshot.config.pipeline.stages[stage]]));
@@ -11,13 +11,13 @@ export function yamlText(snapshot: Snapshot): string {
 export type DraftState = {
   draft: Snapshot | null; saved: string; savedLayout: string; path: string; baseRevision: string | null;
   semanticRevision: string; past: Snapshot[]; future: Snapshot[]; blocked: boolean;
-  load: (document: Document, layout?: Pick<Snapshot,"ids"|"positions"|"names">) => void;
+  load: (document: Document, layout?: Layout) => void; select:(id:string)=>void;
   change: (snapshot: Snapshot) => void; undo: () => void; redo: () => void;
   markSaved: (document: Document, source?:Snapshot) => void;
   markLayoutSaved: (source:Snapshot) => void; block: (value: boolean) => void;
 };
 
-export const layoutSignature=(snapshot:Snapshot)=>JSON.stringify([snapshot.ids,snapshot.positions,snapshot.names ?? {}]);
+export const layoutSignature=(snapshot:Snapshot)=>JSON.stringify([snapshot.ids,snapshot.positions,snapshot.names ?? {},snapshot.sizes ?? {}]);
 
 export function createDraftStore() {
   return createStore<DraftState>((set, get) => ({
@@ -32,6 +32,7 @@ export function createDraftStore() {
           Object.values(layout.positions).every(position=>position && Number.isFinite(position.x) && Number.isFinite(position.y))) {
         draft.ids = layout.ids; draft.positions = layout.positions;
         if(layout.names && Object.values(layout.names).every(name=>typeof name==="string"))draft.names=layout.names;
+        if(layout.sizes && Object.values(layout.sizes).every(size=>size && Number.isFinite(size.width) && size.width>0 && Number.isFinite(size.height) && size.height>0))draft.sizes=layout.sizes;
       }
       set({draft, saved: document.path ? signature(draft) : "",savedLayout:layoutSignature(draft), path: document.path ?? "scenario.yaml",
         baseRevision: document.base_revision ?? null, semanticRevision: document.semantic_revision,
@@ -40,9 +41,10 @@ export function createDraftStore() {
     change: draft => {
       const state = get();
       if (state.blocked || !state.draft) return;
-      if (signature(draft) === signature(state.draft) && JSON.stringify(draft.names)===JSON.stringify(state.draft.names)) { set({draft}); return; }
+      if (signature(draft) === signature(state.draft) && layoutSignature(draft)===layoutSignature(state.draft)) return;
       set({draft, past: [...state.past, state.draft].slice(-100), future: []});
     },
+    select: selected=>{const draft=get().draft;if(draft)set({draft:{...draft,selected}});},
     undo: () => {
       const state = get();
       if (!state.blocked && state.past.length && state.draft) set({draft: state.past.at(-1)!,

@@ -15,14 +15,14 @@ export function newSnapshot(config: Config, order: string[], previous?: Snapshot
   }
   const ids = Object.fromEntries(order.map(stage => [stage, config.pipeline.stages[stage].map(layer =>
     pool.get(JSON.stringify(layer))?.shift() ?? crypto.randomUUID())]));
-  return { config, order, ids, positions: previous?.positions ?? {}, names:previous?.names ?? {} };
+  return { config, order, ids, positions: previous?.positions ?? {}, sizes:previous?.sizes ?? {}, names:previous?.names ?? {},selected:previous?.selected ?? "data" };
 }
 
 export function signature(snapshot: Snapshot): string {
   return JSON.stringify([snapshot.order, snapshot.config]);
 }
 
-export function project(snapshot: Snapshot, catalog?:Catalog): Graph {
+export function project(snapshot: Snapshot, catalog?:Catalog, measured:Record<string,{width:number;height:number}>={}): Graph {
   const { config, order, ids, positions } = snapshot;
   const graph: Graph = { nodes: [], edges: [], problems: [] };
   const producers = new Map<string, { node: string; handle: string; rank: number }>();
@@ -53,10 +53,11 @@ export function project(snapshot: Snapshot, catalog?:Catalog): Graph {
   let rank = 0;
   order.forEach((stage, column) => {
     const layers = config.pipeline.stages[stage];
-    graph.nodes.push({ id: `stage:${stage}`, type: "card", position: {x: 350 + column * 330, y: 40},
+    const stageNode:CardNode={ id: `stage:${stage}`, type: "card", position: positions[`stage:${stage}`] ?? {x: 350 + column * 330, y: 40},
       data: {kind: "stage", title: stage, inputs: [], outputs: [], stage, rank: -1,
-        summary: `Stage ${column + 1} · ${layers.length} layers`}, draggable: false,
-      style:{width:290,height:Math.max(130,160 + layers.length * 290)},zIndex:-1 });
+        summary: `Stage ${column + 1} · ${layers.length} layers`,executionPosition:String(column+1),empty:!layers.length,
+        skipped:(config.data.skip_pipeline_stages as string[] | undefined)?.includes(stage)},dragHandle:".stage-header",zIndex:-1 };
+    graph.nodes.push(stageNode);
     layers.forEach((layer, index) => {
       const inputs = Array.isArray(layer.keys_in) ? layer.keys_in.map(key => ({...port(key),required:true})) :
         Object.entries(layer.keys_in).map(([alias, key]) => ({...port(key, "x", "keys_in", alias),required:true}));
@@ -70,13 +71,23 @@ export function project(snapshot: Snapshot, catalog?:Catalog): Graph {
       if ((config.data.skip_pipeline_stages as string[] | undefined)?.includes(stage)) {
         graph.problems.push(`${stage}: skipped by data.skip_pipeline_stages; retained visually, not executable.`);
         graph.nodes.push({ id: ids[stage][index], type: "card", parentId:`stage:${stage}`, position: {x: 20, y: 130 + index * 290},
-          data: {kind: "layer", title: layer.component.type, summary: "Skipped stage", inputs: [], outputs: [], stage, index, rank: rank++} });
+          data: {kind: "layer", title: layer.component.type, summary: "Skipped stage", inputs: [], outputs: [], stage, index, executionPosition:`${column+1}.${index+1}`,rank: rank++} });
         return;
       }
       add({ id: ids[stage][index], type: "card", parentId:`stage:${stage}`, position: {x: 20, y: 130 + index * 290},
         data: {kind: "layer", title: layer.component.type, summary: `v${layer.component.version} · ${Object.entries(layer.component.params).slice(0,2).map(([key,value]) => `${key}: ${JSON.stringify(value)}`).join(" · ")}`,
-          inputs, outputs, stage, index, rank: rank++} });
+          inputs, outputs, stage, index, executionPosition:`${column+1}.${index+1}`,rank: rank++} });
     });
+    const children=graph.nodes.filter(node=>node.parentId===stageNode.id);
+    let width=290,height=layers.length ? 160 : 230;
+    for(const child of children){
+      const point=positions[child.id] ?? child.position;
+      child.position={x:Math.max(20,point.x),y:Math.max(130,point.y)};
+      const size=measured[child.id] ?? {width:250,height:120+(child.data.inputs.length+child.data.outputs.length)*34};
+      width=Math.max(width,child.position.x+size.width+20);height=Math.max(height,child.position.y+size.height+20);
+    }
+    stageNode.data.minWidth=width;stageNode.data.minHeight=height;
+    stageNode.style={width:Math.max(width,snapshot.sizes?.[stageNode.id]?.width ?? 290),height:Math.max(height,snapshot.sizes?.[stageNode.id]?.height ?? (160+layers.length*290))};
   });
   const right = 350 + order.length * 330;
   add({ id: "objectives", type: "card", position: {x: right, y: 80}, data: {
@@ -199,4 +210,46 @@ export function moveLayer(snapshot: Snapshot, stage: string, index: number, delt
     [values[index], values[target]] = [values[target], values[index]];
   }
   return next;
+}
+
+// Explicit list slots, never spatial sorting. Keep identical layers' IDs intact.
+export function transferLayer(snapshot:Snapshot,id:string,stage:string,slot:number,position?:{x:number;y:number}):Snapshot {
+  const source=snapshot.order.find(name=>snapshot.ids[name].includes(id));
+  if(!source || !snapshot.order.includes(stage) || !Number.isInteger(slot) || slot<0 || slot>snapshot.ids[stage].length)throw new Error("Choose an existing stage and insertion slot.");
+  const index=snapshot.ids[source].indexOf(id);const target=slot-(source===stage && index<slot ? 1 : 0);
+  if(source===stage && target===index && !position)return snapshot;
+  const next=structuredClone(snapshot);
+  for(const node of project(snapshot).nodes)next.positions[node.id] ??= node.position;
+  const [layer]=next.config.pipeline.stages[source].splice(index,1);next.ids[source].splice(index,1);
+  next.config.pipeline.stages[stage].splice(target,0,layer);next.ids[stage].splice(target,0,id);
+  if(position)next.positions[id]={x:Math.max(20,position.x),y:Math.max(130,position.y)};
+  else if(source!==stage){
+    const graph=project(snapshot);const parent=graph.nodes.find(node=>node.id===`stage:${stage}`)!;
+    next.positions[id]={x:20,y:Math.max(130,parent.data.minHeight!-20)};
+  }
+  next.selected=id;return next;
+}
+
+export function reorderStage(snapshot:Snapshot,stage:string,slot:number):Snapshot {
+  const index=snapshot.order.indexOf(stage);
+  if(index<0 || !Number.isInteger(slot) || slot<0 || slot>snapshot.order.length)throw new Error("Choose an existing stage and insertion slot.");
+  if(slot-(index<slot ? 1 : 0)===index)return snapshot;
+  const next=structuredClone(snapshot);for(const node of project(snapshot).nodes)next.positions[node.id] ??= node.position;
+  next.order.splice(index,1);next.order.splice(slot-(index<slot ? 1 : 0),0,stage);return next;
+}
+
+export function addStage(snapshot:Snapshot,name:string,after?:string,position?:{x:number;y:number}):Snapshot {
+  name=name.trim();if(!name || snapshot.order.includes(name))throw new Error("Use a unique, non-empty stage name.");
+  const next=structuredClone(snapshot);const index=after ? next.order.indexOf(after) : -1;
+  const nodes=project(snapshot).nodes;
+  for(const node of nodes)next.positions[node.id] ??= node.position;
+  next.order.splice(index<0 ? next.order.length : index+1,0,name);
+  next.config.pipeline.stages={...next.config.pipeline.stages,[name]:[]};next.ids={...next.ids,[name]:[]};
+  next.positions[`stage:${name}`]=position ?? {x:Math.max(...nodes.map(node=>node.position.x+Number(node.style?.width ?? 250)))+40,y:40};
+  next.selected=`stage:${name}`;return next;
+}
+
+export function placeNode(snapshot:Snapshot,id:string,position:{x:number;y:number}):Snapshot {
+  const next=structuredClone(snapshot);const layer=snapshot.order.some(stage=>snapshot.ids[stage].includes(id));
+  next.positions[id]=layer ? {x:Math.max(20,position.x),y:Math.max(130,position.y)} : position;return next;
 }

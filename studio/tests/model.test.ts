@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { parseDocument } from "yaml";
-import { connect, disconnect, moveLayer, newSnapshot, project, signature, validConnection } from "../model/graph";
+import { addStage, connect, disconnect, moveLayer, newSnapshot, placeNode, project, reorderStage, signature, transferLayer, validConnection } from "../model/graph";
 import {category} from "../model/catalog";
 import { createDraftStore, layoutSignature, yamlText } from "../model/draft";
 import type { Catalog, Config, Document, Layer } from "../model/types";
@@ -65,7 +65,7 @@ describe("ordered config projection",()=>{
     const placed=structuredClone(source);placed.positions[source.ids["10"][0]]={x:9,y:10};store.getState().change(placed);
     expect(signature(placed)).toBe(store.getState().saved);
     expect(layoutSignature(placed)).not.toBe(store.getState().savedLayout);
-    expect(store.getState().past).toHaveLength(0);
+    expect(store.getState().past).toHaveLength(1);
     const edited=structuredClone(placed);edited.config.name="later edit";store.getState().change(edited);
     store.getState().markSaved(document,source);store.getState().markLayoutSaved(source);
     expect(signature(store.getState().draft!)).not.toBe(store.getState().saved);
@@ -132,5 +132,62 @@ describe("ordered config projection",()=>{
     expect(snapshot.config.training.loss_keys).toEqual({loss:1});
     snapshot=connect(snapshot,{source:snapshot.ids["2"][0],sourceHandle:"output:loss",target:"objectives",targetHandle:"metric_keys:$new"},catalog);
     expect(snapshot.config.training.metric_keys).toEqual(["loss"]);
+  });
+  test("stage positions/sizes carry children, contain measured bounds and remain layout-only",()=>{
+    const snapshot=newSnapshot(fixture(),["10","2"]);const id=snapshot.ids["10"][0];
+    const moved=placeNode(snapshot,"stage:10",{x:1000,y:400});moved.sizes={"stage:10":{width:800,height:900}};
+    const graph=project(moved);const stage=graph.nodes.find(node=>node.id==="stage:10")!;
+    expect(stage.position).toEqual({x:1000,y:400});expect(stage.dragHandle).toBe(".stage-header");
+    expect(graph.nodes.find(node=>node.id===id)?.parentId).toBe("stage:10");
+    expect(graph.nodes.find(node=>node.id===id)?.data.executionPosition).toBe("1.1");
+    expect(stage.style).toEqual({width:800,height:900});expect(signature(moved)).toBe(signature(snapshot));
+    const placed=placeNode(moved,id,{x:700,y:850});const contained=project(placed,undefined,{[id]:{width:250,height:350}}).nodes.find(node=>node.id===stage.id)!;
+    expect(contained.style).toEqual({width:970,height:1220});
+    expect(placeNode(placed,id,{x:-50,y:10}).positions[id]).toEqual({x:20,y:130});
+  });
+  test("explicit stage slots retain integer-name order, creation defaults and YAML fidelity",()=>{
+    const snapshot=newSnapshot(fixture(),["10","2"]);const position=project(snapshot).nodes.find(node=>node.id==="stage:10")!.position;
+    const moved=reorderStage(snapshot,"10",2);expect(moved.order).toEqual(["2","10"]);
+    expect(project(moved).nodes.find(node=>node.id==="stage:10")!.position).toEqual(position);
+    expect(yamlText(moved).indexOf('"2":')).toBeLessThan(yamlText(moved).indexOf('"10":'));
+    const added=addStage(snapshot,"Empty","10",{x:999,y:888});expect(added.order).toEqual(["10","Empty","2"]);
+    expect(added.selected).toBe("stage:Empty");expect(project(added).nodes.find(node=>node.id==="stage:Empty")?.data.empty).toBe(true);
+    expect(addStage(snapshot,"Last").order).toEqual(["10","2","Last"]);
+    expect(()=>addStage(snapshot," 10 ")).toThrow("unique");expect(()=>addStage(snapshot," ")).toThrow("non-empty");
+    expect(()=>reorderStage(snapshot,"10",-1)).toThrow("slot");
+  });
+  test("transfers retain duplicate-layer identity/routing/selection and one transaction undo/redo",()=>{
+    const config=fixture();config.pipeline.stages["10"].push(structuredClone(config.pipeline.stages["10"][0]));
+    config.data.skip_pipeline_stages=["2"];
+    const store=createDraftStore();const document:Document={data:config,stage_order:["10","2"],yaml:"",semantic_revision:"source"};store.getState().load(document);
+    const source=store.getState().draft!;const [first,second]=source.ids["10"];store.getState().select(second);
+    const moved=transferLayer(store.getState().draft!,second,"2",0,{x:40,y:200});store.getState().change(moved);
+    expect(moved.ids["10"]).toEqual([first]);expect(moved.ids["2"][0]).toBe(second);expect(moved.selected).toBe(second);
+    expect(moved.config.pipeline.stages["2"][0]).toEqual(config.pipeline.stages["10"][1]);expect(moved.config.logging).toEqual(config.logging);
+    expect(moved.positions[second]).toEqual({x:40,y:200});expect(moved.config.data.skip_pipeline_stages).toEqual(["2"]);
+    expect(project(moved).nodes.find(node=>node.id===second)?.parentId).toBe("stage:2");expect(project(moved).nodes.find(node=>node.id===second)?.data.summary).toBe("Skipped stage");
+    expect(store.getState().past).toHaveLength(1);store.getState().undo();expect(store.getState().draft?.ids["10"]).toEqual([first,second]);expect(store.getState().draft?.selected).toBe(second);
+    store.getState().redo();expect(store.getState().draft).toEqual(moved);expect(signature(moved)).not.toBe(signature(source));
+    expect(()=>transferLayer(moved,second,"missing",0)).toThrow("existing stage");expect(()=>transferLayer(moved,second,"2",20)).toThrow("slot");
+    const noChange=transferLayer(moved,second,"2",1);store.getState().change(noChange);expect(store.getState().past).toHaveLength(1);
+  });
+  test("sequence edits reproject overwritten/alias/metadata dependencies without repairing keys",()=>{
+    const snapshot=newSnapshot(fixture(),["10","2"]);const target=snapshot.ids["2"][0];
+    const moved=transferLayer(snapshot,target,"10",0);const graph=project(moved);
+    expect(graph.edges.find(edge=>edge.target===target && edge.targetHandle==="keys_in:input")?.source).toBe("data");
+    expect(graph.edges.find(edge=>edge.target===target && edge.targetHandle==="meta_in:size")).toBeUndefined();
+    expect(graph.edges.find(edge=>edge.target===target && edge.targetHandle==="label_key:labels")?.source).toBe("data");
+    expect(graph.problems.join()).toContain("meta:latent_width has no preceding");expect(moved.config.pipeline.stages["10"][0]).toEqual(snapshot.config.pipeline.stages["2"][0]);
+    expect(graph.problems.join()).toContain("resolves from dataset columns");expect(moved.config.training).toEqual(snapshot.config.training);
+  });
+  test("sizes restore separately, older/invalid sizes fall back, layout undo retains build signature",()=>{
+    const store=createDraftStore();const document:Document={data:fixture(),stage_order:["10","2"],yaml:"",semantic_revision:"source"};store.getState().load(document);
+    const source=store.getState().draft!;const moved=placeNode(source,"stage:10",{x:900,y:100});moved.sizes={"stage:10":{width:800,height:900}};
+    store.getState().change(moved);expect(store.getState().past).toHaveLength(1);store.getState().undo();expect(store.getState().draft?.sizes).toEqual({});store.getState().redo();expect(store.getState().draft).toEqual(moved);
+    expect(signature(moved)).toBe(signature(source));expect(yamlText(moved)).not.toContain("900");
+    store.getState().load(document,moved);expect(store.getState().draft?.sizes).toEqual(moved.sizes);
+    store.getState().load(document,{ids:moved.ids,positions:moved.positions});expect(store.getState().draft?.sizes).toEqual({});
+    store.getState().load(document,{ids:moved.ids,positions:moved.positions,sizes:{"stage:10":{width:NaN,height:-1}}});expect(store.getState().draft?.sizes).toEqual({});
+    store.getState().block(true);store.getState().change(moved);expect(store.getState().past).toHaveLength(0);
   });
 });
