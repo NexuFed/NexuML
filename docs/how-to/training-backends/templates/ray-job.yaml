@@ -1,0 +1,53 @@
+apiVersion: ray.io/v1
+kind: RayJob
+metadata: {}
+spec:
+  entrypoint: "python -m nexuml.execution.worker --config {{NEXUML_CONFIG}}"
+  shutdownAfterJobFinishes: true
+  rayClusterSpec:
+    rayVersion: "2.58.0"
+    headGroupSpec:
+      rayStartParams: {dashboard-host: "0.0.0.0"}
+      template:
+        spec:
+          serviceAccountName: nexuml-training
+          containers:
+            - name: ray-head
+              image: your-registry/nexuml-ray:reviewed
+              resources:
+                requests: {cpu: "1", memory: 2Gi}
+              volumeMounts: [{name: shared, mountPath: /shared}]
+          volumes:
+            - name: shared
+              persistentVolumeClaim: {claimName: nexuml-shared}
+    workerGroupSpecs:
+      - groupName: training
+        replicas: 2
+        minReplicas: 2
+        maxReplicas: 2
+        rayStartParams: {}
+        template:
+          spec:
+            serviceAccountName: nexuml-training
+            containers:
+              - name: ray-worker
+                image: your-registry/nexuml-ray:reviewed
+                resources:
+                  requests: {cpu: "2", memory: 2Gi}
+                volumeMounts: [{name: shared, mountPath: /shared}]
+            volumes:
+              - name: shared
+                persistentVolumeClaim: {claimName: nexuml-shared}
+  submitterPodTemplate:
+    spec:
+      restartPolicy: Never
+      serviceAccountName: nexuml-training
+      containers:
+        - name: ray-job-submitter
+          image: your-registry/nexuml-ray:reviewed
+          resources:
+            requests: {cpu: "1", memory: 1Gi}
+          volumeMounts: [{name: shared, mountPath: /shared}]
+      volumes:
+        - name: shared
+          persistentVolumeClaim: {claimName: nexuml-shared}

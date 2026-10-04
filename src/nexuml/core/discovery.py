@@ -23,6 +23,7 @@ from nexuml.core.components import (
     ComponentDefinition,
     DataSourceDefinition,
     EvalAlgorithmDefinition,
+    ExecutionBackendDefinition,
     LayerDefinition,
     LoaderBackendDefinition,
 )
@@ -215,6 +216,22 @@ def loader_backend(
         key,
         kind="loader_backend",
         expected_type=LoaderBackendDefinition,
+        version=version,
+    )
+
+
+def execution_backend(
+    key: str, *, version: str = "1"
+) -> Callable[[type[DefinitionT]], type[DefinitionT]]:
+    """Register installation-owned execution settings and behavior.
+
+    Returns:
+        Definition class decorator.
+    """
+    return _component_decorator(
+        key,
+        kind="execution_backend",
+        expected_type=ExecutionBackendDefinition,
         version=version,
     )
 

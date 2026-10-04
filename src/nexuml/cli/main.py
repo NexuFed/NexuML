@@ -249,50 +249,15 @@ def train_cmd(
         except Exception as exc:
             console.print(f"[yellow]Warning: diagram export failed: {exc}[/yellow]")
 
-    if scenario is not None:
-        from nexuml.core.types import RayExecutionSpec
+    from nexuml.execution import preflight, run
 
-        if isinstance(scenario.execution, RayExecutionSpec):
-            if trainer_checkpoint is not None:
-                console.print(
-                    "[red]--trainer-checkpoint is a local Lightning option; "
-                    "Ray recovery is managed by Ray RunConfig.[/red]"
-                )
-                raise typer.Exit(1)
-            from nexuml.execution import run_ray
+    if trainer_checkpoint is not None:
+        from nexuml.training.lightning import load_scenario_from_trainer_checkpoint
 
-            ray_result = run_ray(scenario)
-            if loaded_file is not None and artifact_dir is not None:
-                from nexuml.core.provenance import snapshot_scenario_file_run
-
-                snapshot_scenario_file_run(
-                    loaded_file,
-                    artifact_dir,
-                    command="train",
-                    command_args={
-                        "scenario_file": str(scenario_file),
-                        "max_epochs": max_epochs,
-                        "execution": "ray",
-                    },
-                )
-            console.print("[green]Ray training complete![/green]")
-            metrics = getattr(ray_result, "metrics", None)
-            if metrics:
-                console.print(f"  Metrics: {metrics}")
-            if scenario.exports:
-                console.print(
-                    "[yellow]Scenario model exports are currently local-only; "
-                    "use Ray run/checkpoint storage for distributed runs.[/yellow]"
-                )
-            return
-
-    from nexuml.training.lightning import NexuSession
-
-    session = NexuSession(
-        scenario=scenario,
-        trainer_checkpoint=trainer_checkpoint,
-    )
-    result = session.run()
+        if scenario is not None:
+            preflight(scenario, trainer_checkpoint=trainer_checkpoint)
+        scenario = load_scenario_from_trainer_checkpoint(trainer_checkpoint, fallback=scenario)
+    result = run(scenario, trainer_checkpoint=trainer_checkpoint)
     if loaded_file is not None and artifact_dir is not None:
         from nexuml.core.provenance import snapshot_scenario_file_run
 
@@ -307,25 +272,16 @@ def train_cmd(
             },
         )
 
-    if scenario is not None and scenario.exports:
-        from nexuml.core.export import export_package
-
-        for spec in scenario.exports:
-            if spec.kind == "train_package":
-                export_path = Path(spec.output) if spec.output else Path("exported_model")
-                export_package(
-                    result.pipeline,
-                    export_path,
-                    lightning_module=result.lightning_module,
-                    trainer=result.trainer,
-                )
-                console.print(f"[green]Exported train package to {export_path}[/green]")
-            else:
-                console.print(f"[yellow]Skipping unsupported export kind: {spec.kind}[/yellow]")
-
-    console.print("[green]Training complete![/green]")
-    if result.test_results:
+    status = result.get("status", "unknown") if isinstance(result, dict) else "succeeded"
+    console.print(f"Execution finished: {status}")
+    if isinstance(result, dict):
+        console.print_json(data=result)
+        if status != "succeeded":
+            raise typer.Exit(1)
+    elif getattr(result, "test_results", None):
         console.print(f"  Test results: {result.test_results}")
+    elif getattr(result, "metrics", None):
+        console.print(f"  Metrics: {result.metrics}")
 
 
 @app.command(name="export-dataset", help="Export a dataset view from a scenario or config")
@@ -793,6 +749,51 @@ def backend_list(
     for row in sorted(rows):
         table.add_row(*row)
     console.print(table)
+
+
+@backend_app.command(name="catalog")
+def execution_catalog():
+    """List registered execution schemas and installation support without probing targets."""
+    from nexuml.execution import catalog
+
+    console.print_json(data=catalog())
+
+
+@backend_app.command(name="discover")
+def execution_discover(
+    config: Path = typer.Option(..., "--config", "-c"),
+    timeout: float = typer.Option(10, min=0.1, max=60),
+):
+    """Read the configured target's sourced capacity, without starting training."""
+    from nexuml.execution import discover
+
+    scenario = _load_scenario(None, config)
+    console.print_json(
+        data=discover(scenario.execution, scenario=scenario, timeout=timeout).model_dump(
+            mode="json"
+        )
+    )
+
+
+@backend_app.command(name="preflight")
+def execution_preflight(config: Path = typer.Option(..., "--config", "-c")):
+    """Validate the exact configured execution selection without submitting a job."""
+    from nexuml.execution import preflight
+
+    review = preflight(_load_scenario(None, config))
+    console.print_json(data=review.get("summary", review) or {"validated": True})
+
+
+@backend_app.command(name="inspect")
+def execution_inspect(reference: Path = typer.Argument(...)):
+    """Inspect a recorded native reference, refusing a same-named UID replacement."""
+    import json
+    from nexuml.execution import inspect
+    from nexuml.execution.schemas import NativeReference
+
+    console.print_json(
+        data=inspect(NativeReference.model_validate(json.loads(reference.read_text())))
+    )
 
 
 library_app = typer.Typer(help="Manage local library roots")

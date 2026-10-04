@@ -100,6 +100,10 @@ def _restore_value(value: Any, annotation: Any) -> Any:
     component_type = _model_subclass(annotation, ComponentDefinition)
     if component_type is not None and isinstance(value, Mapping):
         definition_type = cast(type[ComponentDefinition], component_type)
+        if definition_type.kind == "execution_backend" and "kind" in value:
+            raise ValueError(
+                "execution requires type/version/params; replace legacy execution.kind."
+            )
         try:
             restored = restore_component(kind=definition_type.kind, value=value)
         except ValidationError as exc:

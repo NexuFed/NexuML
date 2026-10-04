@@ -42,19 +42,23 @@ def call_worker(action: str, payload: dict, directory: Path) -> dict:
                 422, "validation", "Configuration must contain finite JSON values."
             ) from exc
         try:
-            completed = subprocess.run(
+            process = subprocess.Popen(
                 [sys.executable, "-m", "nexuml.api.worker", action, str(request), str(response)],
                 cwd=directory,
                 env=worker_environment(),
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
-                timeout=60,
+                start_new_session=os.name != "nt",
             )
+            process.wait(timeout=70 if action == "cancel_execution" else 60)
         except subprocess.TimeoutExpired as exc:
+            from nexuml.api.operations import stop_process_tree
+
+            stop_process_tree(process)
             raise ApiError(
                 408, "timeout", "NexuML discovery/configuration call timed out."
             ) from exc
-        if completed.returncode != 0 or not response.is_file():
+        if process.returncode != 0 or not response.is_file():
             raise ApiError(500, "runtime_error", "Selected NexuML worker could not initialize.")
         result = json.loads(response.read_text(encoding="utf-8"))
         if "error" in result:

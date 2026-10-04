@@ -68,7 +68,7 @@ def test_built_wheel_startup(tmp_path):
                     time.sleep(0.1)
             assert identity["python_executable"] == sys.executable
             assert identity["working_directory"] == str(working.resolve())
-            assert identity["interface_version"] == 1
+            assert identity["interface_version"] == 2
             check = subprocess.run(
                 [
                     sys.executable,

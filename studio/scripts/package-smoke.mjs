@@ -77,7 +77,7 @@ class Runtime(PipelineLayer):
   await wait(origin,launch);
   const runtime=await (await wait(`${origin}/api/runtime`,launch,{Host:`127.0.0.1:${port}`})).json();
   const identity=await (await fetch(`${runtime.api}/api/v1/runtime`,{headers:{Authorization:`Bearer ${runtime.token}`,Origin:origin}})).json();
-  assert.equal(identity.working_directory,work);assert.equal(identity.interface_version,1);
+  assert.equal(identity.working_directory,work);assert.equal(identity.interface_version,2);
   assert(!output.includes(runtime.token),"Token leaked to output");
   const library=await (await fetch(`${runtime.api}/api/v1/registry`,{headers:{Authorization:`Bearer ${runtime.token}`,Origin:origin}})).json();
   assert(library.scenarios.some(s=>s.name==="synthetic-linear-ae-reconstruction"));

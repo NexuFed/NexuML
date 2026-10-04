@@ -109,6 +109,7 @@ nav:
     - Execution:
       - Overview: how-to/training-backends/index.md
       - Ray: how-to/training-backends/ray.md
+      - Native jobs and capacity: how-to/training-backends/jobs.md
     - Extending NexuML:
       - Custom library: how-to/custom-library.md
       - Add a custom layer: how-to/custom-layer.md

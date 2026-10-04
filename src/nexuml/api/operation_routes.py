@@ -28,6 +28,13 @@ class TrainInput(ConfigInput):
     """Freeze a scenario, or use existing Trainer checkpoint resume semantics."""
 
     trainer_checkpoint: str | None = None
+    template_revision: str | None = None
+
+
+class DiscoveryInput(ConfigInput):
+    """Explicit selected-scope discovery outside the resource-consuming slot."""
+
+    timeout: float = Field(default=10, gt=0, le=30)
 
 
 class ExportInput(BaseModel):
@@ -77,7 +84,15 @@ def operation_router(operations: Operations) -> APIRouter:
 
     @router.post("/train/prepare")
     def prepare_train(body: TrainInput):
-        return call_worker("prepare_train", checked_payload(body), settings.directory)
+        checked = call_worker("prepare_train", checked_payload(body), settings.directory)
+        checked.pop(
+            "launch_plan", None
+        )  # Raw infrastructure content never crosses the browser boundary.
+        return checked
+
+    @router.post("/execution/discover")
+    def discover(body: DiscoveryInput):
+        return call_worker("discover_execution", checked_payload(body), settings.directory)
 
     @router.get("/operations")
     def list_operations():
@@ -95,6 +110,10 @@ def operation_router(operations: Operations) -> APIRouter:
     @router.post("/operations/{identity}/cancel")
     def cancel(identity: str):
         return operations.cancel(identity)
+
+    @router.post("/operations/{identity}/inspect")
+    def inspect(identity: str):
+        return operations.inspect(identity)
 
     @router.get("/operations/{identity}/artifacts/{index}")
     def download(identity: str, index: int):

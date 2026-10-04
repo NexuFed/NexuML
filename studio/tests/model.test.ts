@@ -11,7 +11,7 @@ function fixture():Config {
     pipeline:{stages:{"10":[{...layer("first",["features"],["features"]),meta_out:{width:"latent_width"}}],
       "2":[{...layer("second",[],["loss"]),keys_in:{input:"features"},label_key:"labels",meta_in:{size:"latent_width"}}]}},
     training:{loss_keys:{loss:1},metric_keys:[]},evaluation:{algorithms:[{algorithm:{type:"evaluation",version:"1",params:{}},feature_key:"features",label_key:"labels",axis_keys:[{key:"domain",source:"metadata"}]}]},
-    logging:{custom:"untouched"},execution:{kind:"local"}};
+    logging:{custom:"untouched"},execution:{type:"local",version:"1",params:{}}};
 }
 
 describe("ordered config projection",()=>{

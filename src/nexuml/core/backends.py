@@ -16,10 +16,11 @@ def backend_rows() -> list[tuple[str, str, str]]:
         rows.append(("data-export", name, f"{backend.__module__}.{backend.__name__}"))
     for entry in get_component_registry().entries(kind="loader_backend"):
         rows.append(("data-loader", entry.name, entry.import_target))
+    for entry in get_component_registry().entries(kind="execution_backend"):
+        rows.append(("execution", entry.name, entry.import_target))
     rows.extend(
         [
             ("training", "lightning", "nexuml.training.lightning.NexuSession"),
-            ("training", "ray", "nexuml.execution.ray.run_ray"),
             ("tracking", "tensorboard", "nexuml.tracking.logger"),
             ("tracking", "dvclive", "nexuml.tracking.logger"),
             ("tracking", "mlflow", "nexuml.tracking.logger"),

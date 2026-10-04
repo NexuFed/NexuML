@@ -110,9 +110,16 @@ after confirming their services have stopped. Training records remain under Nexu
    errors without a field address remain linked to their frozen source, not guessed draft fields.
    Failed operations offer **Open frozen settings as draft** to edit their actual launch settings,
    including after a reload; unsaved draft replacement requires confirmation and never changes the run.
-6. Run reviews the frozen source, settings and output references. Optional local Trainer
-   resume reviews the checkpoint-derived scenario (trusted Python input). Confirm once;
-   later draft edits do not change this run. One resource-consuming operation is allowed.
+6. **Run…** stages backend/target/context/namespace/template/resources from the selected
+   installation's schemas, including contributed backends. Refresh capacity is read-only;
+   sourced node/resource/quota snapshots show age, partial/unknown information and observed
+   zero separately. Capacity is advisory, not reserved; restricted node reads do not mean
+   create permission is denied. **Review selection** checks semantics/access/admission and
+   captures exact settings; **Run on …** confirms once. Changes invalidate review, template
+   changes require renewed review, and Cancel discards staged edits. Accepted execution
+   edits form one undoable ordinary draft edit without saving the file automatically.
+   Optional local Trainer resume reviews the checkpoint-derived scenario (trusted Python
+   input). Later draft edits do not change the run. One resource-consuming operation is allowed.
 7. Execution shows native phase/epoch/batch progress, real scalar curves, readable results,
    process logs and reconnect state. Preparation/downloads without counters use indeterminate
    activity; carriage-return and supported ANSI progress updates overwrite terminal lines.
@@ -130,13 +137,20 @@ after confirming their services have stopped. Training records remain under Nexu
    layers: the CIFAR ClassificationMetrics layer computes accuracy/F1 in validation/test,
    not training. Scalar evaluator results can also appear when evaluation finishes.
    Charts reflect the observed run's frozen configuration, not current draft settings.
-8. Stop is available for owned local processes, not Ray workers. It confirms tree exit,
+8. Stop is available for owned local processes and verified Job/PyTorchJob identities, not
+   direct RayCluster or RayJob work. Native Stop confirms UID-bound foreground deletion;
+   a local driver exit is not worker cancellation. Local Stop confirms tree exit,
    not a new checkpoint. Artifacts downloads use authorized paths. Export requires a
    completed local source and an actual Trainer checkpoint, not random placeholder weights.
 
 Ray delegates to existing NexuML guards/cluster connection and has driver logs/final
-results only. No remote-stop, automatic recovery, hosted permissions/collaboration,
-browser ONNX training or Kubernetes provisioning is implied.
+results only. Native jobs display actual pending/terminal state and available bounded
+log tails, without fake scalar metrics/progress. External artifact URIs are references,
+not authorized local downloads. API shutdown/restart leaves unverified remote work
+ownership-unknown; **Inspect native reference** never resubmits it. Interface major 2
+requires matching Studio/Python versions. See the Python docs' native-job template/handoff
+guide before an operator-authorized cluster launch; no cluster smoke coverage is implied.
+No automatic recovery, hosted collaboration, browser training or provisioning is added.
 
 ## Troubleshooting
 

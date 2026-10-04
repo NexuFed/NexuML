@@ -107,7 +107,9 @@ test("real CPU config edit/save/check/build/train/reconnect/export and corporate
   expect(await action.evaluate(element=>[getComputedStyle(element).backgroundColor,getComputedStyle(element).color])).toEqual(["rgb(24, 143, 213)","rgb(0, 0, 0)"]);
   await action.click();
   await expect(page.getByRole("dialog")).toBeVisible();
-  await page.getByRole("button",{name:"Confirm & start training",exact:true}).click();
+  await page.getByRole("button",{name:"Review selection",exact:true}).click();
+  await expect(page.getByRole("button",{name:"Run on Local",exact:true})).toBeEnabled();
+  await page.getByRole("button",{name:"Run on Local",exact:true}).click();
   await expect(page.getByLabel("Observed operation")).not.toHaveValue("");
   await page.getByRole("button",{name:"Training",exact:true}).click();
   await page.getByLabel("Batch Size",{exact:true}).fill("16");

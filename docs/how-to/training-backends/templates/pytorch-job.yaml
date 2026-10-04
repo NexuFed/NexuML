@@ -1,0 +1,57 @@
+apiVersion: kubeflow.org/v1
+kind: PyTorchJob
+metadata: {}
+spec:
+  pytorchReplicaSpecs:
+    Master:
+      replicas: 1
+      restartPolicy: Never
+      template:
+        spec:
+          serviceAccountName: nexuml-training
+          containers:
+            - name: pytorch
+              image: your-registry/nexuml-training:reviewed
+              command: [torchrun]
+              args:
+                - "--nnodes=$(WORLD_SIZE)"
+                - "--node-rank=$(RANK)"
+                - "--master-addr=$(MASTER_ADDR)"
+                - "--master-port=$(MASTER_PORT)"
+                - "--nproc-per-node=1"
+                - -m
+                - nexuml.execution.worker
+                - --config
+                - "{{NEXUML_CONFIG}}"
+              resources:
+                requests: {cpu: "1", memory: 1Gi}
+              volumeMounts: [{name: shared, mountPath: /shared}]
+          volumes:
+            - name: shared
+              persistentVolumeClaim: {claimName: nexuml-shared}
+    Worker:
+      replicas: 1
+      restartPolicy: Never
+      template:
+        spec:
+          serviceAccountName: nexuml-training
+          containers:
+            - name: pytorch
+              image: your-registry/nexuml-training:reviewed
+              command: [torchrun]
+              args:
+                - "--nnodes=$(WORLD_SIZE)"
+                - "--node-rank=$(RANK)"
+                - "--master-addr=$(MASTER_ADDR)"
+                - "--master-port=$(MASTER_PORT)"
+                - "--nproc-per-node=1"
+                - -m
+                - nexuml.execution.worker
+                - --config
+                - "{{NEXUML_CONFIG}}"
+              resources:
+                requests: {cpu: "1", memory: 1Gi}
+              volumeMounts: [{name: shared, mountPath: /shared}]
+          volumes:
+            - name: shared
+              persistentVolumeClaim: {claimName: nexuml-shared}

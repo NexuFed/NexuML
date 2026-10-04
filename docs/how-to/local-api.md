@@ -53,8 +53,10 @@ import FastAPI.
 - The server binds only to `127.0.0.1`. Host headers must name a loopback host.
 - `--origin` must be an exact loopback HTTP origin, without a slash/path. Only that
   browser origin is allowed. `localhost` and `127.0.0.1` are different origins.
-- REST requires `Authorization: Bearer <token>`. Optional `X-NexuML-Interface: 1`
+- REST requires `Authorization: Bearer <token>`. Optional `X-NexuML-Interface: 2`
   detects a mismatched client. Runtime identity is at `GET /api/v1/runtime`.
+  Interface major **2** requires matching Studio/Python versions; explicit old headers
+  fail with 409. The existing `/api/v1` transport prefix is unchanged.
 - WebSocket upgrades require the exact allowed Origin. The first text frame must
   be `{"token":"<token>"}` within five seconds and at most 4096 bytes. No data is
   sent before authentication; invalid access closes with policy code 1008.
@@ -124,7 +126,7 @@ not arbitrary HTTP file browsing. Dataset/log path policies remain NexuML's.
 (seconds; default 120). It **executes** the existing compiler, constructors and dummy
 forwards. Successful results contain final key shapes, not fabricated per-layer shapes.
 `POST /api/v1/train` uses the existing local `NexuSession.run()` lifecycle or existing
-Ray entrypoint. Both return HTTP 202 with an operation `id`. One build/train/export
+Ray entrypoint or a registered native job adapter. All return HTTP 202 with an operation `id`. One build/train/export
 operation may be active; a second receives HTTP 409 `busy`. There is no queue.
 
 Local resume accepts `trainer_checkpoint`, an authorized trusted `.ckpt` file. Checkpoint
@@ -138,6 +140,8 @@ Ray Trainer checkpoint resume is rejected; Ray retains its own recovery semantic
 | `GET /api/v1/operations/{id}` | Actual state, frozen source revision, results, artifact references |
 | `GET /api/v1/operations/{id}/config` | Frozen ordinary launch configuration |
 | `POST /api/v1/operations/{id}/cancel` | Confirm stop of owned local process tree; no promised checkpoint |
+| `POST /api/v1/operations/{id}/inspect` | Explicitly inspect a recorded UID-bearing native reference; never resubmit |
+| `POST /api/v1/execution/discover` | Bounded read-only discovery for the supplied config/scope, outside the training slot |
 | `GET /api/v1/operations/{id}/artifacts/{index}` | Existing authorized artifact download |
 | `POST /api/v1/export` | `source_id`, `kind`, `output`; requires completed local training and its actual checkpoint |
 
@@ -188,3 +192,18 @@ They are sidecars for existing invocations, not a second experiment/project data
 API shutdown stops confirmed owned local work. It cannot claim Ray workers stopped
 when the driver exits. After a restart, terminal records remain inspectable; prior active
 records become `ownership_unknown`. No PID-based adoption or automatic resume occurs.
+
+The registry includes Python-owned `execution_backends` with registered identities,
+schemas, availability diagnostics, capabilities and presentation hints. Execution uses
+`type/version/params`, not the removed `execution.kind` union. `/train/prepare` returns
+safe native review summaries; `/train` rechecks template content revision and captures
+private exact manifest/worker YAML. Discovery/template/handoff filesystem inputs must
+stay inside the selected working directory; target URLs cannot embed credentials.
+Kubeconfig, auth helpers and cluster credentials stay in the selected Python runtime.
+
+Native jobs report submitted/pending/running and actual terminal states, not submitter
+success or fabricated percentages. Only Job/PyTorchJob advertise UID-verified foreground
+cancellation; RayCluster/RayJob Stop remains unsupported. Shutdown detaches native
+observation without claiming remote cancellation. Log tails are bounded; metrics and
+external artifacts remain unavailable/reference-only unless actually supplied. See
+[native job limits](training-backends/jobs.md) before an explicitly authorized launch.

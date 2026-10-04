@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import hashlib
-import importlib.util
 import json
 import sys
 from pathlib import Path
@@ -55,6 +54,7 @@ def document(config: ResolvedConfig) -> dict:
     text = config.to_yaml()
     return {
         "data": lower_model(config),
+        "execution_capabilities": dict(config.execution.capabilities),
         "stage_order": list(config.pipeline.stages),
         "yaml": text,
         "semantic_revision": hashlib.sha256(text.encode()).hexdigest(),
@@ -71,6 +71,7 @@ def catalog() -> dict:
     from nexuml.core.discovery import LibraryConfig, discover_library_packages
     from nexuml.core.registry import get_component_registry
     from nexuml.core.scenario_registry import get_scenario_registry
+    from nexuml.execution import catalog as execution_catalog
 
     packages = discover_library_packages()
     components = get_component_registry()
@@ -109,13 +110,10 @@ def catalog() -> dict:
             {"category": category, "name": name, "import_target": target}
             for category, name, target in backend_rows()
         ],
+        "execution_backends": execution_catalog(),
         "backends": {
-            "local": {"available": True, "cancellation": True},
-            "ray": {
-                "available": importlib.util.find_spec("ray") is not None,
-                "cancellation": False,
-                "telemetry": "driver logs and final results",
-            },
+            row["type"]: {"available": row["available"], **row["capabilities"]}
+            for row in execution_catalog()
         },
     }
 
@@ -135,9 +133,11 @@ def dispatch(action: str, payload: dict) -> dict:
         return document(configuration(payload))
     if action == "prepare_train":
         from nexuml.training.lightning import load_scenario_from_trainer_checkpoint
+        from nexuml.execution import preflight
+        from nexuml.execution.semantics import ExecutionError
 
         config = configuration(payload)
-        if config.execution.kind == "ray" and payload.get("trainer_checkpoint"):
+        if not config.execution.capabilities.get("resume") and payload.get("trainer_checkpoint"):
             raise ValueError("Trainer checkpoint resume is local-only; Ray owns its recovery.")
         if payload.get("trainer_checkpoint"):
             config = ResolvedConfig.from_scenario(
@@ -146,7 +146,57 @@ def dispatch(action: str, payload: dict) -> dict:
                     fallback=config.to_scenario(),
                 )
             )
-        return document(config)
+        result = document(config)
+        try:
+            plan = preflight(
+                config.to_scenario(),
+                trainer_checkpoint=payload.get("trainer_checkpoint"),
+                authorized_root=Path.cwd(),
+            )
+        except (ValueError, ExecutionError) as error:
+            # The definition owns validation; transport adds a navigable selection location.
+            return {
+                "error": {
+                    "status": 422,
+                    "code": "validation",
+                    "message": str(error),
+                    "fields": [
+                        {"loc": ["execution"], "message": str(error), "type": "execution_preflight"}
+                    ],
+                }
+            }
+        if plan:
+            if plan.get("resolved_execution"):
+                config = config.model_copy(
+                    update={
+                        "execution": restore_model_data(
+                            {"execution": plan["resolved_execution"]}, ResolvedConfig
+                        )["execution"]
+                    }
+                )
+                result = document(config)
+            expected = payload.get("template_revision")
+            if expected and expected != plan.get("summary", {}).get("template_revision"):
+                raise ValueError("Template changed after review; renew the launch review.")
+            result["launch_review"] = plan.get("summary", plan)
+            result["launch_plan"] = plan
+        return result
+    if action == "discover_execution":
+        from nexuml.execution import discover
+
+        config = configuration(payload)
+        return discover(
+            config.execution,
+            timeout=payload.get("timeout", 10),
+            authorized_root=Path.cwd(),
+            scenario=config.to_scenario(),
+        ).model_dump(mode="json")
+    if action in {"inspect_execution", "cancel_execution"}:
+        from nexuml.execution import inspect, cancel
+        from nexuml.execution.schemas import NativeReference
+
+        reference = NativeReference.model_validate(payload["reference"])
+        return inspect(reference) if action == "inspect_execution" else cancel(reference)
     if action == "build":
         from nexuml.core.compiler import compile
 
@@ -182,83 +232,55 @@ def execute(action: str, payload: dict) -> dict:
         ValueError: When an unsupported backend/export combination is requested.
     """
     from nexuml.api.observation import Observation
-    from nexuml.core.export import export_onnx, export_package, export_safetensors
-    from nexuml.training.lightning import NexuSession
+    from nexuml.execution import run
+    from nexuml.execution.artifacts import export_requests
 
     config = configuration(payload)
-    if config.execution.kind == "ray":
-        if action == "export" or payload.get("trainer_checkpoint"):
-            raise ValueError("Model export and Trainer checkpoint resume are local-only.")
-        from nexuml.execution import run_ray
-
-        result = run_ray(config.to_scenario())
-        return {
-            "metrics": getattr(result, "metrics", {}),
-            "artifacts": [],
-            "telemetry": "driver logs and final results; remote cancellation unsupported",
-        }
     observer = Observation(Path(payload["observations"])) if action == "train" else None
     if observer is not None:
         observer.record("progress", phase="preparation / data setup")
-    session = NexuSession(
-        config.to_scenario(),
-        trainer_checkpoint=payload.get("trainer_checkpoint"),
-        enable_progress_bar=False,
-    )
-    artifacts = []
     if action == "train":
-        # Append through the existing public Trainer seam; no new session callback API.
-        session.trainer.callbacks.append(observer)
-        result = session.run()
-        callback = session.trainer.checkpoint_callback
+        result = run(
+            config.to_scenario(),
+            trainer_checkpoint=payload.get("trainer_checkpoint"),
+            observer=observer,
+            enable_progress_bar=False,
+            authorized_root=Path.cwd(),
+            frozen_plan=payload.get("launch_plan"),
+        )
+        if isinstance(result, dict):
+            return result
+        artifacts = list(getattr(result, "artifacts", []))
+        callback = getattr(getattr(result, "trainer", None), "checkpoint_callback", None)
         for source in (
             getattr(callback, "best_model_path", ""),
             getattr(callback, "last_model_path", ""),
         ):
             if source and Path(source).is_file():
                 artifacts.append({"path": str(Path(source).resolve()), "kind": "checkpoint"})
-        requests = config.exports
-    else:
-        # Export only a confirmed completed operation's actual Trainer checkpoint.
-        session.setup()
-        result = None
-        from nexuml.core.types import ExportSpec
+        return {
+            "status": "succeeded",
+            "metrics": getattr(result, "metrics", {}),
+            "validation_results": getattr(result, "validation_results", []),
+            "test_results": getattr(result, "test_results", []),
+            "evaluation_results": getattr(result, "eval_algorithm_results", {}),
+            "artifacts": artifacts,
+        }
+    if not config.execution.capabilities.get("artifacts") or not config.execution.capabilities.get(
+        "resume"
+    ):
+        raise ValueError("Model export from a Trainer checkpoint is local-only.")
+    from nexuml.training.lightning import NexuSession
+    from nexuml.core.types import ExportSpec
 
-        requests = [ExportSpec(kind=payload["export_kind"], output=payload["output"])]
-    for request in requests:
-        output = Path(request.output or "exported_model")
-        if request.kind == "train_package":
-            path = export_package(
-                session.pipeline,
-                output,
-                lightning_module=session.lightning_module,
-                trainer=session.trainer if action == "train" else None,
-                checkpoint_path=payload.get("trainer_checkpoint") if action == "export" else None,
-            )
-            artifacts.extend(
-                {"path": str(p.resolve()), "kind": "train_package"}
-                for p in path.rglob("*")
-                if p.is_file()
-            )
-        elif request.kind == "safetensors":
-            path = export_safetensors(
-                session.pipeline, output, include=request.include, exclude=request.exclude
-            )
-            artifacts.extend(
-                {"path": str(p.resolve()), "kind": "safetensors"}
-                for p in (path, path.with_suffix(".json"))
-            )
-        else:
-            path = export_onnx(session.pipeline, output)
-            artifacts.append({"path": str(path.resolve()), "kind": "onnx"})
-    if result is None:
-        return {"artifacts": artifacts}
-    return {
-        "validation_results": result.validation_results,
-        "test_results": result.test_results,
-        "evaluation_results": result.eval_algorithm_results,
-        "artifacts": artifacts,
-    }
+    session = NexuSession(
+        config.to_scenario(),
+        trainer_checkpoint=payload.get("trainer_checkpoint"),
+        enable_progress_bar=False,
+    )
+    session.setup()
+    requests = [ExportSpec(kind=payload["export_kind"], output=payload["output"])]
+    return {"artifacts": export_requests(session, requests, payload.get("trainer_checkpoint"))}
 
 
 def main() -> None:

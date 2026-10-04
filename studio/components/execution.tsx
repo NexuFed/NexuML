@@ -20,6 +20,7 @@ export function Execution({connection, identity, choose, artifacts=false, report
   const [format,setFormat]=useState("train_package");
   const [launch,setLaunch]=useState<{id:string;yaml:string}|null>(null);
   const [acting,setActing]=useState(false);
+  const [nativeInspection,setNativeInspection]=useState<{id:string;result:unknown}|null>(null);
   const current=operation.data;
   const progress=observation.progress;
   const total=typeof progress?.total==="number" && Number.isFinite(progress.total) && progress.total>0 ? progress.total : null;
@@ -41,7 +42,8 @@ export function Execution({connection, identity, choose, artifacts=false, report
     {!current ? <div className="empty-panel">Start an explicit build or training operation to inspect real results. Unrelated CLI runs are not tracked.</div> : <>
       <div className="status-grid"><div><span>Status</span><strong>{current.status}</strong></div><div><span>Connection</span><strong>{operation.isError ? "Status stale — API unavailable" : observation.state}</strong></div><div><span>Source revision</span><code>{current.semantic_revision.slice(0,12)}</code></div><div><span>Telemetry</span><strong>{current.telemetry}</strong></div></div>
       {observation.gap && <p role="alert">Replay history is incomplete. Inspect the retained logs and terminal result.</p>}
-      {!artifacts && <section className="run-progress" aria-label="Native operation progress"><div><strong>{current.status==="succeeded" ? "Completed" : progress?.phase ? String(progress.phase) : current.telemetry.includes("driver") ? "Backend reports driver logs only" : "Preparing runtime / data"}</strong><span>{current.status!=="running" ? current.status : observation.state!=="Connected" ? "Last observed — connection stale" : "Live"}</span></div>
+      {current.native_reference && <dl className="result-summary"><dt>Native workload</dt><dd>{current.native_reference.kind} · {current.native_reference.context} / {current.native_reference.namespace} / {current.native_reference.name}</dd><dt>Verified UID</dt><dd><code>{current.native_reference.uid}</code></dd></dl>}
+      {!artifacts && current.capabilities?.metrics!==false && <section className="run-progress" aria-label="Native operation progress"><div><strong>{current.status==="succeeded" ? "Completed" : progress?.phase ? String(progress.phase) : current.telemetry.includes("driver") ? "Backend reports driver logs only" : "Preparing runtime / data"}</strong><span>{current.status!=="running" ? current.status : observation.state!=="Connected" ? "Last observed — connection stale" : "Live"}</span></div>
         <progress aria-label="Operation progress" max={total ?? 1} value={current.status==="succeeded" ? total ?? 1 : total && batch!==null ? Math.min(batch,total) : current.status!=="running" ? 0 : undefined}/>
         <p className="muted">{progress?.phase==="train" && typeof progress.epoch==="number" ? `Epoch ${progress.epoch+1}${typeof progress.max_epochs==="number" && progress.max_epochs>0 ? ` / ${progress.max_epochs}` : ""} · ` : ""}{batch!==null ? `${batch}${total ? ` / ${total}` : ""} batches observed` : "No batch total available. Preparation and download updates appear in the process logs."}</p>
       </section>}
@@ -49,10 +51,14 @@ export function Execution({connection, identity, choose, artifacts=false, report
         {failure.fields?.map((field,index)=><p key={index}>{field.loc.join(".")}: {field.message}</p>)}
         <Button onClick={editSettings}>Edit draft settings for a new run</Button><Button disabled={acting} onClick={()=>act(()=>loadSettings(identity))}>Open frozen settings as draft</Button><p className="muted">These errors describe the frozen launch configuration, not later draft edits. Inspect that configuration below; editing the draft does not change this run.</p>
       </section>}
-      <div className="toolbar"><Button disabled={acting || current.status!=="running" || !current.cancellation} onClick={()=>act(async()=>{await request(connection,`/operations/${identity}/cancel`,{});await operation.refetch();})}><Square size={14}/>Stop owned local operation</Button>
+      {current.capabilities?.metrics===false && <p className="muted">Native job status and supported log tails only. Scalar metrics and training percentages are unavailable.</p>}
+      {current.capabilities?.resume===false && <p className="muted">Trainer checkpoint resume is unsupported by this backend. Use a new Local run for supported checkpoint resume.</p>}
+      <div className="toolbar"><Button disabled={acting || !["submitted","pending","running"].includes(current.status) || !current.cancellation || (!!current.capabilities?.native_reference && !current.native_reference)} onClick={()=>act(async()=>{await request(connection,`/operations/${identity}/cancel`,{});await operation.refetch();})}><Square size={14}/>{current.native_reference ? "Stop verified native job" : "Stop owned local operation"}</Button>
         {!current.cancellation && <span className="muted">Remote stop unsupported. Driver exit does not stop workers.</span>}
+        {current.native_reference && <Button disabled={acting} onClick={()=>act(async()=>{const result=await request(connection,`/operations/${identity}/inspect`,{});setNativeInspection({id:identity,result});})}>Inspect native reference</Button>}
         <Button onClick={()=>act(async()=>setLaunch({id:identity,yaml:(await request<Document>(connection,`/operations/${identity}/config`)).yaml}))}>Inspect launch config</Button></div>
       {launch?.id===identity && <details open><summary>Frozen launch configuration</summary><pre>{launch.yaml}</pre></details>}
+      {nativeInspection?.id===identity && <details open><summary>Explicit native inspection (no resubmission)</summary><pre>{JSON.stringify(nativeInspection.result,null,2)}</pre></details>}
       {!artifacts && <><p className="muted">Select losses and metrics in Pipeline → Objectives &amp; metrics (<code>training.loss_keys</code> / <code>training.metric_keys</code>). Total loss is their weighted loss sum. Charts show this run’s reported values, not later draft edits; validation/test metrics appear after those phases complete.</p><div className="metric-grid">{keys.map(key=>{
         const points=metricPoints(metrics,key);
         if(!points.length)return null;
@@ -77,10 +83,10 @@ export function Execution({connection, identity, choose, artifacts=false, report
         {observation.truncated && <p className="muted">Showing the latest 2,000 observations. Complete logs remain on disk.</p>}
         <h2>Actual results</h2><ResultSummary value={Object.fromEntries(Object.entries(current.result ?? {}).filter(([key])=>!["error","artifacts"].includes(key)))}/>
         <details><summary>Expert: actual terminal result JSON</summary><pre>{JSON.stringify(current.result ?? {},null,2)}</pre></details></>}
-      <h2>Available artifacts</h2><div className="artifact-list">{current.artifacts.map((artifact,index)=><div key={`${artifact.path}:${index}`}><div><span>{artifact.kind}</span><code>{artifact.path}</code></div><Button aria-label={`Download ${artifact.path}`} onClick={()=>act(()=>download(index,artifact.path))}><Download size={16}/></Button></div>)}{!current.artifacts.length && <p className="muted">No artifact has been confirmed. Stopping does not promise a checkpoint.</p>}</div>
+      <h2>Available artifacts</h2><div className="artifact-list">{current.artifacts.map((artifact,index)=><div key={`${artifact.path}:${index}`}><div><span>{artifact.kind}</span><code>{artifact.path}</code></div>{artifact.path.includes("://") ? <span className="muted">External reference — not a local download</span> : <Button aria-label={`Download ${artifact.path}`} onClick={()=>act(()=>download(index,artifact.path))}><Download size={16}/></Button>}</div>)}{!current.artifacts.length && <p className="muted">No artifact has been confirmed. Stopping does not promise a checkpoint.</p>}</div>
       <div className="export-controls"><label className="field">Export format<select value={format} onChange={event=>setFormat(event.target.value)}><option value="train_package">Training package</option><option value="safetensors">SafeTensors</option><option value="onnx">ONNX (installed extra required)</option></select></label>
         <label className="field">Export path<input value={output} onChange={event=>setOutput(event.target.value)}/></label>
-        <Button className="primary" disabled={acting || current.status!=="succeeded" || current.kind!=="train" || !current.artifacts.some(artifact=>artifact.kind==="checkpoint")} onClick={()=>act(async()=>{const launched=await request<Operation>(connection,"/export",{source_id:identity,kind:format,output});choose(launched.id);})}>Export trained checkpoint</Button></div>
+        <Button className="primary" disabled={acting || current.status!=="succeeded" || current.kind!=="train" || current.capabilities?.artifacts===false || !current.artifacts.some(artifact=>artifact.kind==="checkpoint" && !artifact.path.includes("://"))} onClick={()=>act(async()=>{const launched=await request<Operation>(connection,"/export",{source_id:identity,kind:format,output});choose(launched.id);})}>Export trained checkpoint</Button></div>
     </>}
   </section>;
 }

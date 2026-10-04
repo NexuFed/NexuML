@@ -1,0 +1,21 @@
+apiVersion: batch/v1
+kind: Job
+metadata: {}
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      serviceAccountName: nexuml-training
+      containers:
+        - name: training
+          image: your-registry/nexuml-training:reviewed
+          command: [python, -m, nexuml.execution.worker]
+          args: [--config, "{{NEXUML_CONFIG}}"]
+          resources:
+            requests: {cpu: "1", memory: 1Gi}
+          volumeMounts:
+            - {name: shared, mountPath: /shared}
+      volumes:
+        - name: shared
+          persistentVolumeClaim: {claimName: nexuml-shared}

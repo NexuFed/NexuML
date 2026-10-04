@@ -13,7 +13,7 @@ from urllib.parse import urlsplit
 from fastapi import WebSocket, WebSocketDisconnect
 from starlette.responses import JSONResponse
 
-INTERFACE_VERSION = 1
+INTERFACE_VERSION = 2
 MAX_BODY = 2 * 1024 * 1024
 LOOPBACK_HOSTS = {"127.0.0.1", "localhost", "::1"}
 
@@ -116,7 +116,7 @@ class TransportSecurity:
         authorization = headers.get("authorization", "")
         if not authorization.startswith("Bearer ") or not self.settings.matches(authorization[7:]):
             return await self.reject(scope, receive, send, 401, "unauthorized", "Token required.")
-        if headers.get("x-nexuml-interface", "1") != str(INTERFACE_VERSION):
+        if headers.get("x-nexuml-interface", str(INTERFACE_VERSION)) != str(INTERFACE_VERSION):
             return await self.reject(
                 scope,
                 receive,

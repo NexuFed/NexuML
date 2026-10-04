@@ -125,9 +125,9 @@ export async function launch(options) {
         stdio:"inherit", detached:process.platform !== "win32"});
       apiChild.on("error", error => console.error(`NexuML startup: ${error.message}`));
     }
-    const response = await ready(`${apiUrl}/api/v1/runtime`, {Authorization:`Bearer ${token}`, Origin:origin, "X-NexuML-Interface":"1"}, apiChild, token);
+    const response = await ready(`${apiUrl}/api/v1/runtime`, {Authorization:`Bearer ${token}`, Origin:origin, "X-NexuML-Interface":"2"}, apiChild, token);
     const identity = await response.json();
-    if (identity.interface_version !== 1) throw new Error("Studio/API interface mismatch (requires 1).");
+    if (identity.interface_version !== 2) throw new Error("Studio/API interface mismatch (requires 2).");
     if (await realpath(identity.working_directory) !== directory) throw new Error("Attached API directory differs from the selected working directory.");
     console.log(`NexuML ${identity.nexuml_version} · ${identity.python_executable}\nDirectory: ${directory}`);
     // Next can write runtime/cache files: use a private disposable copy, not npm assets.

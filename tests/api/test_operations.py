@@ -24,7 +24,7 @@ from nexuml.api.security import Settings
 from nexuml.api.worker import dispatch
 from nexuml.core.serialization import lower_model
 from nexuml.core.export import load_package
-from nexuml.core.types import RayExecutionSpec
+from nexuml.execution.definitions import RayClusterExecution
 from nexuml_library.scenarios.asd.synthetic_linear_ae import synthetic_linear_ae_reconstruction
 
 TOKEN = "test-operation-private-token-" * 3
@@ -357,7 +357,8 @@ def test_cancel_owns_descendants_even_after_leader_exit(tmp_path):
 
 def test_ray_delegation_and_resume_guard(tmp_path, monkeypatch):
     value = scenario()
-    value.execution = RayExecutionSpec()
+    value.evaluation.algorithms = []
+    value.execution = RayClusterExecution()
     payload = {"data": lower_model(value), "observations": str(tmp_path / "observations.jsonl")}
     calls = []
     monkeypatch.setattr(
@@ -367,6 +368,6 @@ def test_ray_delegation_and_resume_guard(tmp_path, monkeypatch):
     result = dispatch("train", payload)
     assert result["metrics"] == {"loss": 1.25}
     assert len(calls) == 1
-    assert calls[0].execution.kind == "ray"
+    assert isinstance(calls[0].execution, RayClusterExecution)
     with pytest.raises(ValueError, match="local-only"):
         dispatch("prepare_train", {**payload, "trainer_checkpoint": "anything.ckpt"})

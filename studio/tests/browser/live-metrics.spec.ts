@@ -23,7 +23,9 @@ test("real batch loss charts update while training and retain finalized classifi
   await expect(page.getByRole("status")).toContainText("YAML applied",{timeout:30000});
   await page.getByRole("button",{name:"Close YAML",exact:true}).click();
   await page.getByRole("button",{name:"Run…",exact:true}).click();
-  await page.getByRole("button",{name:"Confirm & start training",exact:true}).click();
+  await page.getByRole("button",{name:"Review selection",exact:true}).click();
+  await expect(page.getByRole("button",{name:"Run on Local",exact:true})).toBeEnabled();
+  await page.getByRole("button",{name:"Run on Local",exact:true}).click();
   const loss=page.locator(".metric").filter({has:page.locator("span",{hasText:/^train\/loss$/})});
   await expect(loss).toBeVisible({timeout:30000});
   await expect(page.locator(".status-grid")).toContainText("running");

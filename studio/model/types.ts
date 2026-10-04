@@ -9,6 +9,7 @@ export type Layer = RecordValue & {
 };
 export type Config = RecordValue & {
   name: string; pipeline: { stages: Record<string, Layer[]> };
+  execution: Component;
   data: RecordValue & { input_shapes: Record<string, number[]>; feature_key: string;
     source: Component | null; datasets: { source: Component }[]; targets: { key: string }[] };
   training: RecordValue & { loss_keys: Record<string, number>; metric_keys: string[] };
@@ -16,7 +17,7 @@ export type Config = RecordValue & {
     feature_key?: string; label_key?: string; axis_keys?: (string | { key: string; source: string })[] })[] };
 };
 export type Document = { data: Config; stage_order: string[]; yaml: string; semantic_revision: string;
-  path?: string; base_revision?: string | null };
+  path?: string; base_revision?: string | null; launch_review?:RecordValue };
 export type Schema = { type?: string; title?: string; description?: string; default?: unknown;
   properties?: Record<string, Schema>; required?: string[]; enum?: unknown[];
   const?:unknown; anyOf?:Schema[]; oneOf?:Schema[]; allOf?:Schema[];
@@ -29,7 +30,16 @@ export type Schema = { type?: string; title?: string; description?: string; defa
   "x-nexuml-category"?:string[] };
 export type Entry = { kind: string; name: string; version: string; schema: Schema; import_target: string };
 export type Catalog = { components: Entry[]; scenarios: { name: string }[]; errors: { module: string; message: string }[];
-  libraries: { roots: string[]; packages: string[] }; schema: Schema; backends: Record<string, { available: boolean }> };
+  libraries: { roots: string[]; packages: string[] }; schema: Schema; backends: Record<string, { available: boolean }>;
+  execution_backends?:ExecutionBackend[] };
+export type ExecutionBackend = {type:string;version:string;label:string;schema:Schema;import_target:string;
+  available:boolean;diagnostics:string[];capabilities:Record<string,boolean>;presentation:Record<string,string[]>};
+export type ResourceSnapshot = {backend:string;source:string;target?:string|null;context?:string|null;namespace?:string|null;
+  observed_at:string;complete:boolean;reachable:boolean|null;api_supported:boolean|null;submission_allowed:boolean|null;
+  visible_nodes:number|null;matching_nodes:number|null;allocatable:Record<string,number>|null;
+  unallocated:Record<string,number>|null;quota_remaining:Record<string,number>|null;units:Record<string,string>;
+  nodes:RecordValue[];roles:RecordValue[];targets:string[];diagnostics:string[];options?:Record<string,string[]>;
+  ray_clusters?:{name:string;context:string;namespace:string}[]};
 export type Snapshot = { config: Config; order: string[]; ids: Record<string, string[]>; positions: Record<string, {x:number; y:number}>; sizes?:Record<string,{width:number;height:number}>; names?:Record<string,string>; selected?:string };
 export type Layout = Pick<Snapshot,"ids"|"positions"|"sizes"|"names">;
 export type Port = { id: string; key: string; domain: string; field: string; alias?: string; add?:boolean; collection?:boolean;defaultKey?:string;required?:boolean };
@@ -40,6 +50,7 @@ export type CardNode = Node<CardData, "card">;
 export type Graph = { nodes: CardNode[]; edges: Edge[]; problems: string[];unconnected?:boolean };
 export type Operation = { id: string; kind: string; status: string; semantic_revision: string;
   sequence: number; cancellation: boolean; telemetry: string;
-  result?: RecordValue; artifacts: {path:string;kind:string}[] };
+  result?: RecordValue; artifacts: {path:string;kind:string}[];capabilities?:Record<string,boolean>;
+  native_reference?:{backend:string;context:string;namespace:string;api_version:string;kind:string;name:string;uid:string}; };
 export type Event = { kind: string; sequence?: number; operation_id?: string; partial?:boolean; payload: RecordValue };
 export type ConnectionInfo = { api: string; token: string };

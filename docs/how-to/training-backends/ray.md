@@ -15,9 +15,9 @@ The driver and workers need compatible Python/Ray environments. Keep exact envir
 ## Configure an existing cluster
 
 ```python
-from nexuml.core.types import RayClusterTarget, RayExecutionSpec
+from nexuml.execution.definitions import RayClusterTarget, RayClusterExecution
 
-execution = RayExecutionSpec(
+execution = RayClusterExecution(
     target=RayClusterTarget(
         address="ray://ray.example.org:10001",
         working_dir=".",
@@ -36,6 +36,12 @@ nexuml train my-scenario
 ```
 
 Each worker restores the typed scenario, creates the normal `NexuSession`, and executes its lifecycle with a Ray-prepared Lightning trainer.
+
+`address="auto"` resolves an existing connection (or validated `RAY_ADDRESS`); discovery
+never initializes Ray. A caller-owned already initialized Ray runtime must be shut down
+before launch so an unverified target cannot replace the reviewed selection. Set
+`target.dashboard_address` explicitly for bounded read-only node/resource discovery.
+The optional Ray compatibility range remains `>=2.57,<2.59`.
 
 ## Lightning strategies
 
@@ -59,7 +65,9 @@ The class and its constructor parameters remain navigable and statically checkab
 
 ## Ray Jobs
 
-NexuML intentionally does not wrap the Ray Jobs lifecycle. If the driver itself should run remotely/detached, use Ray's native CLI:
+NexuML's `RayJobExecution` means the **KubeRay RayJob resource**, not Ray Jobs API.
+Its infrastructure-owned template chooses a new job-scoped or an existing Ray cluster.
+For generic Ray Jobs API submissions, use Ray's native CLI:
 
 ```bash
 ray job submit --working-dir . -- \

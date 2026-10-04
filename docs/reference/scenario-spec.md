@@ -102,12 +102,24 @@ See [Checkpoints](../how-to/checkpoints.md).
 
 ## Execution
 
-`ScenarioSpec.execution` is a discriminated union:
+`ScenarioSpec.execution` is a registered `ExecutionBackendDefinition`. Core definitions
+live in `nexuml.execution.definitions`: `LocalExecution` (default), `RayClusterExecution`,
+`RayJobExecution`, `KubernetesJobExecution`, and `PyTorchJobExecution`.
+Installed libraries can contribute definitions with `@execution_backend(...)` through
+the existing library discovery sources. Each definition owns its parameter schema and
+execution behavior; API and Studio do not maintain a separate provider list.
 
-- `LocalExecutionSpec` — current-process execution (default);
-- `RayExecutionSpec` — existing-Ray-cluster placement/resources.
+```yaml
+execution:
+  type: local
+  version: "1"
+  params: {}
+```
 
-Training semantics remain in `TrainingSpec` in both cases.
+Old `execution.kind` configurations are rejected. To convert, use `type: local` or
+`type: ray-cluster`, `version: "1"`, and move placement fields into `params`.
+Remove the old `kind` fields, including `target.kind`. Historical files are not rewritten.
+Training semantics remain in `TrainingSpec`.
 
 ## Persistence
 

@@ -183,6 +183,14 @@ class Operations:
             with (folder / "events.jsonl").open("a", encoding="utf-8") as stream:
                 stream.write(encoded + "\n")
             status["sequence"] = sequence
+            if kind == "native_reference":
+                status["native_reference"] = payload["reference"]
+            elif kind == "native_status" and payload.get("status") in {
+                "submitted",
+                "pending",
+                "running",
+            }:
+                status["status"] = payload["status"]
             write_json(folder / "status.json", status)
 
     def start(self, kind: str, payload: dict, *, timeout: float | None = None) -> dict:
@@ -215,19 +223,38 @@ class Operations:
                 "yaml": checked["yaml"],
                 "data": None,
                 "observations": str(folder / "observations.jsonl"),
+                "launch_plan": checked.get("launch_plan"),
             }
+            plan = checked.get("launch_plan")
+            if plan and "worker_yaml" in plan and "manifest" in plan:
+                (folder / "worker-config.yaml").write_text(plan["worker_yaml"], encoding="utf-8")
+                write_json(folder / "manifest.json", plan["manifest"])
             write_json(folder / "request.json", request)
-            remote = checked["data"]["execution"]["kind"] != "local" and kind == "train"
+            capabilities = checked.get("execution_capabilities", {})
+            remote = not capabilities.get("process_ownership", False) and kind == "train"
             status = {
                 "id": identity,
                 "kind": kind,
-                "status": "running",
+                "status": "submitted"
+                if capabilities.get("native_reference") and remote
+                else "running",
                 "sequence": 0,
                 "created_at": datetime.now(timezone.utc).isoformat(),
                 "semantic_revision": checked["semantic_revision"],
                 "stage_order": checked["stage_order"],
-                "cancellation": not remote,
-                "telemetry": "driver logs and final results" if remote else "local callbacks",
+                "cancellation": capabilities.get("cancellation", False)
+                if kind == "train"
+                else True,
+                "capabilities": capabilities,
+                "process_ownership": not remote,
+                "launch_review": checked.get("launch_review"),
+                "telemetry": (
+                    "native status and supported log tails; scalar metrics unavailable"
+                    if remote and capabilities.get("native_reference")
+                    else "driver logs and final results"
+                    if remote
+                    else "local callbacks"
+                ),
                 "artifacts": [],
             }
             write_json(folder / "status.json", status)
@@ -330,11 +357,19 @@ class Operations:
                     if result_file.exists()
                     else {}
                 )
-                status["status"] = self.stopping.pop(folder.name, None) or (
-                    "succeeded"
-                    if process.returncode == 0 and result and "error" not in result
-                    else "failed"
+                native = status.get("capabilities", {}).get("native_reference")
+                terminal = (
+                    result.get("status")
+                    if native
+                    else (
+                        "succeeded"
+                        if process.returncode == 0 and result and "error" not in result
+                        else "failed"
+                    )
                 )
+                if native and terminal not in {"succeeded", "failed", "cancelled"}:
+                    terminal = "ownership_unknown"
+                status["status"] = self.stopping.pop(folder.name, None) or terminal
                 status["result"] = result
                 status["artifacts"] = [
                     *result.get("artifacts", []),
@@ -379,9 +414,24 @@ class Operations:
                     "unsupported",
                     "Remote cancellation is not supported; driver exit is not worker stop.",
                 )
+            if not status.get("process_ownership", True):
+                if not status.get("native_reference"):
+                    raise ApiError(
+                        409, "ownership_unknown", "Native submission identity is not yet verified."
+                    )
+                reference = status["native_reference"]
+            else:
+                reference = None
             if not self.active or self.active[0] != identity:
                 raise ApiError(409, "ownership_unknown", "Execution ownership cannot be verified.")
             process = self.active[1]
+        if reference is not None:
+            result = call_worker(
+                "cancel_execution", {"reference": reference}, self.settings.directory
+            )
+            if result.get("status") != "cancelled":
+                raise ApiError(409, "ownership_unknown", "Native termination is not confirmed.")
+        with self.lock:
             # Hold publication until the entire owned tree has confirmed exit.
             stop_process_tree(process)
             self.stopping[identity] = "cancelled"
@@ -393,10 +443,26 @@ class Operations:
         """Stop owned local calls on API shutdown; never claim remote cancellation."""
         if self.active:
             identity, process = self.active
-            if self.status(identity)["cancellation"]:
+            if self.status(identity).get("process_ownership", True):
                 self.cancel(identity)
             else:
                 self.stopping[identity] = "ownership_unknown"
                 stop_process_tree(process)
         for thread in self.threads:
             thread.join(timeout=15)
+
+    def inspect(self, identity: str) -> dict:
+        """Explicitly inspect a stored remote identity without resubmitting.
+
+        Returns:
+            The native observation, independent of local process ownership.
+
+        Raises:
+            ApiError: When no native identity was recorded.
+        """
+        status = self.status(identity)
+        if not status.get("native_reference"):
+            raise ApiError(409, "unsupported", "No native submission reference is recorded.")
+        return call_worker(
+            "inspect_execution", {"reference": status["native_reference"]}, self.settings.directory
+        )

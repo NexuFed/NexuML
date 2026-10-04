@@ -8,12 +8,12 @@ test("typed settings, error focus, categorized drop, names and removable key rou
   await expect(page.getByLabel("Search components")).toBeVisible({timeout:30000});
   await expect(page.getByRole("button",{name:"Open YAML",exact:true})).toBeEnabled({timeout:30000});
   await page.getByRole("button",{name:"Training",exact:true}).click();
-  await expect(page.locator('[data-field="execution.kind"]')).toHaveValue("local");
-  await page.getByLabel("Execution backend mode",{exact:true}).selectOption({label:"RayExecutionSpec"});
-  await page.locator('[data-field="execution.workers"]').filter({has:page.locator("option")}).selectOption({label:"integer"});
-  await page.locator('input[data-field="execution.workers"]').fill("2");
-  await expect(page.locator('input[data-field="execution.target.address"]')).toHaveValue("auto");
-  await page.getByLabel("Execution backend mode",{exact:true}).selectOption({label:"LocalExecutionSpec"});
+  await expect(page.getByLabel("Execution backend",{exact:true})).toHaveValue("local:1");
+  await page.getByLabel("Execution backend",{exact:true}).selectOption("ray-cluster:1");
+  await page.locator('[data-field="execution.params.workers"]').filter({has:page.locator("option")}).selectOption({label:"integer"});
+  await page.locator('input[data-field="execution.params.workers"]').fill("2");
+  await expect(page.locator('input[data-field="execution.params.target.address"]')).toHaveValue("auto");
+  await page.getByLabel("Execution backend",{exact:true}).selectOption("local:1");
   await page.getByLabel("Batch Size",{exact:true}).fill("0");
   await page.getByRole("button",{name:"Check fields",exact:true}).click();
   await expect(page.locator(".problems-list")).toContainText("training.batch_size",{timeout:30000});

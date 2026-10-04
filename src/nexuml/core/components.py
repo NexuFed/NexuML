@@ -106,3 +106,62 @@ class LoaderBackendDefinition(ComponentDefinition):
     @abstractmethod
     def build(self) -> Any:
         """Build the loader backend runtime."""
+
+
+class ExecutionBackendDefinition(ComponentDefinition):
+    """Installation-owned placement settings and execution behavior."""
+
+    kind = "execution_backend"
+    label: ClassVar[str] = ""
+    dependencies: ClassVar[tuple[str, ...]] = ()
+    capabilities: ClassVar[dict[str, bool]] = {}
+    presentation: ClassVar[dict[str, list[str]]] = {}
+
+    def preflight(self, scenario: Any, **kwargs: Any) -> dict[str, Any]:
+        """Validate a request without allocating workers.
+
+        Returns:
+            Backend-specific review information.
+
+        Raises:
+            ValueError: If requested resume or exports are unsupported.
+        """
+        if kwargs.get("trainer_checkpoint") and not self.capabilities.get("resume", False):
+            raise ValueError("Trainer checkpoint resume is local-only; the backend owns recovery.")
+        if scenario.exports and not self.capabilities.get("artifacts", False):
+            raise ValueError("Configured model exports are unsupported by the selected backend.")
+        return {}
+
+    def discover(self, **kwargs: Any) -> Any:
+        """Return an explicit unknown snapshot when a library has no capacity probe."""
+        from nexuml.execution.schemas import ResourceSnapshot
+
+        return ResourceSnapshot(
+            backend=self.component_name,
+            source=self.component_name,
+            diagnostics=["This backend does not expose resource discovery."],
+        )
+
+    def inspect(self, reference: Any) -> dict[str, Any]:
+        """Refuse native observation that the backend has not implemented.
+
+        Raises:
+            NotImplementedError: When no native inspection is available.
+        """
+        raise NotImplementedError("Native reference inspection is unsupported by this backend.")
+
+    def cancel(self, reference: Any) -> dict[str, Any]:
+        """Refuse to confuse submitter termination with native cancellation.
+
+        Raises:
+            NotImplementedError: When native cancellation cannot be confirmed.
+        """
+        raise NotImplementedError("Native cancellation is unsupported by this backend.")
+
+    @abstractmethod
+    def run(self, scenario: Any, **kwargs: Any) -> Any:
+        """Execute the canonical lifecycle and return its native result.
+
+        Shared dispatch supplies ``review`` from preflight and caller-specific keyword
+        options (including an optional observer). Definitions accept these via kwargs.
+        """
