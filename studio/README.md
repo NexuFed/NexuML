@@ -64,13 +64,18 @@ after confirming their services have stopped. Training records remain under Nexu
 
 ## Configure → check → train → inspect
 
-1. Resolve an installed scenario explicitly, or open existing YAML in the selected
-   working directory. Resolution imports/calls **trusted Python**, not sandboxed code.
+1. At entry, **Choose a recipe** or **Open YAML** in the selected working directory.
+   Recipe resolution imports/calls **trusted Python**, not sandboxed code. After loading,
+   the scenario-name menu contains source switching, Save and **Save as…**. First Save of
+   a recipe asks for a destination. Saved means configuration and separate layout persisted;
+   unsaved changes, an unsaved recipe and unapplied YAML have distinct states.
 2. Use Pipeline to inspect data, stage/layer order, key ports, objectives and evaluation.
-   Browse installed components by kind/module categories (for example Pipeline layers →
+   The left panel starts on **Structure**. Switch to **Components** to search installed
+   definitions by kind/module categories (for example Pipeline layers →
    Models → Vision). Drag one onto a stage to append it to that stage, or use its add button.
-   Insert from actual installed definition schemas. Use Training for optimizer/scheduler,
-   loader, execution, logging/callbacks/checkpoints and exports.
+   Insert from actual installed definition schemas. Use Training's **Basics**, **Optimizer
+   and schedule**, **Data loading**, **Execution**, and **Checkpoints and logging** sections.
+   Trainer accelerator/devices are in Basics, separate from backend placement resources.
 3. **Structure** and the canvas **Execution order** strip control the native ordered stages
    and layers. Drag their order handles onto insertion markers, or use move buttons and
    Properties → **Move / transfer layer** for keyboard/single-pointer editing. Canvas
@@ -83,7 +88,14 @@ after confirming their services have stopped. Training records remain under Nexu
    Add a stage from Structure's **Stage** item (drag or click) or **Add stage**: give it a unique
    name and review insertion after the selected stage, otherwise last. Empty stages offer
    **Drop a layer here / Add layer**. New-layer drops outside stages ask for a destination;
-   click insertion uses the visible destination/slot controls. Movement/resizing are layout-only;
+   click insertion uses the visible destination/slot controls, or requests a destination if
+   neither one nor a stage/layer selection exists. It never silently chooses the first stage.
+   Switching Structure/Components retains search. **Focus selected** centers a Structure
+   selection at a readable scale; **Fit view** provides an explicit overview. **Arrange**
+   explicitly resets layout; opening a matching sidecar retains its positions/sizes.
+   Desktop panels have collapse buttons, draggable/keyboard separators and Panels width
+   controls; narrower layouts select Structure/Components, Canvas or Properties separately.
+   Movement/resizing are layout-only;
    transfers/reorders change ordinary configuration and make previous build evidence stale.
    Repeated keys connect to their most recent preceding producer. Alias dictionaries,
    label domains and metadata routing stay editable; dataset metadata/runtime-only keys
@@ -93,20 +105,33 @@ after confirming their services have stopped. Training records remain under Nexu
    (or Delete/Backspace); connection selects offer the same removal. Missing required routes
    remain visible and prevent launch. If removing an evaluator route would restore its runtime
    default, reroute it or explicitly disable that evaluator instead. Display names are visual
-   sidecar data, never tensor names or execution settings. Use Undo/Redo for routing, names,
+   sidecar data, never tensor names or execution settings. Properties leads with **Settings**;
+   **Routing** contains key lists, aliases, label/metadata routes and connection selects.
+   **Edit display name** and **Advanced layout** hold visual-only controls. Optional empty
+   ports open on selection or **Routing ports**; connected/required ports remain visible.
+   Use Undo/Redo beside Save for routing, names,
    completed layout gestures and atomic transfers/order edits. Cancelled gestures create no entry.
 4. Schema controls handle nested models, nullable/union modes, lists, mappings, enums and
    installed component choices. Execution/checkpoint/logging settings are ordinary forms.
-   Expand **Expert** for raw JSON or use the complete YAML editor; genuinely untyped factory
-   kwargs retain that escape hatch and no constructor schema is invented.
+   Required/common controls appear before **Advanced**. Nullable controls use **Not set /
+   Set value**; training batch size uses **Fixed / Automatic** with actual schema fields.
+   Data loading's **Use training batch size** stores null (inheritance), not a copied number;
+   Basics links to an explicit loader override. Numeric entry accepts scientific notation.
+   **Raw configuration** edits a settings section; **Advanced definition and raw component**
+   edits a component. Genuinely untyped factory args/kwargs retain raw JSON and no constructor
+   schema is invented. Invalid field/raw buffers survive tabs/sections until corrected.
    Valid unrendered fields are retained. Unapplied/invalid YAML is a retained buffer and
-   blocks graph edits until Apply or deliberate Discard. Comments/formatting are not preserved.
-5. Check fields validates without compiling. Build check explicitly runs constructors and
+   blocks semantic edits, Save and Run until Apply or deliberate Discard. YAML is an alternate
+   editor, not a stacked panel. Leaving it retains the buffer and a **Return to YAML** notice;
+   Runs remains available. Comments/formatting are not preserved.
+5. **Check → Check fields** validates without compiling. **Check → Build model** explicitly runs constructors and
    dummy forwards in the selected interpreter. Displayed final key shapes are source-bound
    and become stale after semantic edits. Save uses revision conflicts and a separate
    `*.studio.json` position/size/name sidecar; an external semantic edit invalidates old placement metadata.
    Matching older sidecars without container sizes use defaults. Membership/order stay in ordinary YAML.
-   Click a field-addressable problem to open and focus its inspector/settings field. Runtime
+   The compact **Problems** footer expands manually or after a failed check/build/apply.
+   Field success does not imply build success; semantic edits show **Needs rechecking**.
+   Click a field-addressable problem to reveal and focus its inspector tab/Training section. Runtime
    errors without a field address remain linked to their frozen source, not guessed draft fields.
    Failed operations offer **Open frozen settings as draft** to edit their actual launch settings,
    including after a reload; unsaved draft replacement requires confirmation and never changes the run.
@@ -120,7 +145,13 @@ after confirming their services have stopped. Training records remain under Nexu
    edits form one undoable ordinary draft edit without saving the file automatically.
    Optional local Trainer resume reviews the checkpoint-derived scenario (trusted Python
    input). Later draft edits do not change the run. One resource-consuming operation is allowed.
-7. Execution shows native phase/epoch/batch progress, real scalar curves, readable results,
+7. **Runs** selects retained training, build and export operations, even with no draft.
+   **Metrics · Logs · Artifacts · Configuration** share that operation and its subscription;
+   tab changes never relaunch. Status, errors and supported progress remain visible.
+   Configuration is read-only frozen YAML; **Open frozen settings as draft** explicitly
+   replaces the draft after unsaved-replacement confirmation. Draft matches/differs compares
+   configuration and stage order, not server hashes; unavailable sources make no comparison.
+   Runs shows native phase/epoch/batch progress, real scalar curves, readable results,
    process logs and reconnect state. Preparation/downloads without counters use indeterminate
    activity; carriage-return and supported ANSI progress updates overwrite terminal lines.
    These logs are not parsed into training counters. Raw output remains downloadable. Reload
@@ -129,7 +160,9 @@ after confirming their services have stopped. Training records remain under Nexu
    so verbose logs do not evict their samples. Full observations/logs remain on disk.
    Training loss updates during the first epoch from actual batch callbacks (at most
    four updates/second plus first/final batches). Charts use optimizer steps, and a
-   single measurement is a visible point rather than an invisible line. Validation/test
+   single measurement is a visible point rather than an invisible line. Only **train/loss**
+   and **val/loss** share one Total loss chart with actual step/value scales and distinct
+   solid/dashed styles. Accuracy and custom scalars keep separate scales. Validation/test
    values appear after their phase completes, excluding the preliminary sanity check.
    Pipeline → **Objectives & metrics** edits `training.loss_keys` (weighted losses) and
    `training.metric_keys` (outputs to log). NexuML also reports their weighted loss total
@@ -140,8 +173,10 @@ after confirming their services have stopped. Training records remain under Nexu
 8. Stop is available for owned local processes and verified Job/PyTorchJob identities, not
    direct RayCluster or RayJob work. Native Stop confirms UID-bound foreground deletion;
    a local driver exit is not worker cancellation. Local Stop confirms tree exit,
-   not a new checkpoint. Artifacts downloads use authorized paths. Export requires a
+   not a new checkpoint. Runs → Artifacts downloads use authorized paths. Export requires a
    completed local source and an actual Trainer checkpoint, not random placeholder weights.
+   Export selects its new operation; the source training record stays selectable. Unsupported
+   telemetry/stop/resume is explained rather than simulated. Native log-only runs open Logs.
 
 Ray delegates to existing NexuML guards/cluster connection and has driver logs/final
 results only. Native jobs display actual pending/terminal state and available bounded

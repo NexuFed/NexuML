@@ -27,7 +27,7 @@ function OrderSlot({snapshot,kind,stage,slot,blocked,change,report}:{snapshot:Sn
 
 type Props={snapshot:Snapshot;selected:string;blocked:boolean;select:(id:string)=>void;change:(next:Snapshot)=>void;report:(error:unknown)=>void};
 export function StageOrderStrip({snapshot,selected,blocked,select,change,report}:Props) {
-  return <div className="stage-order-strip" aria-label="Stage execution order"><strong>Execution order</strong><small>Drag handles to reorder</small><div>
+  return <div className="stage-order-strip" aria-label="Stage execution order" title="Stage/layer order determines execution. Edges route keys; canvas placement does not schedule work."><strong>Execution order</strong><div>
     {snapshot.order.map((stage,index)=><div className="stage-order-item" key={stage}>
       <OrderSlot {...{snapshot,blocked,change,report}} kind="stage" slot={index}/>
       <OrderHandle kind="stage" id={stage} blocked={blocked}/><Button aria-pressed={selected===`stage:${stage}`} onClick={()=>select(`stage:${stage}`)}>{index+1}. {stage}</Button>
@@ -36,7 +36,7 @@ export function StageOrderStrip({snapshot,selected,blocked,select,change,report}
 }
 
 export function Structure({snapshot,selected,blocked,select,change,report,create}:{create:()=>void}&Props) {
-  return <><h2>Structure</h2><Button draggable={!blocked} disabled={blocked} aria-label="Stage item" title="Drag onto the canvas or click to add a stage"
+  return <><Button draggable={!blocked} disabled={blocked} aria-label="Stage item" title="Drag onto the canvas or click to add a stage"
     onDragStart={event=>{event.dataTransfer.setData("application/x-nexuml-stage","new");event.dataTransfer.effectAllowed="copy";}} onClick={create}><Layers size={16}/>Stage <span>+</span></Button>
     <div className="outline" aria-label="Ordered Structure"><Button aria-pressed={selected==="data"} onClick={()=>select("data")}>Data configuration</Button>
       {snapshot.order.map((stage,stageIndex)=><div className="outline-stage" key={stage}>

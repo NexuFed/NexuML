@@ -1,16 +1,15 @@
 import {expect,test} from "@playwright/test";
 import {parse,stringify} from "yaml";
+import {check,fileAction,inspector,navigation,openFile} from "./helpers";
 
 test("stage containers, explicit transfers/order, gesture undo and sidecar recovery",async({page},testInfo)=>{
   const failures:string[]=[];page.on("pageerror",error=>failures.push(error.message));page.on("dialog",dialog=>void dialog.accept());
-  await page.goto("/");await page.getByLabel("Config path",{exact:true}).fill(process.env.STUDIO_CONFIG_PATH ?? "tiny.yaml");
-  await page.getByRole("button",{name:"Open YAML",exact:true}).click();await expect(page.getByLabel("Search components")).toBeVisible({timeout:30000});
-  await expect(page.getByRole("button",{name:"Open YAML",exact:true})).toBeEnabled({timeout:30000});
+  await page.goto("/");await openFile(page);
   const outline=page.locator(".outline");const encoder=page.locator('.react-flow__node[data-id="stage:Encoder"]');
   const fit=async()=>{await page.getByRole("button",{name:"Fit view",exact:true}).click();await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));};
   const readYaml=async()=>{await page.getByRole("button",{name:"YAML",exact:true}).click();const text=await page.getByLabel("Scenario YAML").inputValue();await page.getByRole("button",{name:"Close YAML",exact:true}).click();return text;};
   const original=await readYaml();
-  await page.getByRole("button",{name:"Build check (executes code)",exact:true}).click();await expect(page.locator(".build-state")).toContainText("succeeded",{timeout:30000});
+  await check(page,"Build model");await page.getByRole("button",{name:/Problems \(/}).click();await expect(page.locator(".build-state")).toContainText("succeeded",{timeout:30000});
   await outline.getByRole("button",{name:"1. Encoder",exact:true}).click();await fit();
   const heading=await encoder.locator(".stage-header").boundingBox();expect(heading).not.toBeNull();
   const carried=page.locator(".react-flow__node").filter({has:page.locator(".execution-badge",{hasText:"1.1"})});const carriedBefore=await carried.boundingBox(),stageBefore=await encoder.boundingBox();
@@ -45,9 +44,9 @@ test("stage containers, explicit transfers/order, gesture undo and sidecar recov
   await page.locator(".properties-panel summary").filter({hasText:"Move / transfer layer"}).click();
   await page.getByLabel("Transfer destination stage",{exact:true}).selectOption("Holding");await expect(page.locator(".properties-panel")).toContainText("Move to Holding, append");
   // Unapplied expert buffers survive a membership edit of the same stable layer.
-  await page.locator(".properties-panel summary").filter({hasText:"Expert: Keys In"}).click();await page.getByLabel("Keys In",{exact:true}).fill("not-json");
+  await inspector(page,"Routing");await page.locator(".properties-panel summary:visible").filter({hasText:"Raw configuration"}).click();await page.getByLabel("Raw routing settings",{exact:true}).fill("not-json");await inspector(page,"Settings");
   await page.getByRole("button",{name:"Move layer",exact:true}).click();await expect(child.locator(".execution-badge")).toHaveText("2.1");
-  await expect(page.getByLabel("Keys In",{exact:true})).toHaveValue("not-json");await expect(page.locator(".build-state")).toContainText("stale");
+  await inspector(page,"Routing");await expect(page.getByLabel("Raw routing settings",{exact:true})).toHaveValue("not-json");await inspector(page,"Settings");await expect(page.locator(".build-state")).toContainText("stale");
   await page.getByRole("button",{name:"Undo",exact:true}).click();await expect(child.locator(".execution-badge")).toHaveText("1.1");await expect(child).toHaveClass(/selected/);
   await page.getByRole("button",{name:"Redo",exact:true}).click();await expect(child.locator(".execution-badge")).toHaveText("2.1");
   await page.getByRole("button",{name:"Undo",exact:true}).click();
@@ -79,9 +78,9 @@ test("stage containers, explicit transfers/order, gesture undo and sidecar recov
   await expect(page.getByRole("button",{name:"Redo",exact:true})).toBeEnabled();
   await outline.getByRole("button",{name:"1. Encoder",exact:true}).click();await page.locator(".properties-panel summary").filter({hasText:"Container size"}).click();
   await page.getByLabel("Stage width",{exact:true}).fill("700");
-  await page.getByLabel("Config path",{exact:true}).fill(`containers-${Date.now()}.yaml`);await page.getByRole("button",{name:"Save",exact:true}).click();
+  const saved=`containers-${Date.now()}.yaml`;await fileAction(page,"Save as…");await page.getByLabel("Config path",{exact:true}).fill(saved);await page.getByRole("button",{name:"Save file",exact:true}).click();
   await expect(page.getByRole("status")).toContainText("Configuration and separate layout saved.",{timeout:30000});
-  await page.getByRole("button",{name:"Open YAML",exact:true}).click();await expect(page.getByRole("button",{name:"Open YAML",exact:true})).toBeEnabled({timeout:30000});
+  await openFile(page,saved);
   await outline.getByRole("button",{name:"1. Encoder",exact:true}).click();await page.locator(".properties-panel summary").filter({hasText:"Container size"}).click();await expect(page.getByLabel("Stage width",{exact:true})).toHaveValue("700");
   await fit();await page.screenshot({path:testInfo.outputPath("stage-containers-desktop.png"),fullPage:true});
   for(const [width,height,name] of [[1024,900,"tablet"],[390,844,"mobile"]] as const){
@@ -95,8 +94,7 @@ test("stage containers, explicit transfers/order, gesture undo and sidecar recov
 test("skipped-stage previews, unowned insertion and keyboard placement alternatives",async({page})=>{
   const failures:string[]=[];page.on("pageerror",error=>failures.push(error.message));
   await page.goto("/");page.on("dialog",dialog=>void dialog.accept());
-  await page.getByLabel("Config path",{exact:true}).fill(process.env.STUDIO_CONFIG_PATH ?? "tiny.yaml");await page.getByRole("button",{name:"Open YAML",exact:true}).click();
-  await expect(page.getByLabel("Search components")).toBeVisible({timeout:30000});await expect(page.getByRole("button",{name:"Open YAML",exact:true})).toBeEnabled({timeout:30000});
+  await openFile(page);
   await page.locator(".outline").getByRole("button",{name:"Data configuration",exact:true}).click();await page.getByRole("button",{name:"Add stage",exact:true}).press("Enter");
   await expect(page.getByRole("dialog")).toContainText("Insert last");await page.getByLabel("New stage name",{exact:true}).fill("Last");await page.getByRole("button",{name:"Create stage",exact:true}).press("Enter");
   await expect(page.locator(".outline")).toContainText("4. Last");await page.getByRole("button",{name:"Undo",exact:true}).press("Enter");
@@ -121,11 +119,11 @@ test("skipped-stage previews, unowned insertion and keyboard placement alternati
   await expect(page.getByRole("dialog")).toContainText("Skipped: layer will not execute");await page.getByRole("button",{name:"Insert layer",exact:true}).press("Enter");
   await expect(skipped).toContainText("1 layers");await page.getByRole("button",{name:"Undo",exact:true}).press("Enter");await expect(skipped).toContainText("Drop a layer here");
   // Explicit after insertion and ordinary buttons also work without dragging.
-  await page.getByLabel("Insert into stage",{exact:true}).selectOption("Encoder");await page.getByLabel("Layer insertion slot",{exact:true}).selectOption({label:"After layer 1"});await component.press("Enter");
+  await page.getByLabel("Insert into stage",{exact:true}).selectOption("Encoder");await page.getByLabel("Layer insertion slot",{exact:true}).selectOption({label:"After layer 1"});await component.press("Enter");await navigation(page,"Structure");
   const added=page.locator(".react-flow__node.selected");await expect(added.locator(".execution-badge")).toHaveText("1.2");
   const addedId=await added.getAttribute("data-id");await outline.locator('.outline-stage').first().getByRole("button",{name:"Move LinearEncoder up",exact:true}).last().press("Enter");
   await expect(page.locator(`.react-flow__node[data-id="${addedId}"] .execution-badge`)).toHaveText("1.1");await page.getByRole("button",{name:"Undo",exact:true}).press("Enter");
-  await page.locator(".properties-panel summary").filter({hasText:"Visual position"}).click();await page.getByLabel("Node position x",{exact:true}).fill("80");await expect(added.locator(".execution-badge")).toHaveText("1.2");
+  await page.locator(".properties-panel summary").filter({hasText:"Advanced layout"}).click();await page.locator(".properties-panel summary").filter({hasText:"Visual position"}).click();await page.getByLabel("Node position x",{exact:true}).fill("80");await expect(added.locator(".execution-badge")).toHaveText("1.2");
   await outline.getByRole("button",{name:"1. Encoder",exact:true}).click();await page.locator(".properties-panel summary").filter({hasText:"Container size"}).click();
   await page.getByLabel("Stage height",{exact:true}).fill("1");expect(Number(await page.getByLabel("Stage height",{exact:true}).inputValue())).toBeGreaterThan(1);
   await page.getByRole("button",{name:"YAML",exact:true}).click();const after=parse(await page.getByLabel("Scenario YAML").inputValue());

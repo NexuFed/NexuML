@@ -2,6 +2,8 @@ import type { Connection, Edge } from "@xyflow/react";
 import type { CardNode, Catalog, Component, Config, Graph, Layer, Port, RecordValue, Schema, Snapshot } from "./types";
 import { resolveSchema } from "./schema";
 
+export const STAGE_INSET=90;
+
 const port = (key: string, domain = "x", field = "keys_in", alias?: string): Port =>
   ({ id: `${field}:${alias ?? key}`, key, domain, field, alias });
 
@@ -19,7 +21,7 @@ export function newSnapshot(config: Config, order: string[], previous?: Snapshot
 }
 
 export function signature(snapshot: Snapshot): string {
-  return JSON.stringify([snapshot.order, snapshot.config]);
+  return JSON.stringify([snapshot.order, snapshot.config],(_,value)=>value && typeof value==="object" && !Array.isArray(value) ? Object.fromEntries(Object.entries(value).sort(([a],[b])=>a.localeCompare(b))) : value);
 }
 
 export function project(snapshot: Snapshot, catalog?:Catalog, measured:Record<string,{width:number;height:number}>={}): Graph {
@@ -70,24 +72,24 @@ export function project(snapshot: Snapshot, catalog?:Catalog, measured:Record<st
         ...Object.entries(layer.meta_out ?? {}).map(([alias, key]) => port(key, "meta", "meta_out", alias))];
       if ((config.data.skip_pipeline_stages as string[] | undefined)?.includes(stage)) {
         graph.problems.push(`${stage}: skipped by data.skip_pipeline_stages; retained visually, not executable.`);
-        graph.nodes.push({ id: ids[stage][index], type: "card", parentId:`stage:${stage}`, position: {x: 20, y: 130 + index * 290},
+        graph.nodes.push({ id: ids[stage][index], type: "card", parentId:`stage:${stage}`, position: {x: 20, y: STAGE_INSET + index * 250},
           data: {kind: "layer", title: layer.component.type, summary: "Skipped stage", inputs: [], outputs: [], stage, index, executionPosition:`${column+1}.${index+1}`,rank: rank++} });
         return;
       }
-      add({ id: ids[stage][index], type: "card", parentId:`stage:${stage}`, position: {x: 20, y: 130 + index * 290},
+      add({ id: ids[stage][index], type: "card", parentId:`stage:${stage}`, position: {x: 20, y: STAGE_INSET + index * 250},
         data: {kind: "layer", title: layer.component.type, summary: `v${layer.component.version} · ${Object.entries(layer.component.params).slice(0,2).map(([key,value]) => `${key}: ${JSON.stringify(value)}`).join(" · ")}`,
           inputs, outputs, stage, index, executionPosition:`${column+1}.${index+1}`,rank: rank++} });
     });
     const children=graph.nodes.filter(node=>node.parentId===stageNode.id);
-    let width=290,height=layers.length ? 160 : 230;
+    let width=290,height=layers.length ? 120 : 190;
     for(const child of children){
       const point=positions[child.id] ?? child.position;
-      child.position={x:Math.max(20,point.x),y:Math.max(130,point.y)};
+      child.position={x:Math.max(20,point.x),y:Math.max(STAGE_INSET,point.y)};
       const size=measured[child.id] ?? {width:250,height:120+(child.data.inputs.length+child.data.outputs.length)*34};
       width=Math.max(width,child.position.x+size.width+20);height=Math.max(height,child.position.y+size.height+20);
     }
     stageNode.data.minWidth=width;stageNode.data.minHeight=height;
-    stageNode.style={width:Math.max(width,snapshot.sizes?.[stageNode.id]?.width ?? 290),height:Math.max(height,snapshot.sizes?.[stageNode.id]?.height ?? (160+layers.length*290))};
+    stageNode.style={width:Math.max(width,snapshot.sizes?.[stageNode.id]?.width ?? 290),height:Math.max(height,snapshot.sizes?.[stageNode.id]?.height ?? (120+layers.length*250))};
   });
   const right = 350 + order.length * 330;
   add({ id: "objectives", type: "card", position: {x: right, y: 80}, data: {
@@ -222,10 +224,10 @@ export function transferLayer(snapshot:Snapshot,id:string,stage:string,slot:numb
   for(const node of project(snapshot).nodes)next.positions[node.id] ??= node.position;
   const [layer]=next.config.pipeline.stages[source].splice(index,1);next.ids[source].splice(index,1);
   next.config.pipeline.stages[stage].splice(target,0,layer);next.ids[stage].splice(target,0,id);
-  if(position)next.positions[id]={x:Math.max(20,position.x),y:Math.max(130,position.y)};
+  if(position)next.positions[id]={x:Math.max(20,position.x),y:Math.max(STAGE_INSET,position.y)};
   else if(source!==stage){
     const graph=project(snapshot);const parent=graph.nodes.find(node=>node.id===`stage:${stage}`)!;
-    next.positions[id]={x:20,y:Math.max(130,parent.data.minHeight!-20)};
+    next.positions[id]={x:20,y:Math.max(STAGE_INSET,parent.data.minHeight!-20)};
   }
   next.selected=id;return next;
 }
@@ -251,5 +253,5 @@ export function addStage(snapshot:Snapshot,name:string,after?:string,position?:{
 
 export function placeNode(snapshot:Snapshot,id:string,position:{x:number;y:number}):Snapshot {
   const next=structuredClone(snapshot);const layer=snapshot.order.some(stage=>snapshot.ids[stage].includes(id));
-  next.positions[id]=layer ? {x:Math.max(20,position.x),y:Math.max(130,position.y)} : position;return next;
+  next.positions[id]=layer ? {x:Math.max(20,position.x),y:Math.max(STAGE_INSET,position.y)} : position;return next;
 }

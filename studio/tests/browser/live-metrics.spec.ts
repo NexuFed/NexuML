@@ -4,9 +4,10 @@ import {parseDocument,stringify} from "yaml";
 test("real batch loss charts update while training and retain finalized classification metrics on reconnect",async({page},testInfo)=>{
   const failures:string[]=[];page.on("pageerror",error=>failures.push(error.message));
   await page.goto("/");
+  await page.locator(".welcome").getByRole("button",{name:"Choose a recipe",exact:true}).click();
   await page.getByLabel("Discovered scenario").selectOption("synthetic-linear-ae-multiclass");
   await page.getByRole("button",{name:"Resolve recipe",exact:true}).click();
-  await expect(page.getByRole("button",{name:"Resolve recipe",exact:true})).toBeEnabled({timeout:30000});
+  await expect(page.getByRole("dialog")).toBeHidden({timeout:30000});
   await page.getByRole("button",{name:"YAML",exact:true}).click();
   const config=parseDocument(await page.getByLabel("Scenario YAML").inputValue()).toJS();
   const source=config.data.source ?? config.data.datasets[0].source;
@@ -29,7 +30,7 @@ test("real batch loss charts update while training and retain finalized classifi
   const loss=page.locator(".metric").filter({has:page.locator("span",{hasText:/^train\/loss$/})});
   await expect(loss).toBeVisible({timeout:30000});
   await expect(page.locator(".status-grid")).toContainText("running");
-  await expect(loss.locator("circle")).toHaveCount(1);
+  await expect(loss.locator(".training-series circle")).toHaveCount(1);
   await expect(loss).toContainText("Optimizer step");
   const first=await loss.locator("svg").getAttribute("aria-label");
   await expect(loss.locator("svg")).not.toHaveAttribute("aria-label",first!,{timeout:15000});
@@ -41,7 +42,7 @@ test("real batch loss charts update while training and retain finalized classifi
   }
   const identity=await page.getByLabel("Observed operation").inputValue();
   const retained=await loss.locator("svg").getAttribute("aria-label");
-  await page.reload();await page.getByRole("button",{name:"Execution",exact:true}).click();
+  await page.reload();await page.getByRole("button",{name:"Runs",exact:true}).click();
   await page.getByLabel("Observed operation").selectOption(identity);
   await expect(loss.locator("svg")).toHaveAttribute("aria-label",retained!,{timeout:30000});
   await page.setViewportSize({width:390,height:844});

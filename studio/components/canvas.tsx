@@ -4,13 +4,14 @@ import { Background, Controls, Handle, MiniMap, NodeResizeControl, Position, Rea
 import type { NodeProps, Connection } from "@xyflow/react";
 import { ArrowDownRight, Box, Database, Flag, Layers, ScanLine } from "lucide-react";
 import type { CardNode, Catalog, Entry, Snapshot } from "../model/types";
-import { connect, disconnect, placeNode, project, transferLayer, validConnection } from "../model/graph";
+import { connect, disconnect, placeNode, project, STAGE_INSET, transferLayer, validConnection } from "../model/graph";
 import { Button } from "./ui/button";
 import { StageOrderStrip } from "./structure";
 
 function Card({id, data, selected}:NodeProps<CardNode>) {
+  const [routingOpen,setRoutingOpen]=useState(false);
   const updateInternals=useUpdateNodeInternals();
-  useEffect(()=>updateInternals(id),[id,data.inputs,data.outputs,updateInternals]);
+  useEffect(()=>updateInternals(id),[id,data.inputs,data.outputs,selected,routingOpen,updateInternals]);
   const Icon = data.kind === "data" ? Database : data.kind === "stage" ? Layers : data.kind === "objective" ? Flag : data.kind === "evaluation" ? ScanLine : Box;
   if(data.kind==="stage")return <div className={`node-card stage ${selected ? "selected" : ""} ${data.dropTarget ? "drop-target" : ""}`}>
     {selected && !data.blocked && <NodeResizeControl position="bottom-right" minWidth={data.minWidth} minHeight={data.minHeight}
@@ -21,7 +22,8 @@ function Card({id, data, selected}:NodeProps<CardNode>) {
   return <div className={`node-card ${data.kind} ${selected ? "selected" : ""}`}>
     <div className="node-heading"><Icon size={16} /><span>{data.kind}</span>{data.executionPosition && <span className="execution-badge">{data.executionPosition}</span>}</div>
     <h3>{data.title}</h3><p>{data.summary}</p>
-    <div className="node-ports">{data.inputs.map(input=><div className="port-row input-port" key={input.id}>
+    {data.inputs.some(input=>!input.required && !input.key) && <Button className="nodrag nopan port-toggle" aria-expanded={!!selected || routingOpen} onClick={()=>setRoutingOpen(!routingOpen)}>Routing ports</Button>}
+    <div className="node-ports">{data.inputs.map(input=><div className="port-row input-port" key={input.id} hidden={!selected && !routingOpen && !input.required && !input.key}>
       <Handle type="target" position={Position.Left} id={input.id} aria-label={`${data.title} input ${input.key}`} />
       <span>{input.add ? `+ ${input.field==="loss_keys" ? "Loss" : input.field==="metric_keys" ? "Metric" : input.field==="label_key" ? "Label" : "Feature"} input` : `${input.alias ? `${input.alias} ← ` : ""}${input.key || (input.required ? "Unconnected" : `${input.field.split(".").at(-1)?.replaceAll("_"," ")} · optional`)}`}</span><small>{input.domain}{input.defaultKey===input.key && " · default"}</small>
     </div>)}{data.outputs.map(output=><div className="port-row output-port" key={output.id}>
@@ -62,7 +64,7 @@ function Editor({snapshot, selected, select, change, blocked,catalog,insert,repo
   const destination=(node:CardNode)=>{
     const parent=base.nodes.find(item=>item.id===node.parentId);const size=measured[node.id] ?? {width:250,height:170};
     const point={x:(parent?.position.x ?? 0)+node.position.x+size.width/2,y:(parent?.position.y ?? 0)+node.position.y+size.height/2};
-    return [...base.nodes].reverse().filter(item=>item.data.kind==="stage").find(item=>point.x>=item.position.x && point.y>=item.position.y+110 && point.x<=item.position.x+Number(item.style?.width) && point.y<=item.position.y+Number(item.style?.height));
+    return [...base.nodes].reverse().filter(item=>item.data.kind==="stage").find(item=>point.x>=item.position.x && point.y>=item.position.y+STAGE_INSET-20 && point.x<=item.position.x+Number(item.style?.width) && point.y<=item.position.y+Number(item.style?.height));
   };
   const act=(action:()=>Snapshot)=>{if(blocked)return;try{change(action());}catch(error){report(error);}};
   const removeEdge=()=>{if(selectedEdge)act(()=>disconnect(snapshot,[selectedEdge],catalog));};
@@ -86,11 +88,12 @@ function Editor({snapshot, selected, select, change, blocked,catalog,insert,repo
     <div className="canvas-toolbar"><span>ORDERED PIPELINE</span><div>
       {selectedEdge && <Button className="danger" disabled={blocked || !removable} title={removable ? "Remove this key route (Delete/Backspace)" : "Inherited runtime default: change the key or disable the evaluator"} onClick={removeEdge}>Remove connection</Button>}
       <Button onClick={()=>flow.fitView({padding:.15})}>Fit view</Button>
+      <Button disabled={!selected} onClick={()=>{const node=flow.getNode(selected);if(node){const parent=node.parentId ? flow.getNode(node.parentId) : undefined;void flow.setCenter(node.position.x+(parent?.position.x ?? 0)+(node.measured?.width ?? 250)/2,node.position.y+(parent?.position.y ?? 0)+(node.measured?.height ?? 170)/2,{zoom:1});}}}>Focus selected</Button>
       <Button disabled={blocked} onClick={()=>{change({...snapshot,positions:{},sizes:{}});setTimeout(()=>flow.fitView({padding:.15}),30);}}>Arrange</Button>
     </div></div>
     <StageOrderStrip {...{snapshot,selected,blocked,select,change,report}}/>
     <ReactFlow nodes={nodes} edges={graph.edges.map(edge=>({...edge,selected:edge.id===edgeId,reconnectable:!blocked}))}
-      nodeTypes={nodeTypes} defaultViewport={{x:30,y:80,zoom:.85}} minZoom={.15} maxZoom={1.5} colorMode="dark"
+      nodeTypes={nodeTypes} defaultViewport={{x:24,y:32,zoom:1}} minZoom={.15} maxZoom={1.5} colorMode="dark"
       nodesDraggable={!blocked} nodesConnectable={!blocked} deleteKeyCode={null}
        selectionOnDrag={false} multiSelectionKeyCode={null} elevateNodesOnSelect={false}
       isValidConnection={value=>validConnection(snapshot,value as Connection,catalog)}

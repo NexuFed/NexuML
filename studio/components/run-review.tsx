@@ -69,7 +69,7 @@ export function RunReview({initial,connection,catalog,sourceChanged,checkpoint,c
       {sourceChanged && <p className="field-error" role="alert">Source draft changed. Cancel and reopen Run to review the current draft.</p>}
       <div className="run-grid"><div ref={fields}><fieldset disabled={pending}>
         <ExecutionSettings value={config.execution} catalog={catalog} errors={errors} suggestions={suggestions}
-          onChange={execution=>setConfig({...config,execution})}/></fieldset></div>
+          onChange={async(execution,validate)=>{const next={...config,execution};if(validate){await request<Document>(connection,"/config/validate",{data:next,stage_order:initial.stage_order});if(currentKey.current!==key)throw new Error("Selection changed during validation; apply again");}setConfig(next);}}/></fieldset></div>
         <section className="capacity-panel" aria-label="Sourced execution capacity"><div className="section-title"><h3>Capacity</h3>
           <Button disabled={discovery.isFetching || !backend?.available} onClick={()=>void discovery.refetch()}>Refresh capacity</Button></div>
           <p role="status">{discovery.isFetching ? "Inspecting selected target…" : discovery.isError ? "Inspection failed — capacity unknown" : snapshot ? "Advisory snapshot — not reserved" : "Capacity unknown"}</p>
@@ -84,8 +84,8 @@ export function RunReview({initial,connection,catalog,sourceChanged,checkpoint,c
       <details><summary>Expert: frozen launch settings and remote handoff</summary><pre>{reviewed?.yaml ?? "Review this selection to capture exact launch settings."}</pre>
         {reviewed?.launch_review && <pre>{JSON.stringify(reviewed.launch_review,null,2)}</pre>}</details>
       <div className="toolbar run-actions"><Button disabled={pending} onClick={close}>Cancel</Button>
-        <Button disabled={blocked} onClick={()=>void prepare()}>Review selection</Button>
-        <Button className="primary" disabled={blocked || !reviewed} onClick={()=>void launch()}>Run on {backend?.label ?? config.execution.type}</Button></div>
+        <Button className={reviewed ? undefined : "primary"} disabled={blocked} onClick={()=>void prepare()}>Review selection</Button>
+        <Button className={reviewed ? "primary" : undefined} disabled={blocked || !reviewed} onClick={()=>void launch()}>Run on {backend?.label ?? config.execution.type}</Button></div>
     </Dialog.Popup></Dialog.Portal></Dialog.Root>;
 }
 
@@ -97,11 +97,13 @@ function Capacity({snapshot,stale}:{snapshot:ResourceSnapshot;stale:boolean}) {
     .map(([name,value])=>`${name}: ${value.toLocaleString()} ${snapshot.units[name] ?? "resource units (not physical GPUs)"}`).join(" · ") || "None reported";
   return <><p className="muted">{snapshot.source} · {snapshot.target ?? "selected process"}<br/>
     {age}s old · {stale || age>30 ? "Stale — refresh" : snapshot.complete ? "Complete source scope" : "Partial / unresolved constraints"}</p>
-    <dl className="result-summary"><dt>Visible nodes</dt><dd>{snapshot.visible_nodes ?? "Unknown"}</dd>
+    {snapshot.submission_allowed===false && <p className="field-error" role="alert">Submission denied by the selected target.</p>}
+    {snapshot.api_supported===false && <p className="field-error" role="alert">Required native API is unavailable.</p>}
+    <details open={!snapshot.complete}><summary>Capacity details</summary><dl className="result-summary"><dt>Visible nodes</dt><dd>{snapshot.visible_nodes ?? "Unknown"}</dd>
       <dt>Matching nodes</dt><dd>{snapshot.matching_nodes ?? "Unknown"}</dd>
       <dt>Allocatable</dt><dd>{quantities(snapshot.allocatable)}</dd><dt>Estimated unallocated</dt><dd>{quantities(snapshot.unallocated)}</dd>
       <dt>Namespace quota remaining</dt><dd>{quantities(snapshot.quota_remaining)}</dd>
-      <dt>Submission permission</dt><dd>{snapshot.submission_allowed===null ? "Unknown; preflight checks" : snapshot.submission_allowed ? "Allowed" : "Denied"}</dd></dl>
+      <dt>Submission permission</dt><dd>{snapshot.submission_allowed===null ? "Unknown; preflight checks" : snapshot.submission_allowed ? "Allowed" : "Denied"}</dd></dl></details>
     {snapshot.diagnostics.map(message=><p className="muted" key={message}>{message}</p>)}
     <details><summary>Matching nodes / workload roles</summary><pre>{JSON.stringify({roles:snapshot.roles,nodes:snapshot.nodes,ray_clusters:snapshot.ray_clusters},null,2)}</pre></details></>;
 }

@@ -1,21 +1,21 @@
 import {expect,test} from "@playwright/test";
+import {check,fileAction,inspector,navigation,openFile,trainingSection} from "./helpers";
 
 test("typed settings, error focus, categorized drop, names and removable key routing",async({page},testInfo)=>{
   const failures:string[]=[];page.on("pageerror",error=>failures.push(error.message));
   page.on("dialog",dialog=>void dialog.accept());
-  await page.goto("/");await page.getByLabel("Config path",{exact:true}).fill(process.env.STUDIO_CONFIG_PATH ?? "tiny.yaml");
-  await page.getByRole("button",{name:"Open YAML",exact:true}).click();
-  await expect(page.getByLabel("Search components")).toBeVisible({timeout:30000});
-  await expect(page.getByRole("button",{name:"Open YAML",exact:true})).toBeEnabled({timeout:30000});
+  await page.goto("/");await openFile(page);
   await page.getByRole("button",{name:"Training",exact:true}).click();
+  await trainingSection(page,"Execution");
   await expect(page.getByLabel("Execution backend",{exact:true})).toHaveValue("local:1");
   await page.getByLabel("Execution backend",{exact:true}).selectOption("ray-cluster:1");
   await page.locator('[data-field="execution.params.workers"]').filter({has:page.locator("option")}).selectOption({label:"integer"});
   await page.locator('input[data-field="execution.params.workers"]').fill("2");
   await expect(page.locator('input[data-field="execution.params.target.address"]')).toHaveValue("auto");
   await page.getByLabel("Execution backend",{exact:true}).selectOption("local:1");
+  await trainingSection(page,"Basics");
   await page.getByLabel("Batch Size",{exact:true}).fill("0");
-  await page.getByRole("button",{name:"Check fields",exact:true}).click();
+  await check(page);
   await expect(page.locator(".problems-list")).toContainText("training.batch_size",{timeout:30000});
   await page.getByRole("button",{name:"Pipeline",exact:true}).click();
   await page.locator(".problems-list").getByRole("button").filter({hasText:"training.batch_size"}).first().click();
@@ -36,7 +36,7 @@ test("typed settings, error focus, categorized drop, names and removable key rou
   await page.mouse.click(point.x,point.y);
   await page.locator('.canvas-toolbar').getByRole("button",{name:"Remove connection",exact:true}).click({timeout:5000});
   await page.getByRole("button",{name:"Undo",exact:true}).click();
-  await page.getByLabel("Search components").fill("ResNet");
+  await navigation(page,"Components");await page.getByLabel("Search components").fill("ResNet");
   await expect(page.locator(".component-list")).toContainText("Vision");
   await page.getByLabel("Search components").fill("LinearEncoder");
   const drag=page.locator('.component-list button').filter({hasText:"LinearEncoder"});
@@ -44,8 +44,8 @@ test("typed settings, error focus, categorized drop, names and removable key rou
   const before=await page.locator('.react-flow__node').count();
   await drag.dragTo(stage.locator('.node-heading'),{timeout:15000});
   await expect(page.locator('.react-flow__node')).toHaveCount(before+1);
-  await page.getByLabel("Node display name").fill("Dragged encoder");
-  await page.locator(".properties-panel summary").filter({hasText:"Key connections"}).click();
+  await page.locator(".properties-panel summary").filter({hasText:"Edit display name"}).click();await page.getByLabel("Node display name").fill("Dragged encoder");
+  await inspector(page,"Routing");
   await page.getByLabel("Connect new x input",{exact:true}).selectOption({label:"Data → features (x)"});
   await expect(page.locator('[data-field$=".keys_in.0"]')).toHaveValue("features");
   await page.getByRole("button",{name:"Remove connection features",exact:true}).click();
@@ -56,11 +56,10 @@ test("typed settings, error focus, categorized drop, names and removable key rou
   await page.getByRole("button",{name:"YAML",exact:true}).click();
   const yaml=await page.getByLabel("Scenario YAML").inputValue();expect(yaml).not.toContain("Dragged encoder");
   await page.getByRole("button",{name:"Close YAML",exact:true}).click();
-  await page.getByLabel("Config path",{exact:true}).fill(`authoring-${Date.now()}.yaml`);
-  await page.getByRole("button",{name:"Save",exact:true}).click();
+  const saved=`authoring-${Date.now()}.yaml`;await fileAction(page,"Save as…");await page.getByLabel("Config path",{exact:true}).fill(saved);
+  await page.getByRole("button",{name:"Save file",exact:true}).click();
   await expect(page.getByRole("status")).toContainText("Configuration and separate layout saved.",{timeout:30000});
-  await page.getByRole("button",{name:"Open YAML",exact:true}).click();
-  await expect(page.getByRole("button",{name:"Open YAML",exact:true})).toBeEnabled({timeout:30000});
+  await openFile(page,saved);
   await expect(page.locator(".react-flow__node")).toContainText(["Dragged encoder"]);
   await page.getByRole("button",{name:"Fit view",exact:true}).click();
   await page.screenshot({path:testInfo.outputPath("graph-first-desktop.png"),fullPage:true});

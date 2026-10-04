@@ -15,6 +15,16 @@ function fixture():Config {
 }
 
 describe("ordered config projection",()=>{
+  test("semantic signatures ignore mapping order but preserve stage order and serialized types",()=>{
+    const original=newSnapshot(fixture(),["10","2"]);
+    const reordered=structuredClone(original);reordered.config=Object.fromEntries(Object.entries(original.config).reverse()) as Config;
+    reordered.config.pipeline.stages=Object.fromEntries(Object.entries(reordered.config.pipeline.stages).reverse());
+    expect(signature(reordered)).toBe(signature(original));
+    reordered.order.reverse();expect(signature(reordered)).not.toBe(signature(original));
+    reordered.order.reverse();reordered.config.training.lr="1e-3";
+    const numeric=structuredClone(reordered);numeric.config.training.lr=.001;
+    expect(signature(reordered)).not.toBe(signature(numeric));
+  });
   test("explicit integer stage order, preceding overwritten producers and aliases",()=>{
     const snapshot=newSnapshot(fixture(),["10","2"]);const graph=project(snapshot);
     expect(graph.nodes.filter(node=>node.data.kind==="layer").map(node=>node.data.title)).toEqual(["first","second"]);
@@ -143,7 +153,7 @@ describe("ordered config projection",()=>{
     expect(stage.style).toEqual({width:800,height:900});expect(signature(moved)).toBe(signature(snapshot));
     const placed=placeNode(moved,id,{x:700,y:850});const contained=project(placed,undefined,{[id]:{width:250,height:350}}).nodes.find(node=>node.id===stage.id)!;
     expect(contained.style).toEqual({width:970,height:1220});
-    expect(placeNode(placed,id,{x:-50,y:10}).positions[id]).toEqual({x:20,y:130});
+    expect(placeNode(placed,id,{x:-50,y:10}).positions[id]).toEqual({x:20,y:90});
   });
   test("explicit stage slots retain integer-name order, creation defaults and YAML fidelity",()=>{
     const snapshot=newSnapshot(fixture(),["10","2"]);const position=project(snapshot).nodes.find(node=>node.id==="stage:10")!.position;

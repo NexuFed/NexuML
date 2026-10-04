@@ -1,4 +1,5 @@
 import {expect,test} from "@playwright/test";
+import {openFile,trainingSection} from "./helpers";
 
 test("runtime schema staging, stale target responses, accessible review and native controls",async({page},testInfo)=>{
   const errors:string[]=[];page.on("pageerror",error=>errors.push(error.message));
@@ -11,6 +12,7 @@ test("runtime schema staging, stale target responses, accessible review and nati
     data.execution_backends.push({type:"sixth-fixture",version:"1",label:"Sixth fixture",available:true,diagnostics:[],import_target:"fixture.Remote",
       capabilities:{native_reference:true,metrics:false,cancellation:true},presentation:{target:["target"],resources:["replicas"]},
       schema:{type:"object",properties:{target:{type:"string",default:"initial"},replicas:{type:"integer",default:1,minimum:1}}}});
+    data.execution_backends.push({...data.execution_backends.at(-1),type:"generic-fixture",label:"Generic fixture",presentation:{}});
     await route.fulfill({json:data});
   });
   let old:()=>void=()=>{};let oldRequested=false;
@@ -20,7 +22,7 @@ test("runtime schema staging, stale target responses, accessible review and nati
     if(execution.type!=="sixth-fixture"){await route.fulfill({json:{...snapshot("local"),backend:"local"}});return;}
     const target=execution.params.target;
     if(target==="older"){oldRequested=true;await held;}
-    await route.fulfill({json:snapshot(target)});
+    await route.fulfill({json:{...snapshot(target),submission_allowed:target!=="denied",api_supported:target!=="unsupported"}});
   });
   let prepares=0,launches=0,valid=true,phase="pending";
   let frozen:Record<string,unknown>|null=null;
@@ -37,10 +39,11 @@ test("runtime schema staging, stale target responses, accessible review and nati
   await page.route("**/api/v1/operations",route=>route.fulfill({json:{operations:launches ? [operation()] : []}}));
   await page.route("**/api/v1/operations/*",route=>route.fulfill({json:operation()}));
   await page.route("**/api/v1/operations/*/cancel",route=>{phase="cancelled";return route.fulfill({json:operation()});});
-  await page.goto("/");await page.getByLabel("Config path",{exact:true}).fill(process.env.STUDIO_CONFIG_PATH ?? "tiny.yaml");
-  await page.getByRole("button",{name:"Open YAML",exact:true}).click();
+  await page.goto("/");await openFile(page);
   const run=page.getByRole("button",{name:"Run…",exact:true});await expect(run).toBeEnabled({timeout:30000});
   await run.press("Enter");const dialog=page.getByRole("dialog");await expect(dialog).toBeVisible();
+  await dialog.locator("summary").filter({hasText:"Definition and raw execution settings"}).click();const initialExecution=await dialog.getByLabel("Raw execution settings",{exact:true}).inputValue();await dialog.getByLabel("Raw execution settings",{exact:true}).fill("null");await dialog.getByRole("button",{name:"Apply Raw execution settings",exact:true}).click();await expect(dialog.locator(".field-error")).toContainText(["buffer is retained"]);await expect(dialog.getByLabel("Execution backend",{exact:true})).toHaveValue("local:1");await dialog.getByLabel("Raw execution settings",{exact:true}).fill(initialExecution);await dialog.locator("summary").filter({hasText:"Definition and raw execution settings"}).click();
+  await dialog.getByLabel("Execution backend",{exact:true}).selectOption("generic-fixture:1");await expect(dialog.locator('input[data-field="execution.params.target"]')).toHaveValue("initial");await expect(dialog.locator('input[data-field="execution.params.replicas"]')).toHaveValue("1");
   await dialog.getByLabel("Execution backend",{exact:true}).selectOption("sixth-fixture:1");
   await expect(dialog.locator('[data-field="execution.params.replicas"]')).toHaveValue("1");
   await dialog.locator('[data-field="execution.params.target"]').fill("discarded");
@@ -54,6 +57,8 @@ test("runtime schema staging, stale target responses, accessible review and nati
   await expect(dialog.getByLabel("Sourced execution capacity")).toContainText("shared.example/gpu: 0");
   await expect(dialog.getByLabel("Sourced execution capacity")).toContainText("Unknown");
   await expect(dialog.getByLabel("Sourced execution capacity")).toContainText("Stale — refresh");
+  await target.fill("denied");await expect(dialog.getByText("Submission denied by the selected target.")).toBeVisible();await expect(dialog.getByRole("button",{name:"Review selection",exact:true})).toBeDisabled();
+  await target.fill("unsupported");await expect(dialog.getByText("Required native API is unavailable.")).toBeVisible();await expect(dialog.getByRole("button",{name:"Review selection",exact:true})).toBeDisabled();await target.fill("newer");await expect(dialog.getByRole("button",{name:"Review selection",exact:true})).toBeEnabled();
   valid=false;await dialog.getByRole("button",{name:"Review selection",exact:true}).click();
   await expect(dialog.locator(".execution-error")).toBeFocused();
   await dialog.locator(".execution-error").getByRole("button").click();
@@ -74,10 +79,13 @@ test("runtime schema staging, stale target responses, accessible review and nati
   await expect(page.locator(".status-grid")).toContainText("pending");await expect(page.getByRole("progressbar")).toHaveCount(0);
   phase="running";await expect(page.locator(".status-grid")).toContainText("running");
   await expect(page.getByText("Trainer checkpoint resume is unsupported by this backend.",{exact:false})).toBeVisible();
+  await expect(page.getByRole("button",{name:"Logs",exact:true})).toHaveAttribute("aria-current","page");
+  await page.screenshot({path:testInfo.outputPath("runs-unsupported-mobile.png"),fullPage:true});
+  await page.getByRole("navigation",{name:"Selected run views"}).getByRole("button",{name:"Artifacts",exact:true}).click();
   await expect(page.getByRole("button",{name:"Export trained checkpoint",exact:true})).toBeDisabled();
   await expect(page.getByRole("button",{name:"Download s3://owned/checkpoint",exact:true})).toHaveCount(0);
   await page.getByRole("button",{name:"Stop verified native job",exact:true}).click();await expect(page.locator(".status-grid")).toContainText("cancelled");
-  await page.getByRole("button",{name:"Training",exact:true}).click();await expect(page.getByLabel("Execution backend",{exact:true})).toHaveValue("sixth-fixture:1");
+  await page.getByRole("button",{name:"Training",exact:true}).click();await trainingSection(page,"Execution");await expect(page.getByLabel("Execution backend",{exact:true})).toHaveValue("sixth-fixture:1");
   await page.getByRole("button",{name:"Undo",exact:true}).click();await expect(page.getByLabel("Execution backend",{exact:true})).toHaveValue("local:1");
   expect(errors).toEqual([]);
 });

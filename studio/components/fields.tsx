@@ -11,12 +11,14 @@ export function StructuredField({ label, value, onChange, error, path }: {
   label:string; value:unknown; onChange:(value:unknown)=>void|Promise<void>; error?:string;path?:string;
 }) {
   const original = JSON.stringify(value ?? null, null, 2);
-  const [text, setText] = useState(original);
+  const [buffer,setBuffer]=useState({source:original,text:original});
+  if(buffer.source!==original)setBuffer({source:original,text:buffer.text===buffer.source ? original : buffer.text});
+  const text=buffer.text;
   const [failure, setFailure] = useState("");
   const [applying,setApplying] = useState(false);
   return <label className="field structured">{label}
-    <textarea aria-label={label} data-field={path} spellCheck={false} value={text} onChange={event=>{setText(event.target.value);setFailure("");}} rows={Math.min(10,Math.max(3,text.split("\n").length))} />
-    {text !== original && <Button disabled={applying} onClick={async()=>{setApplying(true);try {await onChange(JSON.parse(text));setFailure("");}catch(error) {setFailure(`${error instanceof Error ? error.message : "Invalid value"}. Your buffer is retained.`);}finally{setApplying(false);}}}>Apply {label}</Button>}
+    <textarea aria-label={label} data-field={path} spellCheck={false} value={text} onChange={event=>{setBuffer({...buffer,text:event.target.value});setFailure("");}} rows={Math.min(10,Math.max(3,text.split("\n").length))} />
+    {text !== original && <Button disabled={applying} onClick={async()=>{setApplying(true);try {const value=JSON.parse(text);await onChange(value);const formatted=JSON.stringify(value ?? null,null,2);setBuffer(previous=>previous.text===text ? {source:formatted,text:formatted} : previous);setFailure("");}catch(error) {setFailure(`${error instanceof Error ? error.message : "Invalid value"}. Your buffer is retained.`);}finally{setApplying(false);}}}>Apply {label}</Button>}
     {(failure || error) && <span className="field-error" role="alert">{failure || error}</span>}
   </label>;
 }
@@ -26,33 +28,38 @@ export function ComponentFields({component,catalog,onChange,errors=[],prefix,foc
 }&Context) {
   const entry=catalog?.components.find(item=>item.name===component.type && item.version===component.version && (!kind || item.kind===kind));
   const entries=catalog?.components.filter(item=>item.kind===(kind ?? entry?.kind)) ?? [];
-  return <div className="fields component-fields"><label className="field">Component
+  return <div className="fields component-fields">
+    <Fields value={component.params} schema={entry?.schema} root={entry?.schema} catalog={catalog} errors={errors} prefix={prefix} focusPath={focusPath} basic={["hidden_dims","output_dim","feature_shape","num_samples","norm_pix_loss"]} raw={false} onChange={(params,validate)=>onChange({...component,params},validate)}/>
+    <details><summary>Advanced definition and raw component</summary><label className="field">Component
     <select aria-label={`Component ${prefix}`} data-field={prefix.replace(/params\.$/,"type")} value={`${component.type}:${component.version}`} onChange={event=>{
       const selected=entries.find(item=>`${item.name}:${item.version}`===event.target.value);
       if(selected)onChange({type:selected.name,version:selected.version,params:schemaDefault(selected.schema) as RecordValue});
     }}><option value={`${component.type}:${component.version}`}>{component.type} · v{component.version}</option>
       {entries.filter(item=>item!==entry).map(item=><option key={`${item.name}:${item.version}`} value={`${item.name}:${item.version}`}>{item.name} · v{item.version}</option>)}
     </select></label>
-    <Fields value={component.params} schema={entry?.schema} root={entry?.schema} catalog={catalog} errors={errors} prefix={prefix} focusPath={focusPath} onChange={(params,validate)=>onChange({...component,params},validate)}/>
-    <details><summary>Expert: definition & raw component</summary><p className="muted">{entry?.import_target ?? "Unknown installed definition; values are retained."}</p>
-      <StructuredField key={JSON.stringify(component)} label="Raw component" value={component} onChange={value=>onChange(value as Component,true)}/>
-      {entry && <pre>{JSON.stringify(entry.schema,null,2)}</pre>}
+      <p className="muted">{entry?.import_target ?? "Unknown installed definition; values are retained."}</p>
+      <StructuredField label="Raw component" value={component} onChange={value=>onChange(value as Component,true)}/>
+      {entry && <details><summary>Installed schema</summary><pre>{JSON.stringify(entry.schema,null,2)}</pre></details>}
     </details></div>;
 }
 
-export function Fields({ value, schema, root=schema, onChange, prefix = "", errors = [], basic, catalog, focusPath, suggestions }: {
+export function Fields({ value, schema, root=schema, onChange, prefix = "", errors = [], basic, catalog, focusPath, suggestions,raw=true,rawLabel="Raw settings" }: {
   value:RecordValue; schema?:Schema; onChange:(value:RecordValue,validate?:boolean)=>void|Promise<void>;
-  prefix?:string; basic?:string[];
+  prefix?:string; basic?:string[];raw?:boolean;rawLabel?:string;
 }&Context) {
   const [advanced, setAdvanced] = useState(false);
-  const properties = resolveSchema(schema,root)?.properties ?? {};
-  const keys = [...new Set([...(schema?.required ?? []), ...(basic ?? []), ...Object.keys(properties), ...Object.keys(value)])];
+  const resolved=resolveSchema(schema,root);
+  const properties = resolved.properties ?? {};
+  const keys = [...new Set([...(resolved.required ?? []), ...(basic ?? []).filter(key=>key in properties || key in value), ...Object.keys(properties), ...Object.keys(value)])];
+  const common=(key:string)=>!basic || basic.includes(key) || resolved.required?.includes(key);
+  const reveal=keys.some(key=>!common(key) && (focusPath?.startsWith(`${prefix}${key}`) || errors.some(error=>error.loc.join(".").startsWith(`${prefix}${key}`))));
+  const render=(key:string)=><ValueField key={key} label={prefix==="training." && key==="lr" ? "Learning rate" : properties[key]?.title ?? key.replaceAll("_"," ")} value={value[key]===undefined ? properties[key]?.default : value[key]}
+    schema={properties[key]} root={root} catalog={catalog} errors={errors} focusPath={focusPath} suggestions={suggestions} path={`${prefix}${key}`}
+    onChange={(next,validate)=>onChange({...value,[key]:next},validate)}/>;
   return <div className="fields">
-    {basic && <div className="segmented"><Button aria-pressed={!advanced} onClick={()=>setAdvanced(false)}>Basic</Button><Button aria-pressed={advanced} onClick={()=>setAdvanced(true)}>Advanced</Button></div>}
-    {keys.filter(key=>!basic || advanced || basic.includes(key) || focusPath?.startsWith(`${prefix}${key}`) || errors.some(error=>error.loc.join(".").startsWith(`${prefix}${key}`))).map(key=>
-      <ValueField key={key} label={properties[key]?.title ?? key.replaceAll("_"," ")} value={value[key]===undefined ? properties[key]?.default : value[key]}
-        schema={properties[key]} root={root} catalog={catalog} errors={errors} focusPath={focusPath} suggestions={suggestions} path={`${prefix}${key}`}
-        onChange={(next,validate)=>onChange({...value,[key]:next},validate)}/>) }
+    {keys.filter(common).map(render)}
+    {keys.some(key=>!common(key)) && <details open={advanced || reveal} onToggle={event=>setAdvanced(event.currentTarget.open)}><summary>Advanced</summary><div className="fields">{keys.filter(key=>!common(key)).map(render)}</div></details>}
+    {raw && <details><summary>Raw configuration</summary><StructuredField label={rawLabel} value={value} path={`${prefix}$raw`} onChange={next=>{if(!next || typeof next!=="object" || Array.isArray(next))throw new Error("Expected a settings object");return onChange(next as RecordValue,true);}}/></details>}
   </div>;
 }
 
@@ -65,16 +72,24 @@ export function ValueField({label,value,schema={},path,onChange,root=schema,cata
   const context={root,catalog,errors,focusPath,suggestions};
   const control={"aria-label":label,"data-field":path,"aria-invalid":!!error,"aria-describedby":error ? `${id}-error` : undefined};
   const variants=field.anyOf ?? field.oneOf;
-  const expert=<details className="expert-field"><summary>Expert: {label}</summary><StructuredField key={JSON.stringify(value)} label={label} path={`${path}.$raw`} value={value} onChange={next=>onChange(next,true)} error={error}/></details>;
+  const matched=variants ? Math.max(0,variants.findIndex(item=>matchesSchema(value,item,root))) : 0;
+  const [choice,setChoice]=useState({value,index:matched});
+  if(choice.value!==value)setChoice({value,index:matched});
+  const expert=<details className="expert-field"><summary>Raw {label}</summary><StructuredField label={label} path={`${path}.$raw`} value={value} onChange={next=>onChange(next,true)} error={error}/></details>;
   if(variants){
-    const index=Math.max(0,variants.findIndex(item=>matchesSchema(value,item,root)));
+    const index=choice.index;
+    const usable=variants.filter(item=>resolveSchema(item,root).type!=="null");
+    const nullable=usable.length===1 && usable.length!==variants.length;
+    const modeLabel=(item:Schema)=>{const resolved=resolveSchema(item,root);return resolved.type==="null" ? path==="data.loader.batch_size" ? "Use training batch size" : "Not set" : nullable ? "Set value" : path==="training.batch_size" ? resolved.type==="object" ? "Automatic" : "Fixed" : variantLabel(item,root);};
+    if(variants.length===1)return <ValueField label={label} path={path} value={value} schema={variants[0]} onChange={onChange} {...context}/>;
     return <div className="field-group"><label className="field">{label}<select {...control} aria-label={`${label} mode`} value={index} onChange={event=>{
       const selected=resolveSchema(variants[Number(event.target.value)],root);
       const initial=schemaDefault(selected,root);
-      onChange(selected.type==="object" && value && typeof value==="object" && !Array.isArray(value) ?
-        {...initial as RecordValue,...Object.fromEntries(Object.entries(value).filter(([key])=>selected.properties?.[key] && selected.properties[key].const===undefined))} : initial);
-    }}>{variants.map((item,index)=><option key={index} value={index}>{variantLabel(item,root)}</option>)}</select></label>
-      <ValueField label={label} path={path} value={value} schema={variants[index]} onChange={onChange} {...context}/></div>;
+      const next=selected.type==="object" && value && typeof value==="object" && !Array.isArray(value) ?
+        {...initial as RecordValue,...Object.fromEntries(Object.entries(value).filter(([key])=>selected.properties?.[key] && selected.properties[key].const===undefined))} : initial;
+      setChoice({value:next,index:Number(event.target.value)});onChange(next);
+    }}>{variants.map((item,index)=><option key={index} value={index}>{modeLabel(item)}</option>)}</select></label>
+      {resolveSchema(variants[index],root).type!=="null" && <ValueField label={label} path={path} value={value} schema={variants[index]} onChange={(next,validate)=>{setChoice({value:next,index});return onChange(next,validate);}} {...context}/>}</div>;
   }
   if(field.type==="null")return <p className="muted">{label}: not set. Runtime defaults apply where supported.</p>;
   const kinds:Record<string,string>={DataSourceDefinition:"data_source",LoaderBackendDefinition:"loader_backend",LayerDefinition:"layer",EvalAlgorithmDefinition:"eval_algorithm",ExecutionBackendDefinition:"execution_backend"};
@@ -91,7 +106,7 @@ export function ValueField({label,value,schema={},path,onChange,root=schema,cata
   const choices=field.enum ?? (field.const===undefined ? undefined : [field.const]);
   if(choices)input=<select {...control} value={String(value ?? "")} onChange={event=>onChange(choices.find(item=>String(item)===event.target.value))}><option value="" disabled>Select…</option>{value!=null && !choices.includes(value) && <option value={String(value)} disabled>{String(value)} (not in installed choices)</option>}{choices.map(item=><option key={String(item)} value={String(item)}>{String(item)}</option>)}</select>;
   else if(field.type==="boolean" || typeof value==="boolean")input=<input {...control} type="checkbox" checked={Boolean(value)} onChange={event=>onChange(event.target.checked)}/>;
-  else if(["number","integer"].includes(field.type ?? "") || typeof value==="number")input=<input {...control} type="number" value={value as number ?? ""} step={field.type==="integer" ? 1 : "any"} min={field.minimum} max={field.maximum} onChange={event=>onChange(event.target.value==="" ? null : Number(event.target.value))}/>;
+  else if(["number","integer"].includes(field.type ?? "") || typeof value==="number")input=<NumericInput {...control} value={value} integer={field.type==="integer"} onChange={onChange}/>;
   else if(field.type==="string" || typeof value==="string")input=<><input {...control} list={suggestions?.[path]?.length ? `${id}-options` : undefined} value={String(value ?? "")} minLength={field.minLength} maxLength={field.maxLength} onChange={event=>onChange(event.target.value)}/>{suggestions?.[path] && <datalist id={`${id}-options`}>{suggestions[path].map(option=><option key={option} value={option}/>)}</datalist>}</>;
   if(input)return <label className={`field ${field.type==="boolean" || typeof value==="boolean" ? "checkbox" : ""}`}>{label}{input}{field.description && <small className="muted">{field.description}</small>}{error && <span id={`${id}-error`} className="field-error" role="alert">{error}</span>}</label>;
   if(field.type==="array" || Array.isArray(value)){
@@ -99,14 +114,24 @@ export function ValueField({label,value,schema={},path,onChange,root=schema,cata
     return <div className="field-group" data-field={path} tabIndex={-1}><h3>{label}</h3>{items.map((item,index)=><div className="collection-row" key={index}>
       <ValueField label={`${label} ${index+1}`} value={item} schema={field.prefixItems?.[index] ?? field.items} path={`${path}.${index}`} onChange={(next,validate)=>onChange(items.map((item,i)=>i===index ? next : item),validate)} {...context}/>
       {!field.prefixItems && <Button aria-label={`Remove ${label} ${index+1}`} onClick={()=>onChange(items.filter((_,i)=>i!==index))}>Remove</Button>}
-    </div>)}{!field.prefixItems && <Button disabled={field.maxItems!==undefined && items.length>=field.maxItems} onClick={()=>onChange([...items,schemaDefault(field.items ?? {type:"string"},root)])}>Add {label}</Button>}{error && <span className="field-error" role="alert">{error}</span>}{expert}</div>;
+    </div>)}{!field.prefixItems && <Button disabled={field.maxItems!==undefined && items.length>=field.maxItems} onClick={()=>onChange([...items,schemaDefault(field.items ?? {type:"string"},root)])}>Add {label}</Button>}{error && <span className="field-error" role="alert">{error}</span>}</div>;
   }
   if(field.type==="object" || (value && typeof value==="object")){
     const object=(value ?? {}) as RecordValue;
-    if(field.properties)return <div className="field-group" data-field={path} tabIndex={-1}><h3>{label}</h3><Fields value={object} schema={field} prefix={`${path}.`} onChange={onChange} {...context}/>{error && <span className="field-error" role="alert">{error}</span>}{expert}</div>;
+    if(field.properties)return <div className="field-group" data-field={path} tabIndex={-1}><h3>{label}</h3><Fields value={object} schema={field} prefix={`${path}.`} raw={false} onChange={onChange} {...context}/>{error && <span className="field-error" role="alert">{error}</span>}</div>;
     return <MappingField label={label} value={object} schema={field} path={path} onChange={onChange} {...context}/>;
   }
-  return <div className="field-group"><span>{label}</span><p className="muted">No typed value schema; use Expert.</p>{expert}</div>;
+   return <div className="field-group"><span>{label}</span><p className="muted">No typed value schema; use raw JSON.</p>{expert}</div>;
+}
+
+function NumericInput({value,onChange,integer,...props}:{value:unknown;integer:boolean;onChange:(value:unknown)=>void|Promise<void>}&Omit<React.InputHTMLAttributes<HTMLInputElement>,"value"|"onChange">) {
+  const source=value==null ? "" : String(value);
+  const [buffer,setBuffer]=useState({source,text:source});
+  if(buffer.source!==source)setBuffer({source,text:source});
+  return <input {...props} type="text" inputMode={integer ? "numeric" : "decimal"} value={buffer.text} onChange={event=>{
+    const text=event.target.value,number=Number(text),next=text.trim() && Number.isFinite(number) ? number : text;
+    setBuffer({source:String(next),text});void onChange(next);
+  }}/>;
 }
 
 function MappingField({label,value,schema,path,onChange,...context}:{label:string;value:RecordValue;schema:Schema;path:string;onChange:(value:unknown,validate?:boolean)=>void|Promise<void>}&Context){
@@ -120,6 +145,5 @@ function MappingField({label,value,schema,path,onChange,...context}:{label:strin
     }}/><ValueField label={`${label} ${key}`} value={item} schema={itemSchema} path={`${path}.${key}`} onChange={(next,validate)=>onChange({...value,[key]:next},validate)} {...context}/>
     <Button aria-label={`Remove ${label} ${key}`} onClick={()=>onChange(Object.fromEntries(Object.entries(value).filter(([name])=>name!==key)))}>Remove</Button>
   </div>)}<div className="toolbar"><input aria-label={`New ${label} key`} value={key} onChange={event=>setKey(event.target.value)}/><Button disabled={!key.trim()||Object.hasOwn(value,key.trim())} onClick={()=>{onChange({...value,[key.trim()]:schemaDefault(Object.keys(itemSchema).length ? itemSchema : {type:"string"},context.root)});setKey("");}}>Add {label} entry</Button></div>
-    <details><summary>Expert: {label}</summary><StructuredField key={JSON.stringify(value)} label={label} value={value} path={`${path}.$raw`} onChange={next=>onChange(next,true)}/></details>
   </div>;
 }
