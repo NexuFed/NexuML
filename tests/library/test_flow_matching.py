@@ -7,7 +7,7 @@ from nexuml.core.components import LayerBuildContext
 from nexuml.core.compiler import compile
 from nexuml.core.config import ResolvedConfig
 from nexuml.training.lightning import create_runtime_artifacts
-from nexuml_library.flow.solvers import euler_integrate
+from nexuml_library.layers.flow.solvers import euler_integrate
 from nexuml_library.layers.flow.flow_matching_loss import FlowMatchingLoss
 from nexuml_library.layers.flow.linear_path import LinearFlowPath, _linear_path
 from nexuml_library.layers.flow.vector_field import TimeConditionedVectorField
