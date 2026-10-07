@@ -14,7 +14,14 @@ from nexuml.core.discovery import layer
 
 
 def _broadcast_time(t: torch.Tensor, reference: torch.Tensor) -> torch.Tensor:
-    """Reshape per-sample times so they broadcast over "reference"."""
+    """Reshape per-sample times so they broadcast over "reference".
+
+    Returns:
+        Time tensor reshaped for broadcasting over the reference tensor.
+
+    Raises:
+        ValueError: If the time and reference batch dimensions differ.
+    """
     if t.shape[0] != reference.shape[0]:
         raise ValueError(
             "Time tensor batch dimension must match the reference tensor: "

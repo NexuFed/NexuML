@@ -151,7 +151,11 @@ def test_flow_scenario_one_step_and_sampling() -> None:
     loss, _ = artifacts.lightning_module._compute_loss(x_out)
     loss.backward()
 
-    vector_field = artifacts.pipeline.stages["VectorField"]["00_TimeConditionedVectorField"]
+    vector_field = next(
+        layer
+        for stage_name, _layer_name, layer in artifacts.pipeline.iter_layers()
+        if stage_name == "VectorField"
+    )
     velocity = getattr(vector_field, "velocity")
     samples = euler_integrate(
         velocity,
