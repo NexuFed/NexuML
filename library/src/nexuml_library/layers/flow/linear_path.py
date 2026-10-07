@@ -28,7 +28,14 @@ def linear_interpolate(
     x1: torch.Tensor,
     t: torch.Tensor,
 ) -> torch.Tensor:
-    """Evaluate the linear probability path "x_t = (1-t)x_0 + t x_1"."""
+    """Evaluate the linear probability path "x_t = (1-t)x_0 + t x_1".
+
+    Returns:
+        Interpolated state at time t.
+
+    Raises:
+        ValueError: If x0 and x1 do not have identical shapes.
+    """
     if x0.shape != x1.shape:
         raise ValueError(f"x0 and x1 must have identical shapes, got {x0.shape} and {x1.shape}")
     t_broadcast = _broadcast_time(t, x1)
@@ -36,7 +43,14 @@ def linear_interpolate(
 
 
 def linear_target_velocity(x0: torch.Tensor, x1: torch.Tensor) -> torch.Tensor:
-    """Return the constant velocity of the linear path, "u_t = x_1 - x_0"."""
+    """Return the constant velocity of the linear path, "u_t = x_1 - x_0".
+
+    Returns:
+        Constant target velocity along the linear path.
+
+    Raises:
+        ValueError: If x0 and x1 do not have identical shapes.
+    """
     if x0.shape != x1.shape:
         raise ValueError(f"x0 and x1 must have identical shapes, got {x0.shape} and {x1.shape}")
     return x1 - x0

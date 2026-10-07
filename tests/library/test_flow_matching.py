@@ -152,8 +152,9 @@ def test_flow_scenario_one_step_and_sampling() -> None:
     loss.backward()
 
     vector_field = artifacts.pipeline.stages["VectorField"]["00_TimeConditionedVectorField"]
+    velocity = getattr(vector_field, "velocity")
     samples = euler_integrate(
-        vector_field.velocity,
+        velocity,
         torch.randn(4, 2),
         num_steps=2,
     )

@@ -105,7 +105,14 @@ class _TimeConditionedVectorFieldRuntime(PipelineLayer):
         return embedding[:, : self.time_embedding_dim]
 
     def velocity(self, state: torch.Tensor, time: torch.Tensor) -> torch.Tensor:
-        """Evaluate the learned vector field on explicit state/time tensors."""
+        """Evaluate the learned vector field on explicit state/time tensors.
+
+        Returns:
+            Predicted velocity with the same shape as the state.
+
+        Raises:
+            ValueError: If batch dimensions or flattened feature dimensions do not match.
+        """
         if state.shape[0] != time.shape[0]:
             raise ValueError(
                 "State and time batch dimensions must match: "

@@ -33,7 +33,7 @@ def mlp_flow_matching(
             "VectorField": [
                 LayerSpec(
                     component=TimeConditionedVectorField(
-                        hidden_dims=hidden_dims or [128, 128],
+                        hidden_dims=hidden_dims if hidden_dims is not None else [128, 128],
                         time_embedding_dim=time_embedding_dim,
                         activation=activation,
                     ),

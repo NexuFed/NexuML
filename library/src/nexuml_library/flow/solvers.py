@@ -17,7 +17,15 @@ def euler_integrate(
     t_end: float = 1.0,
     num_steps: int = 100,
 ) -> torch.Tensor:
-    """Integrate "dx/dt = v(x,t)" with fixed-step explicit Euler."""
+    """Integrate "dx/dt = v(x,t)" with fixed-step explicit Euler.
+
+    Returns:
+        State after integration from t_start to t_end.
+
+    Raises:
+        ValueError: If num_steps is non-positive or the vector field changes state shape.
+        TypeError: If x0 is not a floating-point tensor.
+    """
     if num_steps <= 0:
         raise ValueError(f"num_steps must be positive, got {num_steps}")
     if not x0.is_floating_point():

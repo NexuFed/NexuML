@@ -30,7 +30,7 @@ def synthetic_flow_matching(
     return ScenarioSpec(
         name="synthetic_flow_matching",
         pipeline=mlp_flow_matching(
-            hidden_dims=hidden_dims or [128, 128],
+            hidden_dims=hidden_dims if hidden_dims is not None else [128, 128],
             time_embedding_dim=time_embedding_dim,
             noise_std=noise_std,
         ),
