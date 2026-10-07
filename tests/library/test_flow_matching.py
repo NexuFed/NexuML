@@ -7,10 +7,11 @@ from nexuml.core.components import LayerBuildContext
 from nexuml.core.compiler import compile
 from nexuml.core.config import ResolvedConfig
 from nexuml.training.lightning import create_runtime_artifacts
-from nexuml_library.layers.flow.solvers import euler_integrate
-from nexuml_library.layers.flow.flow_matching_loss import FlowMatchingLoss
-from nexuml_library.layers.flow.linear_path import LinearFlowPath, _linear_path
-from nexuml_library.layers.flow.vector_field import TimeConditionedVectorField
+from nexuml_library.layers.generative.flow.euler import EulerIntegrator
+from nexuml_library.layers.generative.flow.linear_path import LinearFlowPath, _linear_path
+from nexuml_library.layers.generative.flow.vector_field import TimeConditionedVectorField
+from nexuml_library.layers.loss.flow_matching_loss import FlowMatchingLoss
+from nexuml_library.layers.model.flow import Flow
 from nexuml_library.scenarios.flow.synthetic_flow_matching import synthetic_flow_matching
 
 
@@ -94,14 +95,17 @@ def test_vector_field_preserves_shape_and_has_gradients() -> None:
     assert any(gradient.abs().sum() > 0 for gradient in gradients if gradient is not None)
 
 
-def test_euler_integrates_constant_vector_field() -> None:
-    x0 = torch.zeros(3, 2)
-    result = euler_integrate(
-        lambda state, time: torch.full_like(state, 2.0),
-        x0,
+def test_euler_integrator_is_a_pipeline_layer() -> None:
+    integrator = EulerIntegrator(
+        velocity=lambda state, time: torch.full_like(state, 2.0),
         num_steps=20,
+        input_sizes={"state": (2,)},
+        keys_in=["state"],
+        keys_out=["sample"],
     )
-    assert torch.allclose(result, torch.full_like(x0, 2.0), atol=1e-6)
+    result = integrator.forward_tensor(torch.zeros(3, 2))
+
+    assert torch.allclose(result, torch.full((3, 2), 2.0), atol=1e-6)
 
 
 def test_flow_scenario_round_trips_and_compiles() -> None:
@@ -116,10 +120,7 @@ def test_flow_scenario_round_trips_and_compiles() -> None:
     pipeline = compile(scenario)
 
     assert isinstance(restored.pipeline.stages["FlowPath"][0].component, LinearFlowPath)
-    assert isinstance(
-        restored.pipeline.stages["VectorField"][0].component,
-        TimeConditionedVectorField,
-    )
+    assert isinstance(restored.pipeline.stages["Flow"][0].component, Flow)
     assert isinstance(restored.pipeline.stages["Loss"][0].component, FlowMatchingLoss)
     assert "flow_matching_loss" in pipeline.loss_keys
 
@@ -139,16 +140,12 @@ def test_flow_scenario_one_step_and_sampling() -> None:
     loss, _ = artifacts.lightning_module._compute_loss(x_out)
     loss.backward()
 
-    vector_field = next(
+    flow = next(
         layer
         for stage_name, _layer_name, layer in artifacts.pipeline.iter_layers()
-        if stage_name == "VectorField"
+        if stage_name == "Flow"
     )
-    samples = euler_integrate(
-        getattr(vector_field, "velocity"),
-        torch.randn(4, 2),
-        num_steps=2,
-    )
+    samples = getattr(flow, "sample")(torch.randn(4, 2))
 
     assert torch.isfinite(loss)
     assert samples.shape == (4, 2)

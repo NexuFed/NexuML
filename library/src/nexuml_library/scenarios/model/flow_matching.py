@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from nexuml.core.types import LayerSpec, PipelineSpec
-from nexuml_library.layers.flow.flow_matching_loss import FlowMatchingLoss
-from nexuml_library.layers.flow.linear_path import LinearFlowPath
-from nexuml_library.layers.flow.vector_field import TimeConditionedVectorField
+from nexuml_library.layers.generative.flow.linear_path import LinearFlowPath
+from nexuml_library.layers.loss.flow_matching_loss import FlowMatchingLoss
+from nexuml_library.layers.model.flow import Flow
 
 
 def mlp_flow_matching(
@@ -15,7 +15,7 @@ def mlp_flow_matching(
     """Build the basic MLP Flow Matching pipeline.
 
     Returns:
-        Linear path sampling, time-conditioned vector field, and loss pipeline.
+        Linear path sampling, flow model, and Flow Matching loss pipeline.
     """
     return PipelineSpec(
         stages={
@@ -26,9 +26,9 @@ def mlp_flow_matching(
                     keys_out=["flow_state", "flow_time", "flow_target_velocity"],
                 )
             ],
-            "VectorField": [
+            "Flow": [
                 LayerSpec(
-                    component=TimeConditionedVectorField(
+                    component=Flow(
                         hidden_dims=hidden_dims if hidden_dims is not None else [128, 128]
                     ),
                     keys_in=["flow_state", "flow_time"],
