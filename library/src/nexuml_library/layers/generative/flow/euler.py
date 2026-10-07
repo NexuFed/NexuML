@@ -44,5 +44,5 @@ class EulerIntegrator(PipelineLayer):
                 raise ValueError("Vector field output must match the state shape")
             state = state + dt * velocity
             trajectory.append(state)
-        self.last_trajectory = torch.stack(trajectory, dim=1)
+        self.last_trajectory = torch.stack(trajectory, dim=1).detach()
         return state
