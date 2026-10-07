@@ -11,6 +11,7 @@ from nexuml_library.layers.model.flow import Flow
 def mlp_flow_matching(
     feature_key: str = "features",
     hidden_dims: list[int] | None = None,
+    num_steps: int = 100,
 ) -> PipelineSpec:
     """Build the basic MLP Flow Matching pipeline.
 
@@ -29,7 +30,8 @@ def mlp_flow_matching(
             "Flow": [
                 LayerSpec(
                     component=Flow(
-                        hidden_dims=hidden_dims if hidden_dims is not None else [128, 128]
+                        hidden_dims=hidden_dims if hidden_dims is not None else [128, 128],
+                        num_steps=num_steps,
                     ),
                     keys_in=["flow_state", "flow_time"],
                     keys_out=["predicted_velocity"],
