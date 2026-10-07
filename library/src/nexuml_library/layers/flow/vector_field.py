@@ -41,8 +41,7 @@ class _TimeConditionedVectorFieldRuntime(PipelineLayer):
         if len(keys_in) != 2 or len(keys_out) != 1:
             raise ValueError("TimeConditionedVectorField requires two inputs and one output")
 
-        self.feature_shape = tuple(input_sizes[keys_in[0]])
-        feature_dim = math.prod(self.feature_shape)
+        feature_dim = math.prod(input_sizes[keys_in[0]])
         dims = [feature_dim + 1, *hidden_dims, feature_dim]
         layers: list[nn.Module] = []
         for index, (input_dim, output_dim) in enumerate(zip(dims[:-1], dims[1:])):
@@ -75,7 +74,9 @@ class _TimeConditionedVectorFieldRuntime(PipelineLayer):
             raise TypeError("TimeConditionedVectorField requires TensorDict input")
 
         keys_in = cast(list[str], self.keys_in)
-        x[self.keys_out[0]] = self.velocity(x[keys_in[0]], x[keys_in[1]])
+        state = cast(torch.Tensor, x[keys_in[0]])
+        time = cast(torch.Tensor, x[keys_in[1]])
+        x[self.keys_out[0]] = self.velocity(state, time)
         return x, y
 
     def forward_tensor(self, x: torch.Tensor, y: torch.Tensor | None = None) -> torch.Tensor:

@@ -37,7 +37,8 @@ class _FlowMatchingLossRuntime(PipelineLayer):
         if predicted.shape != target.shape:
             raise ValueError("Predicted and target velocity shapes must match")
 
-        x[self.keys_out[0]] = (predicted - target).pow(2).flatten(1).mean(dim=1)
+        error = (predicted - target).pow(2).reshape(predicted.shape[0], -1)
+        x[self.keys_out[0]] = error.mean(dim=1)
         return x, y
 
     def forward_tensor(self, x: torch.Tensor, y: torch.Tensor | None = None) -> torch.Tensor:
