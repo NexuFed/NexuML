@@ -1,4 +1,4 @@
-"""Flow Matching objective layer."""
+"""Flow Matching objective."""
 
 from __future__ import annotations
 
@@ -14,26 +14,13 @@ from nexuml.core.discovery import layer
 
 @layer("FlowMatchingLoss")
 class FlowMatchingLoss(LayerDefinition):
-    """Per-sample MSE between predicted and target path velocities."""
+    """Per-sample MSE between predicted and target velocity."""
 
     def build(self, context: LayerBuildContext) -> PipelineLayer:
         return _FlowMatchingLossRuntime(**context.runtime_kwargs())
 
 
 class _FlowMatchingLossRuntime(PipelineLayer):
-    def __init__(
-        self,
-        input_sizes: dict[str, tuple],
-        keys_in: list[str],
-        keys_out: list[str],
-        **kwargs,
-    ):
-        super().__init__(input_sizes=input_sizes, keys_in=keys_in, keys_out=keys_out, **kwargs)
-        if len(keys_in) != 2:
-            raise ValueError("FlowMatchingLoss expects predicted and target velocity input keys")
-        if len(keys_out) != 1:
-            raise ValueError("FlowMatchingLoss expects exactly one output key")
-
     def forward(
         self,
         x: TensorDict | torch.Tensor,
@@ -48,15 +35,10 @@ class _FlowMatchingLossRuntime(PipelineLayer):
         predicted = cast(torch.Tensor, x[keys_in[0]])
         target = cast(torch.Tensor, x[keys_in[1]])
         if predicted.shape != target.shape:
-            raise ValueError(
-                "FlowMatchingLoss requires matching velocity shapes: "
-                f"predicted={tuple(predicted.shape)}, target={tuple(target.shape)}"
-            )
+            raise ValueError("Predicted and target velocity shapes must match")
 
-        batch_size = predicted.shape[0]
-        loss = (predicted - target).pow(2).reshape(batch_size, -1).mean(dim=-1)
-        x[self.keys_out[0]] = loss
+        x[self.keys_out[0]] = (predicted - target).pow(2).flatten(1).mean(dim=1)
         return x, y
 
     def forward_tensor(self, x: torch.Tensor, y: torch.Tensor | None = None) -> torch.Tensor:
-        raise NotImplementedError("FlowMatchingLoss consumes two TensorDict inputs")
+        raise NotImplementedError

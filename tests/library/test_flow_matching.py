@@ -9,11 +9,7 @@ from nexuml.core.config import ResolvedConfig
 from nexuml.training.lightning import create_runtime_artifacts
 from nexuml_library.flow.solvers import euler_integrate
 from nexuml_library.layers.flow.flow_matching_loss import FlowMatchingLoss
-from nexuml_library.layers.flow.linear_path import (
-    LinearFlowPath,
-    linear_interpolate,
-    linear_target_velocity,
-)
+from nexuml_library.layers.flow.linear_path import LinearFlowPath, _linear_path
 from nexuml_library.layers.flow.vector_field import TimeConditionedVectorField
 from nexuml_library.scenarios.flow.synthetic_flow_matching import synthetic_flow_matching
 
@@ -23,11 +19,10 @@ def test_linear_path_equations_are_exact() -> None:
     x1 = torch.tensor([[2.0, 4.0], [5.0, 3.0]])
     t = torch.tensor([[0.25], [0.75]])
 
-    expected_xt = torch.tensor([[0.5, 2.5], [4.0, 2.0]])
-    expected_velocity = torch.tensor([[2.0, 2.0], [4.0, 4.0]])
+    state, velocity = _linear_path(x0, x1, t)
 
-    assert torch.allclose(linear_interpolate(x0, x1, t), expected_xt)
-    assert torch.equal(linear_target_velocity(x0, x1), expected_velocity)
+    assert torch.allclose(state, torch.tensor([[0.5, 2.5], [4.0, 2.0]]))
+    assert torch.equal(velocity, torch.tensor([[2.0, 2.0], [4.0, 4.0]]))
 
 
 def test_linear_path_runtime_obeys_tensordict_contract() -> None:
@@ -50,10 +45,8 @@ def test_linear_path_runtime_obeys_tensordict_contract() -> None:
     assert t.shape == (2, 1)
     assert target_velocity.shape == features.shape
     assert torch.all((t >= 0.0) & (t <= 1.0))
-    assert torch.allclose(
-        out["flow_state"],
-        linear_interpolate(recovered_x0, features, t),
-    )
+    expected_state, _ = _linear_path(recovered_x0, features, t)
+    assert torch.allclose(out["flow_state"], expected_state)
 
 
 def test_flow_matching_loss_matches_analytical_mse() -> None:
@@ -77,10 +70,7 @@ def test_flow_matching_loss_matches_analytical_mse() -> None:
 
 
 def test_vector_field_preserves_shape_and_has_gradients() -> None:
-    runtime = TimeConditionedVectorField(
-        hidden_dims=[8],
-        time_embedding_dim=4,
-    ).build(
+    runtime = TimeConditionedVectorField(hidden_dims=[8]).build(
         LayerBuildContext(
             input_sizes={"flow_state": (2,), "flow_time": (1,)},
             keys_in=["flow_state", "flow_time"],
@@ -88,8 +78,10 @@ def test_vector_field_preserves_shape_and_has_gradients() -> None:
         )
     )
     state = torch.randn(4, 2)
-    time = torch.rand(4, 1)
-    x = TensorDict({"flow_state": state, "flow_time": time}, batch_size=[4])
+    x = TensorDict(
+        {"flow_state": state, "flow_time": torch.rand(4, 1)},
+        batch_size=[4],
+    )
 
     out, _ = runtime(x)
     prediction = out["predicted_velocity"]
@@ -104,13 +96,11 @@ def test_vector_field_preserves_shape_and_has_gradients() -> None:
 
 def test_euler_integrates_constant_vector_field() -> None:
     x0 = torch.zeros(3, 2)
-
     result = euler_integrate(
         lambda state, time: torch.full_like(state, 2.0),
         x0,
         num_steps=20,
     )
-
     assert torch.allclose(result, torch.full_like(x0, 2.0), atol=1e-6)
 
 
@@ -122,8 +112,7 @@ def test_flow_scenario_round_trips_and_compiles() -> None:
         max_epochs=1,
     )
 
-    yaml_text = ResolvedConfig.from_scenario(scenario).to_yaml()
-    restored = ResolvedConfig.from_yaml(yaml_text)
+    restored = ResolvedConfig.from_yaml(ResolvedConfig.from_scenario(scenario).to_yaml())
     pipeline = compile(scenario)
 
     assert isinstance(restored.pipeline.stages["FlowPath"][0].component, LinearFlowPath)
@@ -139,7 +128,6 @@ def test_flow_scenario_one_step_and_sampling() -> None:
     scenario = synthetic_flow_matching(
         num_samples=32,
         hidden_dims=[8],
-        time_embedding_dim=4,
         batch_size=8,
         max_epochs=1,
     )
@@ -156,9 +144,8 @@ def test_flow_scenario_one_step_and_sampling() -> None:
         for stage_name, _layer_name, layer in artifacts.pipeline.iter_layers()
         if stage_name == "VectorField"
     )
-    velocity = getattr(vector_field, "velocity")
     samples = euler_integrate(
-        velocity,
+        getattr(vector_field, "velocity"),
         torch.randn(4, 2),
         num_steps=2,
     )

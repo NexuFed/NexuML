@@ -1,4 +1,4 @@
-"""Flow Matching model scenario fragments."""
+"""Flow Matching model fragment."""
 
 from __future__ import annotations
 
@@ -11,21 +11,17 @@ from nexuml_library.layers.flow.vector_field import TimeConditionedVectorField
 def mlp_flow_matching(
     feature_key: str = "features",
     hidden_dims: list[int] | None = None,
-    time_embedding_dim: int = 16,
-    activation: str = "torch.nn.SiLU",
-    noise_std: float = 1.0,
 ) -> PipelineSpec:
-    """Build a modality-agnostic MLP Flow Matching pipeline.
+    """Build the basic MLP Flow Matching pipeline.
 
     Returns:
-        PipelineSpec: Linear path sampling, time-conditioned vector field,
-            and Flow Matching loss.
+        Linear path sampling, time-conditioned vector field, and loss pipeline.
     """
     return PipelineSpec(
         stages={
             "FlowPath": [
                 LayerSpec(
-                    component=LinearFlowPath(noise_std=noise_std),
+                    component=LinearFlowPath(),
                     keys_in=[feature_key],
                     keys_out=["flow_state", "flow_time", "flow_target_velocity"],
                 )
@@ -33,9 +29,7 @@ def mlp_flow_matching(
             "VectorField": [
                 LayerSpec(
                     component=TimeConditionedVectorField(
-                        hidden_dims=hidden_dims if hidden_dims is not None else [128, 128],
-                        time_embedding_dim=time_embedding_dim,
-                        activation=activation,
+                        hidden_dims=hidden_dims if hidden_dims is not None else [128, 128]
                     ),
                     keys_in=["flow_state", "flow_time"],
                     keys_out=["predicted_velocity"],
