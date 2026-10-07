@@ -7,7 +7,7 @@ from nexuml.core.types import EvalAlgorithmSpec, EvaluationSpec, ScenarioSpec
 from nexuml_library.evaluation.visualizers.flow import FlowVisualizer
 from nexuml_library.scenarios.data.synthetic import synthetic_vector_data
 from nexuml_library.scenarios.model.flow_matching import mlp_flow_matching
-from nexuml_library.scenarios.training.defaults import default_training
+from nexuml_library.scenarios.training.defaults import default_logging, default_training
 
 
 @scenario("synthetic-flow-matching")
@@ -37,6 +37,10 @@ def synthetic_flow_matching(
                     feature_key="features",
                 )
             ]
+        ),
+        logging=default_logging(
+            experiment_name="Flow Matching",
+            run_name="synthetic-flow-matching",
         ),
         training=default_training(
             lr=lr,
