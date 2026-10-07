@@ -8,7 +8,7 @@ import torch
 from pydantic import Field
 from tensordict import TensorDict
 
-from nexuml.core.base_layer import PipelineLayer
+from nexuml.core.base_layer import LightningMode, PipelineLayer
 from nexuml.core.components import LayerBuildContext, LayerDefinition
 from nexuml.core.discovery import layer
 from nexuml_library.layers.generative.flow.euler import EulerIntegrator
@@ -55,7 +55,18 @@ class _FlowRuntime(PipelineLayer):
         x: TensorDict | torch.Tensor,
         y: TensorDict | None = None,
     ) -> tuple[TensorDict | torch.Tensor, TensorDict | None]:
-        return self.vector_field(x, y)
+        x, y = self.vector_field(x, y)
+        if isinstance(x, TensorDict) and self.lightning_mode in {
+            LightningMode.TESTING,
+            LightningMode.PREDICTING,
+        }:
+            state = cast(torch.Tensor, x[cast(list[str], self.keys_in)[0]])
+            initial = torch.randn_like(state)
+            x["flow_initial"] = initial
+            x["flow_sample"] = self.sample(initial)
+            if self.integrator.last_trajectory is not None:
+                x["flow_trajectory"] = self.integrator.last_trajectory
+        return x, y
 
     def velocity(self, state: torch.Tensor, time: torch.Tensor) -> torch.Tensor:
         """Evaluate the learned vector field.

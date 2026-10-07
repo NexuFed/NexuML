@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from nexuml.core.discovery import scenario
-from nexuml.core.types import ScenarioSpec
+from nexuml.core.types import EvalAlgorithmSpec, EvaluationSpec, ScenarioSpec
+from nexuml_library.evaluation.visualizers.flow import FlowVisualizer
 from nexuml_library.scenarios.data.synthetic import synthetic_vector_data
 from nexuml_library.scenarios.model.flow_matching import mlp_flow_matching
 from nexuml_library.scenarios.training.defaults import default_training
@@ -29,6 +30,14 @@ def synthetic_flow_matching(
     return ScenarioSpec(
         name="synthetic_flow_matching",
         pipeline=mlp_flow_matching(hidden_dims=hidden_dims, num_steps=num_steps),
+        evaluation=EvaluationSpec(
+            algorithms=[
+                EvalAlgorithmSpec(
+                    algorithm=FlowVisualizer(),
+                    feature_key="features",
+                )
+            ]
+        ),
         training=default_training(
             lr=lr,
             batch_size=batch_size,

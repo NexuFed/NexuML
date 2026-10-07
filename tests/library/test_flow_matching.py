@@ -7,6 +7,7 @@ from nexuml.core.components import LayerBuildContext
 from nexuml.core.compiler import compile
 from nexuml.core.config import ResolvedConfig
 from nexuml.training.lightning import create_runtime_artifacts
+from nexuml_library.evaluation.visualizers.flow import FlowVisualizer
 from nexuml_library.layers.generative.flow.euler import EulerIntegrator
 from nexuml_library.layers.generative.flow.linear_path import LinearFlowPath, _linear_path
 from nexuml_library.layers.generative.flow.vector_field import TimeConditionedVectorField
@@ -123,6 +124,7 @@ def test_flow_scenario_round_trips_and_compiles() -> None:
     assert isinstance(restored.pipeline.stages["Flow"][0].component, Flow)
     assert isinstance(restored.pipeline.stages["Loss"][0].component, FlowMatchingLoss)
     assert "flow_matching_loss" in pipeline.loss_keys
+    assert isinstance(scenario.evaluation.algorithms[0].algorithm, FlowVisualizer)
 
 
 def test_flow_scenario_one_step_and_sampling() -> None:
@@ -146,6 +148,7 @@ def test_flow_scenario_one_step_and_sampling() -> None:
         if stage_name == "Flow"
     )
     samples = getattr(flow, "sample")(torch.randn(4, 2))
+    assert flow.integrator.last_trajectory is not None
 
     assert torch.isfinite(loss)
     assert samples.shape == (4, 2)
