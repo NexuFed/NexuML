@@ -6,49 +6,45 @@ import math
 from typing import cast
 
 import torch
-import torch.nn as nn
 from pydantic import Field
 from tensordict import TensorDict
 
 from nexuml.core.base_layer import PipelineLayer
 from nexuml.core.components import LayerBuildContext, LayerDefinition
 from nexuml.core.discovery import layer
+from nexuml_library.layers.feature.projector import Linear
 
 
 @layer("TimeConditionedVectorField")
 class TimeConditionedVectorField(LayerDefinition):
-    """MLP vector field conditioned by concatenating scalar time."""
+    """Vector field using the reusable linear projector as its backbone."""
 
     hidden_dims: list[int] = Field(default_factory=lambda: [128, 128])
 
     def build(self, context: LayerBuildContext) -> PipelineLayer:
+        feature_dim = math.prod(context.input_sizes[context.keys_in[0]])
+        backbone = Linear(
+            target_dim=feature_dim,
+            hidden_dims=self.hidden_dims,
+            activation="torch.nn.SiLU",
+            skip_last_activation=True,
+        ).build(
+            LayerBuildContext(
+                input_sizes={"vector_field_input": (feature_dim + 1,)},
+                keys_in=["vector_field_input"],
+                keys_out=["vector_field_output"],
+            )
+        )
         return _TimeConditionedVectorFieldRuntime(
+            backbone=backbone,
             **context.runtime_kwargs(),
-            **self.model_dump(),
         )
 
 
 class _TimeConditionedVectorFieldRuntime(PipelineLayer):
-    def __init__(
-        self,
-        input_sizes: dict[str, tuple],
-        keys_in: list[str],
-        keys_out: list[str],
-        hidden_dims: list[int],
-        **kwargs,
-    ):
-        super().__init__(input_sizes=input_sizes, keys_in=keys_in, keys_out=keys_out, **kwargs)
-        if len(keys_in) != 2 or len(keys_out) != 1:
-            raise ValueError("TimeConditionedVectorField requires two inputs and one output")
-
-        feature_dim = math.prod(input_sizes[keys_in[0]])
-        dims = [feature_dim + 1, *hidden_dims, feature_dim]
-        layers: list[nn.Module] = []
-        for index, (input_dim, output_dim) in enumerate(zip(dims[:-1], dims[1:])):
-            layers.append(nn.Linear(input_dim, output_dim))
-            if index < len(dims) - 2:
-                layers.append(nn.SiLU())
-        self.model = nn.Sequential(*layers)
+    def __init__(self, backbone: PipelineLayer, **kwargs):
+        super().__init__(**kwargs)
+        self.backbone = backbone
 
     def velocity(self, state: torch.Tensor, time: torch.Tensor) -> torch.Tensor:
         """Evaluate the vector field.
@@ -61,7 +57,7 @@ class _TimeConditionedVectorFieldRuntime(PipelineLayer):
             [state.reshape(batch_size, -1), time.reshape(batch_size, 1)],
             dim=1,
         )
-        return self.model(inputs).reshape_as(state)
+        return self.backbone.forward_tensor(inputs).reshape_as(state)
 
     def forward(
         self,
