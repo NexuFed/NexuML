@@ -21,6 +21,11 @@ Budget: 5 experiments, 3 epochs each, CPU only, no downloads.
 Preserve the baseline and exclude official final-test records from all search runs.
 ```
 
+For a novel research method rather than a configuration search, first follow
+the [algorithm development workflow](../../skills/nexuml-library/references/algorithm-development.md):
+formulate a falsifiable mechanism, implement numerical checks and establish fair
+baselines/ablations. Do not infer novelty from a validation-score improvement.
+
 The agent should establish the runtime, dataset/partition identities, scorer,
 hard constraints and allowed changes; inspect prior evidence; propose a bounded
 experiment; then record actual results and keep/reject decisions. Reuse existing

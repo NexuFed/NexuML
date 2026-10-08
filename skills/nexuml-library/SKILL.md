@@ -10,9 +10,20 @@ description: >-
   for experiment selection; this skill owns reusable code and its contracts,
   not generic PyTorch work. Do not require a NexuML checkout or modify its core.
 compatibility: Python >=3.12 with compatible installed NexuML; filesystem and shell access.
+license: Apache-2.0
+metadata:
+  author: NexuFed AI
+  version: "0.1.0"
+  last-reviewed: "2026-10-08"
 ---
 
 # Author an external NexuML library
+
+For a **novel research algorithm**, follow the end-to-end
+[algorithm development workflow](references/algorithm-development.md) as well
+as the component contracts. It joins reusable implementation to fair baselines,
+falsifiable hypotheses, numerical checks and controlled experiments without
+adding another framework abstraction.
 
 The deliverable belongs to the user's library, not the framework's base library.
 Keep algorithms reusable and experiment settings in recipes/configs.

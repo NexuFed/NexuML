@@ -1,18 +1,29 @@
 ---
 name: nexuml
 description: >-
-  Use installed NexuML correctly from a user's external library or project:
-  select the Python runtime, inspect components and schemas, compose typed
-  scenarios, validate, build, train and inspect evidence. Use whenever a task
-  mentions NexuML, ScenarioSpec, TensorDict pipeline routing, NexuML YAML,
-  component discovery or NexuML CLI errors, even without a framework checkout.
-  For new components use nexuml-library; for publication fidelity use
-  nexuml-reproduce-paper; for experiment selection/resumption use
-  nexuml-autoresearch. This is runtime guidance, not generic PyTorch advice.
+  Operate an installed NexuML distribution in a user's external library or
+  project: select the Python runtime, inspect registered components, compose
+  typed scenarios, use CLI/YAML, build, train and inspect evidence. Trigger for
+  user-project NexuML execution, ScenarioSpec, TensorDict routing, installed
+  library discovery or CLI/config errors. For reusable components load
+  nexuml-library; for paper fidelity load nexuml-reproduce-paper; for bounded
+  experiment selection load nexuml-autoresearch. Do not trigger merely because
+  a framework-source PR, NexuML architecture discussion or repository CI/docs
+  task mentions NexuML; those need contributor guidance instead.
 compatibility: Python >=3.12 with a compatible NexuML installation; filesystem and shell access.
+license: Apache-2.0
+metadata:
+  author: NexuFed AI
+  version: "0.1.0"
+  last-reviewed: "2026-10-08"
 ---
 
 # Operate installed NexuML
+
+This skill governs **use of the installed framework**, not development or review
+of NexuML's own source code. If the request concerns core implementation,
+framework tests, packaging or contributor documentation, use the repository's
+contributor guidance instead of forcing this skill on the task.
 
 Keep the user's library and ordinary NexuML scenarios authoritative. Use the
 existing CLI/Python lifecycle, not a new training loop, scheduler or API server.

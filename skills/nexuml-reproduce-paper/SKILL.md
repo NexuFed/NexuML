@@ -10,6 +10,11 @@ description: >-
   nexuml-autoresearch for later improvements; do not turn protocol extraction
   into a search or treat generic paper summarization as NexuML reproduction.
 compatibility: Compatible installed NexuML, Python >=3.12, filesystem/shell and access to authorized source material.
+license: Apache-2.0
+metadata:
+  author: NexuFed AI
+  version: "0.1.0"
+  last-reviewed: "2026-10-08"
 ---
 
 # Reproduce a method, not just its diagram

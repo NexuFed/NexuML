@@ -11,6 +11,11 @@ description: >-
   faithful baselines; a single fixed run is not a research loop. Select on
   research/validation data, never adapt using final-test results.
 compatibility: Compatible installed NexuML, Python >=3.12 and filesystem/shell access; Optuna only for native tuning.
+license: Apache-2.0
+metadata:
+  author: NexuFed AI
+  version: "0.1.0"
+  last-reviewed: "2026-10-08"
 ---
 
 # Bounded NexuML research
@@ -88,6 +93,29 @@ metric claims explicitly.
 If no valid baseline exists, run a cheap sanity check followed by the agreed
 baseline. Check data/routes, numerical/gradient behavior, portable configuration
 and actual lifecycle before spending on search. A smoke pass is not convergence.
+
+## Separate parameter optimization from algorithm research
+
+For hyperparameter/architecture tuning, define the feasible search space and
+selection rule. For a new method, first state the mechanism, what would falsify
+it, the closest credible baselines and which ablations isolate the claimed
+contribution. A better metric alone does not establish a novel algorithm.
+
+Before an expensive baseline or novel-method run, perform a proportional
+validity review: verify loader membership and metric direction, check the loss
+and gradients on a tiny known example, ensure the proposed code/config actually
+changes the intended variable, and confirm the launcher will record usable
+evidence. It may be a short human/agent review or a focused executable check;
+do not require a second agent or a separate approval ritual.
+
+Compare under declared matched conditions: partitions and preprocessing,
+scoring/selection, model capacity where relevant, optimizer/schedule, data
+exposure, local update counts, resources and compute budget. Equal epochs do
+not necessarily mean equal training cost. Report non-comparable runs separately,
+rather than crediting an algorithm for a hidden budget or evaluation change.
+Prefer an inexpensive implementation check before an ablation when correctness
+is in doubt. Read the [comparison validity reference](references/research-state.md)
+for experiment records.
 
 ## Choose an experiment that answers a question
 

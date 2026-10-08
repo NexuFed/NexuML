@@ -50,6 +50,34 @@ hypothesis H; evidence E suggests checking X next.” Preserve negative/inconclu
 results. Add contrary evidence rather than quietly overwriting the history. Do
 not generalize one seed, one dataset, or an agent's explanation into a fact.
 
+## Comparable evidence and optional compact manifest
+
+Before calling a candidate an improvement, verify that baseline and candidate
+use the same research cohort and scorer, training/validation boundaries,
+preprocessing, and permitted changes. Report meaningful differences in effective
+batch size, optimizer/scheduler, update count, training examples, precision,
+hardware, parameter count, wall time and compute/communication costs when those
+affect the claim. A matched number of epochs is insufficient if data exposure
+or work per epoch differs. Identify exact baselines and ablations for a new
+method, including a cheap falsifier for its proposed mechanism.
+
+Keep the project's record format. If absent, a single ledger linking immutable
+per-run artifacts is enough. A useful **optional** per-run record, not a new
+NexuML schema or mandatory second ledger, contains:
+
+- ID/parent/hypothesis and changed parameters/components; exact runnable command.
+- Git commit plus dirty source identity, installed package versions, resolved
+  scenario and environment/hardware identity.
+- Dataset manifest, split IDs or hash, seed(s), metric implementation and
+  selection cohort/direction.
+- Updates/epochs, examples seen, elapsed/resource costs and budget accounting.
+- Raw results/artifact paths, actual completion state, validity gate,
+  comparison verdict and remaining uncertainty.
+
+Never replace source identity with the scenario-file snapshot alone. If work is
+stopped or unavailable, record unknown fields honestly instead of inserting
+zeros, stale estimates or implied success.
+
 ## Resume checklist
 
 1. Read the contract, active steering, attempted runs, lessons and pending ideas.
