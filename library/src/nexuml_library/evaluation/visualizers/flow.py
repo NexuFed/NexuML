@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, cast
 
+import numpy as np
 import torch
 from pydantic import Field
 from tensordict import TensorDict
@@ -17,7 +18,7 @@ from nexuml_library.evaluation.visualizers._plotting import apply_axis_style, lo
 
 @eval_algorithm("flow_visualizer")
 class FlowVisualizer(EvalAlgorithmDefinition):
-    """Visualize 2-D target, initial, generated, and trajectory samples."""
+    """Visualize target, initial, generated, and optional trajectory samples."""
 
     initial_key: str = "flow_initial"
     generated_key: str = "flow_sample"
@@ -50,32 +51,34 @@ class _FlowVisualizerRuntime(EvalAlgorithm):
         self._storage = ReservoirTensorDictBuffer(max_samples=max_samples)
 
     def eval_batch(self, x: TensorDict, y: TensorDict | None) -> None:
-        required = [self.feature_key, self.initial_key, self.generated_key, self.trajectory_key]
+        required = [self.feature_key, self.initial_key, self.generated_key]
         if any(key not in x.keys() for key in required):
             return
+
         target = cast(torch.Tensor, x[self.feature_key]).detach().cpu()
-        initial = cast(torch.Tensor, x[self.initial_key]).detach().cpu()
-        generated = cast(torch.Tensor, x[self.generated_key]).detach().cpu()
-        trajectory = cast(torch.Tensor, x[self.trajectory_key]).detach().cpu()
-        if target.ndim != 2 or target.shape[1] != 2:
-            return
-        self._storage.add_batch(
-            TensorDict(
-                {
-                    "target": target,
-                    "initial": initial,
-                    "generated": generated,
-                    "trajectory": trajectory,
-                },
-                batch_size=[target.shape[0]],
+        payload = {
+            "target": target,
+            "initial": cast(torch.Tensor, x[self.initial_key]).detach().cpu(),
+            "generated": cast(torch.Tensor, x[self.generated_key]).detach().cpu(),
+        }
+        if self.trajectory_key in x.keys():
+            payload["trajectory"] = (
+                cast(torch.Tensor, x[self.trajectory_key]).detach().cpu()
             )
-        )
+        self._storage.add_batch(TensorDict(payload, batch_size=[target.shape[0]]))
 
     def visualize(self, logger_obj: Any) -> None:  # ty: ignore[invalid-method-override]
         data = self._storage.get()
         if data is None:
             return
 
+        target = cast(torch.Tensor, data["target"])
+        if target.ndim == 2 and target.shape[1] == 2:
+            self._visualize_2d(logger_obj, data)
+        elif target.ndim == 4 and target.shape[1] in {1, 3}:
+            self._visualize_images(logger_obj, data)
+
+    def _visualize_2d(self, logger_obj: Any, data: TensorDict) -> None:
         import matplotlib
 
         matplotlib.use("Agg")
@@ -84,7 +87,6 @@ class _FlowVisualizerRuntime(EvalAlgorithm):
         target = cast(torch.Tensor, data["target"]).numpy()
         initial = cast(torch.Tensor, data["initial"]).numpy()
         generated = cast(torch.Tensor, data["generated"]).numpy()
-        trajectory = cast(torch.Tensor, data["trajectory"]).numpy()
 
         fig, ax = plt.subplots(figsize=(7, 6))
         ax.scatter(target[:, 0], target[:, 1], s=16, alpha=0.55, label="Target")
@@ -97,6 +99,10 @@ class _FlowVisualizerRuntime(EvalAlgorithm):
         log_figure(logger_obj, "eval/flow/samples", fig)
         plt.close(fig)
 
+        if "trajectory" not in data.keys():
+            return
+
+        trajectory = cast(torch.Tensor, data["trajectory"]).numpy()
         fig, ax = plt.subplots(figsize=(7, 6))
         ax.scatter(target[:, 0], target[:, 1], s=12, alpha=0.25, label="Target")
         for path in trajectory[: self.max_trajectories]:
@@ -105,6 +111,41 @@ class _FlowVisualizerRuntime(EvalAlgorithm):
         apply_axis_style(ax)
         fig.tight_layout()
         log_figure(logger_obj, "eval/flow/trajectories", fig)
+        plt.close(fig)
+
+    def _visualize_images(self, logger_obj: Any, data: TensorDict) -> None:
+        import matplotlib
+
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+
+        target = cast(torch.Tensor, data["target"])
+        initial = cast(torch.Tensor, data["initial"])
+        generated = cast(torch.Tensor, data["generated"])
+        count = min(8, len(target))
+
+        fig, axes = plt.subplots(3, count, figsize=(1.5 * count, 4.5))
+        rows = (
+            ("Initial", initial, -2.0, 2.0),
+            ("Generated", generated, 0.0, 1.0),
+            ("Target", target, 0.0, 1.0),
+        )
+        for row, (label, values, vmin, vmax) in enumerate(rows):
+            for column in range(count):
+                image = values[column].squeeze(0).numpy()
+                axes[row, column].imshow(
+                    np.clip(image, vmin, vmax),
+                    cmap="gray",
+                    vmin=vmin,
+                    vmax=vmax,
+                )
+                axes[row, column].axis("off")
+                if column == 0:
+                    axes[row, column].set_title(label, loc="left", fontsize=9)
+
+        fig.suptitle("Flow Matching samples")
+        fig.tight_layout()
+        log_figure(logger_obj, "eval/flow/images", fig)
         plt.close(fig)
 
     def results(self) -> dict[str, float]:

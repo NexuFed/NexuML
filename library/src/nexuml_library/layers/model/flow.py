@@ -21,6 +21,7 @@ class Flow(LayerDefinition):
 
     hidden_dims: list[int] = Field(default_factory=lambda: [128, 128])
     num_steps: int = Field(default=100, gt=0)
+    record_trajectory: bool = False
 
     def build(self, context: LayerBuildContext) -> PipelineLayer:
         vector_field = TimeConditionedVectorField(hidden_dims=self.hidden_dims).build(context)
@@ -28,6 +29,7 @@ class Flow(LayerDefinition):
         integrator = EulerIntegrator(
             velocity=getattr(vector_field, "velocity"),
             num_steps=self.num_steps,
+            record_trajectory=self.record_trajectory,
             input_sizes={state_key: tuple(context.input_sizes[state_key])},
             keys_in=[state_key],
             keys_out=["flow_sample"],

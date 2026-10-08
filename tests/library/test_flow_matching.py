@@ -9,6 +9,7 @@ from nexuml.core.config import ResolvedConfig
 from nexuml.training.lightning import create_runtime_artifacts
 from nexuml_library.evaluation.visualizers.flow import FlowVisualizer
 from nexuml_library.layers.generative.flow.euler import EulerIntegrator
+from nexuml_library.scenarios.flow.mnist_flow_matching import mnist_flow_matching
 from nexuml_library.layers.generative.flow.linear_path import LinearFlowPath, _linear_path
 from nexuml_library.layers.generative.flow.vector_field import TimeConditionedVectorField
 from nexuml_library.layers.loss.flow_matching_loss import FlowMatchingLoss
@@ -125,6 +126,12 @@ def test_flow_scenario_round_trips_and_compiles() -> None:
     assert isinstance(restored.pipeline.stages["Loss"][0].component, FlowMatchingLoss)
     assert "flow_matching_loss" in pipeline.loss_keys
     assert isinstance(scenario.evaluation.algorithms[0].algorithm, FlowVisualizer)
+
+    mnist = mnist_flow_matching(download=False, hidden_dims=[8], num_steps=2, max_epochs=1)
+    restored_mnist = ResolvedConfig.from_yaml(
+        ResolvedConfig.from_scenario(mnist).to_yaml()
+    )
+    assert restored_mnist.name == "mnist_flow_matching"
 
 
 def test_flow_scenario_one_step_and_sampling() -> None:

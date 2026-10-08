@@ -1,50 +1,46 @@
-"""Synthetic Flow Matching reference scenario."""
+"""MNIST Flow Matching reference scenario."""
 
 from __future__ import annotations
 
 from nexuml.core.discovery import scenario
 from nexuml.core.types import EvalAlgorithmSpec, EvaluationSpec, ScenarioSpec
 from nexuml_library.evaluation.visualizers.flow import FlowVisualizer
-from nexuml_library.scenarios.data.synthetic import synthetic_vector_data
 from nexuml_library.scenarios.model.flow_matching import mlp_flow_matching
 from nexuml_library.scenarios.training.defaults import default_logging, default_training
+from nexuml_library.scenarios.vision.mnist_resnet import mnist_data
 
 
-@scenario("synthetic-flow-matching")
-def synthetic_flow_matching(
-    feature_shape: tuple[int, ...] = (2,),
-    num_samples: int = 2048,
-    num_clusters: int = 4,
+@scenario("mnist-flow-matching")
+def mnist_flow_matching(
     hidden_dims: list[int] | None = None,
-    num_steps: int = 100,
+    num_steps: int = 50,
     lr: float = 1e-3,
-    batch_size: int = 64,
+    batch_size: int = 128,
     max_epochs: int = 20,
-    seed: int = 42,
+    download: bool = True,
 ) -> ScenarioSpec:
-    """Build a self-contained synthetic Flow Matching scenario.
+    """Build an unconditional MNIST Flow Matching scenario.
 
     Returns:
-        Synthetic Flow Matching scenario.
+        MNIST Flow Matching scenario.
     """
     return ScenarioSpec(
-        name="synthetic_flow_matching",
+        name="mnist_flow_matching",
         pipeline=mlp_flow_matching(
-            hidden_dims=hidden_dims,
+            hidden_dims=hidden_dims if hidden_dims is not None else [512, 512],
             num_steps=num_steps,
-            record_trajectory=True,
         ),
         evaluation=EvaluationSpec(
             algorithms=[
                 EvalAlgorithmSpec(
-                    algorithm=FlowVisualizer(),
+                    algorithm=FlowVisualizer(max_samples=64),
                     feature_key="features",
                 )
             ]
         ),
         logging=default_logging(
             experiment_name="Flow Matching",
-            run_name="synthetic-flow-matching",
+            run_name="mnist-flow-matching",
         ),
         training=default_training(
             lr=lr,
@@ -52,10 +48,5 @@ def synthetic_flow_matching(
             max_epochs=max_epochs,
             loss_keys={"flow_matching_loss": 1.0},
         ),
-        data=synthetic_vector_data(
-            feature_shape=feature_shape,
-            num_samples=num_samples,
-            num_clusters=num_clusters,
-            seed=seed,
-        ),
+        data=mnist_data(download=download),
     )

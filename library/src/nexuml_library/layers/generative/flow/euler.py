@@ -16,6 +16,7 @@ class EulerIntegrator(PipelineLayer):
         self,
         velocity: Callable[[torch.Tensor, torch.Tensor], torch.Tensor],
         num_steps: int = 100,
+        record_trajectory: bool = False,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -23,6 +24,7 @@ class EulerIntegrator(PipelineLayer):
             raise ValueError(f"num_steps must be positive, got {num_steps}")
         self.velocity = velocity
         self.num_steps = num_steps
+        self.record_trajectory = record_trajectory
         self.last_trajectory: torch.Tensor | None = None
 
     def forward_tensor(self, x: torch.Tensor, y: torch.Tensor | None = None) -> torch.Tensor:
@@ -30,7 +32,7 @@ class EulerIntegrator(PipelineLayer):
             raise TypeError("Euler integration requires a floating-point state")
 
         state = x
-        trajectory = [state]
+        trajectory = [state] if self.record_trajectory else None
         dt = 1.0 / self.num_steps
         for step in range(self.num_steps):
             time = torch.full(
@@ -43,6 +45,9 @@ class EulerIntegrator(PipelineLayer):
             if velocity.shape != state.shape:
                 raise ValueError("Vector field output must match the state shape")
             state = state + dt * velocity
-            trajectory.append(state)
-        self.last_trajectory = torch.stack(trajectory, dim=1).detach()
+            if trajectory is not None:
+                trajectory.append(state)
+        self.last_trajectory = (
+            torch.stack(trajectory, dim=1).detach() if trajectory is not None else None
+        )
         return state
