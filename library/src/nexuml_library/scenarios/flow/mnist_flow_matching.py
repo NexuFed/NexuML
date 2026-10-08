@@ -13,10 +13,10 @@ from nexuml_library.scenarios.vision.mnist_resnet import mnist_data
 @scenario("mnist-flow-matching")
 def mnist_flow_matching(
     hidden_dims: list[int] | None = None,
-    num_steps: int = 50,
-    lr: float = 1e-3,
+    num_steps: int = 300,
+    lr: float = 1e-4,
     batch_size: int = 128,
-    max_epochs: int = 20,
+    max_epochs: int = 100,
     download: bool = True,
 ) -> ScenarioSpec:
     """Build an unconditional MNIST Flow Matching scenario.
