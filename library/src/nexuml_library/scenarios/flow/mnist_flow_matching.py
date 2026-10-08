@@ -17,7 +17,7 @@ def mnist_flow_matching(
     num_steps: int = 300,
     lr: float = 1e-4,
     batch_size: int = 128,
-    max_epochs: int = 100,
+    max_epochs: int = 20,
     download: bool = True,
 ) -> ScenarioSpec:
     """Build an unconditional MNIST Flow Matching scenario.
