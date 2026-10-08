@@ -48,6 +48,18 @@
         "Revises the learning-rate lesson to its observed cohort/protocol and retains uncertainty/counterevidence rather than claiming a universal fact.",
         "Keeps the verified baseline and standing authorization, avoids per-run approval gates and honors the read-only task."
       ]
+    },
+    {
+      "id": 5,
+      "prompt": "Read-only experiment-selection review of an external NexuML study. Baseline A uses 1M parameters, 100 updates and fixed preprocessing for 3 epochs; proposed B has 20M parameters, 600 updates and stronger augmentation for 3 epochs. B's validation loss is lower on one seed and the researcher wants to declare a novel method superior and run the final test after every new variant. The research budget has four attempts remaining. What exact validity gates, controls, falsifiers and resource comparisons should precede a publication-quality claim? No execution now.",
+      "expected_output": "Rejects equal epochs as comparable compute, prevents adaptive final-test use, requests matched budget/processing and targeted ablations, and scopes single-seed conclusions.",
+      "files": [],
+      "expectations": [
+        "Does not claim novelty or algorithmic gain from the confounded single-seed metric.",
+        "Flags model-capacity, augmentation and update-count confounds despite equal epoch counts.",
+        "Requires a numeric/data/metric/gradient correctness check, a falsifiable mechanism and matched baselines/ablations.",
+        "Preserves the unused attempt budget, validation-only selection and frozen one-time final-test gate."
+      ]
     }
   ]
 }

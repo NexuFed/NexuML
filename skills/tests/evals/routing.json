@@ -24,6 +24,51 @@
         "Does not load any NexuML skill for conceptual paper interpretation.",
         "Distinguishes documentation/resource measurements from matched task-level efficacy evidence."
       ]
+    },
+    {
+      "id": 16,
+      "name": "framework-contributor-near-miss",
+      "prompt": "Read-only contributor review of the NexuML framework repository: a PR changes src/nexuml/core/compiler.py and .github/workflows/ci.yml. I want feedback on the framework's architecture and tests, not help using installed NexuML in an external user library. Identify relevant contributor files and a small review plan. Do not install NexuML, load the external-user agent skills, edit files or execute code.",
+      "expected_output": "Routes to ordinary repository contributor guidance, not skills for using an installed external NexuML library.",
+      "files": [],
+      "expected_skills": [],
+      "expectations": [
+        "Does not load an installed-NexuML user skill merely because the framework name appears.",
+        "Distinguishes contributor source review from external library authoring or running a scenario.",
+        "Proposes source/test-specific review without inventing external library setup or training."
+      ]
+    },
+    {
+      "id": 17,
+      "name": "novel-method-plus-experiments-overlap",
+      "prompt": "Read-only plan in my external installed-NexuML library: create a new prototype-guided differentiable loss, validate its gradients and TensorDict routing, then compare it with a matched existing baseline using three bounded validation-only ablations. Explain which NexuML procedural skills apply and give minimal implementation plus experiment gates. No code edits, training or final-test access.",
+      "expected_output": "Naturally routes to reusable algorithm authoring and bounded autoresearch, separating numerical correctness from controlled scientific comparison.",
+      "files": [],
+      "expected_skills": [
+        "nexuml-library",
+        "nexuml-autoresearch"
+      ],
+      "expectations": [
+        "Selects both reusable component guidance and bounded research guidance without demanding a new all-in-one skill.",
+        "Requires a small numerical/gradient and route verification before running an ablation.",
+        "Preserves matched baseline/protocol/resource limits and final-test isolation."
+      ]
+    },
+    {
+      "id": 18,
+      "name": "faithful-reference-then-novel-variant-overlap",
+      "prompt": "Read-only plan for a user-owned external NexuML library. First faithfully reproduce a published algorithm with official splits and metric, then investigate a separately named new loss under an explicit validation-only budget. Explain which guidance applies when and how to keep reference and improved method scientifically separate. No code or training.",
+      "expected_output": "Naturally routes to reproduction for reference fidelity and research for subsequent improvements, with library authoring when components are missing.",
+      "files": [],
+      "expected_skills": [
+        "nexuml-reproduce-paper",
+        "nexuml-autoresearch"
+      ],
+      "expectations": [
+        "Starts with source-linked exact reproduction and a frozen reference baseline.",
+        "Preserves explicit assumptions and verified partition, metric and data identity.",
+        "Runs later improvements as separate hypotheses, only with research data and unchanged baselines."
+      ]
     }
   ]
 }

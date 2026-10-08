@@ -36,6 +36,18 @@
         "Rejects stage-name phase switching and appending an unfitted scorer blindly to gradient training; describes supported frozen scoring placement.",
         "Uses distinct score keys before consumers/reporters and checks training-only fitting plus fitted checkpoint state."
       ]
+    },
+    {
+      "id": 4,
+      "prompt": "Read-only design for a novel algorithm in my external NexuML library. I propose a prototype-aware representation loss with a learnable encoder, per-class centers fitted only on training data, and a separate per-device macro metric. I want reusable components and a credible improvement claim over the current baseline. Show the minimum method contract, NexuML component/lifecycle split, numeric and split checks, fair ablations, and what evidence is insufficient to claim novelty. Do not implement or train.",
+      "expected_output": "Uses the algorithm-development workflow: falsifiable hypothesis and baselines, train-only fitted statistics, component contracts, numerical/gradient gates, and scientifically controlled comparisons.",
+      "files": [],
+      "expectations": [
+        "States mechanism, rival explanation, closest baseline, scope and falsifiable test before writing components.",
+        "Maps trainable encoder/loss, train-only prototype fitting and per-device metric to the correct separate NexuML contracts.",
+        "Requests targeted numerical gradients, center fitting/partition membership and macro aggregation checks before training.",
+        "Proposes matched controls/ablations and repetition, without treating a validation improvement as publication novelty."
+      ]
     }
   ]
 }

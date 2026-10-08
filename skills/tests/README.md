@@ -40,6 +40,40 @@ directories, preserving previous versions and failures.
 - Generate the standard skill-creator review with outputs, per-assertion grades,
   benchmark data and limitations. Preserve the user feedback for the next iteration.
 
+## Compare agent performance, not just the skill text
+
+The read-only cases in `evals/` are task prompts and expected evidence, not
+automatically executed benchmark scores. For a meaningful skill change, run
+matched trials on the **same external NexuML task** in three conditions:
+
+| Arm | Skills available | Purpose |
+| --- | --- | --- |
+| A | None | Capability without procedural guidance. |
+| B | Previous four-skill snapshot | Regression/control against the current release. |
+| C | Proposed four-skill snapshot | Measure whether the revision improves outcomes. |
+
+Keep agent/model/tool permissions, installed NexuML and dependencies, user
+fixture, compute/data, budget, prompt and grading criteria fixed across arms.
+Use fresh identical fixture copies and record model randomness/repetitions; one
+paired run is diagnostic, not evidence of general superiority. Include the
+`routing.json` near-misses where **no** NexuML skill should activate and
+multi-skill tasks where companion guidance is justified.
+
+Measure separately: correct natural skill selection/load, working code and
+numerical/data/protocol correctness under independent grading, unnecessary
+new components or core modifications, reproducible artifacts, final-test
+contamination, attempts/retries, wall/compute cost and observed model token cost
+when available. Missing cost or load evidence is *unavailable*, never zero.
+For complicated methods report both functional completion and whether the
+algorithm's scientific claim was actually supported.
+
+Retain transcripts, grader output and failed attempts outside the agent input.
+Publish a small per-case A/B/C table with successes, failures and uncertainty,
+not a single unsupported aggregate score. Do not ascribe an outcome to skills
+when the runtime, permissions or model changed between arms. The automated
+offline checks below cover structural/API contracts; full agent-run comparisons
+require the selected agent host and are **not** part of routine CI.
+
 ## Executable fixtures and independent artifact checks
 
 Use separate external copies of `nexuml-library/assets/minimal-library` with its
