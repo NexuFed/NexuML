@@ -6,8 +6,9 @@ description: >-
   scenarios, validate, build, train and inspect evidence. Use whenever a task
   mentions NexuML, ScenarioSpec, TensorDict pipeline routing, NexuML YAML,
   component discovery or NexuML CLI errors, even without a framework checkout.
-  For authoring components, paper reproduction or iterative research, combine
-  this guidance with the corresponding NexuML skill when available.
+  For new components use nexuml-library; for publication fidelity use
+  nexuml-reproduce-paper; for experiment selection/resumption use
+  nexuml-autoresearch. This is runtime guidance, not generic PyTorch advice.
 compatibility: Python >=3.12 with a compatible NexuML installation; filesystem and shell access.
 ---
 

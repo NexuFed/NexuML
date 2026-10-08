@@ -175,7 +175,7 @@ configs/*.yaml
 !configs/.gitkeep
 .experiments/
 
-# Local skill-creator evaluation runs; ship skills/evals, not generated outputs.
+# Local skill-creator evaluation runs; ship skills/tests/evals, not generated outputs.
 /skills/*-workspace/
 
 # PyCharm

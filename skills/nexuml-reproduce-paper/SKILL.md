@@ -6,7 +6,9 @@ description: >-
   scenarios/configs and source-linked evidence. Use when asked to recreate,
   replicate, reproduce, port or match a published ML method in NexuML, including
   requests for paper parity or full data/algorithm/evaluation fidelity rather
-  than only a similar network. Keep faithful reproduction distinct from changes.
+  than only a similar network. Use nexuml-library for missing components and
+  nexuml-autoresearch for later improvements; do not turn protocol extraction
+  into a search or treat generic paper summarization as NexuML reproduction.
 compatibility: Compatible installed NexuML, Python >=3.12, filesystem/shell and access to authorized source material.
 ---
 

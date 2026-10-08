@@ -6,7 +6,9 @@ description: >-
   recipes, portable configs and focused contract tests. Use for new NexuML
   algorithms, custom components, library packaging or missing-component work,
   including components needed by paper reproduction or architecture research.
-  Do not assume access to NexuML's source repository or modify its core.
+  Use nexuml-reproduce-paper for source/protocol fidelity and nexuml-autoresearch
+  for experiment selection; this skill owns reusable code and its contracts,
+  not generic PyTorch work. Do not require a NexuML checkout or modify its core.
 compatibility: Python >=3.12 with compatible installed NexuML; filesystem and shell access.
 ---
 

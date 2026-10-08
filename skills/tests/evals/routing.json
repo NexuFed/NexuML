@@ -1,0 +1,29 @@
+{
+  "skill_name": "nexuml-agent-kit",
+  "evals": [
+    {
+      "id": 14,
+      "name": "plain-pytorch-near-miss",
+      "prompt": "Read-only review: in plain PyTorch, does torch.nn.Dropout(p=0.2) need a wrapper to operate on one tensor? Give a tiny standard PyTorch example and explain train/eval behavior. There is no NexuML integration in this task. Do not read project files, write anything or execute code.",
+      "expected_output": "Answers with standard PyTorch without loading unrelated NexuML skills.",
+      "files": [],
+      "expected_skills": [],
+      "expectations": [
+        "Does not load any NexuML skill for the plain PyTorch near-miss.",
+        "Explains ordinary dropout and training/evaluation behavior without inventing NexuML requirements."
+      ]
+    },
+    {
+      "id": 15,
+      "name": "paper-summary-near-miss",
+      "prompt": "Read-only explanation: distinguish a resource paper describing procedural agent skills from a controlled experiment measuring whether skills improve agent performance. Which evidence would establish the latter? This is conceptual paper interpretation, not an implementation, paper reproduction or NexuML experiment. No file reads, tools, code or execution needed.",
+      "expected_output": "Explains evidence limitations without loading NexuML reproduction/research skills.",
+      "files": [],
+      "expected_skills": [],
+      "expectations": [
+        "Does not load any NexuML skill for conceptual paper interpretation.",
+        "Distinguishes documentation/resource measurements from matched task-level efficacy evidence."
+      ]
+    }
+  ]
+}

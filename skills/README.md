@@ -50,6 +50,7 @@ unreleased interfaces exist.
 - [Library component contracts](nexuml-library/references/contracts.md)
 - [Offline external-library starter](nexuml-library/assets/minimal-library/README.md)
 - [Research/tuning boundaries](nexuml-autoresearch/references/tuning.md)
+- [Hypothesis selection and resumable research](nexuml-autoresearch/references/research-state.md)
 
 Run structural checks from this repository with:
 
@@ -61,10 +62,11 @@ With compatible installed NexuML, `python skills/tests/check_runtime.py` also
 checks key preservation, fitted-score lifecycle/checkpoint state and tuning
 parameter/factory semantics. It uses test doubles; no study or training is run.
 
-Each skill's `evals/evals.json` contains read-only agent cases for paired
-with-skill/no-skill review. These assess decisions and proposed commands, not
-scientific convergence. The starter supplies separate runnable contract checks
-and a tiny CPU training smoke. Larger paper reproductions, GPU/distributed runs,
-description optimization and additional evaluation iterations require their own
-scope and budget. Skill-creator workspaces are local review evidence, not shipped
-skills or a production experiment database.
+Repository-only cases live in `skills/tests/evals/`, outside the independently
+installed skill payloads. Read-only cases assess decisions/commands; workflow
+cases assess naturally selected skills and executable external-project artifacts.
+The starter's contract checks remain a useful installable example, not agent
+evaluation fixtures. See [evaluation protocol](tests/README.md) for boundaries.
+Larger paper reproductions, GPU/distributed runs and description optimization
+need their own scope and budget. Skill-creator workspaces are local review
+evidence, not shipped skills or a production experiment database.

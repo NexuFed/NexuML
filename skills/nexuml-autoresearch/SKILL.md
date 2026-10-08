@@ -6,8 +6,10 @@ description: >-
   compare algorithm variants, implement missing reusable components and promote
   verified candidates. Use for NexuML autoresearch, autonomous experiments,
   architecture/hyperparameter search, improving a scenario metric or exploring
-  new algorithms. Preserve baselines and select on research/validation data,
-  never adapt candidates using final-test results.
+  new algorithms, including resuming a study or choosing its next experiment.
+  Use nexuml-library for component contracts and nexuml-reproduce-paper for
+  faithful baselines; a single fixed run is not a research loop. Select on
+  research/validation data, never adapt using final-test results.
 compatibility: Compatible installed NexuML, Python >=3.12 and filesystem/shell access; Optuna only for native tuning.
 ---
 
@@ -54,6 +56,8 @@ approval requirement after the user resumes the agreed loop.
 Reuse the project's ledger/artifact convention. If absent, use one small ledger
 and unique run folders; do not introduce a database, scheduler or fixed set of
 four competing ledgers. Record assumptions before looking at results.
+For a multi-run or resumed study, read [research state](references/research-state.md)
+to keep its budget, hypothesis queue, measurements and next step recoverable.
 
 ## Keep selection and final evaluation separate
 
@@ -92,6 +96,14 @@ expected discriminator, budget and keep/reject/investigate rule. A controlled
 single-variable comparison is useful for attribution, but do not force it when
 a declared joint search or an algorithm change requires coupled parameters.
 
+Keep a short queue of distinct hypotheses, including a cheap check that could
+disprove each. Prioritize invalid comparisons and missing baseline evidence,
+then useful confirmation or the most informative feasible experiment for its
+cost. Expected value is a reasoned ranking, not an invented probability or score.
+Do not keep sweeping the same knob without a mechanism suggested by evidence.
+After stagnant or contradictory results, check the metric/data/code and revisit
+the hypothesis class before spending more; no fixed run-count ritual is needed.
+
 Reuse existing components/recipes first. Use native `nexuml tune` for supported
 parameter/factory search, or explicit scenario variants for architectural and
 algorithm hypotheses. Read [tuning boundaries](references/tuning.md) before
@@ -125,6 +137,22 @@ metrics, constraints, decision and evidence paths. A framework failure is a
 blocker/reproducer, not permission for site-packages patches or diagnostic
 monkeypatches disguised as candidate implementations. Record a user-code fix as
 a new identified attempt; do not quietly spend extra retries beyond the budget.
+Keep measured results separate from their interpretation. Retain a lesson only
+with its evidence and dataset/protocol scope; record counterevidence and revise
+it instead of turning a single lucky run into a universal recommendation.
+
+## Resume without restarting or inventing progress
+
+Read the recorded contract, latest evidence, active restrictions and queue before
+choosing a new run. Reconcile any running/interrupted attempt with the host's
+actual job and artifacts; unknown completion is not failure or permission to
+launch a duplicate. Verify source, environment, cohort and scorer still match.
+Changed identities need an explicit new comparison, not silent study merging.
+
+Reconcile spent and reserved resources, release only proven unused reservations,
+and continue within the remaining budget without per-run approval. Carry user
+steering forward. An explicit pause remains a pause until resumed; a new agent
+context does not reset the budget, erase failures or authorize final-test access.
 
 ## Select, verify and stop
 

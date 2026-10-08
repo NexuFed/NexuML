@@ -1,0 +1,47 @@
+{
+  "skill_name": "nexuml-agent-kit",
+  "evals": [
+    {
+      "id": 11,
+      "name": "external-library-component",
+      "prompt": "Extend this external NexuML library, using its installed .venv/bin/python and existing agent_demo package. Add agent_demo.components.AbsoluteError, a registered agent_demo_mae LayerDefinition whose runtime consumes prediction and routed target labels and emits per-sample mean absolute error. Preserve the input tensor. Add results/checks.py with a numeric and gradient check, an explicit missing-real-label check, and a native compilation plus ResolvedConfig YAML round-trip check. Save the portable scenario to results/scenario.yaml and describe imports/registration/check outcomes in results/report.md. Execute your checks in a fresh isolated Python process. No training, downloads, framework edits, core checkout or new dependencies. Reuse the existing package/discovery pattern; do not copy a second library or substitute a raw torch module for the label-dependent runtime.",
+      "expected_output": "Naturally loads component-authoring guidance, adds reusable label-dependent runtime to the external package, executes numerical/gradient/serialization/discovery checks and preserves inputs.",
+      "files": [],
+      "expected_skills": ["nexuml-library"],
+      "expectations": [
+        "Naturally loads nexuml-library without being given a skill name or instruction path.",
+        "The installed external component computes correct per-sample absolute error and gradients, preserves prediction and rejects missing real labels.",
+        "The registered definition is freshly discoverable and its scenario round-trips and compiles through native NexuML.",
+        "Executable checks and an evidence report are produced and run without training or framework modifications."
+      ]
+    },
+    {
+      "id": 12,
+      "name": "synthetic-reference-reproduction",
+      "prompt": "Reproduce the exact synthetic reference protocol in methods.md using this external NexuML library and .venv/bin/python. Implement an importable agent_demo.paper.RMSNorm(eps=1e-6) module and compose it using the smallest supported NexuML contract. Export experiment.py with scenario(), preserving features and emitting normalized. Save results/scenario.yaml through portable ResolvedConfig persistence. Execute equation/zero-input/finite-gradient checks and native compilation; inspect actual dataset split membership. Put the requirement-to-source-to-implementation-to-check map and supported claim in results/report.md, with runnable checks in results/checks.py. No training, downloads, final-test evaluation, framework edits or extra packages. Do not turn this fixed reference into optimization or invent missing publication results.",
+      "expected_output": "Naturally selects reproduction guidance, follows the supplied equation exactly, uses portable ordinary-module composition, checks real splits and limits the claim to a synthetic numerical reproduction.",
+      "files": ["fixtures/methods.md"],
+      "expected_skills": ["nexuml-reproduce-paper"],
+      "expectations": [
+        "Naturally loads nexuml-reproduce-paper without a supplied skill name or instruction path.",
+        "The reusable RMSNorm matches the reference equation including epsilon placement, zero inputs and finite gradients.",
+        "The portable native scenario compiles with distinct input/output keys and actual 48/16/0 disjoint/exhaustive partition membership.",
+        "The executed checks and traceability report support only synthetic numerical parity, not empirical paper reproduction."
+      ]
+    },
+    {
+      "id": 13,
+      "name": "resume-bounded-research",
+      "prompt": "Resume the authorized NexuML study recorded in research.md. The baseline already executed and has actual evidence under runs/baseline; do not restart it. Two CPU runs remain, one epoch each on the same 64 vectors, seed and validation cohort. Only learning rate may change, in [0.001, 0.03]. Use the supplied immutable run_candidate.py helper, which runs a native NexuSession and saves measured metrics, model state, partition and configuration evidence; inspect it before use. Autonomously choose and run the next useful experiments within that budget, record hypotheses, rival explanations, keep/reject/investigate decisions and scoped lessons in research.md, and end with spent/reserved/remaining capacity and the next-action/stop state. Use validation loss only; no downloads, other training jobs, framework/fixture changes or final-test access. Preserve baseline artifacts. Write results/report.md and results/summary.json listing actual attempt IDs, metrics, evidence paths and the best feasible run; label one-epoch results as diagnostics rather than convergence or a general learning-rate law.",
+      "expected_output": "Naturally selects research guidance, reconciles actual baseline and remaining budget, continues two useful native runs autonomously, records reproducible evidence/lessons and stops without budget reset or broad quality claims.",
+      "files": ["fixtures/run_candidate.py"],
+      "expected_skills": ["nexuml-autoresearch"],
+      "expectations": [
+        "Naturally loads nexuml-autoresearch without a supplied skill name or instruction path.",
+        "Preserves and verifies the completed baseline, executes exactly two allowed native CPU attempts and does not reset the study budget.",
+        "Recorded validation metrics and best-run selection agree with independently recomputed model/data evidence and unchanged cohorts.",
+        "The resumed ledger records reasoned hypotheses, scoped lessons and spent/reserved/remaining capacity, then stops without per-run approval or convergence claims."
+      ]
+    }
+  ]
+}
