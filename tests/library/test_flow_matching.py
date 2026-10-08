@@ -138,9 +138,7 @@ def test_flow_scenario_round_trips_and_compiles() -> None:
         num_steps=2,
         max_epochs=1,
     )
-    restored_mnist = ResolvedConfig.from_yaml(
-        ResolvedConfig.from_scenario(mnist).to_yaml()
-    )
+    restored_mnist = ResolvedConfig.from_yaml(ResolvedConfig.from_scenario(mnist).to_yaml())
     assert restored_mnist.name == "mnist_flow_matching"
     assert isinstance(restored_mnist.pipeline.stages["Flow"][0].component, UNetFlow)
 

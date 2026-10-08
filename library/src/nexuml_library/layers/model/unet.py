@@ -28,9 +28,7 @@ class _TimeEmbedding(nn.Module):
         if embedding_dim % 2:
             raise ValueError("time_embedding_dim must be even")
         half = embedding_dim // 2
-        frequencies = 2.0 * math.pi * torch.exp(
-            torch.linspace(0.0, math.log(1000.0), half)
-        )
+        frequencies = 2.0 * math.pi * torch.exp(torch.linspace(0.0, math.log(1000.0), half))
         self.register_buffer("frequencies", frequencies)
         self.mlp = nn.Sequential(
             nn.Linear(embedding_dim, output_dim),
