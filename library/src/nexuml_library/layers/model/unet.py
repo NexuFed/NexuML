@@ -39,7 +39,7 @@ class _TimeEmbedding(nn.Module):
         )
 
     def forward(self, time: torch.Tensor) -> torch.Tensor:
-        angles = time.reshape(time.shape[0], 1) * self.frequencies
+        angles = time.reshape(time.shape[0], 1) * cast(torch.Tensor, self.frequencies)
         embedding = torch.cat((angles.sin(), angles.cos()), dim=1)
         return self.mlp(embedding)
 

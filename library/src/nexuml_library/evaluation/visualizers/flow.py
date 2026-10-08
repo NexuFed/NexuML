@@ -65,10 +65,8 @@ class _FlowVisualizerRuntime(EvalAlgorithm):
             "generated": cast(torch.Tensor, x[self.generated_key]).detach().cpu(),
         }
         if self.trajectory_key in x.keys():
-            payload["trajectory"] = (
-                cast(torch.Tensor, x[self.trajectory_key]).detach().cpu()
-            )
-        self._storage.add_batch(TensorDict(payload, batch_size=[target.shape[0]]))
+            payload["trajectory"] = cast(torch.Tensor, x[self.trajectory_key]).detach().cpu()
+        self._storage.add_batch(TensorDict(cast(Any, payload), batch_size=[target.shape[0]]))
 
     def visualize(self, logger_obj: Any) -> None:  # ty: ignore[invalid-method-override]
         data = self._storage.get()

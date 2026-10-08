@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import cast
+
 import pytest
 import torch
 from tensordict import TensorDict
@@ -164,7 +166,7 @@ def test_flow_scenario_one_step_and_sampling() -> None:
         if stage_name == "Flow"
     )
     samples = getattr(flow, "sample")(torch.randn(4, 2))
-    assert flow.integrator.last_trajectory is not None
+    assert cast(EulerIntegrator, flow.integrator).last_trajectory is not None
 
     assert torch.isfinite(loss)
     assert samples.shape == (4, 2)

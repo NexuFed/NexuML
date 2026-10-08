@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import cast
 
 import torch
@@ -25,7 +26,9 @@ class Flow(LayerDefinition):
     record_trajectory: bool = False
 
     def build(self, context: LayerBuildContext) -> PipelineLayer:
-        vector_field = TimeConditionedVectorField(hidden_dims=self.hidden_dims).build(context)
+        vector_field = TimeConditionedVectorField(hidden_dims=self.hidden_dims).build(
+            replace(context, delay_epochs=0, update_every_n_epochs=1)
+        )
         state_key = context.keys_in[0]
         integrator = EulerIntegrator(
             velocity=getattr(vector_field, "velocity"),
@@ -55,7 +58,7 @@ class UNetFlow(LayerDefinition):
         vector_field = TimeConditionedUNet(
             base_channels=self.base_channels,
             time_embedding_dim=self.time_embedding_dim,
-        ).build(context)
+        ).build(replace(context, delay_epochs=0, update_every_n_epochs=1))
         state_key = context.keys_in[0]
         integrator = EulerIntegrator(
             velocity=getattr(vector_field, "velocity"),
