@@ -88,6 +88,8 @@ class _FlowRuntime(PipelineLayer):
         x: TensorDict | torch.Tensor,
         y: TensorDict | None = None,
     ) -> tuple[TensorDict | torch.Tensor, TensorDict | None]:
+        if not self.check_update():
+            return x, y
         x, y = self.vector_field(x, y)
         if isinstance(x, TensorDict) and self.lightning_mode in {
             LightningMode.TESTING,

@@ -71,7 +71,7 @@ class TimeConditionedUNet(LayerDefinition):
     """Small time-conditioned U-Net for image-valued continuous flows."""
 
     base_channels: int = Field(default=32, gt=0)
-    time_embedding_dim: int = Field(default=128, gt=0)
+    time_embedding_dim: int = Field(default=128, gt=0, multiple_of=2)
 
     def build(self, context: LayerBuildContext) -> PipelineLayer:
         return _TimeConditionedUNetRuntime(
@@ -156,6 +156,8 @@ class _TimeConditionedUNetRuntime(PipelineLayer):
         x: TensorDict | torch.Tensor,
         y: TensorDict | None = None,
     ) -> tuple[TensorDict | torch.Tensor, TensorDict | None]:
+        if not self.check_update():
+            return x, y
         if not isinstance(x, TensorDict):
             raise TypeError("TimeConditionedUNet requires TensorDict input")
 

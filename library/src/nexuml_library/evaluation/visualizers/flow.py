@@ -127,7 +127,7 @@ class _FlowVisualizerRuntime(EvalAlgorithm):
         generated = cast(torch.Tensor, data["generated"])
         count = min(8, len(target))
 
-        fig, axes = plt.subplots(3, count, figsize=(1.5 * count, 4.5))
+        fig, axes = plt.subplots(3, count, figsize=(1.5 * count, 4.5), squeeze=False)
         generated = self._display_images(generated)
         target = self._display_images(target)
         initial = (initial.clamp(-2.0, 2.0) + 2.0) / 4.0

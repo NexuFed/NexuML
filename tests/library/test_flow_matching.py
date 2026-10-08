@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pytest
 import torch
 from tensordict import TensorDict
 
@@ -198,3 +199,29 @@ def test_time_conditioned_unet_preserves_image_shape_and_has_gradients() -> None
         parameter.grad is not None and parameter.grad.abs().sum() > 0
         for parameter in runtime.parameters()
     )
+
+
+def test_invalid_unet_time_embedding_is_rejected_early() -> None:
+    with pytest.raises(ValueError, match="multiple"):
+        TimeConditionedUNet(time_embedding_dim=15)
+
+
+def test_flow_respects_layer_update_schedule() -> None:
+    runtime = Flow(hidden_dims=[8], num_steps=2).build(
+        LayerBuildContext(
+            input_sizes={"flow_state": (2,), "flow_time": (1,)},
+            keys_in=["flow_state", "flow_time"],
+            keys_out=["predicted_velocity"],
+            delay_epochs=1,
+        )
+    )
+    x = TensorDict(
+        {"flow_state": torch.randn(2, 2), "flow_time": torch.rand(2, 1)},
+        batch_size=[2],
+    )
+    out, _ = runtime(x)
+    assert "predicted_velocity" not in out.keys()
+
+    runtime.on_train_epoch_end()
+    out, _ = runtime(x)
+    assert out["predicted_velocity"].shape == (2, 2)
