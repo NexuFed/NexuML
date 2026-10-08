@@ -22,7 +22,7 @@ Preserve the baseline and exclude official final-test records from all search ru
 ```
 
 For a novel research method rather than a configuration search, first follow
-the [algorithm development workflow](../../skills/nexuml-library/references/algorithm-development.md):
+the [algorithm development workflow](https://github.com/NexuFed/NexuML/blob/main/skills/nexuml-library/references/algorithm-development.md):
 formulate a falsifiable mechanism, implement numerical checks and establish fair
 baselines/ablations. Do not infer novelty from a validation-score improvement.
 
