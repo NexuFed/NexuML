@@ -1,0 +1,41 @@
+{
+  "skill_name": "nexuml-autoresearch",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Read-only research decision. My external NexuML project has four candidate runs left; no new runs now. Select for minimum val/loss under a hard 2 ms latency limit: baseline val/loss=0.30, 1 ms, test AUC=0.80; A val/loss=0.28, 3 ms, test AUC=0.95; B val/loss=0.29, 1.5 ms, test AUC=0.78. These are single-seed runs and test scores have already been exposed. Which is the feasible candidate, what evidence is still needed, how should I handle the leaked test cohort and what would you preserve? Don't claim a globally best model or spend the remaining budget automatically.",
+      "expected_output": "Admits B provisionally on validation/latency, excludes A, requires agreed confirmation, does not select by test AUC, discloses compromised final-test independence and preserves identities/evidence/budget.",
+      "files": [],
+      "expectations": [
+        "Selects B provisionally using validation and latency, while excluding A for violating the 2 ms hard limit.",
+        "Requires confirmation/repetition under an agreed budget instead of claiming a single-seed global winner.",
+        "Does not select by test AUC and explicitly discloses the exposed cohort's compromised independence.",
+        "Preserves baseline/candidate/protocol/evidence identities and does not spend the remaining four runs automatically."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Read-only tuning review for installed typed NexuML 0.2.1. Proposed command: nexuml tune --scenario-file candidate.py --max-epochs 3 --metric val/loss. The scenario still includes final-test records with data.test_split=0.15; I also have fixed metadata assignments. SEARCH_SPACE uses training.batch_size with categorical choices and directly mutates an immutable encoder definition's width. The file has no build factory and reuses an old study name/storage. Explain concrete corrections and provenance limits, without installing, writing code or executing a trial.",
+      "expected_output": "Rejects unsupported tune epoch flag; excludes actual final-test membership, routes categorical/immutable changes through a build factory, isolates or deliberately continues the study, preserves actual winning config beyond initial snapshots.",
+      "files": [],
+      "expectations": [
+        "Rejects tune --max-epochs and sets epoch limits through scenario/factory or a verified --override.",
+        "Excludes actual final-test records and checks fixed metadata/loader membership rather than relying only on val/loss or test_split=0.",
+        "Explains that categorical training.batch_size becomes a nested training dict for build, is ignored without a factory, and immutable components must be rebuilt.",
+        "Uses unique study/protocol identity or explicitly documents deliberate continuation and preserves the actual winner config beyond initial provenance snapshots."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Read-only next-step decision, not a request to run jobs in this test. My standing NexuML autoresearch contract authorizes six more CPU runs, two epochs each, existing training/validation data, no downloads or final-test access, and user-library fixes within that budget. A baseline is verified; a width variant reduced val/loss by 0.02 on one seed. The next confirmation and another architecture experiment meet all limits. For the real ongoing loop, should the agent ask me to approve each next run? Explain what it should do autonomously, how retries use budget, and which concrete changes actually require asking or stopping. Do not confuse this read-only test with cancelling the standing contract.",
+      "expected_output": "Continues experiments and confirmation automatically under the established contract; pauses only for explicit stops, real boundary changes, unresolved blockers or exhausted budget, while keeping this evaluation read-only.",
+      "files": [],
+      "expectations": [
+        "Treats the standing bounded research contract as permission to continue experiments/confirmation without per-run approval.",
+        "Selects a useful confirmation or experiment, records evidence and accounts for retries within the remaining budget.",
+        "Asks only for consequential boundary changes or unresolved decisions, not routine hypotheses or in-scope user-library fixes.",
+        "Honors this test's read-only boundary and explicit pauses/cancellation without inventing budget exhaustion or a new permanent approval gate."
+      ]
+    }
+  ]
+}

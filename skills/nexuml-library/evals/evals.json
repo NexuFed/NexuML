@@ -1,0 +1,41 @@
+{
+  "skill_name": "nexuml-library",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Read-only design check for my existing external NexuML library. I need ordinary torch.nn.Dropout(p=0.2) on one tensor, no labels, metadata or lifecycle state. Should I make a new registered LayerDefinition, edit NexuML's base library, or reuse a factory? Show a tiny valid LayerSpec example, explain portable constructor constraints and say how I should verify it. Do not create files or execute anything.",
+      "expected_output": "Uses nn_module(torch.nn.Dropout, p=0.2) inside LayerSpec, avoids framework modifications and unnecessary registered wrappers, proposes portable config/build checks.",
+      "files": [],
+      "expectations": [
+        "Reuses nn_module(torch.nn.Dropout, p=0.2) rather than introducing a new registered wrapper or editing framework code.",
+        "Shows a valid LayerSpec with complete imports and distinct input/output keys, preserving the upstream tensor.",
+        "Distinguishes an importable factory plus portable constructor arguments from a live module instance/lambda.",
+        "Proposes portable configuration and executable build checks without treating them as scientific validation."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Read-only review of a proposed algorithm in my external NexuML library: a frozen LayerDefinition stores a live torch.nn.Linear instance plus keys_in/input_sizes; build returns that same module. An EvalAlgorithm computes RMSE by averaging each batch's RMSE equally and writes a new score TensorDict key for downstream layers. One batch has 1 error of 1, another has 2 errors of 3. Explain the precise contract/aggregation problems and the correct responsibility boundaries, including what numerical check would catch this. Do not implement or modify NexuML core.",
+      "expected_output": "Keeps serializable definition parameters separate from private runtime/context, assigns score-producing behavior to pipeline components and computes global RMSE sqrt(19/3), not a mean of batch RMSEs.",
+      "files": [],
+      "expectations": [
+        "Moves live trainable state into a fresh runtime and retains only serializable semantic parameters on the definition.",
+        "Places routing/shapes on the enclosing spec/build context, not semantic definition fields.",
+        "Treats EvalAlgorithm as a consumer and assigns new score-key production to pipeline components.",
+        "Computes global RMSE sqrt(19/3), approximately 2.5166, and contrasts it with the incorrect equal batch average 2."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Read-only design review in my external NexuML library. I need to fit a center/calibration on training features after the encoder is trained, emit a score key, threshold it in a later pipeline layer, and report AUC. Someone suggests an EvalAlgorithm that writes scores for the next evaluator, or simply appending an unfitted scoring layer to my 20-epoch training pipeline in a stage called evaluation. Which public contract handles fitted score production, how does the native lifecycle fit it, where can it be placed, and what state/routing/loader checks matter? No files or jobs.",
+      "expected_output": "Identifies PostTrainFitLayer and its definition marker/methods, native train-loader fitting passes, separate key production before reporting, frozen/evaluation placement limits and fitted-state restoration.",
+      "files": [],
+      "expectations": [
+        "Identifies nexuml.core.post_train_layer.PostTrainFitLayer built by a LayerDefinition declaring requires_post_train_fit=True, rather than using EvalAlgorithm as a producer.",
+        "Explains collect_batch/finalize_fit/_transform_forward and the native train-loader predict/finalization pass before test scoring.",
+        "Rejects stage-name phase switching and appending an unfitted scorer blindly to gradient training; describes supported frozen scoring placement.",
+        "Uses distinct score keys before consumers/reporters and checks training-only fitting plus fitted checkpoint state."
+      ]
+    }
+  ]
+}

@@ -175,6 +175,9 @@ configs/*.yaml
 !configs/.gitkeep
 .experiments/
 
+# Local skill-creator evaluation runs; ship skills/evals, not generated outputs.
+/skills/*-workspace/
+
 # PyCharm
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
 #  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore

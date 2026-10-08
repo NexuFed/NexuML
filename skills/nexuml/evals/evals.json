@@ -1,0 +1,29 @@
+{
+  "skill_name": "nexuml",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Read-only diagnosis. I use an external library project, not a NexuML checkout. Its .venv/bin/python has NexuML 0.2.1, my editable package and scipy. A global uv-tool nexuml has core only; running it says my scenario is missing. The editable project exposes nexuml.libraries. What exact runtime/commands should I use, and should I also add the package's src/my_library directory as a local root? Do not install, edit or run training. Return a concise diagnosis and verification commands.",
+      "expected_output": "Selects the project interpreter, verifies version/discovery there, explains isolation and avoids duplicate local-root registration or a framework checkout.",
+      "files": [],
+      "expectations": [
+        "Selects the project .venv interpreter and explains why the uv-tool process lacks the editable library/dependencies.",
+        "Provides version and discovery checks using that same project interpreter or its explicit CLI executable.",
+        "Does not add src/my_library under another module name when editable entry-point discovery already exists.",
+        "Does not require cloning or modifying NexuML core or installing an API server."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Read-only review. I want to inspect and persist a trusted scenario without running constructors or dummy forwards. Someone suggested nexuml resolve baseline --output configs/baseline.yaml followed by nexuml validate --config configs/baseline.yaml. The installed typed NexuML 0.2.1 CLI has resolve, build, train, tune and registry but no validate command. Explain whether this is safe for my request and give the smallest supported Python alternative, preserving component identities and stage order. No implementation or execution.",
+      "expected_output": "Explains resolve compiles, rejects the invented validate command, uses ResolvedConfig from_scenario/to_yaml/from_yaml with concrete Python imports and notes trusted factory/import execution.",
+      "files": [],
+      "expectations": [
+        "Explicitly identifies CLI resolve as compilation/constructor/dummy-forward execution rather than a harmless field check.",
+        "Rejects the unavailable nexuml validate command without inventing another CLI flag.",
+        "Uses actual ResolvedConfig.from_scenario/to_yaml/from_yaml boundaries rather than raw model_dump or generic YAML reconstruction.",
+        "Preserves stage order and portable component identities, while noting trusted factory/import execution is not sandboxed."
+      ]
+    }
+  ]
+}
