@@ -12,7 +12,11 @@ from nexuml_library.scenarios.model.resnet_classifier import resnet_classifier
 from nexuml_library.scenarios.training.defaults import default_training
 
 
-def mnist_data(download: bool = True, root: str = "mnist") -> DataSpec:
+def mnist_data(
+    download: bool = True,
+    root: str = "mnist",
+    normalize: bool = False,
+) -> DataSpec:
     """Create a DataSpec for MNIST image classification.
 
     Returns:
@@ -22,12 +26,22 @@ def mnist_data(download: bool = True, root: str = "mnist") -> DataSpec:
     return DataSpec(
         datasets=[
             DatasetSpec(
-                source=MNISTDataset(root=resolved_root, train=True, download=download),
+                source=MNISTDataset(
+                    root=resolved_root,
+                    train=True,
+                    download=download,
+                    normalize=normalize,
+                ),
                 modality="image",
                 split_type="fit",
             ),
             DatasetSpec(
-                source=MNISTDataset(root=resolved_root, train=False, download=download),
+                source=MNISTDataset(
+                    root=resolved_root,
+                    train=False,
+                    download=download,
+                    normalize=normalize,
+                ),
                 modality="image",
                 split_type="test",
             ),

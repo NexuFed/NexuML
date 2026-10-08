@@ -13,7 +13,8 @@ from nexuml_library.scenarios.flow.mnist_flow_matching import mnist_flow_matchin
 from nexuml_library.layers.generative.flow.linear_path import LinearFlowPath, _linear_path
 from nexuml_library.layers.generative.flow.vector_field import TimeConditionedVectorField
 from nexuml_library.layers.loss.flow_matching_loss import FlowMatchingLoss
-from nexuml_library.layers.model.flow import Flow
+from nexuml_library.layers.model.flow import Flow, UNetFlow
+from nexuml_library.layers.model.unet import TimeConditionedUNet
 from nexuml_library.scenarios.flow.synthetic_flow_matching import synthetic_flow_matching
 
 
@@ -127,11 +128,18 @@ def test_flow_scenario_round_trips_and_compiles() -> None:
     assert "flow_matching_loss" in pipeline.loss_keys
     assert isinstance(scenario.evaluation.algorithms[0].algorithm, FlowVisualizer)
 
-    mnist = mnist_flow_matching(download=False, hidden_dims=[8], num_steps=2, max_epochs=1)
+    mnist = mnist_flow_matching(
+        download=False,
+        base_channels=8,
+        time_embedding_dim=16,
+        num_steps=2,
+        max_epochs=1,
+    )
     restored_mnist = ResolvedConfig.from_yaml(
         ResolvedConfig.from_scenario(mnist).to_yaml()
     )
     assert restored_mnist.name == "mnist_flow_matching"
+    assert isinstance(restored_mnist.pipeline.stages["Flow"][0].component, UNetFlow)
 
 
 def test_flow_scenario_one_step_and_sampling() -> None:
@@ -160,3 +168,33 @@ def test_flow_scenario_one_step_and_sampling() -> None:
     assert torch.isfinite(loss)
     assert samples.shape == (4, 2)
     assert torch.isfinite(samples).all()
+
+
+def test_time_conditioned_unet_preserves_image_shape_and_has_gradients() -> None:
+    runtime = TimeConditionedUNet(
+        base_channels=8,
+        time_embedding_dim=16,
+    ).build(
+        LayerBuildContext(
+            input_sizes={"flow_state": (1, 28, 28), "flow_time": (1,)},
+            keys_in=["flow_state", "flow_time"],
+            keys_out=["predicted_velocity"],
+        )
+    )
+    x = TensorDict(
+        {
+            "flow_state": torch.randn(2, 1, 28, 28),
+            "flow_time": torch.rand(2, 1),
+        },
+        batch_size=[2],
+    )
+
+    out, _ = runtime(x)
+    prediction = out["predicted_velocity"]
+    prediction.square().mean().backward()
+
+    assert prediction.shape == (2, 1, 28, 28)
+    assert any(
+        parameter.grad is not None and parameter.grad.abs().sum() > 0
+        for parameter in runtime.parameters()
+    )

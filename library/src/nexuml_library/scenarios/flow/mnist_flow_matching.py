@@ -5,14 +5,15 @@ from __future__ import annotations
 from nexuml.core.discovery import scenario
 from nexuml.core.types import EvalAlgorithmSpec, EvaluationSpec, ScenarioSpec
 from nexuml_library.evaluation.visualizers.flow import FlowVisualizer
-from nexuml_library.scenarios.model.flow_matching import mlp_flow_matching
+from nexuml_library.scenarios.model.flow_matching import unet_flow_matching
 from nexuml_library.scenarios.training.defaults import default_logging, default_training
 from nexuml_library.scenarios.vision.mnist_resnet import mnist_data
 
 
 @scenario("mnist-flow-matching")
 def mnist_flow_matching(
-    hidden_dims: list[int] | None = None,
+    base_channels: int = 32,
+    time_embedding_dim: int = 128,
     num_steps: int = 300,
     lr: float = 1e-4,
     batch_size: int = 128,
@@ -26,14 +27,18 @@ def mnist_flow_matching(
     """
     return ScenarioSpec(
         name="mnist_flow_matching",
-        pipeline=mlp_flow_matching(
-            hidden_dims=hidden_dims if hidden_dims is not None else [512, 512],
+        pipeline=unet_flow_matching(
+            base_channels=base_channels,
+            time_embedding_dim=time_embedding_dim,
             num_steps=num_steps,
         ),
         evaluation=EvaluationSpec(
             algorithms=[
                 EvalAlgorithmSpec(
-                    algorithm=FlowVisualizer(max_samples=64),
+                    algorithm=FlowVisualizer(
+                        max_samples=64,
+                        image_range="minus_one_one",
+                    ),
                     feature_key="features",
                 )
             ]
@@ -48,5 +53,5 @@ def mnist_flow_matching(
             max_epochs=max_epochs,
             loss_keys={"flow_matching_loss": 1.0},
         ),
-        data=mnist_data(download=download),
+        data=mnist_data(download=download, normalize=True),
     )

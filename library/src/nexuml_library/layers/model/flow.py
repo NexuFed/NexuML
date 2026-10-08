@@ -13,6 +13,7 @@ from nexuml.core.components import LayerBuildContext, LayerDefinition
 from nexuml.core.discovery import layer
 from nexuml_library.layers.generative.flow.euler import EulerIntegrator
 from nexuml_library.layers.generative.flow.vector_field import TimeConditionedVectorField
+from nexuml_library.layers.model.unet import TimeConditionedUNet
 
 
 @layer("Flow")
@@ -25,6 +26,36 @@ class Flow(LayerDefinition):
 
     def build(self, context: LayerBuildContext) -> PipelineLayer:
         vector_field = TimeConditionedVectorField(hidden_dims=self.hidden_dims).build(context)
+        state_key = context.keys_in[0]
+        integrator = EulerIntegrator(
+            velocity=getattr(vector_field, "velocity"),
+            num_steps=self.num_steps,
+            record_trajectory=self.record_trajectory,
+            input_sizes={state_key: tuple(context.input_sizes[state_key])},
+            keys_in=[state_key],
+            keys_out=["flow_sample"],
+        )
+        return _FlowRuntime(
+            vector_field=vector_field,
+            integrator=integrator,
+            **context.runtime_kwargs(),
+        )
+
+
+@layer("UNetFlow")
+class UNetFlow(LayerDefinition):
+    """Image flow using a time-conditioned U-Net vector field."""
+
+    base_channels: int = Field(default=32, gt=0)
+    time_embedding_dim: int = Field(default=128, gt=0)
+    num_steps: int = Field(default=100, gt=0)
+    record_trajectory: bool = False
+
+    def build(self, context: LayerBuildContext) -> PipelineLayer:
+        vector_field = TimeConditionedUNet(
+            base_channels=self.base_channels,
+            time_embedding_dim=self.time_embedding_dim,
+        ).build(context)
         state_key = context.keys_in[0]
         integrator = EulerIntegrator(
             velocity=getattr(vector_field, "velocity"),

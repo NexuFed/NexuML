@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 import numpy as np
 import torch
@@ -25,6 +25,7 @@ class FlowVisualizer(EvalAlgorithmDefinition):
     trajectory_key: str = "flow_trajectory"
     max_samples: int = Field(default=512, gt=0)
     max_trajectories: int = Field(default=32, gt=0)
+    image_range: Literal["zero_one", "minus_one_one"] = "zero_one"
 
     def build(self, context: EvalBuildContext) -> EvalAlgorithm:
         return _FlowVisualizerRuntime(
@@ -42,12 +43,14 @@ class _FlowVisualizerRuntime(EvalAlgorithm):
         trajectory_key: str,
         max_samples: int,
         max_trajectories: int,
+        image_range: Literal["zero_one", "minus_one_one"],
     ):
         self.feature_key = feature_key
         self.initial_key = initial_key
         self.generated_key = generated_key
         self.trajectory_key = trajectory_key
         self.max_trajectories = max_trajectories
+        self.image_range = image_range
         self._storage = ReservoirTensorDictBuffer(max_samples=max_samples)
 
     def eval_batch(self, x: TensorDict, y: TensorDict | None) -> None:
@@ -125,19 +128,22 @@ class _FlowVisualizerRuntime(EvalAlgorithm):
         count = min(8, len(target))
 
         fig, axes = plt.subplots(3, count, figsize=(1.5 * count, 4.5))
+        generated = self._display_images(generated)
+        target = self._display_images(target)
+        initial = (initial.clamp(-2.0, 2.0) + 2.0) / 4.0
         rows = (
-            ("Initial", initial, -2.0, 2.0),
-            ("Generated", generated, 0.0, 1.0),
-            ("Target", target, 0.0, 1.0),
+            ("Initial", initial),
+            ("Generated", generated),
+            ("Target", target),
         )
-        for row, (label, values, vmin, vmax) in enumerate(rows):
+        for row, (label, values) in enumerate(rows):
             for column in range(count):
                 image = values[column].squeeze(0).numpy()
                 axes[row, column].imshow(
-                    np.clip(image, vmin, vmax),
+                    np.clip(image, 0.0, 1.0),
                     cmap="gray",
-                    vmin=vmin,
-                    vmax=vmax,
+                    vmin=0.0,
+                    vmax=1.0,
                 )
                 axes[row, column].axis("off")
                 if column == 0:
@@ -147,6 +153,11 @@ class _FlowVisualizerRuntime(EvalAlgorithm):
         fig.tight_layout()
         log_figure(logger_obj, "eval/flow/images", fig)
         plt.close(fig)
+
+    def _display_images(self, images: torch.Tensor) -> torch.Tensor:
+        if self.image_range == "minus_one_one":
+            return ((images + 1.0) / 2.0).clamp(0.0, 1.0)
+        return images.clamp(0.0, 1.0)
 
     def results(self) -> dict[str, float]:
         data = self._storage.get()
