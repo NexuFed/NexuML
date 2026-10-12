@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "projectActions": [
+    {
+      "id": "dev-api",
+      "name": "Dev backend",
+      "icon": "server",
+      "command": ".venv/bin/python -m nexuml.cli.main serve --directory . --port 8000 --origin http://127.0.0.1:3200 --token-file \"$HOME/.nexuml-api-token\"",
+      "platforms": ["linux", "macos"]
+    },
+    {
+      "id": "dev-ui",
+      "name": "Dev UI",
+      "icon": "rocket",
+      "command": "NEXUML_STUDIO_TOKEN=\"$(cat \"$HOME/.nexuml-api-token\")\" NEXUML_STUDIO_API=http://127.0.0.1:8000 NEXUML_STUDIO_ORIGIN=http://127.0.0.1:3200 npm --prefix studio run dev -- --port 3200",
+      "autoOpenUrl": true,
+      "platforms": ["linux", "macos"]
+    }
+  ]
+}
