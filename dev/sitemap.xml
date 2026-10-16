@@ -481,6 +481,10 @@
          <lastmod>2026-10-16</lastmod>
     </url>
     <url>
+         <loc>https://nexufed.github.io/NexuML/dev/reference/api/nexuml_library/evaluation/visualizers/flow/</loc>
+         <lastmod>2026-10-16</lastmod>
+    </url>
+    <url>
          <loc>https://nexufed.github.io/NexuML/dev/reference/api/nexuml_library/evaluation/visualizers/latent/</loc>
          <lastmod>2026-10-16</lastmod>
     </url>
@@ -502,6 +506,18 @@
     </url>
     <url>
          <loc>https://nexufed.github.io/NexuML/dev/reference/api/nexuml_library/layers/feature/projector/</loc>
+         <lastmod>2026-10-16</lastmod>
+    </url>
+    <url>
+         <loc>https://nexufed.github.io/NexuML/dev/reference/api/nexuml_library/layers/generative/flow/euler/</loc>
+         <lastmod>2026-10-16</lastmod>
+    </url>
+    <url>
+         <loc>https://nexufed.github.io/NexuML/dev/reference/api/nexuml_library/layers/generative/flow/linear_path/</loc>
+         <lastmod>2026-10-16</lastmod>
+    </url>
+    <url>
+         <loc>https://nexufed.github.io/NexuML/dev/reference/api/nexuml_library/layers/generative/flow/vector_field/</loc>
          <lastmod>2026-10-16</lastmod>
     </url>
     <url>
@@ -529,6 +545,10 @@
          <lastmod>2026-10-16</lastmod>
     </url>
     <url>
+         <loc>https://nexufed.github.io/NexuML/dev/reference/api/nexuml_library/layers/loss/flow_matching_loss/</loc>
+         <lastmod>2026-10-16</lastmod>
+    </url>
+    <url>
          <loc>https://nexufed.github.io/NexuML/dev/reference/api/nexuml_library/layers/loss/multilabel_map_metrics/</loc>
          <lastmod>2026-10-16</lastmod>
     </url>
@@ -545,11 +565,19 @@
          <lastmod>2026-10-16</lastmod>
     </url>
     <url>
+         <loc>https://nexufed.github.io/NexuML/dev/reference/api/nexuml_library/layers/model/flow/</loc>
+         <lastmod>2026-10-16</lastmod>
+    </url>
+    <url>
          <loc>https://nexufed.github.io/NexuML/dev/reference/api/nexuml_library/layers/model/linear_encoder/</loc>
          <lastmod>2026-10-16</lastmod>
     </url>
     <url>
          <loc>https://nexufed.github.io/NexuML/dev/reference/api/nexuml_library/layers/model/resnet/</loc>
+         <lastmod>2026-10-16</lastmod>
+    </url>
+    <url>
+         <loc>https://nexufed.github.io/NexuML/dev/reference/api/nexuml_library/layers/model/unet/</loc>
          <lastmod>2026-10-16</lastmod>
     </url>
     <url>
@@ -609,7 +637,19 @@
          <lastmod>2026-10-16</lastmod>
     </url>
     <url>
+         <loc>https://nexufed.github.io/NexuML/dev/reference/api/nexuml_library/scenarios/flow/mnist_flow_matching/</loc>
+         <lastmod>2026-10-16</lastmod>
+    </url>
+    <url>
+         <loc>https://nexufed.github.io/NexuML/dev/reference/api/nexuml_library/scenarios/flow/synthetic_flow_matching/</loc>
+         <lastmod>2026-10-16</lastmod>
+    </url>
+    <url>
          <loc>https://nexufed.github.io/NexuML/dev/reference/api/nexuml_library/scenarios/model/conv_ae/</loc>
+         <lastmod>2026-10-16</lastmod>
+    </url>
+    <url>
+         <loc>https://nexufed.github.io/NexuML/dev/reference/api/nexuml_library/scenarios/model/flow_matching/</loc>
          <lastmod>2026-10-16</lastmod>
     </url>
     <url>
