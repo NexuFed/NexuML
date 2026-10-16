@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from io import BytesIO
 from pathlib import Path
 from zipfile import ZipFile
 
@@ -177,3 +178,47 @@ def test_archives_reject_path_traversal(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="Unsafe ZIP"):
         _safe_extract(archive, tmp_path / "extract")
     assert not (tmp_path / "escape.txt").exists()
+
+
+def test_approved_archive_is_downloaded_and_extracted(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    buffer = BytesIO()
+    with ZipFile(buffer, "w") as archive:
+        archive.writestr(
+            "XJTU-SY/35Hz12kN/Bearing1_1/1.csv",
+            "horizontal,vertical\n1,2\n3,4\n",
+        )
+        archive.writestr(
+            "XJTU-SY/35Hz12kN/Bearing1_1/2.csv",
+            "horizontal,vertical\n5,6\n7,8\n",
+        )
+    content = buffer.getvalue()
+    monkeypatch.setattr(
+        "nexuml_library.data.maintenance.bearings.urlopen",
+        lambda *_args, **_kwargs: BytesIO(content),
+    )
+
+    root = tmp_path / "download"
+    dataset = XJTUSYBearingDataset(
+        root=root,
+        archive_url="https://example.org/approved.zip",
+        window_size=4,
+    ).build()
+    assert len(dataset) == 2
+    assert dataset.meta is not None
+    assert dataset.meta["rul"].tolist() == [60.0, 0.0]
+    x, _ = dataset[0]
+    assert x["features"].shape == (2, 4)
+    assert (root / "XJTU-SY/35Hz12kN/Bearing1_1/1.csv").exists()
+    assert not (root / ".nexuml-download.zip").exists()
+
+
+def test_definition_remains_serializable() -> None:
+    source = XJTUSYBearingDataset(window_size=4096, seed=19, download=False)
+    restored = XJTUSYBearingDataset.model_validate(source.model_dump(mode="json"))
+    assert restored == source
+    assert restored.download is False
+    assert PaderbornBearingDataset().download is True
+    assert PRONOSTIABearingDataset().download is True
+    assert IMSBearingDataset().download is True
