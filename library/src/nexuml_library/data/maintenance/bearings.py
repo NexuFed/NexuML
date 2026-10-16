@@ -116,6 +116,9 @@ def _run_rows(
 ) -> list[dict]:
     if len(files) != len(times):
         raise ValueError("File/time count mismatch")
+    # A single snapshot, or a non-increasing clock, is not evidence of
+    # a completed run-to-failure sequence.
+    complete = complete and len(files) > 1 and times[-1] > times[0]
     rows = []
     final_time = max(times) if times else 0.0
     for index, (file, elapsed) in enumerate(zip(files, times)):
