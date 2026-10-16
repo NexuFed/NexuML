@@ -55,7 +55,12 @@ def _safe_extract(archive: Path, root: Path) -> None:
 
 
 def _ensure_files(root: Path, kind: str, download: bool, archive_url: str | None) -> None:
-    suffix = ".mat" if kind == "paderborn" else ".csv" if kind in {"pronostia", "xjtu_sy"} else ""
+    if kind == "paderborn":
+        suffix = ".mat"
+    elif kind in {"pronostia", "xjtu_sy"}:
+        suffix = ".csv"
+    else:
+        suffix = ""
 
     def present() -> bool:
         if kind == "ims":
@@ -123,7 +128,7 @@ def _run_rows(
     final_time = max(times) if times else 0.0
     for index, (file, elapsed) in enumerate(zip(files, times)):
         health = -1
-        if complete and len(files) > 1:
+        if complete:
             if index == 0:
                 health = 0
             elif index == len(files) - 1:
@@ -205,9 +210,14 @@ def _pronostia_rows(root: Path) -> list[dict]:
         times = [float(_filename_order(file)[0] - first_index) * 10.0 for file in files]
         rows.extend(
             _run_rows(
-                "pronostia", files, bearing=directory.name, group=group,
-                condition=directory.name.split("_")[0], times=times,
-                sample_rate=25600, complete=complete,
+                "pronostia",
+                files,
+                bearing=directory.name,
+                group=group,
+                condition=directory.name.split("_")[0],
+                times=times,
+                sample_rate=25600,
+                complete=complete,
                 split="test" if official_test else None,
             )
         )
@@ -227,11 +237,14 @@ def _xjtu_rows(root: Path) -> list[dict]:
             raise ValueError(f"Non-unique or unordered XJTU-SY records: {directory}")
         rows.extend(
             _run_rows(
-                "xjtu_sy", files, bearing=directory.name,
+                "xjtu_sy",
+                files,
+                bearing=directory.name,
                 group=f"xjtu_sy:{directory.name}",
                 condition=directory.parent.name,
                 times=[float(i - indices[0]) * 60.0 for i in indices],
-                sample_rate=25600, complete=True,
+                sample_rate=25600,
+                complete=True,
             )
         )
     return rows
@@ -245,9 +258,9 @@ def _ims_rows(root: Path) -> list[dict]:
         directories = [p for p in root.rglob(test_name) if p.is_dir()]
         for directory in directories:
             files = [
-                p for p in directory.iterdir()
-                if p.is_file()
-                and re.fullmatch(r"\d{4}(?:\.\d{2}){5}", p.name)
+                p
+                for p in directory.iterdir()
+                if p.is_file() and re.fullmatch(r"\d{4}(?:\.\d{2}){5}", p.name)
             ]
             if not files:
                 continue
@@ -257,9 +270,13 @@ def _ims_rows(root: Path) -> list[dict]:
             for bearing in range(1, 5):
                 rows.extend(
                     _run_rows(
-                        "ims", files, bearing=f"{test_name}:bearing{bearing}",
-                        group=f"ims:{test_name}", condition=test_name,
-                        times=relative, sample_rate=20000,
+                        "ims",
+                        files,
+                        bearing=f"{test_name}:bearing{bearing}",
+                        group=f"ims:{test_name}",
+                        condition=test_name,
+                        times=relative,
+                        sample_rate=20000,
                         complete=bearing in failed,
                         channel=(bearing - 1) * (2 if test_name == "1st_test" else 1),
                     )
@@ -268,9 +285,7 @@ def _ims_rows(root: Path) -> list[dict]:
     return rows
 
 
-def _set_group_splits(
-    rows: list[dict], seed: int, split_map: dict[str, str] | None
-) -> None:
+def _set_group_splits(rows: list[dict], seed: int, split_map: dict[str, str] | None) -> None:
     groups: dict[str, list[dict]] = defaultdict(list)
     for row in rows:
         groups[row["group_id"]].append(row)
@@ -283,7 +298,8 @@ def _set_group_splits(
             raise ValueError("split_map values must be train, val or test")
 
     candidates = sorted(
-        group for group, records in groups.items()
+        group
+        for group, records in groups.items()
         if all(row["split"] == "unassigned" for row in records)
     )
     if split_map is None:
@@ -312,10 +328,7 @@ def _set_group_splits(
         for row in records:
             row["split"] = split
 
-    if any(
-        len({row["split"] for row in records}) != 1
-        for records in groups.values()
-    ):
+    if any(len({row["split"] for row in records}) != 1 for records in groups.values()):
         raise AssertionError("Split leakage across an experiment")
 
 
@@ -350,7 +363,7 @@ def _mat_signal(file: Path) -> np.ndarray:
                     if np.issubdtype(value.dtype, np.number):
                         return value.astype(np.float32).reshape(1, -1)
             for key, value in item.items():
-                if not key.startswith("__"):
+                if not str(key).startswith("__"):
                     result = find(value)
                     if result is not None:
                         return result
