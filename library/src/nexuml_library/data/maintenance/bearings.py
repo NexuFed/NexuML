@@ -49,17 +49,18 @@ def _safe_extract(archive: Path, root: Path) -> None:
             target = (destination / entry.filename).resolve()
             if not target.is_relative_to(destination):
                 raise ValueError(f"Unsafe ZIP entry: {entry.filename}")
-            if (entry.external_attr >> 16) & 0o170000 == 0o120000:
+            if ((entry.external_attr >> 16) & 0o170000) == 0o120000:
                 raise ValueError(f"ZIP symlink is not permitted: {entry.filename}")
         zipped.extractall(destination)
 
 
 def _ensure_files(root: Path, kind: str, download: bool, archive_url: str | None) -> None:
     suffix = ".mat" if kind == "paderborn" else ".csv" if kind in {"pronostia", "xjtu_sy"} else ""
+
     def present() -> bool:
         if kind == "ims":
             return any(
-                path.is_file() and re.fullmatch(r"\d{4}\.\d{2}\.\d{2}\.\d{2}\.\d{2}\.\d{2}", path.name)
+                path.is_file() and re.fullmatch(r"\d{4}(?:\.\d{2}){5}", path.name)
                 for path in root.rglob("*")
             )
         return any(root.rglob(f"*{suffix}"))
@@ -196,7 +197,8 @@ def _pronostia_rows(root: Path) -> list[dict]:
         # The PHM challenge Test_set is truncated: its last file is not failure.
         official_test = "test_set" in parents and not complete
         group = f"pronostia:{directory.name}"
-        times = [float(_filename_order(file)[0] - 1) * 10.0 for file in files]
+        first_index = _filename_order(files[0])[0]
+        times = [float(_filename_order(file)[0] - first_index) * 10.0 for file in files]
         rows.extend(
             _run_rows(
                 "pronostia", files, bearing=directory.name, group=group,
@@ -246,11 +248,8 @@ def _ims_rows(root: Path) -> list[dict]:
             if not files:
                 continue
             files.sort(key=lambda p: p.name)
-            times = [
-                datetime.strptime(file.name, "%Y.%m.%d.%H.%M.%S").timestamp()
-                for file in files
-            ]
-            relative = [value - times[0] for value in times]
+            times = [datetime.strptime(file.name, "%Y.%m.%d.%H.%M.%S") for file in files]
+            relative = [(value - times[0]).total_seconds() for value in times]
             for bearing in range(1, 5):
                 rows.extend(
                     _run_rows(
@@ -337,6 +336,7 @@ def _mat_signal(file: Path) -> np.ndarray:
         raise ImportError("Paderborn .mat loading requires scipy") from exc
 
     record = loadmat(file, simplify_cells=True)
+
     def find(item: object) -> np.ndarray | None:
         if isinstance(item, dict):
             if "vibration" in item:
