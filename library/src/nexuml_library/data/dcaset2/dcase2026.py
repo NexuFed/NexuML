@@ -324,9 +324,7 @@ class _DCASET2DatasetRuntime(NexuDataset):
             "target",
             "split",
         ]
-        meta = (
-            pd.DataFrame(meta_rows) if meta_rows else pd.DataFrame(columns=meta_columns)  # ty: ignore[invalid-argument-type]
-        )
+        meta = pd.DataFrame(meta_rows) if meta_rows else pd.DataFrame(columns=meta_columns)
 
         # Add anomaly column as alias for y_true (Task 4.1: ensure non-NaN anomaly metadata)
         if "y_true" in meta.columns and "anomaly" not in meta.columns:
@@ -787,7 +785,7 @@ class _DCASE2026T1DatasetRuntime(NexuDataset):
         if self.download_mode == "dry_run":
             logger.info("[dry_run] Task1 dataset would read metadata from %s", meta_path)
             meta = pd.DataFrame(
-                columns=["file", "sound_id", "class_top", "class_second", "confidence", "split"]  # ty: ignore[invalid-argument-type]
+                columns=["file", "sound_id", "class_top", "class_second", "confidence", "split"]
             )
             super().__init__(meta=meta, label_names=self.LABEL_NAMES, do_split=False)
             return
@@ -806,7 +804,7 @@ class _DCASE2026T1DatasetRuntime(NexuDataset):
                     meta_path,
                 )
                 meta = pd.DataFrame(
-                    columns=["file", "sound_id", "class_top", "class_second", "confidence", "split"]  # ty: ignore[invalid-argument-type]
+                    columns=["file", "sound_id", "class_top", "class_second", "confidence", "split"]
                 )
             super().__init__(meta=meta, label_names=self.LABEL_NAMES, do_split=False)
             return
@@ -1220,9 +1218,7 @@ class _DCASE2026T7DatasetRuntime(NexuDataset):
 
         if self.download_mode == "dry_run":
             logger.info("[dry_run] Task7 dataset would read from %s", self.root_dir)
-            meta = pd.DataFrame(
-                columns=["file", "class", "domain", "split"]  # ty: ignore[invalid-argument-type]
-            )
+            meta = pd.DataFrame(columns=["file", "class", "domain", "split"])
             super().__init__(meta=meta, label_names=self.LABEL_NAMES, do_split=False)
             return
 
@@ -1271,9 +1267,7 @@ class _DCASE2026T7DatasetRuntime(NexuDataset):
                     )
 
         if not rows:
-            meta = pd.DataFrame(
-                columns=["file", "class", "domain", "split"]  # ty: ignore[invalid-argument-type]
-            )
+            meta = pd.DataFrame(columns=["file", "class", "domain", "split"])
         else:
             meta = pd.concat(rows, ignore_index=True)
             if "split" not in meta.columns:
