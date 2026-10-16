@@ -194,8 +194,9 @@ def _pronostia_rows(root: Path) -> list[dict]:
             continue
         parents = {part.lower() for part in directory.parts}
         complete = "learning_set" in parents or "full_test_set" in parents
-        # The PHM challenge Test_set is truncated: its last file is not failure.
-        official_test = "test_set" in parents and not complete
+        # The PHM challenge Test_set is truncated. Full_Test_Set, if
+        # supplied, is a complete but still official held-out test run.
+        official_test = "test_set" in parents or "full_test_set" in parents
         group = f"pronostia:{directory.name}"
         first_index = _filename_order(files[0])[0]
         times = [float(_filename_order(file)[0] - first_index) * 10.0 for file in files]
