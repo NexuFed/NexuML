@@ -325,9 +325,7 @@ class _DCASET2DatasetRuntime(NexuDataset):
             "split",
         ]
         meta = (
-            pd.DataFrame(meta_rows)
-            if meta_rows
-            else pd.DataFrame(columns=pd.Index(meta_columns))
+            pd.DataFrame(meta_rows) if meta_rows else pd.DataFrame(columns=pd.Index(meta_columns))
         )
 
         # Add anomaly column as alias for y_true (Task 4.1: ensure non-NaN anomaly metadata)
