@@ -6,11 +6,12 @@ import ast
 import copy
 import logging
 from contextlib import nullcontext
-from typing import Any, Callable, cast
+from typing import Any, Callable, Literal, cast
 
 from nexuml.core.types import ScenarioSpec, TuningSpec
 
 logger = logging.getLogger(__name__)
+OptunaDirection = Literal["minimize", "maximize"]
 
 DEFAULT_SEARCH_SPACE: dict[str, dict[str, Any]] = {
     "training.lr": {"type": "float", "low": 1e-5, "high": 1e-2, "log": True},
@@ -282,7 +283,7 @@ def tune(
     sampler = optuna.samplers.TPESampler(group=True, multivariate=True)
 
     # Direction(s)
-    directions = tuning_spec.directions
+    directions = [cast(OptunaDirection, direction) for direction in tuning_spec.directions]
     if len(directions) == 1:
         study = optuna.create_study(
             direction=directions[0],
