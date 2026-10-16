@@ -22,6 +22,7 @@ class MNISTDataset(DataSourceDefinition):
     train: bool = True
     download: bool = False
     split: str | None = None
+    normalize: bool = False
 
     def build(self) -> NexuDataset:
         return _MNISTDatasetRuntime(**self.model_dump())
@@ -38,9 +39,11 @@ class _MNISTDatasetRuntime(NexuDataset):
         data=None,
         targets: Sequence[int] | torch.Tensor | None = None,
         split: str | None = None,
+        normalize: bool = False,
     ):
         dataset_data = data
         dataset_targets = targets
+        self.normalize = normalize
 
         if dataset_data is None:
             from torchvision import datasets, transforms
@@ -89,4 +92,6 @@ class _MNISTDatasetRuntime(NexuDataset):
             features = features.float()
         if torch.max(features) > 1.0:
             features = features / 255.0
+        if self.normalize:
+            features = 2.0 * features - 1.0
         return TensorDict({"features": features}, batch_size=[])
