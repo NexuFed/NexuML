@@ -137,7 +137,7 @@ class _FlowVisualizerRuntime(EvalAlgorithm):
         for row, (label, values) in enumerate(rows):
             for column in range(count):
                 image = values[column].squeeze(0).numpy()
-                axes[row, column].imshow(
+                axes[row, column].imshow(  # cspell:ignore imshow
                     np.clip(image, 0.0, 1.0),
                     cmap="gray",
                     vmin=0.0,
