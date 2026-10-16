@@ -10,6 +10,8 @@ import numpy as np
 import pytest
 import torch
 
+from nexuml.core.types import DataSpec, DatasetSpec
+from nexuml.data.creator import NexuDataCreator
 from nexuml.data.super_dataset import SuperDataset
 from nexuml_library.data.maintenance.bearings import (
     IMSBearingDataset,
@@ -222,3 +224,23 @@ def test_definition_remains_serializable() -> None:
     assert PaderbornBearingDataset().download is True
     assert PRONOSTIABearingDataset().download is True
     assert IMSBearingDataset().download is True
+
+
+def test_nexuml_data_creator_preserves_run_splits_with_keep(tmp_path: Path) -> None:
+    for run in ("Bearing1_1", "Bearing1_2", "Bearing1_3"):
+        for i in (1, 2):
+            _save_csv(tmp_path / "35Hz12kN" / run / f"{i}.csv", columns=2)
+    specification = DataSpec(
+        datasets=[
+            DatasetSpec(
+                source=XJTUSYBearingDataset(root=tmp_path, window_size=16),
+                modality="vibration",
+                split_type="keep",
+            ),
+        ],
+        input_shapes={"features": [2, 16]},
+    )
+    runtime = NexuDataCreator().build_dataset(specification)
+    _assert_group_isolation(runtime)
+    assert runtime.meta is not None
+    assert set(runtime.meta["split"]) == {"train", "val", "test"}
