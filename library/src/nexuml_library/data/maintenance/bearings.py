@@ -42,7 +42,7 @@ def _filename_order(file: Path) -> tuple[int, str]:
 
 
 def _safe_extract(archive: Path, root: Path) -> None:
-    """Extract ZIP files without allowing traversal or links outside the root."""
+    """Extract ZIP files without allowing traversal or links outside the root. Raises ValueError."""
     destination = root.resolve()
     with zipfile.ZipFile(archive) as zipped:
         for entry in zipped.infolist():
