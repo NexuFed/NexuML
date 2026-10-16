@@ -36,6 +36,20 @@ xjtu = XJTUSYBearingDataset(root="/data/xjtu_sy", window_size=2048)
 runtime = xjtu.build()
 print(runtime.meta[["group_id", "split", "health", "rul", "rul_valid"]].head())
 features, targets = runtime[0]
+
+# In a NexuML recipe, KEEP the dataset's group-level split decisions:
+from nexuml.core.types import DataSpec, DatasetSpec
+
+data = DataSpec(
+    datasets=[
+        DatasetSpec(
+            source=xjtu,
+            modality="vibration",
+            split_type="keep",
+        ),
+    ],
+    input_shapes={"features": [2, 2048]},
+)
 ```
 
 ## Labels, splits, and provenance
