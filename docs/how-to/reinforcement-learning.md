@@ -42,35 +42,200 @@ can round the final frame count. Evaluation builds a fresh environment and repor
 return mean/std, mean length, termination and truncation counts. Set
 `interaction.evaluation_environment` to override the evaluation definition.
 
-## Fast CPU run
+## Fast CPU round trip
+
+From the repository root, with Python 3.12 or newer:
 
 ```bash
+uv venv --python 3.12
+source .venv/bin/activate
 uv pip install -e ".[reinforcement]" -e "./library[reinforcement]"
-nexuml train pendulum-ppo -O training.total_frames=32 -O training.frames_per_batch=16
-nexuml train cartpole-ppo -O training.total_frames=32 -O training.frames_per_batch=16
+export CUDA_VISIBLE_DEVICES=''
+export OMP_NUM_THREADS=1 MKL_NUM_THREADS=1
+export NEXUML_RL_DEMO=/tmp/opencode/nexuml-rl-demo
+export NEXUML_LOGS_ROOT="$NEXUML_RL_DEMO/logs"
+mkdir -p "$NEXUML_RL_DEMO"
+nexuml registry list scenarios
+
+for SCENARIO in pendulum-ppo cartpole-ppo; do
+  nexuml resolve "$SCENARIO" --output "$NEXUML_RL_DEMO/$SCENARIO.yaml"
+  nexuml train --config "$NEXUML_RL_DEMO/$SCENARIO.yaml" \
+    -O training.total_frames=32 -O training.frames_per_batch=16 \
+    -O training.algorithm.update_epochs=1 -O training.algorithm.minibatch_size=8 \
+    -O training.evaluation.episodes=1 -O training.evaluation.max_steps_per_episode=8
+
+  # Discover the actual newest checkpoint; do not assume a version_0 path.
+  CHECKPOINT=$(python -c 'import os; from pathlib import Path; print(max(Path(os.environ["NEXUML_LOGS_ROOT"]).rglob("*.ckpt"), key=lambda p: p.stat().st_mtime))')
+  printf 'Checkpoint: %s\n' "$CHECKPOINT"
+  nexuml export "$SCENARIO" --checkpoint "$CHECKPOINT" \
+    --output "$NEXUML_RL_DEMO/$SCENARIO-policy"
+  nexuml evaluate "$NEXUML_RL_DEMO/$SCENARIO-policy" \
+    -O training.evaluation.episodes=1 -O training.evaluation.max_steps_per_episode=8
+  nexuml train --trainer-checkpoint "$CHECKPOINT"
+done
 ```
 
-For a tiny update/evaluation/export check:
+Both references enable the native TensorBoard logger; MLflow, initial/periodic evaluation
+and recording are off by default. The commands produce training events/checkpoints,
+complete policy packages, scalar replay results and replay provenance in a separate native
+evaluation run. The last command demonstrates checkpoint restoration: this completed
+32-frame checkpoint has no remaining learning budget. For interruption recovery, pass an
+intermediate checkpoint instead; see [Checkpoints](checkpoints.md) for batch-level saving.
+These tiny runs test updates and artifact wiring, not task convergence or policy quality.
 
-```python
-from pathlib import Path
-from nexuml.core.export import export_package
-from nexuml.core.types import RLEvaluationSpec
-from nexuml.training.lightning import NexuSession
-from nexuml_library.reinforcement.algorithms.ppo import PPO
-from nexuml_library.scenarios.reinforcement.gymnasium import pendulum_ppo
+Use [resolved YAML](run-scenarios.md) and ordinary repeatable `-O` overrides, not user
+source edits. For Python exports, deploy `export_package(result.policy, path)`, not
+`result.pipeline`: raw Gaussian parameters are not environment actions. The existing
+dataset-oriented `smoke` command is not an RL acceptance path.
 
-spec = pendulum_ppo(total_frames=32, frames_per_batch=16)
-spec.training.algorithm = PPO(update_epochs=1, minibatch_size=8)
-spec.training.evaluation = RLEvaluationSpec(episodes=1, max_steps_per_episode=10)
-result = NexuSession(spec, enable_loggers=False, enable_progress_bar=False).run()
-export_package(result.policy, Path("artifacts/pendulum-policy"))
+## Initial, periodic and final evaluation
+
+```bash
+nexuml train cartpole-ppo \
+  -O training.total_frames=32 -O training.frames_per_batch=16 \
+  -O training.algorithm.update_epochs=1 -O training.algorithm.minibatch_size=8 \
+  -O training.evaluation.episodes=1 -O training.evaluation.max_steps_per_episode=8 \
+  -O training.evaluation.at_start=true -O training.evaluation.every_n_frames=16
 ```
 
-Use [resolved YAML](run-scenarios.md) and [trainer checkpoints](checkpoints.md) through
-the existing CLI. For RL, deploy `result.policy`, not `result.pipeline`: raw Gaussian
-parameters are not environment actions. The existing dataset-oriented `smoke` command
-is not an RL acceptance path; use finite frame budgets or the tests below.
+`at_start` defaults to `false`; `every_n_frames` defaults to `null`. With these and video
+disabled, plain `fit()` and final-only `run()` behavior stay unchanged. Opted-in runs log
+initial/progress/final metrics while the existing native loggers are active. Final evaluation
+is reused rather than repeating the same episodes/media when `run()` collects its result.
+
+Cadence counts **collected training frames**, not PPO optimizer/global steps. A batch that
+crosses an interval triggers once at its actual frame count, even if it crosses several
+intervals; there is no historical catch-up. Resume derives the next future interval from
+restored frames and does not repeat frame-zero evaluation. Final evaluation also runs for
+an off-interval end or a checkpoint with no remaining batches. Evaluation is synchronous:
+more episodes, longer horizons and more frequent checks cost wall time/storage.
+
+Each evaluation owns a fresh single environment, never resets the training collector, and
+restores policy modes and random streams. `training.evaluation.seed` falls back to
+`training.seed`; episode seeds increment from that seed. The default deterministic action
+mode and a fixed seed make CPU comparisons useful, not a cross-platform determinism promise.
+`episodes=0` disables scalar episodes without allocating an environment; recording then
+fails validation. Evaluation-environment overrides must retain compatible observation/action
+fields and action semantics.
+
+## Record GIF, MP4 or both
+
+GIF needs only the scoped rendering extra. Silent H.264 MP4 (or both formats) adds video:
+
+```bash
+uv pip install -e "./library[rendering]"  # GIF + classic-control rendering
+uv pip install -e "./library[video]"      # GIF + ImageIO/FFmpeg MP4
+export SDL_VIDEODRIVER=dummy
+
+for SCENARIO in pendulum-ppo cartpole-ppo; do
+  for FORMAT in gif mp4 both; do
+    nexuml evaluate "$NEXUML_RL_DEMO/$SCENARIO-policy" \
+      -O training.evaluation.episodes=2 -O training.evaluation.seed=7 \
+      -O training.evaluation.max_steps_per_episode=16 \
+      -O training.evaluation.video.enabled=true \
+      -O training.evaluation.video.format="$FORMAT" \
+      -O training.evaluation.video.max_frames=12 \
+      -O training.evaluation.video.max_size=128
+  done
+done
+```
+
+The same `training.evaluation.video.*` overrides work with `train`, including initial and
+16-frame periodic checks. Recording requests `rgb_array` at environment construction;
+**Pendulum and CartPole still feed vectors to the policy**, not images. Only the first
+episode is captured. Other episodes, and steps after capture stops, still contribute full
+metrics. This does not set `image_shape` or convert a state policy into a visual policy.
+
+| Setting under `training.evaluation.video` | Default | Meaning |
+| --- | --- | --- |
+| `enabled` | `false` | Explicit capture/encoding opt-in |
+| `format` | `gif` | Downloadable `gif`, `mp4`, or `both` |
+| `max_frames` | `500` | Positive cap, including reset and terminal frame if within cap |
+| `max_size` | `256` | Positive maximum captured edge; aspect ratio preserved before buffering |
+| `fps` | `null` | Renderer FPS; otherwise supply a finite positive override |
+
+For example, `-O training.evaluation.video.fps=25` explicitly sets playback timing. GIF
+timing is quantized to centiseconds. MP4 uses H.264/yuv420p, no audio, and at most one padded
+pixel per axis for even encoded dimensions, without stretching/cropping or implicit
+macroblock scaling. JSON records timing, bounds, captured count and any padding. One
+bounded rollout buffer feeds all selected formats/backends; MP4-only does not create a
+downloadable GIF. TensorBoard additionally gets a GIF preview even for MP4-only selection.
+
+Native artifacts use `evaluation/frame_<frame-step>.gif`, `.mp4` and `.json`; only selected
+downloadable media formats are written. TensorBoard's **Images** tab shows the animated
+`eval/rl/episode` preview at collected-frame steps; open MP4 artifacts in a standard player.
+Media JSON includes metrics, seed/horizon/mode, environment/config/contract provenance,
+FPS, capture limits and encoder/dimension information. Native relative paths are prefixed
+by `NEXUML_LOGS_ROOT` (including the default `.experiments/tensorboard` path):
+
+```bash
+tensorboard --logdir "$NEXUML_LOGS_ROOT/.experiments/tensorboard" --port 6007
+find "$NEXUML_LOGS_ROOT" -path '*/evaluation/*' -type f -print
+```
+
+### Native TensorBoard, MLflow-only, both, or disabled
+
+`scenario.logging` remains authoritative; no media logger or extra tracking run is needed.
+For training, use this block in resolved YAML for MLflow-only (install `nexuml[tracking]`):
+
+```yaml
+logging:
+  experiment_name: RL-evaluation
+  tensorboard: null
+  mlflow:
+    tracking_uri: sqlite:///mlflow.db
+    artifact_location: mlflow-artifacts
+    auto_nested_runs: false
+```
+
+Use `tensorboard: {}` alongside `mlflow` for both; use `logging: null` to disable training
+logging. To select MLflow-only directly for replay, replacing the logging block is supported:
+
+```bash
+uv pip install -e ".[tracking]"
+nexuml evaluate "$NEXUML_RL_DEMO/pendulum-ppo-policy" \
+  -O 'logging={"experiment_name":"RL-evaluation","mlflow":{"tracking_uri":"sqlite:///mlflow.db","artifact_location":"mlflow-artifacts","auto_nested_runs":false}}' \
+  -O training.evaluation.episodes=1 -O training.evaluation.max_steps_per_episode=16 \
+  -O training.evaluation.video.enabled=true -O training.evaluation.video.format=both
+```
+
+Add `"tensorboard":{}` to that JSON for both backends. `-O 'logging={}'` disables replay
+backends for scalar-only use. Recording without a usable artifact target fails preflight,
+before episodes run. MLflow-only never needs a TensorBoard writer/preview; scalars and the
+selected media/JSON belong to its existing native run ID. Find them under that run's
+**Artifacts → evaluation** in MLflow. With both configured, each backend receives each
+selected artifact once. Delivery errors remain visible; already uploaded remote artifacts
+cannot be transactionally rolled back.
+
+### Replay, prerequisites and trust boundaries
+
+`nexuml evaluate` uses `load_inference_package`, embedded config restoration and the shared
+evaluator directly. It constructs no session, learner, optimizer or collector and does not
+execute configured exports. Only `training.evaluation.*`, `logging.*` and compatible
+`interaction.evaluation_environment` overrides are accepted. It cannot replace loaded
+pipeline weights or action adapters. A whole environment definition uses its ordinary
+serialized `{type, version, params}` representation from resolved YAML.
+
+Replay writes `source_package.json` and effective `config.yaml` through native artifact
+logging, even for scalar-only evaluation. Event steps use an explicitly recorded nonnegative
+integer `training_frames` value only when available; otherwise standalone step **0** and
+unavailable source frames are recorded. Optimizer/global steps are never relabeled as
+frames; step zero does **not** mean an untrained baseline. Replay is separate from
+`train --trainer-checkpoint`, which restores learning state.
+
+Scalar replay needs the selected environment, but no rendering/encoding dependencies.
+Portable observation-to-action inference itself does not need Gymnasium, TorchRL, PPO or
+encoders. Only load trusted packages/checkpoints: packaged Python is executable code, not
+sandboxed passive data. Do not run untrusted artifacts.
+
+`SDL_VIDEODRIVER=dummy` supports headless classic-control on compatible SDL builds; it does
+not make every simulator render headlessly. MuJoCo/remote simulators have their own renderer
+prerequisites. The optional video extra provides an FFmpeg backend wheel on supported
+platforms; H.264/libx264 availability is checked before evaluation/long training. If no
+compatible executable is bundled, explicitly install/provide one via `IMAGEIO_FFMPEG_EXE`.
+No binary is downloaded or system package installed at runtime. GIF-only does not require
+FFmpeg, and no MoviePy dependency is added. A viewable recording is not a convergence or
+statistical evaluation claim.
 
 ### Collection and placement
 
@@ -248,7 +413,8 @@ training modes and adds no speculative trainer hierarchy for them.
 - **Default CPU/configuration:** fast Pendulum/CartPole, fake ROS/CARLA, policy
   export/resume and all static simulator contracts.
 - **Optional simulators:** `requires_simulator` and `NEXUML_RUN_SIMULATOR_TESTS=1`.
-  The CI workflow's `rl-simulators` manual input runs visual/MuJoCo smokes, not ROS/CARLA.
+  The CI workflow's `rl-simulators` manual input installs scoped `video,mujoco` extras and
+  runs visual/MuJoCo plus headless GIF/MP4 evaluation smokes, not ROS/CARLA.
 - **Special systems:** `requires_system` and `NEXUML_RUN_SYSTEM_TESTS=1`; Ray proofs start
   an isolated local runtime; install/configure ROS/Gazebo or CARLA explicitly.
   Pair with `requires_gpu` when a test needs a local GPU.

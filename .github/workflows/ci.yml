@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       rl-simulators:
-        description: Run optional visual/MuJoCo RL integration smokes
+        description: Run optional visual/MuJoCo and GIF/MP4 RL integration smokes
         type: boolean
         default: false
   push:
@@ -192,14 +192,16 @@ jobs:
         run: |
           uv venv --python 3.12
           source .venv/bin/activate
-          uv pip install -e ".[dev,reinforcement]" -e "./library[rendering,mujoco]"
+          uv pip install -e ".[dev,reinforcement,tracking]" -e "./library[video,mujoco]"
           echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
       - name: Run CPU simulator integrations
         env:
           NEXUML_RUN_SIMULATOR_TESTS: "1"
           SDL_VIDEODRIVER: dummy
           CUDA_VISIBLE_DEVICES: ""
-        run: python -m pytest tests/core/test_simulation_scenarios.py -q
+        run: >-
+          python -m pytest tests/core/test_simulation_scenarios.py
+          tests/core/test_rl_evaluation.py tests/tracking/test_evaluation_media.py -q
 
   required-ci:
     name: CI

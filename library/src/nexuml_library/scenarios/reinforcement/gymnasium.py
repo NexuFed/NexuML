@@ -1,7 +1,14 @@
 """Continuous/discrete CPU reference scenarios with overrideable frame budgets."""
 
 from nexuml.core.discovery import scenario
-from nexuml.core.types import InteractionSpec, PolicySpec, ReinforcementLearningSpec, ScenarioSpec
+from nexuml.core.types import (
+    InteractionSpec,
+    LoggingSpec,
+    PolicySpec,
+    ReinforcementLearningSpec,
+    ScenarioSpec,
+    TensorBoardSpec,
+)
 from nexuml_library.action_adapters.adapters import GaussianActionAdapter, CategoricalActionAdapter
 from nexuml_library.environments.gymnasium import GymnasiumEnvironment
 from nexuml_library.reinforcement.algorithms.ppo import PPO
@@ -20,6 +27,7 @@ def pendulum_ppo(total_frames=50_000, frames_per_batch=1_024) -> ScenarioSpec:
         pipeline=continuous_policy_mlp(),
         interaction=InteractionSpec(environment=GymnasiumEnvironment(env_name="Pendulum-v1")),
         policy=PolicySpec(action_adapter=GaussianActionAdapter()),
+        logging=LoggingSpec(tensorboard=TensorBoardSpec()),
         training=ReinforcementLearningSpec(
             algorithm=PPO(),
             total_frames=total_frames,
@@ -43,6 +51,7 @@ def cartpole_ppo(total_frames=50_000, frames_per_batch=1_024) -> ScenarioSpec:
         pipeline=discrete_policy_mlp(),
         interaction=InteractionSpec(environment=GymnasiumEnvironment(env_name="CartPole-v1")),
         policy=PolicySpec(action_adapter=CategoricalActionAdapter()),
+        logging=LoggingSpec(tensorboard=TensorBoardSpec()),
         training=ReinforcementLearningSpec(
             algorithm=PPO(),
             total_frames=total_frames,

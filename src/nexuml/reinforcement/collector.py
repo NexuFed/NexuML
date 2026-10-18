@@ -92,6 +92,7 @@ def build_collector(definition, training: ReinforcementLearningSpec, policy, dev
         constructor = cast(Any, _GracefulRayCollector)
         # Exception to the front door: override its actor-kill hook, including automatic shutdown.
         topology.update(
+            collector_kwargs={"auto_register_policy_transforms": False},
             remote_configs={"num_cpus": 1, "num_gpus": 0},
             ray_init_config={
                 "address": "local",
@@ -102,6 +103,8 @@ def build_collector(definition, training: ReinforcementLearningSpec, policy, dev
         )
     else:
         topology["backend"] = spec.backend
+        # Keep NexuML's environment specs unchanged instead of opting into v0.15 transforms.
+        topology["auto_register_policy_transforms"] = False
     collector = None
     try:
         collector = constructor(

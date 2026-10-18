@@ -4,8 +4,10 @@ import copy
 import json
 import multiprocessing
 import os
+import signal
 import subprocess
 import sys
+from types import ModuleType
 from pathlib import Path
 
 import pytest
@@ -31,7 +33,12 @@ from nexuml.core.types import (
     ReinforcementLearningSpec,
     ScenarioSpec,
 )
-from nexuml.reinforcement.collector import RolloutDataset, synchronize_policy
+from nexuml.reinforcement.collector import (
+    EnvironmentFactory,
+    RolloutDataset,
+    build_collector,
+    synchronize_policy,
+)
 from nexuml.training.lightning import NexuSession
 from nexuml.training.reinforcement import NexuRLLightningModule
 from nexuml.training.reinforcement import evaluate_policy
@@ -104,8 +111,35 @@ def test_copied_policy_synchronization_changes_rollout_weights():
 
 
 @pytest.mark.requires_optional("torchrl")
+def test_ray_collector_transform_option_reaches_workers_without_ray(monkeypatch):
+    synchronized = []
+
+    class RayCollector:
+        def __init__(self, factories, **kwargs):
+            assert all(isinstance(factory, EnvironmentFactory) for factory in factories)
+            assert "auto_register_policy_transforms" not in kwargs
+            assert kwargs["collector_kwargs"]["auto_register_policy_transforms"] is False
+
+        def update_policy_weights_(self, weights):
+            synchronized.append(weights)
+
+    module = ModuleType("nexuml.reinforcement.ray_collector")
+    setattr(module, "_GracefulRayCollector", RayCollector)
+    monkeypatch.setitem(sys.modules, module.__name__, module)
+    training = ReinforcementLearningSpec(
+        algorithm=PPO(),
+        collector=CollectorSpec(backend="ray", num_collectors=2),
+        total_frames=32,
+        frames_per_batch=16,
+    )
+    collector = build_collector(GymnasiumEnvironment(), training, nn.Linear(4, 2), "cpu")
+    assert isinstance(collector, RayCollector) and len(synchronized) == 1
+
+
+@pytest.mark.requires_optional("torchrl")
 @pytest.mark.requires_optional("gymnasium")
 @pytest.mark.parametrize("factory", [pendulum_ppo, cartpole_ppo])
+@pytest.mark.filterwarnings("error:The env passed to .*missing transforms required:FutureWarning")
 def test_cpu_fit_evaluate_checkpoint_and_worker_local_materialization(
     factory, tmp_path, monkeypatch
 ):
@@ -148,6 +182,10 @@ def test_cpu_fit_evaluate_checkpoint_and_worker_local_materialization(
         not torch.equal(value, session.pipeline.state_dict()[key]) for key, value in before.items()
     )
     assert result.interaction_results["eval/rl/length_mean"] <= 10
+    assert all(
+        torch.isfinite(torch.as_tensor(value)) for value in result.interaction_results.values()
+    )
+    assert all(torch.isfinite(value) for value in result.trainer.logged_metrics.values())
     assert [context.purpose for context, _ in builds] == ["train", "eval"]
     assert all(not environment.envs for _, environment in builds)
     checkpoint = tmp_path / "resume.ckpt"
@@ -198,7 +236,10 @@ from pathlib import Path
 from tensordict import TensorDict
 class BlockOptional(importlib.abc.MetaPathFinder):
     def find_spec(self, fullname, path=None, target=None):
-        if fullname.split(".")[0] in {"torchrl", "gymnasium", "rclpy", "mujoco", "carla"}:
+        if fullname.split(".")[0] in {
+            "torchrl", "gymnasium", "rclpy", "mujoco", "carla",
+            "PIL", "imageio", "imageio_ffmpeg", "moviepy"
+        }:
             raise ImportError("optional runtime blocked: " + fullname)
 sys.meta_path.insert(0, BlockOptional())
 from nexuml.core.export import load_package, load_inference_package, infer
@@ -340,7 +381,8 @@ def test_evaluation_override_is_fresh_deterministic_and_always_closed(tmp_path, 
 
 @pytest.mark.requires_optional("torchrl")
 @pytest.mark.requires_optional("gymnasium")
-def test_partial_checkpoint_resumes_remaining_frames_and_optimizer_state(tmp_path):
+@pytest.mark.parametrize("factory", [cartpole_ppo, pendulum_ppo])
+def test_partial_checkpoint_resumes_remaining_frames_and_optimizer_state(tmp_path, factory):
     from lightning.pytorch.callbacks import Callback
 
     checkpoint = tmp_path / "partial.ckpt"
@@ -351,7 +393,7 @@ def test_partial_checkpoint_resumes_remaining_frames_and_optimizer_state(tmp_pat
             raise RuntimeError("interrupted after checkpoint")
 
     session = NexuSession(
-        smoke_scenario(cartpole_ppo),
+        smoke_scenario(factory),
         log_dir=tmp_path / "first",
         enable_loggers=False,
         enable_progress_bar=False,
@@ -363,6 +405,11 @@ def test_partial_checkpoint_resumes_remaining_frames_and_optimizer_state(tmp_pat
     assert int(session.lightning_module.frames) == 16
     assert session.lightning_module._collector is None
     checkpoint_data = torch.load(checkpoint, weights_only=False)
+    # Simulate pre-scheduling checkpoints: all new evaluation fields must stay optional.
+    saved_evaluation = checkpoint_data["hyper_parameters"]["scenario"]["training"]["evaluation"]
+    for key in ("at_start", "every_n_frames", "video"):
+        saved_evaluation.pop(key)
+    torch.save(checkpoint_data, checkpoint)
     optimizer_step = max(
         float(state["step"]) for state in checkpoint_data["optimizer_states"][0]["state"].values()
     )
@@ -374,6 +421,10 @@ def test_partial_checkpoint_resumes_remaining_frames_and_optimizer_state(tmp_pat
     )
     assert isinstance(resumed.lightning_module, NexuRLLightningModule)
     assert int(resumed.lightning_module.frames) == 16
+    assert isinstance(resumed.scenario.training, ReinforcementLearningSpec)
+    assert not resumed.scenario.training.evaluation.video.enabled
+    assert not resumed.scenario.training.evaluation.at_start
+    assert resumed.scenario.training.evaluation.every_n_frames is None
     result = resumed.run()
     assert int(resumed.lightning_module.frames) == 32
     assert int(resumed.lightning_module.algorithm.updates) == 4
@@ -385,6 +436,7 @@ def test_partial_checkpoint_resumes_remaining_frames_and_optimizer_state(tmp_pat
 
 @pytest.mark.requires_optional("torchrl")
 @pytest.mark.requires_optional("gymnasium")
+@pytest.mark.filterwarnings("error:The env passed to .*missing transforms required:FutureWarning")
 def test_process_collection_updates_and_closes_workers(tmp_path):
     existing_workers = {worker.pid for worker in multiprocessing.active_children()}
     scenario = smoke_scenario(cartpole_ppo)
@@ -416,19 +468,38 @@ def test_cli_discovery_config_train_and_export_checkpoint(name, tmp_path, monkey
     from nexuml.core.scenario_registry import get_scenario_registry
     from nexuml.core.types import ExportSpec
 
-    scenario = smoke_scenario(get_scenario_registry().get(name))
+    scenario = get_scenario_registry().get(name)()
     export_dir = tmp_path / "cli-policy"
     scenario.exports = [ExportSpec(output=str(export_dir))]
     config = tmp_path / "scenario.yaml"
     ResolvedConfig.from_scenario(scenario).save(config)
     monkeypatch.chdir(tmp_path)
     runner = CliRunner()
-    result = runner.invoke(app, ["train", "--config", str(config)])
+    result = runner.invoke(
+        app,
+        [
+            "train",
+            "--config",
+            str(config),
+            "-O",
+            "training.total_frames=32",
+            "-O",
+            "training.frames_per_batch=16",
+            "-O",
+            "training.algorithm.update_epochs=1",
+            "-O",
+            "training.algorithm.minibatch_size=8",
+            "-O",
+            "training.evaluation.episodes=2",
+            "-O",
+            "training.evaluation.max_steps_per_episode=10",
+        ],
+    )
     assert result.exit_code == 0, result.output + repr(result.exception)
     assert "RL evaluation:" in result.output
     policy, _, _ = load_inference_package(export_dir)
     assert hasattr(policy, "action_adapter")
-    checkpoint = next((tmp_path / ".experiments/checkpoints").glob("*.ckpt"))
+    checkpoint = next((tmp_path / ".experiments").rglob("*.ckpt"))
     exported = runner.invoke(
         app,
         [
@@ -445,3 +516,33 @@ def test_cli_discovery_config_train_and_export_checkpoint(name, tmp_path, monkey
     assert hasattr(restored, "action_adapter")
     for key, value in policy.state_dict().items():
         assert torch.equal(value, restored.state_dict()[key])
+
+
+@pytest.mark.requires_optional("torchrl")
+@pytest.mark.requires_optional("gymnasium")
+@pytest.mark.parametrize("backend", ["direct", "process"])
+@pytest.mark.parametrize("failure", [RuntimeError, KeyboardInterrupt])
+def test_collector_failure_and_cancellation_close_owned_workers(
+    backend, failure, tmp_path, monkeypatch
+):
+    existing = {worker.pid for worker in multiprocessing.active_children()}
+    scenario = smoke_scenario(cartpole_ppo)
+    scenario.training.collector = CollectorSpec(
+        backend=backend, num_collectors=2 if backend == "process" else 1
+    )
+    session = NexuSession(
+        scenario, log_dir=tmp_path, enable_loggers=False, enable_progress_bar=False
+    )
+
+    def fail(*args, **kwargs):
+        raise failure("learner interrupted")
+
+    monkeypatch.setattr(session.lightning_module.algorithm, "update", fail)
+    handler = signal.getsignal(signal.SIGINT)
+    try:
+        with pytest.raises(SystemExit if failure is KeyboardInterrupt else failure):
+            session.fit()
+    finally:
+        signal.signal(signal.SIGINT, handler)
+    assert session.lightning_module._collector is None
+    assert {worker.pid for worker in multiprocessing.active_children()} <= existing

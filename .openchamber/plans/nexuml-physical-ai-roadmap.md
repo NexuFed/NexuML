@@ -1,9 +1,21 @@
 # NexuML Physical AI Roadmap
 
-> **Status:** Planning / implementation TODO. **Scope:** NexuML only.  
+> **Status:** Phases 0–1 implemented and locally verified (2026-10-18), with known baseline failures recorded; Phases 2–8 remain planned. **Scope:** NexuML only.\
 > **Target branch:** `feature/nex-212-add-reinforcement-learning`  
 > **Goal:** Extend NexuML's existing RL and model infrastructure into a reusable framework for developing, training, benchmarking, exporting, and deploying Physical AI policies, beginning with simulation.  
 > **Explicit exclusion:** No NexuFL implementation, federation algorithms, fleet orchestration, aggregation, or NexuFL repository changes in this roadmap.
+
+## Steps
+
+- [x] Phase 0: Audit the existing foundation and publish baseline/gap evidence.
+- [x] Phase 1: Verify Gymnasium round trips, scheduled evaluation, GIF/MP4 recording, native logging, and inference-only replay.
+- [ ] Phase 2: Validate an isolated Isaac Lab stack and one NexuML robot-policy workflow.
+- [ ] Phase 3: Add LeRobot demonstrations and an ACT imitation-learning round trip.
+- [ ] Phase 4: Establish reproducible manipulation benchmarks.
+- [ ] Phase 5: Integrate and evaluate one pretrained VLA policy.
+- [ ] Phase 6: Validate deeper MuJoCo coverage before considering new adapters.
+- [ ] Phase 7: Evaluate generalization through Isaac Lab-Arena.
+- [ ] Phase 8: Prove ROS 2/Gazebo inference before supervised hardware execution.
 
 ## Why this plan starts with an audit
 
@@ -11,7 +23,16 @@ The target branch **already implements much of the RL foundation**. The existing
 
 Two items remain unchecked in that existing OpenSpec change: live headless ROS 2 + Gazebo + `ros2_control` integration (9.5), and live CARLA smoke testing (10.4). ROS/Gazebo is in scope later below; CARLA is not on the critical path of this plan.
 
-The branch currently has no `.openchamber/plans/` folder. This file establishes that plan location.
+The Phase 0–1 follow-up, `openspec/changes/verify-gymnasium-rl-and-record-evaluation/`, now has **48/48 tasks complete**. Its evidence is recorded in [the audit and completion report](../../reports/physical-ai/phase-0-audit.md); runnable usage is in [the RL guide](../../docs/how-to/reinforcement-learning.md) and [checkpoint guidance](../../docs/how-to/checkpoints.md). Completion here means the scoped implementation and local proofs, not merge, release, or completion of the wider roadmap.
+
+### Current verification and remaining limits
+
+- **Gymnasium/evaluation:** 185 focused CPU tests passed; 14 real headless recording/resume/export/replay tests passed for CartPole/Pendulum. TensorBoard animation/step selection and MP4 playback were exercised. Existing visual-observation tests and old-checkpoint-field resume tests also passed.
+- **Broader regression:** 530 passed, **4 pre-existing failures**, 12 skipped, 31 deselected; scoped coverage **60.67%** against the 50% threshold. The failures require absent DALI/wds2idx or Optuna and were not hidden or repaired outside scope.
+- **Other gates:** Lock, repository lint/format, strict docs, follow-up OpenSpec validation, wheel/sdist checks, and isolated installed-wheel proofs passed. Changed-file type checks passed; whole-repository typing retains the same **37 baseline diagnostics**, and the original RL change retains **six strict-validation warnings**.
+- **Not claimed:** Remote CI execution, GPU/system/hardware proofs, fresh native MuJoCo runs, live ROS/Gazebo/CARLA, reward convergence, or multi-seed policy quality. Original live-system tasks 9.5/10.4 remain open. Temporal action chunks, language processing, IL/VLA, Isaac, and manipulation benchmarks remain later work.
+
+These results describe the 2026-10-18 verification environment, not a universally green repository. Exact commands, dependency versions, failure details, and proof locations are in the report. Recheck relevant gates when dependencies or implementations change; do not rebuild verified components or silently fix unrelated baseline failures.
 
 ## Architectural principles (apply to every phase)
 
@@ -28,19 +49,21 @@ The branch currently has no `.openchamber/plans/` folder. This file establishes 
 
 ## Sequence and acceptance gates
 
-| Order | Phase | Priority | Main proof / gate |
-|---|---|---|---|
-| 0 | Audit existing Physical AI/RL foundation | P0 | Verified baseline with failures and gaps documented |
-| 1 | Gymnasium RL reference workflow | P0 | CartPole + Pendulum round trips reproducible through NexuML |
-| 2 | NVIDIA Isaac Lab | P0 | NexuML trains/evaluates a batched simulated articulated-robot policy |
-| 3 | LeRobot + imitation learning | P0 | Train/evaluate a manipulation policy from demonstrations |
-| 4 | LeRobot manipulation benchmarks | P0 | Comparable multi-seed results on Meta-World or LIBERO |
-| 5 | Pretrained VLA models | P1 | Inference and fine-tuning/evaluation of one VLA policy |
-| 6 | MuJoCo deeper coverage | P1 | Existing humanoid/reacher validated; direct adapter only if justified |
-| 7 | Isaac Lab-Arena | P1 | Evaluation on varied scenes with standardized results |
-| 8 | ROS 2, Gazebo, robot deployment | P1/P2 | Live simulation round trip; later safe supervised hardware test |
+| Order | Phase | Priority | Status | Main proof / gate |
+|---|---|---|---|---|
+| 0 | Audit existing Physical AI/RL foundation | P0 | Complete; baseline failures recorded | Verified baseline with failures and gaps documented |
+| 1 | Gymnasium RL reference workflow | P0 | Complete for scoped CPU/headless proofs | CartPole + Pendulum round trips, scheduled evaluation, GIF/MP4 artifacts, and replay reproducible through NexuML |
+| 2 | NVIDIA Isaac Lab | P0 | Next; not started | NexuML trains/evaluates a batched simulated articulated-robot policy |
+| 3 | LeRobot + imitation learning | P0 | Planned | Train/evaluate a manipulation policy from demonstrations |
+| 4 | LeRobot manipulation benchmarks | P0 | Planned | Comparable multi-seed results on Meta-World or LIBERO |
+| 5 | Pretrained VLA models | P1 | Planned | Inference and fine-tuning/evaluation of one VLA policy |
+| 6 | MuJoCo deeper coverage | P1 | Planned; current native proof outstanding | Existing humanoid/reacher validated; direct adapter only if justified |
+| 7 | Isaac Lab-Arena | P1 | Planned | Evaluation on varied scenes with standardized results |
+| 8 | ROS 2, Gazebo, robot deployment | P1/P2 | Planned; live-system proof outstanding | Live simulation round trip; later safe supervised hardware test |
 
 **Dependencies:** 0 -> 1 -> 2. Phase 3 follows the verified core and can proceed alongside Phase 2. Phase 4 requires Phase 3 and an evaluable manipulation task. Phase 5 requires Phases 3–4. Phase 6 may progress in parallel after Phase 1. Phase 7 requires Isaac Lab + standardized evaluation (2 + 4). Phase 8 reuses the existing ROS adapter and should finish its real Gazebo proof before attempting physical hardware.
+
+**Next increment:** Phase 2 begins with compatibility selection and a native Isaac Lab baseline in its own reproducible environment, before any NexuML adapter work. Reuse the shared evaluator/logger/artifact seams where compatible; current single-environment Gymnasium evaluation/recording does not establish batched GPU or Isaac rendering support. This roadmap update does not start later-phase implementation or authorize new downloads/system installations.
 
 ---
 
@@ -48,31 +71,42 @@ The branch currently has no `.openchamber/plans/` folder. This file establishes 
 
 **Objective:** Establish what works now; avoid implementing functionality already present in the RL OpenSpec.
 
-- [ ] Read `openspec/changes/add-reinforcement-learning/{proposal,design,tasks}.md` and `docs/how-to/reinforcement-learning.md`. Compare their status claims with code and executable tests.
-- [ ] Review `src/nexuml/core/policy.py`, `src/nexuml/interaction/`, `src/nexuml/reinforcement/`, `src/nexuml/training/reinforcement.py`, and relevant library scenario definitions.
-- [ ] Confirm registry/serialization, `ScenarioSpec.data` + `interaction` coexistence, training modes, contract validation, `CompiledPolicy` export/load, and inference without a training algorithm.
-- [ ] Check the current PPO/TorchRL collector and Lightning ownership, including teardown, evaluation, checkpoint restore, and policy synchronization. Do **not** rewrite this functioning architecture just to introduce robotics.
-- [ ] Verify the current library's optional extras for `reinforcement`, `mujoco`, and other simulation paths; inspect the root and library `pyproject.toml` and existing test markers.
-- [ ] Run a baseline CPU unit/regression suite and existing documentation/lint/type gates; record exact commands, results, and unresolved environment-dependent tests.
-- [ ] Create a small capability/coverage matrix: **present & tested**, **present but not system-tested**, **missing**, **deferred** for Gymnasium, MuJoCo, ROS 2/Gazebo, datasets, IL, VLA, Isaac, benchmarks, and export.
-- [ ] Identify only essential, evidence-driven changes to the model/policy contract for temporal action chunks and multimodal inputs. Defer implementation until Phase 3/5 provides concrete needs.
+- [x] Read `openspec/changes/add-reinforcement-learning/{proposal,design,tasks}.md` and `docs/how-to/reinforcement-learning.md`. Compare their status claims with code and executable tests.
+- [x] Review `src/nexuml/core/policy.py`, `src/nexuml/interaction/`, `src/nexuml/reinforcement/`, `src/nexuml/training/reinforcement.py`, and relevant library scenario definitions.
+- [x] Confirm registry/serialization, `ScenarioSpec.data` + `interaction` coexistence, training modes, contract validation, `CompiledPolicy` export/load, and inference without a training algorithm.
+- [x] Check the current PPO/TorchRL collector and Lightning ownership, including teardown, evaluation, checkpoint restore, and policy synchronization. Do **not** rewrite this functioning architecture just to introduce robotics.
+- [x] Verify the current library's optional extras for `reinforcement`, `mujoco`, and other simulation paths; inspect the root and library `pyproject.toml` and existing test markers.
+- [x] Run a baseline CPU unit/regression suite and existing documentation/lint/type gates; record exact commands, results, and unresolved environment-dependent tests.
+- [x] Create a small capability/coverage matrix: **present & tested**, **present but not system-tested**, **missing**, **deferred** for Gymnasium, MuJoCo, ROS 2/Gazebo, datasets, IL, VLA, Isaac, benchmarks, and export.
+- [x] Identify only essential, evidence-driven changes to the model/policy contract for temporal action chunks and multimodal inputs. Defer implementation until Phase 3/5 provides concrete needs.
 
 **Gate:** Verified baseline with a gap report. No new generic abstractions solely because another integration is planned.
+
+**Outcome:** Complete. The [audit report](../../reports/physical-ai/phase-0-audit.md) separates current proofs, historical results, baseline failures, and unexecuted live integrations. Temporal/chunk/language limitations were identified, not speculatively implemented.
 
 ## Phase 1 — Gymnasium RL: end-to-end proof (P0)
 
 **Objective:** Demonstrate the existing NexuML RL workflow, not implement a competing one.
 
-- [ ] Run the **existing** `cartpole-ppo` and `pendulum-ppo` library scenarios using `nexuml[reinforcement]` and the normal NexuML CLI/session path.
-- [ ] Exercise both discrete/categorical and bounded continuous action adapters; verify finite frame budgets, reset/step semantics, termination vs truncation, and reproducible seeds.
-- [ ] Confirm at least one real PPO optimizer update, rollout collection, episodic evaluation, and stable return/length metrics on both examples.
-- [ ] Confirm YAML resolve/serialize/restore and CLI overrides; do not introduce a special RL-only configuration path.
-- [ ] Save/resume a training checkpoint and export/reload a deployable `CompiledPolicy`; verify deterministic inference without loading PPO/collector/environment state.
-- [ ] Validate direct/process collector smoke paths; test supported copied-policy synchronization, device restrictions, and graceful cleanup.
-- [ ] Add/fix only missing tests for these scenarios; separate fast structural/integration tests from long reward-convergence experiments.
-- [ ] Provide concise getting-started docs with exact commands, dependency installation, expected artifacts, and how to evaluate/replay a model.
+- [x] Run the **existing** `cartpole-ppo` and `pendulum-ppo` library scenarios using `nexuml[reinforcement]` and the normal NexuML CLI/session path.
+- [x] Exercise both discrete/categorical and bounded continuous action adapters; verify finite frame budgets, reset/step semantics, termination vs truncation, and reproducible seeds.
+- [x] Confirm at least one real PPO optimizer update, rollout collection, episodic evaluation, and finite, reproducible seeded return/length metrics on both examples; do not equate this with reward convergence.
+- [x] Confirm YAML resolve/serialize/restore and CLI overrides; do not introduce a special RL-only configuration path.
+- [x] Save/resume a training checkpoint and export/reload a deployable `CompiledPolicy`; verify deterministic inference without loading PPO/collector/environment state.
+- [x] Validate direct/process collector smoke paths; test supported copied-policy synchronization, device restrictions, and graceful cleanup.
+- [x] Add/fix only missing tests for these scenarios; separate fast structural/integration tests from long reward-convergence experiments.
+- [x] Provide concise getting-started docs with exact commands, dependency installation, expected artifacts, and how to evaluate/replay a model.
+- [x] Extend the shared evaluator with optional `training.evaluation.at_start` and `every_n_frames`, actual collected-frame logging, final-result deduplication, and partial/full-budget resume; preserve default final-only behavior.
+- [x] Validate compatible single-environment evaluation and preserve policy modes, parameters, gradients, RNG streams, training observations, and collector update/synchronization ordering, including failure/cancellation cleanup.
+- [x] Capture one bounded first-episode RGB rollout with copied/resized frames, frame/size limits, and renderer or explicit FPS; continue all scalar evaluation episodes after capture stops.
+- [x] Export **GIF, MP4, or both from the same recorded rollout** through `training.evaluation.video.format`; keep GIF/rendering and MP4/ImageIO/FFmpeg prerequisites in scoped optional extras. Finalize silent H.264/yuv420p MP4s, verify frame counts, and record even-dimension padding before publication.
+- [x] Reuse native logging instances for scalar metrics, selected downloadable files, and provenance JSON. Support TensorBoard-only, MLflow-only, or both; use only the existing TensorBoard writer for animated previews, without creating a separate media logger/run or accessing a TensorBoard writer in MLflow-only execution.
+- [x] Add inference-only `nexuml evaluate <policy-package>` through existing loading/configuration/overrides/evaluation, with native logger finalization and source provenance; construct no training session, learner, optimizer, or collector.
+- [x] Exercise real headless recording for both references in all three formats, actual TensorBoard animation and MP4 playback, isolated package installs, and encoder-blocked inference. Wire optional simulator CI without claiming a remote CI run.
 
 **Gate:** Both scenarios run, evaluate, resume, export, and reload without manual source changes. CPU smoke tests pass. No unjustified stochastic reward threshold as a regular CI gate.
+
+**Outcome:** Complete for the documented CPU/headless scope. Initial/periodic evaluation and recording remain opt-in; reference scenarios use native TensorBoard defaults with MLflow opt-in. Full commands, expected artifacts, trusted-package limitations, and GIF/MP4/both usage are in the [RL guide](../../docs/how-to/reinforcement-learning.md). The wider repository's recorded baseline failures remain open; this is not a GPU, multi-simulator, or policy-quality completion claim.
 
 ## Phase 2 — NVIDIA Isaac Lab: GPU robotics simulation (P0)
 
@@ -204,6 +238,8 @@ The branch currently has no `.openchamber/plans/` folder. This file establishes 
 ---
 
 ## Shared definition of done for each phase
+
+This is a reusable per-phase acceptance checklist, not a claim that Phases 2–8 are complete. Apply it to each later increment and record failures/limits explicitly, as in the Phase 0–1 report.
 
 - [ ] **Functionality:** A minimal example works using publicly maintained upstream APIs and the existing NexuML user-facing workflow.
 - [ ] **Architecture:** No duplicate session/compiler/policy hierarchy; no simulator-specific imports in core; registry and resolved configuration remain serializable.

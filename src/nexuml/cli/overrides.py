@@ -5,10 +5,23 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from pydantic import BaseModel
 from rich.console import Console
 from rich.table import Table
 
 console = Console()
+
+
+def _assign_override(obj, key, value):
+    if isinstance(obj, dict):
+        obj[key] = value
+    elif isinstance(obj, BaseModel) and obj.model_config.get("frozen"):
+        return type(obj).model_validate(
+            {name: value if name == key else getattr(obj, name) for name in type(obj).model_fields}
+        )
+    else:
+        setattr(obj, key, value)
+    return obj
 
 
 def _coerce_value(raw: str) -> Any:
@@ -64,8 +77,10 @@ def apply_overrides(scenario: Any, overrides: list[str]) -> Any:
             raise ValueError(f"Invalid override path (empty segment): {spec!r}")
 
         obj = scenario
+        parents = []
         try:
             for part in parts[:-1]:
+                parents.append((obj, part))
                 if isinstance(obj, dict):
                     obj = obj[part]
                 else:
@@ -78,12 +93,18 @@ def apply_overrides(scenario: Any, overrides: list[str]) -> Any:
 
         if isinstance(obj, dict):
             old_value = obj.get(attr, "<unset>")
-            obj[attr] = new_value
         else:
             if not hasattr(obj, attr):
                 raise KeyError(f"Override path not found: {key!r}")
             old_value = getattr(obj, attr)
-            setattr(obj, attr, new_value)
+        replacement = _assign_override(obj, attr, new_value)
+        for parent, part in reversed(parents):
+            if replacement is obj:
+                break
+            replacement = _assign_override(parent, part, replacement)
+            obj = parent
+        if not parents:
+            scenario = replacement
 
         rows.append((key, str(old_value), str(new_value)))
 

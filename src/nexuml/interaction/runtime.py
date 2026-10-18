@@ -4,6 +4,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Protocol, Any
 
+import numpy as np
 from tensordict import TensorDict
 from torch import Tensor
 
@@ -39,4 +40,17 @@ class EnvironmentRuntime(Protocol):
 
     def close(self) -> None:
         """Release all runtime resources, including after failure."""
+        ...
+
+
+class RGBEnvironmentRuntime(Protocol):
+    """Optional evaluation rendering, independent of policy observation fields."""
+
+    @property
+    def render_fps(self) -> float | None:
+        """Playback rate supplied by the renderer, when available."""
+        ...
+
+    def render_frame(self) -> np.ndarray:
+        """Return one CPU uint8 HWC RGB frame."""
         ...

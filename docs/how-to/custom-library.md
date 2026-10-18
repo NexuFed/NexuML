@@ -57,6 +57,11 @@ nexuml registry list eval
 nexuml registry list scenarios
 ```
 
+The registered path can be the package directory itself (containing `__init__.py`),
+a directory containing packages, or a project with packages under `src/`.
+Registering a package preserves its qualified module names and relative imports;
+for example, `library/config/` is imported as `library.config`, not top-level `config`.
+
 ## Persistence
 
 Resolved YAML stores exact kind-specific identities as `type`, `version`, and `params`. It never stores the concrete module path. The package or local root must therefore be discoverable when YAML is restored.

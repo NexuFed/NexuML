@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import inspect
+import json
 import warnings
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 # Suppress Lightning internal deprecation warnings we can't fix
 warnings.filterwarnings(
@@ -333,6 +334,144 @@ def train_cmd(
         console.print(f"  RL evaluation: {result.interaction_results}")
     if result.test_results:
         console.print(f"  Test results: {result.test_results}")
+
+
+@app.command(name="evaluate", help="Evaluate a trusted exported policy without training")
+def evaluate_cmd(
+    policy_package: Path = typer.Argument(help="Trusted complete policy package directory or file"),
+    override: Optional[list[str]] = typer.Option(
+        None,
+        "--override",
+        "-O",
+        help="Override evaluation, logging, or evaluation-environment settings: key.path=value.",
+    ),
+):
+    """Replay a complete packaged policy through fresh evaluation environments.
+
+    Raises:
+        ValueError: Invalid packages/overrides are diagnosed and converted to a CLI exit.
+        typer.Exit: If loading, overrides, evaluation, logging, or finalization fails.
+    """
+    from nexuml.cli.overrides import apply_overrides
+    from nexuml.core.config import ResolvedConfig
+    from nexuml.core.export import load_inference_package
+    from nexuml.core.policy import CompiledPolicy
+    from nexuml.core.serialization import lower_model, restore_model_data
+    from nexuml.core.types import (
+        InteractionContract,
+        RLEvaluationSpec,
+        ReinforcementLearningSpec,
+        ScenarioSpec,
+    )
+    from nexuml.tracking.logger import create_loggers, log_text_artifact
+    from nexuml.training.reinforcement import evaluate_policy
+
+    loggers = []
+    failed = False
+    try:
+        policy, config, metadata = load_inference_package(policy_package)
+        if (
+            metadata.get("artifact_kind") != "policy"
+            or not callable(policy)
+            or any(
+                getattr(policy, name, None) is None
+                for name in ("pipeline", "action_adapter", "contract")
+            )
+            or not callable(getattr(policy, "parameters", None))
+        ):
+            raise ValueError(
+                "evaluate requires a complete exported policy package, not raw weights/pipeline"
+            )
+        policy = cast(CompiledPolicy, policy)
+        # torch.package may isolate Pydantic classes with unresolved serialization references.
+        policy.contract = InteractionContract.model_validate(metadata["interaction_contract"])
+        scenario = config.to_scenario()
+        if (
+            not isinstance(scenario.training, ReinforcementLearningSpec)
+            or scenario.interaction is None
+            or scenario.policy is None
+        ):
+            raise ValueError(
+                "policy package requires an embedded RL scenario and evaluation configuration"
+            )
+
+        for item in override or []:
+            key, separator, _ = item.partition("=")
+            if separator and not any(
+                key == allowed or key.startswith(f"{allowed}.")
+                for allowed in (
+                    "training.evaluation",
+                    "logging",
+                    "interaction.evaluation_environment",
+                )
+            ):
+                raise ValueError(
+                    f"Override {key!r} is not supported for replay: only training.evaluation, "
+                    "logging, and interaction.evaluation_environment may change; "
+                    "the packaged policy/pipeline cannot be replaced"
+                )
+        apply_overrides(scenario, override or [])
+        # Assignment does not validate specs; serialization also restores whole-dict overrides.
+        scenario = ScenarioSpec.model_validate(
+            restore_model_data(lower_model(scenario), ScenarioSpec)
+        )
+        assert isinstance(scenario.training, ReinforcementLearningSpec)
+        scenario.training.evaluation = RLEvaluationSpec.model_validate(
+            scenario.training.evaluation.model_dump()
+        )
+        video = scenario.training.evaluation.video
+        source_frames = metadata.get("training_frames")
+        if type(source_frames) is not int or source_frames < 0:
+            source_frames = None
+        frame_step = source_frames if source_frames is not None else 0
+        provenance = {
+            "source_package": str(policy_package.resolve()),
+            "source_config_hash": metadata.get("config_hash"),
+            "source_training_frames": source_frames,
+            "interaction_contract_hash": metadata.get("interaction_contract_hash"),
+            "resolved_config": lower_model(scenario),
+        }
+        loggers = create_loggers(scenario.logging, run_name=f"{scenario.name}-evaluation")
+        media_sink = None
+        if video.enabled:
+            from nexuml.tracking.logger import log_evaluation_media, preflight_evaluation_media
+
+            preflight_evaluation_media(loggers, video)
+
+            def media_sink(frames, metadata):
+                log_evaluation_media(loggers, frames, metadata, video, step=frame_step)
+
+        if loggers:
+            log_text_artifact(loggers, json.dumps(provenance, indent=2), "source_package.json")
+            log_text_artifact(
+                loggers, ResolvedConfig.from_scenario(scenario).to_yaml(), "config.yaml"
+            )
+        metrics = evaluate_policy(
+            policy,
+            scenario,
+            media_sink=media_sink,
+            frame_step=frame_step,
+            provenance=provenance,
+        )
+        for logger in loggers:
+            logger.log_metrics(metrics, step=frame_step)
+    except (Exception, KeyboardInterrupt) as exc:
+        failed = True
+        console.print(f"[red]Evaluation failed: {str(exc) or 'cancelled'}[/red]")
+        raise typer.Exit(1) from exc
+    finally:
+        finalization_error = None
+        for logger in loggers:
+            try:
+                logger.finalize("failed" if failed else "success")
+            except (Exception, KeyboardInterrupt) as exc:
+                finalization_error = exc
+                console.print(f"[red]Evaluation logger finalization failed: {exc}[/red]")
+        if finalization_error is not None and not failed:
+            raise typer.Exit(1) from finalization_error
+
+    console.print("[green]Evaluation complete![/green]")
+    console.print(f"  RL evaluation (frame step {frame_step}): {metrics}")
 
 
 @app.command(name="export-dataset", help="Export a dataset view from a scenario or config")

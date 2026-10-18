@@ -124,6 +124,7 @@ class EnvironmentBuildContext:
     device: str = "cpu"
     worker_rank: int = 0
     num_envs: int = 1
+    render_mode: Literal["rgb_array"] | None = None
 
     def __post_init__(self) -> None:
         if self.purpose not in ("train", "eval"):

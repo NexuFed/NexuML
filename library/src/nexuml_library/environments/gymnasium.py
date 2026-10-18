@@ -31,9 +31,13 @@ class GymnasiumEnvironment(EnvironmentDefinition):
     contract: InteractionContract | None = None
     image_shape: tuple[int, int, int] | None = None
 
-    def _make(self):
+    def _make(self, render_mode=None):
         gym = _gym()
         kwargs = dict(self.kwargs)
+        if render_mode is not None:
+            if kwargs.get("render_mode") not in (None, render_mode):
+                raise ValueError("Evaluation recording requires render_mode='rgb_array'")
+            kwargs["render_mode"] = render_mode
         if self.image_shape is not None:
             kwargs["render_mode"] = "rgb_array"
         try:
@@ -120,7 +124,11 @@ class _GymnasiumRuntime:
         try:
             # ponytail: synchronous vectors; use Gym's async vector API when throughput matters.
             for _ in range(context.num_envs):
-                self.envs.append(definition._make())
+                self.envs.append(
+                    definition._make(context.render_mode)
+                    if context.render_mode is not None
+                    else definition._make()
+                )
         except BaseException:
             self.close()
             raise
@@ -184,3 +192,15 @@ class _GymnasiumRuntime:
         for env in self.envs:
             env.close()
         self.envs.clear()
+
+    @property
+    def render_fps(self):
+        return self.envs[0].metadata.get("render_fps")
+
+    def render_frame(self):
+        if len(self.envs) != 1 or self.envs[0].render_mode != "rgb_array":
+            raise ValueError("Recording requires one RGB-array evaluation environment")
+        try:
+            return self.envs[0].render()
+        except ImportError as error:
+            raise ImportError("Evaluation rendering requires nexuml-library[rendering]") from error

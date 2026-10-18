@@ -6,6 +6,8 @@ from email.parser import BytesParser
 from pathlib import Path
 
 import pytest
+from packaging.requirements import Requirement
+from packaging.utils import canonicalize_name
 
 
 def _project_version(path: Path) -> str:
@@ -143,10 +145,26 @@ def test_distribution_artifacts() -> None:
     )
 
     all_requires = [
-        requirement.lower() for requirement in core_requires if "extra == 'all'" in requirement
+        Requirement(requirement) for requirement in core_requires if "extra == 'all'" in requirement
     ]
-    assert not any(
-        requirement.startswith(("pytest", "ruff", "ty;", "nvidia-dali"))
-        for requirement in all_requires
-    )
+    core_extras = tomllib.loads(Path("pyproject.toml").read_text())["project"][
+        "optional-dependencies"
+    ]
+    expected_all = [
+        Requirement(requirement)
+        for extra, requirements in core_extras.items()
+        if extra not in {"dev", "all"}
+        for requirement in requirements
+        if Requirement(requirement).name != "nexuml"
+    ]
+    # Hatch expands self-referencing extras into their concrete published requirements.
+    assert {
+        (canonicalize_name(req.name), frozenset(req.extras), req.specifier) for req in all_requires
+    } == {
+        (canonicalize_name(req.name), frozenset(req.extras), req.specifier) for req in expected_all
+    }
+    dali = next(req for req in all_requires if req.name == "nvidia-dali-cuda120")
+    assert dali.marker is not None
+    assert dali.marker.evaluate({"extra": "all", "sys_platform": "linux"})
+    assert not dali.marker.evaluate({"extra": "all", "sys_platform": "win32"})
     assert "ray[default,train]<2.59,>=2.57; extra == 'ray'" in core_requires

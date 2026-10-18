@@ -324,6 +324,16 @@ class CollectorSpec(SpecModel):
         return self
 
 
+class RLVideoSpec(SpecModel):
+    """Bounded first-episode recording; formats select downloadable artifacts."""
+
+    enabled: bool = False
+    format: Literal["gif", "mp4", "both"] = "gif"
+    max_frames: int = Field(default=500, gt=0)
+    max_size: int = Field(default=256, gt=0)
+    fps: float | None = Field(default=None, gt=0, allow_inf_nan=False)
+
+
 class RLEvaluationSpec(SpecModel):
     """Fresh episodic policy evaluation, not dataset evaluation phases."""
 
@@ -331,6 +341,15 @@ class RLEvaluationSpec(SpecModel):
     deterministic: bool = True
     seed: int | None = None
     max_steps_per_episode: int | None = Field(default=None, gt=0)
+    every_n_frames: int | None = Field(default=None, gt=0, strict=True)
+    at_start: bool = False
+    video: RLVideoSpec = Field(default_factory=RLVideoSpec)
+
+    @model_validator(mode="after")
+    def validate_recording(self) -> Self:
+        if self.video.enabled and self.episodes == 0:
+            raise ValueError("evaluation.video requires evaluation.episodes > 0")
+        return self
 
 
 class ReinforcementLearningSpec(SpecModel):

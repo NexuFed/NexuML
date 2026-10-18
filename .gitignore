@@ -223,7 +223,10 @@ tmp/
 .artifacts/
 .slim/
 experiments/
-reports/
+reports/*
+!reports/physical-ai/
+reports/physical-ai/*
+!reports/physical-ai/phase-0-audit.md
 
 # Resources
 .literature

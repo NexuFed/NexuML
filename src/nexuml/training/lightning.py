@@ -892,13 +892,7 @@ class NexuSession:
         self.fit()
         module = self.lightning_module
         if isinstance(module, NexuRLLightningModule):
-            from nexuml.training.reinforcement import evaluate_policy
-
-            metrics = evaluate_policy(module.policy, self.scenario)
-            for logger_instance in (
-                self.trainer_loggers if isinstance(self.trainer_loggers, list) else []
-            ):
-                logger_instance.log_metrics(metrics, step=self.trainer.global_step)
+            metrics = module.evaluate_current_policy()
             return TrainResult(
                 pipeline=self.pipeline,
                 policy=module.policy,
