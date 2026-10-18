@@ -11,17 +11,17 @@ The target branch **already implements much of the RL foundation**. The existing
 
 Two items remain unchecked in that existing OpenSpec change: live headless ROS 2 + Gazebo + `ros2_control` integration (9.5), and live CARLA smoke testing (10.4). ROS/Gazebo is in scope later below; CARLA is not on the critical path of this plan.
 
-The branch currently has no `.openchamber/plans/` folder. This file establishes that plan location.
+This roadmap is stored in `.openchamber/plans/` and intentionally describes NexuML work only.
 
 ## Architectural principles (apply to every phase)
 
 1. **Reuse the repository, not a parallel framework.** Keep `ScenarioSpec`, `NexuSession`, the existing compiler, `CompiledPipeline`, `CompiledPolicy`, `InteractionContract`, the `data`/`interaction` split, and the typed registry/serialization model. Do not introduce a second `RobotSession`, `PhysicalAISession`, or training engine without a proven necessity.
 2. **Keep training, policy inference, and environment execution independent.** `CompiledPolicy` remains deployable without a simulator or an RL learner. An RL critic/optimizer belongs to a training checkpoint, not a normal inference artifact. IL/VLA training may use different training logic, but should share existing session/configuration/artifact conventions.
-3. **Prefer thin adapters over copies.** Integrate Gymnasium, TorchRL, Isaac Lab, LeRobot, MuJoCo, benchmarks, ROS 2, and Gazebo through their maintained public APIs. Do not copy their algorithms, simulators, robot drivers, or entire training stacks into NexuML.
+3. **Prefer thin adapters over copies.** Integrate Gymnasium, TorchRL, Isaac Lab, LeRobot, MuJoCo, benchmarks, ROS 2, Gazebo, and optional Isaac ROS 5.0 through their maintained public APIs. Do not copy their algorithms, simulators, robot drivers, or entire training stacks into NexuML.
 4. **Do not force every policy into PPO semantics.** IL uses offline trajectories/demonstrations; VLA can involve image, proprioception, language, and temporal action chunks. Use the existing supervised training path where it fits. Add a minimal explicit training mode only when a concrete example proves it necessary.
 5. **Preserve action/observation meaning.** Record shapes, dtypes, units, frames, action ranges, control rate, modality, temporal context, sensor preprocessing, normalization, action decoding/chunking, and robot embodiment. Fail clearly for incompatible contracts; never silently reinterpret controls.
 6. **Build stateful resources at the execution site.** Keep environment/simulator/ROS handles out of serializable definitions and checkpoints. Own lifecycle/teardown explicitly. Do not serialize live envs across Ray/Kubernetes workers.
-7. **Keep heavy dependencies truly optional.** Base `import nexuml` and ordinary supervised workflows must work without RL/Isaac/LeRobot/MuJoCo/ROS/Gazebo installed. Pin compatible integrations in dedicated environments where ABI/CUDA/Python versions conflict; do not put system middleware into base extras.
+7. **Keep heavy dependencies truly optional.** Base `import nexuml` and ordinary supervised workflows must work without RL/Isaac/LeRobot/MuJoCo/ROS/Gazebo/Isaac ROS installed. Pin compatible integrations in dedicated environments where ABI/CUDA/Python versions conflict; do not put system middleware into base extras.
 8. **Every integration needs a small runnable example, a tested round trip, and honest prerequisites.** Distinguish CPU unit tests, optional simulator tests, GPU tests, ROS/system tests, and operator-supervised hardware tests. Heavy downloads and system installations must never happen during ordinary CI.
 9. **Prefer one end-to-end capability per increment.** Make small, reviewable changes. No broad rewrite, speculative abstraction hierarchy, major dependency expansion, or multi-simulator rollout in one PR.
 10. **Safety is external and mandatory on hardware.** NexuML can produce bounded high-level commands, but cannot replace real-time control, collision protection, hardware interlocks, or emergency stops. No autonomous online exploratory RL on real robots as part of this roadmap.
@@ -38,9 +38,11 @@ The branch currently has no `.openchamber/plans/` folder. This file establishes 
 | 5 | Pretrained VLA models | P1 | Inference and fine-tuning/evaluation of one VLA policy |
 | 6 | MuJoCo deeper coverage | P1 | Existing humanoid/reacher validated; direct adapter only if justified |
 | 7 | Isaac Lab-Arena | P1 | Evaluation on varied scenes with standardized results |
-| 8 | ROS 2, Gazebo, robot deployment | P1/P2 | Live simulation round trip; later safe supervised hardware test |
+| 8 | ROS 2 Lyrical, Isaac ROS 5.0, Gazebo and runtime integration | P1 | Live ROS simulation and optional accelerated perception/deployment proof |
+| 9 | Multi-embodiment training examples | P1/P2 | Reproducibly train and evaluate policies for arm, humanoid, drone and mobile robot; quadruped optional |
+| 10 | Sim-to-real validation and field data | P2 | Controlled hardware deployment, demonstrations and offline retraining with measured sim/real gap |
 
-**Dependencies:** 0 -> 1 -> 2. Phase 3 follows the verified core and can proceed alongside Phase 2. Phase 4 requires Phase 3 and an evaluable manipulation task. Phase 5 requires Phases 3–4. Phase 6 may progress in parallel after Phase 1. Phase 7 requires Isaac Lab + standardized evaluation (2 + 4). Phase 8 reuses the existing ROS adapter and should finish its real Gazebo proof before attempting physical hardware.
+**Dependencies:** 0 -> 1 -> 2. Phase 3 follows the verified core and can proceed alongside Phase 2. Phase 4 requires Phase 3 and an evaluable manipulation task. Phase 5 requires Phases 3–4. Phase 6 may progress in parallel after Phase 1. Phase 7 requires Isaac Lab + standardized evaluation (2 + 4). Phase 8 reuses the existing ROS adapter, establishes a Lyrical/Isaac ROS 5.0-compatible runtime path, and closes the live Gazebo proof. Phase 9 consolidates the trained policy examples from Phases 2–8, independently adding each new robot task; drone/mobile workflows depend on Phase 8. Phase 10 requires a proven Phase 8 runtime and at least one validated policy from Phase 9. No simulator or embodiment expansion blocks the first working arm implementation.
 
 ---
 
@@ -170,36 +172,140 @@ The branch currently has no `.openchamber/plans/` folder. This file establishes 
 
 **Gate:** One NexuML policy evaluated on a reproducible Arena task suite, with machine-readable and human-readable generalization results.
 
-## Phase 8 — ROS 2, Gazebo and eventual real robots (P1/P2)
+## Phase 8 — ROS 2 Lyrical, Isaac ROS 5.0, Gazebo and deployment integration (P1)
 
-**Objective:** Connect policy artifacts to complete robot systems, beginning with simulation, without turning NexuML into robot middleware.
+**Objective:** Connect NexuML policy artifacts to real robot software stacks using current ROS 2 interfaces, with optional NVIDIA GPU-accelerated perception and deployment. Start in simulation; physical hardware validation is reserved for Phase 10. Isaac ROS is **not** a simulator or a policy-training framework.
 
-### 8A. Validate the already implemented ROS 2 reference path (P1)
+**Version decision (October 2026):** Target **Isaac ROS 5.0.0 + ROS 2 Lyrical Luth** for all **new Isaac ROS integration work**. Isaac ROS 5.0 migrated from Jazzy to Lyrical; do not introduce a new Isaac ROS 4.x/Jazzy dependency to simplify initial setup. Its officially tested x86 platform is Ubuntu 24.04 with an Ampere-or-newer NVIDIA GPU, CUDA 13.2+ and driver 595+; Jetson support requires a compatible JetPack 7.2 platform (Thor/Orin). Use NVIDIA's Lyrical packages/buildfarm and pinned Isaac ROS development environment. **Do not assume Isaac Lab, Isaac Sim, Gazebo, PX4, Nav2, ROS 2, ROS control and Isaac ROS all support the same version combinations:** establish a tested compatibility matrix, isolate incompatible environments and bridge only through explicitly tested supported interfaces. Existing Jazzy-based reference tests may remain independently functional while Lyrical support is added; do not silently break them.
 
-- [ ] Audit existing `Ros2JointReachEnvironment`, `Ros2Transport`, `RclpyTransport`, fake transport tests and discoverable ROS control scenario before modifying them.
-- [ ] Complete **OpenSpec item 9.5**: establish a real headless ROS 2 + Gazebo + `ros2_control` fixture with a known articulated robot and explicit launch/prerequisite documentation.
-- [ ] Verify actual joint-state subscription, action command publishing, timeouts, ROS simulation clock, simulator reset, clean shutdown, and closed-loop motion on the production ROS transport—not only fake tests.
-- [ ] Load an exported NexuML policy and run it through the ROS 2 simulation adapter. Test model I/O, deterministic evaluation, control period, and bounds.
-- [ ] Make middleware version, Python ABI, DDS domain, controller interfaces, and required ROS packages explicit. Keep `rclpy`, Gazebo and robot packages out of base Python installation.
-- [ ] Reject stale sensor samples, unknown joint mappings, invalid timestamp/frame conventions, unsupported action semantics and transport failure with focused diagnostics.
+**Isaac ROS 5.0 migration note:** Do not code against the removed \`isaac_ros_nitros*\` package APIs. Isaac ROS 5.0 uses ROS 2 Lyrical's standard \`rosidl::Buffer\` + CUDA buffer backend for accelerated message memory and interoperability. For the visual-SLAM integration, use the renamed \`isaac_ros_cuvslam\` package. Consult the version-5.0 release notes rather than older tutorials.
 
-### 8B. Data capture and deployment boundary (P1)
+### 8A. Verify the maintained ROS 2 environment and Gazebo path
 
-- [ ] Demonstrate a **non-training** ROS 2 policy runner or reference application that loads the existing NexuML inference package (reuse `CompiledPolicy`), subscribes to observations, and sends validated high-level commands.
-- [ ] Add an optional `rosbag2` or robot-log ingestion adapter that converts recorded episodes into the same typed demonstration dataset path used in Phase 3. Test clocks, missing samples, resets, and episode boundaries.
-- [ ] Include deployment metadata for robot identity/embodiment, calibration requirements, sensors, coordinate frames, control frequency, action limits and processor versions.
-- [ ] Support recording policy/experiment versions and local run metrics; never require central data upload to run inference.
-- [ ] Keep model deployment / active-policy swapping distinct from the robot's real-time motor control; require deliberate operator-driven validation for changes.
+- [ ] Audit the existing \`Ros2JointReachEnvironment\`, \`Ros2Transport\`, \`RclpyTransport\`, fake transport tests and discoverable joint-control scenario; reuse instead of replacing them.
+- [ ] Complete **OpenSpec item 9.5**: build a live headless ROS 2 + Gazebo + \`ros2_control\` simulation fixture with a concrete robot, controller, reset bridge and repeatable start/stop commands.
+- [ ] Prefer a tested ROS 2 **Lyrical** Gazebo reference stack if compatible; otherwise document the exact independently supported ROS distro for this fixture, and test interoperability with the Lyrical Isaac ROS workspace separately.
+- [ ] Validate joint-state topics, bounded command publication, timestamps, TF2/frames, ROS simulation clock, timeout and stale-data handling, reset, teardown and actual closed-loop simulated movement.
+- [ ] Load an exported \`CompiledPolicy\` through a ROS 2 **inference-only** reference runner; verify determinism, observation preprocessing, action decoding, command-rate matching and controller boundaries.
+- [ ] Keep \`rclpy\`, ROS middleware, Gazebo, \`ros2_control\` and external robot packages optional, not base Python dependencies. Include system-level tests and exact prerequisites.
 
-### 8C. Specialized embodiments and real hardware (P2)
+### 8B. Recorded robot data and portable inference
 
-- [ ] Add a simple **PX4 + Gazebo + ROS 2** drone software-in-the-loop example only after the arm integration is stable. Use existing PX4 flight controllers; NexuML supplies policy-level high-level autonomy rather than safety-critical flight stabilization.
-- [ ] Document other robot embodiments (humanoid/mobile platform) as extensions of the same policy/data/inference contracts, not as entirely new NexuML runtime stacks.
-- [ ] Select a low-cost robot arm for a supervised hardware trial; verify calibration, action semantics, sensor synchronization, joint/collision limits, physical workspace, emergency stop and manual recovery independently of NexuML.
-- [ ] Run a supervised low-speed replay of a previously simulation-validated policy, with explicit go/no-go criteria and safe fallback. No automatic hardware CI or unsupervised exploratory training.
-- [ ] Record sim-to-real observations, performance differences and required model/preprocessing changes as input to a later implementation plan.
+- [ ] Use the existing NexuML inference package: implement the thinnest ROS 2 node/process adapter for policy execution; do not create a new training/session architecture.
+- [ ] Map images, depth/perception outputs, joint state and optionally IMU/LiDAR to named \`InteractionContract\` observations with typed shapes, units, coordinate frames, timestamps, calibration and preprocessing metadata.
+- [ ] Convert output actions into validated high-level robot-controller inputs; explicitly handle action bounds, stale commands, watchdogs, and safe controller fallback outside NexuML.
+- [ ] Support robot data recording and offline ingestion. Prefer existing \`rosbag2\`/MCAP and **Isaac ROS Data Tools MCAP-to-LeRobot** conversion rather than writing a second generic recorder.
+- [ ] Validate recorded episode boundaries, action/observation synchronization, calibration, timestamps, resets, missing frames and reproduction of preprocessing between training and inference.
+- [ ] Store artifact version, embodiment identity, robot firmware/controller interface, preprocessing, inference timing and local metrics. No automatic upload or hardware updates.
 
-**Gate:** A tested ROS 2 policy-inference round trip in Gazebo; later, one operator-supervised physical-arm execution under separately verified hardware safety controls.
+### 8C. Optional Isaac ROS 5.0 accelerated perception and deployment
+
+- [ ] Establish a **separate, pinned** Isaac ROS 5.0/Lyrical environment on supported hardware and document the official install path, GPU/driver/CUDA/JetPack requirements, ROS package availability, and tested compatibility with the chosen simulation pipeline.
+- [ ] Follow a maintained official Isaac ROS 5.0 perception example, first running it independently and then consuming its **standard ROS messages** as NexuML policy observations.
+- [ ] For the **robot-arm demonstration**, connect \`isaac_ros_foundationpose\` (or a maintained comparable pose-estimation example) to a manipulation policy; measure validity of pose units, coordinate frames, uncertainty/availability and latency.
+- [ ] For the **mobile-robot demonstration**, test \`isaac_ros_cuvslam\` for visual localization and \`isaac_ros_nvblox\` for mapping/obstacle representation, with Nav2 where compatible. Confirm that this perception/navigation path is not itself a trained policy.
+- [ ] Investigate \`isaac_ros_cumotion\` / MoveIt for acceleration of classical arm planning, keeping it optional and independent of learned policy training.
+- [ ] Benchmark sensor-to-policy-to-command timing, GPU memory use, processing throughput, dropped frames, cold startup and failure recovery against a plain ROS 2 baseline. Avoid claiming that using Isaac ROS automatically improves policy learning.
+- [ ] Explore **Isaac ROS Deploy** for packaged policies: it can run appropriate **LEAPP-bundled** policies using ONNX/Triton in ROS nodes or \`ros2_control\`, subject to supported converters. Implement an exporter/converter **only if** an actual NexuML model matches the supported LEAPP contracts; otherwise keep the generic ROS 2 \`CompiledPolicy\` runner. Never assume an arbitrary NexuML, ACT or VLA checkpoint can be exported directly.
+- [ ] Verify the deployed model's outputs and any supported runtime safety controller against the reference inference result; do not treat NVIDIA's optional safety controller as certification or a replacement for robot safety systems.
+- [ ] Check the version-5.0 release limitations before using Jetson, RealSense, cuMotion/vendor packages or specific deployment examples; avoid stale Isaac ROS 4.x NITROS instructions in documentation.
+- [ ] Provide standalone, opt-in accelerated-runtime integration tests; all core/NexuML CPU tests still run without Isaac ROS.
+
+**Phase 8 gate:** A version-pinned ROS 2/Gazebo simulated robot accepts an exported NexuML policy and produces validated high-level commands; a second, optional Isaac ROS **5.0/Lyrical** workflow successfully supplies perception data to the same observation contract. Hardware execution is **not** claimed yet.
+
+**Official version-specific references:**
+- [Isaac ROS 5.0 release notes](https://nvidia-isaac-ros.github.io/v/release-5.0/releases/index.html)
+- [Isaac ROS 5.0 getting started and supported platforms](https://nvidia-isaac-ros.github.io/v/release-5.0/getting_started/index.html)
+- [Isaac ROS Deploy](https://nvidia-isaac-ros.github.io/v/release-5.0/repositories_and_packages/isaac_ros_deploy/index.html)
+- [Isaac ROS Data Tools](https://nvidia-isaac-ros.github.io/v/release-5.0/repositories_and_packages/isaac_ros_data_tools/index.html)
+
+---
+
+## Phase 9 — Multi-embodiment training and validation (P1/P2)
+
+**Objective:** Prove that the **same NexuML policy, task, training, artifact and evaluation architecture** supports learning for fundamentally different physical systems. An adapter that loads a robot scene without successfully training/evaluating a policy is **not** sufficient evidence.
+
+**Design rule:** Common **interfaces**, not shared trained weights or identical action spaces. Robot embodiments require separate task definitions, actuator/control interfaces, safe control frequencies and policy/data contracts. Reuse maintained Isaac Lab, Gymnasium/MuJoCo, LeRobot, Gazebo/PX4, and ROS 2/Nav2 examples rather than writing new robotics engines.
+
+### 9A. Shared cross-embodiment contracts and evaluations
+
+- [ ] Define a minimal per-task manifest: embodiment and version, robot description identifier (USD/URDF/MJCF as applicable), required controller/actuator semantics, sensors, observation/action spaces, frames, units, control rates, task/reward or demonstrations, benchmark split and supported simulation backend.
+- [ ] Validate incompatible policy/robot pairings before execution, especially mismatched joint order, dimensions, units, limits, sampling rates and required sensors. No implicit policy portability across embodiments.
+- [ ] Standardize experiment invocation, checkpointing, evaluation and export using the existing \`ScenarioSpec\`/\`NexuSession\`/\`CompiledPolicy\` workflow and trainable model pipeline; add only adapter-specific code.
+- [ ] Report task success, average returns where appropriate, seed variability, constraint violations, wall-clock/frames, inference latency and training resource usage. Require task-appropriate reference baselines.
+- [ ] Keep each robot's full simulation/ROS/GPU toolchain isolated and opt-in; maintain fast simulator-free contract/registration tests.
+
+### 9B. Articulated robot arm — RL and IL/VLA reference (P1)
+
+- [ ] Consolidate the existing Phase 2 Isaac Lab reaching/lifting and Phase 3–5 manipulation examples into one documented arm workflow; use a supported Franka/UR arm scene if an SO-101 Isaac Lab task is not maintained.
+- [ ] **Train** a reaching or cube-manipulation RL policy, and **train** an ACT manipulation policy from demonstrations; optionally evaluate fine-tuned SmolVLA on an equivalent task where action/observation definitions match.
+- [ ] Measure pick/reach success on held-out object placements/camera conditions and compare to scripted motion-planning or upstream reference baselines.
+- [ ] Export at least one policy for Phase 8 ROS/Gazebo simulated inference, preserving preprocessing and calibration requirements.
+
+### 9C. Humanoid locomotion (P1)
+
+- [ ] Select a maintained **Unitree G1** locomotion task in Isaac Lab (or a maintained equivalent). Record exact robot/task/actuator versions and pin the environment.
+- [ ] **Train** a PPO standing/walking or command-velocity-tracking policy, with observations including proprioception/IMU as required by that task.
+- [ ] Evaluate on new velocity commands and terrain/friction/domain-randomization settings; check fall rates, episode duration, body stability and action/actuator bounds.
+- [ ] Export and reload policy inference without the simulator learner and demonstrate inference on the same embodiment; optionally explore motion imitation later.
+- [ ] Keep whole-body control, fall recovery and real-humanoid deployment outside the first proof unless supported upstream components and independent safety validation exist.
+
+### 9D. Quadruped locomotion (P2, recommended)
+
+- [ ] Select an existing ANYmal/Unitree Go2 or similarly maintained quadruped task rather than implementing a locomotion environment from scratch.
+- [ ] **Train** a velocity-tracking or simple terrain locomotion policy with PPO and compare to a known upstream baseline.
+- [ ] Evaluate tracking, balance/falls and generalization over contact/friction/terrain variations.
+- [ ] Export the trained policy using the same artifact conventions as the arm and humanoid.
+
+### 9E. Drone / UAV (P1/P2)
+
+- [ ] **Train** a small quadrotor hover or goal-position-tracking policy in a supported simulation task (for example a maintained Isaac Lab Crazyflie environment).
+- [ ] Validate episode resets, 3D motion, target tracking, control step timing, thrust/angular-rate or higher-level action semantics, and disturbances.
+- [ ] Separately demonstrate **PX4 + Gazebo software-in-the-loop** integration using the maintained flight controller and ROS 2 bridge when a compatible Lyrical stack is available; do not invent direct motor-command control.
+- [ ] Integrate only high-level policy commands within PX4's supported offboard/trajectory interface and validate failsafe behavior and offboard loss in simulation.
+- [ ] Compare tracking error, stability and collision/failsafe metrics to the supported PX4 classical-controller baseline; do not claim flight-ready hardware deployment.
+
+### 9F. Wheeled autonomous mobile robot / AMR (P1/P2)
+
+- [ ] Select a maintained ROS 2/Gazebo mobile platform (e.g. a TurtleBot-like differential-drive robot) with a reproducible navigation testbed.
+- [ ] Establish a **Nav2 classical baseline** for mapping/localization/path following; use Isaac ROS 5.0 cuVSLAM/nvBlox only where the supported Lyrical toolchain permits.
+- [ ] **Train** a lightweight learned waypoint-following, local obstacle-avoidance or goal-reaching policy in simulation, with explicit action limits, and compare on the same tasks to the classical navigation baseline.
+- [ ] Evaluate unseen obstacle layouts, localization error/delays, goal success, collisions, intervention counts and inference timing.
+- [ ] Export the policy and run the simulation-only ROS 2 runtime integration; never interpret classical Nav2 alone as evidence of learned robot behavior.
+
+**Phase 9 gate:** At minimum **four distinct policy-training proofs** through NexuML (arm, humanoid, drone, mobile robot), each with repeatable evaluation and a policy artifact. Quadruped is a recommended fifth validation. If a required simulator/ROS combination is incompatible, record the blocker and use an independently supported equivalent rather than fabricating a working integration.
+
+---
+
+## Phase 10 — Sim-to-real policy validation and real-world data loop (P2)
+
+**Objective:** Demonstrate that an already trained NexuML policy can be safely evaluated on a **real** robot and that newly recorded local experience can support **offline** model improvement through NexuML. This is a NexuML-only workflow; no NexuFL aggregation or fleet features.
+
+### 10A. Choose hardware and establish safety
+
+- [ ] Start with **one low-cost robot arm**, such as SO-101 with a known supported control stack, or another arm where the controller, documentation and emergency-stop provisions can be validated. Do not start sim-to-real with a humanoid or drone.
+- [ ] Record real hardware/firmware, URDF or other model, sensor and camera calibration, frames, joint ordering, limits, actuator command type, action rate, latencies and physical workspace.
+- [ ] Independently validate the low-level control stack, collision and actuator limits, physical emergency stop, human intervention path, protective workspace limits, and ability to return the arm to a safe state. The NexuML action bounds alone are not a safety mechanism.
+- [ ] Create operator-reviewed go/no-go criteria and fail-safe behavior. No normal CI, unattended run, or exploratory online RL is permitted to actuate real hardware.
+
+### 10B. Controlled deployment and evaluation
+
+- [ ] Load a previously simulation-validated \`CompiledPolicy\` or a demonstrably equivalent supported policy export using the real ROS 2/vendor interface (Isaac ROS Deploy optional if artifact-compatible).
+- [ ] Verify the full observation -> preprocessing -> inference -> command path against offline recorded samples **before enabling motion**.
+- [ ] Start with low-speed, limited-workspace, supervised motions and known object/target configurations; measure success, intervention rate, tracking errors, inference/control latency and safety-trigger behavior.
+- [ ] Run matched simulated and real scenarios to characterize domain gaps in observations, camera calibration, robot dynamics, delays, contacts and task distribution.
+- [ ] Retain a well-tested fallback policy or classical controller and a manual rollback procedure; no hot-swapping safety-critical actions mid-execution.
+
+### 10C. Collect and learn from real experience (NexuML only)
+
+- [ ] Collect operator-supervised demonstrations, task outcomes, error/failure cases and relevant camera/joint recordings locally, with consent/data-handling appropriate to the facility.
+- [ ] Convert to the same validated LeRobot/episode data format from Phase 3, preserving timestamps, calibration, policy version, action/observation units and train/validation separation.
+- [ ] Use NexuML to **fine-tune offline** an ACT or other already integrated manipulation policy on captured real-world experience.
+- [ ] Re-evaluate the new policy in simulation and on held-out recorded data, check forgetting/regressions and compare to both the initial model and local-only baseline.
+- [ ] Promote the fine-tuned policy to another **operator-approved** low-speed hardware test only if review gates pass; otherwise retain the previous validated policy.
+- [ ] Publish a reproducible sim-to-real report including limitations, measurements, artifact versions and failures, not just a demo video.
+
+**Phase 10 gate:** One physical arm safely executes a validated NexuML policy under supervision; its locally recorded experience is used to train a second offline model; both are evaluated with an explicit human-controlled promotion/rollback process. No NexuFL or autonomous fleet updates.
 
 ---
 
@@ -219,19 +325,21 @@ The branch currently has no `.openchamber/plans/` folder. This file establishes 
 - Implementing NexuFL integration, federated aggregation/personalization, a fleet rollout service, or distributed robot learning. These are separate future plans.
 - Writing a physics simulator, duplicating LeRobot training code, or replacing ROS 2/robot control middleware.
 - Training a new VLA/world foundation model from scratch.
-- Full custom robotics hardware, drone flight stabilization, safety-critical motor-control software, or production robot certification.
+- Full custom robotics hardware, drone flight stabilization, safety-critical motor-control software, or production robot certification. Physical validation is restricted to an operator-supervised arm demonstrator in Phase 10.
 - CARLA expansion, world models, diffusion policies, multi-agent RL and additional foundation-model families before the corresponding core examples work. These may become separate, evidence-driven plans.
 
 ## Exit criteria for the NexuML-only program
 
-NexuML is ready for a **subsequent, separately scoped** Physical AI integration effort when it can:
+NexuML is ready for a **subsequent, separately scoped** Physical AI / NexuFL integration effort when it can:
 
-1. Train and evaluate standard RL tasks using the existing TorchRL/PPO architecture.
-2. Train/evaluate at least one articulated robotic policy in simulation through Isaac Lab.
-3. Train an imitation-learning manipulation policy from LeRobot demonstrations and benchmark it reproducibly.
-4. Load/evaluate (and where practical fine-tune) at least one pretrained VLA policy without redefining the core training framework.
-5. Export a complete, versioned policy inference artifact with accurate observations, actions, preprocessing and temporal behavior.
-6. Demonstrate a safe, opt-in ROS 2/Gazebo inference path for such an artifact.
-7. Preserve compatibility with existing supervised workflows and clearly separate mandatory, optional and hardware-only dependencies.
+1. Train and evaluate standard RL tasks using its existing TorchRL/PPO architecture and preserve supervised compatibility.
+2. Train/evaluate an articulated robot manipulation policy in Isaac Lab and an IL manipulation policy from LeRobot demonstrations, with real benchmark evidence.
+3. Load/evaluate and, where supported, fine-tune a pretrained VLA without reimplementing its foundation model/training stack.
+4. Export and reload complete versioned inference artifacts with robot/action/observation contracts, image and language preprocessing and temporal semantics as applicable.
+5. Demonstrate an opt-in ROS 2 Lyrical/Gazebo policy runner and a separately validated **Isaac ROS 5.0** perception pathway (and only use Isaac ROS Deploy for supported policy exports).
+6. **Actually train** reference policies for an arm, humanoid, drone and mobile robot; validate a quadruped as an optional fifth embodiment. Never confuse simulation compatibility with convergence or robot-hardware portability.
+7. Run one operator-supervised real-arm sim-to-real evaluation, capture local real experience, offline fine-tune an integrated NexuML policy, and validate the result before a manually approved re-deployment.
+8. Preserve clean optional dependency/environment boundaries; no robotics simulator, ROS middleware or Isaac ROS becomes a mandatory dependency of ordinary NexuML use.
+9. Keep federation, fleet learning and NexuFL development out of this roadmap and reserve them for a separate change after reliable single-site learning works.
 
 **Working principle:** First make one end-to-end task excellent; then add adapters and embodiments without redesigning NexuML each time.
