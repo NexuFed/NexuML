@@ -76,7 +76,11 @@ class DistributionalTransportValidation(Callback):
         projections: int = 128,
         seed: int = 42,
     ) -> None:
-        """Configure deterministic complete-validation-distribution scoring."""
+        """Configure deterministic complete-validation-distribution scoring.
+
+        Raises:
+            ValueError: If batch size or projection count is not positive.
+        """
         super().__init__()
         if batch_size <= 0 or projections <= 0:
             raise ValueError("Batch size and projections must be positive")
@@ -87,7 +91,14 @@ class DistributionalTransportValidation(Callback):
         self._validation: tuple[Tensor, Tensor] | None = None
 
     def _get_validation(self) -> tuple[Tensor, Tensor]:
-        """Load and cache only validation observations from the frozen artifact."""
+        """Load and cache only validation observations from the frozen artifact.
+
+        Returns:
+            Healthy and faulty validation embeddings, respectively.
+
+        Raises:
+            ValueError: If the artifact has no validation observations.
+        """
         if self._validation is None:
             prepared = read_prepared_artifact(self.prepared_file)
             features = cast(Tensor, prepared["features"])
@@ -102,7 +113,13 @@ class DistributionalTransportValidation(Callback):
     def on_validation_epoch_end(
         self, trainer: Trainer, pl_module: LightningModule
     ) -> None:
-        """Log SWD before checkpoint-selection and early-stopping callbacks run."""
+        """Log SWD before checkpoint-selection and early-stopping callbacks run.
+
+        Raises:
+            TypeError: If the supplied Lightning module is not a NexuML module.
+            ValueError: If there is not exactly one Flow layer or the validation
+                distribution cannot be scored.
+        """
         if not isinstance(pl_module, NexuLightningModule):
             raise TypeError("NEX-233 validation requires a NexuLightningModule")
         flows = [
