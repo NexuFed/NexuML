@@ -18,6 +18,7 @@ from nexuml_library.data.maintenance.prepared_endpoints import (
 from nexuml_library.evaluation.maintenance import ablation_train
 from nexuml_library.evaluation.maintenance.ablation_evaluate import (
     evaluate_prepared_split,
+    evaluate_training_distribution,
 )
 from nexuml_library.evaluation.maintenance.ablation_prepare import (
     couple_training_endpoints,
@@ -314,3 +315,56 @@ def test_training_rejects_stale_checkpoint(tmp_path: Path) -> None:
     trainer: Any = SimpleNamespace(global_step=416)
     with pytest.raises(RuntimeError, match="Stale"):
         ablation_train.verify_latest_checkpoint(trainer, path)
+
+
+def test_training_distribution_swd_ignores_coupling_and_test(tmp_path: Path) -> None:
+    """Train diagnostics are independent of permutations and sealed test features."""
+    features, rows = _example_features()
+    features[:4, 1] += 3.0
+    file = tmp_path / "variant-seed7.pt"
+    torch.save(
+        {
+            "format": "nex233-features-v1",
+            "features": features,
+            "rows": rows,
+            "settings": {"seed": 7},
+        },
+        file,
+    )
+    spec = mimii_acoustic_ablation(
+        file,
+        hidden_dims=[16, 16],
+        num_steps=4,
+        max_epochs=1,
+        seed=7,
+        checkpoint_root=tmp_path / "checkpoints",
+    )
+    artifacts = create_runtime_artifacts(spec)
+    before = evaluate_training_distribution(
+        artifacts, device=torch.device("cpu"), projections=16, seed=7, batch_size=2
+    )
+    assert before["split"] == "train"
+    assert before["num_samples"] == 4
+    assert set(before["by_machine"]) == {"fan:id_00", "fan:id_02"}
+
+    dataset = artifacts.data_module.dataset
+    data = dataset.data
+    assert isinstance(data, torch.Tensor)
+    # Train-only within-machine OT pairing cannot alter distributional scores.
+    data[0, 1], data[1, 1] = data[1, 1].clone(), data[0, 1].clone()
+    data[2, 1], data[3, 1] = data[3, 1].clone(), data[2, 1].clone()
+    # Held-out test must not influence this diagnostic.
+    data[-1] = 10000.0
+    after = evaluate_training_distribution(
+        artifacts, device=torch.device("cpu"), projections=16, seed=7, batch_size=3
+    )
+    assert after["swd_healthy_to_faulty"] == pytest.approx(
+        before["swd_healthy_to_faulty"]
+    )
+    assert after["swd_transported_to_faulty"] == pytest.approx(
+        before["swd_transported_to_faulty"]
+    )
+    for group in before["by_machine"]:
+        assert after["by_machine"][group]["swd_healthy_to_faulty"] == pytest.approx(
+            before["by_machine"][group]["swd_healthy_to_faulty"]
+        )
