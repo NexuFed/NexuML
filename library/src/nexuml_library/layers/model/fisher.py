@@ -8,7 +8,7 @@ its model implementation remain owned by the original FISHER authors.
 from __future__ import annotations
 
 from contextlib import nullcontext
-from typing import Literal
+from typing import Any, Literal, cast
 
 import torch
 from torch import nn
@@ -41,6 +41,8 @@ class FISHEREncoder(nn.Module):
         ImportError: If optional Transformers is not installed.
         ValueError: If the sampling rate or loaded FISHER model is invalid.
     """
+
+    window: torch.Tensor
 
     def __init__(
         self,
@@ -161,7 +163,7 @@ class FISHEREncoder(nn.Module):
         context = torch.no_grad() if self.frozen else nullcontext()
         with context:
             if self.pooling == "native":
-                output = self.model.extract_features(spec)
+                output = cast(Any, self.model).extract_features(spec)
             else:
                 result = self.model(spec, mode="IMAGE", mask=False, features_only=True)
                 if not isinstance(result, dict):
