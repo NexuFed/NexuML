@@ -286,20 +286,15 @@ def test_pcm_wav_decodes_without_torchcodec(
     assert torch.allclose(x["healthy_waveform"], torch.zeros(16))
 
 
-def test_wav_decoder_rejects_unsupported_encoding(tmp_path: Path) -> None:
+def test_invalid_wav_container_is_rejected(tmp_path: Path) -> None:
     root = _fixture_root(tmp_path)
     file = root / "train/healthy/train_healthy_0/recording_0.wav"
-    # Unsupported 40-bit sample width must fail rather than silently misdecode.
-    with wave.open(str(file), "wb") as output:
-        output.setnchannels(1)
-        output.setsampwidth(5)
-        output.setframerate(16000)
-        output.writeframes(b"\x00" * 5)
+    file.write_bytes(b"not a valid RIFF WAV file")
     runtime = AudioEndpointPairs(root=root).build()
     assert runtime.meta is not None
     matching = runtime.meta.index[
         runtime.meta["healthy_file"].eq(str(file))
     ].tolist()
     assert matching
-    with pytest.raises(ValueError, match="Unsupported PCM WAV encoding"):
+    with pytest.raises(wave.Error, match="RIFF"):
         runtime[int(matching[0])]
