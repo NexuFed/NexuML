@@ -10,7 +10,7 @@ import re
 import zipfile
 from collections import defaultdict
 from pathlib import Path
-from typing import Literal
+from typing import Literal, cast
 from urllib.parse import urlparse
 from urllib.request import urlopen
 
@@ -364,13 +364,16 @@ def _mat_signal(file: Path) -> np.ndarray:
 
     def find(item: object) -> np.ndarray | None:
         if isinstance(item, dict):
-            if "vibration" in item:
-                vibration = item["vibration"]
-                if isinstance(vibration, dict) and "y_values" in vibration:
-                    value = np.asarray(vibration["y_values"])
-                    if np.issubdtype(value.dtype, np.number):
-                        return value.astype(np.float32).reshape(1, -1)
-            for key, value in item.items():
+            record_dict = cast(dict[str, object], item)
+            if "vibration" in record_dict:
+                vibration = record_dict["vibration"]
+                if isinstance(vibration, dict):
+                    vibration_dict = cast(dict[str, object], vibration)
+                    if "y_values" in vibration_dict:
+                        value = np.asarray(vibration_dict["y_values"])
+                        if np.issubdtype(value.dtype, np.number):
+                            return value.astype(np.float32).reshape(1, -1)
+            for key, value in record_dict.items():
                 if not str(key).startswith("__"):
                     result = find(value)
                     if result is not None:
