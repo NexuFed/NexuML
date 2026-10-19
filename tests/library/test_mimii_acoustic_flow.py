@@ -7,6 +7,7 @@ import io
 import wave
 import zipfile
 from pathlib import Path
+from urllib.request import Request
 
 import numpy as np
 import pytest
@@ -295,24 +296,30 @@ def test_mimii_auto_download_resumes_partial_archive(
     offset = len(archive_bytes) // 3
     partial = root.parent / "6_dB_fan.zip.part"
     partial.write_bytes(archive_bytes[:offset])
-    requests: list[object] = []
+    requests: list[Request] = []
 
-    def ranged_urlopen(request: object, timeout: int) -> io.BytesIO:
+    class RangedResponse(io.BytesIO):
+        status = 206
+
+        def __init__(self, data: bytes) -> None:
+            super().__init__(data)
+            self.headers = {
+                "Content-Range": (
+                    f"bytes {offset}-{len(archive_bytes) - 1}/{len(archive_bytes)}"
+                ),
+                "Content-Length": str(len(archive_bytes) - offset),
+            }
+
+    def ranged_urlopen(request: Request, timeout: int) -> io.BytesIO:
         requests.append(request)
         assert timeout == 120
-        reply = io.BytesIO(archive_bytes[offset:])
-        reply.status = 206  # type: ignore[attr-defined]
-        reply.headers = {  # type: ignore[attr-defined]
-            "Content-Range": f"bytes {offset}-{len(archive_bytes) - 1}/{len(archive_bytes)}",
-            "Content-Length": str(len(archive_bytes) - offset),
-        }
-        return reply
+        return RangedResponse(archive_bytes[offset:])
 
     monkeypatch.setattr(mimii_download, "urlopen", ranged_urlopen)
     runtime = MIMIIAcousticEndpointPairs(root=root).build()
     assert len(runtime) == 12
     assert len(requests) == 1
-    assert requests[0].get_header("Range") == f"bytes={offset}-"  # type: ignore[attr-defined]
+    assert requests[0].get_header("Range") == f"bytes={offset}-"
     assert (root.parent / "6_dB_fan.zip").read_bytes() == archive_bytes
     assert not partial.exists()
 
