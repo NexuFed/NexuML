@@ -135,6 +135,47 @@ def test_original_test_machine_requires_explicit_opt_in(tmp_path: Path) -> None:
     assert enabled["fan:id_06"]["settings"]["original_test_machine_repurposed"]
 
 
+def test_can_prepare_only_original_test_machine_without_retraining_others(
+    tmp_path: Path,
+) -> None:
+    """Selecting one machine retains the all-machine deterministic split."""
+    file = _source(tmp_path)
+    all_machines = build_single_machine_artifacts(
+        file, include_original_test_machine=True
+    )
+    selected = build_single_machine_artifacts(
+        file,
+        include_original_test_machine=True,
+        machine_group="fan:id_06",
+    )
+    assert set(selected) == {"fan:id_06"}
+    assert torch.equal(
+        selected["fan:id_06"]["features"],
+        all_machines["fan:id_06"]["features"],
+    )
+    assert selected["fan:id_06"]["rows"] == all_machines["fan:id_06"]["rows"]
+
+    root = tmp_path / "id06-only"
+    manifest = save_single_machine_artifacts(
+        file,
+        root,
+        include_original_test_machine=True,
+        machine_group="fan:id_06",
+    )
+    assert set(manifest["machines"]) == {"fan:id_06"}
+    assert manifest["original_test_machine_included"]
+    assert read_prepared_artifact(
+        manifest["machines"]["fan:id_06"]["prepared_file"]
+    )["settings"]["original_test_machine_repurposed"]
+
+    with pytest.raises(ValueError, match="No eligible machines"):
+        build_single_machine_artifacts(file, machine_group="fan:id_06")
+    with pytest.raises(ValueError, match="absent"):
+        build_single_machine_artifacts(
+            file, include_original_test_machine=True, machine_group="fan:id_08"
+        )
+
+
 def test_single_machine_rejects_reused_recordings(tmp_path: Path) -> None:
     """Reject source file identities repeated across machine holdout subsets."""
     file = _source(tmp_path)
