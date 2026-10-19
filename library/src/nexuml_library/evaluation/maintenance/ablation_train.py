@@ -6,9 +6,45 @@ import argparse
 from pathlib import Path
 
 import lightning as L
+import torch
 
 from nexuml.training.lightning import NexuSession
+from nexuml_library.evaluation.maintenance.ablation_checkpoint import SaveLatestEpoch
 from nexuml_library.scenarios.flow.mimii_acoustic_ablation import mimii_acoustic_ablation
+
+
+def verify_latest_checkpoint(trainer: L.Trainer) -> tuple[Path, int, int]:
+    """Ensure the saved last state matches the optimizer steps actually completed.
+
+    Args:
+        trainer: Lightning trainer after training has returned.
+
+    Returns:
+        Verified last checkpoint path, completed epoch and optimizer step count.
+
+    Raises:
+        RuntimeError: If the callback is missing or its checkpoint is stale.
+    """
+    latest = [
+        item for item in trainer.callbacks if isinstance(item, SaveLatestEpoch)
+    ]
+    if len(latest) != 1 or not latest[0].path.is_file():
+        raise RuntimeError("The latest-epoch checkpoint callback did not save last.ckpt")
+    path = latest[0].path
+    state = torch.load(path, map_location="cpu", weights_only=False)
+    saved_step = state.get("global_step")
+    saved_epoch = state.get("epoch")
+    if (
+        not isinstance(saved_step, int)
+        or saved_step != trainer.global_step
+        or not isinstance(saved_epoch, int)
+        or saved_epoch < 0
+    ):
+        raise RuntimeError(
+            f"Stale or invalid last.ckpt: saved epoch={saved_epoch}, "
+            f"step={saved_step}; trainer step={trainer.global_step}"
+        )
+    return path, saved_epoch, saved_step
 
 
 def train_ablation(
@@ -59,8 +95,10 @@ def train_ablation(
     L.seed_everything(seed, workers=True)
     session = NexuSession.from_scenario(spec, accelerator=accelerator, devices=1)
     session.setup().fit()
+    latest_path, latest_epoch, latest_step = verify_latest_checkpoint(session.trainer)
     session.validate()
     print(f"Training finished. Checkpoints: {checkpoint_dir}")
+    print(f"Verified last.ckpt: {latest_path} (epoch={latest_epoch}, step={latest_step})")
     print("Held-out test was not evaluated.")
 
 
