@@ -74,12 +74,42 @@ class FISHEREncoder(nn.Module):
                 "FISHEREncoder requires Transformers; install nexuml-library[pretrained]"
             ) from exc
 
-        self.model = AutoModel.from_pretrained(
-            model_name,
-            trust_remote_code=trust_remote_code,
-            revision=revision,
-            local_files_only=local_files_only,
+        # FISHER's trusted upstream PreTrainedModel code predates the
+        # Transformers 5.x all_tied_weights_keys initialization contract.
+        # Restrict the compatibility hook to FISHER and restore it even if
+        # loading raises; other model classes retain their normal semantics.
+        import transformers.modeling_utils as modeling_utils
+
+        original_finalize = modeling_utils.PreTrainedModel._finalize_model_loading
+
+        def fisher_compatible_finalize(
+            model: nn.Module, *args: Any, **kwargs: Any
+        ) -> Any:
+            if type(model).__name__ == "FISHERModel" and not hasattr(
+                model, "all_tied_weights_keys"
+            ):
+                setattr(model, "all_tied_weights_keys", {})
+            return original_finalize(model, *args, **kwargs)
+
+        setattr(
+            modeling_utils.PreTrainedModel,
+            "_finalize_model_loading",
+            fisher_compatible_finalize,
         )
+        try:
+            self.model = AutoModel.from_pretrained(
+                model_name,
+                trust_remote_code=trust_remote_code,
+                revision=revision,
+                local_files_only=local_files_only,
+                low_cpu_mem_usage=False,
+            )
+        finally:
+            setattr(
+                modeling_utils.PreTrainedModel,
+                "_finalize_model_loading",
+                original_finalize,
+            )
         configuration = getattr(self.model, "cfg", None)
         self.band_width = int(getattr(configuration, "band_width", 0))
         if self.band_width <= 0:
