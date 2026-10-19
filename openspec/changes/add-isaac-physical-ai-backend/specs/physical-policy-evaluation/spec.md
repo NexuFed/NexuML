@@ -82,3 +82,17 @@ Evaluation SHALL reuse configured NexuML scalar/media loggers and publish machin
 #### Scenario: Recorded evaluation is cancelled
 - **WHEN** cancellation occurs before media finalization
 - **THEN** cancellation remains visible, native loggers finalize truthfully and incomplete media is not published as a successful artifact
+
+### Requirement: SARM feasibility preserves independent outcome truth
+
+SARM SHALL receive a bounded feasibility assessment of source/model/processor identity, licenses, dependencies, resources, annotation provenance and a held-out progress/weighted-imitation test protocol. Learned or temporal progress SHALL NOT replace measured task success, release evidence or safety controls. A positive assessment SHALL NOT imply trained-model support; further integration SHALL require separately accepted follow-up.
+
+#### Scenario: Temporal progress suggests a failed task is complete
+- **WHEN** the SARM assessment considers failed, stalled, reversed or interrupted demonstrations
+- **THEN** its proposed validation distinguishes duration-derived targets and learned progress from independently measured outcomes
+- **AND** the frozen physical-success predicate remains authoritative
+
+#### Scenario: SARM needs annotations or model resources
+- **WHEN** the assessment identifies missing labels, external VLM access, weights or compute
+- **THEN** it records prerequisites and uncertainty without uploading recordings, invoking an external annotation service or launching unapproved model work
+- **AND** a feasible report alone does not claim policy improvement

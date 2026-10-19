@@ -228,6 +228,10 @@ reports/*
 reports/physical-ai/*
 !reports/physical-ai/phase-0-audit.md
 !reports/physical-ai/phase-2-isaaclab.md
+!reports/physical-ai/isaac-backend.md
+!reports/physical-ai/isaac-backend/
+reports/physical-ai/isaac-backend/*
+!reports/physical-ai/isaac-backend/*.in
 
 # Resources
 .literature

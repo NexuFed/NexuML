@@ -78,3 +78,17 @@ A separate hierarchical reference SHALL execute a high-level selector over at le
 - **WHEN** the high-level selector changes from one low-level skill to another
 - **THEN** the actual selected skills, transition conditions and task outcome are retained
 - **AND** invalid skill targets are rejected, episode reset clears pending state and all commands retain the low-level controller's limits
+
+### Requirement: VLA-JEPA and FastWAM have bounded feasibility assessments
+
+VLA-JEPA and FastWAM SHALL each receive a source-evidenced feasible, blocked or insufficient-evidence assessment covering exact model/API/license identities, dependencies, data/embodiment fit, training/inference components and resource needs. These assessments SHALL NOT count as implemented model support or DreamerV3 acceptance. Integration or large-model execution SHALL require separately accepted follow-up and approved assets/resources.
+
+#### Scenario: VLA-JEPA is assessed as a latent predictive policy
+- **WHEN** its maintained implementation and checkpoint contract are inspected
+- **THEN** the report separates the auxiliary predictive training signal from action inference and records compatible camera/state/action mappings, unknowns and a bounded proposed test
+- **AND** no imagination-based policy-learning claim is inferred from the world-model label
+
+#### Scenario: FastWAM has a large video-model dependency
+- **WHEN** the maintained action model and its required components are assessed
+- **THEN** the report identifies actual training versus inference composition, trust/license requirements, resource uncertainty and a bounded proposed test
+- **AND** a published large-GPU example is not represented as a measured minimum or proof of fit on local hardware

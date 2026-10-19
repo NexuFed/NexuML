@@ -61,3 +61,17 @@ Quantized, compiled or exported VLA runtimes SHALL pass numerical and task-seman
 #### Scenario: Conversion changes the action decoder
 - **WHEN** the optimized policy is checked on representative sequences
 - **THEN** failed parity blocks use of that target while the reference inference package remains usable
+
+### Requirement: Pi0.5 has a resource-gated complete reference
+
+A maintained pretrained π0.5 policy SHALL demonstrate inference, task-specific adaptation, resume, complete export/reload and compatible Isaac evaluation through NexuML. Processor/configuration, normalization statistics and action conventions SHALL be preserved. Model/backbone licenses and actual resource needs SHALL be verified; missing approved compute SHALL leave this reference incomplete rather than reduce it to a feasibility claim.
+
+#### Scenario: Pi0.5 is adapted to a matching Isaac task
+- **WHEN** approved pretrained assets and adequate resources are available
+- **THEN** actual model updates, checkpoint restoration, clean-package action/processor parity and closed-loop task outcomes are retained
+- **AND** comparison with other policies uses matched task/interfaces and reports old/new-task regression, memory and latency without presuming better performance
+
+#### Scenario: Pi0.5 requires unavailable statistics or compute
+- **WHEN** selected normalization lacks required training-split statistics or the run exceeds approved resources
+- **THEN** execution reports the missing prerequisite without reading held-out statistics, changing normalization silently or starting an unapproved remote job
+- **AND** neither package loading nor a tiny substitute model closes the complete-reference gate

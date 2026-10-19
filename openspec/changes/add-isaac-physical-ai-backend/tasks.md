@@ -4,11 +4,13 @@ Source of truth: `proposal.md`, `design.md`, the thirteen capability specs and `
 
 This is one staged program, not one unattended command or giant PR. Keep existing completed work intact. Cross-repository delivery must occur in its owning scope; no hidden NexuVibe/NexuFL edits, active-environment replacement, rebuild, unapproved download or hardware actuation is authorized by this task file.
 
+The user-selected LeRobot additions require complete Diffusion Policy and resource-gated π0.5 examples, but only bounded feasibility assessments for VLA-JEPA, FastWAM and SARM. The latter assessments do not authorize model integration, large downloads, external annotation or paid compute and do not satisfy existing DreamerV3/model-support gates. Dependency-exception policy and external Meta-World obligations are unchanged.
+
 ## 1. Ownership, scope and compatibility baseline
 
-- [ ] 1.1 Record current code/import origins, effective configuration and existing CPU/static failures in the backend evidence report; verify exact commands and preserve unrelated work instead of repairing or hiding baseline failures.
-- [ ] 1.2 Reconcile the roadmap snapshot with all coverage groups and legacy change obligations; verify every source checkbox and program capability has an owner, acceptance destination and explicit existing/pending/blocked disposition.
-- [ ] 1.3 Assign one owner for shared outcome, temporal-policy and learner changes; verify the dependency map prevents duplicate implementations across this program and the Isaac/MuJoCo changes without changing their historical completion checks.
+- [x] 1.1 Record current code/import origins, effective configuration and existing CPU/static failures in the backend evidence report; verify exact commands and preserve unrelated work instead of repairing or hiding baseline failures.
+- [x] 1.2 Reconcile the roadmap snapshot with all coverage groups and legacy change obligations; verify every source checkbox and program capability has an owner, acceptance destination and explicit existing/pending/blocked disposition.
+- [x] 1.3 Assign one owner for shared outcome, temporal-policy and learner changes; verify the dependency map prevents duplicate implementations across this program and the Isaac/MuJoCo changes without changing their historical completion checks.
 - [ ] 1.4 Inventory immutable candidate sources, public task/API symbols, assets/models/licenses and native prerequisites; verify actual installed/source APIs for DreamerV3, VLA, Arena, sensors and ROS rather than inferring them from moving docs.
 - [ ] 1.5 Resolve the complete proposed Python-3.12/cu130 composition and retain the exact Meta-World/Newton and any other conflicts; verify a reviewed compatible selection or explicitly blocked capability, with no overrides or hidden second environment.
 - [ ] 1.6 Publish the slice ownership, resource/license approval needs and compatibility decision record; verify original two-profile requirements and broader rollout exclusions are explicitly reconciled before shared implementation, not silently checked off.
@@ -85,6 +87,8 @@ This is one staged program, not one unattended command or giant PR. Keep existin
 - [ ] 8.4 Evaluate ACT in the matching Isaac manipulation task against a compatible scripted/RL reference; verify held-out task success, exact contracts and a separately labeled multi-seed quality report.
 - [ ] 8.5 Distill the vial state teacher to wrist-camera-plus-joint inputs; verify real student updates, teacher/dataset provenance, no privileged inference inputs and complete export/replay/held-out comparison.
 - [ ] 8.6 Publish offline and simulator imitation round trips; verify documented commands, tiny synthetic regressions, optional data/native tests and no requirement for a new IL session or policy hierarchy.
+- [ ] 8.7 Integrate maintained Diffusion Policy and its actual masked training loss/sampler through existing LeRobot data/model/policy seams; verify exact code/processor identities, training-only statistics, sampling RNG, inference scheduler/denoising settings, chunk/reset semantics and a small real optimizer update without an upstream trainer.
+- [ ] 8.8 Complete Diffusion training, intermediate resume, complete export/reload and fresh compatible Isaac evaluation; verify seeded sequence/action parity, inference-component packaging and matched-data/task/interface comparison with ACT, retaining held-out outcomes, measured resources and runnable tests/docs.
 
 ## 9. Real pretrained VLA policies and post-training
 
@@ -96,6 +100,9 @@ This is one staged program, not one unattended command or giant PR. Keep existin
 - [ ] 9.6 Integrate simulated RL post-training for one real pretrained VLA with a valid head-specific objective; verify likelihood/action semantics, actual updates and no hidden RLinf trainer or fabricated Gaussian/token probabilities.
 - [ ] 9.7 Compare pretrained, supervised and RL-adapted variants on identical frozen conditions; verify sample counts, uncertainty, forgetting, effective command rate and latency tails rather than a synthetic-policy-only proof.
 - [ ] 9.8 Publish model-family and runtime support documentation with focused processor/state/loss tests; verify unsupported optimization/export targets fail explicitly and inference requires no training runner.
+- [ ] 9.9 Freeze a maintained π0.5 model/backbone/tokenizer/configuration and a compatible Isaac task/dataset mapping; verify licenses/trust, dependency/API compatibility, normalization statistics and action conventions plus measured/approved compute needs, without automatic weight downloads, resource rental or a second incompatible stack.
+- [ ] 9.10 Execute actual pretrained π0.5 inference and task-specific NexuML adaptation/resume/export/reload/closed-loop evaluation on approved resources; verify changed parameters, complete processor/config restoration, correct training-split statistics and action parity, leaving unavailable-resource gates incomplete rather than using a tiny substitute.
+- [ ] 9.11 Publish matched-condition π0.5 comparisons with the established VLA/ACT/Diffusion references where interfaces genuinely match; verify old/new-task regression, sample counts, memory/latency/control-rate evidence, negative prerequisite/parity tests and runnable documentation without promising universal embodiment transfer.
 
 ## 10. Learned dynamics and DreamerV3
 
@@ -108,6 +115,8 @@ This is one staged program, not one unattended command or giant PR. Keep existin
 - [ ] 10.7 Extend the reference to a bounded visual arm task and compare against matched PPO; verify horizon-wise held-out prediction errors, continuation/reward metrics, control quality, physical sample efficiency and compute cost without presumed improvement.
 - [ ] 10.8 Add a bounded learned-dynamics planning example and publish full Dreamer commands/results; verify controller-contract preservation, model-error attribution and reference-versus-optimized execution parity before optional kernel acceleration.
 - [ ] 10.9 Deliver an independent hierarchical example selecting at least two compatible low-level skills; verify actual selector-driven transitions/task outcomes, invalid-target rejection, episode-state resets and preserved controller limits with an executable acceptance test and runnable documentation.
+- [ ] 10.10 Produce a bounded VLA-JEPA feasibility report from maintained source/model contracts; verify exact component/API/license identities, dependency constraints, camera/state/action and dataset/embodiment fit, auxiliary predictive-training versus action-inference semantics, resource uncertainty and a proposed validation test, with an explicit verdict and no DreamerV3 or implemented-support claim.
+- [ ] 10.11 Produce the independent FastWAM feasibility report; verify Wan/model/processor identities, dependency and license/trust conditions, actual training/inference component boundaries, action/chunk/data mapping and conservative resource needs with a bounded proposed test and explicit verdict, without unapproved model work or equating the published large-GPU example with a minimum requirement.
 
 ## 11. Common release evaluation and Arena
 
@@ -118,6 +127,7 @@ This is one staged program, not one unattended command or giant PR. Keep existin
 - [ ] 11.5 Evaluate one actual adapted NexuML policy over pinned Arena scene/object/embodiment variations; verify policy mapping, held-out distributions, failure categories and reproducible machine-readable trials.
 - [ ] 11.6 Exercise offline shadow, forgetting and reference comparisons plus real GIF/MP4/both delivery; verify counterfactual limits, terminal-frame identity, animated TensorBoard/MLflow behavior and truthful cancellation.
 - [ ] 11.7 Publish suite and Arena commands with comparison reports; verify per-slice tests and docs distinguish Meta-World/LIBERO protocols, quality experiments, integration smokes and physical safety decisions.
+- [ ] 11.8 Produce a bounded SARM feasibility report through existing data/layer/evaluation seams; verify source/model/processor identities, dependency/license/resource constraints, annotation/temporal-prior provenance and a leakage-aware progress/weighted-imitation validation protocol covering failed/stalled/reversed/interrupted episodes, with an explicit verdict and measured-success/safety separation rather than a trained-support claim.
 
 ## 12. ROS, Gazebo and Isaac ROS runtime
 

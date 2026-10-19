@@ -53,3 +53,17 @@ Synthetic generation, scripted control and upstream trained policies SHALL be at
 #### Scenario: A scripted trajectory succeeds before ACT training
 - **WHEN** the integration report is assembled
 - **THEN** that result validates task/data feasibility but does not satisfy learned-policy quality acceptance
+
+### Requirement: Diffusion Policy has a complete comparable reference
+
+A maintained Diffusion Policy SHALL train, resume, export, reload and complete closed-loop Isaac evaluation through NexuML. Its actual loss, sampler, normalization, denoising and chunk settings SHALL be retained. Comparison with ACT SHALL use matching approved data/splits, embodiment and I/O contracts. Upstream trainer execution or checkpoint download alone SHALL NOT satisfy this requirement.
+
+#### Scenario: The Diffusion reference completes its lifecycle
+- **WHEN** the approved demonstration task is trained and resumed through NexuML
+- **THEN** actual trainable-parameter changes, restored optimizer/state and a complete portable inference package are verified
+- **AND** fresh Isaac evaluation reports task success and held-out results alongside ACT under recorded comparable conditions
+
+#### Scenario: Seeded diffusion inference is replayed after export
+- **WHEN** the same observation sequence, reset schedule and sampling seed are supplied
+- **THEN** the recorded inference scheduler, denoising parameters, processors and chunk execution reproduce reference actions within declared numerical tolerances
+- **AND** an unseeded stochastic difference is not silently described as deterministic parity

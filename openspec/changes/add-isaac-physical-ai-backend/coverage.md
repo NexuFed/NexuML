@@ -46,15 +46,15 @@ Disposition:
 | G04.1–15 | 15 / 107–121 | Phase 1 Gymnasium, checkpoints, evaluation/media | Inherited; regression obligation in tasks 3.7, 4.7, 11.1–11.2 and 17.1–17.2. No Gymnasium rewrite. |
 | G05.1–10 | 10 / 131–140 | Original Phase 2 Isaac core | Inherited EA proof plus required canonical migration: C/S/L/X/B, tasks 2, 4 and 5. Do not reuse old GPU-image results as new-stack evidence. |
 | G06.1–4 | 4 / 145–148 | Observable inputs, randomization, held-out robustness, system identification | Included: S/T/I/E/P, tasks 5.7, 8.5, 11.3, 14.5 and 16.4. |
-| G07.1–10 | 10 / 158–167 | LeRobot data, ACT, temporal contracts, full round trip | Included: D/I/T/E, tasks 7.1–7.2 and 8.1–8.6 with package/state parity in 3.6 and explicit non-RL evaluation configuration/CLI acceptance in 3.8–3.9. |
+| G07.1–10 | 10 / 158–167 | LeRobot data, ACT, temporal contracts, full round trip | Included: D/I/T/E, tasks 7.1–7.2 and 8.1–8.8, including the user-selected Diffusion comparison, with package/state parity in 3.6 and explicit non-RL evaluation configuration/CLI acceptance in 3.8–3.9. |
 | G08.1–6 | 6 / 172–177 | Dataset v3, leader/follower, corrections, quality, provenance, offline replay | Included: D/I/P, tasks 7.1–7.7, 8.1–8.3 and manual capture 16.3–16.4. Prerecorded data does not establish live teleoperation. |
 | G09.1 | 1 / 185 | Inspect actual LeRobot benchmark tooling | Included: E/I/V, tasks 1.4 and 11.7; no generic benchmark service. |
 | G09.2 | 1 / 186 | Native Meta-World reference | External: `add-mujoco-reference-workflows`; compatibility conflict recorded under C, task 1.5 and design D3. Not silently installed/dropped or replaced by an Isaac approximation. |
 | G09.3 | 1 / 187 | Native LIBERO subset | External compatible-benchmark follow-up, not an existing completed change or an Isaac implementation. Task 11.7 records its unresolved owner/compatibility; original Phase 4 remains open until its exact suite is actually delivered. |
-| G09.4–9 | 6 / 188–193 | Protocols, outcomes, two-method comparison, variation, results and tests | Included common evaluation: E/I/V, tasks 8.4, 9.7 and 11.1–11.7; native benchmark-specific proofs remain with the external suites. |
+| G09.4–9 | 6 / 188–193 | Protocols, outcomes, two-method comparison, variation, results and tests | Included common evaluation: E/I/V, tasks 8.4, 8.8, 9.7, 9.11 and 11.1–11.7; native benchmark-specific proofs remain with the external suites. |
 | G10.1–5 | 5 / 198–202 | Frozen regression/release suite and candidate decisions | Included: E/P, tasks 11.3–11.7 and 16.6–16.7. |
-| G11.1–10 | 10 / 210–219 | Pretrained VLA, processing, adaptation, metrics, export and later families | Included: V/T/E, tasks 9.1–9.8 and non-RL package CLI replay in 3.8–3.9. SmolVLA first; GR00T becomes required under this expanded request rather than an unbounded list of model families. |
-| G12.1–3 | 3 / 224–226 | Full/parameter-efficient adaptation, forgetting and runtime limitations | Included: V/E/P, tasks 9.5–9.8 and 16.6. Supported deployment targets remain parity gated. |
+| G11.1–10 | 10 / 210–219 | Pretrained VLA, processing, adaptation, metrics, export and later families | Included: V/T/E, tasks 9.1–9.11 and non-RL package CLI replay in 3.8–3.9. SmolVLA, GR00T and user-selected resource-gated π0.5 are required references, not an unbounded model catalogue. |
+| G12.1–3 | 3 / 224–226 | Full/parameter-efficient adaptation, forgetting and runtime limitations | Included: V/E/P, tasks 9.5–9.11 and 16.6. Supported deployment targets remain parity/resource gated. |
 | G13.1–7 | 7 / 234–240 | Existing MuJoCo references and justified alternative adapters | External: `add-mujoco-reference-workflows`; C/E/L regression and compatibility ownership under 1.3–1.5. Newton MJWarp does not satisfy native Gymnasium MuJoCo acceptance. |
 | G14.1–10 | 10 / 248–258 | Arena compatibility, suite execution, variations, failures and reports | Included: E, tasks 11.4–11.7. Published legacy installation is not shared-stack proof. |
 | G15.1–6 | 6 / 272–277 | ROS transport audit and live Gazebo/ros2_control | Included: R, tasks 12.1–12.4 and 12.8. Original RL 9.5 stays open until actual Gazebo proof. |
@@ -75,10 +75,10 @@ Disposition:
 | G30.1–5 | 5 / 439–443 | Curate/select/correct/retrain loop, forgetting and bounded adaptation operation | Included: P/D/E, tasks 16.5–16.8; no federation or fleet implementation. |
 | G31.1–6 | 6 / 455–460 | X1 episode/stream contracts, provenance, interchange and quality | Included: T/D, tasks 3.1–3.3, 7.1–7.7 and 13.8. |
 | G32.1–6 | 6 / 464–469 | X2 complete artifacts, clean parity, processors, reference runtime and trust | Included: T/P, tasks 3.4–3.7, per-family export proofs, 12.7 and 16.2. |
-| G33.1–5 | 5 / 473–477 | X3 frozen suites, robustness, shadow evaluation and safety boundaries | Included: E/P, tasks 11.1–11.7 and 16.6–16.8. |
+| G33.1–5 | 5 / 473–477 | X3 frozen suites, robustness, shadow evaluation and safety boundaries | Included: E/P, tasks 11.1–11.7 and 16.6–16.8. SARM assessment 11.8 explicitly preserves measured-success and safety boundaries; it is not a substitute for release evaluation. |
 | G34.1–6 | 6 / 481–486 | X4 corrections, selection, continual and self-supervised learning, offline RL and site-local operation | Included: D/I/L/P, tasks 6.3, 7.3, 14.6 and 16.5–16.8. No on-hardware learning. |
 | G35.1 | 1 / 490 | Hierarchical skill reference | Included: W/P, independent task 10.9 after atomic policy contracts; requires a high-level selector over at least two low-level skills. Task 10.8's learned dynamics alone cannot close it; classical planning remains upstream. |
-| G35.2 | 1 / 491 | World models and learned dynamics | Expanded to a required workstream: W, tasks 10.1–10.8. It remains sequenced after a conventional baseline, not an optional documentation wish. |
+| G35.2 | 1 / 491 | World models and learned dynamics | Required DreamerV3 workstream: W, tasks 10.1–10.8, after a conventional baseline. User-selected VLA-JEPA/FastWAM assessments 10.10–10.11 are additional feasibility-only deliverables and cannot close the DreamerV3 gate. |
 | G35.3 | 1 / 492 | Separately gated research families | Multi-agent learning and measured local/skill adaptation included in tasks 6.6, 10.8–10.9 and 16.6; prototypical-class research and foundation-model pretraining remain external non-goals, not advertised Isaac capabilities. |
 | G35.4 | 1 / 493 | General industrial learning compatibility | Included: T/D/B, tasks 3.7, 13.8 and 14.6. |
 | G36.1–10 | 10 / 510–519 | Shared per-phase definition of done | Applies to every implementation group: tests/docs with each slice; integrated evidence and scope audit in tasks 17.1–17.5. |
@@ -101,10 +101,12 @@ The default support matrix is for the pinned upstream and selected references, n
 | Multi-agent learning | One maintained direct multi-agent task with actual updates and correct agent semantics | L / 6.6 |
 | Teleoperation and human corrections | Maintained input/retarget/capture tools, headless prerecorded route and manual actual arm capture | D/P / 7.3–7.4, 16.3 |
 | Mimic and synthetic sensor data | Native generation and parity-checked episode conversion, not a copied generator | D / 7.5–7.6 |
-| ACT and visuomotor distillation | Offline ACT round trip plus SO-101 state-teacher/camera-student proof | I / 8.1–8.6 |
-| Pretrained VLA | Actual SmolVLA and GR00T inference/adaptation/export/evaluation; not every foundation model family | V / 9.1–9.8 |
+| ACT, Diffusion and visuomotor distillation | Offline ACT and Diffusion round trips/comparison plus SO-101 state-teacher/camera-student proof | I / 8.1–8.8 |
+| Pretrained VLA | Actual SmolVLA, GR00T and resource-gated π0.5 inference/adaptation/export/evaluation; not every foundation model family | V / 9.1–9.11 |
 | VLA RL post-training | One actual pretrained model with a valid action-head objective; RLinf remains a baseline | V/L / 9.6–9.7 |
 | World models | Actual maintained TorchRL DreamerV3, state then vision, imagination, complete latent inference and baseline comparison | W / 10.1–10.8 |
+| World/action-model research candidates | Separate VLA-JEPA and FastWAM source/API/data/license/resource feasibility verdicts; no implied integration or DreamerV3 substitution | W / 10.10–10.11 |
+| Learned progress/reward research candidate | SARM feasibility and validation protocol, keeping learned progress distinct from physical success and safety | E / 11.8 |
 | Hierarchical skills | Independent high-level selector, at least two compatible low-level skills, actual transitions and controller/reset checks | W/P / 10.9 |
 | Generalization/Arena | Compatible maintained Arena suite, frozen scenes/objects, complete episodes and distributions | E / 11.4–11.7 |
 | Multi-embodiment | Exact arm, humanoid locomotion/manipulation, Go2, Crazyflie, mobile and industrial references | B / 5, 8, 13 |
@@ -132,7 +134,7 @@ Other upstream model families, teleoperation devices, hardware variants and back
 ## Milestones and completion meaning
 
 1. **Environment and existing references:** canonical automatic setup, original reference migration, physical/temporal contracts and real SO-101 manipulation. This is useful, not the full backend.
-2. **Learning and policy stack:** data/ACT/distillation, additional RL families, real VLA, DreamerV3 and frozen evaluation. VLA and world models are required, not omitted later work.
+2. **Learning and policy stack:** data/ACT/Diffusion/distillation, additional RL families, real VLA including resource-gated π0.5, DreamerV3 and frozen evaluation. VLA and world models are required, not omitted later work. VLA-JEPA/FastWAM/SARM add bounded assessments, not unapproved full integrations.
 3. **Ecosystem execution:** Arena, ROS/Gazebo/perception, exact multi-embodiment, advanced simulation, remote access and scale. Missing native/distributed prerequisites remain explicit.
 4. **Full-program acceptance:** integrated packaging/regression evidence plus the approved physical-arm/local-adaptation cycle. No full-completion claim while a required compatibility, distributed or manual gate is open.
 
@@ -143,3 +145,26 @@ Original roadmap exit criteria 1–9 map respectively to L/T, I/S/D/E, V, T/P, R
 Use existing report/artifact conventions, with a backend report and per-slice manifests rather than a new evidence service. Every result records the consumer lock/source commit, resolved scenario, task/assets/models/data hashes, device/resource budget, command, exit status, sample/frame counts, native outputs and known limits. Retain durable retrievable log/artifact locations and checksums; a scratch `/tmp/opencode` directory alone is not a permanent release record.
 
 Planning status: **all new tasks unchecked; no new installation or native capability established**. Exact blocker and unsupported-target decisions must remain visible. Before closing, audit every group/family against its requirements and evidence and show unresolved external/manual work separately.
+
+### Apply checkpoint — 2026-10-19
+
+Tasks 1.1–1.3 are verified; the planning status above records the original proposal,
+not current progress. [Implementation evidence](../../../reports/physical-ai/isaac-backend.md)
+retains the fresh baseline, exact 23-item legacy mapping, shared-code owners and
+source-derived 236-checkbox coverage assertion. Task 1.4 remains partial and task
+1.5 is blocked by independently reproduced candidate dependency conflicts. No new
+native capability, sibling change or legacy-task completion is claimed.
+
+### User-confirmed LeRobot model scope — 2026-10-19
+
+The user selected complete Diffusion Policy and resource-gated π0.5 examples,
+plus feasibility-only assessments for VLA-JEPA, FastWAM and SARM. Eight new
+unchecked tasks (8.7–8.8, 9.9–9.11, 10.10–10.11 and 11.8) bring the plan to
+**3/136 verified**. All thirteen capabilities and the 236-checkbox source
+fingerprint remain unchanged. Model families are mapped above to existing
+capabilities, with concrete requirements in their corresponding specs.
+
+Assessment completion is not model-support completion. Unavailable compute
+keeps the complete π0.5 reference open; it does not authorize a cloud job,
+weight download or alternate incompatible environment. This scope confirmation
+neither approves dependency overrides nor replaces or closes Meta-World work.
