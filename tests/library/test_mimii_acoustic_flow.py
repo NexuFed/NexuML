@@ -188,7 +188,9 @@ def test_mimii_real_format_cpu_training_step(tmp_path: Path) -> None:
 
     assert torch.isfinite(loss)
     assert loss.item() > 0
-    assert torch.isfinite(out["flow_target_velocity"]).all()
+    target_velocity = out["flow_target_velocity"]
+    assert isinstance(target_velocity, torch.Tensor)
+    assert torch.isfinite(target_velocity).all()
     assert out["healthy_spectrum"].shape == out["faulty_spectrum"].shape
     assert any(
         parameter.grad is not None and parameter.grad.abs().sum() > 0
