@@ -125,11 +125,7 @@ def _download_archive(url: str, archive: Path, expected: str) -> None:
                     now = time.monotonic()
                     if now - last_report >= 5:
                         speed = (transferred - offset) / max(now - started, 1e-6) / 1e6
-                        percent = (
-                            f" ({100 * transferred / total:.1f}%)"
-                            if total
-                            else ""
-                        )
+                        percent = f" ({100 * transferred / total:.1f}%)" if total else ""
                         _status(
                             f"{archive.name}: {transferred / 1e9:.2f} GB"
                             f"{percent} | {speed:.1f} MB/s"
