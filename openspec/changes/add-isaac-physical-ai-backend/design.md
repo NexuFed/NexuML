@@ -2,7 +2,7 @@
 
 ## Context
 
-See `proposal.md` for motivation and the thirteen capability deltas for observable behavior. This is a program-sized, staged change: planning readiness is not package, native, learning-quality or hardware readiness.
+See `proposal.md` for motivation and the declared capability deltas for observable behavior. This is a program-sized, staged change: planning readiness is not package, native, learning-quality or hardware readiness.
 
 ### Inspected foundation
 
@@ -29,6 +29,16 @@ The inspected running DevContainer is Ubuntu 26.04.1 with `compute,utility`, alt
 **Non-Goals:** No second session/compiler/trainer, universal robotics superclass, custom physics engine or driver, copied foundation model, compulsory robotics dependency for all users, unmanaged remote code execution, robot-safety certification, autonomous hardware exploration, fleet operation or NexuFL implementation. "Everything" means all catalogued workflow families, not every upstream preset or unsupported Cartesian product. Missing prerequisites leave required gates open; they are not permission to narrow the request silently.
 
 ## Decisions
+
+### D0. Local SO-101 behavior cloning and Python SDK handoff before the broad roadmap
+
+The first integration milestone uses **the real, source-pinned SO-101 reaching task**, not a generic Reacher or inferred success from earlier PPO tests. Generate reproducible expert trajectories on the simulator, with correct arm joints/action units, goal/reset identity, timestamps and source provenance. The expert may use privileged information, but the student must see only its declared deployable **state-based actor observations**. Train a small behavior-cloning policy using existing NexuML data/pipeline/session/Lightning machinery, then export/reload a complete policy and verify fresh, held-out **closed-loop** simulator success separately from expert success and training loss. Simulation need only produce episodes and evaluate policies: it need not run inside each later FL fit.
+
+For an external caller, add **only** the minimum stable Python operation composed over existing `NexuSession`, dataset and export APIs. Semantically it accepts a trusted installed recipe/model, exact compatible initial **named numeric tensors**, authorized local on-disk episodes, bounded step/epoch budget, deterministic seed and explicit optimizer semantics; it returns updated tensors, approved finite metrics, number of eligible training windows/episodes and model/data/physical-schema fingerprints. The first stateless FedAvg consumer SHALL use **optimizer reset per round**; persistent per-site optimizer continuation is a later independently verified capability, never silently promised. Second-call initial weight override and error cases must be tested. No duplicate trainer/graph, no `FederatedTrainer`, no network orchestration.
+
+Export is separated into (1) operator-trusted, pinned executable recipe/`torch.package` if required locally; (2) portable Safetensors-compatible numeric weights with architecture, parameter names, dtypes, shapes, base version, tensor roles and exact SO-101 observation/action/processor/joint/order/control-rate identity; (3) **private** local episodes and optimizer state. Never treat matching shapes as physical compatibility or ship Python pickle/executable packages as remote model updates. Preserve train-only normalization, episode-disjoint splits, honest consumed-window counts, simulator-free ordinary imports, and existing non-robot workflows.
+
+**Python SDK is authoritative; REST is explicitly out of scope** for this milestone. NexuFL's locally installed `ClientProgram` calls the SDK in process and its NodeAgent independently owns gRPC and Kubernetes. When the native expert → learned policy → clean export/reload → held-out closed-loop reference and repeated bounded local-fit contract pass, **stop and prepare a reviewable narrow NexuML PR**. Do not merge the entire unfinished feature branch as the dependency for FL. The NexuFL integration proposal owns subsequent local FedAvg, external gRPC, Kubernetes, ACT, personalization and active learning.
 
 ### D1. One umbrella, explicit ownership, no rewritten history
 

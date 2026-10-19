@@ -8,6 +8,14 @@ Each reference has independently recorded stages: **described**, **native constr
 
 Source verification precedes final naming; use the maintained task ID on the frozen release, not guessed registry strings or a replacement generic robot. Each item can deliver its independent milestone, but every required row remains open in whole-program acceptance until its own proof exists.
 
+## Early handoff reference — supplemental, not a rewrite of I01–I22
+
+| ID | Reference | Required outcome | Priority / status |
+| --- | --- | --- | --- |
+| F01 | SO-101 native reaching + **state-based behavior cloning** | Reproducible native expert episodes, real NexuML optimizer updates, source-pinned disjoint data, complete policy clean export/reload, fresh closed-loop learned success vs expert/untrained, repeated externally initialized bounded Python fit, validated numeric-model + physical-schema/metrics handoff, narrow PR gate | **P0 — planned, unverified** (tasks 0.1–0.8) |
+
+F01 is an **additional early integration proof**, not an assertion that I03 reaching PPO, I07 teleoperation/corrections, I08 ACT/Diffusion or the original 236-item historical roadmap requirements have passed. Do not change the historical completion inventory. NexuFL federation/gRPC/Kubernetes evidence is owned by its separate integration change.
+
 ## Core reference matrix
 
 | ID | Embodiment or task | Backend | Mandatory training/evaluation reference | Priority | Current status / owner |

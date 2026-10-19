@@ -4,6 +4,12 @@
 
 NexuML has a verified, deliberately narrow Isaac/PPO integration, but not a complete Physical AI development backend. Make the Isaac ecosystem the primary robotics simulation platform while retaining NexuML's compiler, session, TorchRL learning, data, evaluation and portable-inference architecture across reinforcement learning, imitation, VLA, humanoids, world models and ROS deployment.
 
+## Priority: early SO-101 local-learning / NexuFL handoff
+
+Before the full Isaac/Physical AI programme, deliver a **small, real SO-101 state-based behavior-cloning proof** with verified native expert episodes, actual NexuML model updates, clean-process export and fresh closed-loop task success. Expose the existing NexuML training/session lifecycle through a **bounded Python SDK local-fit and portable model-state contract** usable by a trusted, installed external caller. No second trainer, `FederatedTrainer`, mandatory REST server, gRPC or federation logic in NexuML. The same source shall work without a web server; NexuFL owns its own outbound `ClientProgram`/gRPC orchestration.
+
+**Stop for an early, narrow NexuML PR** after the local training/data/export/SDK interface is accepted, *not* after ACT, Diffusion, world models, ROS, VLA, other embodiments or the whole umbrella change. Pin the reviewed wheel/commit and handoff contract for NexuFL's separately planned `federate-so101-imitation-learning`. The full programme and all independently required proof remain open. See `federation-handoff.md`, `tasks.md` §0 and the `local-learning-handoff` spec. Planning alone is not implementation evidence.
+
 ## What Changes
 
 - Deliver one staged integration program, not a second framework or a single oversized implementation increment. "Full backend" means the explicitly specified workflow families and their executable acceptance references; it does not promise that every upstream task, robot, solver or NVIDIA product works interchangeably.
@@ -40,6 +46,7 @@ This folder is the single implementation queue for the Isaac, native MuJoCo/Meta
 - `isaac-torchrl-learning`: Correct native rollouts and algorithm-appropriate learning through the existing session/Lightning/TorchRL lifecycle.
 - `robot-experience-workflows`: Demonstrations, synthetic trajectories, multi-rate data, corrective experience and maintained interchange formats.
 - `robot-imitation-learning`: ACT, Diffusion Policy, behavior cloning, teacher/student distillation and complete offline-to-simulation round trips.
+- `local-learning-handoff`: Versioned bounded Python SDK local-fit, numeric model-state handoff and SO-101 behavior-cloning acceptance/early PR gate.
 - `vision-language-action-workflows`: Pretrained SmolVLA, GR00T and π0.5 inference/adaptation, chunk execution and supported RL post-training.
 - `physical-world-model-learning`: Learned dynamics, DreamerV3, imagination and stateful export, plus separate VLA-JEPA/FastWAM feasibility assessments.
 - `physical-policy-evaluation`: Frozen release suites, Arena, robustness, forgetting, explicit candidate decisions and bounded SARM feasibility.
