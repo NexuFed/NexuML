@@ -125,6 +125,38 @@ Each configuration has a distinct run/checkpoint path and the same
 optimization budget. An existing checkpoint directory is rejected to
 prevent the Lightning last-v1/last-v2 ambiguity seen previously.
 
+### Distributional validation and model selection
+
+Flow Matching still **trains** on the sample-wise conditional-velocity
+regression objective. That loss remains a training diagnostic, but it
+does **not** select checkpoints or trigger early stopping.
+
+Instead, after each validation epoch the DistributionalTransportValidation
+callback transports **all healthy validation embeddings** through the
+learned Euler flow and compares the resulting unordered sample set
+against **all faulty validation embeddings** using seeded sliced W1.
+Both distributions are drawn exclusively from the disjoint validation
+machine. Original pair assignments do not affect this metric, so the
+same protocol applies to independent and training-OT models.
+
+- `val/transport_swd`: transported-to-faulty sliced W1; **minimize**
+  for ModelCheckpoint and EarlyStopping (patience 25 by default).
+- `val/healthy_to_faulty_swd`: no-transport reference (fixed per artifact).
+- `val/swd_relative_reduction`: relative transport improvement;
+  positive values indicate closer transported distributions.
+
+All epochs and configurations within the same feature space use the
+same 128 deterministic projection directions (seed 42 by default),
+and the same flow integration as post-training evaluation. Checkpoint
+selection uses the absolute SWD **within a run**. For comparisons across
+frontends or feature scalings, use baseline-relative SWD improvement,
+not absolute SWD. The held-out test partition is never accessed by
+the validation callback.
+
+**Existing best checkpoints were selected using val/loss, not SWD.**
+Those runs cannot be retroactively treated as SWD-selected; retrain
+using a fresh checkpoint directory for this experimental protocol.
+
 ### Reliable checkpoint semantics (Lightning 2.6.5)
 
 Lightning 2.6.5's monitored ModelCheckpoint with save_top_k=1 and
@@ -189,7 +221,8 @@ It reports (best and last checkpoint):
 
 - SWD to the faulty endpoint distribution at five Euler flow times.
 - Healthy→faulty and transported→faulty SWD, including relative reduction.
-- Fixed-time FM MSE, zero-velocity MSE, and train-mean-velocity MSE.
+- Fixed-time FM MSE, zero-velocity MSE, and train-mean-velocity MSE
+  (diagnostics only, **not** model-selection criteria).
 - Relative improvement over zero and a constant mean-shift SWD baseline.
 
 **Absolute feature SWD and FM MSE are not comparable across FISHER,
@@ -208,6 +241,8 @@ evaluator command (and choose a distinct output JSON file).
 ruff check .
 ruff format --check .
 ty check
+pytest tests/library/test_ablation_distributional_validation.py -v
+pytest tests/library/test_ablation_checkpoint.py -v
 pytest tests/library/test_mimii_acoustic_ablation.py -v
 pytest tests/library/test_fisher_encoder.py -v
 pytest tests/library/test_mimii_flow_transport.py -v
