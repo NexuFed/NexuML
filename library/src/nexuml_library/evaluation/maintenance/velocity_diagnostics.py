@@ -153,10 +153,15 @@ def training_only_ot_diagnostic(
         ValueError: If machine identities and samples differ in count.
         ImportError: If SciPy for the exact finite assignment is unavailable.
     """
-    from scipy.optimize import linear_sum_assignment
-
     if len(machine_ids) != len(healthy) or healthy.shape != faulty.shape:
         raise ValueError("Machine IDs must correspond to equal-shaped training pairs")
+    try:
+        from scipy.optimize import linear_sum_assignment
+    except ImportError as exc:
+        raise ImportError(
+            "Exact train-only OT diagnostic requires SciPy. Install the optional "
+            "SciPy dependency to run it."
+        ) from exc
     source = healthy.detach().flatten(1).to(device="cpu", dtype=torch.float32)
     target = faulty.detach().flatten(1).to(device="cpu", dtype=torch.float32)
     rows: list[dict[str, Any]] = []
@@ -166,8 +171,10 @@ def training_only_ot_diagnostic(
         # cdist output is Euclidean distance; square to recover the MSE cost.
         costs = torch.cdist(first, second).square() / first.shape[1]
         row_indices, column_indices = linear_sum_assignment(costs.numpy())
+        row_tensor = torch.as_tensor(row_indices, dtype=torch.long)
+        column_tensor = torch.as_tensor(column_indices, dtype=torch.long)
         random_cost = float(costs.diagonal().mean())
-        optimal_cost = float(costs[row_indices, column_indices].mean())
+        optimal_cost = float(costs[row_tensor, column_tensor].mean())
         rows.append(
             {
                 "machine_id": machine,
@@ -396,7 +403,8 @@ def main() -> None:
 
     train = report["training"]["velocity_statistics"]
     val = report["validation"]["transport_baselines"]
-    print(f"Training unconditional cancellation: {train['unconditional_cancellation_fraction']:.2%}")
+    cancellation = train["unconditional_cancellation_fraction"]
+    print(f"Training unconditional cancellation: {cancellation:.2%}")
     for label, score in val.items():
         print(f"Validation {label}: {score:.5f}")
     print(f"Diagnostics written to {args.output}")
