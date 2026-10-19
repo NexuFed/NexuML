@@ -99,7 +99,7 @@ def test_distribution_metrics_reject_nonfinite_or_incompatible_samples() -> None
         sliced_wasserstein(samples, torch.full_like(samples, float("nan")))
     with pytest.raises(ValueError, match="projections"):
         sliced_wasserstein(samples, samples, projections=0)
-    with pytest.raises(ValueError, match="trajectory"):
+    with pytest.raises(ValueError, match="at least two time points"):
         feature_metrics(samples, samples, samples[:, None])
 
 
