@@ -15,7 +15,7 @@ export function useObservation(connection:ConnectionInfo, identity:string) {
     update({events:[],metrics:[],state:"Connecting",truncated:false,gap:false,terminal:"",progress:null});
     const attach=()=>{
       const url=new URL(`${connection.api}/api/v1/operations/${identity}/events`);
-      url.protocol="ws:";url.searchParams.set("after",String(cursor));
+      url.protocol=url.protocol==="https:" ? "wss:" : "ws:";url.searchParams.set("after",String(cursor));
       socket=new WebSocket(url);
       socket.onopen=()=>{socket.send(JSON.stringify({token:connection.token}));update({state:"Connected"});};
       socket.onmessage=message=>{

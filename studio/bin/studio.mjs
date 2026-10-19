@@ -10,14 +10,17 @@ import { tmpdir } from "node:os";
 import { randomBytes } from "node:crypto";
 import { createServer } from "node:net";
 import { parseArgs } from "node:util";
+import { listenHost, publicOrigin } from "./connection.mjs";
 
 const require = createRequire(import.meta.url);
 const packageDirectory = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
-export function argumentsFor(argv) {
+/** @param {string[]} argv @param {Record<string, string | undefined>} env */
+export function argumentsFor(argv, env = process.env) {
   const result = parseArgs({ args: argv, allowPositionals: true, options: {
     nexuml: {type:"string"}, python: {type:"string"}, api: {type:"string"},
     "api-token-file": {type:"string"}, port: {type:"string"}, "api-port": {type:"string"},
+    host: {type:"string"}, "public-origin": {type:"string"},
     "no-open": {type:"boolean"}, help: {type:"boolean", short:"h"},
   }});
   if (result.positionals.length > 1) throw new Error("Supply one working directory.");
@@ -25,6 +28,8 @@ export function argumentsFor(argv) {
   if ([values.nexuml, values.python, values.api].filter(Boolean).length > 1) throw new Error("Choose one of --nexuml, --python, or --api.");
   if (values["api-token-file"] && !values.api) throw new Error("--api-token-file requires --api.");
   for (const key of ["port", "api-port"]) if (values[key] && !/^[0-9]+$/.test(values[key])) throw new Error(`${key} must be a port.`);
+  values["public-origin"] ??= env.NEXUML_STUDIO_PUBLIC_ORIGIN;
+  values.host = listenHost(values.host ?? env.NEXUML_STUDIO_HOST, publicOrigin(values["public-origin"]));
   return { ...values, directory: resolve(result.positionals[0] ?? ".") };
 }
 
@@ -39,13 +44,13 @@ export async function executable(name, env = process.env) {
   throw new Error(`Executable not found: ${name}. Select an existing installation with --nexuml or --python.`);
 }
 
-export async function freePort(value) {
+export async function freePort(value, host = "127.0.0.1") {
   const port = value ? Number(value) : 0;
   if (!Number.isInteger(port) || port < 0 || port > 65535 || (value && port === 0)) throw new Error("Port must be between 1 and 65535.");
   return await new Promise((done, reject) => {
     const server = createServer();
     server.once("error", reject);
-    server.listen(port, "127.0.0.1", () => { const selected = server.address().port; server.close(() => done(selected)); });
+    server.listen(port, host, () => { const selected = server.address().port; server.close(() => done(selected)); });
   });
 }
 
@@ -83,10 +88,13 @@ async function stop(child) {
 export async function launch(options) {
   const [major,minor]=process.versions.node.split(".").map(Number);
   if(major<22 || (major===22 && minor<13))throw new Error("Studio requires Node >=22.13. Select/install a supported Node version yourself.");
+  const hostedOrigin = publicOrigin(options["public-origin"] ?? process.env.NEXUML_STUDIO_PUBLIC_ORIGIN);
+  const host = listenHost(options.host ?? process.env.NEXUML_STUDIO_HOST, hostedOrigin);
   const directory = await realpath(options.directory);
   if (!(await stat(directory)).isDirectory()) throw new Error("Working directory must exist.");
-  const port = await freePort(options.port);
+  const port = await freePort(options.port, host);
   const origin = `http://127.0.0.1:${port}`;
+  const browserOrigin = hostedOrigin ?? origin;
   let token = randomBytes(32).toString("base64url");
   let apiUrl;
   let apiChild;
@@ -136,6 +144,8 @@ export async function launch(options) {
     await cp(join(packageDirectory, ".next"), join(runtimeDirectory, ".next"), {recursive:true,
       filter: source => !source.includes(`${process.platform === "win32" ? "\\" : "/"}cache${process.platform === "win32" ? "\\" : "/"}`)});
     await cp(join(packageDirectory, "next.config.mjs"), join(runtimeDirectory, "next.config.mjs"));
+    await mkdir(join(runtimeDirectory, "bin"));
+    await cp(join(packageDirectory, "bin", "connection.mjs"), join(runtimeDirectory, "bin", "connection.mjs"));
     const packageJson = JSON.parse(await readFile(join(packageDirectory, "package.json"), "utf8"));
     await mkdir(join(runtimeDirectory, "node_modules"));
     for (const name of Object.keys(packageJson.dependencies)) {
@@ -145,14 +155,15 @@ export async function launch(options) {
       await symlink(location, destination, process.platform === "win32" ? "junction" : "dir");
     }
     uiChild = spawn(process.execPath, [require.resolve("next/dist/bin/next"), "start", runtimeDirectory,
-      "--hostname", "127.0.0.1", "--port", String(port)], {cwd:runtimeDirectory,
+      "--hostname", host, "--port", String(port)], {cwd:runtimeDirectory,
       env:{...process.env, NEXT_TELEMETRY_DISABLED:"1", NEXUML_STUDIO_TOKEN:token,
-        NEXUML_STUDIO_API:apiUrl, NEXUML_STUDIO_ORIGIN:origin}, stdio:"inherit", detached:process.platform !== "win32"});
-    await ready(origin, {}, uiChild, token);
-    console.log(`Studio ready: ${origin}`);
+        NEXUML_STUDIO_API:apiUrl, NEXUML_STUDIO_ORIGIN:origin,
+        NEXUML_STUDIO_HOST:host, NEXUML_STUDIO_PUBLIC_ORIGIN:hostedOrigin ?? ""}, stdio:"inherit", detached:process.platform !== "win32"});
+    await ready(`http://${host === "0.0.0.0" ? "127.0.0.1" : host}:${port}`, {}, uiChild, token);
+    console.log(`Studio ready: ${browserOrigin}`);
     if (!options["no-open"]) {
       const command = process.platform === "win32" ? "explorer.exe" : process.platform === "darwin" ? "open" : "xdg-open";
-      const browser = spawn(command, [origin], {stdio:"ignore"});
+      const browser = spawn(command, [browserOrigin], {stdio:"ignore"});
       browser.on("error", () => console.log("Open the Studio address in your browser."));
       browser.unref();
     }
@@ -169,7 +180,7 @@ export async function launch(options) {
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
     const options = argumentsFor(process.argv.slice(2));
-    if (options.help) console.log("nexuml-studio [directory] [--nexuml executable | --python interpreter | --api origin --api-token-file file] [--port number] [--api-port number] [--no-open]\nUses an existing NexuML with its api extra. Never installs or syncs Python packages. Trusted libraries/scenarios execute local Python, not sandboxed code.");
+    if (options.help) console.log("nexuml-studio [directory] [--nexuml executable | --python interpreter | --api origin --api-token-file file] [--port number] [--api-port number] [--host IPv4] [--public-origin https://host] [--no-open]\nHost/public origin also use NEXUML_STUDIO_HOST/NEXUML_STUDIO_PUBLIC_ORIGIN. Hosted mode requires an authenticated HTTPS reverse proxy; the API stays loopback-only.\nUses an existing NexuML with its api extra. Never installs or syncs Python packages. Trusted libraries/scenarios execute local Python, not sandboxed code.");
     else await launch(options);
   } catch (error) { console.error(`Studio: ${error.message}`); process.exitCode = 1; }
 }

@@ -38,7 +38,7 @@ An explicit Python interpreter invokes `-m nexuml.cli.main serve`; a uv-tool exe
 is invoked directly. Do not select an unrelated shell Python for an isolated uv tool.
 Custom libraries and the `api` extra must exist in **that installation**.
 
-The directory is filesystem context, not a Studio project. Both services bind to
+The directory is filesystem context, not a Studio project. By default both services bind to
 `127.0.0.1`; random unused ports are selected by default. Set `--port 3000 --api-port 8000`
 to choose explicit ports. `--no-open` suppresses automatic browser opening. Runtime
 identity is displayed, and an interface mismatch is an error, not a silent fallback.
@@ -61,6 +61,57 @@ startup. Prebuilt UI/assets/fonts ship in the npm package. Next's runtime/cache 
 private temporary copy, not writable package assets. The directory is removed at clean
 shutdown; after a crash, stale `nexuml-studio-*` temporary directories can be removed
 after confirming their services have stopped. Training records remain under NexuML logs.
+
+## Authenticated HTTPS website mode
+
+Local/offline mode needs no proxy, account or network access. To serve the same Studio
+through an existing authenticated HTTPS reverse proxy, opt in to one exact public origin:
+
+```sh
+nexuml-studio --port 3000 --public-origin https://studio.example --no-open /path/to/work
+# Optionally bind a specific private IPv4 interface instead of all interfaces:
+nexuml-studio --port 3000 --host 192.168.1.20 --public-origin https://studio.example --no-open /path/to/work
+```
+
+`NEXUML_STUDIO_PUBLIC_ORIGIN` and `NEXUML_STUDIO_HOST` supply the same settings; CLI flags
+take precedence. Without a public origin the UI defaults to `127.0.0.1`, and non-loopback
+binding is rejected. With a public origin the UI defaults to `0.0.0.0`. Host must be an
+IPv4 address; the public origin must be exact HTTPS, with no trailing slash, credentials,
+path, query or fragment. The printed/opened address is the public URL. Local access at
+`http://127.0.0.1:3000` still works when the chosen listen interface includes loopback.
+
+Configure NetBird (or your existing proxy) with **one `/` target to the UI port**,
+**Pass Host Header enabled**, WebSocket forwarding, HTTPS and authentication/access
+restrictions. Do not publish the Python API port or add an API proxy target. Restrict
+direct access to the UI port to the trusted proxy/private network; anyone admitted to
+Studio can obtain its runtime credential and invoke trusted local Python. This is a
+trusted-operator website, not a public or multi-tenant service. Studio does not configure
+NetBird or provide a login system.
+
+Browser HTTP and WS/WSS use `/api/v1` on the browser's own origin. The Next server forwards
+to the runtime-selected loopback API, preserving browser bearer/first-frame WebSocket
+authentication, replacing upstream Host/Origin with the configured loopback values and
+discarding cookies and forwarded-proxy metadata. Bootstrap never discloses the API URL.
+Actual Host, optional Origin and Fetch Metadata are checked; forwarded host/proto headers
+cannot grant access. The Python API still binds to loopback and validates its original
+local origin, token and interface version **2**. Attach mode still requires the API to
+allow the **local** UI origin, not the public HTTPS origin.
+
+For development, export the runtime settings and configure the Next listen host explicitly:
+
+```sh
+export NEXUML_STUDIO_ORIGIN=http://127.0.0.1:3000
+export NEXUML_STUDIO_API=http://127.0.0.1:8000
+export NEXUML_STUDIO_TOKEN="$(cat /private/token)"
+export NEXUML_STUDIO_PUBLIC_ORIGIN=https://studio.example
+export NEXUML_STUDIO_HOST=0.0.0.0
+npm run dev -- --hostname "$NEXUML_STUDIO_HOST" --port 3000
+```
+
+Start the selected API separately with local `--origin http://127.0.0.1:3000`. HMR allows
+only the explicit public hostname plus loopback, not a wildcard. Keep the same proxy
+access restrictions in development. Public origin and API port are runtime settings;
+there is no public API URL baked into the build.
 
 ## Configure → check → train → inspect
 
@@ -194,6 +245,9 @@ No automatic recovery, hosted collaboration, browser training or provisioning is
   installation. The launcher will not upgrade it.
 - **403/attach failure:** match `--origin`, Studio port, directory and private token.
   `localhost` and `127.0.0.1` are distinct origins.
+- **Hosted bootstrap/observations fail:** preserve the public Host header, match the exact
+  configured HTTPS origin and enable WebSocket forwarding. Do not solve this by relaxing
+  API origins or trusting `X-Forwarded-Host`/`X-Forwarded-Proto`.
 - **409 save:** an external file changed. Reload or save to a new path; no overwrite occurs.
 - **Busy:** wait for or stop the active local build/train/export. There is no queue.
 - **Ownership unknown after restart:** inspect retained logs/artifacts. Resume only from

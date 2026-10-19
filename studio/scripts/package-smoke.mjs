@@ -71,11 +71,12 @@ class Runtime(PipelineLayer):
   const before=await readFile(join(temporary,"package-lock.json"),"utf8");
   const environmentCheck=["-c","import hashlib,importlib.metadata,json; from pathlib import Path; import sys; records=[(d.metadata['Name'],d.version,hashlib.sha256(d.read_text('RECORD').encode()).hexdigest()) for d in importlib.metadata.distributions() if d.read_text('RECORD')]; cfg=Path(sys.prefix)/'pyvenv.cfg'; print(json.dumps([sorted(records),cfg.read_text() if cfg.exists() else None]))"];
   const beforePython=run(python,environmentCheck,{cwd:work,env});
-  const port=await freePort();const origin=`http://127.0.0.1:${port}`;
-  const launch=spawn(process.execPath,[join(installed,"bin/studio.mjs"),"--python",python,"--no-open","--port",String(port),work],{env,stdio:["ignore","pipe","pipe","ipc"]});children.push(launch);
+  const port=await freePort();const ownedApiPort=await freePort();const origin=`http://127.0.0.1:${port}`;
+  const launch=spawn(process.execPath,[join(installed,"bin/studio.mjs"),"--python",python,"--no-open","--port",String(port),"--api-port",String(ownedApiPort),work],{env,stdio:["ignore","pipe","pipe","ipc"]});children.push(launch);
   let output="";launch.stdout.on("data",chunk=>output+=chunk);launch.stderr.on("data",chunk=>output+=chunk);
   await wait(origin,launch);
   const runtime=await (await wait(`${origin}/api/runtime`,launch,{Host:`127.0.0.1:${port}`})).json();
+  assert.equal(runtime.api,origin,"Browser transport must use only the frontend origin");
   const identity=await (await fetch(`${runtime.api}/api/v1/runtime`,{headers:{Authorization:`Bearer ${runtime.token}`,Origin:origin}})).json();
   assert.equal(identity.working_directory,work);assert.equal(identity.interface_version,2);
   assert(!output.includes(runtime.token),"Token leaked to output");
@@ -85,7 +86,7 @@ class Runtime(PipelineLayer):
   const browser=await chromium.launch({headless:true});
   try {
     const page=await browser.newPage();
-    // Only the two loopback services are reachable: assets/font/UI work offline.
+   // Assets/font/API/WebSockets all use the same local frontend origin offline.
     await page.route("**/*",route=>["127.0.0.1","localhost"].includes(new URL(route.request().url()).hostname) ? route.continue() : route.abort());
     await page.goto(origin);await page.getByLabel("Config path",{exact:true}).fill("tiny.yaml");await page.getByRole("button",{name:"Open YAML",exact:true}).click();await page.getByLabel("Search components").waitFor();
     assert.equal(await page.locator("body").evaluate(element=>getComputedStyle(element).backgroundColor),"rgb(16, 16, 16)");
@@ -100,7 +101,7 @@ class Runtime(PipelineLayer):
   assert(savedConfig,"Browser did not persist ordinary YAML");
   run(python,["-m","nexuml.cli.main","build",join(work,savedConfig)],{cwd:work,env});
   await stop(launch);
-  const stopped=await fetch(`${runtime.api}/api/v1/runtime`,{headers:{Authorization:`Bearer ${runtime.token}`}}).then(()=>false,()=>true);
+   const stopped=await fetch(`http://127.0.0.1:${ownedApiPort}/api/v1/runtime`,{headers:{Authorization:`Bearer ${runtime.token}`}}).then(()=>false,()=>true);
   assert(stopped,"Owned API survived launcher shutdown");
   await access(join(work,"tiny.yaml"));
   assert(!output.includes("uv sync") && !output.includes("pip install") && !output.includes("next build"));
