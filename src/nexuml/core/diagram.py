@@ -352,7 +352,7 @@ def build_pipeline_mermaid_diagram(
         if hasattr(consumer_layer, "keys_in"):
             raw_keys_in = getattr(consumer_layer, "keys_in")
             if isinstance(raw_keys_in, dict):
-                keys_in = list(raw_keys_in.values())
+                keys_in = cast(list[str], list(raw_keys_in.values()))
             else:
                 keys_in = list(raw_keys_in)
 
