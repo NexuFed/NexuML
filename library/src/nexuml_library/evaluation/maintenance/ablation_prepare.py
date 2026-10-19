@@ -146,7 +146,6 @@ def feature_variants(
     return variants
 
 
-@torch.inference_mode()
 def extract_mimii_endpoints(
     source: MIMIIAcousticEndpointPairs,
     *,
@@ -191,18 +190,19 @@ def extract_mimii_endpoints(
             )
         ).to(device).eval()
     batches: list[Tensor] = []
-    for start in range(0, len(dataset), batch_size):
-        items = [dataset[i][0] for i in range(start, min(start + batch_size, len(dataset)))]
-        healthy = torch.stack([cast(Tensor, item["healthy_waveform"]) for item in items])
-        faulty = torch.stack([cast(Tensor, item["faulty_waveform"]) for item in items])
-        combined = torch.cat((healthy, faulty), dim=0).to(device)
-        if isinstance(encoder, FISHEREncoder):
-            vectors = encoder(combined)
-        else:
-            vectors = cast(Tensor, encoder.forward_tensor(combined))
-        flat = vectors.detach().flatten(1).float().cpu()
-        count = len(items)
-        batches.append(torch.stack((flat[:count], flat[count:]), dim=1))
+    with torch.inference_mode():
+        for start in range(0, len(dataset), batch_size):
+            items = [dataset[i][0] for i in range(start, min(start + batch_size, len(dataset)))]
+            healthy = torch.stack([cast(Tensor, item["healthy_waveform"]) for item in items])
+            faulty = torch.stack([cast(Tensor, item["faulty_waveform"]) for item in items])
+            combined = torch.cat((healthy, faulty), dim=0).to(device)
+            if isinstance(encoder, FISHEREncoder):
+                vectors = encoder(combined)
+            else:
+                vectors = cast(Tensor, encoder.forward_tensor(combined))
+            flat = vectors.detach().flatten(1).float().cpu()
+            count = len(items)
+            batches.append(torch.stack((flat[:count], flat[count:]), dim=1))
     if not batches:
         raise ValueError("MIMII feature dataset is empty")
     return torch.cat(batches), dataset.meta.to_dict(orient="records")
