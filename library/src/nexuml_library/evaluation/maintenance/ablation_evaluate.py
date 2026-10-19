@@ -34,11 +34,7 @@ def _flow(artifacts: RuntimeArtifacts) -> _FlowRuntime:
     Raises:
         ValueError: If the checkpoint is not a prepared-feature flow.
     """
-    matches = [
-        layer
-        for stage, _, layer in artifacts.pipeline.iter_layers()
-        if stage == "Flow"
-    ]
+    matches = [layer for stage, _, layer in artifacts.pipeline.iter_layers() if stage == "Flow"]
     if len(matches) != 1 or not isinstance(matches[0], _FlowRuntime):
         raise ValueError("Expected one trained Flow layer")
     return matches[0]
@@ -98,20 +94,15 @@ def evaluate_prepared_split(
         if not count:
             continue
         for time_value in _TIMES:
-            time = torch.full(
-                (count, 1), time_value, device=device, dtype=healthy.dtype
-            )
+            time = torch.full((count, 1), time_value, device=device, dtype=healthy.dtype)
             intermediate = healthy + time_value * velocity
             predicted = flow.velocity(intermediate, time)
             losses[time_value] += float(
                 (predicted - velocity).square().flatten(1).mean(dim=1).sum()
             )
-            zero_losses[time_value] += float(
-                velocity.square().flatten(1).mean(dim=1).sum()
-            )
+            zero_losses[time_value] += float(velocity.square().flatten(1).mean(dim=1).sum())
             mean_losses[time_value] += float(
-                (velocity - train_mean_velocity.to(device))
-                .square().flatten(1).mean(dim=1).sum()
+                (velocity - train_mean_velocity.to(device)).square().flatten(1).mean(dim=1).sum()
             )
         paths.append(transport_trajectory(flow, healthy).cpu())
         healthy_parts.append(healthy.cpu())
@@ -124,14 +115,13 @@ def evaluate_prepared_split(
     trajectory = torch.cat(paths)
     metrics = feature_metrics(source, target, trajectory, projections=projections, seed=seed)
     metrics["split"] = split
-    metrics["fixed_time_fm_mse"] = {
-        str(time): losses[time] / n for time in _TIMES
-    }
+    metrics["fixed_time_fm_mse"] = {str(time): losses[time] / n for time in _TIMES}
     metrics["zero_velocity_mse"] = sum(zero_losses.values()) / (n * len(_TIMES))
     metrics["train_mean_velocity_mse"] = sum(mean_losses.values()) / (n * len(_TIMES))
     metrics["relative_mse_reduction_vs_zero"] = (
         1.0 - sum(losses.values()) / sum(zero_losses.values())
-        if sum(zero_losses.values()) else None
+        if sum(zero_losses.values())
+        else None
     )
     metrics["training_mean_shift_swd"] = sliced_wasserstein(
         source + train_mean_velocity,
@@ -141,7 +131,6 @@ def evaluate_prepared_split(
     )
     metrics["num_samples"] = n
     return metrics
-
 
 
 @torch.no_grad()
@@ -192,10 +181,7 @@ def evaluate_training_distribution(
     faulty = endpoints[:, 1].cpu()
     flow = _flow(artifacts)
     transported = torch.cat(
-        [
-            flow.sample(chunk.to(device)).detach().cpu()
-            for chunk in healthy.split(batch_size)
-        ],
+        [flow.sample(chunk.to(device)).detach().cpu() for chunk in healthy.split(batch_size)],
         dim=0,
     )
 
