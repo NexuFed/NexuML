@@ -241,9 +241,7 @@ def test_ablation_trainer_never_calls_automatic_test(
         def __init__(self) -> None:
             self.trainer = SimpleNamespace(
                 global_step=16,
-                callbacks=[
-                    SaveLatestEpoch(tmp_path / "checkpoints" / "variant-seed7-mlp-128x128")
-                ],
+                callbacks=[SaveLatestEpoch(tmp_path / "checkpoints" / "variant-seed7-mlp-128x128")],
             )
 
         @classmethod
@@ -307,6 +305,7 @@ def test_ablation_factory_is_explicit_and_scenario_file_uses_environment(
     flow_definition = built.pipeline.stages["Flow"][0].component
     assert isinstance(flow_definition, Flow)
     assert flow_definition.hidden_dims == [16, 16]
+
 
 def test_training_rejects_stale_checkpoint(tmp_path: Path) -> None:
     """Reject an old last.ckpt before publishing validation results."""
