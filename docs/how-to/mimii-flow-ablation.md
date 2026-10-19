@@ -274,9 +274,10 @@ Each report now includes `training_best` and `training_last`: pairing-invariant
 SWD over **all training recordings**, along with `by_machine` SWD for
 `id_00` and `id_02`. These diagnostics use the same Euler integrator,
 seeded projection count and initial/terminal SWD definition as validation.
-Training metrics never affect checkpoint selection. Neither evaluator
-reads the test partition unless `--include-test` is explicitly supplied;
-the comparison command rejects unsealed reports.
+Training metrics never affect checkpoint selection. The prepared
+artifact includes all splits, but test metrics are computed only when
+`--include-test` is explicitly supplied. The comparison command rejects
+reports that contain test metrics or are marked unsealed.
 
 The comparison validates matching preparation provenance, MLP widths,
 and source/target distribution baselines. Compare relative SWD improvement
