@@ -56,7 +56,9 @@ class _FakeFISHER(nn.Module):
 
 
 @pytest.fixture
-def fake_huggingface(monkeypatch: pytest.MonkeyPatch) -> tuple[list[dict[str, Any]], list[_FakeFISHER]]:
+def fake_huggingface(
+    monkeypatch: pytest.MonkeyPatch,
+) -> tuple[list[dict[str, Any]], list[_FakeFISHER]]:
     """Replace Transformers loading with an offline fake checkpoint.
 
     Returns:
@@ -74,7 +76,7 @@ def fake_huggingface(monkeypatch: pytest.MonkeyPatch) -> tuple[list[dict[str, An
             return model
 
     stub = ModuleType("transformers")
-    stub.AutoModel = FakeAutoModel  # type: ignore[attr-defined]
+    setattr(stub, "AutoModel", FakeAutoModel)
     monkeypatch.setitem(sys.modules, "transformers", stub)
     return options, backbones
 
