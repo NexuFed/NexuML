@@ -7,7 +7,13 @@ from pydantic import model_validator
 
 from nexuml.core.components import EnvironmentBuildContext, EnvironmentDefinition
 from nexuml.core.discovery import environment
-from nexuml.core.types import InteractionContract, ReinforcementLearningSpec, TensorFieldContract
+from nexuml.core.types import (
+    InteractionContract,
+    PhysicalSystemContract,
+    PhysicalTensorContract,
+    ReinforcementLearningSpec,
+    TensorFieldContract,
+)
 
 if TYPE_CHECKING:
     from nexuml.interaction.runtime import EnvironmentRuntime
@@ -78,14 +84,40 @@ class IsaacLabEnvironment(EnvironmentDefinition):
 
     def describe(self) -> InteractionContract:
         obs_size, action_size, period, observation_description, mapping = _TASK_PROFILES[self.task]
+        observation_physical = action_physical = system_physical = None
         if (
             self.task == "NexuML-SO101-Joint-Reach"
             and self.revision == "70ab24fec3eabf51222817db0cdb5a4e7133bd7e"
         ):
-            from ._isaaclab_so101 import ASSET_LAYER_SHA256, ASSET_SOURCE
+            from ._isaaclab_so101 import (
+                ASSET_LAYER_SHA256,
+                ASSET_MANIFEST_ID,
+                ASSET_SOURCE,
+                JOINT_NAMES,
+            )
 
             mapping += (
                 f" Asset={ASSET_SOURCE}; sha256={ASSET_LAYER_SHA256['so101_new_calib.usda']}."
+            )
+            observation_physical = PhysicalTensorContract(
+                units=("rad",) * 5 + ("rad/s",) * 5 + ("rad",) * 5,
+                frame="robot_joint",
+                joints=JOINT_NAMES * 3,
+                sensor_id="simulation:joint-state-and-task-goal",
+            )
+            action_physical = PhysicalTensorContract(
+                units=("rad",),
+                frame="robot_joint",
+                joints=JOINT_NAMES,
+                control_mode="absolute_position",
+                scale=(0.5,),
+                offset=(0.0,),
+            )
+            system_physical = PhysicalSystemContract(
+                embodiment_id="simulation:so101-calibrated-fixed-gripper",
+                asset_source=ASSET_SOURCE,
+                asset_id=ASSET_MANIFEST_ID,
+                calibration_id="simulation:usd-authored-joint-zero",
             )
         return InteractionContract(
             observations={
@@ -94,6 +126,7 @@ class IsaacLabEnvironment(EnvironmentDefinition):
                     dtype="float32",
                     modality="vector",
                     description=observation_description,
+                    physical=observation_physical,
                 )
             },
             actions={
@@ -107,11 +140,13 @@ class IsaacLabEnvironment(EnvironmentDefinition):
                         f"task={self.task}; revision={self.revision}; physics={self.physics}; "
                         f"normalized dimensionless [-1, 1] controls; period={period} s. {mapping}"
                     ),
+                    physical=action_physical,
                 )
             },
             action_space="continuous",
             num_envs=1,
             control_period_s=period,
+            physical=system_physical,
         )
 
     def validate_training(

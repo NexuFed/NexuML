@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
-from math import prod
+from math import isclose, prod
 from typing import TYPE_CHECKING, Annotated, Any, Literal, Self, cast
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -147,6 +147,45 @@ class PipelineSpec(SpecModel):
     stages: dict[str, list[LayerSpec]] = Field(default_factory=dict)
 
 
+class PhysicalTensorContract(SpecModel):
+    """Versioned physical interpretation; tensor values retain their numeric bounds."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, allow_inf_nan=False)
+
+    schema_version: Literal[1] = 1
+    units: tuple[Annotated[str, Field(min_length=1, pattern=r"\S")], ...] = Field(min_length=1)
+    frame: str = Field(min_length=1, pattern=r"\S")
+    joints: tuple[Annotated[str, Field(min_length=1, pattern=r"\S")], ...] = ()
+    control_mode: Literal["effort", "absolute_position", "relative_position"] | None = None
+    scale: tuple[float, ...] | None = None
+    offset: tuple[float, ...] | None = None
+    sensor_id: str | None = Field(default=None, min_length=1, pattern=r"\S")
+
+    @model_validator(mode="after")
+    def validate_control(self) -> Self:
+        if self.control_mode is None and (self.scale is not None or self.offset is not None):
+            raise ValueError("Physical action scale/offset requires an explicit control mode")
+        if self.control_mode is not None and (not self.joints or self.scale is None):
+            raise ValueError("Physical control requires ordered joints and an explicit scale")
+        if self.control_mode is not None and len(self.joints) != len(set(self.joints)):
+            raise ValueError("Physical action joints must be unique and ordered")
+        if self.scale is not None and any(value == 0 for value in self.scale):
+            raise ValueError("Physical action scale must be nonzero")
+        return self
+
+
+class PhysicalSystemContract(SpecModel):
+    """Declared identity, not proof of real hardware calibration or safety."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    schema_version: Literal[1] = 1
+    embodiment_id: str = Field(min_length=1, pattern=r"\S")
+    asset_source: str = Field(min_length=1, pattern=r"\S")
+    asset_id: str = Field(min_length=1, pattern=r"\S")
+    calibration_id: str = Field(min_length=1, pattern=r"\S")
+
+
 class TensorFieldContract(SpecModel):
     """Portable tensor leaf; shape excludes environment and inference batch axes."""
 
@@ -160,6 +199,7 @@ class TensorFieldContract(SpecModel):
     num_values: int | None = Field(default=None, gt=0)
     rate_hz: float | None = Field(default=None, gt=0)
     description: str | None = None
+    physical: PhysicalTensorContract | None = None
 
     @model_validator(mode="after")
     def validate_bounds(self) -> Self:
@@ -173,6 +213,14 @@ class TensorFieldContract(SpecModel):
             high = self.high if isinstance(self.high, list) else [self.high] * size
             if any(lo >= hi for lo, hi in zip(low, high, strict=True)):
                 raise ValueError("low must be less than high for every tensor element")
+        if self.physical is not None:
+            width = self.shape[-1] if self.shape else 1
+            for name in ("units", "scale", "offset"):
+                values = getattr(self.physical, name)
+                if values is not None and len(values) not in (1, width):
+                    raise ValueError(f"Physical {name} must have one or {width} values")
+            if self.physical.joints and len(self.physical.joints) != width:
+                raise ValueError(f"Physical joint order must contain {width} names")
         return self
 
 
@@ -186,6 +234,7 @@ class InteractionContract(SpecModel):
     action_space: Literal["continuous", "discrete", "multi_discrete", "structured"]
     num_envs: int = Field(default=1, gt=0)
     control_period_s: float | None = Field(default=None, gt=0)
+    physical: PhysicalSystemContract | None = None
 
     @model_validator(mode="after")
     def validate_keys(self) -> Self:
@@ -194,6 +243,14 @@ class InteractionContract(SpecModel):
                 raise ValueError("interaction field keys must be nonempty")
         if self.observations.keys() & self.actions.keys():
             raise ValueError("observation and action keys must be distinct")
+        for field in self.actions.values():
+            if (
+                field.physical is not None
+                and field.rate_hz is not None
+                and self.control_period_s is not None
+                and not isclose(field.rate_hz * self.control_period_s, 1.0)
+            ):
+                raise ValueError("Physical action rate must agree with the control period")
         return self
 
 

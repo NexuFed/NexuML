@@ -55,7 +55,7 @@ The user-selected LeRobot additions require complete Diffusion Policy and resour
 
 ## 3. Physical, multimodal and temporal policy contracts
 
-- [ ] 3.1 Map the five foundation contracts to existing types and add only concrete physical metadata gaps; verify serialization and negative tests for joint order, units, frames, control mode/rate, sensors, bounds and calibration identity.
+- [x] 3.1 Map the five foundation contracts to existing types and add only concrete physical metadata gaps; verify serialization and negative tests for joint order, units, frames, control mode/rate, sensors, bounds and calibration identity.
 - [ ] 3.2 Extend existing compile input metadata for multimodal/sequence axes without flattening time or agent identity incorrectly; verify static shape tests and unchanged ordinary supervised/stateless policy behavior.
 - [ ] 3.3 Add registered image/language/normalization processor adapters producing explicit tensor inputs; verify camera ordering, token/mask behavior, processor identity and no weight download during discovery/config resolution.
 - [ ] 3.4 Extend the existing complete policy with explicit initial-state and step/reset execution; verify caller-owned recurrent/latent/chunk state, batch isolation, partial resets, action stride and unchanged stateless calls.

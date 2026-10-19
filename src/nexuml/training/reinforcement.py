@@ -20,7 +20,12 @@ from nexuml.core.components import EnvironmentBuildContext, RLAlgorithmBuildCont
 from nexuml.core.policy import CompiledPolicy
 from nexuml.core.config import ResolvedConfig
 from nexuml.core.serialization import lower_model, restore_model_data
-from nexuml.core.types import RLEvaluationSpec, ReinforcementLearningSpec, ScenarioSpec
+from nexuml.core.types import (
+    InteractionContract,
+    RLEvaluationSpec,
+    ReinforcementLearningSpec,
+    ScenarioSpec,
+)
 from nexuml.reinforcement.collector import (
     RolloutDataset,
     build_collector,
@@ -233,12 +238,17 @@ def _evaluation_state(policy, seed):
 
 
 def _validate_evaluation_contract(policy_contract, actual):
+    # Inference archives own isolated model classes and may predate optional metadata.
+    policy_contract = InteractionContract.model_validate(lower_model(policy_contract))
+    actual = InteractionContract.model_validate(lower_model(actual))
     if actual.num_envs != 1:
         raise ValueError("Evaluation requires a single unbatched environment")
     if actual.action_space != policy_contract.action_space:
         raise ValueError("Evaluation action-space semantics do not match the policy")
     if actual.control_period_s != policy_contract.control_period_s:
         raise ValueError("Evaluation control period does not match the policy")
+    if policy_contract.physical is not None and actual.physical != policy_contract.physical:
+        raise ValueError("Evaluation physical system identity does not match the policy")
     for role in ("observations", "actions"):
         expected_fields = getattr(policy_contract, role)
         actual_fields = getattr(actual, role)
@@ -249,6 +259,8 @@ def _validate_evaluation_contract(policy_contract, actual):
             fields = ("shape", "dtype", "modality", "num_values")
             if role == "actions":
                 fields += ("low", "high", "rate_hz", "description")
+            if expected.physical is not None:
+                fields += ("physical",)
             if found is None or any(
                 getattr(found, name) != getattr(expected, name) for name in fields
             ):

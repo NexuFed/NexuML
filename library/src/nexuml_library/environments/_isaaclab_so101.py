@@ -2,6 +2,7 @@
 
 from importlib import import_module
 from hashlib import sha256
+import json
 import math
 from typing import Any, cast
 
@@ -53,6 +54,12 @@ ASSET_LAYER_SHA256 = {
         "19b6e7dc1331d76ccec313ae6f17d53acb64f74e9bcd7bde2180c5e03f615ac8"
     ),
 }
+ASSET_MANIFEST_ID = (
+    "sha256:"
+    + sha256(
+        json.dumps(ASSET_LAYER_SHA256, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+)
 JOINT_LIMITS = (
     (-1.919859886, 1.919859886),
     (-1.745329857, 1.745329857),

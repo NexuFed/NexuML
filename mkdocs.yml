@@ -122,6 +122,7 @@ nav:
     - Mental model: learn/mental-model.md
     - Architecture: explanation/architecture.md
     - TensorDict data flow: explanation/tensordict.md
+    - Physical policy meaning: explanation/physical-contracts.md
     - Scenarios and configuration: learn/scenarios.md
     - Components and discovery: learn/decorators-and-discovery.md
     - Coming from Lightning: learn/from-lightning.md
