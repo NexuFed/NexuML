@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import hashlib
-import shutil
 import tempfile
 import zipfile
 from pathlib import Path
@@ -91,8 +90,10 @@ def _has_machine_ids(root: Path, machine_type: str) -> bool:
     Returns:
         True if a MIMII machine directory with IDs already exists.
     """
-    return any(candidate.is_dir() and any(candidate.glob("id_*")) for candidate in
-               (root, root / machine_type))
+    return any(
+        candidate.is_dir() and any(candidate.glob("id_*"))
+        for candidate in (root, root / machine_type)
+    )
 
 
 def ensure_mimii(
