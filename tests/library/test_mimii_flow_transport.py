@@ -10,9 +10,12 @@ import numpy as np
 import pytest
 import torch
 from torch import Tensor
+from lightning.pytorch import Trainer
+from lightning.pytorch.callbacks import ModelCheckpoint
 
 from nexuml.training.lightning import create_runtime_artifacts
 from nexuml_library.evaluation.maintenance.flow_transport import (
+    evaluate_checkpoints,
     evaluate_split,
     feature_metrics,
     read_tensorboard_losses,
@@ -184,6 +187,57 @@ def test_checkpoint_independent_real_acoustic_validation_and_test(
     assert len(val["trajectory"]) == 5
     with pytest.raises(ValueError, match="Only val and test"):
         evaluate_split(artifacts, split="train", device=torch.device("cpu"))
+
+
+def test_trained_checkpoint_evaluation_restores_and_scores_real_format_audio(
+    tmp_path: Path,
+) -> None:
+    root = _machine_fixture(tmp_path / "data")
+    checkpoint_dir = tmp_path / "ckpt"
+    output_dir = tmp_path / "evaluation"
+    scenario = mimii_acoustic_flow(
+        root=root,
+        download=False,
+        clip_num_samples=512,
+        n_fft=128,
+        hop_length=64,
+        n_mels=8,
+        hidden_dims=[8],
+        num_steps=2,
+        batch_size=2,
+        max_epochs=1,
+        num_workers=0,
+        checkpoint_dir=str(checkpoint_dir),
+    )
+    runtime = create_runtime_artifacts(scenario)
+    trainer = Trainer(
+        max_epochs=1,
+        logger=False,
+        enable_progress_bar=False,
+        enable_model_summary=False,
+        callbacks=[
+            ModelCheckpoint(
+                dirpath=checkpoint_dir,
+                monitor="val/loss",
+                mode="min",
+                save_top_k=1,
+                save_last=True,
+            )
+        ],
+    )
+    trainer.fit(runtime.lightning_module, datamodule=runtime.data_module)
+    report = evaluate_checkpoints(
+        checkpoint_dir,
+        output_dir,
+        device="cpu",
+        projections=8,
+        plots=False,
+    )
+    assert (output_dir / "metrics.json").is_file()
+    assert report["validation_best"]["num_samples"] == 2
+    assert report["validation_last"]["num_samples"] == 2
+    assert report["held_out_test_best"]["num_samples"] == 2
+    assert np.isfinite(report["held_out_test_best"]["fixed_time_fm_mse"])
 
 
 def test_tensorboard_reader_accepts_one_explicit_run(tmp_path: Path) -> None:
