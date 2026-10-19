@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -15,6 +16,7 @@ from nexuml_library.data.maintenance.prepared_endpoints import (
     read_prepared_artifact,
 )
 from nexuml_library.evaluation.maintenance import ablation_train
+from nexuml_library.evaluation.maintenance.ablation_checkpoint import SaveLatestEpoch
 from nexuml_library.evaluation.maintenance.ablation_evaluate import (
     evaluate_prepared_split,
 )
@@ -236,6 +238,16 @@ def test_ablation_trainer_never_calls_automatic_test(
     operations: list[str] = []
 
     class FakeSession:
+        def __init__(self) -> None:
+            self.trainer = SimpleNamespace(
+                global_step=16,
+                callbacks=[
+                    SaveLatestEpoch(
+                        tmp_path / "checkpoints" / "variant-seed7-mlp-128x128"
+                    )
+                ],
+            )
+
         @classmethod
         def from_scenario(cls, spec: Any, **kwargs: Any) -> FakeSession:
             assert spec.name.startswith("mimii_acoustic_ablation")
@@ -247,6 +259,9 @@ def test_ablation_trainer_never_calls_automatic_test(
 
         def fit(self) -> FakeSession:
             operations.append("fit")
+            checkpoint_path = self.trainer.callbacks[0].path
+            checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
+            torch.save({"epoch": 0, "global_step": 16}, checkpoint_path)
             return self
 
         def validate(self) -> list[dict[str, float]]:
@@ -294,3 +309,11 @@ def test_ablation_factory_is_explicit_and_scenario_file_uses_environment(
     flow_definition = built.pipeline.stages["Flow"][0].component
     assert isinstance(flow_definition, Flow)
     assert flow_definition.hidden_dims == [16, 16]
+
+def test_training_rejects_stale_checkpoint(tmp_path: Path) -> None:
+    """Reject an old last.ckpt before publishing validation results."""
+    callback = SaveLatestEpoch(tmp_path)
+    torch.save({"epoch": 0, "global_step": 16}, callback.path)
+    trainer: Any = SimpleNamespace(global_step=416, callbacks=[callback])
+    with pytest.raises(RuntimeError, match="Stale"):
+        ablation_train.verify_latest_checkpoint(trainer)
