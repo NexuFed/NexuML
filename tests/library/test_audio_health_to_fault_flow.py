@@ -281,9 +281,11 @@ def test_pcm_wav_decodes_without_torchcodec(
     ].tolist()
     assert matching
     x, _ = runtime[int(matching[0])]
-    assert x["healthy_waveform"].dtype == torch.float32
-    assert x["healthy_waveform"].shape == (16,)
-    assert torch.allclose(x["healthy_waveform"], torch.zeros(16))
+    waveform = x["healthy_waveform"]
+    assert isinstance(waveform, torch.Tensor)
+    assert waveform.dtype == torch.float32
+    assert waveform.shape == (16,)
+    assert torch.allclose(waveform, torch.zeros(16))
 
 
 def test_invalid_wav_container_is_rejected(tmp_path: Path) -> None:
