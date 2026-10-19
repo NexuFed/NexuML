@@ -23,6 +23,7 @@ from nexuml_library.evaluation.maintenance.ablation_prepare import (
     feature_variants,
     training_normalizer,
 )
+from nexuml_library.layers.model.flow import Flow
 from nexuml_library.scenarios.flow.mimii_acoustic_ablation import (
     mimii_acoustic_ablation,
 )
@@ -154,8 +155,12 @@ def test_scenario_compiles_without_fisher_download_and_round_trips(tmp_path: Pat
         checkpoint_root=tmp_path / "checkpoints",
     )
     assert "AudioFeatures" not in scenario.pipeline.stages
-    assert scenario.pipeline.stages["Flow"][0].component.hidden_dims == [16, 16]
-    assert "fisher-ot-standardized" in scenario.callbacks[0].kwargs["dirpath"]
+    flow_definition = scenario.pipeline.stages["Flow"][0].component
+    assert isinstance(flow_definition, Flow)
+    assert flow_definition.hidden_dims == [16, 16]
+    checkpoint_dir = scenario.callbacks[0].kwargs["dirpath"]
+    assert isinstance(checkpoint_dir, str)
+    assert "fisher-ot-standardized" in checkpoint_dir
     parsed = ResolvedConfig.from_yaml(ResolvedConfig.from_scenario(scenario).to_yaml())
     assert parsed.data.input_shapes["healthy_spectrum"] == [2]
     artifacts = create_runtime_artifacts(scenario)
@@ -286,4 +291,6 @@ def test_ablation_factory_is_explicit_and_scenario_file_uses_environment(
     monkeypatch.setenv("NEX233_FLOW_WIDTH", "16")
     built = ablation_scenario_file()
     assert built.name.startswith("mimii_acoustic_ablation")
-    assert built.pipeline.stages["Flow"][0].component.hidden_dims == [16, 16]
+    flow_definition = built.pipeline.stages["Flow"][0].component
+    assert isinstance(flow_definition, Flow)
+    assert flow_definition.hidden_dims == [16, 16]
