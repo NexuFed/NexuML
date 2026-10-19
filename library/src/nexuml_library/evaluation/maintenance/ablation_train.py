@@ -57,9 +57,7 @@ def train_ablation(
             "use a different run root instead of mixing training runs."
         )
     L.seed_everything(seed, workers=True)
-    session = NexuSession.from_scenario(
-        spec, accelerator=accelerator, devices=1,
-    )
+    session = NexuSession.from_scenario(spec, accelerator=accelerator, devices=1)
     session.setup().fit()
     session.validate()
     print(f"Training finished. Checkpoints: {checkpoint_dir}")
@@ -71,7 +69,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--prepared-file", type=Path, required=True)
     parser.add_argument(
-        "--checkpoint-root", type=Path,
+        "--checkpoint-root",
+        type=Path,
         default=Path(".experiments/checkpoints/nex233-ablation"),
     )
     parser.add_argument("--width", type=int, choices=(128, 512), default=128)
@@ -82,9 +81,14 @@ def main() -> None:
     parser.add_argument("--accelerator", choices=("auto", "cpu", "gpu"), default="auto")
     args = parser.parse_args()
     train_ablation(
-        args.prepared_file, checkpoint_root=args.checkpoint_root,
-        width=args.width, lr=args.lr, max_epochs=args.max_epochs,
-        batch_size=args.batch_size, seed=args.seed, accelerator=args.accelerator,
+        args.prepared_file,
+        checkpoint_root=args.checkpoint_root,
+        width=args.width,
+        lr=args.lr,
+        max_epochs=args.max_epochs,
+        batch_size=args.batch_size,
+        seed=args.seed,
+        accelerator=args.accelerator,
     )
 
 
