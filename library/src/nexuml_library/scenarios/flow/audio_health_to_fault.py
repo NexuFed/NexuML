@@ -66,13 +66,13 @@ def audio_health_to_fault_flow(
     if clip_num_samples < n_fft:
         raise ValueError("clip_num_samples must be at least n_fft")
     roots = data_roots if data_roots is not None else ["data/maintenance/audio_endpoints"]
-    mel = {
-        "sample_rate": sample_rate,
-        "n_fft": n_fft,
-        "hop_length": hop_length,
-        "n_mels": n_mels,
-        "fmax": sample_rate // 2,
-    }
+    mel = LMBE(
+        sample_rate=sample_rate,
+        n_fft=n_fft,
+        hop_length=hop_length,
+        n_mels=n_mels,
+        fmax=sample_rate // 2,
+    )
 
     return ScenarioSpec(
         name="audio_health_to_fault_flow",
@@ -80,12 +80,12 @@ def audio_health_to_fault_flow(
             stages={
                 "AudioFeatures": [
                     LayerSpec(
-                        component=LMBE(**mel),
+                        component=mel,
                         keys_in=["healthy_waveform"],
                         keys_out=["healthy_spectrum"],
                     ),
                     LayerSpec(
-                        component=LMBE(**mel),
+                        component=mel,
                         keys_in=["faulty_waveform"],
                         keys_out=["faulty_spectrum"],
                     ),
