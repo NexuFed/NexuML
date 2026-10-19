@@ -89,6 +89,8 @@ def _train(task, stage, root):
     output.mkdir(parents=True, exist_ok=True)
     factory = {
         "cartpole": isaac_cartpole_ppo,
+        "cartpole-newton": isaac_cartpole_ppo,
+        "cartpole-direct": isaac_cartpole_ppo,
         "franka": isaac_franka_reach_ppo,
         "so101": isaac_so101_joint_reach_ppo,
     }[task]
@@ -105,6 +107,13 @@ def _train(task, stage, root):
         scenario = factory(
             total_frames=193 if stage == "rounded" else 256, frames_per_batch=128, num_envs=8
         )
+        if task in {"cartpole-newton", "cartpole-direct"}:
+            from nexuml_library.environments.isaaclab import IsaacLabEnvironment
+
+            scenario.interaction.environment = IsaacLabEnvironment(
+                task="Isaac-Cartpole-Direct" if task == "cartpole-direct" else "Isaac-Cartpole",
+                physics="newton_mjwarp",
+            )
         scenario.training.algorithm = scenario.training.algorithm.model_copy(
             update={"update_epochs": 1, "minibatch_size": 64}
         )
@@ -199,7 +208,7 @@ def _train(task, stage, root):
     assert int(module.frames) == 256 and int(module.batches) == 2
     assert all(torch.isfinite(value).all() for value in result.trainer.logged_metrics.values())
     if stage == "complete":
-        assert not shapes and runtime._process_app is None
+        assert not shapes and runtime._process_launcher is None and runtime._active_runtime is None
         print("COMPLETED_BUDGET_NO_SIMULATOR", flush=True)
     else:
         assert len(shapes) == (1 if stage == "resume" else 2)
@@ -233,7 +242,7 @@ def _train(task, stage, root):
                 "rollouts": shapes,
                 "collected_after_batches": collected_after,
                 "logger_status": finalized,
-                "process_app_allocated": runtime._process_app is not None,
+                "process_launcher_allocated": runtime._process_launcher is not None,
             }
         ),
         flush=True,
@@ -286,6 +295,23 @@ def _cancel_replay(root):
     runpy.run_module("nexuml", run_name="__main__", alter_sys=True)
 
 
+def _cancel_native():
+    import asyncio
+
+    from nexuml.core.components import EnvironmentBuildContext
+    from nexuml_library.environments.isaaclab import IsaacLabEnvironment
+
+    runtime = IsaacLabEnvironment().build(
+        EnvironmentBuildContext(purpose="eval", device="cuda:0", num_envs=1, seed=17)
+    )
+    try:
+        runtime.reset()
+    finally:
+        runtime.close()
+    print("NATIVE_RUNTIME_CLOSED_BEFORE_ASYNC_CANCEL", flush=True)
+    raise asyncio.CancelledError()
+
+
 if __name__ == "__main__":
     reference, phase, directory = sys.argv[1:]
     task_root = Path(directory) / reference
@@ -293,5 +319,7 @@ if __name__ == "__main__":
         _infer(task_root / "resume")
     elif phase == "cancel-replay":
         _cancel_replay(task_root)
+    elif phase == "cancel-native":
+        _cancel_native()
     else:
         _train(reference, phase, task_root)

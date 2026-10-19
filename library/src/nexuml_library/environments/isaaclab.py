@@ -3,6 +3,7 @@
 from typing import TYPE_CHECKING, Literal
 
 import torch
+from pydantic import model_validator
 
 from nexuml.core.components import EnvironmentBuildContext, EnvironmentDefinition
 from nexuml.core.discovery import environment
@@ -18,6 +19,13 @@ _TASK_PROFILES: dict[str, tuple[int, int, float, str, str]] = {
         1,
         1 / 60,
         "Pinned Cartpole state-only policy observations.",
+        "Joint order: slider_to_cart; continuous joint effort = 100 * action N.",
+    ),
+    "Isaac-Cartpole-Direct": (
+        4,
+        1,
+        1 / 60,
+        "Relative cart/pole positions followed by relative cart/pole velocities.",
         "Joint order: slider_to_cart; continuous joint effort = 100 * action N.",
     ),
     "Isaac-Reach-Franka": (
@@ -47,13 +55,26 @@ _TASK_PROFILES: dict[str, tuple[int, int, float, str, str]] = {
 class IsaacLabEnvironment(EnvironmentDefinition):
     """Immutable candidate profile; description is not native compatibility proof."""
 
-    task: Literal["Isaac-Cartpole", "Isaac-Reach-Franka", "NexuML-SO101-Joint-Reach"] = (
-        "Isaac-Cartpole"
-    )
-    revision: Literal["ae37b028ea415c91ea2bc32609efcd759ed2b974"] = (
-        "ae37b028ea415c91ea2bc32609efcd759ed2b974"
-    )
-    physics: Literal["isaacsim_physx"] = "isaacsim_physx"
+    task: Literal[
+        "Isaac-Cartpole", "Isaac-Cartpole-Direct", "Isaac-Reach-Franka", "NexuML-SO101-Joint-Reach"
+    ] = "Isaac-Cartpole"
+    revision: Literal[
+        "ae37b028ea415c91ea2bc32609efcd759ed2b974",
+        "70ab24fec3eabf51222817db0cdb5a4e7133bd7e",
+    ] = "70ab24fec3eabf51222817db0cdb5a4e7133bd7e"
+    physics: Literal["isaacsim_physx", "newton_mjwarp", "ovphysx"] = "isaacsim_physx"
+
+    @model_validator(mode="after")
+    def _validate_profile(self):
+        if self.revision == "ae37b028ea415c91ea2bc32609efcd759ed2b974" and (
+            self.physics != "isaacsim_physx" or self.task == "Isaac-Cartpole-Direct"
+        ):
+            raise ValueError("Legacy Isaac artifacts retain their original task/PhysX profile")
+        if self.task == "NexuML-SO101-Joint-Reach" and self.physics != "isaacsim_physx":
+            raise ValueError(
+                "SO-101 joint reach requires its validated PhysX asset/control profile"
+            )
+        return self
 
     def describe(self) -> InteractionContract:
         obs_size, action_size, period, observation_description, mapping = _TASK_PROFILES[self.task]

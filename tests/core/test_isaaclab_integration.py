@@ -37,7 +37,21 @@ def _run(args, output, label, *, expected=0, process_scope=True):
     return result.stdout
 
 
-@pytest.mark.parametrize("reference", ["cartpole", "franka", "so101"])
+@pytest.mark.parametrize("task", ["Isaac-Cartpole", "Isaac-Cartpole-Direct"])
+@pytest.mark.parametrize("physics", ["newton_mjwarp", "isaacsim_physx", "ovphysx"])
+def test_native_manager_and_direct_transition_oracle(tmp_path, task, physics):
+    log = _run(
+        [ROOT / "tests/fixtures/isaaclab_transitions.py", task, physics],
+        tmp_path,
+        "transitions",
+    )
+    assert log.count("NATIVE_TRANSITION_GAE") == 7
+    assert "NATIVE_ADAPTER_TRANSITIONS_VERIFIED" in log
+
+
+@pytest.mark.parametrize(
+    "reference", ["cartpole", "cartpole-newton", "cartpole-direct", "franka", "so101"]
+)
 def test_native_checkpoint_remaining_budget_export_and_scalar_replay(tmp_path, reference):
     for stage in ("interrupt", "resume", "complete", "infer"):
         log = _run(
@@ -81,10 +95,17 @@ def test_native_frame_budget_counts_rounded_actual_transitions(tmp_path):
     assert '"frames": 256' in log and '"collected_after_batches": [0, 1]' in log
 
 
-def test_native_sigterm_finalizes_failed_logger_before_fast_close(tmp_path):
-    log = _run([JOB, "cartpole", "terminate", tmp_path], tmp_path, "sigterm", expected=143)
+@pytest.mark.parametrize("reference", ["cartpole", "cartpole-newton"])
+def test_native_sigterm_finalizes_failed_logger_before_owned_shutdown(tmp_path, reference):
+    log = _run([JOB, reference, "terminate", tmp_path], tmp_path, "sigterm", expected=143)
     assert "INTERRUPTED_CHECKPOINT_AND_FAILED_LOGGER_FINALIZED" in log
-    assert "SimulationContext cleared" in log
+    if reference == "cartpole":
+        assert "SimulationContext cleared" in log
+
+
+def test_native_kit_async_cancellation_cannot_exit_successfully(tmp_path):
+    log = _run([JOB, "cartpole", "cancel-native", tmp_path], tmp_path, "async-cancel", expected=1)
+    assert "NATIVE_RUNTIME_CLOSED_BEFORE_ASYNC_CANCEL" in log and "CancelledError" in log
 
 
 def test_native_recorded_replay_sigterm_never_marks_mlflow_success(tmp_path):

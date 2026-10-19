@@ -42,7 +42,7 @@ from nexuml_library.scenarios.reinforcement.isaaclab import (
 )
 
 
-_REVISION = "ae37b028ea415c91ea2bc32609efcd759ed2b974"
+_REVISION = "70ab24fec3eabf51222817db0cdb5a4e7133bd7e"
 _REFERENCES = [
     (isaac_cartpole_ppo, "isaac-cartpole-ppo", "Isaac-Cartpole", 4, 1, 1 / 60),
     (isaac_franka_reach_ppo, "isaac-franka-reach-ppo", "Isaac-Reach-Franka", 32, 7, 1 / 30),
@@ -170,6 +170,29 @@ def test_control_descriptions_preserve_physical_mapping_and_joint_order():
     assert (
         "absolute joint-position targets = 0.5 * action rad" in so101.actions["action"].description
     )
+
+
+def test_legacy_artifact_contract_is_not_silently_reinterpreted():
+    old = IsaacLabEnvironment(revision="ae37b028ea415c91ea2bc32609efcd759ed2b974")
+    current = IsaacLabEnvironment()
+    assert old.describe() != current.describe()
+    assert restore_component(kind="environment", value=lower_component(old)) == old
+    with pytest.raises(ValidationError, match="original task/PhysX"):
+        IsaacLabEnvironment(revision=old.revision, physics="newton_mjwarp")
+
+
+@pytest.mark.parametrize("physics", ["newton_mjwarp", "isaacsim_physx", "ovphysx"])
+def test_direct_cartpole_has_explicit_portable_control_and_backend_identity(physics):
+    definition = IsaacLabEnvironment(task="Isaac-Cartpole-Direct", physics=physics)
+    contract = definition.describe()
+    assert contract.observations["observation"].shape == (4,)
+    assert contract.actions["action"].shape == (1,)
+    assert contract.control_period_s == 1 / 60
+    assert contract.actions["action"].description is not None
+    assert physics in contract.actions["action"].description
+    assert restore_component(kind="environment", value=lower_component(definition)) == definition
+    with pytest.raises(ValidationError, match="validated PhysX"):
+        IsaacLabEnvironment(task="NexuML-SO101-Joint-Reach", physics="newton_mjwarp")
 
 
 @pytest.mark.parametrize(

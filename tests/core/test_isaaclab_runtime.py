@@ -2,6 +2,8 @@
 
 import asyncio
 import builtins
+import json
+import sys
 import traceback
 from types import SimpleNamespace
 
@@ -131,12 +133,14 @@ def make_runtime(monkeypatch):
         creation_error=None,
         attach_native=True,
         device="cpu",
+        definition=None,
     ):
         if native is None:
             native = _FakeNative(num_envs)
         if launcher is None:
             launcher = _FakeLauncher(native.events)
-        definition = IsaacLabEnvironment()
+        if definition is None:
+            definition = IsaacLabEnvironment()
         context = EnvironmentBuildContext(
             purpose="eval" if num_envs == 1 else "train",
             device=device,
@@ -184,6 +188,196 @@ def test_constructor_owns_one_validated_native_batch(make_runtime):
     assert reset["observation"].shape == (3, 4)
     assert runtime.native.reset_calls[0][0] == 29
     assert torch.equal(runtime.native.reset_calls[0][1], torch.arange(3))
+
+
+@pytest.mark.parametrize("scale", [100.0, 1.0])
+def test_direct_task_validates_its_public_control_mapping_without_a_manager(make_runtime, scale):
+    native = _FakeNative()
+    native.cfg.cart_dof_name = "slider_to_cart"
+    native.cfg.pole_dof_name = "cart_to_pole"
+    native.cfg.action_scale = scale
+    setattr(native, "cartpole", SimpleNamespace(find_joints=lambda name: ([0], ["slider_to_cart"])))
+    original_reset = native.reset
+    setattr(
+        native, "reset", lambda *, seed=None: original_reset(seed=seed, env_ids=torch.arange(3))
+    )
+    definition = IsaacLabEnvironment(task="Isaac-Cartpole-Direct", physics="newton_mjwarp")
+    if scale == 100:
+        runtime = make_runtime(native, definition=definition)
+        assert "action.validate" not in native.events
+        assert runtime.reset()["observation"].shape == (3, 4)
+        with pytest.raises(ValueError, match="explicit partial native reset"):
+            runtime.reset(mask=torch.tensor([True, False, False]))
+        native.next_truncated = [True, False, False]
+        runtime.step(_actions())
+        runtime.reset(mask=torch.tensor([True, False, False]))
+        assert len(native.reset_calls) == 1
+    else:
+        with pytest.raises(ValueError, match="direct Cartpole control mapping"):
+            make_runtime(native, definition=definition)
+        assert native.close_calls == 1
+
+
+@pytest.fixture
+def native_launch(monkeypatch, tmp_path):
+    """Exercise the real constructor with fake public native APIs and VCS metadata."""
+    native = _FakeNative()
+    native.device = torch.device("cuda:0")
+    native.cfg.observations = SimpleNamespace(policy=SimpleNamespace())
+    source = tmp_path / "site-packages/isaaclab/__init__.py"
+    state = SimpleNamespace(
+        module=SimpleNamespace(__file__=str(source)),
+        origin={"vcs_info": {"commit_id": IsaacLabEnvironment().revision}},
+        has_kit=False,
+        launchers=[],
+        args=[],
+        parsed=[],
+    )
+
+    def launch(cfg, args):
+        assert cfg is native.cfg
+        state.args.append(args)
+        launcher = _FakeLauncher(native.events)
+        state.launchers.append(launcher)
+        return launcher
+
+    def parse(task, **kwargs):
+        state.parsed.append((task, kwargs))
+        return native.cfg
+
+    modules = {
+        "isaaclab": state.module,
+        "isaaclab_tasks": SimpleNamespace(),
+        "isaaclab.app": SimpleNamespace(launch_simulation=launch),
+        "isaaclab.utils": SimpleNamespace(has_kit=lambda: state.has_kit),
+        "isaaclab_tasks.utils": SimpleNamespace(parse_env_cfg=parse),
+    }
+    monkeypatch.setattr(_isaaclab_runtime, "import_module", modules.__getitem__)
+    monkeypatch.setattr(
+        _isaaclab_runtime,
+        "distribution",
+        lambda name: SimpleNamespace(
+            read_text=lambda filename: json.dumps(state.origin),
+            locate_file=lambda name: source,
+        ),
+    )
+    monkeypatch.setattr(torch.cuda, "is_available", lambda: True)
+    monkeypatch.setitem(
+        sys.modules,
+        "gymnasium",
+        SimpleNamespace(
+            make=lambda *args, **kwargs: SimpleNamespace(unwrapped=native),
+        ),
+    )
+    context = EnvironmentBuildContext(purpose="train", device="cuda:0", num_envs=3, seed=17)
+    state.build = lambda **kwargs: _isaaclab_runtime._IsaacLabRuntime(
+        IsaacLabEnvironment(**kwargs), context
+    )
+    state.native = native
+    return state
+
+
+@pytest.mark.parametrize("physics", ["newton_mjwarp", "isaacsim_physx", "ovphysx"])
+def test_canonical_wheel_launch_and_profile_specific_owned_shutdown(native_launch, physics):
+    with _isaaclab_runtime.isaaclab_process():
+        runtime = native_launch.build(physics=physics)
+        assert native_launch.parsed == [
+            (
+                "Isaac-Cartpole",
+                {
+                    "device": "cuda:0",
+                    "num_envs": 3,
+                    "overrides": [f"physics={physics}"],
+                },
+            )
+        ]
+        assert native_launch.args[0]["fast_shutdown"] == (physics == "isaacsim_physx")
+        assert native_launch.native.cfg.compute_final_obs
+        assert native_launch.native.cfg.observations.policy.history_length == 0
+        with pytest.raises(RuntimeError, match="already active"):
+            native_launch.build(physics=physics)
+        assert _isaaclab_runtime._active_runtime is runtime
+        runtime.close()
+        assert _isaaclab_runtime._active_runtime is None
+        assert bool(native_launch.launchers[0].exit_calls) == (physics != "isaacsim_physx")
+        native_launch.native.events.append("job.finalized")
+    assert len(native_launch.launchers[0].exit_calls) == 1
+    if physics == "isaacsim_physx":
+        assert native_launch.native.events[-2:] == ["job.finalized", "launcher.exit"]
+
+
+@pytest.mark.parametrize(
+    "invalid", ["revision", "shadowed-import", "missing-origin", "foreign-kit"]
+)
+def test_invalid_source_or_foreign_runtime_fails_before_launch(native_launch, invalid):
+    if invalid == "revision":
+        native_launch.origin["vcs_info"]["commit_id"] = "0" * 40
+    elif invalid == "shadowed-import":
+        native_launch.module.__file__ += ".shadow"
+    elif invalid == "missing-origin":
+        native_launch.origin.clear()
+    else:
+        native_launch.has_kit = True
+    with _isaaclab_runtime.isaaclab_process():
+        with pytest.raises((ValueError, RuntimeError), match="pinned|origin|already active"):
+            native_launch.build()
+        assert not native_launch.launchers
+        assert _isaaclab_runtime._active_runtime is None
+
+
+def test_failed_launcher_enter_is_not_exited_twice(native_launch, monkeypatch):
+    def fail_enter(launcher):
+        raise RuntimeError("native launch failed")
+
+    monkeypatch.setattr(_FakeLauncher, "__enter__", fail_enter)
+    with _isaaclab_runtime.isaaclab_process():
+        with pytest.raises(RuntimeError, match="native launch failed"):
+            native_launch.build()
+        assert not native_launch.launchers[0].exit_calls
+        assert _isaaclab_runtime._active_runtime is None
+
+
+@pytest.mark.parametrize(
+    "task,physics",
+    [
+        ("Isaac-Cartpole", "newton_mjwarp"),
+        ("Isaac-Cartpole", "ovphysx"),
+        ("Isaac-Cartpole-Direct", "isaacsim_physx"),
+    ],
+)
+def test_unqualified_renderer_combinations_fail_before_native_import(task, physics, monkeypatch):
+    monkeypatch.setattr(torch.cuda, "is_available", lambda: True)
+    definition = IsaacLabEnvironment(task=task, physics=physics)
+    context = EnvironmentBuildContext(
+        purpose="eval",
+        device="cuda:0",
+        num_envs=1,
+        render_mode="rgb_array",
+    )
+    with _isaaclab_runtime.isaaclab_process():
+        with pytest.raises(ValueError, match="manager task with Kit PhysX"):
+            definition.build(context)
+
+
+def test_actual_source_checkout_revision_is_used_without_wheel_vcs_metadata(
+    native_launch, monkeypatch, tmp_path
+):
+    checkout = tmp_path / "checkout"
+    checkout.mkdir()
+    (checkout / ".git").write_text("gitdir: fixture-only\n")
+    native_launch.origin.clear()
+    native_launch.module.__file__ = str(checkout / "source/isaaclab/isaaclab/__init__.py")
+    calls = []
+
+    def revision(command, *, text):
+        calls.append(command)
+        return IsaacLabEnvironment().revision + "\n"
+
+    monkeypatch.setattr(_isaaclab_runtime.subprocess, "check_output", revision)
+    with _isaaclab_runtime.isaaclab_process():
+        runtime = native_launch.build(physics="newton_mjwarp")
+        runtime.close()
+    assert calls == [["git", "-C", str(checkout), "rev-parse", "HEAD"]]
 
 
 def test_unindexed_cuda_alias_matches_native_cuda_zero_without_initializing_cuda(make_runtime):

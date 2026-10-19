@@ -1,4 +1,84 @@
-# Isolated Isaac Lab GPU reference profile
+# Isaac Lab execution
+
+## Current worktree profile: Lab 3 / CUDA 13
+
+The root `pyproject.toml` and `uv.lock` select Python 3.12, CUDA-13 PyTorch,
+Sim 6.2 and Lab source `70ab24fec3eabf51222817db0cdb5a4e7133bd7e` through
+the upstream aggregate-wheel builder. Published `nexuml[robots]` forwards to
+`nexuml-library[robots]`; `all` does not enable it. Consumer tool configuration
+and temporary dependency exceptions are not propagated to downstream users.
+See the [RL guide](../../docs/how-to/reinforcement-learning.md#optional-robotics-dependencies)
+for dependency ownership and the Requests security floor.
+
+Use the single worktree venv, not the active shared `/env`. No DevContainer
+rebuild, host-driver change or implicit installer is part of these commands:
+
+```bash
+UV_PROJECT_ENVIRONMENT="$PWD/.venv" VIRTUAL_ENV="$PWD/.venv" \
+  uv sync --locked --extra all --extra dev --extra robots
+bash scripts/isaaclab/run.sh scripts/isaaclab/native_probe.py Isaac-Cartpole --physics newton_mjwarp
+bash scripts/isaaclab/run.sh scripts/isaaclab/native_probe.py Isaac-Cartpole-Direct --physics newton_mjwarp
+```
+
+`run.sh` locates this checkout's `.venv/bin/python` relative to itself, even
+from another working directory. Set `NEXUML_ISAAC_PYTHON=/path/to/python` to
+select another explicitly prepared interpreter. `run.py` also works directly
+with that interpreter and accepts either a script path or `-m MODULE`.
+It preserves arguments, job errors and signal-derived exit status.
+
+The provider verifies installed VCS metadata (or the actual source-checkout
+revision), import origin, native batch/device, control period and action
+mapping. New contracts carry the new revision and explicit physics identity;
+old serialized contracts keep their old identity rather than silently changing
+physics. Source mismatch is a failure, not a hidden checkout or installation.
+
+Cartpole manager/direct tasks accept `newton_mjwarp`, `isaacsim_physx` or
+`ovphysx` explicitly. No backend fallback is performed. Only one native runtime
+may be active. Kit-less launchers close normally; Kit uses whole-job fast close
+after collector/environment, checkpoint/export and logger cleanup. A Kit job
+must use a fresh process for another runtime. Graphics/media support is separate
+from state stepping; current RGB replay requires a manager task with Kit PhysX.
+SO-101 keeps its separate PhysX-only asset/control validation.
+
+Direct tasks use public full native resets. Partial native auto-resets are
+acknowledged from the cached reset observation without resetting physics twice.
+An explicit partial reset of other direct-task rows fails because upstream's
+public `reset()` has no row-selection API; no private reset method or full-batch
+fallback is used. Manager tasks retain explicit masked resets.
+
+Ordinary NexuML training still uses `NexuSession`/Lightning/TorchRL PPO:
+
+```bash
+bash scripts/isaaclab/run.sh -m nexuml train isaac-cartpole-ppo \
+  -O training.total_frames=256 -O training.frames_per_batch=128 \
+  -O training.collector.num_envs_per_collector=8 \
+  -O training.algorithm.update_epochs=1 -O training.algorithm.minibatch_size=64
+```
+
+To select state-only Newton, add `-O interaction.environment.physics=newton_mjwarp`.
+The exported policy retains that backend/control identity; do not override it
+to Kit merely to obtain a video. Native reference and transition-oracle checks
+are opt-in, require the selected dependencies/GPU/assets, and do not measure
+learning quality or enable hardware:
+
+```bash
+PATH="$PWD/.venv/bin:$PATH" NEXUML_RUN_SIMULATOR_TESTS=1 \
+  OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 .venv/bin/python -m pytest \
+  tests/core/test_isaaclab_integration.py::test_native_manager_and_direct_transition_oracle -q
+```
+
+Large pretrained-model work is deferred in the current Isaac-first campaign.
+ROS, rendering, distributed execution, other embodiments and learning quality
+need their own independent acceptance. Keep at least 40 GiB free and preserve
+other jobs. See local `reports/physical-ai/isaac-backend.md` for current execution
+evidence and unresolved gates; evidence is not committed with implementation.
+
+## Historical EA/cu128 reference (original checkout only)
+
+The following records the earlier isolated image workflow. Its original shell
+launcher belongs to that historical source revision; current `run.sh` uses the
+worktree interpreter above. Do not rebuild the active development container or
+reuse historical pass counts as proof for Lab 3/CUDA 13.
 
 Linux x86_64, Ubuntu 24.04, Python 3.12, Isaac Sim 6.1.0, Isaac Lab
 `v3.0.0-EA` / `ae37b028ea415c91ea2bc32609efcd759ed2b974`, Torch

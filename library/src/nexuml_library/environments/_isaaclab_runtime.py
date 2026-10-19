@@ -2,13 +2,15 @@
 
 from contextlib import contextmanager
 from importlib import import_module
+from importlib.metadata import distribution
+import json
 import math
 from pathlib import Path
 import signal
 import subprocess
 import sys
 import traceback
-from typing import Any
+from typing import Any, cast
 
 import torch
 from tensordict import TensorDict
@@ -18,7 +20,8 @@ from nexuml.interaction.runtime import InteractionStep
 
 
 _process_active = False
-_process_app = None
+_process_launcher = None
+_active_runtime = None
 
 
 def _terminate_job(signum, _frame):
@@ -37,7 +40,7 @@ def isaaclab_process():
     Raises:
         RuntimeError: If process scopes are nested.
     """
-    global _process_active, _process_app
+    global _process_active, _process_launcher
     if _process_active:
         raise RuntimeError("Isaac process scopes cannot be nested")
     previous_sigterm = signal.signal(signal.SIGTERM, _terminate_job)
@@ -46,34 +49,28 @@ def isaaclab_process():
         try:
             yield
         except BaseException as primary:
-            if _process_app is not None:
-                code = 130 if isinstance(primary, KeyboardInterrupt) else 1
-                if isinstance(primary, SystemExit):
-                    code = (
-                        primary.code
-                        if isinstance(primary.code, int)
-                        else int(primary.code is not None)
-                    )
-                    if primary.code is not None and not isinstance(primary.code, int):
-                        print(primary.code, file=sys.stderr, flush=True)
-                else:
-                    traceback.print_exception(primary)
+            if _process_launcher is not None:
+                traceback.print_exception(primary)
+                # Upstream maps Exception/SystemExit/KeyboardInterrupt, not async cancellation.
+                shutdown = primary
+                if not isinstance(primary, (Exception, SystemExit, KeyboardInterrupt)):
+                    shutdown = SystemExit(1)
                 try:
-                    _process_app.close(exit_code=code)
+                    _process_launcher.__exit__(type(shutdown), shutdown, shutdown.__traceback__)
                 except BaseException as error:
                     primary.add_note(f"Isaac process shutdown also failed: {error}")
             raise
         else:
-            if _process_app is not None:
-                _process_app.close(exit_code=0)
+            if _process_launcher is not None:
+                _process_launcher.__exit__(None, None, None)
     finally:
-        _process_app = None
+        _process_launcher = None
         _process_active = False
         signal.signal(signal.SIGTERM, previous_sigterm)
 
 
 def _create_environment(owner, definition, context):
-    global _process_app
+    global _process_launcher, _active_runtime
     if not _process_active:
         raise RuntimeError(
             "Run Isaac jobs through scripts/isaaclab/run.py so fast shutdown follows "
@@ -81,13 +78,17 @@ def _create_environment(owner, definition, context):
         )
     device = owner.device
     if device.type != "cuda" or not torch.cuda.is_available():
-        raise ValueError("Isaac Lab requires the prepared single-GPU CUDA/graphics profile")
+        raise ValueError("Isaac Lab requires a working single-GPU CUDA device")
     if context.purpose == "eval" and context.num_envs != 1:
         raise ValueError("Isaac replay requires exactly one environment")
     if context.render_mode not in (None, "rgb_array") or (
         context.render_mode is not None and context.purpose != "eval"
     ):
         raise ValueError("Isaac rendering supports only fresh-process N=1 rgb_array replay")
+    if owner._rendering and (
+        definition.physics != "isaacsim_physx" or definition.task == "Isaac-Cartpole-Direct"
+    ):
+        raise ValueError("Isaac RGB replay currently requires a manager task with Kit PhysX")
     try:
         isaaclab = import_module("isaaclab")
         import_module("isaaclab_tasks")
@@ -96,24 +97,35 @@ def _create_environment(owner, definition, context):
         parse_env_cfg = import_module("isaaclab_tasks.utils").parse_env_cfg
     except ImportError as error:
         raise ImportError(
-            "Isaac replay/training requires the isolated pinned Isaac Lab profile"
+            "Isaac replay/training requires nexuml[robots] with the selected native sources"
         ) from error
 
     source_file = isaaclab.__file__
     if source_file is None:
-        raise ValueError("Isaac Lab requires the pinned source-checkout profile")
-    root = Path(source_file).resolve().parents[3]
-    revision = subprocess.check_output(
-        ["git", "-C", str(root), "rev-parse", "HEAD"], text=True
-    ).strip()
+        raise ValueError("Isaac Lab requires a verifiable pinned source origin")
+    installed = distribution("isaaclab")
+    origin = json.loads(installed.read_text("direct_url.json") or "{}")
+    revision = origin.get("vcs_info", {}).get("commit_id")
+    if revision is not None:
+        if (
+            Path(str(installed.locate_file("isaaclab/__init__.py"))).resolve()
+            != Path(source_file).resolve()
+        ):
+            raise ValueError("Isaac Lab import origin differs from its pinned distribution")
+    else:
+        root = Path(source_file).resolve().parents[3]
+        if not (root / ".git").exists():
+            raise ValueError("Isaac Lab requires pinned VCS metadata or a source checkout")
+        revision = subprocess.check_output(
+            ["git", "-C", str(root), "rev-parse", "HEAD"], text=True
+        ).strip()
     if revision != definition.revision or sys.version_info[:2] != (3, 12):
         raise ValueError("Isaac Lab source revision/Python does not match the pinned profile")
-    if torch.__version__ != "2.11.0+cu128":
-        raise ValueError("Isaac Lab requires the pinned torch==2.11.0+cu128 profile")
-    if _process_app is not None or has_kit():
+    if _active_runtime is not None or _process_launcher is not None or has_kit():
         raise RuntimeError(
             "An Isaac application is already active; use fresh-process replay/training"
         )
+    cfg: Any
     if definition.task == "NexuML-SO101-Joint-Reach":
         from nexuml_library.environments._isaaclab_so101 import make_so101_config
 
@@ -121,34 +133,41 @@ def _create_environment(owner, definition, context):
             num_envs=context.num_envs, device=str(device), seed=context.seed or 0
         )
     else:
-        cfg = parse_env_cfg(
-            definition.task,
-            device=str(device),
-            num_envs=context.num_envs,
-            overrides=[f"physics={definition.physics}"],
+        # Registered task subclasses add fields absent from upstream's base config type.
+        cfg = cast(
+            Any,
+            parse_env_cfg(
+                definition.task,
+                device=str(device),
+                num_envs=context.num_envs,
+                overrides=[f"physics={definition.physics}"],
+            ),
         )
     cfg.seed = context.seed if context.seed is not None else 0
     cfg.compute_final_obs = True
-    cfg.observations.policy.enable_corruption = False
-    cfg.observations.policy.history_length = 0
+    if definition.task != "Isaac-Cartpole-Direct":
+        cfg.observations.policy.enable_corruption = False
+        cfg.observations.policy.history_length = 0
     if owner._rendering:
         from nexuml_library.environments._isaaclab_rgb import configure_rgb
 
         configure_rgb(cfg, owner)
     args = {
         "headless": True,
-        "fast_shutdown": True,
+        "fast_shutdown": definition.physics == "isaacsim_physx",
         "device": str(device),
         "visualizer": ["none"],
         "visualizer_explicit": True,
         "enable_cameras": owner._rendering,
     }
-    # Kit must outlive collector teardown; upstream's returning close segfaults on exit.
-    _process_app = import_module("isaaclab.app").AppLauncher(args).app
-    # AppLauncher replaces SIGTERM with immediate close; the job owns cancellation.
+    _active_runtime = owner
+    launcher = launch_simulation(cfg, args)
+    launcher.__enter__()
+    owner._launcher = launcher
+    if definition.physics == "isaacsim_physx":
+        # Kit's fast close must follow whole-job checkpoint/export/logger finalization.
+        _process_launcher, owner._launcher = owner._launcher, None
     signal.signal(signal.SIGTERM, _terminate_job)
-    owner._launcher = launch_simulation(cfg, args)
-    owner._launcher.__enter__()
     import gymnasium as gym
 
     if definition.task == "NexuML-SO101-Joint-Reach":
@@ -171,6 +190,7 @@ class _IsaacLabRuntime:
         self._observation = None
         self._pending_reset = None
         self._so101 = definition.task == "NexuML-SO101-Joint-Reach"
+        self._direct = definition.task == "Isaac-Cartpole-Direct"
         self._rendering = context.render_mode == "rgb_array"
         self._terminal_frame = None
         self._in_step = False
@@ -207,6 +227,15 @@ class _IsaacLabRuntime:
             raise ValueError(
                 "Native Isaac dimensions/device/control period/final-state settings mismatch"
             )
+        if definition.task == "Isaac-Cartpole-Direct":
+            if (
+                env.cfg.cart_dof_name != "slider_to_cart"
+                or env.cfg.pole_dof_name != "cart_to_pole"
+                or env.cfg.action_scale != 100.0
+                or env.cartpole.find_joints("slider_to_cart")[1] != ["slider_to_cart"]
+            ):
+                raise ValueError("Native direct Cartpole control mapping differs from the policy")
+            return
         if definition.task == "Isaac-Cartpole":
             name, joints, scale = "joint_effort", ["slider_to_cart"], 100.0
             offset = torch.tensor(0.0)
@@ -267,9 +296,17 @@ class _IsaacLabRuntime:
         if mask is not None and self._pending_reset is not None:
             reset &= ~self._pending_reset
         if self._observation is None or reset.any():
-            observations, _ = self.native.reset(
-                seed=seed, env_ids=reset.nonzero(as_tuple=False).flatten()
-            )
+            if self._direct:
+                if not reset.all():
+                    raise ValueError(
+                        "Direct Isaac tasks support full reset or cached auto-reset "
+                        "acknowledgement, not explicit partial native reset"
+                    )
+                observations, _ = self.native.reset(seed=seed)
+            else:
+                observations, _ = self.native.reset(
+                    seed=seed, env_ids=reset.nonzero(as_tuple=False).flatten()
+                )
             self._observation = self._state(observations)
         if self._pending_reset is not None:
             self._pending_reset &= ~requested
@@ -342,6 +379,7 @@ class _IsaacLabRuntime:
         return read_rgb(self.native)
 
     def close(self) -> None:
+        global _active_runtime
         if self._closed:
             return
         self._closed = True
@@ -361,6 +399,8 @@ class _IsaacLabRuntime:
                 launcher.__exit__(None, None, None)
             except BaseException as error:
                 errors.append(error)
+        if _active_runtime is self:
+            _active_runtime = None
         if errors:
             for error in errors[1:]:
                 errors[0].add_note(f"Isaac launcher cleanup also failed: {error}")

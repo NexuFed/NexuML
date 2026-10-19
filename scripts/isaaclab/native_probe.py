@@ -2,6 +2,7 @@
 
 import argparse
 from importlib import import_module
+from importlib.metadata import distribution
 import json
 import math
 from typing import Any, cast
@@ -13,7 +14,18 @@ def main():
     """Check the pinned upstream manager task without constructing a NexuML learner."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "task", choices=["Isaac-Cartpole", "Isaac-Reach-Franka", "NexuML-SO101-Joint-Reach"]
+        "task",
+        choices=[
+            "Isaac-Cartpole",
+            "Isaac-Cartpole-Direct",
+            "Isaac-Reach-Franka",
+            "NexuML-SO101-Joint-Reach",
+        ],
+    )
+    parser.add_argument(
+        "--physics",
+        choices=["newton_mjwarp", "isaacsim_physx", "ovphysx"],
+        default="isaacsim_physx",
     )
     args = parser.parse_args()
     import gymnasium as gym
@@ -24,10 +36,15 @@ def main():
 
     from nexuml_library.environments.isaaclab import IsaacLabEnvironment
 
-    definition = IsaacLabEnvironment(task=args.task)
+    definition = IsaacLabEnvironment(task=args.task, physics=args.physics)
+    origin = json.loads(distribution("isaaclab").read_text("direct_url.json") or "{}")
+    assert origin.get("vcs_info", {}).get("commit_id") == definition.revision
     contract = definition.describe()
     assert contract.control_period_s is not None
     so101 = args.task == "NexuML-SO101-Joint-Reach"
+    direct = args.task == "Isaac-Cartpole-Direct"
+    cartpole = args.task in {"Isaac-Cartpole", "Isaac-Cartpole-Direct"}
+    cfg: Any
     if so101:
         from nexuml_library.environments._isaaclab_so101 import (
             JOINT_NAMES,
@@ -37,16 +54,26 @@ def main():
 
         cfg = make_so101_config(num_envs=8, device="cuda:0", seed=0)
     else:
-        cfg = parse_env_cfg(
-            args.task, device="cuda:0", num_envs=8, overrides=["physics=isaacsim_physx"]
+        cfg = cast(
+            Any,
+            parse_env_cfg(
+                args.task, device="cuda:0", num_envs=8, overrides=[f"physics={args.physics}"]
+            ),
         )
     cfg.seed = 0
     cfg.compute_final_obs = True
-    cfg.observations.policy.enable_corruption = False
+    if not direct:
+        cfg.observations.policy.enable_corruption = False
     cfg.episode_length_s = 4 * cfg.sim.dt * cfg.decimation
     with launch_simulation(
         cfg,
-        {"headless": True, "device": "cuda:0", "visualizer": ["none"], "visualizer_explicit": True},
+        {
+            "headless": True,
+            "device": "cuda:0",
+            "visualizer": ["none"],
+            "visualizer_explicit": True,
+            "fast_shutdown": args.physics == "isaacsim_physx",
+        },
     ):
         env = cast(
             Any,
@@ -61,22 +88,26 @@ def main():
             assert observations["policy"].shape == (8, *contract.observations["observation"].shape)
             assert observations["policy"].device == torch.device("cuda:0")
             assert math.isclose(env.step_dt, contract.control_period_s)
-            name = "joint_effort" if args.task == "Isaac-Cartpole" else "arm_action"
+            name = "joint_effort" if cartpole else "arm_action"
             expected_joints = (
                 ["slider_to_cart"]
-                if args.task == "Isaac-Cartpole"
+                if cartpole
                 else list(JOINT_NAMES)
                 if so101
                 else [f"panda_joint{i}" for i in range(1, 8)]
             )
-            scale = 100.0 if args.task == "Isaac-Cartpole" else 0.5
-            term = env.action_manager.get_term(name)
-            descriptor = term.IO_descriptor
-            assert descriptor.joint_names == expected_joints
-            assert term.cfg.scale == scale and term.cfg.clip is None
-            if args.task == "Isaac-Reach-Franka":
-                assert term.cfg.use_default_offset
-            offset = torch.as_tensor(descriptor.offset, device="cuda:0")
+            scale = 100.0 if cartpole else 0.5
+            if direct:
+                assert env.cfg.cart_dof_name == "slider_to_cart" and env.action_scale == scale
+                offset = torch.tensor(0.0, device="cuda:0")
+            else:
+                term = env.action_manager.get_term(name)
+                descriptor = term.IO_descriptor
+                assert descriptor.joint_names == expected_joints
+                assert term.cfg.scale == scale and term.cfg.clip is None
+                if args.task == "Isaac-Reach-Franka":
+                    assert term.cfg.use_default_offset
+                offset = torch.as_tensor(descriptor.offset, device="cuda:0")
             action = torch.full((8, len(expected_joints)), 0.1, device="cuda:0")
             # First force a partial timeout, then let all rows reach the bounded horizon.
             env.episode_length_buf[0] = env.max_episode_length - 1
@@ -97,10 +128,12 @@ def main():
                 # Native reset clears raw actions on done rows; continuing rows retain mapping.
                 if (~done).any():
                     torch.testing.assert_close(
-                        term.processed_actions[~done], (scale * action + offset)[~done]
+                        (env.actions if direct else term.processed_actions)[~done],
+                        (scale * action + offset)[~done],
                     )
                 counts.append(int(done.sum()))
-            robot = env.scene["robot"]
+            robot = env.scene["cartpole" if direct else "robot"]
+            asset = cfg.scene.cartpole if direct else cfg.scene.robot
             print(
                 json.dumps(
                     {
@@ -114,7 +147,7 @@ def main():
                         "action_joints": expected_joints,
                         "scale": scale,
                         "offset": offset.tolist(),
-                        "asset": cfg.scene.robot.spawn.usd_path,
+                        "asset": asset.spawn.usd_path,
                         "joint_names": robot.joint_names,
                         "joint_limits": robot.data.joint_pos_limits.torch[0].tolist(),
                         "default_joint_positions": robot.data.default_joint_pos.torch[0].tolist(),

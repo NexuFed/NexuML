@@ -285,7 +285,9 @@ def test_replay_rejects_same_shape_but_changed_control_meaning(change):
                     "panda_joint1, panda_joint2", "panda_joint2, panda_joint1"
                 )
             },
-            "revision": {"description": action.description.replace("ae37b028", "00000000")},
+            "revision": {
+                "description": action.description.replace(IsaacLabEnvironment().revision, "0" * 40)
+            },
         }
         actual = expected.model_copy(
             update={"actions": {"action": action.model_copy(update=changes[change])}}
