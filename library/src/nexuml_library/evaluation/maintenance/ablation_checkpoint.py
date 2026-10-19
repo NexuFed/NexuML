@@ -5,10 +5,10 @@ from __future__ import annotations
 from pathlib import Path
 
 from lightning.pytorch import LightningModule, Trainer
-from lightning.pytorch.callbacks import Callback
+from lightning.pytorch.callbacks import Checkpoint
 
 
-class SaveLatestEpoch(Callback):
+class SaveLatestEpoch(Checkpoint):
     """Overwrite the latest checkpoint at every completed training epoch.
 
     In Lightning 2.6.5, ModelCheckpoint(save_top_k=1, save_last=True)
@@ -21,8 +21,16 @@ class SaveLatestEpoch(Callback):
         super().__init__()
         self.path = Path(dirpath) / "last.ckpt"
 
-    def on_train_epoch_end(self, trainer: Trainer, pl_module: LightningModule) -> None:
-        """Save model, optimizer, scheduler and callback state after each epoch."""
+    def _save(self, trainer: Trainer) -> None:
+        """Write the latest full-state checkpoint across all distributed ranks."""
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        # Call on every rank; the strategy handles distributed checkpoint I/O.
+        # All ranks participate; the Lightning strategy manages the actual write.
         trainer.save_checkpoint(str(self.path))
+
+    def on_train_epoch_end(self, trainer: Trainer, pl_module: LightningModule) -> None:
+        """Persist latest weights every epoch, even without validation improvement."""
+        self._save(trainer)
+
+    def on_fit_end(self, trainer: Trainer, pl_module: LightningModule) -> None:
+        """Capture the final loop and best-model callback state after training."""
+        self._save(trainer)
