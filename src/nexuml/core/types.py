@@ -751,6 +751,7 @@ class ScenarioSpec(SpecModel):
     data: DataSpec = Field(default_factory=DataSpec)
     interaction: InteractionSpec | None = None
     policy: PolicySpec | None = None
+    policy_evaluation: RLEvaluationSpec | None = None
     evaluation: EvaluationSpec = Field(default_factory=EvaluationSpec)
     logging: LoggingSpec | None = None
     callbacks: list[CallbackSpec] = Field(default_factory=list)
@@ -761,6 +762,8 @@ class ScenarioSpec(SpecModel):
 
     @model_validator(mode="after")
     def validate_reinforcement(self) -> Self:
+        if self.policy_evaluation is not None and (self.interaction is None or self.policy is None):
+            raise ValueError("policy_evaluation requires scenario.interaction and scenario.policy")
         if isinstance(self.training, ReinforcementLearningSpec):
             if self.interaction is None or self.policy is None:
                 raise ValueError("reinforcement training requires scenario.interaction and policy")

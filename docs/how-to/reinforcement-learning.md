@@ -157,7 +157,7 @@ more episodes, longer horizons and more frequent checks cost wall time/storage.
 
 Each evaluation owns a fresh single environment, never resets the training collector, and
 restores policy modes and random streams. `training.evaluation.seed` falls back to
-`training.seed`; episode seeds increment from that seed. The default deterministic action
+`training.seed` on the legacy RL path; episode seeds increment from that seed. The default deterministic action
 mode and a fixed seed make CPU comparisons useful, not a cross-platform determinism promise.
 `episodes=0` disables scalar episodes without allocating an environment; recording then
 fails validation. Evaluation-environment overrides must retain compatible observation/action
@@ -176,6 +176,65 @@ outcomes in some batch rows, and changing presence fail rather than inventing fa
 values. Other native `info` is not copied into observations or portable policy state.
 This supports success-only task reporting; it does not establish Meta-World native
 training or benchmark compatibility without that reference's separate acceptance.
+
+### Episode evaluation without RL training
+
+`ScenarioSpec.policy_evaluation` optionally reuses `RLEvaluationSpec` for any
+complete policy, including one trained with the ordinary dataset `TrainingSpec`.
+It is separate from the existing dataset `evaluation` block. Keep the original
+training mode; do not add a PPO algorithm merely to evaluate an offline model.
+
+For an already assembled `policy` and its matching `scenario`:
+
+```python
+from nexuml.core.types import RLEvaluationSpec
+from nexuml.training.reinforcement import evaluate_policy
+
+scenario.policy_evaluation = RLEvaluationSpec(
+    episodes=3, seed=0, max_steps_per_episode=120,
+)
+metrics = evaluate_policy(policy, scenario)
+```
+
+The scenario must declare its `policy` and `interaction.environment`; an
+`interaction.evaluation_environment`, when present, takes precedence. Contracts
+are checked before constructing that fresh environment. The episode runner does
+not construct a session, learner, optimizer or collector. A supplied
+`policy_evaluation` block is authoritative, including on RL scenarios. Only old
+RL scenarios without it use `training.evaluation` and its training-seed fallback.
+On the explicit path, `seed=0` is preserved and `seed=None` means unseeded; it
+never inherits another training seed. Episode seeds increment only when seeded.
+
+The explicit block serializes with the original scenario and complete policy
+package. Its `episodes=0` allocates no runtime; missing offline evaluation inputs
+produce an error instead of inventing RL settings. Existing `eval/rl/*` metric
+names remain unchanged for logger compatibility. The same bounded recording
+options require a media sink and working renderer. During RL training, schedule,
+cache and provider preflight also use the authoritative block; Isaac's
+fresh-process-only restriction cannot be bypassed through it.
+
+The ordinary CLI also accepts complete offline policy packages with their
+original `TrainingSpec` and explicit episode block:
+
+```bash
+nexuml evaluate /approved/local/complete-policy \
+  -O policy_evaluation.episodes=3 -O policy_evaluation.seed=0 \
+  -O policy_evaluation.max_steps_per_episode=120
+```
+
+Use `policy_evaluation.video.*` for recording such a package. If an otherwise
+complete offline package has no episode block, supply a whole
+`-O 'policy_evaluation={"episodes":3,"seed":0,"max_steps_per_episode":120}'`
+override. This also explicitly switches a legacy RL package to the new path.
+Nested overrides cannot traverse an absent block. Mixing new and legacy
+evaluation override paths is rejected before logger/runtime creation. With an
+embedded explicit block, `training.evaluation.*` overrides are rejected rather
+than silently ignored. Legacy RL packages without the new block retain their
+existing override path and seed fallback.
+
+This support does not establish ACT, VLA or stateful policy integration. Those
+model, preprocessing, training and closed-loop gates remain independent.
+Dataset-trained complete-policy assembly remains a separate implementation slice.
 
 ## Record GIF, MP4 or both
 
@@ -270,8 +329,10 @@ cannot be transactionally rolled back.
 
 `nexuml evaluate` uses `load_inference_package`, embedded config restoration and the shared
 evaluator directly. It constructs no session, learner, optimizer or collector and does not
-execute configured exports. Only `training.evaluation.*`, `logging.*` and compatible
-`interaction.evaluation_environment` overrides are accepted. It cannot replace loaded
+execute configured exports. Episode overrides use `policy_evaluation.*` when its
+explicit block is selected, or `training.evaluation.*` on the legacy RL path.
+Both paths also allow `logging.*` and compatible
+`interaction.evaluation_environment` overrides. It cannot replace loaded
 pipeline weights or action adapters. A whole environment definition uses its ordinary
 serialized `{type, version, params}` representation from resolved YAML.
 

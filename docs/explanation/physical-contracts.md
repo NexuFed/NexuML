@@ -8,7 +8,7 @@ Physical AI uses the existing NexuML lifecycle, not a parallel robotics framewor
 | Experience | `DataSourceDefinition`, `DataSpec`, `NexuDataset` and existing loaders |
 | Learning | Training configuration, algorithm definition and `NexuSession` |
 | Policy artifact | `PolicySpec`, `CompiledPolicy` and complete-policy packaging |
-| Evaluation | Existing episode evaluator and evaluation configuration; broader offline-policy evaluation remains separate work |
+| Evaluation | Existing episode evaluator, `ScenarioSpec.policy_evaluation`, and legacy RL evaluation configuration |
 
 ## Explicit physical metadata
 
@@ -77,7 +77,7 @@ or sensor mapping is correct. The historical EA SO-101 definition retains its
 original identity; executing it still requires its original source profile.
 
 Temporal execution, action-chunk scheduling, privileged inputs, learned processors,
-caller-owned inference state and non-RL policy-evaluation configuration are
+and caller-owned inference state are
 separate extensions. No hidden state, resampling, unit conversion, calibration
 measurement or deployment safety layer is introduced by these metadata models.
 

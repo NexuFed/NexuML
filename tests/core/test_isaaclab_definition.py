@@ -348,6 +348,21 @@ def test_preflight_rejects_every_automatic_evaluation_setting(training, changes)
     assert "--override training.evaluation.episodes=3" in str(error.value)
 
 
+def test_explicit_policy_evaluation_cannot_bypass_isaac_training_preflight(monkeypatch):
+    from nexuml.training.reinforcement import NexuRLLightningModule
+    from nexuml_library.scenarios.reinforcement.isaaclab import isaac_cartpole_ppo
+
+    scenario = isaac_cartpole_ppo()
+    scenario.policy_evaluation = RLEvaluationSpec(episodes=1, at_start=True)
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("Isaac preflight must reject automatic evaluation before compile/native build")
+
+    monkeypatch.setattr("nexuml.training.reinforcement.compile", forbidden)
+    with pytest.raises(ValueError, match="automatic fit evaluation"):
+        NexuRLLightningModule(scenario)
+
+
 @pytest.mark.parametrize(
     "env,storage,policy,learner",
     [

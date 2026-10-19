@@ -62,7 +62,7 @@ The user-selected LeRobot additions require complete Diffusion Policy and resour
 - [ ] 3.5 Reuse policy assembly for offline-trained graphs with an independently validated interaction contract; verify a dataset-trained model can export a complete policy without constructing an RL learner or simulator.
 - [ ] 3.6 Extend complete-policy packaging for required processors, composed adapters and inference state metadata; verify clean-process sequence/action parity, integrity/trust failures and exclusion of critics, optimizers, replay and raw recordings.
 - [ ] 3.7 Document the contract/state/processor surfaces and migration rules; verify old YAML/checkpoint/package regressions and non-robot training/export without robotics dependencies.
-- [ ] 3.8 Add the trainer-independent policy-evaluation block and normalize it into the existing episode runner before offline closed-loop work; verify configuration/export round trips, missing-input errors, explicit seed handling and unchanged legacy RL configuration precedence.
+- [x] 3.8 Add the trainer-independent policy-evaluation block and normalize it into the existing episode runner before offline closed-loop work; verify configuration/export round trips, missing-input errors, explicit seed handling and unchanged legacy RL configuration precedence.
 - [ ] 3.9 Extend the ordinary evaluation CLI for original non-RL ACT/VLA package scenarios; verify clean-package scalar/media tests with session/learner/optimizer/collector construction blocked, explicit new/legacy override rules and documented commands without fabricated RL training settings.
 
 ## 4. Isaac runtime, tasks and native transition correctness

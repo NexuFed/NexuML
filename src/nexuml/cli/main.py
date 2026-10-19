@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import inspect
 import json
+import sys
 import warnings
 from pathlib import Path
 from typing import Any, Optional, cast
@@ -365,12 +366,10 @@ def evaluate_cmd(
     from nexuml.core.serialization import lower_model, restore_model_data
     from nexuml.core.types import (
         InteractionContract,
-        RLEvaluationSpec,
-        ReinforcementLearningSpec,
         ScenarioSpec,
     )
     from nexuml.tracking.logger import create_loggers, log_text_artifact
-    from nexuml.training.reinforcement import evaluate_policy
+    from nexuml.training.reinforcement import evaluate_policy, resolve_policy_evaluation
 
     loggers = []
     failed = False
@@ -392,27 +391,42 @@ def evaluate_cmd(
         # torch.package may isolate Pydantic classes with unresolved serialization references.
         policy.contract = InteractionContract.model_validate(metadata["interaction_contract"])
         scenario = config.to_scenario()
-        if (
-            not isinstance(scenario.training, ReinforcementLearningSpec)
-            or scenario.interaction is None
-            or scenario.policy is None
-        ):
+        if scenario.interaction is None or scenario.policy is None:
             raise ValueError(
-                "policy package requires an embedded RL scenario and evaluation configuration"
+                "policy package requires an embedded RL scenario or an offline scenario with "
+                "interaction, policy and policy_evaluation configuration"
             )
 
+        keys = [item.partition("=")[0] for item in override or []]
+        new_path = any(
+            key == "policy_evaluation" or key.startswith("policy_evaluation.") for key in keys
+        )
+        legacy_path = any(
+            key == "training.evaluation" or key.startswith("training.evaluation.") for key in keys
+        )
+        if new_path and legacy_path:
+            raise ValueError("Cannot mix policy_evaluation and training.evaluation overrides")
+        evaluation_path = (
+            "policy_evaluation"
+            if scenario.policy_evaluation is not None or new_path
+            else "training.evaluation"
+        )
+        if scenario.policy_evaluation is None and new_path and "policy_evaluation" not in keys:
+            raise ValueError(
+                "Missing policy_evaluation block; supply a whole policy_evaluation={...} override"
+            )
         for item in override or []:
             key, separator, _ = item.partition("=")
             if separator and not any(
                 key == allowed or key.startswith(f"{allowed}.")
                 for allowed in (
-                    "training.evaluation",
+                    evaluation_path,
                     "logging",
                     "interaction.evaluation_environment",
                 )
             ):
                 raise ValueError(
-                    f"Override {key!r} is not supported for replay: only training.evaluation, "
+                    f"Override {key!r} is not supported for replay: only {evaluation_path}, "
                     "logging, and interaction.evaluation_environment may change; "
                     "the packaged policy/pipeline cannot be replaced"
                 )
@@ -421,13 +435,10 @@ def evaluate_cmd(
         scenario = ScenarioSpec.model_validate(
             restore_model_data(lower_model(scenario), ScenarioSpec)
         )
-        assert isinstance(scenario.training, ReinforcementLearningSpec)
-        scenario.training.evaluation = RLEvaluationSpec.model_validate(
-            scenario.training.evaluation.model_dump()
-        )
-        if device is not None and scenario.training.evaluation.episodes:
+        _, evaluation, _ = resolve_policy_evaluation(scenario)
+        if device is not None and evaluation.episodes:
             policy.to(device)
-        video = scenario.training.evaluation.video
+        video = evaluation.video
         source_frames = metadata.get("training_frames")
         if type(source_frames) is not int or source_frames < 0:
             source_frames = None
@@ -471,6 +482,7 @@ def evaluate_cmd(
         console.print(f"[red]Evaluation failed: {str(exc) or 'cancelled'}[/red]")
         raise typer.Exit(1) from exc
     finally:
+        failed = failed or sys.exception() is not None
         finalization_error = None
         for logger in loggers:
             try:
@@ -482,7 +494,7 @@ def evaluate_cmd(
             raise typer.Exit(1) from finalization_error
 
     console.print("[green]Evaluation complete![/green]")
-    console.print(f"  RL evaluation (frame step {frame_step}): {metrics}")
+    console.print(f"  Policy evaluation (frame step {frame_step}): {metrics}")
 
 
 @app.command(name="export-dataset", help="Export a dataset view from a scenario or config")

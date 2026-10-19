@@ -16,10 +16,14 @@ from tensordict import TensorDict
 from torch.utils.data import DataLoader
 
 from nexuml.core.compiler import compile
-from nexuml.core.components import EnvironmentBuildContext, RLAlgorithmBuildContext
+from nexuml.core.components import (
+    EnvironmentBuildContext,
+    EnvironmentDefinition,
+    RLAlgorithmBuildContext,
+)
 from nexuml.core.policy import CompiledPolicy
 from nexuml.core.config import ResolvedConfig
-from nexuml.core.serialization import lower_model, restore_model_data
+from nexuml.core.serialization import lower_component, lower_model, restore_model_data
 from nexuml.core.types import (
     InteractionContract,
     RLEvaluationSpec,
@@ -47,7 +51,15 @@ class NexuRLLightningModule(L.LightningModule):
         if not isinstance(scenario.training, ReinforcementLearningSpec):
             raise ValueError("NexuRLLightningModule requires reinforcement training")
         assert scenario.interaction is not None and scenario.policy is not None
-        scenario.interaction.environment.validate_training(scenario.training)
+        evaluation = (
+            scenario.policy_evaluation
+            if scenario.policy_evaluation is not None
+            else scenario.training.evaluation
+        )
+        scenario.interaction.environment.validate_training(
+            scenario.training.model_copy(update={"evaluation": evaluation})
+        )
+        resolve_policy_evaluation(scenario)
         self.scenario = scenario
         self.training_spec = scenario.training
         if policy is None:
@@ -66,9 +78,6 @@ class NexuRLLightningModule(L.LightningModule):
         self._collector = None
         self._evaluation_cache = None
         self._next_evaluation_frame = None
-        self.training_spec.evaluation = RLEvaluationSpec.model_validate(
-            self.training_spec.evaluation.model_dump()
-        )
         self.register_buffer("frames", torch.tensor(0, dtype=torch.int64))
         self.register_buffer("batches", torch.tensor(0, dtype=torch.int64))
         self.save_hyperparameters(
@@ -78,6 +87,11 @@ class NexuRLLightningModule(L.LightningModule):
     @property
     def pipeline(self):
         return self.policy.pipeline
+
+    @property
+    def evaluation_spec(self):
+        spec = self.scenario.policy_evaluation
+        return self.training_spec.evaluation if spec is None else spec
 
     def forward(self, observation: TensorDict, *, deterministic=True):
         return self.policy(observation, deterministic=deterministic)
@@ -92,7 +106,9 @@ class NexuRLLightningModule(L.LightningModule):
             # Placement and checkpoint restoration precede this hook; resume respects the budget.
             self._collector = build_collector(
                 self.scenario.interaction.environment,
-                self.training_spec.model_copy(update={"total_frames": remaining}),
+                self.training_spec.model_copy(
+                    update={"total_frames": remaining, "evaluation": self.evaluation_spec}
+                ),
                 self.algorithm.rollout_policy,
                 self.device,
                 self.global_rank,
@@ -132,7 +148,7 @@ class NexuRLLightningModule(L.LightningModule):
         )
         if int(self.batches) % self.training_spec.collector.policy_sync_interval_batches == 0:
             synchronize_policy(self._collector, self.algorithm.rollout_policy)
-        interval = self.training_spec.evaluation.every_n_frames
+        interval = self.evaluation_spec.every_n_frames
         if interval is not None and self._next_evaluation_frame is not None:
             if int(self.frames) >= self._next_evaluation_frame:
                 self.evaluate_current_policy()
@@ -141,11 +157,12 @@ class NexuRLLightningModule(L.LightningModule):
     def on_fit_start(self):
         assert self.scenario.interaction is not None
         self.scenario.interaction.environment.validate_training(
-            self.training_spec, device=str(self.device)
+            self.training_spec.model_copy(update={"evaluation": self.evaluation_spec}),
+            device=str(self.device),
         )
         from nexuml.tracking.logger import preflight_evaluation_media
 
-        spec = self.training_spec.evaluation
+        spec = self.evaluation_spec
         preflight_evaluation_media(self.trainer.loggers, spec.video)
         if spec.every_n_frames is not None:
             self._next_evaluation_frame = (
@@ -155,7 +172,7 @@ class NexuRLLightningModule(L.LightningModule):
             self.evaluate_current_policy()
 
     def on_fit_end(self):
-        spec = self.training_spec.evaluation
+        spec = self.evaluation_spec
         # Fit-end also runs when a resumed checkpoint has no remaining training batches.
         if spec.episodes and (spec.at_start or spec.every_n_frames or spec.video.enabled):
             self.evaluate_current_policy()
@@ -168,17 +185,12 @@ class NexuRLLightningModule(L.LightningModule):
         """
         from nexuml.tracking.logger import log_evaluation_media
 
-        assert self.scenario.interaction is not None
-        spec = self.training_spec.evaluation
-        definition = (
-            self.scenario.interaction.evaluation_environment
-            or self.scenario.interaction.environment
-        )
+        definition, spec, seed = resolve_policy_evaluation(self.scenario)
         key = (
             id(self.policy),
             int(self.frames),
             spec.model_dump_json(),
-            spec.seed if spec.seed is not None else self.training_spec.seed,
+            seed,
             repr(definition),
             tuple(tensor._version for tensor in self.policy.parameters()),
             tuple(tensor._version for tensor in self.policy.buffers()),
@@ -269,6 +281,32 @@ def _validate_evaluation_contract(policy_contract, actual):
                 raise ValueError(f"Evaluation {role} field {key!r} is incompatible with the policy")
 
 
+def resolve_policy_evaluation(
+    scenario: ScenarioSpec,
+) -> tuple[EnvironmentDefinition, RLEvaluationSpec, int | None]:
+    """Select episode options without changing the scenario's original training mode.
+
+    Returns:
+        Environment definition, validated episode/media options and effective seed.
+
+    Raises:
+        ValueError: If policy evaluation inputs are absent.
+    """
+    if scenario.interaction is None or scenario.policy is None:
+        raise ValueError("Policy evaluation requires scenario.interaction and scenario.policy")
+    spec = getattr(scenario, "policy_evaluation", None)
+    if spec is not None:
+        spec = RLEvaluationSpec.model_validate(lower_model(spec))
+        seed = spec.seed
+    elif isinstance(scenario.training, ReinforcementLearningSpec):
+        spec = RLEvaluationSpec.model_validate(lower_model(scenario.training.evaluation))
+        seed = spec.seed if spec.seed is not None else scenario.training.seed
+    else:
+        raise ValueError("Offline policy evaluation requires scenario.policy_evaluation")
+    definition = scenario.interaction.evaluation_environment or scenario.interaction.environment
+    return definition, spec, seed
+
+
 def evaluate_policy(
     policy: CompiledPolicy,
     scenario: ScenarioSpec,
@@ -281,18 +319,45 @@ def evaluate_policy(
 
     Returns:
         Episode returns/lengths and termination/truncation statistics.
+    """
+    definition, spec, seed = resolve_policy_evaluation(scenario)
+    if spec.episodes == 0:
+        return {}
+    evaluation_context = {}
+    if spec.video.enabled:
+        evaluation_context = {
+            "environment": lower_component(definition),
+            "contract_hash": hashlib.sha256(
+                json.dumps(lower_model(policy.contract), sort_keys=True).encode()
+            ).hexdigest(),
+            "config_hash": hashlib.sha256(
+                ResolvedConfig.from_scenario(scenario).to_yaml().encode()
+            ).hexdigest()[:16],
+        }
+    return _evaluate_episodes(
+        policy,
+        definition,
+        spec,
+        seed,
+        media_sink=media_sink,
+        frame_step=frame_step,
+        provenance=provenance,
+        evaluation_context=evaluation_context,
+    )
+
+
+def _evaluate_episodes(
+    policy, definition, spec, seed, *, media_sink, frame_step, provenance, evaluation_context
+) -> dict[str, float]:
+    """Execute scalar episodes and bounded media independently of training.
+
+    Returns:
+        Episode returns/lengths and termination/truncation statistics.
 
     Raises:
         ValueError: If evaluation I/O, rewards, or requested rendering are unsupported.
     """
-    assert isinstance(scenario.training, ReinforcementLearningSpec)
-    assert scenario.interaction is not None
-    spec = RLEvaluationSpec.model_validate(scenario.training.evaluation.model_dump())
-    if spec.episodes == 0:
-        return {}
-    definition = scenario.interaction.evaluation_environment or scenario.interaction.environment
     device = next(policy.parameters(), torch.tensor(0)).device
-    seed = spec.seed if spec.seed is not None else scenario.training.seed
     if spec.video.enabled and media_sink is None:
         raise ValueError("Evaluation recording requires an artifact output sink")
     returns, lengths = [], []
@@ -451,21 +516,11 @@ def evaluate_policy(
         metrics["eval/rl/final_joint_error_rad_mean"] = sum(final_errors) / len(final_errors)
     if spec.video.enabled:
         metadata = {
+            **evaluation_context,
             "frame_step": frame_step,
             "metrics": metrics,
             "evaluation": spec.model_dump(mode="json"),
             "seeds": [None if seed is None else seed + i for i in range(spec.episodes)],
-            "environment": lower_model(scenario)["interaction"][
-                "evaluation_environment"
-                if scenario.interaction.evaluation_environment is not None
-                else "environment"
-            ],
-            "contract_hash": hashlib.sha256(
-                json.dumps(policy.contract.model_dump(mode="json"), sort_keys=True).encode()
-            ).hexdigest(),
-            "config_hash": hashlib.sha256(
-                ResolvedConfig.from_scenario(scenario).to_yaml().encode()
-            ).hexdigest()[:16],
             "fps": fps,
             "captured_frames": len(frames),
             "capture_capped": capped,
