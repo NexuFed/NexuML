@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import hashlib
+import io
 import wave
+import zipfile
 from pathlib import Path
 
 import numpy as np
@@ -15,6 +18,7 @@ from nexuml.core.compiler import compile
 from nexuml.core.config import ResolvedConfig
 from nexuml.data.creator import NexuDataCreator
 from nexuml.training.lightning import create_runtime_artifacts
+from nexuml_library.data.maintenance import mimii_download
 from nexuml_library.data.maintenance.mimii import MIMIIAcousticEndpointPairs
 from nexuml_library.layers.generative.flow.paired_path import PairedLinearFlowPath
 from nexuml_library.layers.model.flow import Flow
@@ -196,3 +200,88 @@ def test_mimii_real_format_cpu_training_step(tmp_path: Path) -> None:
         parameter.grad is not None and parameter.grad.abs().sum() > 0
         for parameter in artifacts.pipeline.parameters()
     )
+
+
+def _zip_mimii_fixture(root: Path) -> bytes:
+    """Create an in-memory ZIP with a valid original MIMII layout.
+
+    Returns:
+        ZIP data suitable for mocking the official source.
+    """
+    _mimii_fixture(root)
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_STORED) as archive:
+        for wav in sorted((root / "fan").rglob("*.wav")):
+            archive.write(wav, arcname=wav.relative_to(root))
+    return buffer.getvalue()
+
+
+def test_mimii_auto_download_extracts_official_archive_once(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    archive_bytes = _zip_mimii_fixture(tmp_path / "source")
+    checksum = hashlib.md5(archive_bytes, usedforsecurity=False).hexdigest()
+    monkeypatch.setitem(mimii_download._MD5, "6_dB_fan.zip", checksum)
+    requests: list[str] = []
+
+    def urlopen_stub(request: object, timeout: int) -> io.BytesIO:
+        requests.append(str(request))
+        assert timeout == 120
+        return io.BytesIO(archive_bytes)
+
+    monkeypatch.setattr(mimii_download, "urlopen", urlopen_stub)
+    destination = tmp_path / "cache" / "6_dB_fan"
+    definition = MIMIIAcousticEndpointPairs(root=destination)
+    first = definition.build()
+    assert len(first) == 12
+    assert len(requests) == 1
+    assert (destination / "fan" / "id_00" / "normal").is_dir()
+    assert (destination.parent / "6_dB_fan.zip").is_file()
+    assert not (destination.parent / "6_dB_fan.zip.part").exists()
+
+    second = definition.build()
+    assert len(second) == len(first)
+    assert len(requests) == 1
+
+
+def test_mimii_download_false_is_explicitly_offline(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError, match="download=True"):
+        MIMIIAcousticEndpointPairs(
+            root=tmp_path / "missing", download=False
+        ).build()
+
+
+def test_mimii_auto_download_rejects_corrupt_archives(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        mimii_download,
+        "urlopen",
+        lambda request, timeout: io.BytesIO(b"corrupt archive"),
+    )
+    root = tmp_path / "6_dB_fan"
+    with pytest.raises(RuntimeError, match="checksum mismatch"):
+        MIMIIAcousticEndpointPairs(root=root).build()
+    assert not root.exists()
+    assert not (tmp_path / "6_dB_fan.zip").exists()
+    assert not (tmp_path / "6_dB_fan.zip.part").exists()
+
+
+def test_mimii_auto_download_rejects_zip_traversal(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    data = io.BytesIO()
+    with zipfile.ZipFile(data, "w") as archive:
+        archive.writestr("../escape.txt", "unsafe")
+        archive.writestr("fan/id_00/normal/sample.wav", b"RIFF")
+    zipped = data.getvalue()
+    checksum = hashlib.md5(zipped, usedforsecurity=False).hexdigest()
+    monkeypatch.setitem(mimii_download._MD5, "6_dB_fan.zip", checksum)
+    monkeypatch.setattr(
+        mimii_download, "urlopen", lambda request, timeout: io.BytesIO(zipped)
+    )
+    root = tmp_path / "6_dB_fan"
+    with pytest.raises(ValueError, match="Unsafe ZIP entry"):
+        MIMIIAcousticEndpointPairs(root=root).build()
+    assert not root.exists()
+    assert not (tmp_path / "escape.txt").exists()
