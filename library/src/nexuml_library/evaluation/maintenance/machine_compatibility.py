@@ -363,14 +363,16 @@ def diagnose_machine_compatibility(
     # must not change when endpoint pair assignments are permuted.
     axis = directions[:, 0]
     healthy = {
-        name: values[torch.argsort(values @ axis, stable=True)]
+        name: grouped[name]["healthy"][
+            torch.argsort(grouped[name]["healthy"] @ axis, stable=True)
+        ]
         for name in names
-        if (values := grouped[name]["healthy"]) is not None
     }
     faulty = {
-        name: values[torch.argsort(values @ axis, stable=True)]
+        name: grouped[name]["faulty"][
+            torch.argsort(grouped[name]["faulty"] @ axis, stable=True)
+        ]
         for name in names
-        if (values := grouped[name]["faulty"]) is not None
     }
     projected_h = {name: healthy[name] @ directions for name in names}
     projected_f = {name: faulty[name] @ directions for name in names}
