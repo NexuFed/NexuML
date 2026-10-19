@@ -246,9 +246,7 @@ def test_mimii_auto_download_extracts_official_archive_once(
 
 def test_mimii_download_false_is_explicitly_offline(tmp_path: Path) -> None:
     with pytest.raises(FileNotFoundError, match="download=True"):
-        MIMIIAcousticEndpointPairs(
-            root=tmp_path / "missing", download=False
-        ).build()
+        MIMIIAcousticEndpointPairs(root=tmp_path / "missing", download=False).build()
 
 
 def test_mimii_auto_download_rejects_corrupt_archives(
@@ -277,9 +275,7 @@ def test_mimii_auto_download_rejects_zip_traversal(
     zipped = data.getvalue()
     checksum = hashlib.md5(zipped, usedforsecurity=False).hexdigest()
     monkeypatch.setitem(mimii_download._MD5, "6_dB_fan.zip", checksum)
-    monkeypatch.setattr(
-        mimii_download, "urlopen", lambda request, timeout: io.BytesIO(zipped)
-    )
+    monkeypatch.setattr(mimii_download, "urlopen", lambda request, timeout: io.BytesIO(zipped))
     root = tmp_path / "6_dB_fan"
     with pytest.raises(ValueError, match="Unsafe ZIP entry"):
         MIMIIAcousticEndpointPairs(root=root).build()
