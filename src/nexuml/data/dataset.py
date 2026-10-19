@@ -185,6 +185,9 @@ class NexuDataset(torch.utils.data.Dataset):
 
         self.meta = meta.reset_index(drop=True)
 
+    def validate_split_type(self, split_type: str) -> None:
+        """Let sources reject unsafe repartitioning before metadata is changed or merged."""
+
     def get_split(self, split: str) -> Self:
         """Return a view of this dataset filtered to a single split.
 

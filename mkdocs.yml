@@ -100,6 +100,7 @@ nav:
       - Automatic batch size: how-to/auto-batch-size.md
     - Data:
       - Choose a data loader: how-to/data-loading.md
+      - Local LeRobot demonstrations: how-to/lerobot-data.md
       - Export a dataset: how-to/export-dataset.md
     - Experimentation:
       - Tracking and logging: how-to/tracking.md

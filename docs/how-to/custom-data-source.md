@@ -70,6 +70,13 @@ YAML stores `type: my_dataset`, `version: '1'`, and validated parameters. It doe
 - `build()` returns a `NexuDataset` runtime.
 - Runtime `__getitem__` returns `(x: TensorDict, y: TensorDict | None)`.
 - Loaded tensors and mutable dataset state stay off the public definition.
+- Sources with fixed episode/group partitions can override runtime
+  `validate_split_type(split_type)` to reject unsafe repartitioning. The creator
+  calls it before changing metadata or composing sources; ordinary sources keep
+  the default no-op. Use `split_type="keep"` for the
+  [local LeRobot source](lerobot-data.md).
+- Dataset composition preserves source-owned `(x, y)` pairs. Metadata-backed
+  labels still use the existing aggregate label-merging rules.
 
 ## See Also
 

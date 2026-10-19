@@ -23,6 +23,7 @@ Guides answer a specific "how do I ...?" question. They are not intended to be r
 ## Data
 
 - [Choose a data loader](data-loading.md) — Torch, DALI, and tensor-shard loading.
+- [Local LeRobot demonstrations](lerobot-data.md) — offline state/video frames and explicit episode splits.
 - [Export a dataset](export-dataset.md) — persist raw or partially processed dataset views for reuse.
 
 ## Experimentation

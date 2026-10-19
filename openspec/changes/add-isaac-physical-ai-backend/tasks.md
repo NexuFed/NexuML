@@ -99,7 +99,7 @@ The user-selected LeRobot additions require complete Diffusion Policy and resour
 
 ## 7. Experience ingestion, capture and synthetic data
 
-- [ ] 7.1 Add a LeRobotDataset v3 data source through existing loaders; verify tiny episode/video/state fixtures, schema/version diagnostics, timestamps, split identity and offline operation.
+- [x] 7.1 Add a LeRobotDataset v3 data source through existing loaders; verify tiny episode/video/state fixtures, schema/version diagnostics, timestamps, split identity and offline operation.
 - [ ] 7.2 Add time-alignment, quality and consumption reports; verify missing/stale frames, bounds, rates, calibration changes, duplicates, padding and source-group leakage failures before training.
 - [ ] 7.3 Ingest intervention/correction segments with producer and policy provenance; verify deterministic selection, no unauthorized identifiers and preserved old/new dataset splits.
 - [ ] 7.4 Document and exercise upstream simulation teleoperation/recording plus approved prerecorded SO-101 leader/follower data; verify controls, reset/record boundaries and no custom capture UI or implicit physical actuation.
