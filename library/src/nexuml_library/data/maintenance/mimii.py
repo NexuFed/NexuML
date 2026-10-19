@@ -72,9 +72,6 @@ def _mimii_metadata(
 
     Returns:
         Per-pair metadata with machine, source file and split provenance.
-
-    Raises:
-        FileNotFoundError: If required original acoustic recordings are absent.
     """
     machine_dir = _machine_directory(root, machine_type)
     splits = {"train": train_machine_ids, "val": val_machine_ids}
