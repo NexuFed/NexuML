@@ -122,6 +122,8 @@ def test_encoder_is_frozen_and_uses_official_input_preprocessing(
     fake_huggingface: tuple[list[dict[str, Any]], list[_FakeFISHER]],
 ) -> None:
     options, backbones = fake_huggingface
+    modeling_utils = sys.modules["transformers.modeling_utils"]
+    finalizer = getattr(modeling_utils, "PreTrainedModel")._finalize_model_loading
     encoder = FISHEREncoder(
         model_name="jiangab/FISHER-small-0723",
         sample_rate=16000,
@@ -136,6 +138,7 @@ def test_encoder_is_frozen_and_uses_official_input_preprocessing(
         "low_cpu_mem_usage": False,
     }
     assert getattr(backbones[0], "all_tied_weights_keys") == {}
+    assert getattr(modeling_utils, "PreTrainedModel")._finalize_model_loading is finalizer
     encoder.train()
     assert not backbones[0].training
     assert not any(parameter.requires_grad for parameter in encoder.parameters())
