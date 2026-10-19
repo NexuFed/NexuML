@@ -77,6 +77,11 @@ def test_compare_couplings_rejects_leakage_and_mismatched_splits() -> None:
         compare_couplings(independent, ot)
 
     ot["test_is_sealed"] = True
+    ot["held_out_test_best"] = {"swd_relative_reduction": 0.99}
+    with pytest.raises(ValueError, match="unsealing"):
+        compare_couplings(independent, ot)
+
+    del ot["held_out_test_best"]
     ot["prepared_settings"]["val_machine_ids"] = ["id_06"]
     with pytest.raises(ValueError, match="share frontend"):
         compare_couplings(independent, ot)
