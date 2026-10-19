@@ -51,7 +51,6 @@ data = [
 pretrained = [
     "timm>=1.0",
     "transformers>=4.0",
-    "einops>=0.7",  # required by FISHER Hugging Face custom model code
 ]
 eval = [
     "matplotlib>=3.8",
