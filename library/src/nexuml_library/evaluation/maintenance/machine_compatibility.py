@@ -390,7 +390,19 @@ def diagnose_machine_compatibility(
         "source_artifact": str(Path(prepared_file).expanduser().resolve()),
         "feature_settings": {
             key: settings.get(key)
-            for key in ("frontend", "coupling", "scaling", "seed", "feature_dim", "model_name")
+            for key in (
+                "frontend",
+                "coupling",
+                "scaling",
+                "seed",
+                "feature_dim",
+                "model_name",
+                "revision",
+                "machine_type",
+                "noise_db",
+                "normalization_fit_split",
+                "ot_fit_split",
+            )
         },
         "projections": projections,
         "bootstrap_repetitions": bootstrap,
