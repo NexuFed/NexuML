@@ -99,6 +99,10 @@ def test_all_four_variants_use_identical_splits_and_train_statistics() -> None:
     for key, artifact in variants.items():
         assert artifact["format"] == "nex233-features-v1"
         assert artifact["settings"]["normalization_fit_split"] == "train"
+        assert "unconditional_cancellation_fraction" in artifact["settings"][
+            "training_velocity_statistics"
+        ]
+        assert len(artifact["settings"]["training_neighbor_alignment"]) == 3
         assert [row["split"] for row in artifact["rows"]] == [
             row["split"] for row in rows
         ]
