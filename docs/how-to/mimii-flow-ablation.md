@@ -93,6 +93,13 @@ The dedicated entry point uses NexuSession.fit() then validate(), but
 **not** NexuSession.run(): the latter automatically tests every run.
 This is necessary to keep the test machine sealed during selection.
 
+The ablation factory requires a prepared file and is therefore deliberately
+**not registered as a zero-argument global NexuML scenario**. This keeps
+registry conformance independent of local datasets. Use the documented
+`ablation_train` command or the module's `scenario()` scenario-file
+entry point with `NEX233_PREPARED_FILE` set; do not invoke
+`nexuml train mimii-acoustic-ablation` by registry name.
+
 ```bash
 prepared=.experiments/nex233-ablation/prepared/seed42
 checkpoint_root=.experiments/checkpoints/nex233-ablation
