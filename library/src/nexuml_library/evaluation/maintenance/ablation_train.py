@@ -9,27 +9,27 @@ import lightning as L
 import torch
 
 from nexuml.training.lightning import NexuSession
-from nexuml_library.evaluation.maintenance.ablation_checkpoint import SaveLatestEpoch
 from nexuml_library.scenarios.flow.mimii_acoustic_ablation import mimii_acoustic_ablation
 
 
-def verify_latest_checkpoint(trainer: L.Trainer) -> tuple[Path, int, int]:
+def verify_latest_checkpoint(
+    trainer: L.Trainer, checkpoint_path: Path
+) -> tuple[Path, int, int]:
     """Ensure the saved last state matches the optimizer steps actually completed.
 
     Args:
         trainer: Lightning trainer after training has returned.
+        checkpoint_path: Absolute path to the last-state checkpoint.
 
     Returns:
         Verified last checkpoint path, completed epoch and optimizer step count.
 
     Raises:
-        RuntimeError: If the callback is missing or its checkpoint is stale.
+        RuntimeError: If the expected checkpoint is missing or stale.
     """
-    latest = [item for item in trainer.callbacks if isinstance(item, SaveLatestEpoch)]
-    if len(latest) != 1 or not latest[0].path.is_file():
-        raise RuntimeError("The latest-epoch checkpoint callback did not save last.ckpt")
-    path = latest[0].path
-    state = torch.load(path, map_location="cpu", weights_only=False)
+    if not checkpoint_path.is_file():
+        raise RuntimeError(f"Missing final checkpoint: {checkpoint_path}")
+    state = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
     saved_step = state.get("global_step")
     saved_epoch = state.get("epoch")
     if (
@@ -42,7 +42,7 @@ def verify_latest_checkpoint(trainer: L.Trainer) -> tuple[Path, int, int]:
             f"Stale or invalid last.ckpt: saved epoch={saved_epoch}, "
             f"step={saved_step}; trainer step={trainer.global_step}"
         )
-    return path, saved_epoch, saved_step
+    return checkpoint_path, saved_epoch, saved_step
 
 
 def train_ablation(
@@ -74,6 +74,7 @@ def train_ablation(
     """
     if width <= 0:
         raise ValueError("MLP width must be positive")
+    checkpoint_root = Path(checkpoint_root).expanduser().resolve()
     spec = mimii_acoustic_ablation(
         prepared_file,
         checkpoint_root=checkpoint_root,
@@ -84,7 +85,7 @@ def train_ablation(
         seed=seed,
     )
     run_name = f"{Path(prepared_file).stem}-mlp-{width}x{width}"
-    checkpoint_dir = Path(checkpoint_root) / run_name
+    checkpoint_dir = checkpoint_root / run_name
     if list(checkpoint_dir.glob("*.ckpt")):
         raise FileExistsError(
             f"Existing checkpoint(s) in {checkpoint_dir}; "
@@ -93,7 +94,9 @@ def train_ablation(
     L.seed_everything(seed, workers=True)
     session = NexuSession.from_scenario(spec, accelerator=accelerator, devices=1)
     session.setup().fit()
-    latest_path, latest_epoch, latest_step = verify_latest_checkpoint(session.trainer)
+    latest_path, latest_epoch, latest_step = verify_latest_checkpoint(
+        session.trainer, checkpoint_dir / "last.ckpt"
+    )
     session.validate()
     print(f"Training finished. Checkpoints: {checkpoint_dir}")
     print(f"Verified last.ckpt: {latest_path} (epoch={latest_epoch}, step={latest_step})")
