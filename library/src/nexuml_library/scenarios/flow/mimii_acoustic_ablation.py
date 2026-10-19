@@ -1,4 +1,9 @@
-"""Reproducible MIMII feature-space Flow Matching ablation scenario."""
+"""Explicit prepared-feature MIMII flow factory and scenario-file entry point.
+
+The factory requires a prepared artifact, so it is intentionally not exposed
+through zero-argument global scenario discovery. Use the scenario-file entry
+point or the validation-only ablation trainer.
+"""
 
 from __future__ import annotations
 
@@ -8,7 +13,6 @@ from pathlib import Path
 from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint
 
 from nexuml import callback
-from nexuml.core.discovery import scenario as register_scenario
 from nexuml.core.types import DatasetSpec, PipelineSpec, ScenarioSpec
 from nexuml_library.data.maintenance.prepared_endpoints import (
     PreparedMaintenanceEndpointPairs,
@@ -18,7 +22,6 @@ from nexuml_library.scenarios.flow.audio_health_to_fault import audio_health_to_
 from nexuml_library.scenarios.training.defaults import default_logging
 
 
-@register_scenario("mimii-acoustic-ablation")
 def mimii_acoustic_ablation(
     prepared_file: str | Path,
     *,
