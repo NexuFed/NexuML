@@ -1,0 +1,196 @@
+"""MIMII real-acoustic dataset and NexuML Flow Matching scenario contracts."""
+
+from __future__ import annotations
+
+import wave
+from pathlib import Path
+
+import numpy as np
+import pytest
+import torch
+from pydantic import ValidationError
+from tensordict import TensorDict
+
+from nexuml.core.compiler import compile
+from nexuml.core.config import ResolvedConfig
+from nexuml.data.creator import NexuDataCreator
+from nexuml.training.lightning import create_runtime_artifacts
+from nexuml_library.data.maintenance.mimii import MIMIIAcousticEndpointPairs
+from nexuml_library.layers.generative.flow.paired_path import PairedLinearFlowPath
+from nexuml_library.layers.model.flow import Flow
+from nexuml_library.scenarios.flow.mimii_acoustic_flow import mimii_acoustic_flow
+
+
+def _wav(path: Path, value: float = 0.2) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    t = np.arange(1024, dtype=np.float64)
+    audio = (np.sin(2.0 * np.pi * 330.0 * t / 16000.0) * value * 32767.0).astype("<i2")
+    eight_channels = np.repeat(audio[:, None], 8, axis=1)
+    with wave.open(str(path), "wb") as writer:
+        writer.setnchannels(8)
+        writer.setsampwidth(2)
+        writer.setframerate(16000)
+        writer.writeframes(eight_channels.tobytes())
+
+
+def _mimii_fixture(root: Path) -> Path:
+    for machine in ("id_00", "id_02", "id_04", "id_06"):
+        for condition in ("normal", "abnormal"):
+            for i in range(3):
+                _wav(
+                    root / "fan" / machine / condition / f"{i:08d}.wav",
+                    value=0.2 if condition == "normal" else 0.7,
+                )
+    return root
+
+
+def test_mimii_indexes_real_recordings_without_copying(tmp_path: Path) -> None:
+    root = _mimii_fixture(tmp_path)
+    definition = MIMIIAcousticEndpointPairs(root=root, clip_num_samples=512)
+    runtime = definition.build()
+
+    assert runtime.modality == "audio"
+    assert runtime.meta is not None
+    assert len(runtime) == 12
+    assert runtime.meta["split"].value_counts().to_dict() == {
+        "train": 6,
+        "val": 3,
+        "test": 3,
+    }
+    assert runtime.meta.groupby("group_id")["split"].nunique().eq(1).all()
+    assert set(runtime.meta["dataset_name"]) == {"MIMII"}
+    assert runtime.meta["healthy_file"].str.contains("/normal/").all()
+    assert runtime.meta["faulty_file"].str.contains("/abnormal/").all()
+    assert runtime.meta["pair_id"].is_unique
+    for split, ids in {
+        "train": {"id_00", "id_02"},
+        "val": {"id_04"},
+        "test": {"id_06"},
+    }.items():
+        assert set(runtime.meta[runtime.meta["split"] == split]["machine_id"]) == ids
+
+    x, y = runtime[0]
+    assert isinstance(x, TensorDict)
+    assert y is not None
+    assert x["healthy_waveform"].shape == (512,)
+    assert x["faulty_waveform"].shape == (512,)
+    assert x["healthy_waveform"].dtype == torch.float32
+    assert x["faulty_waveform"].abs().mean() > x["healthy_waveform"].abs().mean()
+
+
+def test_mimii_pair_cap_does_not_duplicate_recordings(tmp_path: Path) -> None:
+    root = _mimii_fixture(tmp_path)
+    a = MIMIIAcousticEndpointPairs(
+        root=root,
+        clip_num_samples=512,
+        max_pairs_per_machine=2,
+        seed=17,
+    ).build()
+    b = MIMIIAcousticEndpointPairs(
+        root=root,
+        clip_num_samples=512,
+        max_pairs_per_machine=2,
+        seed=17,
+    ).build()
+    assert a.meta is not None and b.meta is not None
+    assert a.meta.equals(b.meta)
+    assert len(a) == 8
+    for _, group in a.meta.groupby("group_id"):
+        assert group["healthy_file"].is_unique
+        assert group["faulty_file"].is_unique
+
+
+def test_mimii_rejects_cross_split_machine_overlap() -> None:
+    with pytest.raises(ValidationError, match="overlaps"):
+        MIMIIAcousticEndpointPairs(
+            train_machine_ids=["id_00", "id_02"],
+            val_machine_ids=["id_02"],
+        )
+
+
+def test_mimii_missing_faults_produce_explicit_error(tmp_path: Path) -> None:
+    root = _mimii_fixture(tmp_path)
+    for file in (root / "fan" / "id_02" / "abnormal").glob("*.wav"):
+        file.unlink()
+    with pytest.raises(FileNotFoundError, match="abnormal"):
+        MIMIIAcousticEndpointPairs(root=root).build()
+
+
+def test_mimii_can_exclude_held_out_test_index(tmp_path: Path) -> None:
+    root = _mimii_fixture(tmp_path)
+    runtime = MIMIIAcousticEndpointPairs(root=root, include_test=False).build()
+    assert runtime.meta is not None
+    assert set(runtime.meta["split"]) == {"train", "val"}
+    assert "id_06" not in runtime.meta["machine_id"].to_list()
+
+
+def test_mimii_training_scenario_compiles_round_trips_and_preserves_splits(
+    tmp_path: Path,
+) -> None:
+    root = _mimii_fixture(tmp_path)
+    spec = mimii_acoustic_flow(
+        root=root,
+        clip_num_samples=512,
+        n_fft=128,
+        hop_length=64,
+        n_mels=8,
+        hidden_dims=[16],
+        num_steps=3,
+        batch_size=2,
+        max_epochs=1,
+        num_workers=0,
+        checkpoint_dir=str(tmp_path / "ckpt"),
+    )
+    restored = ResolvedConfig.from_yaml(ResolvedConfig.from_scenario(spec).to_yaml())
+    source = restored.data.datasets[0].source
+    assert isinstance(source, MIMIIAcousticEndpointPairs)
+    assert source.machine_type == "fan"
+    assert restored.data.datasets[0].split_type == "keep"
+    assert restored.data.datasets[0].modality == "audio"
+    assert len(restored.callbacks) == 2
+    assert restored.logging is not None and restored.logging.mlflow is None
+    assert isinstance(restored.pipeline.stages["FlowPath"][0].component, PairedLinearFlowPath)
+    assert isinstance(restored.pipeline.stages["Flow"][0].component, Flow)
+    pipeline = compile(spec)
+    assert "flow_matching_loss" in pipeline.loss_keys
+
+    dataset = NexuDataCreator().build_dataset(spec.data)
+    assert dataset.meta is not None
+    assert dataset.meta.groupby("group_id")["split"].nunique().eq(1).all()
+    assert dataset.meta["split"].value_counts().to_dict() == {
+        "train": 6,
+        "val": 3,
+        "test": 3,
+    }
+
+
+def test_mimii_real_format_cpu_training_step(tmp_path: Path) -> None:
+    root = _mimii_fixture(tmp_path)
+    spec = mimii_acoustic_flow(
+        root=root,
+        clip_num_samples=512,
+        n_fft=128,
+        hop_length=64,
+        n_mels=8,
+        hidden_dims=[16],
+        num_steps=3,
+        batch_size=2,
+        max_epochs=1,
+        num_workers=0,
+        checkpoint_dir=str(tmp_path / "ckpt"),
+    )
+    artifacts = create_runtime_artifacts(spec)
+    artifacts.data_module.setup("fit")
+    x, y = next(iter(artifacts.data_module.train_dataloader()))
+    out, _ = artifacts.lightning_module.pipeline(x, y)
+    loss, _ = artifacts.lightning_module._compute_loss(out)
+    loss.backward()
+
+    assert torch.isfinite(loss)
+    assert loss.item() > 0
+    assert torch.isfinite(out["flow_target_velocity"]).all()
+    assert out["healthy_spectrum"].shape == out["faulty_spectrum"].shape
+    assert any(
+        parameter.grad is not None and parameter.grad.abs().sum() > 0
+        for parameter in artifacts.pipeline.parameters()
+    )
