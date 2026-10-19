@@ -86,7 +86,12 @@ def compare_couplings(
         raise ValueError("Couplings must share frontend, scaling, seed and machine splits")
     if _signature(independent) != _signature(ot):
         raise ValueError("Couplings must share the same trained MLP architecture")
-    if not independent["test_is_sealed"] or not ot["test_is_sealed"]:
+    if (
+        not independent["test_is_sealed"]
+        or not ot["test_is_sealed"]
+        or "held_out_test_best" in independent
+        or "held_out_test_best" in ot
+    ):
         raise ValueError("Do not compare couplings after unsealing the test partition")
 
     for split in ("training_best", "validation_best"):
