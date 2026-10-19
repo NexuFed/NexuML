@@ -39,6 +39,7 @@ def build_collector(definition, training: ReinforcementLearningSpec, policy, dev
         ImportError: If reinforcement collector prerequisites are missing.
         ValueError: If an unvalidated Ray collector topology is requested.
     """
+    definition.validate_training(training, device=str(device))
     try:
         from torchrl.collectors import Collector
     except ImportError as error:

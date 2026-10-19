@@ -149,6 +149,129 @@ def test_invalid_evaluation_configuration(values):
         RLEvaluationSpec.model_validate(values)
 
 
+def test_task_outcomes_are_separate_from_returns_and_reset_per_episode(fake, monkeypatch):
+    scenario, policy = fake
+
+    def factory():
+        runtime = FakeRuntime()
+        original = runtime.step
+
+        def step(action):
+            transition = original(action)
+            first_episode = len(runtime.resets) == 1
+            return replace(
+                transition,
+                info={
+                    "task_success": torch.tensor(first_episode and runtime.steps == 2),
+                    "joint_error_rad": torch.tensor(
+                        (0.1 if first_episode else 0.2) * runtime.steps
+                    ),
+                },
+            )
+
+        monkeypatch.setattr(runtime, "step", step)
+        return runtime
+
+    monkeypatch.setattr(FakeEnvironment, "factory", factory)
+    metrics = evaluate_policy(policy, scenario)
+    assert metrics["eval/rl/return_mean"] == 3
+    assert metrics["eval/rl/task_success_rate"] == 0.5
+    assert metrics["eval/rl/final_joint_error_rad_mean"] == pytest.approx(0.45)
+    assert FakeEnvironment.instances[-1].closed
+
+
+@pytest.mark.parametrize(
+    "info",
+    [
+        {"task_success": torch.tensor(True)},
+        {"joint_error_rad": torch.tensor(0.1)},
+        {"task_success": torch.ones(2, dtype=torch.bool), "joint_error_rad": torch.tensor(0.1)},
+        {"task_success": torch.tensor(1.0), "joint_error_rad": torch.tensor(0.1)},
+        {"task_success": True, "joint_error_rad": torch.tensor(0.1)},
+        *[
+            {"task_success": torch.tensor(False), "joint_error_rad": value}
+            for value in (
+                torch.tensor(float("nan")),
+                torch.tensor(float("inf")),
+                torch.tensor(-0.1),
+                torch.ones(2),
+                torch.tensor(1),
+                0.1,
+            )
+        ],
+    ],
+)
+def test_invalid_task_outcomes_fail_and_close_runtime(fake, monkeypatch, info):
+    scenario, policy = fake
+
+    def factory():
+        runtime = FakeRuntime()
+        original = runtime.step
+        monkeypatch.setattr(runtime, "step", lambda action: replace(original(action), info=info))
+        return runtime
+
+    monkeypatch.setattr(FakeEnvironment, "factory", factory)
+    with pytest.raises(ValueError, match="Task outcomes"):
+        evaluate_policy(policy, scenario)
+    assert FakeEnvironment.instances[-1].closed
+
+
+@pytest.mark.parametrize("disappear", ["step", "episode"])
+def test_task_outcome_presence_cannot_change_or_reuse_stale_values(fake, monkeypatch, disappear):
+    scenario, policy = fake
+
+    def factory():
+        runtime = FakeRuntime()
+        original = runtime.step
+
+        def step(action):
+            transition = original(action)
+            present = runtime.steps == 1 if disappear == "step" else len(runtime.resets) == 1
+            info = (
+                {"task_success": torch.tensor(False), "joint_error_rad": torch.tensor(0.1)}
+                if present
+                else None
+            )
+            return replace(transition, info=info)
+
+        monkeypatch.setattr(runtime, "step", step)
+        return runtime
+
+    monkeypatch.setattr(FakeEnvironment, "factory", factory)
+    with pytest.raises(ValueError, match="supplied consistently"):
+        evaluate_policy(policy, scenario)
+    assert FakeEnvironment.instances[-1].closed
+
+
+@pytest.mark.parametrize("change", ["period", "rate", "mapping", "joint-order", "revision"])
+def test_replay_rejects_same_shape_but_changed_control_meaning(change):
+    from nexuml.training.reinforcement import _validate_evaluation_contract
+    from nexuml_library.environments.isaaclab import IsaacLabEnvironment
+
+    expected = IsaacLabEnvironment(task="Isaac-Reach-Franka").describe()
+    if change == "period":
+        actual = expected.model_copy(update={"control_period_s": 1 / 60})
+    else:
+        action = expected.actions["action"]
+        assert action.description is not None
+        changes = {
+            "rate": {"rate_hz": 60.0},
+            "mapping": {"description": action.description.replace("0.5 * action", "1.0 * action")},
+            "joint-order": {
+                "description": action.description.replace(
+                    "panda_joint1, panda_joint2", "panda_joint2, panda_joint1"
+                )
+            },
+            "revision": {"description": action.description.replace("ae37b028", "00000000")},
+        }
+        actual = expected.model_copy(
+            update={"actions": {"action": action.model_copy(update=changes[change])}}
+        )
+    assert actual.actions["action"].shape == expected.actions["action"].shape
+    with pytest.raises(ValueError, match="control period|incompatible"):
+        _validate_evaluation_contract(expected, actual)
+
+
 @pytest.mark.parametrize("format", ["gif", "mp4", "both"])
 def test_configuration_round_trip_and_ordinary_overrides(format):
     scenario = cartpole_ppo(total_frames=32, frames_per_batch=16)

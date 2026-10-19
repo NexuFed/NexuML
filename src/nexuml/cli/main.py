@@ -339,6 +339,11 @@ def train_cmd(
 @app.command(name="evaluate", help="Evaluate a trusted exported policy without training")
 def evaluate_cmd(
     policy_package: Path = typer.Argument(help="Trusted complete policy package directory or file"),
+    device: Optional[str] = typer.Option(
+        None,
+        "--device",
+        help="Explicit policy/replay device; otherwise keep portable CPU placement.",
+    ),
     override: Optional[list[str]] = typer.Option(
         None,
         "--override",
@@ -351,6 +356,7 @@ def evaluate_cmd(
     Raises:
         ValueError: Invalid packages/overrides are diagnosed and converted to a CLI exit.
         typer.Exit: If loading, overrides, evaluation, logging, or finalization fails.
+        SystemExit: Preserves signal-derived cancellation status after failed-job cleanup.
     """
     from nexuml.cli.overrides import apply_overrides
     from nexuml.core.config import ResolvedConfig
@@ -419,6 +425,8 @@ def evaluate_cmd(
         scenario.training.evaluation = RLEvaluationSpec.model_validate(
             scenario.training.evaluation.model_dump()
         )
+        if device is not None and scenario.training.evaluation.episodes:
+            policy.to(device)
         video = scenario.training.evaluation.video
         source_frames = metadata.get("training_frames")
         if type(source_frames) is not int or source_frames < 0:
@@ -455,6 +463,9 @@ def evaluate_cmd(
         )
         for logger in loggers:
             logger.log_metrics(metrics, step=frame_step)
+    except SystemExit:
+        failed = True
+        raise
     except (Exception, KeyboardInterrupt) as exc:
         failed = True
         console.print(f"[red]Evaluation failed: {str(exc) or 'cancelled'}[/red]")

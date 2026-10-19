@@ -1,0 +1,143 @@
+"""Pinned state-only Isaac contracts; native resources exist only after build."""
+
+from typing import TYPE_CHECKING, Literal
+
+import torch
+
+from nexuml.core.components import EnvironmentBuildContext, EnvironmentDefinition
+from nexuml.core.discovery import environment
+from nexuml.core.types import InteractionContract, ReinforcementLearningSpec, TensorFieldContract
+
+if TYPE_CHECKING:
+    from nexuml.interaction.runtime import EnvironmentRuntime
+
+
+_TASK_PROFILES: dict[str, tuple[int, int, float, str, str]] = {
+    "Isaac-Cartpole": (
+        4,
+        1,
+        1 / 60,
+        "Pinned Cartpole state-only policy observations.",
+        "Joint order: slider_to_cart; continuous joint effort = 100 * action N.",
+    ),
+    "Isaac-Reach-Franka": (
+        32,
+        7,
+        1 / 30,
+        "Pinned Franka Reach state-only policy observations.",
+        "Joint order: panda_joint1, panda_joint2, panda_joint3, panda_joint4, "
+        "panda_joint5, panda_joint6, panda_joint7; joint-position targets = "
+        "pinned default joint pose + 0.5 * action rad (default-pose offsets).",
+    ),
+    "NexuML-SO101-Joint-Reach": (
+        15,
+        5,
+        1 / 30,
+        "Five arm positions (rad), velocities (rad/s), and target positions (rad), "
+        "each ordered shoulder_pan, shoulder_lift, elbow_flex, wrist_flex, wrist_roll.",
+        "Joint order: shoulder_pan, shoulder_lift, elbow_flex, wrist_flex, wrist_roll; "
+        "absolute joint-position targets = 0.5 * action rad in [-0.5, 0.5], "
+        "without default-pose offsets, using the pinned SO101_CFG PhysX asset; "
+        "gripper is fixed at 0.2555162024919699 rad, not a policy control.",
+    ),
+}
+
+
+@environment("IsaacLabEnvironment")
+class IsaacLabEnvironment(EnvironmentDefinition):
+    """Immutable candidate profile; description is not native compatibility proof."""
+
+    task: Literal["Isaac-Cartpole", "Isaac-Reach-Franka", "NexuML-SO101-Joint-Reach"] = (
+        "Isaac-Cartpole"
+    )
+    revision: Literal["ae37b028ea415c91ea2bc32609efcd759ed2b974"] = (
+        "ae37b028ea415c91ea2bc32609efcd759ed2b974"
+    )
+    physics: Literal["isaacsim_physx"] = "isaacsim_physx"
+
+    def describe(self) -> InteractionContract:
+        obs_size, action_size, period, observation_description, mapping = _TASK_PROFILES[self.task]
+        return InteractionContract(
+            observations={
+                "observation": TensorFieldContract(
+                    shape=(obs_size,),
+                    dtype="float32",
+                    modality="vector",
+                    description=observation_description,
+                )
+            },
+            actions={
+                "action": TensorFieldContract(
+                    shape=(action_size,),
+                    dtype="float32",
+                    low=-1,
+                    high=1,
+                    rate_hz=1 / period,
+                    description=(
+                        f"task={self.task}; revision={self.revision}; physics={self.physics}; "
+                        f"normalized dimensionless [-1, 1] controls; period={period} s. {mapping}"
+                    ),
+                )
+            },
+            action_space="continuous",
+            num_envs=1,
+            control_period_s=period,
+        )
+
+    def validate_training(
+        self, training: ReinforcementLearningSpec, *, device: str | None = None
+    ) -> None:
+        collector = training.collector
+        if collector.backend != "direct" or not collector.sync or collector.num_collectors != 1:
+            raise ValueError(
+                "Isaac Lab requires one synchronous direct collector: backend='direct', "
+                "sync=True, num_collectors=1"
+            )
+        if training.devices != 1 or training.strategy != "auto":
+            raise ValueError("Isaac Lab requires training.devices=1 and training.strategy='auto'")
+        configured_devices = {
+            "collector.env_device": collector.env_device,
+            "collector.storing_device": collector.storing_device,
+        }
+        if collector.policy_device != "auto":
+            configured_devices["collector.policy_device"] = collector.policy_device
+        if device is not None:
+            configured_devices["learner device"] = device
+        indices = set()
+        for name, value in configured_devices.items():
+            try:
+                parsed = torch.device(value)
+            except (RuntimeError, TypeError) as error:
+                raise ValueError(
+                    f"Isaac Lab requires a CUDA device for {name}, got {value!r}"
+                ) from error
+            if parsed.type != "cuda":
+                raise ValueError(f"Isaac Lab requires a CUDA device for {name}, got {value!r}")
+            indices.add(parsed.index if parsed.index is not None else 0)
+        if len(indices) != 1:
+            raise ValueError(
+                "Isaac Lab environment, storage, policy, and learner must use the same CUDA "
+                "device index (cuda means cuda:0)"
+            )
+        if training.frames_per_batch % collector.num_envs_per_collector:
+            raise ValueError(
+                "Isaac Lab frames_per_batch must be divisible by collector.num_envs_per_collector"
+            )
+        evaluation = training.evaluation
+        if (
+            evaluation.episodes > 0
+            or evaluation.at_start
+            or evaluation.every_n_frames is not None
+            or evaluation.video.enabled
+        ):
+            raise ValueError(
+                "Isaac Lab does not support automatic fit evaluation or video. Disable episodes, "
+                "at_start, every_n_frames, and video; use fresh-process replay instead: "
+                "nexuml evaluate <policy-package> --device cuda:0 "
+                "--override training.evaluation.episodes=3"
+            )
+
+    def build(self, context: EnvironmentBuildContext) -> "EnvironmentRuntime":
+        from nexuml_library.environments._isaaclab_runtime import _IsaacLabRuntime
+
+        return _IsaacLabRuntime(self, context)

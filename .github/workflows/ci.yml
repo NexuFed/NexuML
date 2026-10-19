@@ -7,6 +7,10 @@ on:
         description: Run optional visual/MuJoCo and GIF/MP4 RL integration smokes
         type: boolean
         default: false
+      isaaclab:
+        description: Run Isaac GPU acceptance using the pre-cached NEXUML_ISAAC_IMAGE
+        type: boolean
+        default: false
   push:
     branches: [main]
   pull_request:
@@ -202,6 +206,39 @@ jobs:
         run: >-
           python -m pytest tests/core/test_simulation_scenarios.py
           tests/core/test_rl_evaluation.py tests/tracking/test_evaluation_media.py -q
+
+  isaaclab:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.isaaclab }}
+    runs-on: ika-runner-gpu
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+      - name: Run prepared Isaac profile without installs or image pulls
+        env:
+          NEXUML_ISAAC_IMAGE: ${{ vars.NEXUML_ISAAC_IMAGE }}
+        run: |
+          test -n "$NEXUML_ISAAC_IMAGE"
+          docker image inspect "$NEXUML_ISAAC_IMAGE" >/dev/null
+          install -d -m 0777 "$RUNNER_TEMP/isaaclab-output"
+          docker run --rm --gpus '"device=0"' --cpus 4 --memory 16g --shm-size 2g \
+            --cap-drop ALL --security-opt no-new-privileges \
+            -e NVIDIA_DRIVER_CAPABILITIES=compute,utility,graphics \
+            -e ACCEPT_EULA=Y -e OMNI_KIT_ACCEPT_EULA=YES \
+            -e NEXUML_RUN_SIMULATOR_TESTS=1 \
+            -e NEXUML_RUN_SYSTEM_TESTS=0 -e NEXUML_RUN_HARDWARE_TESTS=0 \
+            --mount "type=bind,source=$GITHUB_WORKSPACE,target=/workspace/nexuml,readonly" \
+            --mount "type=bind,source=$RUNNER_TEMP/isaaclab-output,target=/workspace/output" \
+            --entrypoint /bin/bash "$NEXUML_ISAAC_IMAGE" \
+            /workspace/nexuml/scripts/isaaclab/run.sh -m pytest \
+            tests/core/test_isaaclab_integration.py -q \
+            --basetemp=/workspace/output/pytest -o cache_dir=/workspace/output/pytest-cache
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: isaaclab-acceptance
+          path: ${{ runner.temp }}/isaaclab-output
+          if-no-files-found: warn
+          retention-days: 7
 
   required-ci:
     name: CI

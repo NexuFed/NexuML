@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from torch import nn
 
     from nexuml.core.policy import CompiledPolicy
-    from nexuml.core.types import InteractionContract
+    from nexuml.core.types import InteractionContract, ReinforcementLearningSpec
     from nexuml.interaction.runtime import EnvironmentRuntime
 
 
@@ -141,6 +141,11 @@ class EnvironmentDefinition(ComponentDefinition):
     @abstractmethod
     def describe(self) -> "InteractionContract":
         """Describe tensor I/O without hardware connections or retained resources."""
+
+    def validate_training(
+        self, training: "ReinforcementLearningSpec", *, device: str | None = None
+    ) -> None:
+        """Optionally reject unsupported training settings before runtime allocation."""
 
     @abstractmethod
     def build(self, context: EnvironmentBuildContext) -> "EnvironmentRuntime":

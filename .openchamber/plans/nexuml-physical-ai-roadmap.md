@@ -58,7 +58,7 @@ These results describe the 2026-10-18 verification environment, not a universall
 |---|---|---|---|---|
 | 0 | Audit existing Physical AI/RL foundation | P0 | Original audit complete; new foundation audits pending | Verified baseline with failures and gaps documented, plus the new five-contract coverage matrix |
 | 1 | Gymnasium RL reference workflow | P0 | Complete for scoped CPU/headless proofs | CartPole + Pendulum round trips, scheduled evaluation, GIF/MP4 artifacts, and replay reproducible through NexuML |
-| 2 | NVIDIA Isaac Lab | P0 | Next; not started | NexuML trains/evaluates a batched simulated articulated-robot policy |
+| 2 | NVIDIA Isaac Lab | P0 | Scoped GPU integration verified; broader robustness gates pending | NexuML trains/evaluates a batched simulated articulated-robot policy |
 | 3 | LeRobot + imitation learning | P0 | Planned | Train/evaluate a manipulation policy from demonstrations |
 | 4 | LeRobot manipulation benchmarks | P0 | Planned | Comparable multi-seed results on Meta-World or LIBERO |
 | 5 | Pretrained VLA models | P1 | Planned | Inference and fine-tuning/evaluation of one VLA policy |
@@ -128,16 +128,16 @@ These results describe the 2026-10-18 verification environment, not a universall
 
 **Objective:** Use one of the established robot-learning platforms while retaining NexuML policy/training conventions.
 
-- [ ] Choose and document a tested Isaac Lab/Isaac Sim/PyTorch/CUDA/Python combination. Confirm current supported release and compatibility before coding. Maintain a separate, reproducible Isaac environment/container.
-- [ ] Run native Isaac Lab Cartpole and one articulated robot reaching/manipulation task **outside** NexuML; record commands and native baseline metrics.
-- [ ] Determine the smallest adapter between an Isaac Lab task and the existing `EnvironmentDefinition`, `EnvironmentRuntime`, `InteractionContract`, and TorchRL collector path. Reuse its Gymnasium-compatible API where possible.
-- [ ] Correctly handle vectorized GPU simulation: number of environments, batched observations/actions/rewards/dones, device placement, partial resets, episode boundaries, and policy control frequency.
-- [ ] Test whether native Isaac Lab vectorization and TorchRL collectors should be composed or kept as distinct execution paths. **Do not** accidentally double-vectorize or serialize live simulation contexts into workers.
-- [ ] Run a NexuML-managed Cartpole smoke experiment; compare outputs against the native execution.
-- [ ] Run a minimal reaching/manipulation experiment using an articulated robot (SO-101 if a compatible maintained task exists; otherwise use an officially supported arm task).
-- [ ] Evaluate a saved policy in a fresh simulator instance; export it and load it for simulation-only inference without bringing up the training learner.
-- [ ] Add dependency diagnostics, simulator lifecycle/shutdown tests, static contract tests and opt-in GPU/simulator integration tests.
-- [ ] Document headless training and how to replay a trained policy, with explicit VRAM and backend limitations.
+- [x] Choose and document a tested Isaac Lab/Isaac Sim/PyTorch/CUDA/Python combination. Confirm current supported release and compatibility before coding. Maintain a separate, reproducible Isaac environment/container.
+- [x] Run native Isaac Lab Cartpole and one articulated robot reaching/manipulation task **outside** NexuML; record commands and native baseline metrics.
+- [x] Determine the smallest adapter between an Isaac Lab task and the existing `EnvironmentDefinition`, `EnvironmentRuntime`, `InteractionContract`, and TorchRL collector path. Reuse its Gymnasium-compatible API where possible.
+- [x] Correctly handle vectorized GPU simulation: number of environments, batched observations/actions/rewards/dones, device placement, partial resets, episode boundaries, and policy control frequency.
+- [x] Test whether native Isaac Lab vectorization and TorchRL collectors should be composed or kept as distinct execution paths. **Do not** accidentally double-vectorize or serialize live simulation contexts into workers.
+- [x] Run a NexuML-managed Cartpole smoke experiment; compare outputs against the native execution.
+- [x] Run a minimal reaching/manipulation experiment using an articulated robot (SO-101 if a compatible maintained task exists; otherwise use an officially supported arm task).
+- [x] Evaluate a saved policy in a fresh simulator instance; export it and load it for simulation-only inference without bringing up the training learner.
+- [x] Add dependency diagnostics, simulator lifecycle/shutdown tests, static contract tests and opt-in GPU/simulator integration tests.
+- [x] Document headless training and how to replay a trained policy, with explicit VRAM and backend limitations.
 
 
 ### Sim-to-real preparation for later phases (P1, no real hardware required)
@@ -148,6 +148,8 @@ These results describe the 2026-10-18 verification environment, not a universall
 - [ ] Prepare for **system identification** from later measured hardware traces (Phase 10); retain identifiable physics/dynamics parameter provenance, without writing a physics engine.
 
 **Gate:** One reproducible Isaac Lab robot-control policy trained/evaluated through NexuML, including a basic held-out randomization test; regular CPU CI remains unaffected.
+
+**Scoped integration evidence (2026-10-19):** Cartpole, Franka Reach and required SO-101 Joint Reach pass GPU training, interrupted resume, portable CPU inference, fresh scalar replay and GIF/MP4/both media through the existing NexuML stack. The final pinned image passes all15 native acceptance tests; upstream is unchanged and the operator-approved whole-job fast shutdown preserves failure/cancellation status. See [the Phase2 report](../../reports/physical-ai/phase-2-isaaclab.md) and `openspec/changes/add-isaaclab-gpu-robotics/`. The four P1 items and held-out-randomization gate above remain unverified, so the coarse Phase2 checkbox stays unchecked. No later-phase, hardware, manipulation-convergence or remote-CI completion is implied.
 
 ## Phase 3 — LeRobot + imitation learning (P0)
 

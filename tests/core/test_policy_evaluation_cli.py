@@ -25,6 +25,56 @@ def fail_training(*args, **kwargs):
     pytest.fail("replay must not construct training or export artifacts")
 
 
+@pytest.mark.parametrize(
+    "env_device,policy_device,expected",
+    [("cpu", "auto", "cpu"), ("cuda:0", "auto", "cuda:0"), ("cpu", "cuda:1", "cuda:1")],
+)
+@pytest.mark.parametrize("episodes", [0, 1])
+@pytest.mark.parametrize("explicit_device", [False, True])
+@pytest.mark.parametrize("provider", ["isaac", "gymnasium"])
+@pytest.mark.requires_optional("gymnasium")
+def test_replay_moves_portable_cpu_policy_only_with_explicit_device(
+    monkeypatch, tmp_path, env_device, policy_device, expected, episodes, explicit_device, provider
+):
+    from nexuml_library.scenarios.reinforcement.isaaclab import isaac_cartpole_ppo
+
+    scenario = isaac_cartpole_ppo() if provider == "isaac" else cartpole_ppo()
+    assert isinstance(scenario.training, ReinforcementLearningSpec)
+    scenario.logging = None
+    scenario.training.collector.env_device = env_device
+    scenario.training.collector.policy_device = policy_device
+    assert scenario.interaction is not None and scenario.policy is not None
+    contract = scenario.interaction.environment.describe()
+    policy = CompiledPolicy(
+        compile(scenario), scenario.policy.action_adapter.build(contract), contract
+    )
+    placements = []
+    expected_placements = [expected] if episodes and explicit_device else []
+    monkeypatch.setattr(policy, "to", lambda device: placements.append(device) or policy)
+    monkeypatch.setattr(
+        "nexuml.core.export.load_inference_package",
+        lambda path: (
+            policy,
+            ResolvedConfig.from_scenario(scenario),
+            {"artifact_kind": "policy", "interaction_contract": contract.model_dump(mode="json")},
+        ),
+    )
+
+    def evaluate(loaded, restored, **kwargs):
+        assert loaded is policy and placements == expected_placements
+        assert restored.training.evaluation.episodes == episodes
+        return {"eval/rl/return_mean": 1.0}
+
+    monkeypatch.setattr("nexuml.training.reinforcement.evaluate_policy", evaluate)
+    command = ["evaluate", str(tmp_path), "-O", f"training.evaluation.episodes={episodes}"]
+    if explicit_device:
+        command += ["--device", expected]
+    result = runner.invoke(app, command)
+    assert result.exit_code == 0, result.output
+    assert placements == expected_placements
+    assert all(parameter.device.type == "cpu" for parameter in policy.parameters())
+
+
 @pytest.fixture(scope="module")
 def policy_packages(tmp_path_factory):
     pytest.importorskip("gymnasium")
@@ -358,6 +408,21 @@ def test_finalization_failure_is_not_success(replay_source, native_logging):
     assert result.exit_code != 0
     assert "close failure" in result.output and "Evaluation complete" not in result.output
     assert all(logger.statuses == ["success"] for logger in native_logging.loggers)
+
+
+def test_signal_exit_keeps_status_and_finalizes_failed_loggers(
+    replay_source, native_logging, monkeypatch
+):
+    native_logging.loggers = [RecordingLogger(RuntimeError("close failure")), RecordingLogger()]
+
+    def evaluate(*args, **kwargs):
+        raise SystemExit(143)
+
+    monkeypatch.setattr("nexuml.training.reinforcement.evaluate_policy", evaluate)
+    result = runner.invoke(app, ["evaluate", "package"])
+    assert result.exit_code == 143
+    assert "Evaluation complete" not in result.output
+    assert all(logger.statuses == ["failed"] for logger in native_logging.loggers)
 
 
 def test_failed_media_preflight_prevents_evaluation(replay_source, native_logging, monkeypatch):

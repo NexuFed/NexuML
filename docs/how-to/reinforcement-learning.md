@@ -293,6 +293,127 @@ Humanoid uses Gymnasium v5 with optional inertial/contact-force observations dis
 Reacher also uses v5. The visual reference consumes resized rendered pixels directly.
 Small dense heads intentionally establish the I/O path, not a vision benchmark.
 
+## Isaac Lab 3.0 EA candidate
+
+**Locally verified state-policy reference integration, not hardware or convergence
+validation.** All 42 scoped integration tasks and 15 native GPU acceptance tests pass
+on the rebuilt pinned image, including Cartpole, Franka Reach and SO-101 training,
+resume, export, portable inference, scalar/media replay and cancellation. Returning
+physics shutdown segfaults at
+interpreter exit, also in the native probe. The operator-approved profile instead
+uses upstream's **non-graceful fast shutdown at the whole-job boundary**; upstream
+remains untouched. Full recorded replay, native loggers, actual browser/player and
+package proofs are recorded in `reports/physical-ai/phase-2-isaaclab.md`. Broader
+roadmap domain-randomization/held-out robustness gates remain unchecked; existing
+unrelated repository test/type failures are not hidden. See
+`scripts/isaaclab/README.md`
+in the checkout for the isolated image and acceptance commands.
+
+The candidate uses an isolated Ubuntu 24.04 / Python 3.12 environment with Isaac Lab
+`v3.0.0-EA` at `ae37b028ea415c91ea2bc32609efcd759ed2b974`, Isaac Sim 6.1.0,
+Torch 2.11.0+cu128 and explicit `isaacsim_physx`. Preparation tooling lives under
+`scripts/isaaclab/`; it is separate from the ordinary project environment and does
+not add Isaac dependencies to base extras. RTX-capable Vulkan/graphics access is
+required; CUDA visibility alone is insufficient. Do not run ordinary `uv sync` over
+the simulator's dependency environment.
+
+Inside the prepared image, execute training/replay or a trusted Python script with
+the supplied process entrypoint (also the image's default entrypoint):
+
+```bash
+bash scripts/isaaclab/run.sh -m nexuml train isaac-cartpole-ppo \
+  -O training.total_frames=256 -O training.frames_per_batch=128 \
+  -O training.collector.num_envs_per_collector=8 \
+  -O training.algorithm.update_epochs=1 -O training.algorithm.minibatch_size=64
+# Or run your existing NexuSession Python job, with no alternative trainer:
+bash scripts/isaaclab/run.sh /path/to/trusted_job.py
+```
+
+The app is allocated lazily and outlives collector close, so the ordinary job can
+finish checkpoints, policy export and **explicit** logger cleanup before public
+`SimulationApp.close(exit_code=...)` terminates the process. Do not rely on Python
+`atexit` cleanup. Normal completion, exceptions, explicit exit codes and interruption
+retain their status; the small shell entrypoint uses the official environment setup
+and `exec` rather than vendor `python.sh`, which collapses nonzero codes to 1. Native
+runtime allocation without the process entrypoint, a second application/runtime in
+the same process, or attachment to a caller-owned app is rejected. The native
+graceful-shutdown defect is not fixed or suppressed.
+
+These ordinary commands need no Isaac installation or GPU and do not launch a simulator:
+
+```bash
+nexuml resolve isaac-cartpole-ppo --output /tmp/opencode/isaac-cartpole.yaml
+nexuml resolve isaac-franka-reach-ppo --output /tmp/opencode/isaac-franka.yaml
+nexuml resolve isaac-so101-joint-reach-ppo --output /tmp/opencode/isaac-so101.yaml
+```
+
+Controls are continuous normalized `[-1, 1]`: Cartpole uses one slider effort
+scaled by 100 N at 60 Hz; Franka uses seven ordered Panda joint-position offsets
+scaled by 0.5 rad at 30 Hz. SO-101's validated five-arm-joint reaching contract is
+15 state values / five position controls at 30 Hz with a fixed separate gripper;
+absolute targets are `0.5 * action` rad without default offsets, and the gripper
+stays at 0.2555162024919699 rad. The maintained asset's joints/limits/gains are checked
+before collection. These are
+state policies, not image policies, IK controllers or hardware deployment claims.
+
+Supported training geometry is one synchronous **direct** native batch, one learner
+device and the same explicit CUDA device for simulation, rollout policy and storage.
+`frames_per_batch` must divide evenly by `num_envs_per_collector`: N=32 and T=32
+counts 1024 frames. Process/Ray collectors, asynchronous or multi-GPU execution and
+mixed devices are rejected before launch. The existing policy/PPO/Lightning/session
+remain the only learning path; no remote Gym API or separate Isaac trainer is added.
+
+The selected bridge is the existing generic TorchRL adapter over Isaac's cached
+final/reset-state normalization. The pinned native `IsaacLabWrapper` was probed:
+default handling loses terminal states; a public final-state reader still double-
+resets all-done batches. Its native-autoreset mode avoids that reset but supplies
+NaN terminal states. The canonical provider instead clones final buffers and reuses
+each native reset observation once, preserving timeout bootstrapping and PPO axes.
+Observations/actions/rollout storage stay on CUDA; finite/boundary validation can
+synchronize CUDA, so this is not a claim of a synchronization-free hot path.
+Only replay RGB copies and scalar metrics move to CPU.
+
+Isaac reference defaults disable all automatic evaluation (`episodes=0`, no start/
+periodic/video). Enabling any of these during training fails early: replay must use
+the existing `nexuml evaluate <policy-package> --device cuda:0 -O training.evaluation.episodes=3`
+through `bash scripts/isaaclab/run.sh -m nexuml evaluate ...` in a **fresh process**
+after training shuts down. Ordinary Gymnasium scheduling and
+GIF/MP4/both behavior above are unchanged. Replay validates control timing and action
+mapping descriptions as well as dimensions; matching shapes alone are not compatible
+joint controls. No simulator handles enter portable definitions or policy packages.
+
+Policy packages remain CPU-portable. `evaluate --device cuda:0` explicitly places
+the policy and evaluation runtime on that GPU; without `--device`, replay keeps
+the packaged CPU placement, regardless of the original training collector devices.
+
+RGB replay uses a single 320×240 spectator camera (not a policy input), an optional
+one-frame terminal cache before native auto-reset, and the shared bounded recorder:
+
+```bash
+bash scripts/isaaclab/run.sh -m nexuml evaluate /workspace/output/policy --device cuda:0 \
+  -O training.evaluation.episodes=2 -O training.evaluation.max_steps_per_episode=120 \
+  -O training.evaluation.video.enabled=true -O training.evaluation.video.format=both \
+  -O training.evaluation.video.max_frames=121 -O training.evaluation.video.max_size=320
+```
+
+Choose `gif`, `mp4`, or `both`; both encodings use the **same first-episode rollout**.
+TensorBoard gets an animated preview; native artifacts contain selected files plus
+JSON metadata (renderer, source/capture FPS, bounds, seeds, contract/config hashes and
+provenance). MLflow-only does not require TensorBoard logging; use a JSON mapping
+override such as `-O 'logging={"tensorboard":null,"mlflow":{"tracking_uri":"sqlite:////workspace/output/mlflow.db","auto_nested_runs":false}}'`.
+MP4 needs the optional
+`video` extra; scalar replay does not import encoders. Native rates are 60 Hz for
+Cartpole and 30 Hz for the arms; an explicit FPS override changes playback timing,
+not physics. GIF timing is quantized to 10 ms (recorded in encoder metadata);
+MP4 preserves the requested frame rate. Cold RTX compilation can take several minutes. Headless GLFW warnings
+alone are not failure, but missing Vulkan/RTX access or RGB output is.
+
+SO-101 additionally reports success rate and mean final joint error in radians,
+separately from episode return. Success requires all five joints within 0.05 rad
+for eight consecutive control steps; timeout is four simulated seconds. The reward
+is negative normalized mean squared joint error, integrated over the control period.
+The bounded integration runs do **not** establish learned reaching convergence.
+
 ## ROS: fake, Gazebo, hardware
 
 `Ros2JointReachEnvironment` contains reward and termination; `Ros2Transport` contains

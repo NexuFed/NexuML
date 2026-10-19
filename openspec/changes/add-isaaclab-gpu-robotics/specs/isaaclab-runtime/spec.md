@@ -67,3 +67,12 @@ Runtime and launcher resources SHALL close on completion, initialization failure
 #### Scenario: Cancellation and cleanup both fail
 - **WHEN** cancellation is followed by an encoder, environment, or launcher close error
 - **THEN** cancellation remains the primary outcome with cleanup failure recorded and no false successful completion
+
+### Requirement: Accepted fast shutdown follows the whole job
+
+The operator-approved fast-shutdown profile SHALL finish environment cleanup, checkpoints/exports and explicit logger finalization before public application close. It SHALL preserve success, failure, explicit exit and interrupt status without modifying upstream or promising Python `atexit` cleanup.
+
+#### Scenario: Kit requires process-terminating shutdown
+- **WHEN** an Isaac job completes or raises after application startup
+- **THEN** the normal Python job unwinds and finalizes before public fast close, with an explicit truthful exit status
+- **AND** a job outside the owned process scope or using an existing caller-owned application is rejected before native allocation

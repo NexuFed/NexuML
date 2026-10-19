@@ -42,6 +42,7 @@ class NexuRLLightningModule(L.LightningModule):
         if not isinstance(scenario.training, ReinforcementLearningSpec):
             raise ValueError("NexuRLLightningModule requires reinforcement training")
         assert scenario.interaction is not None and scenario.policy is not None
+        scenario.interaction.environment.validate_training(scenario.training)
         self.scenario = scenario
         self.training_spec = scenario.training
         if policy is None:
@@ -133,6 +134,10 @@ class NexuRLLightningModule(L.LightningModule):
                 self._next_evaluation_frame = (int(self.frames) // interval + 1) * interval
 
     def on_fit_start(self):
+        assert self.scenario.interaction is not None
+        self.scenario.interaction.environment.validate_training(
+            self.training_spec, device=str(self.device)
+        )
         from nexuml.tracking.logger import preflight_evaluation_media
 
         spec = self.training_spec.evaluation
@@ -232,6 +237,8 @@ def _validate_evaluation_contract(policy_contract, actual):
         raise ValueError("Evaluation requires a single unbatched environment")
     if actual.action_space != policy_contract.action_space:
         raise ValueError("Evaluation action-space semantics do not match the policy")
+    if actual.control_period_s != policy_contract.control_period_s:
+        raise ValueError("Evaluation control period does not match the policy")
     for role in ("observations", "actions"):
         expected_fields = getattr(policy_contract, role)
         actual_fields = getattr(actual, role)
@@ -241,7 +248,7 @@ def _validate_evaluation_contract(policy_contract, actual):
             found = actual_fields.get(key)
             fields = ("shape", "dtype", "modality", "num_values")
             if role == "actions":
-                fields += ("low", "high")
+                fields += ("low", "high", "rate_hz", "description")
             if found is None or any(
                 getattr(found, name) != getattr(expected, name) for name in fields
             ):
@@ -275,6 +282,8 @@ def evaluate_policy(
     if spec.video.enabled and media_sink is None:
         raise ValueError("Evaluation recording requires an artifact output sink")
     returns, lengths = [], []
+    successes, final_errors = [], []
+    has_outcomes = None
     terminated = truncated = 0
     frames = []
     source_size = None
@@ -337,6 +346,7 @@ def evaluate_policy(
                 if spec.video.enabled and episode == 0:
                     capture()
                 total, steps = 0.0, 0
+                episode_success, final_error = False, None
                 while True:
                     transition = runtime.step(policy(observation, deterministic=spec.deterministic))
                     if transition.reward is None or transition.reward.numel() != 1:
@@ -349,6 +359,31 @@ def evaluate_policy(
                         or transition.observation.batch_size
                     ):
                         raise ValueError("Evaluation requires single-environment transitions")
+                    info = transition.info or {}
+                    present = "task_success" in info or "joint_error_rad" in info
+                    if has_outcomes is not None and present != has_outcomes:
+                        raise ValueError(
+                            "Task outcomes must be supplied consistently across steps/episodes"
+                        )
+                    has_outcomes = present
+                    if present:
+                        success, error = info.get("task_success"), info.get("joint_error_rad")
+                        if (
+                            not isinstance(success, torch.Tensor)
+                            or success.numel() != 1
+                            or success.dtype != torch.bool
+                            or not isinstance(error, torch.Tensor)
+                            or error.numel() != 1
+                            or not error.is_floating_point()
+                            or not torch.isfinite(error).all()
+                            or (error < 0).any()
+                        ):
+                            raise ValueError(
+                                "Task outcomes require one boolean task_success and finite "
+                                "nonnegative joint_error_rad"
+                            )
+                        episode_success |= bool(success.item())
+                        final_error = float(error.item())
                     total += float(transition.reward.item())
                     steps += 1
                     term = bool(transition.terminated.item())
@@ -366,6 +401,10 @@ def evaluate_policy(
                     observation = transition.observation
                 returns.append(total)
                 lengths.append(steps)
+                if has_outcomes:
+                    assert final_error is not None
+                    successes.append(episode_success)
+                    final_errors.append(final_error)
         finally:
             primary = sys.exception()
             if runtime is not None:
@@ -383,6 +422,9 @@ def evaluate_policy(
         "eval/rl/terminated": float(terminated),
         "eval/rl/truncated": float(truncated),
     }
+    if has_outcomes:
+        metrics["eval/rl/task_success_rate"] = sum(successes) / len(successes)
+        metrics["eval/rl/final_joint_error_rad_mean"] = sum(final_errors) / len(final_errors)
     if spec.video.enabled:
         metadata = {
             "frame_step": frame_step,
@@ -407,6 +449,10 @@ def evaluate_policy(
             "captured_size": [frames[0].shape[1], frames[0].shape[0]],
             "provenance": provenance or {},
         }
+        backend = getattr(runtime, "render_backend", None)
+        if backend is not None:
+            metadata["renderer"] = backend
+            metadata["source_fps"] = getattr(runtime, "render_fps", None)
         # Encoding and logger dispatch are also isolated from learner random streams/modes.
         with _evaluation_state(policy, seed):
             assert media_sink is not None
