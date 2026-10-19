@@ -171,17 +171,23 @@ def extract_mimii_endpoints(
         raise ValueError("Expected split and machine metadata in MIMII source")
     if frontend == "fisher":
         encoder = FISHEREncoder(
-            model_name=model_name, revision=revision, frozen=True,
+            model_name=model_name,
+            revision=revision,
+            frozen=True,
             sample_rate=source.sample_rate,
         ).to(device).eval()
     else:
         encoder = LMBE(
-            sample_rate=source.sample_rate, n_fft=512, hop_length=256,
-            n_mels=32, fmax=source.sample_rate // 2,
+            sample_rate=source.sample_rate,
+            n_fft=512,
+            hop_length=256,
+            n_mels=32,
+            fmax=source.sample_rate // 2,
         ).build(
             LayerBuildContext(
                 input_sizes={"waveform": (source.clip_num_samples,)},
-                keys_in=["waveform"], keys_out=["embedding"],
+                keys_in=["waveform"],
+                keys_out=["embedding"],
             )
         ).to(device).eval()
     batches: list[Tensor] = []
@@ -224,23 +230,33 @@ def prepare_ablation(
     manifest: dict[str, Any] = {}
     for frontend in frontends:
         features, rows = extract_mimii_endpoints(
-            source, frontend=frontend, device=device, batch_size=batch_size,
-            model_name=model_name, revision=revision,
+            source,
+            frontend=frontend,
+            device=device,
+            batch_size=batch_size,
+            model_name=model_name,
+            revision=revision,
         )
         variants = feature_variants(
-            features, rows, frontend=frontend, seed=source.seed,
+            features,
+            rows,
+            frontend=frontend,
+            seed=source.seed,
             model_name=model_name if frontend == "fisher" else "",
         )
         for name, payload in variants.items():
             settings = payload["settings"]
-            settings.update({
-                "revision": revision or "", "machine_type": source.machine_type,
-                "noise_db": source.noise_db,
-                "train_machine_ids": source.train_machine_ids,
-                "val_machine_ids": source.val_machine_ids,
-                "test_machine_ids": source.test_machine_ids,
-                "clip_num_samples": source.clip_num_samples,
-            })
+            settings.update(
+                {
+                    "revision": revision or "",
+                    "machine_type": source.machine_type,
+                    "noise_db": source.noise_db,
+                    "train_machine_ids": source.train_machine_ids,
+                    "val_machine_ids": source.val_machine_ids,
+                    "test_machine_ids": source.test_machine_ids,
+                    "clip_num_samples": source.clip_num_samples,
+                }
+            )
             file = output_dir / f"{name}-seed{source.seed}.pt"
             if file.exists():
                 raise FileExistsError(f"Prepared artifact exists: {file}")
@@ -255,7 +271,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path)
     parser.add_argument("--output-dir", type=Path, required=True)
-    parser.add_argument("--machine-type", choices=("fan", "pump", "slider", "valve"), default="fan")
+    parser.add_argument(
+        "--machine-type", choices=("fan", "pump", "slider", "valve"), default="fan"
+    )
     parser.add_argument("--noise-db", type=int, choices=(-6, 0, 6), default=6)
     parser.add_argument("--frontend", choices=("logmel", "fisher", "both"), default="both")
     parser.add_argument("--device", choices=("cpu", "cuda"), default="cpu")
@@ -271,14 +289,22 @@ def main() -> None:
         ("logmel", "fisher") if args.frontend == "both" else (cast(Frontend, args.frontend),)
     )
     source = MIMIIAcousticEndpointPairs(
-        root=args.root, download=not args.no_download, machine_type=args.machine_type,
-        noise_db=args.noise_db, max_pairs_per_machine=args.max_pairs_per_machine,
-        clip_num_samples=args.clip_num_samples, seed=args.seed,
+        root=args.root,
+        download=not args.no_download,
+        machine_type=args.machine_type,
+        noise_db=args.noise_db,
+        max_pairs_per_machine=args.max_pairs_per_machine,
+        clip_num_samples=args.clip_num_samples,
+        seed=args.seed,
     )
     manifest = prepare_ablation(
-        source, output_dir=args.output_dir, frontends=options,
-        device=torch.device(args.device), batch_size=args.batch_size,
-        model_name=args.model_name, revision=args.revision,
+        source,
+        output_dir=args.output_dir,
+        frontends=options,
+        device=torch.device(args.device),
+        batch_size=args.batch_size,
+        model_name=args.model_name,
+        revision=args.revision,
     )
     print(f"Prepared {len(manifest)} variants in {args.output_dir}")
 
