@@ -69,3 +69,11 @@ On-policy, off-policy, offline, recurrent/asymmetric and multi-agent support SHA
 #### Scenario: Only the PPO reference has been exercised
 - **WHEN** a capability report is generated
 - **THEN** unexecuted off-policy, offline and multi-agent workflows remain visibly incomplete
+
+### Requirement: Offline-to-online and corrective RL retain algorithm ownership
+
+Simulation-first RLPD and HIL-SERL workflows SHALL reuse the existing algorithm-owned replay/optimizer/session boundaries and separately track old demonstrations, newly sampled simulator interactions, reward classifier inputs and corrected/executed actions. A native JAX/MJX upstream PPO trainer SHALL NOT be mislabeled TorchRL learning even when its simulator uses MJWarp.
+
+#### Scenario: An upstream Playground JAX PPO run succeeds
+- **WHEN** NexuML-owned GPU learning is reported
+- **THEN** that upstream result remains an external benchmark until real NexuML actor/optimizer updates, checkpoint resume and portable inference have run

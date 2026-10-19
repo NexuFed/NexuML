@@ -96,3 +96,19 @@ SARM SHALL receive a bounded feasibility assessment of source/model/processor id
 - **WHEN** the assessment identifies missing labels, external VLM access, weights or compute
 - **THEN** it records prerequisites and uncertainty without uploading recordings, invoking an external annotation service or launching unapproved model work
 - **AND** a feasible report alone does not claim policy improvement
+
+### Requirement: Native MuJoCo and LeRobot benchmark protocols are first-class
+
+The same policy-evaluation lifecycle SHALL support native Meta-World MT1 goal/task selection and compatible maintained LeRobot LIBERO/LIBERO-plus suites without cloning their benchmark engines. Optional RoboTwin variants have independent evidence gates. Frozen task/asset/sensor/control contracts, per-episode success and protocol completeness SHALL be checked; upstream-only trained policies SHALL not satisfy NexuML-owned learning proofs.
+
+#### Scenario: Only some MT1 reach goals were evaluated
+- **WHEN** full native MT1 benchmark success is reported
+- **THEN** incomplete goal coverage is labeled insufficient until exact native task IDs, held-out trials and independent training seeds are verified
+
+### Requirement: Learned reward and physical task outcomes are independent
+
+A reviewed reward model or trained HIL-SERL classifier MAY supply training/progress information with explicit provenance and held-out reliability, but SHALL NOT override physical task-success rules, controller safety constraints or hardware promotion decisions.
+
+#### Scenario: Video reward predicts completion while the vial is unreleased
+- **WHEN** the original physical success predicate remains false
+- **THEN** measured task success remains false regardless of shaped return or learned reward

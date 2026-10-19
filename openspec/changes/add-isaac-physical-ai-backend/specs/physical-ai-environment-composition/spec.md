@@ -8,7 +8,7 @@ Make the Isaac-first Physical AI stack reproducible and automatically available 
 
 ### Requirement: One shared primary development environment
 
-The configured NVIDIA development container SHALL provide Python 3.12 and one pinned CUDA-13 PyTorch family in a consumer-owned environment containing NexuML and the compatible selected Physical AI packages. Simulator-specific environments SHALL NOT substitute for this shared-environment acceptance.
+The configured NVIDIA development container SHALL provide Python 3.12 and one pinned CUDA-13 PyTorch family in a consumer-owned environment containing NexuML and the compatible selected Physical AI packages. A separately pinned, approved native process/profile MAY host otherwise incompatible optional Meta-World, JAX or ROS capabilities only with a tested NexuML-facing policy/data/metrics boundary; it SHALL NOT replace primary shared-environment acceptance. Do not force one logically conflicting all-extras closure.
 
 #### Scenario: A clean configured container is created
 - **WHEN** approved container creation and dependency synchronization finish
@@ -69,3 +69,11 @@ Setup SHALL preserve existing staged work and active experiments and SHALL NOT r
 #### Scenario: Prepared container settings differ from the running instance
 - **WHEN** required OS or GPU passthrough settings are not active
 - **THEN** setup identifies the required approved recreation and does not pretend a Python install applied those settings
+
+### Requirement: Optional legacy benchmarks do not narrow the whole Python distribution
+
+Classic MuJoCo, Meta-World and GPU Playground SHALL be selectable through verified named optional dependency paths, not an always-on robotics dependency union. Python interpreter restrictions of one optional benchmark SHALL NOT reduce core NexuML's declared compatibility solely to accommodate the benchmark. Incompatible native packages SHALL receive explicit profile/lock and negative-resolution proofs before their native acceptance can pass.
+
+#### Scenario: A base-only user has an otherwise supported Python interpreter
+- **WHEN** an optional Meta-World release does not support that interpreter
+- **THEN** core supervised/import/inference workflows remain available and only the incompatible optional benchmark reports its specific unsupported selection

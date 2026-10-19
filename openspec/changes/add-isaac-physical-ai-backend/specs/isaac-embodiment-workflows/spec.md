@@ -91,3 +91,11 @@ Each required embodiment SHALL retain native-first checks, real learning, checkp
 #### Scenario: One arm workflow is complete
 - **WHEN** full multi-embodiment completion is requested
 - **THEN** unverified humanoid, quadruped, drone and mobile references remain incomplete rather than inheriting the arm's result
+
+### Requirement: Every example family has its own versioned proof record
+
+reference-catalogue.md SHALL enumerate SO-101 state/reach/contact/camera/IL/VLA examples, OpenArm unimanual/bimanual, G1 exact locomotion/Mimic, Go2, Crazyflie/PX4, TurtleBot3, UR10e/Rizon, UR5e and LumenPnP with exact pinned assets and separate native/training/resume/export/evaluation/quality/hardware statuses. Bounded Allegro/Shadow/DexSuite reorientation and GR-1 Mimic examples remain explicitly optional until native source/task/license feasibility is proven.
+
+#### Scenario: SO-101 five-joint reaching PPO passes
+- **WHEN** whole-program multi-embodiment completion is considered
+- **THEN** SO-101 vial physical contact, six-action grasp/release, visual control and all other required embodiment tasks remain open until independently tested
