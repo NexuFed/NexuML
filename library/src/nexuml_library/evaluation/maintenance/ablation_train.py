@@ -25,9 +25,7 @@ def verify_latest_checkpoint(trainer: L.Trainer) -> tuple[Path, int, int]:
     Raises:
         RuntimeError: If the callback is missing or its checkpoint is stale.
     """
-    latest = [
-        item for item in trainer.callbacks if isinstance(item, SaveLatestEpoch)
-    ]
+    latest = [item for item in trainer.callbacks if isinstance(item, SaveLatestEpoch)]
     if len(latest) != 1 or not latest[0].path.is_file():
         raise RuntimeError("The latest-epoch checkpoint callback did not save last.ckpt")
     path = latest[0].path
