@@ -79,7 +79,7 @@ The user-selected LeRobot additions require complete Diffusion Policy and resour
 ## 5. Canonical PPO and SO-101 manipulation references
 
 - [x] 5.1 Run native Cartpole and Franka control/transition/training baselines on the canonical stack; verify resolved versions, matching physical mappings, finite counters and owned shutdown before adapter claims.
-- [x] 5.2 Port ordinary Cartpole and Franka NexuML scenarios; verify real PPO updates, partial/completed-budget resume, complete export, clean inference and fresh scalar/recorded replay independently of old EA evidence.
+- [ ] 5.2 Port ordinary Cartpole and Franka NexuML scenarios; verify real PPO updates, partial/completed-budget resume, complete export, clean inference and fresh scalar/recorded replay independently of old EA evidence.
 - [ ] 5.3 Port SO-101 five-joint reaching with fixed gripper; verify exact asset/control identities, scripted signs/limits, error/hold/timeout rules and the complete learned-policy round trip.
 - [ ] 5.4 Validate the pinned upstream six-control vial task natively; verify contact model, reset dataset hashes, observation ordering, relative action timing, nominal curriculum and canonical-home play settings.
 - [ ] 5.5 Prove a canonical-home physical-contact placement reference; verify grasp/lift/transport/seating/release/hold and negative held/airborne/proximity cases without attachment, post-reset teleportation or borrowed learned-success claims.

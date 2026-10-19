@@ -124,6 +124,18 @@ def test_native_manager_and_direct_transition_oracle(tmp_path, task, physics):
     assert "NATIVE_EXPLICIT_MASK_RESET_VERIFIED" in log
 
 
+def test_native_so101_signed_controls_and_held_outcomes(tmp_path):
+    log = _run([ROOT / "tests/fixtures/isaaclab_so101_probe.py"], tmp_path, "so101-controls")
+    assert "SO101_SIGN_LIMIT_FIXED_GRIPPER_VERIFIED" in log
+    assert "SO101_NATIVE_HELD_SUCCESS_VERIFIED" in log
+    assert "SO101_NATIVE_TIMEOUT_NOT_SUCCESS_VERIFIED" in log
+
+
+def test_native_terminal_pixels_match_the_ending_scene_not_reset_scene(tmp_path):
+    log = _run([ROOT / "tests/fixtures/isaaclab_terminal_rgb.py"], tmp_path, "terminal-rgb")
+    assert "NATIVE_TERMINAL_PIXEL_AND_SCENE_IDENTITY_VERIFIED" in log
+
+
 @pytest.mark.parametrize("task", ["Isaac-Cartpole", "Isaac-Cartpole-Direct"])
 @pytest.mark.parametrize("mode", ["default", "default-reader", "native", "native-reader"])
 def test_native_public_wrapper_does_not_meet_the_complete_reset_contract(tmp_path, task, mode):

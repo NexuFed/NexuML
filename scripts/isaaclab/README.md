@@ -26,6 +26,16 @@ select another explicitly prepared interpreter. `run.py` also works directly
 with that interpreter and accepts either a script path or `-m MODULE`.
 It preserves arguments, job errors and signal-derived exit status.
 
+Rendered replay additionally requires NVIDIA **graphics** passthrough and a
+working Vulkan ICD/driver in the running container. CUDA tensors or decodable
+GIF/MP4 files do not prove this. `vulkaninfo --summary` must enumerate a real
+device; `NVIDIA_DRIVER_CAPABILITIES=compute,utility` is insufficient. When these
+prerequisites are absent, leave rendered/terminal-scene acceptance incomplete;
+do not rebuild the active container or install a host driver automatically.
+The fixed lit spectator views reject an all-black buffer rather than logging
+a successful blank video. This check does not replace a native scene-identity
+oracle or qualify every non-black image as correct.
+
 The provider verifies installed VCS metadata (or the actual source-checkout
 revision), import origin, native batch/device, control period and action
 mapping. New contracts carry the new revision and explicit physics identity;
@@ -39,6 +49,22 @@ after collector/environment, checkpoint/export and logger cleanup. A Kit job
 must use a fresh process for another runtime. Graphics/media support is separate
 from state stepping; current RGB replay requires a manager task with Kit PhysX.
 SO-101 keeps its separate PhysX-only asset/control validation.
+
+The five-joint SO-101 reaching profile selects the Sim 6.2 calibrated SO-101
+asset, five absolute targets with scale 0.5 rad and a separately fixed gripper
+at 0.2555162024919699 rad. Its raw root/physics/robot/geometry/material/sensor
+layers have declared SHA256 identities; execution rejects changed content,
+joint order, limits, authored gains or native overrides before policy actions.
+The new portable contract includes the source and root hash. This is not
+six-control contact/vial placement, and does not certify real hardware.
+
+```bash
+bash scripts/isaaclab/run.sh scripts/isaaclab/native_probe.py NexuML-SO101-Joint-Reach
+bash scripts/isaaclab/run.sh -m nexuml train isaac-so101-joint-reach-ppo \
+  -O training.total_frames=256 -O training.frames_per_batch=128 \
+  -O training.collector.num_envs_per_collector=8 \
+  -O training.algorithm.update_epochs=1 -O training.algorithm.minibatch_size=64
+```
 
 Direct tasks use public full native resets. Partial native auto-resets are
 acknowledged from the cached reset observation without resetting physics twice.

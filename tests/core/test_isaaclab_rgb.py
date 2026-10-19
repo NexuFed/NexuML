@@ -26,6 +26,13 @@ def _env(channels=4):
     )
 
 
+def test_fixed_lit_spectator_view_rejects_a_blank_renderer_buffer():
+    env = _env()
+    env.scene["nexuml_replay_camera"].data.output["rgb"].torch[..., :3].zero_()
+    with pytest.raises(ValueError, match="all-black frame.*Vulkan"):
+        rgb.read_rgb(env)
+
+
 @pytest.fixture
 def configured(monkeypatch):
     class RecorderTerm:

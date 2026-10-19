@@ -1,8 +1,9 @@
 """Minimal, lazily constructed SO-101 joint-reaching task for the pinned Isaac profile."""
 
 from importlib import import_module
+from hashlib import sha256
 import math
-from typing import Any
+from typing import Any, cast
 
 import torch
 
@@ -15,9 +16,43 @@ GOALS = (HOME, (0.2, -0.2, 0.2, -0.15, 0.15), (-0.2, -0.3, 0.3, 0.15, -0.15))
 TOLERANCE = 0.05
 HOLD_SECONDS = 0.25
 ASSET_SOURCE = (
-    "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.1/Isaac"
+    "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.2/Isaac"
     "/Robots_Multiphysics/RobotStudio/so101_new_calib_SysID/so101_new_calib.usda"
 )
+# Raw authored layers, not USD copies rewritten into a process-local resolver cache.
+ASSET_LAYER_SHA256 = {
+    "so101_new_calib.usda": "d4067639489ecc99f7da2637de72098fd6155a2d54f32a8a49afe412a291612c",
+    "payloads/base.usda": "f7125f84967821eb2540a3b6d5674f2681be722dec2f5343ba5718d474412205",
+    "payloads/robot.usda": "3fcc5e3444b6ef1e2c11a36cf5d2cdc26dd577246aaf11e327cefae02399192b",
+    "payloads/Robot/robot.usda": "a3fd163e24ad42fa534085b089f7f579b29254c709a043e0f68c8bf8aea704d4",
+    "payloads/Physics/physics.usda": (
+        "859dfddc29fd5e4c0ec753f6842d87d26d3fcd381f5efa9722d68a4789a3ae27"
+    ),
+    "payloads/Physics/physx.usda": (
+        "478fc4568b13906897027c683a11c382fd0b1d81f9d79229fbd35956b00cd1af"
+    ),
+    "payloads/geometries.usd": "2fb01028b0866a3f3f9c38fa3d56eb9ba174a93810ab460621a4e639aa7cafec",
+    "payloads/instances.usda": "bd026f2b4cb445c2eeee8acbb489886484e0928aaca006b1520140c84b3e159c",
+    "payloads/materials.usda": "92a576efc9e6f642b23c3fb44c1dc71fe578f1141bb8a5980de91bc6d34f7f09",
+    "payloads/Sensor/sensors.usda": (
+        "be447310348d89308a09706dfa6b61540e441e85095d65c0b39f8cc4f3e03f93"
+    ),
+    "payloads/so101-camera_mount/SO-101_camera_mount.usda": (
+        "e5f5acbf93fce4ffad87ceefcc982a0b9552060ff46c6e07ca67ca27b65617a2"
+    ),
+    "payloads/so101-camera_mount/payloads/base.usda": (
+        "678c619c6125b587747bf570741bfcb8968dcfebda15a0e1405162ecd85fe73b"
+    ),
+    "payloads/so101-camera_mount/payloads/geometries.usd": (
+        "ac913f1be2c235ae27214a5d6f6008f206491d31c6e844f937da5ec27fe3b653"
+    ),
+    "payloads/so101-camera_mount/payloads/instances.usda": (
+        "f625094f7a97e2d971ddef19ca4dbea0d0eb86ef2ef9648ec50cd3bb203c34a3"
+    ),
+    "payloads/so101-camera_mount/payloads/materials.usda": (
+        "19b6e7dc1331d76ccec313ae6f17d53acb64f74e9bcd7bde2180c5e03f615ac8"
+    ),
+}
 JOINT_LIMITS = (
     (-1.919859886, 1.919859886),
     (-1.745329857, 1.745329857),
@@ -28,6 +63,14 @@ JOINT_LIMITS = (
 )
 STIFFNESS = (48.419899, 47.782635, 14.715496, 43.607166, 54.873917, 68.250793)
 DAMPING = (3.334595, 2.563165, 0.343250, 4.139243, 2.968392, 2.818730)
+
+
+def _validate_asset_content() -> None:
+    read_file = import_module("isaaclab.utils.assets").read_file
+    root = ASSET_SOURCE.rsplit("/", 1)[0]
+    for name, expected in ASSET_LAYER_SHA256.items():
+        if sha256(read_file(f"{root}/{name}").getvalue()).hexdigest() != expected:
+            raise ValueError(f"SO-101 authored asset content differs from pinned layer: {name}")
 
 
 def validate_asset(env) -> None:
@@ -62,6 +105,7 @@ def validate_asset(env) -> None:
         term.stiffness is not None or term.damping is not None for term in cfg.actuators.values()
     ):
         raise ValueError("SO-101 must preserve the maintained USD actuator gains")
+    _validate_asset_content()
 
 
 def normalized_joint_error(joint_pos: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
@@ -127,7 +171,7 @@ def make_so101_config(*, num_envs: int, device: str, seed: int) -> Any:
     sim = import_module("isaaclab.sim")
     configclass = import_module("isaaclab.utils").configclass
     physx = import_module("isaaclab_physx.physics")
-    robot_cfg = import_module("isaaclab_assets.robots.so101").SO101_CFG.replace(
+    robot_cfg = cast(Any, import_module("isaaclab_assets.robots.so101").SO101_CFG).replace(
         prim_path="{ENV_REGEX_NS}/Robot"
     )
     robot_cfg.spawn.variants = {"Robot": "robot", "Sensor": "sensors", "Physics": "physx"}

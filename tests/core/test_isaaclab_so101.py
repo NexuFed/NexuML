@@ -5,6 +5,8 @@ from copy import deepcopy
 import importlib
 import importlib.util
 import math
+from hashlib import sha256
+from io import BytesIO
 from types import SimpleNamespace
 
 import pytest
@@ -95,6 +97,20 @@ def test_module_import_does_not_load_optional_native_apis():
     spec.loader.exec_module(module)
     assert module.JOINT_NAMES == so101.JOINT_NAMES
     assert callable(module.make_so101_config)
+
+
+def test_canonical_asset_identity_is_part_of_the_new_portable_contract_only():
+    from nexuml_library.environments.isaaclab import IsaacLabEnvironment
+
+    definition = IsaacLabEnvironment(task="NexuML-SO101-Joint-Reach")
+    current = definition.describe().actions["action"].description
+    assert current is not None and so101.ASSET_SOURCE in current
+    assert so101.ASSET_LAYER_SHA256["so101_new_calib.usda"] in current
+    old = definition.model_copy(update={"revision": "ae37b028ea415c91ea2bc32609efcd759ed2b974"})
+    previous = old.describe().actions["action"].description
+    assert previous is not None and so101.ASSET_SOURCE not in previous
+    assert len(so101.ASSET_LAYER_SHA256) == 15
+    assert all(len(value) == 64 for value in so101.ASSET_LAYER_SHA256.values())
 
 
 def test_task_constants_and_all_targets_fit_declared_and_inspected_limits():
@@ -437,11 +453,14 @@ def _asset_env():
         "default_joint_pos",
     ],
 )
-def test_native_asset_validation_rejects_control_profile_changes(change):
+def test_native_asset_validation_rejects_control_profile_changes(change, monkeypatch):
+    validated = []
+    monkeypatch.setattr(so101, "_validate_asset_content", lambda: validated.append(True))
     env = _asset_env()
     cfg = env.cfg.scene.robot
     if change is None:
         so101.validate_asset(env)
+        assert validated == [True]
         return
     if change == "source":
         cfg.spawn.usd_path = "file:///replacement.usd"
@@ -455,3 +474,43 @@ def test_native_asset_validation_rejects_control_profile_changes(change):
         getattr(env.scene["robot"].data, change).torch[0].add_(0.1)
     with pytest.raises(ValueError, match="SO-101"):
         so101.validate_asset(env)
+    assert not validated
+
+
+@pytest.mark.parametrize("change", [None, "root", "physics", "missing"])
+def test_authored_asset_bytes_are_checked_without_accepting_rewritten_cache_hashes(
+    monkeypatch, change
+):
+    layers = {
+        "so101_new_calib.usda": b"authored root",
+        "payloads/physics.usda": b"authored physics",
+    }
+    monkeypatch.setattr(
+        so101,
+        "ASSET_LAYER_SHA256",
+        {name: sha256(value).hexdigest() for name, value in layers.items()},
+    )
+    root = so101.ASSET_SOURCE.rsplit("/", 1)[0] + "/"
+    calls = []
+
+    def read_file(path):
+        name = path.removeprefix(root)
+        calls.append(name)
+        if change == "missing":
+            raise FileNotFoundError(path)
+        content = layers[name]
+        if name == ("so101_new_calib.usda" if change == "root" else "payloads/physics.usda"):
+            if change is not None:
+                content += b" altered or localized"
+        return BytesIO(content)
+
+    monkeypatch.setattr(so101, "import_module", lambda name: SimpleNamespace(read_file=read_file))
+    if change == "missing":
+        with pytest.raises(FileNotFoundError):
+            so101._validate_asset_content()
+    elif change:
+        with pytest.raises(ValueError, match="pinned layer"):
+            so101._validate_asset_content()
+    else:
+        so101._validate_asset_content()
+        assert calls == list(layers)

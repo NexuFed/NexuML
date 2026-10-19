@@ -49,7 +49,7 @@ def configure_rgb(cfg, owner) -> None:
         export_in_record_pre_reset=False,
         export_in_close=False,
     )
-    cfg.recorders.terminal_rgb = managers.RecorderTermCfg(class_type=TerminalFrame)
+    setattr(cfg.recorders, "terminal_rgb", managers.RecorderTermCfg(class_type=TerminalFrame))
 
 
 def position_camera(env, task) -> None:
@@ -81,4 +81,10 @@ def read_rgb(env):
         or image.shape[-1] not in (3, 4)
     ):
         raise ValueError("Isaac RTX replay requires a single 320x240 uint8 RGB/RGBA camera")
+    # These fixed spectator views contain lit geometry even before the policy acts.
+    if not image[..., :3].any():
+        raise ValueError(
+            "Isaac RTX replay returned an all-black frame; verify working Vulkan and "
+            "NVIDIA graphics passthrough (CUDA alone is insufficient)"
+        )
     return image[0, ..., :3].cpu().numpy().copy()

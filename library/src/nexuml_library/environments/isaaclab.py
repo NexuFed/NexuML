@@ -78,6 +78,15 @@ class IsaacLabEnvironment(EnvironmentDefinition):
 
     def describe(self) -> InteractionContract:
         obs_size, action_size, period, observation_description, mapping = _TASK_PROFILES[self.task]
+        if (
+            self.task == "NexuML-SO101-Joint-Reach"
+            and self.revision == "70ab24fec3eabf51222817db0cdb5a4e7133bd7e"
+        ):
+            from ._isaaclab_so101 import ASSET_LAYER_SHA256, ASSET_SOURCE
+
+            mapping += (
+                f" Asset={ASSET_SOURCE}; sha256={ASSET_LAYER_SHA256['so101_new_calib.usda']}."
+            )
         return InteractionContract(
             observations={
                 "observation": TensorFieldContract(
