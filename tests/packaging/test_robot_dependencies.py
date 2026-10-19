@@ -39,7 +39,10 @@ def test_native_source_and_backend_choices_are_only_root_tool_configuration():
     library = tomllib.loads(Path("library/pyproject.toml").read_text())
     assert "uv" not in library.get("tool", {})
     assert core["tool"]["uv"]["sources"]["isaaclab"]["rev"]
-    assert core["tool"]["uv"]["sources"]["torch"] == [{"index": "pytorch-cu130"}]
+    assert core["tool"]["uv"]["sources"]["torch"] == [
+        {"index": "pytorch-cu130", "group": "native-sources"}
+    ]
+    assert core["tool"]["uv"]["default-groups"] == ["native-sources"]
     assert "packaging==25.0" in core["tool"]["uv"]["override-dependencies"]
     assert core["tool"]["uv"]["index-strategy"] == "first-index"
     for manifest in (core, library):

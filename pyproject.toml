@@ -110,8 +110,8 @@ all = [
 ]
 
 [dependency-groups]
-# Root-only source routing avoids NVIDIA's older mirror of this Sim dependency.
-native-sources = ["mujoco-usd-converter==0.6.1"]
+# Root-only backend/source selection is not inherited by editable consumers.
+native-sources = ["mujoco-usd-converter==0.6.1", "torch", "torchvision", "torchaudio", "torchcodec"]
 
 [project.scripts]
 nexuml = "nexuml.cli.main:app"
@@ -177,6 +177,7 @@ convention = "google"
 extra-paths = ["src", "library/src"]
 
 [tool.uv]
+default-groups = ["native-sources"]
 # Standalone repository validation target, not published Python/backend restrictions.
 environments = ["sys_platform == 'linux' and platform_machine == 'x86_64' and python_version == '3.12'"]
 # The pinned Lab/Sim stack publishes prerelease native wheels on NVIDIA's index.
@@ -217,10 +218,10 @@ default = true
 members = ["library"]
 
 [tool.uv.sources]
-torch = [{ index = "pytorch-cu130" }]
-torchvision = [{ index = "pytorch-cu130" }]
-torchaudio = [{ index = "pytorch-cu130" }]
-torchcodec = [{ index = "pytorch-cu130" }]
+torch = [{ index = "pytorch-cu130", group = "native-sources" }]
+torchvision = [{ index = "pytorch-cu130", group = "native-sources" }]
+torchaudio = [{ index = "pytorch-cu130", group = "native-sources" }]
+torchcodec = [{ index = "pytorch-cu130", group = "native-sources" }]
 isaaclab = { git = "https://github.com/isaac-sim/IsaacLab.git", rev = "70ab24fec3eabf51222817db0cdb5a4e7133bd7e", subdirectory = "tools/wheel_builder" }
 mujoco-usd-converter = { index = "pypi" }
 nvidia-dali-cuda120 = [{ index = "nvidia-pypi" }]

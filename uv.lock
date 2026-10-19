@@ -3126,6 +3126,7 @@ wheels = [
 name = "nexuml"
 version = "0.2.1"
 source = { editable = "." }
+default-groups = ["native-sources"]
 dependencies = [
     { name = "lightning" },
     { name = "lightning-utilities" },
@@ -3222,6 +3223,10 @@ video = [
 [package.dev-dependencies]
 native-sources = [
     { name = "mujoco-usd-converter" },
+    { name = "torch" },
+    { name = "torchaudio" },
+    { name = "torchcodec" },
+    { name = "torchvision" },
 ]
 
 [package.metadata]
@@ -3266,7 +3271,7 @@ requires-dist = [
     { name = "soundfile", marker = "extra == 'export'", specifier = ">=0.12" },
     { name = "tensorboard", specifier = ">=2.0" },
     { name = "tensordict", specifier = ">=0.6" },
-    { name = "torch", specifier = ">=2.0", index = "https://download.pytorch.org/whl/cu130" },
+    { name = "torch", specifier = ">=2.0" },
     { name = "torchrl", marker = "extra == 'reinforcement'", specifier = ">=0.14" },
     { name = "tqdm", marker = "extra == 'data'", specifier = ">=4.66" },
     { name = "ty", marker = "extra == 'dev'" },
@@ -3275,7 +3280,13 @@ requires-dist = [
 provides-extras = ["dev", "audio", "data", "tracking", "tuning", "dali", "export", "ray", "reinforcement", "rendering", "video", "s3", "library", "robots", "all"]
 
 [package.metadata.requires-dev]
-native-sources = [{ name = "mujoco-usd-converter", specifier = "==0.6.1", index = "https://pypi.org/simple" }]
+native-sources = [
+    { name = "mujoco-usd-converter", specifier = "==0.6.1", index = "https://pypi.org/simple" },
+    { name = "torch", index = "https://download.pytorch.org/whl/cu130", conflict = { package = "nexuml", group = "native-sources" } },
+    { name = "torchaudio", index = "https://download.pytorch.org/whl/cu130", conflict = { package = "nexuml", group = "native-sources" } },
+    { name = "torchcodec", index = "https://download.pytorch.org/whl/cu130", conflict = { package = "nexuml", group = "native-sources" } },
+    { name = "torchvision", index = "https://download.pytorch.org/whl/cu130", conflict = { package = "nexuml", group = "native-sources" } },
+]
 
 [[package]]
 name = "nexuml-library"
@@ -3363,10 +3374,10 @@ requires-dist = [
     { name = "scikit-learn", marker = "extra == 'eval'", specifier = ">=1.4" },
     { name = "soundfile", marker = "extra == 'audio'", specifier = ">=0.12" },
     { name = "timm", marker = "extra == 'pretrained'", specifier = ">=1.0" },
-    { name = "torchaudio", specifier = ">=2.0", index = "https://download.pytorch.org/whl/cu130" },
-    { name = "torchcodec", marker = "extra == 'data'", specifier = ">=0.11,<0.16", index = "https://download.pytorch.org/whl/cu130" },
+    { name = "torchaudio", specifier = ">=2.0" },
+    { name = "torchcodec", marker = "extra == 'data'", specifier = ">=0.11,<0.16" },
     { name = "torchmetrics", specifier = ">=1.0" },
-    { name = "torchvision", specifier = ">=0.15", index = "https://download.pytorch.org/whl/cu130" },
+    { name = "torchvision", specifier = ">=0.15" },
     { name = "tqdm", marker = "extra == 'data'", specifier = ">=4.66" },
     { name = "transformers", marker = "extra == 'pretrained'", specifier = ">=4.0" },
     { name = "umap-learn", marker = "extra == 'eval'", specifier = ">=0.5" },

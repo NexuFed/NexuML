@@ -228,10 +228,17 @@ assert not blocked.intersection(sys.modules)
     os.environ.get("NEXUML_RUN_RESOLVER_TESTS") != "1",
     reason="explicit opt-in required for network-backed consumer resolution",
 )
-def test_external_consumer_owns_backend_versions_and_overrides(tmp_path):
+@pytest.mark.parametrize("source_kind", ["wheel", "editable"])
+def test_external_consumer_owns_backend_versions_and_overrides(tmp_path, source_kind):
     root = Path(os.environ["NEXUML_DIST_ROOT"]).resolve()
     core = _only(root / "nexuml", f"nexuml-{CORE_VERSION}-*.whl")
     library = _only(root / "nexuml-library", f"nexuml_library-{LIBRARY_VERSION}-*.whl")
+    core_source, library_source = core, library
+    editable = ""
+    if source_kind == "editable":
+        core_source = Path(__file__).resolve().parents[2]
+        library_source = core_source / "library"
+        editable = ", editable=true"
     manifest = tmp_path / "pyproject.toml"
     manifest.write_text(
         '[project]\nname="external-consumer"\nversion="0.0.0"\n'
@@ -239,7 +246,8 @@ def test_external_consumer_owns_backend_versions_and_overrides(tmp_path):
         f'dependencies=["nexuml[library]=={CORE_VERSION}", "torch==2.10.0+cpu"]\n'
         '[tool.uv]\noverride-dependencies=["numpy==2.4.6", "packaging==26.0"]\n'
         "[tool.uv.sources]\n"
-        f"nexuml={{path={str(core)!r}}}\nnexuml-library={{path={str(library)!r}}}\n"
+        f"nexuml={{path={str(core_source)!r}{editable}}}\n"
+        f"nexuml-library={{path={str(library_source)!r}{editable}}}\n"
         'torch={index="cpu"}\ntorchaudio={index="cpu"}\ntorchvision={index="cpu"}\n'
         '[[tool.uv.index]]\nname="cpu"\nurl="https://download.pytorch.org/whl/cpu"\n'
         "explicit=true\n"

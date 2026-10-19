@@ -115,8 +115,10 @@ packages cannot overwrite the same `cv2` files. These exceptions require
 affected-workflow validation, not just a successful solver or import. Preserve
 the original dependency-check output and fail on unexpected discrepancies;
 remove each exception once a maintained compatible selection works normally.
-The root-only `native-sources` group binds Sim's MuJoCo USD converter to PyPI
-rather than NVIDIA's older mirror, retaining the safer first-index strategy.
+The root-only default `native-sources` group binds Sim's MuJoCo USD converter
+to PyPI rather than NVIDIA's older mirror and selects CUDA wheel indexes only
+for standalone development. Editable consumers do not inherit that group's
+backend selection; both wheel and editable installs keep consumer authority.
 
 For this repository, with an isolated environment selected explicitly:
 
