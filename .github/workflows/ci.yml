@@ -3,10 +3,13 @@ name: CI
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [main, dev]
   pull_request:
     types: [opened, synchronize, reopened]
-    branches: [main]
+    branches: [main, dev]
+
+permissions:
+  contents: read
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -176,12 +179,126 @@ jobs:
             dist/nexuml-library/*.tar.gz
           if-no-files-found: error
 
+  studio-static:
+    name: Studio static
+    runs-on: ika-runner
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: studio
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: studio/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Type check
+        id: type
+        continue-on-error: true
+        run: npm run typecheck
+
+      - name: Lint
+        id: lint
+        continue-on-error: true
+        run: npm run lint
+
+      - name: Unit tests
+        id: test
+        continue-on-error: true
+        run: npm test
+
+      - name: Verify Studio static checks
+        if: ${{ always() && (steps.type.outcome != 'success' || steps.lint.outcome != 'success' || steps.test.outcome != 'success') }}
+        run: exit 1
+
+  studio-package:
+    name: Studio package (${{ matrix.os }}, ${{ matrix.mode }})
+    needs:
+      - package
+      - studio-static
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        mode: [tool, project]
+    defaults:
+      run:
+        shell: bash
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+      CUDA_VISIBLE_DEVICES: ""
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: studio/package-lock.json
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.0.1
+        with:
+          version: "latest"
+
+      - name: Download validated Python distributions
+        uses: actions/download-artifact@v7
+        with:
+          name: python-distributions
+          path: dist
+
+      - name: Install and verify isolated ${{ matrix.mode }} runtime
+        run: >-
+          python scripts/studio-test-runtime.py
+          --wheel dist/nexuml/nexuml-*.whl
+          --library-wheel dist/nexuml-library/nexuml_library-*.whl
+          --output "$RUNNER_TEMP/studio runtime ${{ matrix.mode }}"
+          --mode ${{ matrix.mode }}
+
+      - name: Install frontend dependencies
+        working-directory: studio
+        run: npm ci
+
+      - name: Install headless test browser
+        working-directory: studio
+        run: npx playwright install chromium --with-deps --only-shell
+
+      - name: Verify packaged startup and CPU browser workflow
+        working-directory: studio
+        run: npm run test:package 2>&1 | tee package-smoke.log
+
+      - name: Upload Studio test diagnostics
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: studio-results-${{ matrix.os }}-${{ matrix.mode }}
+          retention-days: 7
+          path: |
+            studio/package-smoke.log
+            studio/playwright-report/
+            studio/test-results/
+          if-no-files-found: ignore
+
   required-ci:
     name: CI
     needs:
       - static
       - test
       - package
+      - studio-static
+      - studio-package
     if: ${{ always() }}
     runs-on: ika-runner
 
@@ -191,12 +308,31 @@ jobs:
           STATIC_RESULT: ${{ needs.static.result }}
           TEST_RESULT: ${{ needs.test.result }}
           PACKAGE_RESULT: ${{ needs.package.result }}
+          STUDIO_STATIC_RESULT: ${{ needs.studio-static.result }}
+          STUDIO_PACKAGE_RESULT: ${{ needs.studio-package.result }}
         run: |
           echo "static: $STATIC_RESULT"
           echo "test:   $TEST_RESULT"
           echo "package: $PACKAGE_RESULT"
+          echo "studio-static: $STUDIO_STATIC_RESULT"
+          echo "studio-package: $STUDIO_PACKAGE_RESULT"
 
-          if [ "$STATIC_RESULT" != "success" ] || [ "$TEST_RESULT" != "success" ] || [ "$PACKAGE_RESULT" != "success" ]; then
+          {
+            echo "## CI results"
+            echo "| Check | Result |"
+            echo "| --- | --- |"
+            echo "| Python static | $STATIC_RESULT |"
+            echo "| Python tests | $TEST_RESULT |"
+            echo "| Python packages | $PACKAGE_RESULT |"
+            echo "| Studio static | $STUDIO_STATIC_RESULT |"
+            echo "| Studio packages | $STUDIO_PACKAGE_RESULT |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$STATIC_RESULT" != "success" ] || \
+             [ "$TEST_RESULT" != "success" ] || \
+             [ "$PACKAGE_RESULT" != "success" ] || \
+             [ "$STUDIO_STATIC_RESULT" != "success" ] || \
+             [ "$STUDIO_PACKAGE_RESULT" != "success" ]; then
             echo "One or more required CI jobs failed."
             exit 1
           fi

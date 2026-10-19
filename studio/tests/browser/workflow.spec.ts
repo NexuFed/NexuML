@@ -21,6 +21,8 @@ test("real CPU config edit/save/check/build/train/reconnect/export and corporate
     await navigation(page,"Components");await page.getByLabel("Insert into stage",{exact:true}).selectOption("Encoder");
     await page.getByLabel("Search components").fill("studio-smoke-scale");
     await page.locator(".component-list").getByRole("button",{name:/studio-smoke-scale/}).click();
+    await page.locator(".properties-panel summary").filter({hasText:/^Advanced$/}).click();
+    await expect(page.getByLabel("Scale",{exact:true})).toBeVisible();
     await expect(page.getByLabel("Scale",{exact:true})).toHaveValue("1");
     await page.getByLabel("Scale",{exact:true}).fill("2");
     await navigation(page,"Structure");await page.getByRole("button",{name:"Move studio-smoke-scale up",exact:true}).press("Enter");

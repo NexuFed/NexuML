@@ -19,7 +19,7 @@ function run(command,args,options={}) {
     command=process.execPath;args=[process.env.npm_execpath,...args];
   }
   const result=spawnSync(command,args,{cwd:temporary,encoding:"utf8",...options});
-  assert.equal(result.status,0,result.stderr || result.stdout);return result.stdout;
+  assert.equal(result.status,0,`${command} ${args.join(" ")} failed\n${result.error ?? ""}${result.stdout ?? ""}${result.stderr ?? ""}`);return result.stdout;
 }
 async function wait(url,child,headers={}) {
   const deadline=Date.now()+60000;
@@ -37,12 +37,13 @@ async function stop(child) {
   await Promise.race([done,new Promise((_,reject)=>setTimeout(()=>reject(new Error("Launcher cleanup timeout")),20000))]);
 }
 try {
-  run(npm,["run","prepack"],{cwd:root});
+  run(npm,["run","prepack"],{cwd:root,stdio:"inherit"});
   const packed=JSON.parse(run(npm,["pack","--ignore-scripts","--json","--pack-destination",temporary],{cwd:root}))[0];
   assert(packed.files.some(file=>file.path.startsWith(".next/static/") && file.path.endsWith(".woff2")),"Offline fonts missing");
   assert(!packed.files.some(file=>/(^|\/)node_modules\/|(^|\/)\.env|\.next\/cache\/|^tests\/|^src\/|\.next\/dev\//.test(file.path)),"Dev trees/secrets in package");
   await writeFile(join(temporary,"package.json"),'{"private":true}');
-  run(npm,["install","--offline","--omit=dev","--ignore-scripts",join(temporary,packed.filename)]);
+  // Installation may fetch dependencies; only the installed runtime must work offline.
+  run(npm,["install","--omit=dev","--ignore-scripts",join(temporary,packed.filename)],{stdio:"inherit"});
   const installed=join(temporary,"node_modules/@nexufed/nexuml-studio");
   const work=join(temporary,"working directory");const home=join(temporary,"isolated user home");
   await mkdir(work);await mkdir(home);
@@ -86,13 +87,15 @@ class Runtime(PipelineLayer):
   const browser=await chromium.launch({headless:true});
   try {
     const page=await browser.newPage();
-   // Assets/font/API/WebSockets all use the same local frontend origin offline.
+    // Assets/font/API/WebSockets all use the same local frontend origin offline.
     await page.route("**/*",route=>["127.0.0.1","localhost"].includes(new URL(route.request().url()).hostname) ? route.continue() : route.abort());
-    await page.goto(origin);await page.getByLabel("Config path",{exact:true}).fill("tiny.yaml");await page.getByRole("button",{name:"Open YAML",exact:true}).click();await page.getByLabel("Search components").waitFor();
+    await page.goto(origin);await page.locator(".welcome").getByRole("button",{name:"Open YAML",exact:true}).click();
+    await page.getByLabel("Config path",{exact:true}).fill("tiny.yaml");await page.getByRole("button",{name:"Open file",exact:true}).click();
+    await page.getByRole("dialog").waitFor({state:"hidden"});await page.locator(".pipeline-view").waitFor();
     assert.equal(await page.locator("body").evaluate(element=>getComputedStyle(element).backgroundColor),"rgb(16, 16, 16)");
   }finally{await browser.close();}
   // Exercise the committed complete CPU browser workflow against the installed package.
-  run(process.execPath,[join(root,"node_modules/@playwright/test/cli.js"),"test"],{cwd:root,env:{...env,
+  run(process.execPath,[join(root,"node_modules/@playwright/test/cli.js"),"test"],{cwd:root,stdio:"inherit",env:{...env,
     PLAYWRIGHT_BROWSERS_PATH:process.env.PLAYWRIGHT_BROWSERS_PATH ?? dirname(dirname(dirname(chromium.executablePath()))),
     STUDIO_TEST_URL:origin,STUDIO_CONFIG_PATH:"tiny.yaml",STUDIO_LIBRARY_ROOT:libraryRoot}});
   assert.equal(await readFile(join(temporary,"package-lock.json"),"utf8"),before,"Startup changed packages");
@@ -101,7 +104,7 @@ class Runtime(PipelineLayer):
   assert(savedConfig,"Browser did not persist ordinary YAML");
   run(python,["-m","nexuml.cli.main","build",join(work,savedConfig)],{cwd:work,env});
   await stop(launch);
-   const stopped=await fetch(`http://127.0.0.1:${ownedApiPort}/api/v1/runtime`,{headers:{Authorization:`Bearer ${runtime.token}`}}).then(()=>false,()=>true);
+  const stopped=await fetch(`http://127.0.0.1:${ownedApiPort}/api/v1/runtime`,{headers:{Authorization:`Bearer ${runtime.token}`}}).then(()=>false,()=>true);
   assert(stopped,"Owned API survived launcher shutdown");
   await access(join(work,"tiny.yaml"));
   assert(!output.includes("uv sync") && !output.includes("pip install") && !output.includes("next build"));

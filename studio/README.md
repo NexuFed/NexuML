@@ -272,3 +272,11 @@ Build/pack is a release task, never a normal-user startup task. API/Python check
 installed-package/browser smoke instructions live in the repository's local API guide.
 Do not publish either artifact automatically. Dependencies are locked; ESLint uses v9
 because the stable Next plugins do not yet accept v10's peer range.
+
+The repository's `CI` workflow runs Python and Studio checks for both `main` and `dev`.
+Studio static checks run once; packaged browser checks reuse its validated Python wheels
+on Linux, macOS and Windows, each with project and uv-tool installations. All feed the
+single required `CI` gate. Package installation can download dependencies; installed
+startup, fonts and browser transport remain offline checks. Each matrix job retains its
+HTML browser report, smoke log and screenshots for seven days. Traces remain disabled
+because they can contain runtime credentials.

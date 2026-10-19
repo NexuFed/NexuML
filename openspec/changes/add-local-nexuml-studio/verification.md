@@ -255,3 +255,46 @@ The idle owned debug services on 41440/41441 were stopped after checking the ope
 list and launcher identity. Existing previews on 41240/41241 and 41340/41341 were neither
 stopped nor replaced. No Python packages were installed/upgraded and no commit, push,
 publication, CI dispatch or archival was performed. Cross-platform gates 7.2/8.2 remain open.
+
+## PR #16 CI repair (2026-10-20)
+
+Run `39339644310` failed in all six platform/install combinations at the same npm
+installation step: `ENOTCACHED` for `@base-ui/react` registry metadata. Every job had
+already passed frontend static checks. A warm developer cache had hidden the harness
+assumption: `npm ci` fetches a locked dependency graph but does not guarantee metadata
+for resolving a new consumer installation with `npm install --offline`.
+
+Studio checks now live in `.github/workflows/ci.yml`, not a separate Studio workflow.
+The existing CI runs on `main` and `dev`, checks frontend static gates once, reuses the
+validated Python distribution artifact across all six Studio package jobs, and includes
+both Studio jobs in its always-running required `CI` gate and result summary. Package
+installation may download dependencies; installed operation still requires no external
+assets, package installation, or Python environment mutation. CI keeps screenshot/log
+artifacts and HTML browser reports for seven days, with credential-bearing traces off.
+
+Focused checks passed: Actionlint 1.7.12 (excluding existing custom runner labels from
+its built-in allowlist); frontend typecheck, lint, and 32 tests; both wheel/sdist builds;
+and three packaging/CI regression tests. The required-gate test executes its actual
+shell body with each dependency failed, skipped, and cancelled to prove it fails closed.
+
+The first local cold-cache package run passed build/pack/install, then found a second
+harness defect: the preliminary browser check used a Config path field before opening
+the current file dialog. The smoke check now uses welcome Open YAML, then dialog Open
+file and waits for the visible pipeline, matching the committed browser helpers. The
+first full run passed 10/11 browser tests, exposing another stale expectation in the
+custom-library path: optional Scale is under Advanced, which the test had not opened.
+The test now opens Advanced and asserts visibility before editing; no forced interaction
+or application change was made. The earlier four backend-test failures remain separate
+from this CI harness repair; no unrelated backend behavior was changed.
+
+Final local proof: `npm run test:package` passed with an empty npm cache and an isolated,
+wheel-installed Python 3.12 uv-tool runtime. All **11 browser tests passed in 3.3 minutes**,
+including the custom-library path and real CPU training/reconnect/export. Production
+build/pack, offline assets, explicit/PATH runtime selection, unchanged Python/npm package
+records, saved-YAML CLI loading, and owned/attached shutdown checks also passed.
+Retained package artifacts: `/tmp/opencode/nexuml packaged smoke wI0Is3/`; the final HTML
+report and screenshots are generated under ignored `studio/playwright-report/` and
+`studio/test-results/`. Project and tool wheel-install/handshake setup both passed; the
+project's full suite was not repeated after correcting its custom-library test. Full
+OS/install coverage remains the replacement CI matrix's responsibility, not a local
+macOS/Windows acceptance claim.
