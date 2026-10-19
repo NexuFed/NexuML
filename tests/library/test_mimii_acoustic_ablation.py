@@ -14,6 +14,9 @@ from nexuml_library.data.maintenance.prepared_endpoints import (
     PreparedMaintenanceEndpointPairs,
     read_prepared_artifact,
 )
+from nexuml_library.evaluation.maintenance.ablation_evaluate import (
+    evaluate_prepared_split,
+)
 from nexuml_library.evaluation.maintenance.ablation_prepare import (
     couple_training_endpoints,
     feature_variants,
@@ -147,6 +150,22 @@ def test_scenario_compiles_without_fisher_download_and_round_trips(tmp_path: Pat
         "healthy_spectrum"
     ].shape == (2,)
     assert len(list(artifacts.pipeline.iter_layers())) == 3
+    metrics = evaluate_prepared_split(
+        artifacts,
+        split="val",
+        device=torch.device("cpu"),
+        projections=8,
+        seed=7,
+    )
+    assert metrics["split"] == "val"
+    assert metrics["num_samples"] == 1
+    assert set(metrics["fixed_time_fm_mse"]) == {"0.25", "0.5", "0.75"}
+    assert metrics["swd_healthy_to_faulty"] >= 0.0
+    assert metrics["training_mean_shift_swd"] >= 0.0
+    with pytest.raises(ValueError, match="Only val"):
+        evaluate_prepared_split(
+            artifacts, split="train", device=torch.device("cpu")
+        )
 
 
 def test_prepared_artifact_rejects_overlap_and_tampering(tmp_path: Path) -> None:
