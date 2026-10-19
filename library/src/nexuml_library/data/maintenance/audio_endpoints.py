@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import wave
 from pathlib import Path
 
 import numpy as np
@@ -154,22 +155,50 @@ class _AudioEndpointPairsRuntime(NexuDataset):
         )
 
     def _waveform(self, file: Path) -> torch.Tensor:
-        """Read and normalize an acoustic recording to a fixed-length mono waveform.
+        """Read a PCM WAV recording as a fixed-length mono waveform.
+
+        Only the required number of frames is decoded. This deliberately uses
+        Python's PCM WAV reader rather than torchaudio.load, whose TorchCodec
+        decoder requires separate compatible FFmpeg shared libraries.
 
         Returns:
-            Float32 waveform of shape (clip_num_samples,).
+            Normalized float32 waveform of shape (clip_num_samples,).
 
         Raises:
-            ValueError: If the source sample rate does not match the configured rate.
+            ValueError: If the sample rate, PCM encoding or bit depth is unsupported.
+            wave.Error: If the file is not a supported WAV container.
         """
-        import torchaudio
+        with wave.open(str(file), "rb") as recording:
+            sample_rate = recording.getframerate()
+            channels = recording.getnchannels()
+            sample_width = recording.getsampwidth()
+            if recording.getcomptype() != "NONE" or sample_width not in (1, 2, 3, 4):
+                raise ValueError(f"Unsupported PCM WAV encoding in {file}")
+            if sample_rate != self.sample_rate:
+                raise ValueError(
+                    f"Sample-rate mismatch in {file}: {sample_rate} Hz, "
+                    f"expected {self.sample_rate} Hz."
+                )
+            raw = recording.readframes(self.clip_num_samples)
 
-        signal, sample_rate = torchaudio.load(str(file))
-        if sample_rate != self.sample_rate:
-            raise ValueError(
-                f"Sample-rate mismatch in {file}: {sample_rate} Hz, expected {self.sample_rate} Hz."
+        if sample_width == 1:
+            samples = (np.frombuffer(raw, dtype=np.uint8).astype(np.float32) - 128.0) / 128.0
+        elif sample_width == 3:
+            data = np.frombuffer(raw, dtype=np.uint8).reshape(-1, 3)
+            values = (
+                data[:, 0].astype(np.int32)
+                | (data[:, 1].astype(np.int32) << 8)
+                | (data[:, 2].astype(np.int32) << 16)
             )
-        mono = signal.to(dtype=torch.float32).mean(dim=0)
+            signed = (values ^ (1 << 23)) - (1 << 23)
+            samples = signed.astype(np.float32) / float(1 << 23)
+        else:
+            dtype = np.dtype("<i2" if sample_width == 2 else "<i4")
+            samples = np.frombuffer(raw, dtype=dtype).astype(np.float32) / float(
+                1 << (8 * sample_width - 1)
+            )
+
+        mono = torch.from_numpy(samples.reshape(-1, channels).mean(axis=1))
         length = self.clip_num_samples
         if mono.numel() >= length:
             return mono[:length].contiguous()

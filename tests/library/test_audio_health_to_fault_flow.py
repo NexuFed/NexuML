@@ -251,3 +251,50 @@ def test_multiple_acoustic_roots_compose_without_shape_changes(tmp_path: Path) -
     assert set(merged.meta["split"]) == {"train", "val"}
     x, _ = merged[0]
     assert x["healthy_waveform"].shape == (512,)
+
+
+@pytest.mark.parametrize("sample_width", [1, 2, 3, 4])
+def test_pcm_wav_decodes_without_torchcodec(
+    tmp_path: Path, sample_width: int
+) -> None:
+    root = _fixture_root(tmp_path)
+    file = root / "train/healthy/train_healthy_0/recording_0.wav"
+    amplitude = 1 << (8 * sample_width - 2)
+    with wave.open(str(file), "wb") as output:
+        output.setnchannels(2)
+        output.setsampwidth(sample_width)
+        output.setframerate(16000)
+        if sample_width == 1:
+            samples = bytes([128 + amplitude, 128 - amplitude]) * 4
+        else:
+            pair = (
+                amplitude.to_bytes(sample_width, byteorder="little", signed=True)
+                + (-amplitude).to_bytes(sample_width, byteorder="little", signed=True)
+            )
+            samples = pair * 4
+        output.writeframes(samples)
+
+    runtime = AudioEndpointPairs(root=root, clip_num_samples=16).build()
+    assert runtime.meta is not None
+    matching = runtime.meta.index[
+        runtime.meta["healthy_file"].eq(str(file))
+    ].tolist()
+    assert matching
+    x, _ = runtime[int(matching[0])]
+    assert x["healthy_waveform"].dtype == torch.float32
+    assert x["healthy_waveform"].shape == (16,)
+    assert torch.allclose(x["healthy_waveform"], torch.zeros(16))
+
+
+def test_invalid_wav_container_is_rejected(tmp_path: Path) -> None:
+    root = _fixture_root(tmp_path)
+    file = root / "train/healthy/train_healthy_0/recording_0.wav"
+    file.write_bytes(b"not a valid RIFF WAV file")
+    runtime = AudioEndpointPairs(root=root).build()
+    assert runtime.meta is not None
+    matching = runtime.meta.index[
+        runtime.meta["healthy_file"].eq(str(file))
+    ].tolist()
+    assert matching
+    with pytest.raises(wave.Error, match="RIFF"):
+        runtime[int(matching[0])]
