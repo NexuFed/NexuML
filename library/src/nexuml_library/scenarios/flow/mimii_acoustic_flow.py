@@ -20,6 +20,8 @@ from nexuml_library.scenarios.training.defaults import default_logging
 def mimii_acoustic_flow(
     root: str | Path | None = None,
     machine_type: Literal["fan", "pump", "slider", "valve"] = "fan",
+    noise_db: Literal[-6, 0, 6] = 6,
+    download: bool = True,
     train_machine_ids: list[str] | None = None,
     val_machine_ids: list[str] | None = None,
     test_machine_ids: list[str] | None = None,
@@ -46,6 +48,8 @@ def mimii_acoustic_flow(
     Args:
         root: Original MIMII machine directory; defaults to NEXUML_MIMII_ROOT.
         machine_type: Single industrial machine family.
+        noise_db: Selected official MIMII archive background noise level.
+        download: Auto-download and checksum-verify missing MIMII recordings.
         train_machine_ids: Training IDs (default 00 and 02).
         val_machine_ids: Validation ID (default 04).
         test_machine_ids: Independent test ID (default 06).
@@ -67,7 +71,9 @@ def mimii_acoustic_flow(
         Typed NexuML real-data Flow Matching experiment.
     """
     resolved_root = str(
-        root if root is not None else os.environ.get("NEXUML_MIMII_ROOT", "data/mimii/6_dB_fan")
+        root
+        if root is not None
+        else os.environ.get("NEXUML_MIMII_ROOT", f"data/mimii/{noise_db}_dB_{machine_type}")
     )
     baseline = audio_health_to_fault_flow(
         data_roots=[resolved_root],
@@ -86,6 +92,8 @@ def mimii_acoustic_flow(
     )
     source = MIMIIAcousticEndpointPairs(
         root=resolved_root,
+        download=download,
+        noise_db=noise_db,
         machine_type=machine_type,
         train_machine_ids=(
             train_machine_ids if train_machine_ids is not None else ["id_00", "id_02"]
