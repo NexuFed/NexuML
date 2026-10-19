@@ -239,6 +239,10 @@ def evaluate_prepared_checkpoints(
 
     Returns:
         Machine-readable report with checkpoint IDs and validation metrics.
+
+    Raises:
+        ValueError: If test evaluation is requested for a within-machine
+            diagnostic that has no separate test partition.
     """
     best, last = resolve_checkpoints(
         checkpoint_dir,
@@ -248,6 +252,14 @@ def evaluate_prepared_checkpoints(
     best_artifacts = create_runtime_artifacts_from_trainer_checkpoint(best)
     source = best_artifacts.data_module.dataset
     settings = getattr(source, "settings", None)
+    single_machine = isinstance(settings, dict) and (
+        settings.get("split_protocol") == "within_machine_recording_holdout"
+    )
+    if include_test and single_machine:
+        raise ValueError("Within-machine diagnostics have train/val only, no test split")
+    original_test_used = single_machine and bool(
+        settings.get("original_test_machine_repurposed", False)
+    )
     report: dict[str, Any] = {
         "best_checkpoint": str(best),
         "last_checkpoint": str(last),
@@ -265,7 +277,7 @@ def evaluate_prepared_checkpoints(
             seed=seed,
             projections=projections,
         ),
-        "test_is_sealed": not include_test,
+        "test_is_sealed": not include_test and not original_test_used,
         "note": (
             "Do not compare absolute SWD or feature MSE across distinct "
             "frontends/scalings. Use dimensionless relative improvements. "
