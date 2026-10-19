@@ -122,9 +122,7 @@ def evaluate_prepared_split(
     source = torch.cat(healthy_parts)
     target = torch.cat(faulty_parts)
     trajectory = torch.cat(paths)
-    metrics = feature_metrics(
-        source, target, trajectory, projections=projections, seed=seed
-    )
+    metrics = feature_metrics(source, target, trajectory, projections=projections, seed=seed)
     metrics["split"] = split
     metrics["fixed_time_fm_mse"] = {
         str(time): losses[time] / n for time in _TIMES
@@ -182,8 +180,11 @@ def evaluate_prepared_checkpoints(
         "last_checkpoint": str(last),
         "prepared_settings": settings,
         "validation_best": evaluate_prepared_split(
-            best_artifacts, split="val", device=device,
-            seed=seed, projections=projections,
+            best_artifacts,
+            split="val",
+            device=device,
+            seed=seed,
+            projections=projections,
         ),
         "test_is_sealed": not include_test,
         "note": (
@@ -197,13 +198,19 @@ def evaluate_prepared_checkpoints(
     else:
         last_artifacts = create_runtime_artifacts_from_trainer_checkpoint(last)
         report["validation_last"] = evaluate_prepared_split(
-            last_artifacts, split="val", device=device,
-            seed=seed, projections=projections,
+            last_artifacts,
+            split="val",
+            device=device,
+            seed=seed,
+            projections=projections,
         )
     if include_test:
         report["held_out_test_best"] = evaluate_prepared_split(
-            best_artifacts, split="test", device=device,
-            seed=seed, projections=projections,
+            best_artifacts,
+            split="test",
+            device=device,
+            seed=seed,
+            projections=projections,
         )
     return report
 
@@ -221,9 +228,13 @@ def main() -> None:
     parser.add_argument("--include-test", action="store_true")
     args = parser.parse_args()
     report = evaluate_prepared_checkpoints(
-        args.checkpoint_dir, device=torch.device(args.device),
-        best_checkpoint=args.best_checkpoint, last_checkpoint=args.last_checkpoint,
-        include_test=args.include_test, seed=args.seed, projections=args.projections,
+        args.checkpoint_dir,
+        device=torch.device(args.device),
+        best_checkpoint=args.best_checkpoint,
+        last_checkpoint=args.last_checkpoint,
+        include_test=args.include_test,
+        seed=args.seed,
+        projections=args.projections,
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2) + "\n")
