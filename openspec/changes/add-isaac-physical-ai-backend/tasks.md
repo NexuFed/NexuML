@@ -1,24 +1,26 @@
 # Tasks
 
-Source of truth: `proposal.md`, `design.md`, the thirteen capability specs and `coverage.md`. All tasks start unchecked. Deliver tests and runnable documentation with each slice. Native, dataset, ROS, distributed and hardware checks require the declared prerequisites; static validation, skipped tests and old-profile evidence do not satisfy them.
+Source of truth: proposal.md, design.md, all eighteen capability specs, reference-catalogue.md and coverage.md. The first three verified planning tasks retain their historical checkmarks; every new consolidation task is unchecked. This is the single implementation queue for Isaac, ordinary MuJoCo/Meta-World, GPU MuJoCo Playground and Physical AI model/robot examples. Deliver tests and runnable documentation with each slice. Native, dataset, ROS, distributed and hardware checks require the declared prerequisites; static validation, skipped tests and old-profile evidence do not satisfy them.
 
 This is one staged program, not one unattended command or giant PR. Keep existing completed work intact. Cross-repository delivery must occur in its owning scope; no hidden NexuVibe/NexuFL edits, active-environment replacement, rebuild, unapproved download or hardware actuation is authorized by this task file.
 
 The user-selected LeRobot additions require complete Diffusion Policy and resource-gated π0.5 examples, but only bounded feasibility assessments for VLA-JEPA, FastWAM and SARM. The latter assessments do not authorize model integration, large downloads, external annotation or paid compute and do not satisfy existing DreamerV3/model-support gates. Dependency-exception policy and external Meta-World obligations are unchanged.
+
+**Implementation supersession:** the previous add-mujoco-reference-workflows proposal remains available for historical audit, but its native task, outcome, dependency, media and benchmark requirements have been imported under this change. Do not execute its tasks.md separately. The original 42/42 scoped Isaac and 23 open extension items remain historical evidence, not rewritten completion.
 
 ## 1. Ownership, scope and compatibility baseline
 
 - [x] 1.1 Record current code/import origins, effective configuration and existing CPU/static failures in the backend evidence report; verify exact commands and preserve unrelated work instead of repairing or hiding baseline failures.
 - [x] 1.2 Reconcile the roadmap snapshot with all coverage groups and legacy change obligations; verify every source checkbox and program capability has an owner, acceptance destination and explicit existing/pending/blocked disposition.
 - [x] 1.3 Assign one owner for shared outcome, temporal-policy and learner changes; verify the dependency map prevents duplicate implementations across this program and the Isaac/MuJoCo changes without changing their historical completion checks.
-- [ ] 1.4 Inventory immutable candidate sources, public task/API symbols, assets/models/licenses and native prerequisites; verify actual installed/source APIs for DreamerV3, VLA, Arena, sensors and ROS rather than inferring them from moving docs.
-- [ ] 1.5 Resolve the complete proposed Python-3.12/cu130 composition and retain the exact Meta-World/Newton and any other conflicts; verify a reviewed compatible selection or explicitly blocked capability, with no overrides or hidden second environment.
+- [ ] 1.4 Audit immutable source/API/asset/model/license/compute targets across Isaac, current LeRobot, classic MuJoCo, Meta-World, MuJoCo Playground/MJWarp/MJX, relevant JAX, ROS, DreamerV3 and benchmarks. Freeze actual task IDs and check native APIs, wheel/driver, source and operator constraints before implementing.
+- [ ] 1.5 Resolve the complete compatible Python-3.12/CUDA-13 **primary Isaac** stack and a versioned optional compatibility matrix for Meta-World, MuJoCo/Playground, LeRobot and JAX. Reproduce the historical Meta-World/Newton conflict; test maintained alternatives, then approve an explicitly pinned separate process/lane only if genuinely necessary. Do not impose a global Python <3.14 bound or a conflicting all union.
 - [ ] 1.6 Publish the slice ownership, resource/license approval needs and compatibility decision record; verify original two-profile requirements and broader rollout exclusions are explicitly reconciled before shared implementation, not silently checked off.
 
 ## 2. Canonical shared environment and automatic setup
 
-- [ ] 2.1 Declare compatible library integration extras and root forwarding without mandatory base simulator imports; verify built dependency metadata, repository lock and simulator-free base install/discovery tests.
-- [ ] 2.2 Freeze canonical Lab/tutorial/Torch/TorchRL/TensorDict/physics/model-adapter sources and requirements; verify joint resolution, package integrity and source origins in the intended shared consumer, not a hand-picked minimal venv.
+- [ ] 2.1 Declare truthful named optional simulator/model dependencies in NexuML library with root forwarding, base-only imports, built wheel/sdist metadata and negative tests. Keep ordinary Python support and compatible all semantics rather than silently adding mutually incompatible Meta-World/Isaac/JAX pins.
+- [ ] 2.2 Pin exact primary Isaac Lab/Sim/Torch/TorchRL/TensorDict/Newton/LeRobot sources and separately pin any optional native MuJoCo/Meta-World/Playground/JAX execution lane. Verify actual compatible primary resolution and provenance, and explicitly block unsupported combinations.
 - [ ] 2.3 Deliver or coordinate reviewed NexuVibe changes to Python selection, consumer lock, Docker/system libraries, hooks, versioned paths, interpreter settings and setup tests; verify the owning repository revision and locked, idempotent automatic provisioning without hidden sibling edits.
 - [ ] 2.4 Inspect effective resources and propose a staged disk/RAM/VRAM/cache budget before approved installation/recreation; verify driver/CUDA, Vulkan/EGL, NVENC and ROS prerequisites independently and preserve active experiments.
 - [ ] 2.5 Exercise clean approved container creation plus repeated setup with minimum reference assets; verify automatic installation, hashes, failure propagation, no unrequested upgrades and the same canonical interpreter for all required compatible Python workflows.
@@ -92,7 +94,7 @@ The user-selected LeRobot additions require complete Diffusion Policy and resour
 
 ## 9. Real pretrained VLA policies and post-training
 
-- [ ] 9.1 Freeze compatible SmolVLA and GR00T model/code/processor releases and approved weights; verify canonical joint dependencies, licenses, trust checks and actual installed adapter APIs before claiming support.
+- [ ] 9.1 Pin and verify supported **GR00T N1.7** and SmolVLA model/code/processor releases, asset licenses/trust, source dependencies and embodiment mapping. Do not select obsolete GR00T N1.5 as a new implementation target.
 - [ ] 9.2 Integrate SmolVLA image/state/language inference through the existing graph; verify processor/token/action parity on approved observations and real chunk execution/reset behavior.
 - [ ] 9.3 Fine-tune SmolVLA on a compatible task dataset and complete resume/export/Isaac evaluation; verify changed trainable parameters, pretrained-versus-adapted results, latency/memory and old-task regression.
 - [ ] 9.4 Integrate the selected GR00T model and embodiment transforms; verify pretrained inference, task-specific supervised adaptation, resume/export and compatible Isaac closed-loop evaluation independently of SmolVLA.
@@ -126,7 +128,7 @@ The user-selected LeRobot additions require complete Diffusion Policy and resour
 - [ ] 11.4 Validate a compatible maintained Arena release natively in the canonical composition; verify the old Python-3.11 recipe is not reused as proof and retain any unresolved dependency/task mismatch.
 - [ ] 11.5 Evaluate one actual adapted NexuML policy over pinned Arena scene/object/embodiment variations; verify policy mapping, held-out distributions, failure categories and reproducible machine-readable trials.
 - [ ] 11.6 Exercise offline shadow, forgetting and reference comparisons plus real GIF/MP4/both delivery; verify counterfactual limits, terminal-frame identity, animated TensorBoard/MLflow behavior and truthful cancellation.
-- [ ] 11.7 Publish suite and Arena commands with comparison reports; verify per-slice tests and docs distinguish Meta-World/LIBERO protocols, quality experiments, integration smokes and physical safety decisions.
+- [ ] 11.7 Verify maintained Isaac Arena, compatible LeRobot eval/EnvHub and actual native LIBERO/LIBERO-plus interfaces, with optional separately gated RoboTwin subset. Freeze task/suite/split/processor versions and collect real native evaluation evidence; do not copy or fake unavailable benchmark runs.
 - [ ] 11.8 Produce a bounded SARM feasibility report through existing data/layer/evaluation seams; verify source/model/processor identities, dependency/license/resource constraints, annotation/temporal-prior provenance and a leakage-aware progress/weighted-imitation validation protocol covering failed/stalled/reversed/interrupted episodes, with an explicit verdict and measured-success/safety separation rather than a trained-support claim.
 
 ## 12. ROS, Gazebo and Isaac ROS runtime
@@ -189,12 +191,67 @@ The user-selected LeRobot additions require complete Diffusion Policy and resour
 
 - [ ] 17.1 Run relevant broad CPU/coverage, lint/format/type, lock and strict docs/OpenSpec gates after integration; verify baseline failures are separately retained and all per-slice tests/docs already exist.
 - [ ] 17.2 Build and inspect wheels/sdists plus clean installed-package inference/training proofs; verify base optionality, actual dependency manifests, processors/state/adapter composition and old supervised/Gymnasium/package behavior.
-- [ ] 17.3 Run canonical clean-setup, native/GPU/media/ROS/Arena/world-model/VLA acceptance and separately provisioned distributed/manual gates; verify exact commands, source/consumer identities, artifacts and unsuccessful or unrun checks remain explicit.
-- [ ] 17.4 Reconcile all roadmap/capability rows to exact requirements, tasks and durable evidence with counts/hashes; verify no required family is closed by a skip, compatibility blocker, different robot/backend or old-profile result.
+- [ ] 17.3 Run compatible primary setup, Isaac/ROS/VLA/world-model and **MuJoCo/Meta-World/MJWarp/correction/reward/model/benchmark** native acceptance, including separately approved distributed/hardware gates. Preserve task/source/lock hashes, exact commands, unexecuted/skipped statuses and recorded failures.
+- [ ] 17.4 Reconcile all 236 original roadmap checkboxes, all eighteen capability specs, reference-catalogue.md and unified tasks 18–22 against exact tests/artifacts. No acceptance may be borrowed from upstream training, an old Isaac profile, another robot/backend or the historical MuJoCo task queue.
 - [ ] 17.5 Publish milestone and full-program status, runnable user documentation and retained rollback inputs; verify full completion requires every mandatory software and manual gate, all owned jobs are stopped and no merge/archive/deployment is implied.
+
+## 18. MuJoCo, Meta-World and task-outcome integration
+
+- [ ] 18.1 Reconcile all 32 tasks of the historical MuJoCo proposal against this single task queue. Inspect existing GymnasiumEnvironment, PPO, evaluator, scenarios, packages and tests; preserve verified work, record unresolved prerequisites and choose one shared task-outcome code owner.
+- [ ] 18.2 Pin compatible MuJoCo/Meta-World versions with library extras/root forwarding and built metadata; validate a separate approved native lane where their actual upstream dependencies conflict with the Isaac/Newton primary. Do not use --no-deps, global Python <3.14 or a second hidden trainer.
+- [ ] 18.3 Probe native Humanoid-v5 (existing 45/17 observation/action contract), Reacher-v5 (10/2) and Meta-World reach-v3 (normalized Cartesian displacement+gripper); verify upstream identity, bounds, units, control period, reset, termination, truncation and final-observation semantics.
+- [ ] 18.4 Register metaworld-reach-ppo lazily through existing GymnasiumEnvironment and ordinary configuration/compile/YAML/override/CLI discovery. Only add a thin provider after an actual failed public upstream registration path; base installs must not import simulators.
+- [ ] 18.5 Implement missing success-only outcome support with exact validated bool or finite native zero/one, batch/device and stable absent/success-only/success+nonnegative-error signatures; transient any-step success is counted once. Preserve SO-101 paired outcome regressions and no fabricated joint error.
+- [ ] 18.6 Verify real CPU direct/process collection, TorchRL policy sync, reset/timeout targets, precise frame budgets, interrupted/completed resume and failure cleanup independently for all three references.
+- [ ] 18.7 Train all three via NexuML-owned updates; validate actor changes, finite losses, interrupted checkpoint state/remaining-budget resume, complete export, clean inference with training/simulator imports blocked and fresh native evaluation. A smoke alone is not convergence.
+- [ ] 18.8 Exercise true CPU OSMesa and NVIDIA EGL headless capture on all three with nonempty RGB, correct final-frame identity, GIF/MP4/both, FPS/limits, TensorBoard and MLflow-only logging, truthful cancellation and no renderer for state-only training.
+- [ ] 18.9 Freeze actual Meta-World MT1 50-goal identities, horizon/reward/success/protocol and three PPO training seeds (0,1,2); compare to matched native seeded random actions with per-goal any-step success, returns, uncertainty/runtime and separately labeled held-out variations.
+- [ ] 18.10 Publish the exact native lock/interpreter/system/graphics/task/asset evidence, package/CI negative tests, scenario commands and Phase 4/6 progress in the unified report; do not edit earlier MuJoCo OpenSpec history or mark its old tasks complete.
+
+## 19. GPU MuJoCo Playground and MJWarp
+
+- [ ] 19.1 Inventory maintained MuJoCo Playground release, MJX-JAX/MJWarp native API, JAX/Torch backend and version/asset/license requirements. Pin small classic control, articulated locomotion/manipulation and visual reference tasks to real native task IDs.
+- [ ] 19.2 Expose lazily discovered optional NexuML library task definitions, renderer and physics selection with portable control/task contracts; don't allocate JAX GPU context, download Menagerie assets or add a new session when merely discovering a scenario.
+- [ ] 19.3 Native-probe GPU batched transition/final/auto-reset, device and time/environment axis, action units, episode accounting, truncation numerical targets and cleanup against a real pinned native oracle; no fake TensorDict pass as native GPU proof.
+- [ ] 19.4 Run maintained upstream train-jax-ppo or train-rsl-ppo as explicitly labeled external quality baselines, not as a substitute for NexuML's optimizer/resume/policy/export evidence.
+- [ ] 19.5 For a genuinely supported MJWarp/Torch task, implement NexuML-owned learner updates, checkpoint/resume, complete policy export/reload and native evaluation with no hidden upstream trainer. If public APIs prevent this, record an explicit non-completion/interop blocker and design evidence.
+- [ ] 19.6 Validate one exact articulated model and one true image-observation/rendered policy example with provenance, held-out metrics and measured render/native/training throughput versus upstream on matched control semantics.
+- [ ] 19.7 Publish separate locked optional profiles, executable commands, native GPU/render opt-in test tiers, unsupported hardware/JAX combinations and reproducible benchmark artifacts without degrading CPU Gymnasium/supervised NexuML.
+
+## 20. Corrections, reward learning, flow policies and timed inference
+
+- [ ] 20.1 Audit maintained LeRobot v0.6.1 rollout/DAgger, reward model, dataset-depth/language/time, model processor and benchmark APIs (including changed imports), recording exact code/model license/resources before use.
+- [ ] 20.2 Ingest real/simulated corrections with proposed versus executed action, intervention interval, operator policy checkpoint, sensor timestamps, depth/language/subtask labels, masks and episode-disjoint train/held-out provenance.
+- [ ] 20.3 Demonstrate simulation-first SO-101 DAgger-style correction collection → NexuML offline candidate training/resume/export → frozen old/new/failure evaluation, using upstream teleop tools rather than another custom GUI.
+- [ ] 20.4 Implement one bounded RLPD-style offline demonstration + new simulation replay workflow on existing SAC/algorithm-owned replay interfaces, with mixture, policy staleness, target/optimizer accounting, seed and true interrupted resume.
+- [ ] 20.5 Integrate simulated HIL-SERL interventions and one trained reward classifier, with negative reward-versus-native-task-success tests and maintained task-safety boundaries; no automatic online real-robot learning.
+- [ ] 20.6 Assess Robometer and TOPReward processors, versions, licensing, compute and held-out failure/reversed/stalled episodes; optionally implement small approved scoring while keeping learned progress/reward distinct from frozen task outcomes.
+- [ ] 20.7 Add one maintained small flow-matching/Diffusion Transformer action-policy training/resume/export/clean-inference/Isaac round trip with time masks, iterative sampler, RNG, chunk/reset parity and matched SO-101 ACT/Diffusion comparisons.
+- [ ] 20.8 Add optional asynchronous local/remote chunk inference with per-stream timestamps/state, stale observation and missed-deadline rejection, bounded buffering, controller-delegated fallback and recorded action/latency parity. Local stateless inference remains unaffected.
+- [ ] 20.9 Produce independent actual update/quality/forgetting/intervention/latency/sample-efficiency evidence for corrections, offline-to-online, learned reward and flow methods; freeze comparable controls and disallow reward-only quality claims.
+
+## 21. Reference catalogue and benchmark acceptance
+
+- [ ] 21.1 Port upstream SO-101 six-action physical-contact vial placement with exact home-reset/success; train state PPO and teacher-to-wrist-camera distillation using actual student on-policy trajectories and deployment-only student inputs.
+- [ ] 21.2 Implement SO-101 camera PPO **from scratch**, asymmetric critic where supported and same camera/control/reset/sim2real randomization tests as distillation, proving NexuML rather than upstream RSL-RL training.
+- [ ] 21.3 Complete matched task/contract round trips for SO-101 state PPO, camera PPO, distillation, ACT, Diffusion, flow, SmolVLA, GR00T N1.7 and approved resource-gated pi0.5; report privileged-input and modality differences rather than pretending identical observations.
+- [ ] 21.4 Preserve exact OpenArm unimanual/bimanual (+ optional drawer task), G1 exact 29-DoF locomotion/Mimic locomanipulation, Go2, Crazyflie/PX4, TurtleBot3, UR10e/Rizon, UR5e/URSim and LumenPnP source identity, control and separate learning/evaluation status from the original plan.
+- [ ] 21.5 Run compatible native LIBERO/LIBERO-plus through maintained LeRobot evaluation (in addition to Arena) with exact matching policy/task protocol, and assess an optional RoboTwin 2.0 subset without fabricating incompatible suite results.
+- [ ] 21.6 Feasibility-gate optional dexterous Allegro/Shadow/DexSuite object reorientation and GR-1 Mimic manipulation; promote only actual maintained feasible examples with independent policy training/evaluation and recorded approvals.
+- [ ] 21.7 For each I01–I22, M01–M06 and B01–B03 reference ID record source/release/model/assets, sensor/control conventions, provenance and separate stages: native, NexuML training, resume, export, fresh evaluation/media, quality and manual hardware. Never count another embodiment or old release.
+- [ ] 21.8 Publish per-embodiment held-out outcome and failure injection protocol (falls, grasp/lift/release, occlusion/latency, collision, flight failsafe and industrial outliers), preserving matching classical/upstream baselines where relevant.
+
+## 22. Single programme ownership and closeout
+
+- [ ] 22.1 Reconcile eighteen capability specs, new reference catalogue, imported MuJoCo requirements, original 236-checklist roadmap and historical 42 completed/23 open Isaac/32 MuJoCo tasks; assign exact test/evidence owner and forbid a parallel MuJoCo execution queue.
+- [ ] 22.2 Run one staged campaign in dependency order: compatible setup+Isaac/CPU MuJoCo, SO-101 control/manipulation/camera/data, native Meta-World/MJWarp, modern imitation/VLA/reward/correction, frozen benchmarks, additional embodiments/ROS, approved manual proof. Implement a usable vertical slice, not one unchecked monolith.
+- [ ] 22.3 After each slice verify tests, native action/transition oracle, genuine learning update, interrupted resume, clean policy export/replay/media, source/lock/asset hashes, quality and all optional dependency negative paths; preserve failures in reports/physical-ai.
+- [ ] 22.4 Run final strict OpenSpec and broad regression/wheel/setup/native CPU/GPU/VLA/benchmark acceptance. Unsupported licensed assets, ROS/distributed resources or manual hardware remain explicit blockers for corresponding required completion.
+- [ ] 22.5 Reconcile every required reference independently against evidence, promote P0 milestones without falsely closing P1/P2 or hardware; document exact commands, limitations and user-approved resource steps.
+- [ ] 22.6 Commit and publish truthful consolidated capability/evidence reports without modifying old task counts, silently editing NexuVibe/NexuFL or starting downloads, container rebuilds or hardware actions simply because the plan was updated.
 
 ## Workflow follow-up
 
-- Review and authorize any required legacy Isaac/MuJoCo artifact reconciliation and coordinated NexuVibe change in their owning scopes; do not overwrite those artifacts or busy checkouts implicitly.
+- Implement the historical MuJoCo obligations **only through this unified change**; coordinate any NexuVibe setup and operator-gated actions in their own scopes without overwriting busy checkouts.
 - Obtain specific operator approval for container recreation, host/system changes, newly licensed assets/models, expanded resource budgets and physical trials when those actions become necessary.
 - Commit, review, merge and archive only when separately requested. Full completion is not available while a required hardware, distributed or compatibility gate remains unverified.
