@@ -9,6 +9,9 @@ import torch
 
 from nexuml.core.components import LayerBuildContext
 from nexuml.training.lightning import NexuSession
+from nexuml_library.evaluation.maintenance.ablation_evaluate import (
+    evaluate_prepared_checkpoints,
+)
 from nexuml_library.evaluation.maintenance.ablation_validation import (
     DistributionalTransportValidation,
     score_distributional_transport,
@@ -159,3 +162,13 @@ def test_validation_swd_reaches_checkpoint_selection(tmp_path: Path) -> None:
         for name, state in last["callbacks"].items()
         if isinstance(state, dict)
     )
+
+    report = evaluate_prepared_checkpoints(
+        directory, device=torch.device("cpu"), projections=8, seed=7
+    )
+    assert report["test_is_sealed"]
+    assert "held_out_test_best" not in report
+    assert report["training_best"]["num_samples"] == 4
+    assert report["training_last"]["num_samples"] == 4
+    assert set(report["training_best"]["by_machine"]) == {"fan:id_00"}
+    assert report["validation_best"]["num_samples"] == 2

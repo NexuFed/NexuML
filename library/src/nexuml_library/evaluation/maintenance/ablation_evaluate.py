@@ -143,6 +143,93 @@ def evaluate_prepared_split(
     return metrics
 
 
+
+@torch.no_grad()
+def evaluate_training_distribution(
+    artifacts: RuntimeArtifacts,
+    *,
+    device: torch.device,
+    seed: int = 42,
+    projections: int = 128,
+    batch_size: int = 64,
+) -> dict[str, Any]:
+    """Measure training-distribution transport without sample pairing assumptions.
+
+    The complete train split is evaluated both jointly and per machine ID.
+    Metrics are descriptive only: training SWD never selects checkpoints.
+    Validation and test samples are never read by this function.
+
+    Args:
+        artifacts: Reconstructed trained flow and prepared dataset.
+        device: Device for Euler transport.
+        seed: Fixed SWD projection seed, shared with validation evaluation.
+        projections: Number of sliced Wasserstein projection directions.
+        batch_size: Maximum number of healthy inputs per transport batch.
+
+    Returns:
+        Joint and per-machine SWD, relative improvements, and sample counts.
+
+    Raises:
+        ValueError: If the prepared training data or group metadata is invalid.
+    """
+    if batch_size <= 0:
+        raise ValueError("Training transport batch size must be positive")
+    artifacts.pipeline.to(device).eval()
+    training = artifacts.data_module.dataset.get_split("train")
+    endpoints = cast(Tensor, training.data)
+    meta = training.meta
+    if (
+        endpoints.ndim != 3
+        or endpoints.shape[1] != 2
+        or not len(endpoints)
+        or meta is None
+        or "group_id" not in meta.columns
+        or len(meta) != len(endpoints)
+    ):
+        raise ValueError("Expected nonempty train endpoints and aligned machine IDs")
+
+    healthy = endpoints[:, 0].cpu()
+    faulty = endpoints[:, 1].cpu()
+    flow = _flow(artifacts)
+    transported = torch.cat(
+        [
+            flow.sample(chunk.to(device)).detach().cpu()
+            for chunk in healthy.split(batch_size)
+        ],
+        dim=0,
+    )
+
+    def score(indices: list[int]) -> dict[str, float | int | None]:
+        """Compute pairing-invariant SWD for one subset of training observations.
+
+        Returns:
+            Baseline SWD, transported SWD, improvement, and subset size.
+        """
+        before = sliced_wasserstein(
+            healthy[indices], faulty[indices], projections=projections, seed=seed
+        )
+        after = sliced_wasserstein(
+            transported[indices], faulty[indices], projections=projections, seed=seed
+        )
+        return {
+            "swd_healthy_to_faulty": before,
+            "swd_transported_to_faulty": after,
+            "swd_relative_reduction": 1.0 - after / before if before > 0 else None,
+            "num_samples": len(indices),
+        }
+
+    groups = cast(list[str], meta["group_id"].tolist())
+    by_machine = {
+        group: score([i for i, name in enumerate(groups) if name == group])
+        for group in sorted(set(groups))
+    }
+    return {
+        "split": "train",
+        **score(list(range(len(healthy)))),
+        "by_machine": by_machine,
+    }
+
+
 def evaluate_prepared_checkpoints(
     checkpoint_dir: Path,
     *,
@@ -179,6 +266,12 @@ def evaluate_prepared_checkpoints(
         "best_checkpoint": str(best),
         "last_checkpoint": str(last),
         "prepared_settings": settings,
+        "training_best": evaluate_training_distribution(
+            best_artifacts,
+            device=device,
+            seed=seed,
+            projections=projections,
+        ),
         "validation_best": evaluate_prepared_split(
             best_artifacts,
             split="val",
@@ -194,9 +287,16 @@ def evaluate_prepared_checkpoints(
         ),
     }
     if last.resolve() == best.resolve():
+        report["training_last"] = report["training_best"]
         report["validation_last"] = report["validation_best"]
     else:
         last_artifacts = create_runtime_artifacts_from_trainer_checkpoint(last)
+        report["training_last"] = evaluate_training_distribution(
+            last_artifacts,
+            device=device,
+            seed=seed,
+            projections=projections,
+        )
         report["validation_last"] = evaluate_prepared_split(
             last_artifacts,
             split="val",
