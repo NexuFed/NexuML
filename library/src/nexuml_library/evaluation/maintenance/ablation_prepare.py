@@ -10,6 +10,7 @@ from typing import Any, Literal, cast
 import torch
 from torch import Tensor
 
+from nexuml.core.base_layer import PipelineLayer
 from nexuml.core.components import LayerBuildContext
 from nexuml_library.data.maintenance.mimii import MIMIIAcousticEndpointPairs
 from nexuml_library.evaluation.maintenance.velocity_diagnostics import (
@@ -185,6 +186,7 @@ def extract_mimii_endpoints(
     dataset = source.build()
     if dataset.meta is None:
         raise ValueError("Expected split and machine metadata in MIMII source")
+    encoder: torch.nn.Module
     if frontend == "fisher":
         encoder = FISHEREncoder(
             model_name=model_name,
@@ -216,7 +218,7 @@ def extract_mimii_endpoints(
             if isinstance(encoder, FISHEREncoder):
                 vectors = encoder(combined)
             else:
-                vectors = cast(Tensor, encoder.forward_tensor(combined))
+                vectors = cast(Tensor, cast(PipelineLayer, encoder).forward_tensor(combined))
             flat = vectors.detach().flatten(1).float().cpu()
             count = len(items)
             batches.append(torch.stack((flat[:count], flat[count:]), dim=1))
