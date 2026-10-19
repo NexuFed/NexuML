@@ -30,7 +30,3 @@ class SaveLatestEpoch(Checkpoint):
     def on_train_epoch_end(self, trainer: Trainer, pl_module: LightningModule) -> None:
         """Persist latest weights every epoch, even without validation improvement."""
         self._save(trainer)
-
-    def on_fit_end(self, trainer: Trainer, pl_module: LightningModule) -> None:
-        """Capture the final loop and best-model callback state after training."""
-        self._save(trainer)
