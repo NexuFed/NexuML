@@ -58,15 +58,29 @@ def read_prepared_artifact(path: str | Path) -> dict[str, Any]:
         raise ValueError("Prepared feature splits must be train, val or test")
     if "train" not in splits or "val" not in splits:
         raise ValueError("Prepared features require nonempty train and val partitions")
-    group_splits: dict[str, str] = {}
-    for row in rows:
-        group = row["group_id"]
-        split = row["split"]
-        previous = group_splits.setdefault(group, split)
-        if previous != split:
-            raise ValueError("Machine identity overlaps train, val or test")
-    if not isinstance(payload.get("settings"), dict):
+    settings = payload.get("settings")
+    if not isinstance(settings, dict):
         raise ValueError("Prepared features require experiment provenance settings")
+    if settings.get("split_protocol") == "within_machine_recording_holdout":
+        groups = {row["group_id"] for row in rows}
+        if len(groups) != 1 or "test" in splits:
+            raise ValueError("Within-machine holdout must contain one machine and no test split")
+        if settings.get("machine_group") not in groups:
+            raise ValueError("Within-machine artifact must identify its sole machine")
+        for key in ("healthy_file", "faulty_file"):
+            names = [row.get(key) for row in rows]
+            if not all(isinstance(name, str) and name for name in names):
+                raise ValueError(f"Within-machine holdout requires {key} provenance")
+            if len(set(names)) != len(names):
+                raise ValueError(f"Within-machine holdout has duplicate {key} recordings")
+    else:
+        group_splits: dict[str, str] = {}
+        for row in rows:
+            group = row["group_id"]
+            split = row["split"]
+            previous = group_splits.setdefault(group, split)
+            if previous != split:
+                raise ValueError("Machine identity overlaps train, val or test")
     return cast(dict[str, Any], payload)
 
 
