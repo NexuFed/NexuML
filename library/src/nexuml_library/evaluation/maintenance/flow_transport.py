@@ -415,9 +415,7 @@ def _plot_report(
     directions = vt[:2].T
     projected = [(matrix - center) @ directions for matrix in matrices]
     fig, ax = plt.subplots()
-    for points, label in zip(
-        projected, ("Healthy", "Faulty", "Transported"), strict=True
-    ):
+    for points, label in zip(projected, ("Healthy", "Faulty", "Transported"), strict=True):
         x = points[:, 0].numpy()
         y = points[:, 1].numpy() if points.shape[1] >= 2 else [0.0] * len(x)
         ax.scatter(x, y, s=9, alpha=0.6, label=label)
