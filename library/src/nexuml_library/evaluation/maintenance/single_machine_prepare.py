@@ -111,6 +111,8 @@ def build_single_machine_artifacts(
                 "coupling": "independent",
                 "scaling": scaling,
                 "seed": seed,
+                "source_pairing_seed": settings.get("seed"),
+                "source_prepared_file": str(Path(source_file).expanduser().resolve()),
                 "split_protocol": "within_machine_recording_holdout",
                 "machine_group": machine,
                 "original_machine_split": original_split,
