@@ -1,5 +1,16 @@
 # Scope, roadmap coverage and acceptance ledger
 
+Current campaign checkpoint (2026-10-19):18/176source tasks verified. Canonical
+wrapper/GAE/reset and upstream learning baselines pass; task5.2is reopened after
+the terminal-pixel oracle exposed missing Vulkan graphics and black output.
+Earlier file/decode/logger checks are not rendered-scene acceptance. Task4.7,
+SO101fullroundtrip5.3and all higher quality gates remain open. Typedphysical/
+sequenceinputmetadata, localLeRobotframes and trainer-independent episode/CLI
+handoff are verified; actualACT/VLAmodelpackages/statefullearning are not. Full consumer
+composition is blocked by NexuFL's vulnerable exact MLflow3.14pin/trusted-version
+guard; successful prospective solves do not qualify it. Local detailed evidence
+is in `reports/physical-ai/isaac-backend.md` §§15–17, excluded from source commits.
+
 ## Snapshot and reading rules
 
 Source: `.openchamber/plans/nexuml-physical-ai-roadmap.md`, inspected 2026-10-19.
@@ -186,3 +197,54 @@ The historical MuJoCo 32 tasks and three capability specs are incorporated as re
 Unified tasks currently total **3 checked / 176 total (173 unchecked)**. These three planning verifications predate consolidation; no newly proposed MuJoCo or modern-learning/native task is complete. The fingerprinted 236 original roadmap checkboxes remain covered without rewriting their earlier states. Per-example IDs I01–I22/M01–M06/B01–B03 carry independent native, NexuML training, resume, exported-policy replay, quality and hardware evidence; upstream learner scripts and old Isaac profiles do not close new native gates.
 
 The combined installation policy now rejects inheriting the former package-wide Python <3.14 restriction and logically conflicting all requirements. Prefer a reproducible canonical primary stack plus explicitly reviewed pinned optional native compatibility lanes when unavoidable. User-owned NexuVibe setup, runtime quotas, licensed model/asset downloads, and manual robot operation remain separate gates.
+
+### Consolidated apply audit — 2026-10-19
+
+Current progress is **5/176 verified**: 1.1–1.3, 18.1 and 22.1. The preceding
+3/176 status is the pre-apply consolidation snapshot. Report section 8 maps all
+32 historical MuJoCo tasks once to this queue, retains the exact 23-item Isaac
+mapping and assigns all eighteen capability/test/evidence owners. Assertions
+verify unchanged historical source digests, exact 236-checkbox assignment and
+31 unique catalogue IDs. Fresh scoped tests: 170 passed / 17 skipped; no new
+native or learning-support completion follows from these audit checks.
+
+Report section 9 freshly reproduces all three dependency contradictions and
+records current immutable upstream heads plus a partial compatibility matrix.
+Meta-World's approved-lane policy does not resolve the independent primary
+Lab/LeRobot Transformers and OvPhysX/LeRobot packaging conflicts. Task 1.5 and
+the expanded 1.4 inventory remain incomplete; application/package/runtime work
+is paused rather than installing an invalid set or silently dropping a family.
+Strict validation also retains two over-500-character requirement warnings from
+the pulled environment/dependency specs; neither was edited by this apply.
+
+### Apply with approved narrow exceptions — 2026-10-19
+
+Current design D3 supersedes the preceding no-overrides checkpoints; the revised
+composition requirements now pass strict validation. Report section 10 records
+candidate packaging 25.0 / Transformers 5.10.4 exceptions and source-checked
+no-install diagnostics. Those two projected bounds resolve, but primary Sim/
+LeRobot NumPy and Lab/Sim urllib3 constraints still conflict outside approval.
+The optional isolated-importer USD constraint is separately blocked. No full
+primary/consumer lock, native compatibility or affected-model proof follows.
+Progress remains **5/176**; tasks 1.4–1.6 stay open. No package/runtime or
+consumer/environment changes, installs, model/asset downloads or hardware runs.
+
+### Approved additional exceptions and shared outcome implementation — 2026-10-19
+
+The user approved the recorded NumPy, urllib3 and isolated-importer USD cases
+alongside packaging/Transformers, retaining security/ABI/native/model validation
+and separately controlled provisioning. D3 now permits simulator-independent
+implementation without claiming completion of the full compatibility inventory.
+All four projected conflict inputs resolve under the five explicit candidates;
+this is not full primary/consumer resolution, a lock or runtime compatibility.
+
+**6/176 verified**: task **18.5** now implements one shared success-only outcome
+path, strict native scalar/row/device/signature validation, episode isolation and
+preserved SO-101 paired/no-outcome metrics. Report section 11 records intentional
+red regressions, **347 CPU/focused passes / 18 skips**, **one CUDA-device unit
+pass**, focused Ruff/type and strict OpenSpec checks. Docs describe the public
+behavior. Native MuJoCo/Meta-World/Isaac, full primary setup and model/quality
+gates stay open; no installation, sibling edit or hardware action occurred.
+Broad CPU regression: **930 passed / same 4 DALI/Optuna failures / 58 skips**;
+strict documentation build passes. Full-program/repository green acceptance is
+not claimed while the recorded optional-dependency and native gates remain.
