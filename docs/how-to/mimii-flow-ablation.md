@@ -434,16 +434,20 @@ compare against the previous cross-machine validation failures.
 Validation sample size is only 32 in the default split; repeat with
 multiple seeds/splits before inferring robustness.
 
-### Optional fourth machine: explicit original-test unsealing
+### Fourth machine: intentionally retire the original test split
 
-To run the original `id_06` as a **fourth independent within-machine
-experiment**, both commands require explicit opt-in:
+After the three other within-machine runs complete, `id_06` can be
+repurposed as an **exploratory within-machine experiment**. Select only
+that machine to avoid retraining the already completed `id_00`,
+`id_02` and `id_04` runs. Both preparation and training require
+explicit original-test-machine opt-in:
 
 ```bash
 python -m nexuml_library.evaluation.maintenance.single_machine_prepare \
   --source-file "$source" \
   --output-dir "$single/including-id06/prepared" \
   --scaling standardized --val-fraction 0.25 --seed 42 \
+  --machine-group fan:id_06 \
   --include-original-test-machine
 
 python -m nexuml_library.evaluation.maintenance.single_machine_run \
@@ -459,9 +463,10 @@ python -m nexuml_library.evaluation.maintenance.single_machine_run \
 for the repurposed machine are marked unsealed, and `--include-test`
 is prohibited for within-machine holdouts (which have only train and
 validation partitions). The original multi-machine evaluation must not
-subsequently present `id_06` as an untouched confirmatory test set
-if it has informed modeling decisions. Keep the fourth machine excluded
-until you explicitly decide to use it.
+subsequently present `id_06` as an untouched confirmatory test set.
+The `--machine-group` selector retains the same deterministic
+machine-specific split as the four-machine preparation would, while
+creating just one new checkpoint run.
 
 Single-machine success would demonstrate within-domain learnability,
 **not** transferable fault mechanisms or calibrated degradation time.
