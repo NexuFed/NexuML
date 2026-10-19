@@ -25,6 +25,8 @@ from nexuml_library.evaluation.maintenance.ablation_prepare import (
 )
 from nexuml_library.scenarios.flow.mimii_acoustic_ablation import (
     mimii_acoustic_ablation,
+)
+from nexuml_library.scenarios.flow.mimii_acoustic_ablation import (
     scenario as ablation_scenario_file,
 )
 
@@ -102,13 +104,12 @@ def test_all_four_variants_use_identical_splits_and_train_statistics() -> None:
     for key, artifact in variants.items():
         assert artifact["format"] == "nex233-features-v1"
         assert artifact["settings"]["normalization_fit_split"] == "train"
-        assert "unconditional_cancellation_fraction" in artifact["settings"][
-            "training_velocity_statistics"
-        ]
+        assert (
+            "unconditional_cancellation_fraction"
+            in artifact["settings"]["training_velocity_statistics"]
+        )
         assert len(artifact["settings"]["training_neighbor_alignment"]) == 3
-        assert [row["split"] for row in artifact["rows"]] == [
-            row["split"] for row in rows
-        ]
+        assert [row["split"] for row in artifact["rows"]] == [row["split"] for row in rows]
         if "standardized" in key:
             assert artifact["features"][4, 0, 0] != features[4, 0, 0]
         if "independent" in key:
@@ -118,9 +119,7 @@ def test_all_four_variants_use_identical_splits_and_train_statistics() -> None:
 def test_prepared_tensor_source_handles_take_and_machine_disjointness(tmp_path: Path) -> None:
     pytest.importorskip("scipy.optimize")
     features, rows = _example_features()
-    artifact = feature_variants(features, rows, frontend="logmel", seed=7)[
-        "logmel-ot-standardized"
-    ]
+    artifact = feature_variants(features, rows, frontend="logmel", seed=7)["logmel-ot-standardized"]
     file = tmp_path / "prepared.pt"
     torch.save(artifact, file)
     assert read_prepared_artifact(file)["settings"]["seed"] == 7
@@ -142,9 +141,7 @@ def test_prepared_tensor_source_handles_take_and_machine_disjointness(tmp_path: 
 def test_scenario_compiles_without_fisher_download_and_round_trips(tmp_path: Path) -> None:
     pytest.importorskip("scipy.optimize")
     features, rows = _example_features()
-    payload = feature_variants(features, rows, frontend="fisher", seed=7)[
-        "fisher-ot-standardized"
-    ]
+    payload = feature_variants(features, rows, frontend="fisher", seed=7)["fisher-ot-standardized"]
     file = tmp_path / "fisher-ot-standardized-seed7.pt"
     torch.save(payload, file)
     scenario = mimii_acoustic_ablation(
@@ -162,9 +159,7 @@ def test_scenario_compiles_without_fisher_download_and_round_trips(tmp_path: Pat
     parsed = ResolvedConfig.from_yaml(ResolvedConfig.from_scenario(scenario).to_yaml())
     assert parsed.data.input_shapes["healthy_spectrum"] == [2]
     artifacts = create_runtime_artifacts(scenario)
-    assert artifacts.data_module.dataset.get_split("val")[0][0][
-        "healthy_spectrum"
-    ].shape == (2,)
+    assert artifacts.data_module.dataset.get_split("val")[0][0]["healthy_spectrum"].shape == (2,)
     assert len(list(artifacts.pipeline.iter_layers())) == 3
     metrics = evaluate_prepared_split(
         artifacts,
@@ -179,9 +174,7 @@ def test_scenario_compiles_without_fisher_download_and_round_trips(tmp_path: Pat
     assert metrics["swd_healthy_to_faulty"] >= 0.0
     assert metrics["training_mean_shift_swd"] >= 0.0
     with pytest.raises(ValueError, match="Only val"):
-        evaluate_prepared_split(
-            artifacts, split="train", device=torch.device("cpu")
-        )
+        evaluate_prepared_split(artifacts, split="train", device=torch.device("cpu"))
 
 
 def test_prepared_artifact_rejects_overlap_and_tampering(tmp_path: Path) -> None:
@@ -268,6 +261,7 @@ def test_ablation_trainer_never_calls_automatic_test(
         accelerator="cpu",
     )
     assert operations == ["setup", "fit", "validate"]
+
 
 def test_ablation_factory_is_explicit_and_scenario_file_uses_environment(
     tmp_path: Path,
