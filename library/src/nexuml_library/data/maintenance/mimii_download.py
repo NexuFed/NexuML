@@ -93,9 +93,7 @@ def _download_archive(url: str, archive: Path, expected: str) -> None:
             elif offset:
                 response_headers = getattr(response, "headers", None)
                 content_range = (
-                    response_headers.get("Content-Range")
-                    if response_headers is not None
-                    else None
+                    response_headers.get("Content-Range") if response_headers is not None else None
                 )
                 if content_range and not content_range.startswith(f"bytes {offset}-"):
                     raise RuntimeError(
@@ -104,9 +102,7 @@ def _download_archive(url: str, archive: Path, expected: str) -> None:
 
             response_headers = getattr(response, "headers", None)
             length_header = (
-                response_headers.get("Content-Length")
-                if response_headers is not None
-                else None
+                response_headers.get("Content-Length") if response_headers is not None else None
             )
             remaining = int(length_header) if length_header else None
             total = offset + remaining if remaining is not None else None
@@ -177,7 +173,6 @@ def ensure_mimii(
     Raises:
         FileNotFoundError: If recordings are missing and download is disabled.
         RuntimeError: If the verified download or extraction cannot complete.
-        ValueError: If the archive contains unsafe entries.
     """
     if _has_machine_ids(root, machine_type):
         return

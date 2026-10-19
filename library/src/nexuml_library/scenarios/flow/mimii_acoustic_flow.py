@@ -32,9 +32,9 @@ def mimii_acoustic_flow(
     n_mels: int = 32,
     hidden_dims: list[int] | None = None,
     num_steps: int = 50,
-    lr: float = 3e-4,
+    lr: float = 3e-5,
     batch_size: int = 16,
-    max_epochs: int = 30,
+    max_epochs: int = 1000,
     num_workers: int = 2,
     seed: int = 42,
     checkpoint_dir: str = ".experiments/checkpoints/mimii-acoustic-flow",
@@ -107,11 +107,7 @@ def mimii_acoustic_flow(
         seed=seed,
     )
     data = baseline.data.model_copy(
-        update={
-            "datasets": [
-                DatasetSpec(source=source, modality="audio", split_type="keep")
-            ]
-        }
+        update={"datasets": [DatasetSpec(source=source, modality="audio", split_type="keep")]}
     )
     return baseline.model_copy(
         update={
