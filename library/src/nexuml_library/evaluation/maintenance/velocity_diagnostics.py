@@ -319,6 +319,12 @@ def investigate_velocity(
     mean_train = train_velocity.mean(dim=0, keepdim=True)
     _, _, flow = _get_layers(artifacts)
     train_stats = velocity_statistics(train_healthy, train_faulty)
+    by_machine: dict[str, dict[str, Any]] = {}
+    for machine in sorted(set(groups)):
+        indices = [index for index, group in enumerate(groups) if group == machine]
+        by_machine[machine] = velocity_statistics(
+            train_healthy[indices], train_faulty[indices]
+        )
     val_stats = velocity_statistics(val_healthy, val_faulty)
     trajectory = transport_trajectory(flow, val_healthy.to(device)).cpu()
     baseline_shift = val_healthy + mean_train
@@ -328,6 +334,7 @@ def investigate_velocity(
             "num_pairs": len(train_healthy),
             "machine_ids": sorted(set(groups)),
             "velocity_statistics": train_stats,
+            "per_machine_velocity_statistics": by_machine,
             "neighbor_alignment": neighbor_velocity_alignment(
                 train_healthy, train_faulty, k=neighbors
             ),
