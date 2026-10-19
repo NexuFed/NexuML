@@ -23,7 +23,10 @@ from nexuml_library.evaluation.maintenance.ablation_prepare import (
     feature_variants,
     training_normalizer,
 )
-from nexuml_library.scenarios.flow.mimii_acoustic_ablation import mimii_acoustic_ablation
+from nexuml_library.scenarios.flow.mimii_acoustic_ablation import (
+    mimii_acoustic_ablation,
+    scenario as ablation_scenario_file,
+)
 
 
 def _example_features() -> tuple[torch.Tensor, list[dict[str, Any]]]:
@@ -129,7 +132,10 @@ def test_prepared_tensor_source_handles_take_and_machine_disjointness(tmp_path: 
     inputs, labels = train[0]
     assert inputs["healthy_spectrum"].shape == (2,)
     assert inputs["faulty_spectrum"].shape == (2,)
-    assert labels is not None and float(labels["paired"]) == 1.0
+    assert labels is not None
+    paired_label = labels["paired"]
+    assert isinstance(paired_label, torch.Tensor)
+    assert paired_label.item() == 1.0
     assert valid[0][0]["healthy_spectrum"].shape == (2,)
 
 
@@ -262,3 +268,28 @@ def test_ablation_trainer_never_calls_automatic_test(
         accelerator="cpu",
     )
     assert operations == ["setup", "fit", "validate"]
+
+def test_ablation_factory_is_explicit_and_scenario_file_uses_environment(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Ensure the artifact-dependent factory is not globally registered."""
+    from nexuml.core.discovery import DISCOVERED_ATTR
+
+    assert getattr(mimii_acoustic_ablation, DISCOVERED_ATTR, None) is None
+
+    features, rows = _example_features()
+    artifact = {
+        "format": "nex233-features-v1",
+        "features": features,
+        "rows": rows,
+        "settings": {"seed": 7},
+    }
+    prepared = tmp_path / "prepared-seed7.pt"
+    torch.save(artifact, prepared)
+    monkeypatch.setenv("NEX233_PREPARED_FILE", str(prepared))
+    monkeypatch.setenv("NEX233_SEED", "7")
+    monkeypatch.setenv("NEX233_FLOW_WIDTH", "16")
+    built = ablation_scenario_file()
+    assert built.name.startswith("mimii_acoustic_ablation")
+    assert built.pipeline.stages["Flow"][0].component.hidden_dims == [16, 16]
