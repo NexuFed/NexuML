@@ -124,6 +124,34 @@ The native output dimension depends on sample rate and checkpoint band
 width. Do not hard-code the embedding dimension until the model is
 materialized and its actual output shape is known.
 
+## Real-checkpoint smoke test (separate from offline CI)
+
+Once the official model weights and approved remote Python code are
+available in the execution environment, explicitly test compatibility
+with the project's installed Transformers version:
+
+```bash
+python - <<'PY'
+import torch
+from nexuml_library.layers.model.fisher import FISHEREncoder
+
+encoder = FISHEREncoder(
+    model_name="jiangab/FISHER-small-0723",
+    local_files_only=False,
+).eval()
+with torch.no_grad():
+    embedding = encoder(torch.randn(2, 16384))
+print("Embedding shape:", tuple(embedding.shape))
+assert embedding.ndim == 2 and embedding.shape[0] == 2
+assert torch.isfinite(embedding).all()
+PY
+```
+
+This explicitly loads the external checkpoint. It may download weights
+and execute trusted remote model code; it is intentionally **not** part of
+the regular offline unit-test suite. In particular, verify compatibility
+with the locked Transformers 5.x release before starting GPU ablations.
+
 ## Freezing and adaptation
 
 The backbone is frozen by default. Calling
