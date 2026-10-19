@@ -165,7 +165,9 @@ class FISHEREncoder(nn.Module):
             if self.pooling == "native":
                 output = cast(Any, self.model).extract_features(spec)
             else:
-                result = self.model(spec, mode="IMAGE", mask=False, features_only=True)
+                result = cast(Any, self.model)(
+                    spec, mode="IMAGE", mask=False, features_only=True
+                )
                 if not isinstance(result, dict):
                     raise TypeError("FISHER feature-only forward must return a dictionary")
                 tokens = result.get("x")
