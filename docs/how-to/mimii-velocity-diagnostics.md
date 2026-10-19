@@ -58,20 +58,20 @@ download should occur if the original dataset directory is still present.
 
 The training-only diagnostic uses
 
-[
+\[
 v_i=x_{1,i}-x_{0,i},\qquad \bar v=\frac1N\sum_i v_i
-]
+\]
 
 and reports
 
-[
+\[
 C=1-\frac{\|\bar v\|^2}{\frac1N\sum_i\|v_i\|^2}.
-]
+\]
 
 A value near 1 means that endpoint velocity vectors have a small
 **unconditional** mean relative to their RMS magnitude. A value near 0
 means they are strongly aligned. This does **not directly estimate**
-(mathbb E[v\mid x_t,t]), the optimal flow predictor.
+\(\mathbb E[v\mid x_t,t]\), the optimal flow predictor.
 
 ### B. Local target-velocity conflict
 
