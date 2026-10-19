@@ -121,6 +121,13 @@ def ensure_mimii(
             f"No MIMII {machine_type} recordings under {root}. "
             f"Set download=True to fetch them from {_RECORD_URL}."
         )
+    if root.is_dir() and any(root.iterdir()):
+        raise RuntimeError(
+            f"Cannot safely auto-extract MIMII into non-empty {root} because "
+            "no valid machine-ID layout was found. Check or move that directory."
+        )
+    if root.exists() and not root.is_dir():
+        raise RuntimeError(f"MIMII extraction root is not a directory: {root}")
 
     filename = f"{noise_db}_dB_{machine_type}.zip"
     checksum = _MD5[filename]
@@ -129,12 +136,6 @@ def ensure_mimii(
     _download_archive(url, archive, checksum)
 
     root.parent.mkdir(parents=True, exist_ok=True)
-    if root.exists() and any(root.iterdir()):
-        raise RuntimeError(
-            f"Cannot safely auto-extract MIMII into non-empty {root} because "
-            "no valid machine-ID layout was found. Check or move that directory."
-        )
-
     with tempfile.TemporaryDirectory(
         prefix=f".{root.name}-extract-", dir=root.parent
     ) as temporary:
