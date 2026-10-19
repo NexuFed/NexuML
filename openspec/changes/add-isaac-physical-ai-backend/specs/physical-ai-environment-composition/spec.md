@@ -8,12 +8,17 @@ Make the Isaac-first Physical AI stack reproducible and automatically available 
 
 ### Requirement: One shared primary development environment
 
-The configured NVIDIA development container SHALL provide Python 3.12 and one pinned CUDA-13 PyTorch family in a consumer-owned environment containing NexuML and the compatible selected Physical AI packages. A separately pinned, approved native process/profile MAY host otherwise incompatible optional Meta-World, JAX or ROS capabilities only with a tested NexuML-facing policy/data/metrics boundary; it SHALL NOT replace primary shared-environment acceptance. Do not force one logically conflicting all-extras closure.
+The configured NVIDIA development container SHALL provide one consumer-owned Python-3.12 environment with a pinned CUDA-13 PyTorch family and the selected NexuML/Physical AI stack. Approved pinned optional native lanes MAY host incompatible Meta-World, JAX or ROS capabilities under physical-ai-dependency-composition; they SHALL NOT replace primary shared-environment acceptance or imply a conflicting all-extras closure.
 
 #### Scenario: A clean configured container is created
 - **WHEN** approved container creation and dependency synchronization finish
 - **THEN** the same interpreter runs NexuML, TorchRL, Newton, the selected Isaac Sim integration, demonstration learning and world-model references
 - **AND** the resolved package identities and authoritative lock digest are recorded
+
+#### Scenario: An optional native lane is required
+- **WHEN** a separately pinned Meta-World, JAX or ROS profile is approved
+- **THEN** its NexuML-facing policy/data/metrics boundary is tested independently
+- **AND** it neither substitutes for primary interpreter acceptance nor becomes a hidden environment
 
 ### Requirement: Installation is automatic and repeatable
 
@@ -30,20 +35,30 @@ Approved container creation SHALL provision the selected Python packages, native
 
 ### Requirement: Python and native dependency ownership are explicit
 
-NexuML SHALL declare optional integration requirements in its packages. The development consumer SHALL own interpreter, backend selection and the combined lock. Container tooling SHALL own system libraries and ROS packages. Base NexuML imports and non-robot workflows SHALL NOT require these optional integrations.
+NexuML SHALL declare minimally restrictive compatibility requirements and optional robots dependencies outside all. The consuming root uv project SHALL own interpreter, backend/indexes, exact package/source versions, approved overrides and combined lock. Python 3.12/CUDA 13 SHALL be this development target, not a universal package restriction. Container tooling SHALL own system/ROS libraries; base/non-robot workflows SHALL NOT require robotics.
 
 #### Scenario: NexuML is installed without robotics extras
 - **WHEN** a user imports NexuML, discovers scenarios or runs a supervised example
 - **THEN** no simulator, ROS runtime, model-weight download or graphics initialization is required
 
+#### Scenario: The implementation environment enables the robotics stack
+- **WHEN** the development consumer selects its backend and nexuml[all,dev,robots]
+- **THEN** its root pyproject.toml and uv.lock select exact versions and overrides for the requested integrations
+- **AND** those consumer choices do not become pins or backend-index requirements for downstream NexuML users
+
 ### Requirement: Conflicting requirements remain visible
 
-The complete requested composition SHALL be resolved without unsupported overrides, ignored dependencies or silent capability omission. Mutually incompatible optional selections SHALL be explicit. A required unresolved dependency SHALL keep its capability and full-program acceptance incomplete.
+The requested composition SHALL resolve without ignored dependencies or silent omissions. Only documented exceptions under physical-ai-dependency-composition MAY relax bounds, retaining security/ABI validation. Incompatible or campaign-deferred selections SHALL remain explicit. Required unresolved dependencies or unverified behavior SHALL keep full-program acceptance incomplete; independent implementation need not wait for unrelated native or deferred model work.
 
 #### Scenario: Legacy Meta-World conflicts with the selected Newton stack
 - **WHEN** one selection requires MuJoCo 3.3.0 and another requires the incompatible 3.12 release family
 - **THEN** resolution reports both requirements instead of forcing a downgrade or claiming both capabilities work
 - **AND** any proposed version change, exclusive selection or deferral is reviewable rather than automatic
+
+#### Scenario: An exception permits primary resolution
+- **WHEN** the complete primary selection resolves using a declared constraint exception
+- **THEN** setup retains original constraints, exact exception and lock identities, known checker discrepancies and separate pending behavior tests
+- **AND** no native/model-readiness claim follows until the affected validation passes under approved prerequisites
 
 ### Requirement: Canonical migration preserves historical identity
 

@@ -149,8 +149,13 @@ def test_invalid_evaluation_configuration(values):
         RLEvaluationSpec.model_validate(values)
 
 
-def test_task_outcomes_are_separate_from_returns_and_reset_per_episode(fake, monkeypatch):
+@pytest.mark.parametrize("with_error", [False, True])
+@pytest.mark.parametrize("record", [False, True])
+def test_task_outcomes_are_separate_from_returns_and_reset_per_episode(
+    fake, monkeypatch, with_error, record
+):
     scenario, policy = fake
+    scenario.training.evaluation.video = RLVideoSpec(enabled=record)
 
     def factory():
         runtime = FakeRuntime()
@@ -159,31 +164,40 @@ def test_task_outcomes_are_separate_from_returns_and_reset_per_episode(fake, mon
         def step(action):
             transition = original(action)
             first_episode = len(runtime.resets) == 1
-            return replace(
-                transition,
-                info={
-                    "task_success": torch.tensor(first_episode and runtime.steps == 2),
-                    "joint_error_rad": torch.tensor(
-                        (0.1 if first_episode else 0.2) * runtime.steps
-                    ),
-                },
-            )
+            info = {"task_success": torch.tensor(first_episode and runtime.steps == 2)}
+            if with_error:
+                info["joint_error_rad"] = torch.tensor(
+                    (0.1 if first_episode else 0.2) * runtime.steps
+                )
+            return replace(transition, info=info)
 
         monkeypatch.setattr(runtime, "step", step)
         return runtime
 
     monkeypatch.setattr(FakeEnvironment, "factory", factory)
-    metrics = evaluate_policy(policy, scenario)
+    recordings = []
+    metrics = evaluate_policy(policy, scenario, media_sink=lambda f, m: recordings.append((f, m)))
     assert metrics["eval/rl/return_mean"] == 3
     assert metrics["eval/rl/task_success_rate"] == 0.5
-    assert metrics["eval/rl/final_joint_error_rad_mean"] == pytest.approx(0.45)
+    if with_error:
+        assert metrics["eval/rl/final_joint_error_rad_mean"] == pytest.approx(0.45)
+    else:
+        assert "eval/rl/final_joint_error_rad_mean" not in metrics
     assert FakeEnvironment.instances[-1].closed
+    if record:
+        assert len(recordings) == 1 and len(recordings[0][0]) == 4
+        assert recordings[0][1]["metrics"] == metrics
+    assert evaluate_policy(policy, scenario, media_sink=lambda f, m: None) == metrics
 
 
 @pytest.mark.parametrize(
     "info",
     [
-        {"task_success": torch.tensor(True)},
+        {"task_success": None},
+        {"task_success": True},
+        {"task_success": torch.tensor(1.0)},
+        {"task_success": torch.ones(2, dtype=torch.bool)},
+        {"task_success": torch.tensor(True, device="meta")},
         {"joint_error_rad": torch.tensor(0.1)},
         {"task_success": torch.ones(2, dtype=torch.bool), "joint_error_rad": torch.tensor(0.1)},
         {"task_success": torch.tensor(1.0), "joint_error_rad": torch.tensor(0.1)},
@@ -196,6 +210,8 @@ def test_task_outcomes_are_separate_from_returns_and_reset_per_episode(fake, mon
                 torch.tensor(-0.1),
                 torch.ones(2),
                 torch.tensor(1),
+                torch.tensor(0.1, device="meta"),
+                None,
                 0.1,
             )
         ],
@@ -217,7 +233,13 @@ def test_invalid_task_outcomes_fail_and_close_runtime(fake, monkeypatch, info):
 
 
 @pytest.mark.parametrize("disappear", ["step", "episode"])
-def test_task_outcome_presence_cannot_change_or_reuse_stale_values(fake, monkeypatch, disappear):
+@pytest.mark.parametrize(
+    "before,after",
+    [(0, 1), (0, 2), (1, 0), (1, 2), (2, 0), (2, 1)],
+)
+def test_task_outcome_presence_cannot_change_or_reuse_stale_values(
+    fake, monkeypatch, disappear, before, after
+):
     scenario, policy = fake
 
     def factory():
@@ -227,11 +249,12 @@ def test_task_outcome_presence_cannot_change_or_reuse_stale_values(fake, monkeyp
         def step(action):
             transition = original(action)
             present = runtime.steps == 1 if disappear == "step" else len(runtime.resets) == 1
-            info = (
-                {"task_success": torch.tensor(False), "joint_error_rad": torch.tensor(0.1)}
-                if present
-                else None
-            )
+            signature = before if present else after
+            info = {}
+            if signature >= 1:
+                info["task_success"] = torch.tensor(False)
+            if signature == 2:
+                info["joint_error_rad"] = torch.tensor(0.1)
             return replace(transition, info=info)
 
         monkeypatch.setattr(runtime, "step", step)
@@ -323,6 +346,8 @@ def test_evaluation_preserves_rng_parameters_gradients_and_mixed_modes(fake, det
     assert policy.actions == actions
     assert first["eval/rl/return_mean"] == 3 and first["eval/rl/length_mean"] == 3
     assert first["eval/rl/terminated"] == 2 and first["eval/rl/truncated"] == 0
+    assert "eval/rl/task_success_rate" not in first
+    assert "eval/rl/final_joint_error_rad_mean" not in first
     assert [module.training for module in policy.modules()] == flags
     assert all(torch.equal(value, policy.state_dict()[key]) for key, value in before.items())
     assert all(torch.equal(p.grad, torch.ones_like(p)) for p in policy.parameters())

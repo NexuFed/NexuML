@@ -25,16 +25,51 @@ The implementation SHALL maintain one versioned matrix for CPython, Torch/CUDA, 
 
 ### Requirement: One normal developer experience with explicit opt-in incompatible lanes
 
-NexuVibe SHALL own the primary Python selection, backend wheel index and primary lock. All compatible workflows SHALL run there and be available through the ordinary NexuML session/configuration interface. If a required optional upstream benchmark truly cannot resolve with that primary stack after testing maintained alternatives, an explicit pinned, approved, separately launched process or execution profile MAY host it. Such a lane SHALL have its own recorded lock, interpreter/source identity, protocol and reproducibility proof, and SHALL NOT replace the primary environment or silently become a default dependency. Native runtime handles SHALL never be serialized across the boundary.
+NexuVibe SHALL own primary Python, backend wheel indexes and lock. Compatible workflows SHALL use ordinary NexuML session/configuration interfaces there. After maintained alternatives fail, an approved pinned optional benchmark lane MAY host an incompatible native stack with a tested policy/data/metrics boundary. Such a lane SHALL remain opt-in, preserve primary acceptance and never serialize native handles.
 
 #### Scenario: A benchmark requires an isolated dependency lane
 - **WHEN** the user selects that benchmark explicitly and its approved installed lane is available
 - **THEN** the same NexuML-facing scenario, policy artifact contract, metrics and evaluation command remain usable through the documented process boundary where technically supported
 - **AND** training support, inference-only support and cross-runtime checkpoint conversion each have independent evidence or are explicitly blocked
+- **AND** the separately launched lane records its own lock, interpreter/source identity, protocol and reproducibility proof without replacing the primary environment or becoming a default dependency
 
 #### Scenario: No validated boundary exists for the incompatible lane
 - **WHEN** its task is requested without a verified environment or policy-interop path
 - **THEN** a precise unsupported/blocked diagnostic is returned; the task is not falsely reported as an integrated NexuML learner
+
+### Requirement: Temporary constraint exceptions are narrow and reproducible
+
+Temporary consumer-owned overrides SHALL have source/API rationale, exception records, exact selections and focused validation. The five recorded conflicts are initial cases; the authorized campaign MAY evaluate further documented cases without blanket dependency suppression. Upstream metadata SHALL remain unmodified; --no-deps and blind physics overrides remain forbidden. Resolution SHALL NOT imply security/ABI/native/model compatibility.
+
+#### Scenario: A primary constraint exception is evaluated
+- **WHEN** maintained alternatives retain a recorded conflict, including a further case evaluated under campaign authorization
+- **THEN** the record identifies affected package/source, original and replacement bounds, exact selected versions, reason, upstream issue/source reference, owner, lock, affected workflows, test plan, removal condition and rollback inputs
+- **AND** a complete solver result is labeled resolution with declared exceptions, not native compatibility
+- **AND** configuration belongs to the owning consumer without silently changing published NexuML requirements or authorizing installation, downloads or another environment
+
+#### Scenario: A replacement resolves but affected behavior fails
+- **WHEN** native startup/version checks/task stepping or real-model processor/inference/training/resume/export/evaluation checks fail or cannot run
+- **THEN** failures or missing prerequisites remain visible and the affected acceptance stays incomplete
+- **AND** imports, tiny substitutes and solver success do not close the required OvPhysX/Isaac or SmolVLA/GR00T/selected pi0.5 workflow gates
+
+#### Scenario: The newly approved numeric, HTTP or USD selection is evaluated
+- **WHEN** an exception selects NumPy 2.3.1, urllib3 >=2.8.0 or Lab-matched usd-exchange 3.0.1
+- **THEN** its record requires NumPy/OpenCV/native ABI and numeric parity, preserved Lab security floor and tested HTTP/S3 paths, or matching isolated-importer/OpenUSD/schema/asset/native parity respectively
+- **AND** no other ABI, physics, Python, CUDA or driver requirement is waived and no competing pxr provider is installed
+
+#### Scenario: A dependency checker reports original bounds
+- **WHEN** a consumer override leaves an upstream dependency-check discrepancy
+- **THEN** the exact recorded mismatch and unmodified checker result remain visible, with all other dependencies verified
+- **AND** unexpected discrepancies block acceptance; the installation is not described as unconditionally clean
+
+### Requirement: Exception evidence expires with its selection
+
+Every affected version/source change SHALL requalify the exception and relevant tests. When maintained upstream releases resolve the conflict, the exception SHALL be removed and ordinary resolution, integrity and behavior reverified before the primary lock changes. Failed validation SHALL retain rollback inputs and block the selection rather than broaden the exception automatically.
+
+#### Scenario: An upstream fix becomes available
+- **WHEN** the recorded removal condition is satisfied by a maintained selection
+- **THEN** the override is removed and ordinary resolution/dependency checks plus affected behavior tests are rerun
+- **AND** an unrelated version change cannot inherit the old exception evidence or an unrecorded wider override
 
 ### Requirement: Package-wide Python support is not reduced solely for one benchmark extra
 
@@ -47,11 +82,30 @@ The baseline supported Python range SHALL be determined by NexuML core and other
 
 ### Requirement: Published extras have truthful and predictable semantics
 
-Do not advertise an unrestricted all extra as the union of conflicting Isaac/Newton, legacy Meta-World and MJX/JAX pins. Either preserve all as an explicitly compatible tested subset and expose named opt-in extras, or deprecate its misleading robotics meaning with a documented migration. Wheel/sdist metadata, uv resolution, clean installs and editable installs SHALL agree. Default package selections SHALL not cause large asset or model downloads during static discovery.
+The optional Physical AI stack SHALL live in nexuml-library[robots], forwarded by nexuml[robots], outside both all closures. Preserve unrelated extras and explicit incompatible-provider selections rather than promise an impossible union. The development consumer SHALL select robots explicitly. Wheel/sdist metadata, uv resolution, clean and editable installs SHALL agree; static discovery SHALL NOT download assets/models.
+
+#### Scenario: A user installs all without robots
+- **WHEN** the base or all package selection is installed without an explicit robotics selection
+- **THEN** it does not acquire the new Isaac/LeRobot/native robotics stack through a hidden transitive all dependency
+- **AND** requesting robots resolves its declared integrations or returns the real upstream compatibility failure without silently omitting packages
 
 #### Scenario: A user requests a conflicting extras combination
 - **WHEN** an optional dependency selection cannot be jointly resolved
 - **THEN** documented resolution diagnostics list compatible alternatives and no incomplete environment is described as successful
+
+### Requirement: Published compatibility is distinct from environment pins
+
+NexuML distributions SHALL use genuine language/API minimums and only evidence-backed incompatibility bounds. Development Python/CUDA/Torch choices, exact lock versions and backend indexes SHALL NOT become universal package restrictions. The consuming root uv project SHALL own concrete versions, sources, Python/backend/index selection, approved overrides and its lock. Broad ranges SHALL NOT imply tested support for every combination.
+
+#### Scenario: A consumer selects another otherwise compatible environment
+- **WHEN** its Python, Torch or backend selection differs from the development reference but satisfies genuine requirements
+- **THEN** package metadata does not force the reference pins or CUDA index merely to match the development machine
+- **AND** actual upstream wheel/API/ABI limits and runtime control/security validation still apply; untested combinations are labeled unverified
+
+#### Scenario: A bound or exact pin is proposed for a published requirement
+- **WHEN** optional metadata is implemented or a dependency is revised
+- **THEN** each restrictive bound has a concrete language/API/ABI/security incompatibility reason or is kept only in consumer configuration
+- **AND** consumer-root override configuration remains separate from published requirements and unmodified dependency-check evidence
 
 ### Requirement: Hardware and rendering prerequisites are independently verified
 

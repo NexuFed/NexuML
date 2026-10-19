@@ -121,6 +121,7 @@ class _GymnasiumRuntime:
         self.contract = definition.describe().model_copy(update={"num_envs": context.num_envs})
         self.envs = []
         self._observations = [None] * context.num_envs
+        self._has_success = None
         try:
             # ponytail: synchronous vectors; use Gym's async vector API when throughput matters.
             for _ in range(context.num_envs):
@@ -168,13 +169,31 @@ class _GymnasiumRuntime:
 
     def step(self, actions):
         CompiledPolicy._validate_fields(actions, self.contract.actions, "Action")
-        rewards, terminated, truncated = [], [], []
+        rewards, terminated, truncated, successes = [], [], [], []
         for index, env in enumerate(self.envs):
             tensor = actions["action"] if len(self.envs) == 1 else actions["action"][index]
             action = tensor.detach().cpu().numpy()
             if self.contract.action_space == "discrete":
                 action = int(action)
-            observation, reward, term, trunc, _ = env.step(action)
+            observation, reward, term, trunc, info = env.step(action)
+            present = "success" in info
+            if self._has_success is not None and present != self._has_success:
+                raise ValueError(
+                    "Native task success must be supplied consistently across rows/steps"
+                )
+            self._has_success = present
+            if present:
+                success = np.asarray(info["success"])
+                if (
+                    success.shape != ()
+                    or success.dtype.kind not in "bifu"
+                    or not np.isfinite(success)
+                    or success.item() not in (0, 1)
+                ):
+                    raise ValueError(
+                        "Native task success must be a scalar boolean or finite zero/one"
+                    )
+                successes.append(bool(success.item()))
             self._observations[index] = self._observation(env, observation)
             rewards.append(reward)
             terminated.append(term)
@@ -186,6 +205,15 @@ class _GymnasiumRuntime:
             reward=torch.tensor(rewards, device=device, dtype=torch.float32).reshape(shape),
             terminated=torch.tensor(terminated, device=device, dtype=torch.bool).reshape(shape),
             truncated=torch.tensor(truncated, device=device, dtype=torch.bool).reshape(shape),
+            info=(
+                {
+                    "task_success": torch.tensor(
+                        successes, device=device, dtype=torch.bool
+                    ).reshape(shape)
+                }
+                if self._has_success
+                else None
+            ),
         )
 
     def close(self):

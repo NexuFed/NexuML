@@ -118,6 +118,20 @@ mode and a fixed seed make CPU comparisons useful, not a cross-platform determin
 fails validation. Evaluation-environment overrides must retain compatible observation/action
 fields and action semantics.
 
+Task outcomes are separate from return. A provider may report boolean `task_success`
+alone, or also a finite nonnegative floating `joint_error_rad`. Evaluation emits
+`eval/rl/task_success_rate` using any-step success once per episode; it emits
+`eval/rl/final_joint_error_rad_mean` only when measured joint error is supplied.
+No-outcome tasks keep their existing return/length/end metrics. The outcome signature
+(absent, success-only or paired) must stay consistent across steps and episodes.
+
+The Gymnasium provider normalizes native `info["success"]` scalar booleans or finite
+numeric zero/one to boolean tensors on the runtime device. Malformed flags, missing
+outcomes in some batch rows, and changing presence fail rather than inventing failure
+values. Other native `info` is not copied into observations or portable policy state.
+This supports success-only task reporting; it does not establish Meta-World native
+training or benchmark compatibility without that reference's separate acceptance.
+
 ## Record GIF, MP4 or both
 
 GIF needs only the scoped rendering extra. Silent H.264 MP4 (or both formats) adds video:

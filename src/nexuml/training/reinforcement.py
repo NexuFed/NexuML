@@ -283,7 +283,7 @@ def evaluate_policy(
         raise ValueError("Evaluation recording requires an artifact output sink")
     returns, lengths = [], []
     successes, final_errors = [], []
-    has_outcomes = None
+    outcome_signature = None
     terminated = truncated = 0
     frames = []
     source_size = None
@@ -360,30 +360,38 @@ def evaluate_policy(
                     ):
                         raise ValueError("Evaluation requires single-environment transitions")
                     info = transition.info or {}
-                    present = "task_success" in info or "joint_error_rad" in info
-                    if has_outcomes is not None and present != has_outcomes:
+                    signature = ("task_success" in info, "joint_error_rad" in info)
+                    if outcome_signature is not None and signature != outcome_signature:
                         raise ValueError(
                             "Task outcomes must be supplied consistently across steps/episodes"
                         )
-                    has_outcomes = present
-                    if present:
+                    outcome_signature = signature
+                    if any(signature):
                         success, error = info.get("task_success"), info.get("joint_error_rad")
                         if (
                             not isinstance(success, torch.Tensor)
                             or success.numel() != 1
                             or success.dtype != torch.bool
-                            or not isinstance(error, torch.Tensor)
-                            or error.numel() != 1
-                            or not error.is_floating_point()
-                            or not torch.isfinite(error).all()
-                            or (error < 0).any()
+                            or success.device != transition.reward.device
                         ):
                             raise ValueError(
-                                "Task outcomes require one boolean task_success and finite "
-                                "nonnegative joint_error_rad"
+                                "Task outcomes require one boolean task_success on the task device"
                             )
                         episode_success |= bool(success.item())
-                        final_error = float(error.item())
+                        if signature[1]:
+                            if (
+                                not isinstance(error, torch.Tensor)
+                                or error.numel() != 1
+                                or error.device != transition.reward.device
+                                or not error.is_floating_point()
+                                or not torch.isfinite(error).all()
+                                or (error < 0).any()
+                            ):
+                                raise ValueError(
+                                    "Task outcomes require finite nonnegative joint_error_rad "
+                                    "on the task device when supplied"
+                                )
+                            final_error = float(error.item())
                     total += float(transition.reward.item())
                     steps += 1
                     term = bool(transition.terminated.item())
@@ -401,9 +409,10 @@ def evaluate_policy(
                     observation = transition.observation
                 returns.append(total)
                 lengths.append(steps)
-                if has_outcomes:
-                    assert final_error is not None
+                if outcome_signature[0]:
                     successes.append(episode_success)
+                if outcome_signature[1]:
+                    assert final_error is not None
                     final_errors.append(final_error)
         finally:
             primary = sys.exception()
@@ -422,8 +431,9 @@ def evaluate_policy(
         "eval/rl/terminated": float(terminated),
         "eval/rl/truncated": float(truncated),
     }
-    if has_outcomes:
+    if successes:
         metrics["eval/rl/task_success_rate"] = sum(successes) / len(successes)
+    if final_errors:
         metrics["eval/rl/final_joint_error_rad_mean"] = sum(final_errors) / len(final_errors)
     if spec.video.enabled:
         metadata = {

@@ -54,6 +54,47 @@ Maintain one automatically provisioned, pinned Python 3.12/CUDA-13 Isaac-first N
 
 NexuML library declares concrete named optional extras and core forwards only compatible groups. Plain NexuML remains simulator-free. Do not force all available native simulators, ROS/CUDA families, JAX and old Meta-World into one undifferentiated all extra, or restrict the Python range of all NexuML users merely because one benchmark requires an older Python/MuJoCo version. Record a tested compatibility matrix for primary and optional components including CPU, CUDA, EGL and OSMesa renderers.
 
+#### Published compatibility versus consumer environment selection
+
+The user confirmed that downstream users should have as few restrictions as
+genuine compatibility permits. Library metadata declares required packages and
+API-backed minimums, with exclusions/upper bounds only for demonstrated
+incompatibility. Do not copy the development lock, CUDA family, exact Torch
+version, wheel index or optional simulator's Python restriction into general
+NexuML requirements. Retain the real core Python minimum (currently >=3.12)
+unless a separately tested compatibility change lowers it; do not invent a
+package-wide upper bound merely because a reference targets Python 3.12.
+
+The consuming project's root `pyproject.toml` selects Python, backend/indexes,
+concrete package/source versions and approved `[tool.uv].override-dependencies`;
+its `uv.lock` records the complete reproducible environment. uv ignores member/
+installed-library override declarations during root project resolution. Our
+Python-3.12/cu130 pins and repository lock are validation/provisioning choices,
+not universal consumer requirements. Overrides neither install missing packages
+by themselves nor prove native compatibility. Existing API/ABI/security and
+physical-contract checks remain; an otherwise compatible selection is not
+rejected solely for differing from the reference environment. Untested
+combinations remain unverified, not automatically supported.
+
+Publish `nexuml-library[robots]` as the concrete optional robotics group and
+`nexuml[robots]` as its forwarding extra. Exclude that group and its new native/
+model stack from both `all` closures; retain unrelated general-purpose extras.
+The development consumer explicitly selects `nexuml[all,dev,robots]` and its
+backend so the implementation environment contains the requested stack without
+burdening ordinary installations. Keep incompatible native providers selectable
+through explicit named extras/lane rules rather than hiding impossible unions
+inside `robots`. This does not omit any required reference or authorize an
+unapproved environment. Selecting `robots` may still expose real upstream
+Python/wheel/ABI constraints; do not use markers to silently skip a requested
+integration. uv also resolves optional extras when locking, so the group name
+alone does not fix conflicts.
+
+Acceptance must inspect wheels/sdists and root forwarding, ensure base/`all`
+imports do not force the new robotics stack, audit every retained exact pin/
+upper bound against a concrete compatibility reason, and verify that consumer
+backend/index/version choices remain authoritative within genuine requirements.
+Record tested/blocked/untested versions separately from installable ranges.
+
 When *native* compatibility truly cannot be attained via maintained upstream releases, an explicitly reviewed, opt-in pinned process/worker or separately locked execution profile may host the incompatible benchmark. It must preserve normal NexuML scenario, policy, data and metrics semantics at an explicitly tested process boundary, while never serializing active physics handles. It remains blocked until real native and policy interoperability evidence exists, not a hidden fallback. This exception does not create an environment per algorithm or replace the primary setup.
 
 ### D3. Meta-World, Newton, MuJoCo and JAX cannot simply be combined by Python pinning
@@ -64,7 +105,102 @@ Maintain three independent MuJoCo paths: (a) Gymnasium native CPU Humanoid-v5/Re
 
 Shared evaluator success-only changes have one code owner, regardless of simulator. Native task/asset/control contracts, terminal/reset transition parity, Python package integrity, CPU OSMesa/NVIDIA EGL and policy exports are independently tested in the chosen lane. Missing native prerequisites leave that capability visibly incomplete; other reference slices may still pass.
 
+#### Temporary constraint exceptions — policy revision approved 2026-10-19
+
+Prefer a maintained upstream-compatible selection. When the recorded primary
+Isaac/LeRobot/OvPhysX bounds still conflict, permit explicit consumer-root
+constraint overrides for the initial **packaging, Transformers, NumPy, urllib3
+and isolated-importer usd-exchange conflicts**, with further documented cases
+permitted under the user's campaign authorization. This approves a
+bounded evaluation/validation route, not a particular replacement version or a
+claim that the constraints are merely stale metadata. Select an Isaac-supported
+combination rather than upgrade every dependency independently. Other conflicts
+need a documented source/API rationale and focused compatibility tests under the
+user's subsequent campaign authorization; no blind Meta-World/MuJoCo physics
+override, native ABI, Python/CUDA compatibility or driver requirement is waived. Keep required families
+and the existing approved-lane rules intact.
+
+Use the existing backend report for each exception record, not a new registry:
+affected package/source and original requirement; exact replacement constraint
+and resolved versions; reason and upstream issue/source reference; consumer-lock
+identity; owning setup slice; affected workflows; approved resource/license
+prerequisites; test commands/results; removal condition and rollback inputs.
+An upstream issue may be not yet filed; record that honestly rather than invent
+one. Consumer-owned configuration makes the exception explicit without editing
+source/wheel metadata, vendoring a fork, adding hidden pip fixes or using
+`--no-deps`. NexuML package metadata remains truthful about published optional
+dependencies; consumer override policy is not silently exported to every user.
+
+Keep evidence stages separate. Task 1.5 may prove complete **resolution with
+declared exceptions** and immutable provenance; this does not prove native or
+model compatibility. Before claiming an affected workflow ready, verify:
+
+- **Packaging:** actual selected native startup, version-checking paths,
+  task construction/stepping and owned shutdown for OvPhysX/Isaac, plus affected
+  packaging callers; an import alone is insufficient.
+- **Transformers:** actual maintained SmolVLA/GR00T N1.7 processors/tokenizers,
+  pretrained inference, trainable-parameter updates and the required
+  resume/export/reload/closed-loop references; include π0.5 when selected in
+  the same environment. Tiny substitute models do not qualify real models.
+- **NumPy:** test the recorded Sim 2.3.1/LeRobot <2.3 boundary with the selected
+  OpenCV build, dataset conversions and real model/native paths, including
+  NumPy/native-extension ABI and numerical parity; a resolver override is not
+  evidence that either caller works.
+- **urllib3:** preserve Lab's >=2.8.0 security floor, not Sim's older pin; verify
+  the selected HTTP/S3/download paths and security review before provisioning.
+- **USD:** keep Lab's matched usd-exchange 3.0.1 selection provisional until
+  isolated importers, OpenUSD/schema/native-library identity, converted-asset
+  parity and simulator startup/stepping/shutdown pass. Never co-install
+  competing pxr providers or silently extend this to other native libraries.
+- **Integrity:** clean locked provisioning and import/source identities,
+  preserved ordinary NexuML/TorchRL behavior and all relevant native/action
+  contracts. Required assets/resources without approval keep their execution
+  gates open; provisional resolution never closes them.
+
+Preserve the normal upstream dependency-check output. A consumer override may
+leave `pip check` reporting its original bound: match and disclose only the
+exact recorded discrepancies, verify all other dependencies and fail on any
+unexpected mismatch. Never patch metadata or suppress the checker to claim
+an unqualified clean installation. If behavior fails, retain the failure and
+block/roll back that selection rather than broaden exceptions automatically.
+
+On every affected version/source change, requalify the exact exception and
+rerun its relevant tests; old evidence does not carry forward. Once a maintained
+upstream set resolves the conflict, remove the exception and prove ordinary
+resolution/integrity plus behavior again before updating the primary lock.
+This policy revision supersedes earlier no-overrides statements in historical
+coverage/report checkpoints while preserving their conflict evidence. It
+authorizes no installs, active-container replacement, sibling-repository writes,
+downloads, paid compute, driver changes or physical actuation by itself.
+
+The user's subsequent approval also starts simulator-independent implementation
+(including shared outcome task 18.5) against focused source/contracts and
+regression tests. This is a scheduling exception, not completion of 1.4–1.6 or
+permission for native-dependent slices to skip full resolution, source/license,
+resource, clean-provisioning and runtime proof. Preserve all blocked states.
+
 ### D4. Coordinate DevContainer delivery without hidden sibling writes
+
+The user now explicitly authorizes direct task-related edits in NexuVibe,
+preserving its staged/uncommitted unrelated work. This is the owning consumer
+delivery scope, not permission to sweep other changes into our commits. For the
+current campaign reuse the single isolated `.venv` in this NexuML worktree and
+override inherited VIRTUAL_ENV/UV_PROJECT_ENVIRONMENT explicitly on all package
+commands. Package/source installs, bounded native tests and dependency
+experiments are authorized there; `/env` and the active DevContainer are not
+replacement targets. Keep at least 40 GiB user-available disk and avoid
+interfering with other jobs. No paid compute, driver changes, container rebuild,
+gated/custom-license acceptance or physical actuation follows from this scope.
+
+Isaac has priority over incompatible optional libraries in this campaign.
+Record blocked integrations and continue independent work rather than stop the
+campaign or quietly force a physics mismatch. Defer large pretrained/foundation
+model weight downloads and training for now, including GR00T/pi0.5 and large
+research models. Their full-program requirements stay open; this is a staging
+decision, not advertised support or permanent scope deletion. Small native PPO,
+data/contract and bounded small-model workflows remain in scope. The ten-hour
+target is a work budget with resumable milestone checkpoints, not a guarantee of
+session lifetime or full-program completion within that window.
 
 NexuVibe owns reviewed updates to its `pyproject.toml`, `.python-version`, consumer lock, NVIDIA Docker stage/config, hooks, versioned library paths, VS Code interpreter settings and setup tests. Deliver these in that repository under an explicitly scoped implementation session/change; this proposal's repo-local scope does not authorize hidden sibling edits. Canonical clean-container acceptance depends on the delivered consumer revision.
 
@@ -244,10 +380,46 @@ Retain Isaac Lab-Arena, exact Meta-World MT1 scoring and matching task/sensors/a
 
 Implement tasks 1–22 in dependency order; every slice lands focused tests, runnable user documentation, version/asset provenance and an actual native round trip before the next dependent slice claims readiness. A single agent/campaign can coordinate this programme, but it shall not duplicate the previous MuJoCo plan, rewrite existing session/compiler/framework architecture, wait for every P2 embodiment before releasing useful P0 milestones, or mark all required gates complete from CPU-only CI. Preserve tested checkpoint/report histories; follow ordinary approved cross-repository/container/hardware gates.
 
+#### Verified milestone commits, without execution evidence
+
+The user approved one focused **local commit after each verified implementation
+milestone**, not a single end-of-program commit or a commit for every checkbox.
+The milestone's applicable tests/build checks must pass; distinguish recorded
+unrelated baseline failures without claiming an all-green repository. Include
+its source, focused tests, durable user documentation, authored configuration,
+dependency locks and relevant specification/task updates. Follow repository
+commit-message rules. Planning edits alone do not retroactively stage prior
+implementation work; check pending verified milestones at the next apply run.
+
+**Evidence must not be committed.** Keep execution reports, raw command/test
+logs, machine-specific run inventories, benchmark/result tables, generated
+recordings/screenshots, checkpoints, weights and other run outputs out of the
+index. This includes evidence content embedded in planning/docs, not just files
+under reports/. Commit authored behavior/protocol documentation and task status,
+not copied run evidence. Dependency locks and small authored deterministic test
+fixtures are source inputs, not execution evidence. Existing evidence-only
+coverage checkpoints must not be swept into a planning commit.
+
+Stage only explicit milestone-owned files/hunks and inspect the staged paths
+**and content** before committing; never use a blanket git add to sweep up
+evidence, secrets or unrelated user changes. Retain evidence in the user's local
+reports or an explicitly approved artifact location. References may identify
+where retained evidence can be reviewed without embedding it in the commit.
+"Publish evidence" elsewhere in this change means make it available for review
+outside Git, not add it to source control or upload it automatically. Do not
+delete/untrack previously committed evidence or rewrite historical commits.
+
+If verification, staging isolation or commit creation fails, retain the work
+and report the blocker; do not conceal the failure, include evidence as a
+shortcut, amend history or force-push. This standing approval covers local
+milestone commits only. Push, external review publication, merge and archive
+remain separately requested operations.
+
 ## Risks / Trade-offs
 
 - **[Program breadth]** -> Staged tasks and per-family proofs; do not turn the first arm milestone into a claim of full support or grow a generic framework preemptively.
 - **[Conflicting optional simulator/native dependencies]** -> Resolve the primary compatible graph first, maintain an explicit named profile matrix for incompatible Meta-World/JAX cases, and test a reviewed opt-in execution boundary; no hidden environments/overrides.
+- **[A relaxed bound hides a real API break]** -> D3 enumerates five exception names, pins exact selections, preserves security/ABI checks and checker discrepancies, and requires affected native/real-model proof and an upstream removal condition. Failed or unexecuted tests leave support incomplete.
 - **[Upstream docs differ from installed/pinned code]** -> Immutable sources, explicit API inventory and native/numerical tests before adapters.
 - **[Sequence or processor changes break old policies]** -> Stateless default behavior, old-package/config round trips and exact new sequence/reset parity.
 - **[Two optimizer owners]** -> One Lightning-compatible stepping owner, serialized target/ratio/normalization state and exact update-count tests.
@@ -259,14 +431,14 @@ Implement tasks 1–22 in dependency order; every slice lands focused tests, run
 
 ## Migration Plan
 
-1. Freeze source/roadmap/baseline identities, reference-catalogue.md, historic MuJoCo ownership transfer and all required upstream API/license/compatibility candidates before shared code changes.
+1. Freeze source/roadmap/baseline identities, reference-catalogue.md, historic ownership and each slice's source/contracts before code changes. Simulator-independent slices may proceed under D3 while the full primary inventory/resolution remains open; native-dependent implementation still requires its complete prerequisites.
 2. Deliver the coordinated NexuVibe Python-3.12/cu130/system setup in its owning repository, obtain recreation timing and prove the canonical clean installation. Keep old images/checkpoints and rollback inputs.
 3. Add minimal physical/temporal contract and inference-state extensions with old-workflow regression tests, then port and revalidate the original references and vial task on the canonical stack.
 4. Validate classic MuJoCo/Meta-World and Playground native routes alongside canonical Isaac, then implement SO-101 data/ACT/Diffusion/flow/camera workflows, correction/reward learning and common evaluation; integrate pretrained VLA and DreamerV3 through existing seams. Keep each slice runnable and tested before the next family.
 5. Add Arena, compatible LIBERO and optional RoboTwin, robustness, ROS/Gazebo/perception and exact embodiment references. Extend advanced physics, scaling and remote inspection only with their independent proofs.
 6. Run full regression/distribution/install evidence and the separately approved real-arm/local-adaptation cycle. Reconcile all coverage rows and required gates before claiming full backend completion.
 
-Rollback is per slice through normal reviewed version control and the retained consumer lock/image/config. Do not delete or recreate user environments, caches, datasets, checkpoints or staged work automatically. Keep base imports and previous approved inference artifacts usable; an incompatible target gets an explicit migration/rejection, not changed physics under the same identity. Commit, merge and archive remain separately requested operations.
+Rollback is per slice through normal reviewed version control and the retained consumer lock/image/config. Do not delete or recreate user environments, caches, datasets, checkpoints or staged work automatically. Keep base imports and previous approved inference artifacts usable; an incompatible target gets an explicit migration/rejection, not changed physics under the same identity. D20 authorizes verified local milestone commits excluding evidence; push, external review publication, merge and archive remain separately requested operations.
 
 ## New source constraints for integrated change
 

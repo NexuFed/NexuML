@@ -69,3 +69,17 @@ Fast CPU tests SHALL require no native installs, assets or hardware. Native GPU,
 #### Scenario: Only one GPU is available
 - **WHEN** the distributed suite is not executed
 - **THEN** its capability remains unverified with the missing resource stated, even if fake distributed tests pass
+
+### Requirement: Verified milestone commits exclude execution evidence
+
+Each verified implementation milestone SHALL produce a focused local commit of owned source, tests, user docs, configuration/locks and planning changes after its applicable checks pass. Execution evidence SHALL remain outside Git, even when embedded in planning/docs. Staged paths and content SHALL be inspected. Existing committed evidence/history SHALL remain intact; push, external review publication, merge and archive require separate direction.
+
+#### Scenario: A milestone is ready to commit
+- **WHEN** its applicable verification succeeds with unrelated baseline failures distinguished
+- **THEN** only explicit milestone-owned files/hunks are staged, excluding reports, raw logs, generated run results/media, checkpoints, weights and unrelated work
+- **AND** evidence remains locally reviewable or in an explicitly approved artifact location without automatic upload
+
+#### Scenario: Evidence is mixed with planning changes
+- **WHEN** staged content or a candidate file contains runtime evidence alongside authored planning or documentation
+- **THEN** that evidence is excluded from the commit without discarding the user's local records or rewriting historical commits
+- **AND** inability to isolate the changes or create the commit is reported as a blocker, not bypassed by a blanket stage
