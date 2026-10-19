@@ -67,18 +67,55 @@ def fake_huggingface(
     options: list[dict[str, Any]] = []
     backbones: list[_FakeFISHER] = []
 
+    class FISHERModel(_FakeFISHER):
+        """Imitate the upstream remote-code model class name."""
+
+    class FakePreTrainedModel:
+        """Simulate the Transformers 5.x finalization contract."""
+
+        @staticmethod
+        def _finalize_model_loading(model: _FakeFISHER) -> None:
+            if not hasattr(model, "all_tied_weights_keys"):
+                raise AttributeError("all_tied_weights_keys is missing")
+
     class FakeAutoModel:
         @staticmethod
         def from_pretrained(model_name: str, **kwargs: Any) -> _FakeFISHER:
             options.append({"name": model_name, **kwargs})
-            model = _FakeFISHER()
+            model = FISHERModel()
+            FakePreTrainedModel._finalize_model_loading(model)
             backbones.append(model)
             return model
 
     stub = ModuleType("transformers")
+    modeling_utils = ModuleType("transformers.modeling_utils")
+    setattr(stub, "__path__", [])
     setattr(stub, "AutoModel", FakeAutoModel)
+    setattr(stub, "modeling_utils", modeling_utils)
+    setattr(modeling_utils, "PreTrainedModel", FakePreTrainedModel)
     monkeypatch.setitem(sys.modules, "transformers", stub)
+    monkeypatch.setitem(sys.modules, "transformers.modeling_utils", modeling_utils)
     return options, backbones
+
+
+def test_fisher_loading_restores_transformers_finalizer_on_error(
+    fake_huggingface: tuple[list[dict[str, Any]], list[_FakeFISHER]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Checkpoint errors must not leave a patched global loader in place."""
+    _ = fake_huggingface
+    modeling_utils = sys.modules["transformers.modeling_utils"]
+    base = getattr(modeling_utils, "PreTrainedModel")
+    original = base._finalize_model_loading
+    auto_model = getattr(sys.modules["transformers"], "AutoModel")
+
+    def fail_loading(*args: Any, **kwargs: Any) -> None:
+        raise RuntimeError("simulated checkpoint failure")
+
+    monkeypatch.setattr(auto_model, "from_pretrained", fail_loading)
+    with pytest.raises(RuntimeError, match="simulated checkpoint failure"):
+        FISHEREncoder()
+    assert base._finalize_model_loading is original
 
 
 def test_encoder_is_frozen_and_uses_official_input_preprocessing(
@@ -96,7 +133,9 @@ def test_encoder_is_frozen_and_uses_official_input_preprocessing(
         "trust_remote_code": True,
         "revision": "tested-commit",
         "local_files_only": True,
+        "low_cpu_mem_usage": False,
     }
+    assert getattr(backbones[0], "all_tied_weights_keys") == {}
     encoder.train()
     assert not backbones[0].training
     assert not any(parameter.requires_grad for parameter in encoder.parameters())
