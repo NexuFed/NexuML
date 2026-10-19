@@ -367,7 +367,106 @@ That stage requires **additional training machine identities** to
 evaluate transfer within pseudo-types. Otherwise, prioritize better
 domain-invariant representations or a more controlled fault dataset.
 
-## 5. Quality checks
+## 5. Complementary within-machine FISHER Flow Matching
+
+The preceding experiment trains on `id_00` and `id_02` and selects on
+an **unseen machine** `id_04`. To distinguish fundamental within-machine
+learnability from cross-machine generalization failure, train a **separate
+unconditioned Flow Matching model for each individual machine**.
+
+Use the existing immutable `fisher-independent-raw-seed42.pt` as the
+source. The single-machine preparer selects one machine's healthy/faulty
+recordings, deterministically creates a **75% train / 25% validation**
+recording-disjoint split, and optionally standardizes the embeddings.
+Standardization parameters are fitted only on that machine's **new
+training partition**, never on the validation recordings.
+
+The original independent pairing is retained. Training still minimizes
+Flow Matching velocity MSE; validation, checkpoint selection and early
+stopping use **the complete within-machine distributional sliced W1**.
+Each machine receives its **own independently initialized** 128x128
+MLP flow, optimizer, checkpoints and report. No pseudo-type conditioning
+is introduced in this diagnostic.
+
+### Prepare the individual machines
+
+```bash
+source=.experiments/nex233-ablation/prepared/seed42/fisher-independent-raw-seed42.pt
+single=.experiments/nex233-ablation/single-machine/seed42
+python -m nexuml_library.evaluation.maintenance.single_machine_prepare \
+  --source-file "$source" \
+  --output-dir "$single/prepared" \
+  --scaling standardized --val-fraction 0.25 --seed 42
+```
+
+By default, this creates three datasets:
+
+| Machine | Original role | New experiment |
+| --- | --- | --- |
+| `fan:id_00` | train | machine-local 96 train / 32 val |
+| `fan:id_02` | train | machine-local 96 train / 32 val |
+| `fan:id_04` | val | machine-local 96 train / 32 val |
+| `fan:id_06` | sealed test | **excluded by default** |
+
+Numbers assume the default 128 pairs per machine. No recordings
+overlap between the new train and validation partitions.
+
+### Train and evaluate each machine independently
+
+```bash
+python -m nexuml_library.evaluation.maintenance.single_machine_run \
+  --manifest "$single/prepared/manifest.json" \
+  --checkpoint-root "$single/checkpoints" \
+  --reports-dir "$single/reports" \
+  --width 128 --lr 0.0003 --batch-size 16 \
+  --max-epochs 300 --accelerator gpu
+```
+
+The command trains machines sequentially, saving a validation-selected
+checkpoint and a true last-epoch checkpoint for each. It evaluates each
+machine's **own** training and validation distributions, and writes
+`reports/fan-id_00.json`, `reports/fan-id_02.json`,
+`reports/fan-id_04.json` and `reports/summary.json`.
+
+The main comparison is **relative validation SWD reduction** on each
+machine versus no transport. Inspect best and last checkpoints, and
+compare against the previous cross-machine validation failures.
+Validation sample size is only 32 in the default split; repeat with
+multiple seeds/splits before inferring robustness.
+
+### Optional fourth machine: explicit original-test unsealing
+
+To run the original `id_06` as a **fourth independent within-machine
+experiment**, both commands require explicit opt-in:
+
+```bash
+python -m nexuml_library.evaluation.maintenance.single_machine_prepare \
+  --source-file "$source" \
+  --output-dir "$single/including-id06/prepared" \
+  --scaling standardized --val-fraction 0.25 --seed 42 \
+  --include-original-test-machine
+
+python -m nexuml_library.evaluation.maintenance.single_machine_run \
+  --manifest "$single/including-id06/prepared/manifest.json" \
+  --checkpoint-root "$single/including-id06/checkpoints" \
+  --reports-dir "$single/including-id06/reports" \
+  --width 128 --lr 0.0003 --batch-size 16 \
+  --max-epochs 300 --accelerator gpu \
+  --allow-original-test-machine
+```
+
+**This deliberately breaks the original `id_06` test seal.** Reports
+for the repurposed machine are marked unsealed, and `--include-test`
+is prohibited for within-machine holdouts (which have only train and
+validation partitions). The original multi-machine evaluation must not
+subsequently present `id_06` as an untouched confirmatory test set
+if it has informed modeling decisions. Keep the fourth machine excluded
+until you explicitly decide to use it.
+
+Single-machine success would demonstrate within-domain learnability,
+**not** transferable fault mechanisms or calibrated degradation time.
+
+## 6. Quality checks
 
 ```bash
 ruff check .
@@ -376,6 +475,7 @@ ty check
 pytest tests/library/test_ablation_distributional_validation.py -v
 pytest tests/library/test_ablation_coupling_comparison.py -v
 pytest tests/library/test_machine_compatibility.py -v
+pytest tests/library/test_single_machine_fisher.py -v
 pytest tests/library/test_ablation_checkpoint.py -v
 pytest tests/library/test_mimii_acoustic_ablation.py -v
 pytest tests/library/test_fisher_encoder.py -v
