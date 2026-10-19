@@ -12,6 +12,10 @@ from torch import Tensor
 
 from nexuml.core.components import LayerBuildContext
 from nexuml_library.data.maintenance.mimii import MIMIIAcousticEndpointPairs
+from nexuml_library.evaluation.maintenance.velocity_diagnostics import (
+    neighbor_velocity_alignment,
+    velocity_statistics,
+)
 from nexuml_library.layers.feature.lmbe import LMBE
 from nexuml_library.layers.model.fisher import FISHEREncoder
 
@@ -124,6 +128,17 @@ def feature_variants(
                 selected, rows, coupling=cast(Coupling, coupling)
             )
             key = f"{frontend}-{coupling}-{scale}"
+            train_indices = [
+                index for index, row in enumerate(metadata) if row["split"] == "train"
+            ]
+            train_healthy = paired[train_indices, 0]
+            train_faulty = paired[train_indices, 1]
+            coherence = velocity_statistics(train_healthy, train_faulty)
+            neighbor_alignment = (
+                neighbor_velocity_alignment(train_healthy, train_faulty, k=8)
+                if len(train_indices) > 1
+                else []
+            )
             variants[key] = {
                 "format": "nex233-features-v1",
                 "features": paired.cpu().contiguous(),
@@ -140,6 +155,8 @@ def feature_variants(
                     "normalization_fit_split": "train",
                     "ot_fit_split": "train" if coupling == "ot" else "none",
                     "ot_grouping": "machine_id",
+                    "training_velocity_statistics": coherence,
+                    "training_neighbor_alignment": neighbor_alignment,
                     **costs,
                 },
             }
