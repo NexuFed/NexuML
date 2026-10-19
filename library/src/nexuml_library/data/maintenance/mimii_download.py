@@ -136,9 +136,7 @@ def ensure_mimii(
     _download_archive(url, archive, checksum)
 
     root.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(
-        prefix=f".{root.name}-extract-", dir=root.parent
-    ) as temporary:
+    with tempfile.TemporaryDirectory(prefix=f".{root.name}-extract-", dir=root.parent) as temporary:
         staging = Path(temporary) / "dataset"
         staging.mkdir()
         try:
