@@ -121,7 +121,7 @@ class MIMIIAcousticEndpointPairs(DataSourceDefinition):
     anomaly-detection benchmark result.
 
     Attributes:
-        root: Extracted MIMII machine-type root or its parent.
+        root: Extracted MIMII machine root; defaults to the selected machine/noise folder.
         download: Automatically download missing recordings from official Zenodo.
         noise_db: Noise level of the selected official MIMII recording archive.
         machine_type: Selected machine family (one family per experiment).
@@ -135,7 +135,7 @@ class MIMIIAcousticEndpointPairs(DataSourceDefinition):
         seed: Reproducible independent endpoint pairing.
     """
 
-    root: str | Path = "data/mimii/6_dB_fan"
+    root: str | Path | None = None
     download: bool = True
     noise_db: Literal[-6, 0, 6] = 6
     machine_type: Literal["fan", "pump", "slider", "valve"] = "fan"
@@ -191,7 +191,7 @@ class _MIMIIAcousticEndpointRuntime(_AudioEndpointPairsRuntime):
 
     def __init__(
         self,
-        root: str | Path,
+        root: str | Path | None,
         download: bool,
         noise_db: int,
         machine_type: str,
@@ -208,7 +208,8 @@ class _MIMIIAcousticEndpointRuntime(_AudioEndpointPairsRuntime):
             raise ValueError(f"Unknown MIMII machine type: {machine_type}")
         self.sample_rate = sample_rate
         self.clip_num_samples = clip_num_samples
-        root_path = Path(root).expanduser()
+        resolved_root = root if root is not None else f"data/mimii/{noise_db}_dB_{machine_type}"
+        root_path = Path(resolved_root).expanduser()
         ensure_mimii(root_path, machine_type, noise_db, download)
         metadata = _mimii_metadata(
             root=root_path,
