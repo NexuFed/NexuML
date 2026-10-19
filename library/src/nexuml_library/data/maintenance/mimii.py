@@ -89,7 +89,7 @@ def _mimii_metadata(
             rng = np.random.default_rng(seed + 1000 * split_index + id_index)
             normal_order = rng.permutation(len(normal))
             abnormal_order = rng.permutation(len(abnormal))
-            count = min(max(len(normal), len(abnormal)), max_pairs_per_machine)
+            count = min(len(normal), len(abnormal), max_pairs_per_machine)
 
             for pair_index in range(count):
                 healthy_file = normal[int(normal_order[pair_index % len(normal)])]
