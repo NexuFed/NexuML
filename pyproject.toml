@@ -29,7 +29,7 @@ dependencies = [
     "typer>=0.9",
     "ruamel.yaml>=0.18",
     "rich>=13.0",
-    "requests>=2.0",
+    "requests>=2.32.4",
     "loguru>=0.7",
     "tensorboard>=2.0",
     "safetensors>=0.4",
@@ -85,7 +85,7 @@ ray = [
     "ray[default,train]>=2.57,<2.59",
 ]
 reinforcement = [
-    "torchrl>=0.14,<0.15",
+    "torchrl>=0.14",
     "gymnasium>=1,<2",
 ]
 rendering = [
@@ -102,9 +102,16 @@ s3 = [
 library = [
     "nexuml-library>=0.2,<0.3",
 ]
+robots = [
+    "nexuml-library[robots]>=0.2,<0.3",
+]
 all = [
     "nexuml[library,audio,data,tracking,tuning,dali,export,ray,s3,reinforcement,rendering,video]",
 ]
+
+[dependency-groups]
+# Root-only source routing avoids NVIDIA's older mirror of this Sim dependency.
+native-sources = ["mujoco-usd-converter==0.6.1"]
 
 [project.scripts]
 nexuml = "nexuml.cli.main:app"
@@ -169,24 +176,53 @@ convention = "google"
 [tool.ty.environment]
 extra-paths = ["src", "library/src"]
 
+[tool.uv]
+# Standalone repository validation target, not published Python/backend restrictions.
+environments = ["sys_platform == 'linux' and platform_machine == 'x86_64' and python_version == '3.12'"]
+# The pinned Lab/Sim stack publishes prerelease native wheels on NVIDIA's index.
+index-strategy = "first-index"
+prerelease = "if-necessary"
+constraint-dependencies = ["lerobot==0.6.1"]
+override-dependencies = [
+    "packaging==25.0",
+    "transformers==5.10.4",
+    "numpy==2.3.1",
+    "urllib3==2.8.0",
+    "usd-exchange==3.0.1",
+    # Sim's 2.32.3 pin predates the CVE-2024-47081 netrc credential-leak fix.
+    "requests==2.34.2",
+    # Sim and LeRobot must share one cv2 provider, not overwrite each other's files.
+    { package = { name = "lerobot", version = "0.6.1" }, dependencies = ["opencv-python-headless-noffmpeg==4.14.0.94rc3"] },
+]
+exclude-dependencies = [
+    { package = { name = "lerobot", version = "0.6.1" }, dependencies = ["opencv-python-headless"] },
+]
+
 [[tool.uv.index]]
-name = "pytorch-cu128"
-url = "https://download.pytorch.org/whl/cu128"
+name = "pytorch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
 explicit = true
 
 [[tool.uv.index]]
 name = "nvidia-pypi"
 url = "https://pypi.nvidia.com"
-explicit = true
+explicit = false
+
+[[tool.uv.index]]
+name = "pypi"
+url = "https://pypi.org/simple"
+default = true
 
 [tool.uv.workspace]
 members = ["library"]
 
 [tool.uv.sources]
-torch = [{ index = "pytorch-cu128" }]
-torchvision = [{ index = "pytorch-cu128" }]
-torchaudio = [{ index = "pytorch-cu128" }]
-torchcodec = [{ index = "pytorch-cu128" }]
+torch = [{ index = "pytorch-cu130" }]
+torchvision = [{ index = "pytorch-cu130" }]
+torchaudio = [{ index = "pytorch-cu130" }]
+torchcodec = [{ index = "pytorch-cu130" }]
+isaaclab = { git = "https://github.com/isaac-sim/IsaacLab.git", rev = "70ab24fec3eabf51222817db0cdb5a4e7133bd7e", subdirectory = "tools/wheel_builder" }
+mujoco-usd-converter = { index = "pypi" }
 nvidia-dali-cuda120 = [{ index = "nvidia-pypi" }]
 nexuml = { workspace = true } 
 nexuml-library = { workspace = true }

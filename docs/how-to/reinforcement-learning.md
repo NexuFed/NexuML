@@ -88,6 +88,49 @@ source edits. For Python exports, deploy `export_package(result.policy, path)`, 
 `result.pipeline`: raw Gaussian parameters are not environment actions. The existing
 dataset-oriented `smoke` command is not an RL acceptance path.
 
+## Optional robotics dependencies
+
+The Physical AI dependency group is `nexuml[robots]` (forwarded to
+`nexuml-library[robots]`), deliberately **not** included in `all`. It selects
+Isaac Lab/Sim, standalone physics, robot datasets and small imitation-policy
+dependencies. It does not download pretrained model weights or establish native
+support merely by installing. Meta-World's incompatible native selection remains
+separate rather than hidden inside this group.
+
+Published requirements declare compatibility minimums, not our development
+Python/CUDA/Torch pins. The consuming uv project's root selects native sources,
+wheel indexes, approved overrides and a reproducible lock. This repository's
+`tool.uv` configuration is its standalone Python-3.12/cu130 validation selection;
+it is not inherited by downstream packages. The current Isaac Lab 3 source
+selection needs the pinned upstream aggregate-wheel builder until an appropriate
+release wheel is published. Other consumers must select a compatible native
+source themselves; genuine upstream wheel/API/ABI constraints still apply.
+
+The standalone validation selection currently carries temporary consumer-root
+exceptions for packaging, Transformers, NumPy, urllib3 and USD. Sim's Requests
+2.32.3 pin is replaced with patched 2.34.2; the published core minimum 2.32.4
+excludes the known `.netrc` credential leak (CVE-2024-47081). LeRobot 0.6.1 uses
+Sim's no-FFmpeg OpenCV distribution via a narrowly scoped replacement so two
+packages cannot overwrite the same `cv2` files. These exceptions require
+affected-workflow validation, not just a successful solver or import. Preserve
+the original dependency-check output and fail on unexpected discrepancies;
+remove each exception once a maintained compatible selection works normally.
+The root-only `native-sources` group binds Sim's MuJoCo USD converter to PyPI
+rather than NVIDIA's older mirror, retaining the safer first-index strategy.
+
+For this repository, with an isolated environment selected explicitly:
+
+```bash
+UV_PROJECT_ENVIRONMENT="$PWD/.venv" VIRTUAL_ENV="$PWD/.venv" \
+  uv sync --extra dev --extra all --extra robots
+```
+
+The broader NexuVibe consumer additionally selects its backend and development
+dependencies. Never run a setup command against an active shared environment
+just to test robotics integration. Native prerequisites and asset/license checks
+remain separate; large foundation-model experiments are deferred in the current
+Isaac-first campaign.
+
 ## Initial, periodic and final evaluation
 
 ```bash
