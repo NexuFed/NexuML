@@ -93,6 +93,32 @@ def main():
             torch.testing.assert_close(advantage, expected)
             torch.testing.assert_close(target, expected + value)
             print("NATIVE_TRANSITION_GAE", task, physics, count, terminate, truncate, flush=True)
+
+        root = env.reset().clone()
+        root["action"] = torch.zeros((4, 1), device="cuda:0")
+        _, root = env.step_and_maybe_reset(root)
+        previous = root["observation"].clone()
+        lengths = native.episode_length_buf.clone()
+        before_resets = len(reset_calls)
+        mask = torch.tensor([True, False, False, False], device="cuda:0")
+        if task == "Isaac-Cartpole-Direct":
+            try:
+                runtime.reset(mask=mask)
+            except ValueError as error:
+                assert "explicit partial native reset" in str(error)
+            else:
+                raise AssertionError("Direct task silently accepted an unsupported partial reset")
+            assert len(reset_calls) == before_resets
+            assert torch.equal(native.episode_length_buf, lengths)
+        else:
+            reset_observation = runtime.reset(mask=mask)
+            assert len(reset_calls) == before_resets + 1
+            reset_value = reset_observation["observation"]
+            assert isinstance(reset_value, torch.Tensor)
+            assert torch.equal(reset_value[1:], previous[1:])
+            assert torch.equal(native.episode_length_buf[1:], lengths[1:])
+            assert native.episode_length_buf[0] == 0
+        print("NATIVE_EXPLICIT_MASK_RESET_VERIFIED", flush=True)
     finally:
         env.close()
     print("NATIVE_ADAPTER_TRANSITIONS_VERIFIED", flush=True)

@@ -20,6 +20,80 @@ ENTRYPOINT = ROOT / "scripts/isaaclab/run.py"
 JOB = ROOT / "tests/fixtures/isaaclab_job.py"
 
 
+@pytest.mark.parametrize("task", ["Isaac-Cartpole", "Isaac-Reach-Franka"])
+def test_upstream_native_learning_baseline(tmp_path, task):
+    import math
+
+    import torch
+    from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
+
+    from nexuml_library.environments.isaaclab import IsaacLabEnvironment
+
+    checkout_path = os.environ.get("NEXUML_ISAAC_CHECKOUT")
+    if checkout_path is None:
+        pytest.skip("NEXUML_ISAAC_CHECKOUT must identify the pinned upstream source checkout")
+    checkout = Path(checkout_path).resolve()
+    revision = subprocess.check_output(["git", "-C", str(checkout), "rev-parse", "HEAD"], text=True)
+    assert revision.strip() == IsaacLabEnvironment().revision
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(checkout / "scripts/reinforcement_learning/train.py"),
+            "--rl_library",
+            "rsl_rl",
+            "--task",
+            task,
+            "--num_envs",
+            "8",
+            "--max_iterations",
+            "2",
+            "--device",
+            "cuda:0",
+            "--seed",
+            "0",
+            "--visualizer",
+            "none",
+            "--logger",
+            "tensorboard",
+            "physics=isaacsim_physx",
+            "agent.num_steps_per_env=16",
+            "agent.algorithm.num_learning_epochs=1",
+            "agent.algorithm.num_mini_batches=2",
+            "agent.clip_actions=1.0",
+            "env.observations.policy.enable_corruption=false",
+            "env.compute_final_obs=true",
+        ],
+        cwd=tmp_path,
+        env=os.environ.copy(),
+        capture_output=True,
+        text=True,
+        timeout=300,
+    )
+    (tmp_path / "upstream-native.log").write_text(result.stdout + result.stderr)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "SimulationContext cleared" in result.stdout
+    (first_path,) = tmp_path.rglob("model_0.pt")
+    (last_path,) = tmp_path.rglob("model_1.pt")
+    first = torch.load(first_path, map_location="cpu", weights_only=True)
+    last = torch.load(last_path, map_location="cpu", weights_only=True)
+    assert last["iter"] == 1
+    for key in ("actor_state_dict", "critic_state_dict"):
+        assert all(torch.isfinite(value).all() for value in last[key].values())
+        assert any(not torch.equal(value, first[key][name]) for name, value in last[key].items())
+    assert last["optimizer_state_dict"]["state"]
+    (events_path,) = tmp_path.rglob("events.out.tfevents.*")
+    events = EventAccumulator(str(events_path))
+    events.Reload()
+    losses = [
+        event
+        for tag in events.Tags()["scalars"]
+        if "loss" in tag.lower()
+        for event in events.Scalars(tag)
+    ]
+    assert {event.step for event in losses} == {0, 1}
+    assert all(math.isfinite(event.value) for event in losses)
+
+
 def _run(args, output, label, *, expected=0, process_scope=True):
     output.mkdir(parents=True, exist_ok=True)
     env = {**os.environ, "NEXUML_LOGS_ROOT": str(output / "native-logs")}
@@ -47,6 +121,26 @@ def test_native_manager_and_direct_transition_oracle(tmp_path, task, physics):
     )
     assert log.count("NATIVE_TRANSITION_GAE") == 7
     assert "NATIVE_ADAPTER_TRANSITIONS_VERIFIED" in log
+    assert "NATIVE_EXPLICIT_MASK_RESET_VERIFIED" in log
+
+
+@pytest.mark.parametrize("task", ["Isaac-Cartpole", "Isaac-Cartpole-Direct"])
+@pytest.mark.parametrize("mode", ["default", "default-reader", "native", "native-reader"])
+def test_native_public_wrapper_does_not_meet_the_complete_reset_contract(tmp_path, task, mode):
+    log = _run(
+        [ROOT / "tests/fixtures/isaaclab_wrapper_probe.py", task, mode], tmp_path, "wrapper-probe"
+    )
+    line = next(line for line in log.splitlines() if line.startswith("WRAPPER_ORACLE_RESULT "))
+    result = json.loads(line.partition(" ")[2])
+    assert result["native_ready"] is True
+    assert result["conformant"] is False
+    if task == "Isaac-Cartpole" and mode == "default-reader":
+        assert result["terminal_truth"] and result["timeout_target_truth"]
+        assert "Cannot partially reset" in result["error"]
+    elif task == "Isaac-Cartpole-Direct" and mode.startswith("default"):
+        assert "Partial resets are not handled" in result["error"]
+    else:
+        assert not result["terminal_truth"] and not result["timeout_target_truth"]
 
 
 @pytest.mark.parametrize(

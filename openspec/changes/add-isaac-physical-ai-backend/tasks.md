@@ -70,7 +70,7 @@ The user-selected LeRobot additions require complete Diffusion Policy and resour
 - [x] 4.1 Adapt existing launchers/provider to canonical interpreter and checkout locations; verify module/script execution, lazy launch, actual exit codes and no hardcoded worker paths.
 - [x] 4.2 Validate selected release launch/import order and resource ownership; verify native startup/failure/SIGTERM cleanup, profile-specific fast or normal close and zero simulator allocation for portable or completed-budget operations.
 - [x] 4.3 Support one manager and one direct task through public native configuration; verify task discovery, native N/device/control contracts and no outer simulator vectorization or CPU/NumPy control round trips.
-- [ ] 4.4 Probe maintained wrapper composition and canonical fallback for each supported task workflow; verify exact reset counts, final/reset identity, mutable buffers and numerical GAE for no/partial/all done, truncation and simultaneous flags.
+- [x] 4.4 Probe maintained wrapper composition and canonical fallback for each supported task workflow; verify exact reset counts, final/reset identity, mutable buffers and numerical GAE for no/partial/all done, truncation and simultaneous flags.
 - [x] 4.5 Add explicit Newton, Kit PhysX and standalone OvPhysX selections for supported reference presets; verify native construction and incompatible process/backend/renderer rejection without silent fallback.
 - [ ] 4.6 Reuse native URDF/MJCF/USD import for one concrete required asset; verify conversion/source/content/license identity, joint/actuator/collision metadata and runtime contract rejection on altered assets.
 - [ ] 4.7 Connect replay camera/frame caching to existing media/loggers; verify real terminal-scene identity, GIF/MP4/both, animated TensorBoard, MLflow-only behavior and truthful cancellation on the canonical stack.
@@ -78,7 +78,7 @@ The user-selected LeRobot additions require complete Diffusion Policy and resour
 
 ## 5. Canonical PPO and SO-101 manipulation references
 
-- [ ] 5.1 Run native Cartpole and Franka control/transition/training baselines on the canonical stack; verify resolved versions, matching physical mappings, finite counters and owned shutdown before adapter claims.
+- [x] 5.1 Run native Cartpole and Franka control/transition/training baselines on the canonical stack; verify resolved versions, matching physical mappings, finite counters and owned shutdown before adapter claims.
 - [x] 5.2 Port ordinary Cartpole and Franka NexuML scenarios; verify real PPO updates, partial/completed-budget resume, complete export, clean inference and fresh scalar/recorded replay independently of old EA evidence.
 - [ ] 5.3 Port SO-101 five-joint reaching with fixed gripper; verify exact asset/control identities, scripted signs/limits, error/hold/timeout rules and the complete learned-policy round trip.
 - [ ] 5.4 Validate the pinned upstream six-control vial task natively; verify contact model, reset dataset hashes, observation ordering, relative action timing, nominal curriculum and canonical-home play settings.

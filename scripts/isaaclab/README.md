@@ -46,6 +46,44 @@ An explicit partial reset of other direct-task rows fails because upstream's
 public `reset()` has no row-selection API; no private reset method or full-batch
 fallback is used. Manager tasks retain explicit masked resets.
 
+The maintained TorchRL wrapper is not a drop-in replacement for this complete
+contract. Its public final-observation reader can repair manager timeout
+targets, but that composition rejects arbitrary explicit partial resets.
+Native-autoreset mode leaves terminal observations unavailable for bootstrap;
+direct-task default modes also reject partial auto-reset handoffs. Keep the
+canonical adapter until an upstream composition passes the entire native
+reset/final-state/buffer/value-target oracle, not only a constructor smoke.
+
+### Independent upstream learning baseline
+
+The pinned upstream RSL-RL runner is a separately labeled baseline, never a
+substitute for NexuML optimizer/checkpoint/export acceptance. Select an actual
+checkout at the same Lab revision and keep its logs/checkpoints outside Git:
+
+```bash
+export ISAACLAB_CHECKOUT=/path/to/pinned/IsaacLab
+export NEXUML_PYTHON="$PWD/.venv/bin/python"
+test "$(git -C "$ISAACLAB_CHECKOUT" rev-parse HEAD)" = 70ab24fec3eabf51222817db0cdb5a4e7133bd7e
+mkdir -p /tmp/opencode/native-isaac-baselines
+(
+  cd /tmp/opencode/native-isaac-baselines
+  for task in Isaac-Cartpole Isaac-Reach-Franka; do
+    ACCEPT_EULA=Y OMNI_KIT_ACCEPT_EULA=YES OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 \
+      "$NEXUML_PYTHON" "$ISAACLAB_CHECKOUT/scripts/reinforcement_learning/train.py" \
+      --rl_library rsl_rl --task "$task" --num_envs 8 --max_iterations 2 \
+      --device cuda:0 --seed 0 --visualizer none --logger tensorboard \
+      physics=isaacsim_physx agent.num_steps_per_env=16 \
+      agent.algorithm.num_learning_epochs=1 agent.algorithm.num_mini_batches=2 \
+      agent.clip_actions=1.0 env.observations.policy.enable_corruption=false \
+      env.compute_final_obs=true
+  done
+)
+```
+
+This small frame budget checks the selected native learner/control path and
+shutdown, not policy quality. Check actual counters, finite saved state and
+changed actor/critic tensors; do not count checkpoint existence alone as learning.
+
 Ordinary NexuML training still uses `NexuSession`/Lightning/TorchRL PPO:
 
 ```bash
