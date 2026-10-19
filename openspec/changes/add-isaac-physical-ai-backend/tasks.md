@@ -1,5 +1,14 @@
 # Tasks
 
+## Linear issue and PR linkage
+
+- **Implementation issue:** [NEX-234](https://linear.app/nexufed/issue/NEX-234) — SO-101 local imitation learning and NexuML Python SDK handoff (Gate 0 / F01).
+- **PR branch (recommended from Linear):** `feature/nex-234-so-101-local-imitation-learning-and-nexuml-python-sdk`. PR title example: `NEX-234: SO-101 local behavior cloning and Python SDK handoff`.
+- **PR body:** include `Closes NEX-234` **only** on the PR that actually satisfies verified tasks 0.1–0.8. Planning-only PRs should say `Related to NEX-234`; do not close the issue.
+- Keep the PR small: do not merge the entire unfinished Physical AI umbrella to deliver the handoff. Later FL implementation is tracked by [NEX-235](https://linear.app/nexufed/issue/NEX-235).
+- **Status automation:** linking alone is not a guarantee of transitions; the Linear↔GitHub integration and team's workflow automations must be configured to move the issue on PR creation/review/merge.
+
+
 Source of truth: proposal.md, design.md, all capability specs (including the new local-learning-handoff spec), reference-catalogue.md and coverage.md. The first three verified planning tasks retain their historical checkmarks; every new consolidation task is unchecked. This is the single implementation queue for Isaac, ordinary MuJoCo/Meta-World, GPU MuJoCo Playground and Physical AI model/robot examples. Deliver tests and runnable documentation with each slice. Native, dataset, ROS, distributed and hardware checks require the declared prerequisites; static validation, skipped tests and old-profile evidence do not satisfy them.
 
 This is one staged program, not one unattended command or giant PR. Keep existing completed work intact. Cross-repository delivery must occur in its owning scope; no hidden NexuVibe/NexuFL edits, active-environment replacement, rebuild, unapproved download or hardware actuation is authorized by this task file.
