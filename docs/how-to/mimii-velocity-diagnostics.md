@@ -69,7 +69,9 @@ C=1-\frac{\|\bar v\|^2}{\frac1N\sum_i\|v_i\|^2}.
 \]
 
 A value near 1 means that endpoint velocity vectors have a small
-**unconditional** mean relative to their RMS magnitude. A value near 0
+**unconditional** mean relative to their RMS magnitude. The report also
+calculates this statistic for each training machine separately: pooling
+machines can otherwise obscure machine-specific drift. A value near 0
 means they are strongly aligned. This does **not directly estimate**
 \(\mathbb E[v\mid x_t,t]\), the optimal flow predictor.
 
