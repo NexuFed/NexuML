@@ -126,6 +126,14 @@ def run_single_machine_experiments(
             "training_last": report["training_last"]["swd_relative_reduction"],
             "validation_best": report["validation_best"]["swd_relative_reduction"],
             "validation_last": report["validation_last"]["swd_relative_reduction"],
+            "validation_best_initial_swd": report["validation_best"]["swd_healthy_to_faulty"],
+            "validation_best_transported_swd": report["validation_best"][
+                "swd_transported_to_faulty"
+            ],
+            "train_validation_best_gap": (
+                report["training_best"]["swd_relative_reduction"]
+                - report["validation_best"]["swd_relative_reduction"]
+            ),
             "beats_no_transport": report["validation_best"]["swd_relative_reduction"] > 0,
             "original_test_is_sealed": report["test_is_sealed"],
             "report": str(targets[machine]),
