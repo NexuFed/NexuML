@@ -74,9 +74,12 @@ scenario = audio_health_to_fault_flow(
 )
 \`\`\`
 
-Each file is decoded as mono float32 audio. The runtime verifies the sample
-rate (no implicit resampling), truncates the clip to the configured sample count,
-or right-pads short recordings. No label-based conditioning or guidance occurs.
+Each file is decoded as mono float32 audio. The built-in decoder supports
+uncompressed 8-, 16-, 24- and 32-bit integer PCM WAV without requiring
+TorchCodec or FFmpeg. Convert compressed or floating-point audio to PCM WAV
+beforehand. The runtime verifies the sample rate (no implicit resampling),
+truncates each clip to the configured sample count, or right-pads short
+recordings. No label-based conditioning or guidance occurs.
 
 The composed NexuML pipeline is:
 
