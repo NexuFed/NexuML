@@ -25,6 +25,11 @@ machine type and noise level, streams the archive into a disk cache, checks
 the exact MD5 checksum published by Zenodo, rejects unsafe ZIP paths and
 symlinks, then extracts into a staging directory before final publication.
 Existing extracted data take precedence; subsequent runs do not download.
+The CLI reports the connection, transferred gigabytes, download speed,
+checksum validation and extraction stage to standard error. An interrupted
+download is retained as `.zip.part` and is automatically resumed using HTTP
+Range requests when supported; otherwise it restarts safely from the beginning.
+A final archive is never published before MD5 validation.
 
 To choose an alternate cache/data root, set `NEXUML_MIMII_ROOT` to an empty
 or existing dataset directory. For offline usage, configure
@@ -38,6 +43,10 @@ deleted before retrying.
 connection and substantial free disk space are required. Failed transfers
 are not reported as successful. The standard ZIP cache is stored alongside
 the extraction directory under `<noise>_dB_<machine>.zip`.
+When running older code with a silent download, check the transfer in another
+terminal with `ls -lh data/mimii/6_dB_fan.zip*`. If the `.part` file grows,
+the process is downloading; do not interrupt it merely because Lightning has
+not yet displayed an epoch.
 The decoder reads the original 8-channel PCM WAV directly (without
 TorchCodec/FFmpeg), downmixes channels to mono and only reads the first
 configured window. Nothing is copied or repackaged into a pseudo-dataset.
