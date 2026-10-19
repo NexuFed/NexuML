@@ -291,7 +291,83 @@ configuration and all hyperparameters are fixed, run the final best
 checkpoint on the **test** machine by adding --include-test to the
 evaluator command (and choose a distinct output JSON file).
 
-## 4. Quality checks
+## 4. Diagnose machine compatibility before conditioning
+
+Do **not** infer a shared fault mechanism from the pooled training SWD
+alone. Machine-wise shifts may be non-IID. Before changing the flow
+architecture, evaluate the frozen healthy/faulty marginals for
+`id_00`, `id_02` (train) and `id_04` (validation).
+
+Use the already prepared **FISHER independent standardized** artifact.
+Within-machine OT only permutes faulty observations; all diagnostics
+below are defined on unordered marginal distributions and should be
+identical for the independent and OT artifacts.
+
+```bash
+prepared=.experiments/nex233-ablation/prepared/seed42
+diagnostics=.experiments/nex233-ablation/diagnostics
+python -m nexuml_library.evaluation.maintenance.machine_compatibility \
+  --prepared-file "$prepared/fisher-independent-standardized-seed42.pt" \
+  --output "$diagnostics/fisher-standardized-machine-compatibility.json" \
+  --plots-dir "$diagnostics/fisher-standardized-plots" \
+  --projections 128 --bootstrap 64 --seed 42
+```
+
+The report contains:
+
+1. `healthy_swd` and `faulty_swd`: symmetric inter-machine sliced-W1
+   distance matrices using the same fixed projection directions and
+   descriptive bootstrap intervals. Unequal sample counts are matched
+   through seeded subsampling; no endpoint correspondence is assumed.
+2. `healthy_split_half_swd`: reference distances between randomly
+   partitioned healthy recordings **from the same machine**, providing
+   a scale for interpreting inter-machine distances.
+3. `mean_fault_direction_cosine`: machine-specific mean fault shifts
+   `E[F|m]-E[H|m]`, pairwise cosine similarities and bootstrap intervals.
+4. `healthy_cluster_hypotheses`: descriptive average-linkage merging
+   based **only on healthy SWD**, an exploratory two-group assignment,
+   and the closest training-machine reference for the validation machine.
+5. `mean_shift_transfer_to_validation`: evaluates the training-only
+   mean displacements from each training machine and the pooled training
+   distribution on healthy `id_04` against faulty `id_04`. A separate
+   **validation-derived oracle mean shift** is included as a diagnostic
+   only; it must not enter model training, tuning or deployment.
+
+Four optional images are generated: healthy/faulty SWD heatmaps,
+fault-direction cosine heatmap, and a 2D healthy embedding projection.
+The PCA is fitted **only on healthy training embeddings** and then
+applied to validation healthy recordings; it does not influence grouping.
+
+**Scientific limitations:**
+
+- There are only **two distinct training machines**. A pseudo-type
+  partition derived using validation `id_04` is transductive/exploratory,
+  not a deployable learned classifier. A one-machine pseudo-type cannot
+  support out-of-machine conditional generalization.
+- Healthy proximity does not prove matching fault mechanisms.
+  Compare healthy SWD with the mean fault directions and faulty SWD.
+- Per-machine mean shifts summarize only the first moment; similar
+  directions do not guarantee a common full distributional transport.
+- All descriptive uncertainty reflects within-recording resampling.
+  It does **not** measure variation across unseen machine identities.
+- These diagnostics intentionally use both healthy and faulty
+  **validation** observations to study transfer. That is exploratory
+  analysis, not training of a conditional model; report any subsequent
+  model design based on these diagnostics as validation-informed.
+- The `id_06` test machine is not indexed or evaluated. Neither
+  pseudo-type assignment nor cluster selection uses test observations.
+- Absolute SWD cannot be compared across raw/standardized feature
+  spaces, and 2D PCA proximity is not reliable evidence of clustering
+  in all 1536 dimensions.
+
+If healthy clusters *and* corresponding fault-shift compatibility
+appear consistent, the next research stage is to study
+`q(C|healthy reference recordings)` and conditional vector fields.
+That stage requires **additional training machine identities** to
+evaluate transfer within pseudo-types. Otherwise, prioritize better
+domain-invariant representations or a more controlled fault dataset.
+
+## 5. Quality checks
 
 ```bash
 ruff check .
@@ -299,6 +375,7 @@ ruff format --check .
 ty check
 pytest tests/library/test_ablation_distributional_validation.py -v
 pytest tests/library/test_ablation_coupling_comparison.py -v
+pytest tests/library/test_machine_compatibility.py -v
 pytest tests/library/test_ablation_checkpoint.py -v
 pytest tests/library/test_mimii_acoustic_ablation.py -v
 pytest tests/library/test_fisher_encoder.py -v
