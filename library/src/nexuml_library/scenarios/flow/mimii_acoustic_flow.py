@@ -131,9 +131,12 @@ def mimii_acoustic_flow(
 
 
 def scenario() -> ScenarioSpec:
-    """Expose a trusted scenario-file entrypoint for the NexuML CLI.
+    """Expose a reproducibly seeded trusted NexuML scenario-file entrypoint.
 
     Returns:
         Default MIMII acoustic experiment configured by NEXUML_MIMII_ROOT.
     """
+    import lightning as L
+
+    L.seed_everything(42, workers=True)
     return mimii_acoustic_flow()
