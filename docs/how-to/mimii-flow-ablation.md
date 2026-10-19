@@ -77,8 +77,11 @@ OT is computed **after the selected scaling**, with squared Euclidean
 cost and exact Hungarian assignment. It matches recordings only **within
 each training machine identity**. Val/test pairings are never altered.
 Feature-space OT reduces transport cost but is not a physical
-wear-progression pairing. Train-only statistics, cost reduction and
-recording correspondence are written to each artifact.
+wear-progression pairing. Each artifact records train-only normalization
+parameters, coupling cost, and the target-velocity cancellation/local
+alignment diagnostics from the previous investigation. It also retains
+the exact paired recording correspondence. Those diagnostics are directly
+available in the evaluation report's prepared_settings field.
 
 Prepared artifacts are locally trusted PyTorch files (weights-only
 loading) and are deliberately not overwritten. Separate seeds should
