@@ -154,7 +154,24 @@ For sampling after training, pass a healthy endpoint **log-mel tensor**
 to the trained flow model's `sample()`; its result is a transported
 feature tensor, not a raw WAV.
 
-## 4. Validation and next stage
+## 4. Evaluate the validation-best checkpoint
+
+After training, use the dedicated [MIMII transport evaluation guide](mimii-flow-evaluation.md)
+to compare the validation-best and final checkpoint, compute fixed-time
+FM losses on held-out machines, and measure sliced Wasserstein proximity
+to real faulty spectra along a healthy-initialized flow trajectory:
+
+```bash
+python -m nexuml_library.evaluation.maintenance.flow_transport \
+    --checkpoint-dir .experiments/checkpoints/mimii-acoustic-flow \
+    --output-dir .experiments/nex233-mimii-evaluation
+```
+
+This workflow evaluates the **best validation checkpoint** on the held-out
+test machines; the plain `nexuml train` run reports its final in-memory state
+instead. Neither evaluation recovers physical degradation time or RUL.
+
+## 5. Validation and next stage
 
 The library includes small **fixture-only** integration tests for the
 original MIMII layout. They check ID isolation, no repeated recording
