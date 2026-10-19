@@ -154,7 +154,6 @@ def save_single_machine_artifacts(
 
     Raises:
         FileExistsError: If any target already exists.
-        ValueError: If prepared single-machine data violate their contract.
     """
     artifacts = build_single_machine_artifacts(
         source_file,
