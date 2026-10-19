@@ -19,6 +19,9 @@ from nexuml_library.data.maintenance.prepared_endpoints import (
     read_prepared_artifact,
 )
 from nexuml_library.evaluation.maintenance.ablation_checkpoint import SaveLatestEpoch
+from nexuml_library.evaluation.maintenance.ablation_validation import (
+    DistributionalTransportValidation,
+)
 from nexuml_library.scenarios.flow.audio_health_to_fault import audio_health_to_fault_flow
 from nexuml_library.scenarios.training.defaults import default_logging
 
@@ -48,7 +51,7 @@ def mimii_acoustic_ablation(
         lr: Identical optimizer learning rate for controlled comparisons.
         batch_size: Mini-batch size.
         max_epochs: Maximum training epochs.
-        patience: Early stopping patience on validation loss.
+        patience: Early stopping patience on validation transport SWD.
         seed: Training random seed; must match recorded pairing seed.
         checkpoint_root: Parent directory for uniquely named run artifacts.
 
@@ -105,16 +108,28 @@ def mimii_acoustic_ablation(
             "data": data,
             "callbacks": [
                 callback(
+                    DistributionalTransportValidation,
+                    prepared_file=str(Path(prepared_file).resolve()),
+                    batch_size=batch_size,
+                    projections=128,
+                    seed=seed,
+                ),
+                callback(
                     ModelCheckpoint,
                     dirpath=str(checkpoint_dir),
-                    monitor="val/loss",
+                    monitor="val/transport_swd",
                     mode="min",
                     save_top_k=1,
                     save_last=False,
                     filename="{epoch:02d}-{step:06d}",
                 ),
                 callback(SaveLatestEpoch, dirpath=str(checkpoint_dir)),
-                callback(EarlyStopping, monitor="val/loss", mode="min", patience=patience),
+                callback(
+                    EarlyStopping,
+                    monitor="val/transport_swd",
+                    mode="min",
+                    patience=patience,
+                ),
             ],
             "logging": default_logging(
                 experiment_name="NEX-233 feature-space FM ablation",
