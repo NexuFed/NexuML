@@ -545,7 +545,7 @@ class LightningFeatureExtractor(torch.nn.Module):
         self.x_keys = list(x_keys or [])
         self.y_keys = list(y_keys or [])
 
-    def forward(  # ty: ignore[invalid-mutable-override]
+    def forward(
         self,
         x: TensorDict,
         y: TensorDict | None = None,
