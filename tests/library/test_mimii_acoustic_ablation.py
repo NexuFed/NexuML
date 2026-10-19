@@ -137,8 +137,13 @@ def test_scenario_compiles_without_fisher_download_and_round_trips(tmp_path: Pat
     file = tmp_path / "fisher-ot-standardized-seed7.pt"
     torch.save(payload, file)
     scenario = mimii_acoustic_ablation(
-        file, hidden_dims=[16, 16], batch_size=2, max_epochs=1,
-        patience=2, seed=7, checkpoint_root=tmp_path / "checkpoints",
+        file,
+        hidden_dims=[16, 16],
+        batch_size=2,
+        max_epochs=1,
+        patience=2,
+        seed=7,
+        checkpoint_root=tmp_path / "checkpoints",
     )
     assert "AudioFeatures" not in scenario.pipeline.stages
     assert scenario.pipeline.stages["Flow"][0].component.hidden_dims == [16, 16]
