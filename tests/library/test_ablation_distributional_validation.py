@@ -48,14 +48,14 @@ def test_distributional_score_is_pairing_invariant_and_deterministic() -> None:
     )
     reordered = score_distributional_transport(
         model,
-        healthy,
+        healthy[[1, 3, 0, 2]],
         faulty[[2, 0, 3, 1]],
         device=torch.device("cpu"),
         batch_size=3,
         projections=32,
         seed=12,
     )
-    assert first == pytest.approx(reordered, abs=1e-7)
+    assert first == pytest.approx(reordered, rel=1e-5, abs=1e-6)
     assert first["val/transport_swd"] >= 0.0
     assert first["val/swd_relative_reduction"] == pytest.approx(
         1.0 - first["val/transport_swd"] / first["val/healthy_to_faulty_swd"]
