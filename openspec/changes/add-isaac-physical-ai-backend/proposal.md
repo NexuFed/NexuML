@@ -1,5 +1,14 @@
 # Proposal
 
+## Linear issue and PR linkage
+
+- **Implementation issue:** [NEX-234](https://linear.app/nexufed/issue/NEX-234) — SO-101 local imitation learning and NexuML Python SDK handoff (Gate 0 / F01).
+- **PR branch (recommended from Linear):** `feature/nex-234-so-101-local-imitation-learning-and-nexuml-python-sdk`. PR title example: `NEX-234: SO-101 local behavior cloning and Python SDK handoff`.
+- **PR body:** include `Closes NEX-234` **only** on the PR that actually satisfies verified tasks 0.1–0.8. Planning-only PRs should say `Related to NEX-234`; do not close the issue.
+- Keep the PR small: do not merge the entire unfinished Physical AI umbrella to deliver the handoff. Later FL implementation is tracked by [NEX-235](https://linear.app/nexufed/issue/NEX-235).
+- **Status automation:** linking alone is not a guarantee of transitions; the Linear↔GitHub integration and team's workflow automations must be configured to move the issue on PR creation/review/merge.
+
+
 ## Why
 
 NexuML has a verified, deliberately narrow Isaac/PPO integration, but not a complete Physical AI development backend. Make the Isaac ecosystem the primary robotics simulation platform while retaining NexuML's compiler, session, TorchRL learning, data, evaluation and portable-inference architecture across reinforcement learning, imitation, VLA, humanoids, world models and ROS deployment.
