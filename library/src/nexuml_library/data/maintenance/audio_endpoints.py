@@ -56,7 +56,6 @@ def _pair_metadata(root: Path, seed: int, include_test: bool) -> pd.DataFrame:
         Metadata with file and grouping provenance for each endpoint.
 
     Raises:
-        FileNotFoundError: If required train/validation endpoint files are missing.
         ValueError: If a recording group appears in multiple splits.
     """
     splits = _SPLITS if include_test else _SPLITS[:2]
@@ -168,8 +167,7 @@ class _AudioEndpointPairsRuntime(NexuDataset):
         signal, sample_rate = torchaudio.load(str(file))
         if sample_rate != self.sample_rate:
             raise ValueError(
-                f"Sample-rate mismatch in {file}: {sample_rate} Hz, "
-                f"expected {self.sample_rate} Hz."
+                f"Sample-rate mismatch in {file}: {sample_rate} Hz, expected {self.sample_rate} Hz."
             )
         mono = signal.to(dtype=torch.float32).mean(dim=0)
         length = self.clip_num_samples
