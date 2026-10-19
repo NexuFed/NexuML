@@ -19,13 +19,24 @@ _CONDITIONS = ("healthy", "faulty")
 
 
 def _group_id(file: Path, directory: Path) -> str:
-    """Resolve a recording's grouping identity from its relative directory."""
+    """Resolve a recording's grouping identity from its relative directory.
+
+    Returns:
+        Group identity derived from the machine subdirectory or filename.
+    """
     relative = file.relative_to(directory)
     return relative.parts[0] if len(relative.parts) > 1 else file.stem
 
 
 def _scan_split(root: Path, split: str) -> dict[str, list[Path]]:
-    """Find WAV recordings for both endpoint classes in an explicit split."""
+    """Find WAV recordings for both endpoint classes in an explicit split.
+
+    Returns:
+        Healthy and faulty audio file lists for the requested split.
+
+    Raises:
+        FileNotFoundError: If either endpoint condition has no recordings.
+    """
     sources: dict[str, list[Path]] = {}
     for condition in _CONDITIONS:
         folder = root / split / condition
