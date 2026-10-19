@@ -327,6 +327,25 @@ def evaluate_split(
     return score, (all_healthy, all_faulty, all_trajectory)
 
 
+def _checkpoint_metadata(path: Path) -> dict[str, int | float | None]:
+    """Read saved epoch and validation-best score for provenance.
+
+    Returns:
+        JSON-serializable checkpoint metadata without model parameters.
+    """
+    state = torch.load(path, map_location="cpu", weights_only=False)
+    best_score: float | None = None
+    for callback in state.get("callbacks", {}).values():
+        if isinstance(callback, dict) and callback.get("best_model_score") is not None:
+            best_score = float(callback["best_model_score"])
+            break
+    return {
+        "epoch_zero_indexed": int(state.get("epoch", -1)),
+        "global_step": int(state.get("global_step", -1)),
+        "callback_best_validation_loss": best_score,
+    }
+
+
 def read_tensorboard_losses(log_dir: Path) -> dict[str, list[dict[str, float]]]:
     """Read training and validation scalar histories from one TensorBoard run.
 
@@ -459,6 +478,10 @@ def evaluate_checkpoints(
     report: dict[str, Any] = {
         "best_checkpoint": str(best),
         "last_checkpoint": str(last),
+        "checkpoint_metadata": {
+            "best": _checkpoint_metadata(best),
+            "last": _checkpoint_metadata(last),
+        },
         "validation_best": best_val,
         "validation_last": last_val,
         "held_out_test_best": best_test,
