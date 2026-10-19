@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import wave
 from pathlib import Path
+from typing import cast
 
 import numpy as np
 import pytest
@@ -20,6 +21,7 @@ from nexuml_library.evaluation.maintenance.flow_transport import (
     transport_trajectory,
 )
 from nexuml_library.layers.generative.flow.euler import EulerIntegrator
+from nexuml_library.layers.model.flow import _FlowRuntime
 from nexuml_library.scenarios.flow.mimii_acoustic_flow import mimii_acoustic_flow
 
 
@@ -55,7 +57,7 @@ def test_sliced_wasserstein_identical_and_translated_distributions() -> None:
 def test_transport_records_healthy_initial_and_exact_integrated_terminal() -> None:
     healthy = torch.tensor([[0.0, 1.0], [1.0, 2.0]])
     flow = _TranslationFlow(2.0)
-    trajectory = transport_trajectory(flow, healthy)  # type: ignore[arg-type]
+    trajectory = transport_trajectory(cast(_FlowRuntime, flow), healthy)
     assert trajectory.shape == (2, 5, 2)
     assert torch.equal(trajectory[:, 0], healthy)
     assert torch.allclose(trajectory[:, -1], healthy + 2.0)
@@ -66,7 +68,7 @@ def test_transport_records_healthy_initial_and_exact_integrated_terminal() -> No
 def test_distribution_transport_diagnostics_reward_correct_flow() -> None:
     healthy = torch.arange(8, dtype=torch.float32).reshape(4, 2)
     flow = _TranslationFlow(2.0)
-    trajectory = transport_trajectory(flow, healthy)  # type: ignore[arg-type]
+    trajectory = transport_trajectory(cast(_FlowRuntime, flow), healthy)
     score = feature_metrics(healthy, healthy + 2.0, trajectory, projections=64)
     assert score["num_samples"] == 4
     assert score["swd_healthy_to_faulty"] > 0.0
@@ -81,7 +83,7 @@ def test_distribution_metrics_report_when_transport_makes_things_worse() -> None
     healthy = torch.zeros(5, 2)
     faulty = torch.ones(5, 2)
     flow = _TranslationFlow(-2.0)
-    trajectory = transport_trajectory(flow, healthy)  # type: ignore[arg-type]
+    trajectory = transport_trajectory(cast(_FlowRuntime, flow), healthy)
     score = feature_metrics(healthy, faulty, trajectory)
     assert score["swd_relative_reduction"] < 0.0
 
