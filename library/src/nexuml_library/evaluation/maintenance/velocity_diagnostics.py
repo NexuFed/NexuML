@@ -218,6 +218,9 @@ def _collect_features(
 
     Returns:
         Detached CPU healthy and faulty features, plus aligned machine IDs.
+
+    Raises:
+        ValueError: If the split is unsupported, metadata is missing, or it is empty.
     """
     if split not in {"train", "val"}:
         raise ValueError("Diagnostics use training and validation only")
@@ -260,6 +263,9 @@ def _predictor_diagnostics(
 
     Returns:
         Per-time squared-error and predicted-velocity scale/alignment metrics.
+
+    Raises:
+        ValueError: If the learned velocity is nonfinite or has an invalid shape.
     """
     source = healthy.to(device)
     target_velocity = (faulty - healthy).to(device)
@@ -269,7 +275,6 @@ def _predictor_diagnostics(
     scores: list[dict[str, float]] = []
     for t in _FIXED_TIMES:
         time = torch.full((len(source), 1), t, device=device, dtype=source.dtype)
-        shape = (len(source),) + (1,) * (source.ndim - 1)
         state = source + t * target_velocity
         prediction = flow.velocity(state, time)
         if prediction.shape != target_velocity.shape or not torch.isfinite(prediction).all():
