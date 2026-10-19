@@ -42,7 +42,11 @@ def _filename_order(file: Path) -> tuple[int, str]:
 
 
 def _safe_extract(archive: Path, root: Path) -> None:
-    """Extract ZIP files without allowing traversal or links outside the root. Raises ValueError."""
+    """Extract ZIP files without allowing traversal or links outside the root.
+
+    Raises:
+        ValueError: If an entry escapes the extraction root or is a symbolic link.
+    """
     destination = root.resolve()
     with zipfile.ZipFile(archive) as zipped:
         for entry in zipped.infolist():
@@ -161,7 +165,11 @@ def _run_rows(
 def _paderborn_rows(root: Path) -> list[dict]:
     rows = []
     for file in sorted(root.rglob("*.mat")):
-        matched = re.search(r"(K[A-Z]?\d{3})", file.stem, re.IGNORECASE)
+        matched = re.search(
+            r"(?<![A-Z0-9])(K(?:\d{3}|[AI]\d{2}))(?![A-Z0-9])",
+            file.stem,
+            re.IGNORECASE,
+        )
         if matched is None:
             continue
         bearing = matched.group(1).upper()

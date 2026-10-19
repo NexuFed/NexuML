@@ -52,7 +52,7 @@ def _assert_group_isolation(dataset) -> None:
 
 def test_paderborn_endpoints_have_no_fake_rul(tmp_path: Path) -> None:
     scipy_io = pytest.importorskip("scipy.io")
-    for bearing in ("K001", "KA01"):
+    for bearing in ("K001", "KA01", "KI01", "KA011"):
         file = tmp_path / bearing / f"N15_M07_F10_{bearing}_1.mat"
         file.parent.mkdir(parents=True)
         scipy_io.savemat(
@@ -61,8 +61,9 @@ def test_paderborn_endpoints_have_no_fake_rul(tmp_path: Path) -> None:
     definition = PaderbornBearingDataset(root=tmp_path, window_size=16)
     runtime = definition.build()
 
-    assert len(runtime) == 2
+    assert len(runtime) == 3
     assert runtime.meta is not None
+    assert set(runtime.meta["bearing_id"]) == {"K001", "KA01", "KI01"}
     assert set(runtime.meta["health"]) == {0, 1}
     assert not runtime.meta["rul_valid"].any()
     assert (runtime.meta["split"] == "train").all()
