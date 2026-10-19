@@ -4,7 +4,7 @@ from tensordict import TensorDict
 from torch import nn
 
 from nexuml.core.pipeline import CompiledPipeline
-from nexuml.core.types import InteractionContract
+from nexuml.core.types import DataSpec, InteractionContract, TrainingSpec
 
 
 class CompiledPolicy(nn.Module):
@@ -24,6 +24,43 @@ class CompiledPolicy(nn.Module):
         self.pipeline = pipeline
         self.action_adapter = action_adapter
         self.contract = contract
+
+    @classmethod
+    def from_pipeline(
+        cls, pipeline: CompiledPipeline, contract: InteractionContract | None = None
+    ) -> "CompiledPolicy":
+        """Attach declared action semantics without constructing an environment.
+
+        Returns:
+            Complete policy sharing the supplied pipeline and its trained weights.
+
+        Raises:
+            ValueError: If declarations are absent or offline inputs disagree.
+        """
+        scenario = pipeline.resolved_config
+        if scenario.interaction is None or scenario.policy is None:
+            raise ValueError("Policy assembly requires scenario.interaction and scenario.policy")
+        if contract is None:
+            contract = scenario.interaction.environment.describe()
+        if isinstance(scenario.training, TrainingSpec):
+            cls._validate_dataset_contract(scenario.data, contract)
+        return cls(pipeline, scenario.policy.action_adapter.build(contract), contract)
+
+    @staticmethod
+    def _validate_dataset_contract(data: DataSpec, contract: InteractionContract) -> None:
+        from nexuml.core.compiler import compile_context_from_data
+
+        inputs = compile_context_from_data(data)
+        for key, field in contract.observations.items():
+            if inputs.input_sizes.get(key) != field.shape:
+                raise ValueError(
+                    f"Dataset input {key!r} must match interaction observation shape {field.shape}"
+                )
+            declared = data.input_contracts.get(key)
+            if declared is not None and declared != field:
+                raise ValueError(
+                    f"Dataset input contract {key!r} does not match the interaction observation"
+                )
 
     def forward(self, observation: TensorDict, *, deterministic: bool = True) -> TensorDict:
         output = self.forward_parameters(observation)

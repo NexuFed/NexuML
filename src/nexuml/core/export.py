@@ -88,6 +88,8 @@ _RUNTIME_EXTERN_PATTERNS = [
     "matplotlib.**",
     "umap.**",
     "transformers.**",
+    "datasets.**",
+    "lerobot.**",
     "nvidia.**",
     "onnxscript.**",
     "optuna.**",
@@ -145,6 +147,7 @@ class TrainingReload:
     scenario: ScenarioSpec
     metadata: dict[str, Any]
     report: LoadReport
+    policy: CompiledPolicy | None = None
 
 
 def _config_hash(config: ResolvedConfig) -> str:
@@ -913,12 +916,16 @@ def load_package(
     if metadata.get("artifact_kind") == "policy":
         assert scenario.policy is not None
         contract = InteractionContract.model_validate(metadata["interaction_contract"])
-        pipeline = compile_spec(
-            scenario.pipeline,
-            context=compile_context_from_interaction(contract),
-            resolved_config=config,
+        pipeline = (
+            compile_spec(
+                scenario.pipeline,
+                context=compile_context_from_interaction(contract),
+                resolved_config=config,
+            )
+            if isinstance(scenario.training, ReinforcementLearningSpec)
+            else compile_pipeline(scenario)
         )
-        policy = CompiledPolicy(pipeline, scenario.policy.action_adapter.build(contract), contract)
+        policy = CompiledPolicy.from_pipeline(pipeline, contract)
         adapter_state = Path(path) / "action_adapter_state.pt"
         if Path(path).is_dir() and adapter_state.exists():
             policy.action_adapter.load_state_dict(
@@ -980,7 +987,9 @@ def load_package_for_training(
     if scenario is None:
         raise ValueError("A scenario must be provided when the artifact has no packaged config.")
 
-    if isinstance(scenario.training, ReinforcementLearningSpec):
+    if isinstance(scenario.training, ReinforcementLearningSpec) or (
+        scenario.interaction is not None and scenario.policy is not None
+    ):
         from nexuml.training.lightning import create_runtime_artifacts
 
         runtime = create_runtime_artifacts(scenario, apply_selective_checkpoint=False)
@@ -989,8 +998,14 @@ def load_package_for_training(
             loaded, _, _ = load_package(path)
             assert isinstance(loaded, CompiledPolicy) and runtime.policy is not None
             runtime.policy.action_adapter.load_state_dict(loaded.action_adapter.state_dict())
+        assert runtime.lightning_module.scenario is not None
         return TrainingReload(
-            runtime.pipeline, runtime.lightning_module, scenario, metadata, report
+            runtime.pipeline,
+            runtime.lightning_module,
+            runtime.lightning_module.scenario,
+            metadata,
+            report,
+            runtime.policy,
         )
 
     pipeline = compile_pipeline(scenario)

@@ -770,6 +770,14 @@ class NexuSession:
 
         self._trainer = L.Trainer(
             max_epochs=max_epochs,
+            **(
+                {
+                    "max_steps": getattr(tr, "max_steps", None) or -1,
+                    "deterministic": getattr(tr, "deterministic", False),
+                }
+                if not reinforcement
+                else {}
+            ),
             accelerator=resolved_accelerator,
             devices=resolved_devices,
             strategy=resolved_strategy,
@@ -919,6 +927,7 @@ class NexuSession:
 
         return TrainResult(
             pipeline=self.pipeline,
+            policy=self.runtime.policy,
             lightning_module=self.lightning_module,
             trainer=self.trainer,
             validation_results=validation_results,
@@ -1167,6 +1176,9 @@ def create_runtime_artifacts(
     Returns:
         ``RuntimeArtifacts`` containing the compiled pipeline, Lightning module,
         data module, and optional load report.
+
+    Raises:
+        ValueError: If an offline action adapter has state without a checkpoint owner.
     """
     if isinstance(scenario.training, ReinforcementLearningSpec):
         if scenario.training.seed is not None:
@@ -1181,7 +1193,7 @@ def create_runtime_artifacts(
             context=compile_context_from_interaction(contract),
             resolved_config=ResolvedConfig.from_scenario(scenario),
         )
-        policy = CompiledPolicy(pipeline, scenario.policy.action_adapter.build(contract), contract)
+        policy = CompiledPolicy.from_pipeline(pipeline, contract)
         load_report = None
         if apply_selective_checkpoint and scenario.checkpoint and scenario.checkpoint.source:
             from nexuml.core.export import load_weights
@@ -1191,9 +1203,22 @@ def create_runtime_artifacts(
             ).to_dict()
         module = NexuRLLightningModule(scenario, policy=policy)
         return RuntimeArtifacts(pipeline, module, None, load_report, policy)
+    seed = getattr(scenario.training, "seed", None)
+    if seed is not None:
+        L.seed_everything(seed, workers=True)
     data_module = create_data_module_from_spec(scenario)
     hydrated_scenario = _hydrate_scenario_from_dataset(scenario, data_module)
     pipeline = compile(hydrated_scenario)
+    policy = None
+    if hydrated_scenario.interaction is not None and hydrated_scenario.policy is not None:
+        policy = CompiledPolicy.from_pipeline(pipeline)
+        # Offline checkpoints own only the pipeline, not action-adapter state.
+        adapter = policy.action_adapter
+        if list(adapter.parameters()) or list(adapter.buffers()) or adapter.state_dict():
+            raise ValueError(
+                "Offline policy training requires a stateless action adapter; "
+                "adapter parameters/buffers have no checkpoint owner"
+            )
 
     load_report = None
     if (
@@ -1236,6 +1261,7 @@ def create_runtime_artifacts(
         lightning_module=lightning_module,
         data_module=data_module,
         load_report=load_report,
+        policy=policy,
     )
 
 
@@ -1320,6 +1346,10 @@ def _hydrate_scenario_from_dataset(
     if scenario.data.input_contracts:
         x_sample, _ = dataset[0]
         CompiledPolicy._validate_fields(x_sample, scenario.data.input_contracts, "Dataset input")
+    if scenario.interaction is not None and scenario.policy is not None:
+        x_sample, _ = dataset[0]
+        contract = scenario.interaction.environment.describe()
+        CompiledPolicy._validate_fields(x_sample, contract.observations, "Dataset input")
 
     feature_shapes = cast(dict[str, tuple[int, ...]], getattr(dataset, "feature_shapes", {}))
     input_shapes = {
@@ -1349,11 +1379,14 @@ def _hydrate_scenario_from_dataset(
         if num_classes is not None:
             update["num_classes"] = num_classes
 
-    return scenario.model_copy(
+    hydrated_scenario = scenario.model_copy(
         update={
             "data": scenario.data.model_copy(update=update),
         }
     )
+    if scenario.interaction is not None and scenario.policy is not None:
+        CompiledPolicy._validate_dataset_contract(hydrated_scenario.data, contract)
+    return hydrated_scenario
 
 
 def train(
@@ -1424,17 +1457,22 @@ def create_runtime_artifacts_from_trainer_checkpoint(
             checkpoint_path, scenario=restored_scenario
         )
         return RuntimeArtifacts(module.pipeline, module, None, None, module.policy)
-    data_module = create_data_module_from_spec(restored_scenario)
-    lightning_module = NexuLightningModule.load_from_checkpoint(
+    if restored_scenario.interaction is None or restored_scenario.policy is None:
+        seed = getattr(restored_scenario.training, "seed", None)
+        if seed is not None:
+            L.seed_everything(seed, workers=True)
+        data_module = create_data_module_from_spec(restored_scenario)
+        module = NexuLightningModule.load_from_checkpoint(
+            checkpoint_path, scenario=restored_scenario
+        )
+        return RuntimeArtifacts(module.pipeline, module, data_module)
+    runtime = create_runtime_artifacts(restored_scenario, apply_selective_checkpoint=False)
+    runtime.lightning_module = NexuLightningModule.load_from_checkpoint(
         checkpoint_path,
-        scenario=restored_scenario,
+        pipeline=runtime.pipeline,
+        scenario=runtime.lightning_module.scenario,
     )
-    return RuntimeArtifacts(
-        pipeline=lightning_module.pipeline,
-        lightning_module=lightning_module,
-        data_module=data_module,
-        load_report=None,
-    )
+    return runtime
 
 
 def _resolve_global(path: str) -> Any:

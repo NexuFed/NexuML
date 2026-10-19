@@ -353,6 +353,9 @@ class TrainingSpec(SpecModel):
     metric_keys: list[str] = Field(default_factory=list)
     progress_bar_keys: list[str] | Literal["all", "none"] = Field(default_factory=lambda: ["loss"])
     max_epochs: int = 10
+    max_steps: int | None = Field(default=None, gt=0)
+    seed: int | None = None
+    deterministic: bool = False
     batch_size: BatchSizeSpec = 64
     lr: float = 1e-3
     accelerator: str = "auto"
