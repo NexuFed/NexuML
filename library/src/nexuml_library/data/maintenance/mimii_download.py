@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import hashlib
+import sys
 import tempfile
+import time
 import zipfile
 from pathlib import Path
 from urllib.error import HTTPError, URLError
@@ -41,18 +43,26 @@ def _verify_md5(archive: Path, expected: str) -> bool:
     return digest.hexdigest() == expected
 
 
-def _download_archive(url: str, archive: Path, expected: str) -> None:
-    """Download one large official archive with an atomic cache update.
+def _status(message: str) -> None:
+    """Report major download and extraction phases immediately to the terminal."""
+    print(f"[MIMII] {message}", file=sys.stderr, flush=True)
 
-    Returns:
-        None after checking the downloaded archive's Zenodo checksum.
+
+def _download_archive(url: str, archive: Path, expected: str) -> None:
+    """Download an official archive with progress, resume and MD5 verification.
+
+    Incomplete transfers remain as .part files. When the remote server
+    supports HTTP Range requests, later runs resume at the existing offset.
+    A completed archive is published only after checksum verification.
 
     Raises:
-        RuntimeError: If the download fails or its checksum is invalid.
+        RuntimeError: If download, resumption or checksum verification fails.
     """
     archive.parent.mkdir(parents=True, exist_ok=True)
     if archive.is_file():
+        _status(f"Verifying cached archive: {archive}")
         if _verify_md5(archive, expected):
+            _status(f"Using verified cached archive: {archive}")
             return
         raise RuntimeError(
             f"MIMII cached archive has an invalid MD5: {archive}. "
@@ -60,27 +70,86 @@ def _download_archive(url: str, archive: Path, expected: str) -> None:
         )
 
     partial = archive.with_name(f"{archive.name}.part")
-    if partial.exists():
-        partial.unlink()
+    offset = partial.stat().st_size if partial.exists() else 0
     digest = hashlib.md5(usedforsecurity=False)
-    request = Request(url, headers={"User-Agent": "NexuML-MIMII/1.0"})
-    try:
-        with urlopen(request, timeout=120) as response, partial.open("wb") as target:
-            while chunk := response.read(8 * 1024 * 1024):
+    if offset:
+        _status(f"Found {offset / 1e9:.2f} GB of {archive.name}; checking partial archive")
+        with partial.open("rb") as stream:
+            for chunk in iter(lambda: stream.read(8 * 1024 * 1024), b""):
                 digest.update(chunk)
-                target.write(chunk)
+
+    headers = {"User-Agent": "NexuML-MIMII/1.0"}
+    if offset:
+        headers["Range"] = f"bytes={offset}-"
+    request = Request(url, headers=headers)
+    _status(f"Connecting to Zenodo for {archive.name} (this may take a while)")
+    try:
+        with urlopen(request, timeout=120) as response:
+            response_status = getattr(response, "status", 200)
+            if offset and response_status != 206:
+                _status("Server did not accept resume; restarting transfer from byte zero")
+                offset = 0
+                digest = hashlib.md5(usedforsecurity=False)
+            elif offset:
+                response_headers = getattr(response, "headers", None)
+                content_range = (
+                    response_headers.get("Content-Range")
+                    if response_headers is not None
+                    else None
+                )
+                if content_range and not content_range.startswith(f"bytes {offset}-"):
+                    raise RuntimeError(
+                        f"Unexpected HTTP Content-Range for {archive.name}: {content_range}"
+                    )
+
+            response_headers = getattr(response, "headers", None)
+            length_header = (
+                response_headers.get("Content-Length")
+                if response_headers is not None
+                else None
+            )
+            remaining = int(length_header) if length_header else None
+            total = offset + remaining if remaining is not None else None
+            _status(
+                f"Downloading {archive.name}: {offset / 1e9:.2f} GB already present"
+                + (f" / {total / 1e9:.2f} GB total" if total is not None else "")
+            )
+            transferred = offset
+            started = time.monotonic()
+            last_report = started
+            with partial.open("ab" if offset else "wb") as target:
+                while chunk := response.read(8 * 1024 * 1024):
+                    digest.update(chunk)
+                    target.write(chunk)
+                    transferred += len(chunk)
+                    now = time.monotonic()
+                    if now - last_report >= 5:
+                        speed = (transferred - offset) / max(now - started, 1e-6) / 1e6
+                        percent = (
+                            f" ({100 * transferred / total:.1f}%)"
+                            if total
+                            else ""
+                        )
+                        _status(
+                            f"{archive.name}: {transferred / 1e9:.2f} GB"
+                            f"{percent} | {speed:.1f} MB/s"
+                        )
+                        last_report = now
+
+        _status(f"Transfer finished; verifying checksum for {archive.name}")
         if digest.hexdigest() != expected:
+            partial.unlink(missing_ok=True)
             raise RuntimeError(
                 f"MIMII archive checksum mismatch for {archive.name}: "
                 f"expected {expected}, received {digest.hexdigest()}"
             )
         partial.replace(archive)
+        _status(f"Verified archive saved to {archive}")
     except (OSError, HTTPError, URLError, RuntimeError) as exc:
-        partial.unlink(missing_ok=True)
         raise RuntimeError(
             f"Cannot download verified MIMII archive from {url}: {exc}. "
-            "You can download the same ZIP from Zenodo and place it at "
-            f"{archive}, or set download=False and use extracted recordings."
+            f"Any partial download remains at {partial} for a later resume. "
+            "You can alternatively download the ZIP from Zenodo manually."
         ) from exc
 
 
@@ -136,6 +205,7 @@ def ensure_mimii(
     _download_archive(url, archive, checksum)
 
     root.parent.mkdir(parents=True, exist_ok=True)
+    _status(f"Extracting verified {archive.name} into {root}; this may take several minutes")
     prefix = f".{root.name}-extract-"
     with tempfile.TemporaryDirectory(prefix=prefix, dir=root.parent) as temporary:
         staging = Path(temporary) / "dataset"
@@ -152,3 +222,4 @@ def ensure_mimii(
         if root.is_dir():
             root.rmdir()
         staging.rename(root)
+    _status(f"Ready: {root}")
