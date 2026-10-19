@@ -47,11 +47,23 @@ downloads the model into the Hugging Face cache. Subsequent runs can use
 `local_files_only=True` when all model files
 are already present.
 
-This implementation does not patch Transformers internals. If the pinned
-remote-code model is incompatible with the installed Transformers major
-version, use a compatible Transformers release and pin it in the
-reproducible execution environment rather than globally monkey-patching
-other models.
+## Transformers 5.x compatibility
+
+The upstream FISHER custom model does not define
+`all_tied_weights_keys`, which the Transformers 5.x checkpoint loader
+accesses when finalizing pretrained weights. Our wrapper temporarily
+intercepts `PreTrainedModel._finalize_model_loading` while loading FISHER
+and supplies an empty tied-weight mapping **only** to instances of
+`FISHERModel` lacking that attribute. The original finalizer is restored
+in a `finally` block, including on checkpoint-loading errors. No
+permanent patch is applied to Transformers or unrelated models.
+
+This is a scoped compatibility workaround for the published checkpoint,
+not a general solution for arbitrary remote-code models. It assumes FISHER
+does not tie parameters. For reproducible production runs, pin and review
+both the Hugging Face model revision and the Transformers version.
+Avoid concurrently loading unrelated Hugging Face models while the
+FISHER constructor runs because the temporary hook is process-wide.
 
 ## NexuML TensorDict routing
 
