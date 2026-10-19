@@ -200,9 +200,15 @@ class TensorFieldContract(SpecModel):
     rate_hz: float | None = Field(default=None, gt=0)
     description: str | None = None
     physical: PhysicalTensorContract | None = None
+    axes: tuple[Annotated[str, Field(min_length=1, pattern=r"\S")], ...] | None = None
 
     @model_validator(mode="after")
     def validate_bounds(self) -> Self:
+        if self.axes is not None:
+            if len(self.axes) != len(self.shape) or len(set(self.axes)) != len(self.axes):
+                raise ValueError("Named feature axes must be unique and match the tensor rank")
+            if {"batch", "environment"}.intersection(self.axes):
+                raise ValueError("Batch/environment axes belong outside the tensor feature shape")
         size = prod(self.shape)
         for name in ("low", "high"):
             bound = getattr(self, name)
@@ -572,6 +578,7 @@ class DataSpec(SpecModel):
     datasets: list[DatasetSpec] = Field(default_factory=list)
     loader: LoaderSpec = Field(default_factory=LoaderSpec)
     input_shapes: dict[str, list[int]] = Field(default_factory=dict)
+    input_contracts: dict[str, TensorFieldContract] = Field(default_factory=dict)
     num_classes: int | None = None
     merge_labels: dict[str, dict] | None = None
     feature_key: str = "features"
@@ -583,6 +590,11 @@ class DataSpec(SpecModel):
         total = self.train_split + self.val_split + self.test_split
         if abs(total - 1.0) > 1e-6:
             raise ValueError("train_split + val_split + test_split must sum to 1.0")
+        for key, contract in self.input_contracts.items():
+            if not key.strip():
+                raise ValueError("Input contract keys must be nonempty")
+            if key in self.input_shapes and tuple(self.input_shapes[key]) != contract.shape:
+                raise ValueError(f"Input shape and contract disagree for {key!r}")
         return self
 
 

@@ -261,6 +261,8 @@ def _validate_evaluation_contract(policy_contract, actual):
                 fields += ("low", "high", "rate_hz", "description")
             if expected.physical is not None:
                 fields += ("physical",)
+            if expected.axes is not None:
+                fields += ("axes",)
             if found is None or any(
                 getattr(found, name) != getattr(expected, name) for name in fields
             ):

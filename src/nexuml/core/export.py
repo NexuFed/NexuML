@@ -24,7 +24,7 @@ from torch.package.package_exporter import PackageExporter
 from torch.package.package_importer import PackageImporter
 
 from nexuml.core.compiler import compile as compile_pipeline
-from nexuml.core.compiler import compile_context_from_interaction
+from nexuml.core.compiler import compile_context_from_data, compile_context_from_interaction
 from nexuml.core.compiler import compile_pipeline as compile_spec
 from nexuml.core.config import ResolvedConfig
 from nexuml.core.pipeline import CompiledPipeline
@@ -707,7 +707,7 @@ def _load_packaged_payload(package_path: Path) -> dict[str, Any]:
 
 
 def _infer_io_keys(config: ResolvedConfig) -> tuple[list[str], list[str]]:
-    x_keys = list(config.data.input_shapes.keys()) or [config.data.feature_key]
+    x_keys = list(compile_context_from_data(config.data).input_sizes)
 
     y_candidates: list[str] = []
     y_candidates.extend([target.key for target in config.data.targets])
@@ -1086,8 +1086,14 @@ def export_onnx(
     if source is None and config.data.datasets:
         source = config.data.datasets[0].source
     source_shape = getattr(source, "feature_shape", (128,))
-    input_shape = tuple(config.data.input_shapes.get(input_key) or source_shape)
-    dummy = torch.randn(1, *input_shape)
+    context = compile_context_from_data(config.data)
+    input_shape = context.input_sizes.get(input_key, tuple(source_shape))
+    leaf = context.input_metadata.get(input_key)
+    dummy = (
+        torch.zeros(1, *input_shape, dtype=getattr(torch, leaf["dtype"]))
+        if leaf is not None
+        else torch.randn(1, *input_shape)
+    )
     wrapper = _OnnxWrapper(pipeline, input_key=input_key, output_key=output_key)
     torch.onnx.export(
         wrapper,

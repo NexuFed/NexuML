@@ -76,7 +76,67 @@ physically qualified artifacts. Absence is not a claim that hardware, calibratio
 or sensor mapping is correct. The historical EA SO-101 definition retains its
 original identity; executing it still requires its original source profile.
 
-Temporal axes, observation/action chunks, privileged inputs, learned processors,
+Temporal execution, action-chunk scheduling, privileged inputs, learned processors,
 caller-owned inference state and non-RL policy-evaluation configuration are
 separate extensions. No hidden state, resampling, unit conversion, calibration
 measurement or deployment safety layer is introduced by these metadata models.
+
+## Typed sequence and multimodal compile inputs
+
+`TensorFieldContract.axes` names fixed **feature** dimensions, excluding the
+TensorDict's inference/environment batch dimensions. Names are unique and match
+the tensor rank; reserved `batch`/`environment` names cannot disguise an outer
+batch as a feature axis. For example, a sample with shape `(2, 3, 5)` and axes
+`("agent", "time", "joint")` retains all three dimensions when a batch of samples
+is compiled or evaluated. Names do not imply a recurrent executor or an alignment
+policy.
+
+For offline graphs, `DataSpec.input_contracts` supplies the same typed input
+metadata used by interaction compilation. This is a compile-metadata fragment;
+attach a real source/loader and compatible pipeline for training:
+
+```python
+from nexuml.core.types import DataSpec, TensorFieldContract
+
+data = DataSpec(
+    feature_key="state",
+    input_contracts={
+        "state": TensorFieldContract(
+            shape=(2, 3, 5), dtype="float32", axes=("agent", "time", "joint"),
+        ),
+        "tokens": TensorFieldContract(
+            shape=(2, 16), dtype="int64", axes=("time", "token"),
+        ),
+        "mask": TensorFieldContract(
+            shape=(2, 16), dtype="bool", axes=("time", "token"),
+        ),
+        "images": TensorFieldContract(
+            shape=(2, 3, 64, 64), dtype="uint8",
+            axes=("time", "channel", "height", "width"),
+        ),
+    },
+)
+```
+
+Legacy `input_shapes` and source `feature_shape` inference still work. Typed and
+legacy shapes may coexist, but overlapping declarations must agree. Typed
+inputs carry dtype, axes and optional physical metadata through the same
+`LayerBuildContext.metadata["input_metadata"]` seam. Unsupported tensor dtypes
+fail before layer construction. The first loaded sample is checked against the
+declared contracts before dataset-backed training compiles.
+
+Shape propagation preserves supported integer/token/mask dtypes through intermediate
+outputs, so an integer identity layer followed by an embedding does not receive
+a fabricated floating-point dummy. It infers output shapes/dtypes, **not** new
+physical identities or named axes for an arbitrary transform. Layers retain
+responsibility for semantic transformations and explicit output annotations.
+Feature time/agent dimensions are not automatically flattened or resampled.
+Specialized intermediate dtypes outside the declared input family, such as
+quantized/float8 tensors, retain the prior shape-only dummy fallback; they are
+not advertised as fully dtype-qualified compile inputs.
+
+Package I/O metadata and ONNX dummy inputs use these same declared shapes and
+dtypes. This does not promise every model/operator/backend can export to ONNX,
+or make fixed time dimensions dynamically sized. New policies with declared axes
+reject mismatched or missing axes in evaluation; legacy absence keeps the old
+compatibility rules.

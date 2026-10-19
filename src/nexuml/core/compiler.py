@@ -13,6 +13,7 @@ from nexuml.core.base_layer import PipelineLayer
 from nexuml.core.components import LayerBuildContext
 from nexuml.core.config import ResolvedConfig
 from nexuml.core.pipeline import CompiledPipeline
+from nexuml.core.serialization import lower_model
 from nexuml.core.types import (
     DataSpec,
     InteractionContract,
@@ -22,6 +23,18 @@ from nexuml.core.types import (
 )
 
 logger = logging.getLogger(__name__)
+_SUPPORTED_INPUT_DTYPES = {
+    "float16",
+    "bfloat16",
+    "float32",
+    "float64",
+    "uint8",
+    "int8",
+    "int16",
+    "int32",
+    "int64",
+    "bool",
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -40,8 +53,11 @@ def compile_context_from_data(data: DataSpec) -> PipelineCompileContext:
     Returns:
         Dataset-derived input context, without materializing a dataset.
     """
-    if data.input_shapes:
+    contracts = getattr(data, "input_contracts", {})
+    _validate_input_dtypes(contracts, "Input")
+    if data.input_shapes or contracts:
         sizes = {key: tuple(shape) for key, shape in data.input_shapes.items()}
+        sizes.update({key: leaf.shape for key, leaf in contracts.items()})
     else:
         source = data.source
         if source is None and data.datasets:
@@ -49,9 +65,16 @@ def compile_context_from_data(data: DataSpec) -> PipelineCompileContext:
         sizes = {data.feature_key: tuple(getattr(source, "feature_shape", (128,)))}
     return PipelineCompileContext(
         input_sizes=sizes,
+        input_metadata={key: lower_model(leaf) for key, leaf in contracts.items()},
         num_classes=data.num_classes,
         skip_stages=tuple(data.skip_pipeline_stages),
     )
+
+
+def _validate_input_dtypes(fields, role):
+    for key, leaf in fields.items():
+        if leaf.dtype not in _SUPPORTED_INPUT_DTYPES:
+            raise ValueError(f"{role} {key!r} has unsupported dtype {leaf.dtype!r}")
 
 
 def compile_context_from_interaction(contract: InteractionContract) -> PipelineCompileContext:
@@ -62,30 +85,13 @@ def compile_context_from_interaction(contract: InteractionContract) -> PipelineC
 
     Raises:
         TypeError: If description is not an interaction contract.
-        ValueError: If an observation declares an unsupported tensor dtype.
     """
     if not isinstance(contract, InteractionContract):
         raise TypeError("EnvironmentDefinition.describe() must return InteractionContract")
-    supported = {
-        "float16",
-        "bfloat16",
-        "float32",
-        "float64",
-        "uint8",
-        "int8",
-        "int16",
-        "int32",
-        "int64",
-        "bool",
-    }
-    for key, leaf in contract.observations.items():
-        if leaf.dtype not in supported:
-            raise ValueError(f"Observation {key!r} has unsupported dtype {leaf.dtype!r}")
+    _validate_input_dtypes(contract.observations, "Observation")
     return PipelineCompileContext(
         input_sizes={key: leaf.shape for key, leaf in contract.observations.items()},
-        input_metadata={
-            key: leaf.model_dump(mode="json") for key, leaf in contract.observations.items()
-        },
+        input_metadata={key: lower_model(leaf) for key, leaf in contract.observations.items()},
     )
 
 
@@ -133,6 +139,7 @@ def compile_pipeline(
         TypeError: If a definition does not build a pipeline layer.
     """
     pipeline_dims: dict[str, tuple] = dict(context.input_sizes)
+    tensor_metadata = {key: dict(value) for key, value in context.input_metadata.items()}
     metadata: dict[str, Any] = {}
     stages = nn.ModuleDict()
     for stage_name, layer_specs in pipeline.stages.items():
@@ -144,8 +151,10 @@ def compile_pipeline(
 
         for i, spec in enumerate(layer_specs):
             resolved_metadata: dict[str, Any] = {}
-            if context.input_metadata:
-                resolved_metadata["input_metadata"] = dict(context.input_metadata)
+            if tensor_metadata:
+                resolved_metadata["input_metadata"] = {
+                    key: dict(value) for key, value in tensor_metadata.items()
+                }
             if spec.meta_in:
                 for param_name, meta_key in spec.meta_in.items():
                     if meta_key in metadata:
@@ -178,8 +187,13 @@ def compile_pipeline(
                 )
 
             # Shape propagation via dummy forward
-            updated_dims = _propagate_shapes(layer, pipeline_dims, context.input_metadata)
+            updated_dims, updated_metadata = _propagate_shapes(
+                layer, pipeline_dims, tensor_metadata, context.input_metadata.keys()
+            )
             pipeline_dims.update(updated_dims)
+            for key in updated_dims:
+                tensor_metadata.pop(key, None)
+            tensor_metadata.update(updated_metadata)
 
             # Capture meta_out
             if spec.meta_out:
@@ -222,22 +236,28 @@ def _propagate_shapes(
     layer: nn.Module,
     current_dims: dict[str, tuple],
     input_metadata: Mapping[str, Mapping[str, Any]],
-) -> dict[str, tuple]:
+    declared_inputs,
+) -> tuple[dict[str, tuple], dict[str, dict[str, Any]]]:
     """Run a dummy forward pass to infer output shapes.
 
     Returns:
-        Mapping of output tensor keys to their inferred shapes (excluding batch).
+        Output shapes (excluding batch) and inferred tensor dtype/shape metadata.
     """
     # Build dummy TensorDict from current known dimensions
     batch_size = 2
     td_data = {}
     for key, shape in current_dims.items():
         leaf = input_metadata.get(key)
-        td_data[key] = (
-            torch.zeros((batch_size, *shape), dtype=getattr(torch, leaf["dtype"]))
-            if leaf is not None
-            else torch.randn(batch_size, *shape)
-        )
+        if leaf is None:
+            td_data[key] = torch.randn(batch_size, *shape)
+        else:
+            dtype = getattr(torch, leaf["dtype"])
+            # Keep legacy floating dummy draws; integer/mask intermediates need exact dtypes.
+            td_data[key] = (
+                torch.zeros((batch_size, *shape), dtype=dtype)
+                if key in declared_inputs or not dtype.is_floating_point
+                else torch.randn((batch_size, *shape), dtype=dtype)
+            )
 
     x = TensorDict(cast(Any, td_data), batch_size=[batch_size])
     y = None
@@ -253,9 +273,20 @@ def _propagate_shapes(
 
     # Extract output shapes from keys_out
     updated: dict[str, tuple] = {}
+    output_metadata = {}
     if isinstance(layer, PipelineLayer):
         for key in layer.keys_out:
             if key in x_out.keys():
-                updated[key] = tuple(x_out[key].shape[1:])
+                value = x_out[key]
+                updated[key] = tuple(value.shape[1:])
+                if (
+                    isinstance(value, torch.Tensor)
+                    and str(value.dtype).removeprefix("torch.") in _SUPPORTED_INPUT_DTYPES
+                ):
+                    # A transformed output has no inferred sensor, physical frame or named axes.
+                    output_metadata[key] = {
+                        "shape": list(updated[key]),
+                        "dtype": str(value.dtype).removeprefix("torch."),
+                    }
 
-    return updated
+    return updated, output_metadata

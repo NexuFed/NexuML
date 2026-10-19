@@ -1317,6 +1317,10 @@ def _hydrate_scenario_from_dataset(
     if len(dataset) == 0:
         return scenario
 
+    if scenario.data.input_contracts:
+        x_sample, _ = dataset[0]
+        CompiledPolicy._validate_fields(x_sample, scenario.data.input_contracts, "Dataset input")
+
     feature_shapes = cast(dict[str, tuple[int, ...]], getattr(dataset, "feature_shapes", {}))
     input_shapes = {
         key: list(feature_shapes[key])
