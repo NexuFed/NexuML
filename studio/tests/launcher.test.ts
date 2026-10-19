@@ -1,5 +1,7 @@
 import { expect, test } from "vitest";
-import { chmod, mkdtemp, writeFile, rm } from "node:fs/promises";
+import { chmod, mkdtemp, writeFile, rm, symlink } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { argumentsFor, executable, freePort, launch } from "../bin/studio.mjs";
@@ -31,4 +33,15 @@ test("launcher hosting is explicit, validates flags/env before services and pres
   expect(()=>argumentsFor([],{NEXUML_STUDIO_PUBLIC_ORIGIN:"not a URL"})).toThrow();
   await expect(launch({directory:"/missing/working/directory",host:"0.0.0.0","public-origin":""})).rejects.toThrow("requires a public HTTPS origin");
   expect(await freePort(undefined,"0.0.0.0")).toBeGreaterThan(0);
+});
+
+test("CLI entrypoint runs when a parent directory is a filesystem alias",async()=>{
+  const directory=await mkdtemp(join(tmpdir(),"nexuml launcher alias "));
+  try {
+    const alias=join(directory,"aliased bin");
+    await symlink(fileURLToPath(new URL("../bin",import.meta.url)),alias,process.platform==="win32" ? "junction" : "dir");
+    const result=spawnSync(process.execPath,[join(alias,"studio.mjs"),"--help"],{encoding:"utf8"});
+    expect(result.status,result.stderr).toBe(0);
+    expect(result.stdout).toContain("nexuml-studio [directory]");
+  } finally {await rm(directory,{recursive:true,force:true});}
 });

@@ -1,5 +1,5 @@
 import { spawn, spawnSync } from "node:child_process";
-import { access, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { delimiter, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -79,7 +79,7 @@ class Runtime(PipelineLayer):
   const runtime=await (await wait(`${origin}/api/runtime`,launch,{Host:`127.0.0.1:${port}`})).json();
   assert.equal(runtime.api,origin,"Browser transport must use only the frontend origin");
   const identity=await (await fetch(`${runtime.api}/api/v1/runtime`,{headers:{Authorization:`Bearer ${runtime.token}`,Origin:origin}})).json();
-  assert.equal(identity.working_directory,work);assert.equal(identity.interface_version,2);
+  assert.equal(await realpath(identity.working_directory),await realpath(work));assert.equal(identity.interface_version,2);
   assert(!output.includes(runtime.token),"Token leaked to output");
   const library=await (await fetch(`${runtime.api}/api/v1/registry`,{headers:{Authorization:`Bearer ${runtime.token}`,Origin:origin}})).json();
   assert(library.scenarios.some(s=>s.name==="synthetic-linear-ae-reconstruction"));

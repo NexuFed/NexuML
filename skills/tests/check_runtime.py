@@ -128,6 +128,7 @@ def main():
     help_text = subprocess.check_output(
         [sys.executable, "-m", "nexuml.cli.main", "tune", "--help"], text=True
     )
+    help_text = re.sub(r"\x1b\[[0-9;]*m", "", help_text)
     assert "--max-epochs" not in help_text and "--override" in help_text
     print("PASS: distinct keys, fitted scoring/state, nested tuning params and CLI/factory limits")
 

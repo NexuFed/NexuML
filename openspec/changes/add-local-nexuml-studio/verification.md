@@ -298,3 +298,32 @@ report and screenshots are generated under ignored `studio/playwright-report/` a
 project's full suite was not repeated after correcting its custom-library test. Full
 OS/install coverage remains the replacement CI matrix's responsibility, not a local
 macOS/Windows acceptance claim.
+
+### Hosted CI follow-up
+
+Run `39342129833` passed all three Python/CUDA suites (3.12/3.13/3.14), Python package
+validation, Studio static checks, and both Linux package modes. This supersedes the
+earlier local-environment backend failures as hosted Python test evidence. The remaining
+failures were separate portability/checking defects:
+
+- Colored Rich help splits option strings with ANSI styling. The skills runtime check
+  now removes SGR styling before checking the same required/forbidden CLI options.
+  `FORCE_COLOR=1 CI=true python skills/tests/check_runtime.py` reproduced the assertion
+  before the fix and passed afterward; ordinary help also passed.
+- macOS temporary paths traverse aliases. The CLI guard compared raw `process.argv[1]`
+  with the canonical module URL and exited successfully without starting. A new
+  directory-alias entrypoint test reproduced the empty stdout locally; resolving argv
+  with the launcher's existing `realpath` fixes it.
+- Windows uses both `RUNNER~1` and `runneradmin` for the same temporary directory. The
+  package smoke compares canonical working paths, matching the actual launcher check,
+  rather than requiring identical path spelling.
+- Studio now uses `actions/setup-node@v7`, removing the Node 20 action deprecation while
+  keeping the selected application runtime on Node 22.
+
+Final local checks passed: all **33 frontend tests**, typecheck/lint, Actionlint,
+repository-wide Ruff lint/format, skill structural/runtime checks, and two CI gate tests.
+The complete packaged workflow also passed with `TMPDIR` pointing through a directory
+symlink: **11 browser tests in 3.2 minutes**, plus runtime selection/immutability and
+owned/attached shutdown. Retained artifacts:
+`/tmp/opencode/studio-ci-LkdO4F-alias/nexuml packaged smoke 9I1hRH/`.
+This reproduces the alias mechanism on Linux, not a claim of local macOS/Windows runs.
