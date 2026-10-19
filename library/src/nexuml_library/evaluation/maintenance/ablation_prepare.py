@@ -126,7 +126,7 @@ def feature_variants(
         selected = features.clone() if scale == "raw" else (features - mean) / std
         for coupling in ("independent", "ot"):
             paired, metadata, costs = couple_training_endpoints(
-                selected, rows, coupling=cast(Coupling, coupling)
+                selected, rows, coupling=coupling
             )
             key = f"{frontend}-{coupling}-{scale}"
             train_indices = [
@@ -218,7 +218,7 @@ def extract_mimii_endpoints(
             if isinstance(encoder, FISHEREncoder):
                 vectors = encoder(combined)
             else:
-                vectors = cast(Tensor, cast(PipelineLayer, encoder).forward_tensor(combined))
+                vectors = cast(PipelineLayer, encoder).forward_tensor(combined)
             flat = vectors.detach().flatten(1).float().cpu()
             count = len(items)
             batches.append(torch.stack((flat[:count], flat[count:]), dim=1))
