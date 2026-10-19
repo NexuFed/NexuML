@@ -159,7 +159,9 @@ def test_scenario_compiles_without_fisher_download_and_round_trips(tmp_path: Pat
     flow_definition = scenario.pipeline.stages["Flow"][0].component
     assert isinstance(flow_definition, Flow)
     assert flow_definition.hidden_dims == [16, 16]
-    checkpoint_dir = scenario.callbacks[0].kwargs["dirpath"]
+    checkpoint_dir = scenario.callbacks[1].kwargs["dirpath"]
+    assert scenario.callbacks[1].kwargs["monitor"] == "val/transport_swd"
+    assert scenario.callbacks[3].kwargs["monitor"] == "val/transport_swd"
     assert isinstance(checkpoint_dir, str)
     assert "fisher-ot-standardized" in checkpoint_dir
     parsed = ResolvedConfig.from_yaml(ResolvedConfig.from_scenario(scenario).to_yaml())
