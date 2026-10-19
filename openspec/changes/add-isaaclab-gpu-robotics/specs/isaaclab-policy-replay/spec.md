@@ -8,7 +8,7 @@ Evaluate and record complete Isaac-trained policies through NexuML's existing in
 
 ### Requirement: Replay runs in a fresh simulator process without a learner
 
-The existing policy-evaluation command SHALL support the three Isaac references in a fresh process using one evaluation environment, the embedded contract/configuration, and ordinary overrides. Replay SHALL construct no training session, algorithm, optimizer, or collector and SHALL NOT require an external native trainer checkpoint.
+The existing policy-evaluation command SHALL support all four Isaac references in fresh processes using one evaluation environment, the declared profile, embedded contract/configuration and ordinary overrides. Replay SHALL construct no training session, algorithm, optimizer or collector and SHALL NOT require an external native trainer checkpoint.
 
 #### Scenario: A supported Isaac policy is replayed
 - **WHEN** the user invokes the evaluation command with approved simulator prerequisites and a positive episode count
@@ -45,7 +45,7 @@ Each complete policy package SHALL load and execute on matching synthetic observ
 
 ### Requirement: Replay preserves evaluation and task semantics
 
-Replay SHALL validate observation/action compatibility, preserve policy modes and relevant RNG streams, and distinguish termination from truncation and auto-reset observations. Optional task outcomes SHALL remain separate from episode returns. SO-101 replay SHALL report joint-reaching error and success under the declared task rule.
+Replay SHALL validate observation/action/profile compatibility, preserve policy modes and relevant RNG streams, and distinguish termination from truncation and auto-reset observations. Task outcomes SHALL remain separate from episode returns. SO-101 reaching SHALL report joint error/success; vial placement SHALL report physical placement success and available manipulation outcomes under its own task rule.
 
 #### Scenario: A seeded SO-101 policy is evaluated
 - **WHEN** complete episodes finish in a fresh simulator
@@ -57,7 +57,7 @@ Replay SHALL validate observation/action compatibility, preserve policy modes an
 
 ### Requirement: Recording reuses native media and logging conventions
 
-Replay SHALL support bounded GIF, MP4, or both from the same first evaluated episode through existing native artifact/logging behavior. TensorBoard previews SHALL use only its configured writer; MLflow-only SHALL not access one. Media SHALL not include reset observations/frames falsely labeled as the prior episode's terminal state.
+Replay SHALL support bounded GIF, MP4, or both from the same first evaluated episode through existing native artifact/logging behavior. TensorBoard previews SHALL be animated using only its configured writer; MLflow-only SHALL not access one. Media SHALL NOT label reset frames as the prior episode's terminal state. MP4 dependencies SHALL remain optional for scalar/GIF workflows.
 
 #### Scenario: Both media formats are selected
 - **WHEN** recording prerequisites and the selected rendering path are available
@@ -79,3 +79,20 @@ Replay SHALL finalize existing native loggers and owned simulator/media resource
 #### Scenario: Delivery or simulator shutdown fails
 - **WHEN** encoding/upload/cleanup raises during replay
 - **THEN** failure remains visible, owned resources are closed, and already delivered artifacts are not claimed to have transactional rollback
+
+### Requirement: Tutorial replay uses its declared state policy and renderer
+
+Vial-placement replay SHALL run in its isolated Newton profile from canonical home starts, using the exported state policy and nominal tutorial evaluation settings. Requested recording SHALL use a verified headless camera through the pinned Newton renderer without adding actor camera inputs or starting Isaac Sim. Unsupported rendering SHALL remain an explicit incomplete gate, not trigger a backend switch.
+
+#### Scenario: A vial policy is evaluated with both media formats
+- **WHEN** the user selects the documented Newton profile, renderer and bounded recording
+- **THEN** one evaluated rollout supplies GIF, MP4, animated TensorBoard preview when configured and native artifacts with correct terminal-scene identity
+- **AND** logs identify home-start rows/seeds, task/profile and renderer without claiming learned success from return alone
+
+#### Scenario: A scalar or GIF-only tutorial replay omits MP4 extras
+- **WHEN** only the selected output's prerequisites are installed
+- **THEN** evaluation and requested output succeed without importing an MP4 encoder
+
+#### Scenario: Recorded Newton replay is cancelled
+- **WHEN** cancellation occurs before encoding or delivery finishes
+- **THEN** the run preserves cancellation status, finalizes native loggers, releases owned runtime/media resources and publishes no incomplete recording as a successful artifact

@@ -2,7 +2,7 @@
 
 ## Why
 
-Phases 0–1 verify NexuML's CPU Gymnasium workflows, but not GPU-native robotics simulation, same-step auto-reset, or Isaac's process-owned simulator lifecycle. Phase 2 must prove these boundaries without replacing the existing session, policy, PPO, configuration, export, or logging stack, and must include SO-101 as a required later reference.
+The initial Isaac integration verifies GPU-native robotics and SO-101 joint reaching through NexuML's existing learning stack. The approved extension must make that workflow usable inside the existing development container, audit it against current TorchRL guidance, and add the upstream SO-101 contact-based vial pick-and-place task rather than presenting joint reaching as manipulation.
 
 ## What Changes
 
@@ -13,16 +13,21 @@ Phases 0–1 verify NexuML's CPU Gymnasium workflows, but not GPU-native robotic
 - Reuse the pinned upstream SO-101 asset for a small reward-bearing five-arm-joint reaching task with a fixed gripper. Its upstream cube-stack reference has no reward definition and is not claimed as an existing PPO task. SO-101 requires native execution, real updates, resume, export/reload, and replay, not documentation or fake-only acceptance.
 - Support fresh-process exported-policy replay through the shared evaluator and native logging, including bounded GIF/MP4/both capture in that process. Reject unsupported in-fit Isaac evaluation before allocation rather than resetting training or opening a second simulator context.
 - Document prerequisites, approved asset access, action/control semantics, runnable native/NexuML commands, artifacts, and limitations. Keep simulator/GPU tests opt-in and preserve supervised, Gymnasium, media, packaging, and inference-import boundaries.
+- Install and run inside the existing NexuVibe NVIDIA DevContainer using isolated Python 3.12 environments and editable NexuML packages; retain normal development tools and `/env`. No separate development profile or worker container is required. Rebuild/recreation timing remains operator-controlled.
+- Add the upstream `IsaacTutorial-Place-Vial-SO101` state task as a fourth reference, proposed registry name `isaac-so101-vial-place-ppo`. Reuse its assets, reward/termination rules and reset dataset; six continuous controls include the gripper. Placement requires physical grasp, transport, insertion and release, not proximity or object attachment.
+- Per the user's explicit selection, introduce a separately pinned **IsaacLabTutorial / Isaac Lab 3.0 / Newton MJWarp / cu130** profile. Preserve the tested EA/PhysX profile and its three references; never mix dependencies or silently reinterpret existing policies/checkpoints under the new backend.
+- Audit startup/import order, process ownership, native batch/device mapping, wrapper selection, mutable buffers, final/reset observations, numerical GAE, on-policy collection/synchronization and replay against the linked TorchRL guide and actual pinned sources. Record passes, justified version-specific deviations and unresolved blockers separately.
+- Preserve the original **42 completed tasks** as historical baseline evidence; all extension tasks remain unchecked until DevContainer-native setup, the audit and the fourth reference's train/resume/export/replay/media round trip are verified.
 
 ## Capabilities
 
 ### New Capabilities
 
-- `isaaclab-runtime`: Isolated compatibility profile, portable provider description, native batched simulation, and execution-local lifecycle/diagnostics.
-- `isaaclab-rollout-collection`: Single-GPU direct collection, device/batch mapping, same-step reset and terminal-observation correctness, PPO/frame/resume integration.
-- `isaaclab-reference-workflows`: Native and NexuML Cartpole/Franka state-policy round trips, documented controls, provenance, and test tiers.
-- `so101-simulation-reference`: Required later SO-101 joint-reaching task using the maintained asset, explicit embodiment semantics, and complete simulation-only acceptance.
-- `isaaclab-policy-replay`: Fresh-process Isaac policy evaluation, native results/media, portable inference separation, and clear unsupported in-fit evaluation behavior.
+- `isaaclab-runtime`: Isolated named compatibility profiles, existing-DevContainer installation, portable description, native batches, and profile-aware lifecycle/diagnostics.
+- `isaaclab-rollout-collection`: Single-GPU direct collection, reset/GAE/PPO correctness and a version-aware TorchRL integration audit for both profiles.
+- `isaaclab-reference-workflows`: Native/NexuML reference round trips, DevContainer-native commands, profile-specific evidence and test tiers.
+- `so101-simulation-reference`: Existing joint reaching plus upstream contact-based vial placement, distinct controls/assets/reset distributions and simulation-only acceptance.
+- `isaaclab-policy-replay`: Fresh-process replay for all four references, task-specific results/media, portable inference and unsupported in-fit evaluation diagnostics.
 
 ### Modified Capabilities
 
@@ -30,8 +35,8 @@ None of the published capabilities change requirements. The existing CLI overrid
 
 ## Impact
 
-- Library: new Isaac provider, SO-101 task configuration, and three scenario factories; lazy imports prevent optional simulator discovery from initializing Isaac.
+- Library: Isaac provider and profile-specific task construction/contracts, existing references and a fourth scenario factory; optional task/backend imports stay execution-local.
 - Reinforcement/session: a narrow provider-to-TorchRL bridge plus lifecycle/preflight integration in existing modules; no second trainer, collector engine, or general plugin hierarchy.
 - Evaluation/export: reuse existing complete-policy loading, CLI overrides, evaluator, media helpers, logger instances, staging, and provenance. Simulator/learner handles stay outside inference packages and checkpoints.
-- Tooling: isolated environment/container configuration and version evidence, focused fake/CPU tests, explicitly opted-in GPU/simulator tests, and Phase 2 documentation/reporting.
-- No Isaac installation, assets, EULA acceptance, system/driver change, or implementation is authorized by generating this proposal. No NexuFL, IL/VLA, ROS/hardware, multi-GPU/Ray, Newton/OV backend rollout, convergence target, or unrelated baseline repair is included.
+- Tooling: coordinated NexuVibe NVIDIA DevContainer setup/docs, two isolated dependency manifests, portable launch paths, focused CPU tests and opt-in native GPU/media evidence. Preserve already staged NexuVibe work; changes there belong to that repository, not hidden NexuML patches.
+- Generating this proposal performs no installation, asset download, rebuild/restart, driver change or implementation. Existing EULA approval stands; optional telemetry remains off. No NexuFL, IL/VLA, camera-policy training/distillation, sim2real preset, ROS/hardware, multi-GPU/Ray, general backend matrix, convergence target or unrelated baseline repair is included. Newton support is limited to the explicitly selected tutorial reference.

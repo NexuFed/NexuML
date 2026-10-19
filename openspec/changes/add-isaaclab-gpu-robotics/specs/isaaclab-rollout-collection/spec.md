@@ -79,3 +79,35 @@ Checkpoint resume SHALL restore policy, critic, optimizer state, update counters
 #### Scenario: The frame budget is already complete
 - **WHEN** a completed-budget checkpoint is restored
 - **THEN** no new rollout or training simulator is allocated and replay remains a separate operation
+
+### Requirement: TorchRL integration is audited against pinned runtime behavior
+
+Both profiles SHALL have an evidence-linked audit against the user-linked TorchRL IsaacLab guide and their actual installed sources. The audit SHALL cover launch order, process ownership, batch/device/spec mapping, mutable buffers, reset/final states, numerical GAE, action/log-probability consistency, on-policy synchronization and cleanup. Each item SHALL identify pass, justified non-applicability or an unresolved blocker.
+
+#### Scenario: A guide example differs from the implemented bridge
+- **WHEN** wrapper choice, startup order or another recommendation differs
+- **THEN** the report records the pinned source behavior and focused tests supporting the choice, or leaves the gate unresolved
+- **AND** the guide's recurrent, multi-GPU and asynchronous examples do not expand this feed-forward single-GPU scope
+
+#### Scenario: The tutorial profile is evaluated for integration correctness
+- **WHEN** native tests exercise its real batch and the selected bridge
+- **THEN** no-done, partial/all-done, termination, truncation, simultaneous flags, masked resets and buffer-reuse cases preserve final/reset identity and expected GAE values
+- **AND** the original EA passes are not substituted for new-profile evidence
+
+### Requirement: Bridge selection preserves numerical correctness over wrapper preference
+
+The maintained wrapper SHALL be selected only when supported public composition preserves all required transition semantics in the selected profile. Otherwise the existing generic adapter over canonical provider normalization SHALL remain the supported path with recorded probe evidence. NaN replacement, double resets, private patches and a separate collector or learner SHALL NOT satisfy acceptance.
+
+#### Scenario: A wrapper avoids double reset but omits terminal states
+- **WHEN** its native-autoreset mode returns NaN or unavailable final observations
+- **THEN** the wrapper probe fails the timeout-value gate despite apparently finite training metrics
+- **AND** the proven canonical fallback remains valid rather than being replaced solely to match documentation
+
+### Requirement: The tutorial reuses the existing state-policy learner contract
+
+Vial-placement training SHALL use the tutorial's declared policy-state observation for the existing actor and critic and retain its six continuous control meanings. Any difference from the upstream privileged-critic training configuration SHALL be explicit. Additional privileged or camera inputs SHALL NOT enter exported actors implicitly, and the tutorial's learner SHALL NOT replace NexuML PPO.
+
+#### Scenario: The tutorial exposes extra critic-only contact observations
+- **WHEN** its state task is configured for NexuML
+- **THEN** the actor and critic use the documented policy-state fields, unused critic-only groups are disabled and the symmetric-critic deviation is recorded
+- **AND** native control/transition comparisons use matching task settings without promising identical learner curves

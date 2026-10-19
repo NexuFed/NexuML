@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Include SO-101 as a required later Phase 2 simulation reference, using the maintained robot asset and a minimal reward-bearing joint-reaching task rather than claiming an existing demonstration task is PPO-ready.
+Include required SO-101 simulation references for five-joint reaching and upstream contact-based vial placement, preserving distinct task/profile/control identities and complete NexuML policy round trips.
 
 ## ADDED Requirements
 
@@ -20,7 +20,7 @@ Phase 2 SHALL include an executable SO-101 reference after Cartpole and Franka v
 
 ### Requirement: The maintained SO-101 asset retains explicit provenance
 
-The reference SHALL reuse the pinned upstream SO-101 asset with its Isaac Sim PhysX variant. It SHALL record asset source/version or content identity, license/access prerequisites, joint names/order, authored limits, actuator configuration, fixed gripper position, and units. Missing or incompatible assets SHALL fail clearly without automatic model replacement.
+The joint-reaching reference SHALL reuse the pinned upstream SO-101 asset with its Isaac Sim PhysX variant. It SHALL record asset source/version or content identity, license/access prerequisites, joint names/order, authored limits, actuator configuration, fixed gripper position, and units. Missing or incompatible assets SHALL fail clearly without automatic model replacement.
 
 #### Scenario: An approved SO-101 asset is loaded
 - **WHEN** native task construction completes
@@ -56,7 +56,7 @@ The task SHALL define a finite reward from joint-target error, explicit reset/ta
 
 ### Requirement: SO-101 completes the same deployable-policy round trip
 
-SO-101 acceptance SHALL demonstrate native execution, real NexuML PPO updates, finite metrics, intermediate-checkpoint resume, complete-policy export/reload, simulator-free policy inference, fresh-process simulation replay, and recorded behavior. It SHALL retain the shared state/action mapping and resource cleanup without requiring successful learned manipulation.
+Each SO-101 reference SHALL demonstrate native execution, real NexuML PPO updates, finite metrics, intermediate-checkpoint resume, complete-policy export/reload, simulator-free inference, fresh-process replay and recorded behavior. Each SHALL retain its declared state/action/profile meaning and cleanup. Bounded update proofs SHALL NOT imply successful learned manipulation.
 
 #### Scenario: The bounded SO-101 acceptance run completes
 - **WHEN** native and NexuML tests run in the verified profile
@@ -65,8 +65,56 @@ SO-101 acceptance SHALL demonstrate native execution, real NexuML PPO updates, f
 
 ### Requirement: SO-101 stays within simulation-only scope
 
-The reference SHALL document that five-joint simulated control does not validate real-robot calibration, collision safety, actuators, or deployment. Leader-arm teleoperation, demonstrations, ACT/VLA training, inverse-kinematics controller development, and hardware execution SHALL remain outside this change.
+Both references SHALL document that simulation does not validate real-robot calibration, collision safety, actuators or deployment. Leader-arm teleoperation, demonstration collection, ACT/VLA training, camera-policy training/distillation, sim2real presets, inverse-kinematics controller development and hardware execution SHALL remain outside this change.
 
 #### Scenario: Users consult the SO-101 instructions
 - **WHEN** they follow the reference workflow
 - **THEN** commands target simulation only and prerequisites/limitations distinguish this task from later LeRobot or supervised hardware work
+
+### Requirement: Upstream vial placement is a separate required reference
+
+The integration SHALL expose the pinned upstream `IsaacTutorial-Place-Vial-SO101` state task through ordinary NexuML configuration and training in its explicit Newton MJWarp profile. It SHALL reuse upstream task logic, assets and reset data rather than rename reaching or replace NexuML with the upstream learner. Existing EA/PhysX references and their artifacts SHALL retain their meanings.
+
+#### Scenario: A user selects the vial-placement scenario
+- **WHEN** its approved isolated tutorial profile and pinned assets are available
+- **THEN** the normal session, Lightning, TorchRL and PPO path trains the upstream contact-based task
+- **AND** selecting the existing joint-reaching scenario still produces five arm actions with a fixed gripper
+
+### Requirement: Vial controls retain six relative-joint action semantics
+
+Vial placement SHALL command five ordered arm joints plus the gripper through bounded continuous actions, with verified joint limits, physical units and actuator identity. Nominal targets SHALL follow upstream measured-position-relative semantics with arm scale 0.033 rad and gripper scale 0.02 rad, 120 Hz physics and 30 Hz policy control. EA absolute-target or fixed-gripper semantics SHALL NOT be substituted.
+
+#### Scenario: Native arm and gripper response is checked
+- **WHEN** bounded scripted actions execute under the nominal tutorial configuration
+- **THEN** all six declared controls respond with the expected order, sign, scale and timing within the validated articulation constraints
+- **AND** packaged policies reject incompatible action/profile mappings rather than relying only on tensor width
+
+### Requirement: Manipulation is achieved through physical contact
+
+The vial task SHALL preserve upstream contact-based grasping, lifting, transport, insertion and release. After reset it SHALL NOT attach the vial to the gripper, teleport the object, bypass required contacts or substitute reaching reward. Acceptance SHALL include a bounded native contact-based reference trajectory from a canonical home start, separately attributed from any learned NexuML policy.
+
+#### Scenario: A native reference trajectory places the vial
+- **WHEN** the arm picks up the tabletop vial and moves it into a rack hole
+- **THEN** retained state/contact evidence demonstrates physical pickup, lift, insertion and release without post-reset object-pose writes
+- **AND** this validates task feasibility, not that a short NexuML PPO run learned the behavior
+
+### Requirement: Placement success uses the upstream physical predicate
+
+Vial placement SHALL preserve pinned rewards, termination and timeout rules and report task success separately from return. Success SHALL require the upstream progress history and an upright, mechanically seated, released and nearly still vial for the pinned ten-control-step hold. Held, airborne or merely nearby vials SHALL NOT count. Per-episode outcomes SHALL survive autoreset without inheriting the next episode's flags.
+
+#### Scenario: Success and false positives are tested
+- **WHEN** controlled native episodes exercise valid placement, insufficient hold, held/nearby vials, drops and timeout
+- **THEN** outcome, reward and termination/truncation agree with the pinned rules and reset at the next episode
+- **AND** the evaluator reports placement success and available grasp/lift/insertion outcomes without fabricated joint-reaching error
+
+### Requirement: Curriculum training is distinct from home-start evaluation
+
+Training SHALL retain the pinned eight-phase reset curriculum and nominal tutorial variation with verified reset-data provenance. Replay SHALL start from canonical home states with upstream nominal play settings and traceable dataset rows/seeds. Curriculum-phase success SHALL NOT be reported as full home-to-placement success. Original reset data SHALL NOT be overwritten, and policy determinism SHALL NOT enable unsupported deterministic physics kernels.
+
+#### Scenario: A policy trained with late-phase resets is replayed
+- **WHEN** fresh-process evaluation begins
+- **THEN** it uses the documented home-start distribution rather than a release-phase reset and reports complete-episode placement success separately from training return
+
+#### Scenario: A deterministic policy is requested
+- **WHEN** the normal evaluator chooses deterministic policy actions
+- **THEN** the pinned Newton physics mode remains unchanged rather than enabling the tutorial's documented failing Warp-wide deterministic mode

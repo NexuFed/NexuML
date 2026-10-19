@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Provide reproducible Cartpole and Franka Isaac reference workflows that demonstrate existing NexuML training, checkpoints, export, evaluation, and experiment conventions before the later SO-101 reference.
+Provide reproducible native and NexuML Isaac reference workflows, including development-container execution, with profile-specific training, checkpoint, export, evaluation and completion evidence.
 
 ## ADDED Requirements
 
@@ -61,5 +61,31 @@ Fast CPU tests SHALL verify metadata, configuration, failure behavior, and optio
 
 #### Scenario: Phase 2 completion is reported
 - **WHEN** the change is marked complete
-- **THEN** Cartpole, Franka, and the required later SO-101 capability have actual execution evidence
+- **THEN** Cartpole, Franka, SO-101 joint reaching and the upstream SO-101 vial-placement reference have actual execution evidence in their declared profiles
 - **AND** missing GPU/system proofs, existing baseline failures, and remote CI execution status are stated separately
+
+### Requirement: Development-container workflows are executable without a worker image
+
+Documentation SHALL provide exact isolated setup, editable-install, interpreter/debug selection, native probe, train, checkpoint/resume, export, scalar/recorded replay and artifact-inspection commands inside the existing NVIDIA DevContainer. Commands SHALL identify the selected profile and work without user source edits, fixed worker mount paths or an additional running container.
+
+#### Scenario: A developer follows the documented workflow
+- **WHEN** the approved container prerequisites and isolated profile are prepared
+- **THEN** the commands execute from the documented checkout with the selected interpreter and produce native NexuML checkpoints, exports, metrics and media
+- **AND** repeat setup verifies or reuses matching sources without overwriting unrelated environments, staged work or reset data
+
+### Requirement: Tutorial-native validation precedes NexuML manipulation claims
+
+The pinned upstream vial task SHALL pass bounded native task-discovery, asset/reset-data, contact/control, outcome and cleanup checks before its NexuML reference is claimed supported. Native settings and any NexuML observation/learner differences SHALL be recorded. Upstream scripts or policies SHALL remain comparison evidence, not NexuML training or learned-success evidence.
+
+#### Scenario: Upstream vial placement runs but NexuML has not trained it
+- **WHEN** an upstream learner or scripted reference completes a placement
+- **THEN** the report identifies that evidence separately and keeps NexuML updates, resume, export and replay gates open
+
+### Requirement: Expanded completion preserves historical evidence without borrowing it
+
+The original 42 completed tasks SHALL retain their evidence and completion state. New DevContainer installation, both-profile audit and vial-placement gates SHALL remain unchecked until verified. Final evidence SHALL identify source/environment manifests and commands per profile, distinguish controlled task success from learned policy success, and preserve unrelated roadmap gates.
+
+#### Scenario: The original integration is complete but the extension is not
+- **WHEN** only the previously validated worker-image tests have passed
+- **THEN** the baseline remains recorded as complete while the expanded change is in progress
+- **AND** no DevContainer-native, Newton or manipulation correctness claim is inferred from those original passes
