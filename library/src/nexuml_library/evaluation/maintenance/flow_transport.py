@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 from pathlib import Path
 from typing import Any, cast
 
@@ -127,8 +126,12 @@ def sliced_wasserstein(
         raise ValueError("Sliced Wasserstein needs nonempty equal-shaped sample sets")
     if projections < 1:
         raise ValueError("projections must be positive")
-    source = source.detach().reshape(source.shape[0], -1).to(dtype=torch.float32, device="cpu")
-    target = target.detach().reshape(target.shape[0], -1).to(dtype=torch.float32, device="cpu")
+    source = source.detach().reshape(source.shape[0], -1).to(
+        dtype=torch.float32, device="cpu"
+    )
+    target = target.detach().reshape(target.shape[0], -1).to(
+        dtype=torch.float32, device="cpu"
+    )
     if not torch.isfinite(source).all() or not torch.isfinite(target).all():
         raise ValueError("Nonfinite features cannot be compared")
 
@@ -195,7 +198,10 @@ def feature_metrics(
     Raises:
         ValueError: If trajectory shape or contents are inconsistent.
     """
-    if trajectory.shape[0] != healthy.shape[0] or trajectory.shape[2:] != healthy.shape[1:]:
+    if (
+        trajectory.shape[0] != healthy.shape[0]
+        or trajectory.shape[2:] != healthy.shape[1:]
+    ):
         raise ValueError("Trajectory feature shape must match healthy features")
     if trajectory.shape[1] < 2 or healthy.shape != faulty.shape:
         raise ValueError("Need at least two time points and equally shaped endpoint batches")
@@ -367,7 +373,11 @@ def _plot_report(
     fig, ax = plt.subplots()
     rows = metrics["trajectory"]
     ax.plot([r["flow_time"] for r in rows], [r["swd_to_faulty"] for r in rows], marker="o")
-    ax.set(xlabel="Flow integration time", ylabel="Sliced W1 to faulty", title="Healthy-initialized transport")
+    ax.set(
+        xlabel="Flow integration time",
+        ylabel="Sliced W1 to faulty",
+        title="Healthy-initialized transport",
+    )
     ax.grid(True, alpha=0.25)
     fig.tight_layout()
     fig.savefig(output_dir / "transport_distance.png", dpi=180)
@@ -386,7 +396,9 @@ def _plot_report(
     directions = vt[:2].T
     projected = [(matrix - center) @ directions for matrix in matrices]
     fig, ax = plt.subplots()
-    for points, label in zip(projected, ("Healthy", "Faulty", "Transported"), strict=True):
+    for points, label in zip(
+        projected, ("Healthy", "Faulty", "Transported"), strict=True
+    ):
         x = points[:, 0].numpy()
         y = points[:, 1].numpy() if points.shape[1] >= 2 else [0.0] * len(x)
         ax.scatter(x, y, s=9, alpha=0.6, label=label)
