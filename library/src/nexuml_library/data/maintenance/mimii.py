@@ -17,6 +17,7 @@ from nexuml.core.components import DataSourceDefinition
 from nexuml.core.discovery import data_source
 from nexuml.data.dataset import NexuDataset
 from nexuml_library.data.maintenance.audio_endpoints import _AudioEndpointPairsRuntime
+from nexuml_library.data.maintenance.mimii_download import ensure_mimii
 
 _MIMII_URL = "https://zenodo.org/records/3384388"
 _MACHINE_TYPES = ("fan", "pump", "slider", "valve")
@@ -121,6 +122,8 @@ class MIMIIAcousticEndpointPairs(DataSourceDefinition):
 
     Attributes:
         root: Extracted MIMII machine-type root or its parent.
+        download: Automatically download missing recordings from official Zenodo.
+        noise_db: Noise level of the selected official MIMII recording archive.
         machine_type: Selected machine family (one family per experiment).
         train_machine_ids: Machines used to fit the flow.
         val_machine_ids: Machines used for checkpoint selection.
@@ -133,6 +136,8 @@ class MIMIIAcousticEndpointPairs(DataSourceDefinition):
     """
 
     root: str | Path = "data/mimii/6_dB_fan"
+    download: bool = True
+    noise_db: Literal[-6, 0, 6] = 6
     machine_type: Literal["fan", "pump", "slider", "valve"] = "fan"
     train_machine_ids: list[str] = Field(default_factory=lambda: ["id_00", "id_02"])
     val_machine_ids: list[str] = Field(default_factory=lambda: ["id_04"])
@@ -187,6 +192,8 @@ class _MIMIIAcousticEndpointRuntime(_AudioEndpointPairsRuntime):
     def __init__(
         self,
         root: str | Path,
+        download: bool,
+        noise_db: int,
         machine_type: str,
         train_machine_ids: list[str],
         val_machine_ids: list[str],
@@ -201,8 +208,10 @@ class _MIMIIAcousticEndpointRuntime(_AudioEndpointPairsRuntime):
             raise ValueError(f"Unknown MIMII machine type: {machine_type}")
         self.sample_rate = sample_rate
         self.clip_num_samples = clip_num_samples
+        root_path = Path(root).expanduser()
+        ensure_mimii(root_path, machine_type, noise_db, download)
         metadata = _mimii_metadata(
-            root=Path(root).expanduser(),
+            root=root_path,
             machine_type=machine_type,
             train_machine_ids=train_machine_ids,
             val_machine_ids=val_machine_ids,
