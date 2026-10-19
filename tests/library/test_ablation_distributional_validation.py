@@ -8,11 +8,13 @@ import pytest
 import torch
 
 from nexuml.core.components import LayerBuildContext
+from nexuml.training.lightning import NexuSession
 from nexuml_library.evaluation.maintenance.ablation_validation import (
     DistributionalTransportValidation,
     score_distributional_transport,
 )
 from nexuml_library.layers.model.flow import Flow, _FlowRuntime
+from nexuml_library.scenarios.flow.mimii_acoustic_ablation import mimii_acoustic_ablation
 
 
 def _flow() -> _FlowRuntime:
@@ -91,3 +93,67 @@ def test_distributional_callback_uses_only_validation_features(tmp_path: Path) -
     assert torch.equal(healthy, features[1:3, 0])
     assert torch.equal(faulty, features[1:3, 1])
     assert len(healthy) == 2
+
+
+def test_validation_swd_reaches_checkpoint_selection(tmp_path: Path) -> None:
+    """A two-epoch CPU run selects on distributional SWD and seals the test split."""
+    features = torch.tensor(
+        [
+            [[0.0, 0.0], [1.0, 0.5]],
+            [[0.2, 0.1], [1.2, 0.6]],
+            [[0.4, 0.3], [1.4, 0.8]],
+            [[0.6, 0.4], [1.6, 0.9]],
+            [[2.0, 1.0], [3.0, 1.5]],
+            [[2.2, 1.1], [3.2, 1.6]],
+            [[20.0, 10.0], [30.0, 15.0]],
+            [[22.0, 11.0], [32.0, 16.0]],
+        ]
+    )
+    splits = ["train"] * 4 + ["val"] * 2 + ["test"] * 2
+    groups = ["fan:id_00"] * 4 + ["fan:id_04"] * 2 + ["fan:id_06"] * 2
+    rows = [
+        {"split": split, "group_id": group, "paired": 1}
+        for split, group in zip(splits, groups, strict=True)
+    ]
+    prepared_file = tmp_path / "prepared-seed7.pt"
+    torch.save(
+        {
+            "format": "nex233-features-v1",
+            "features": features,
+            "rows": rows,
+            "settings": {"seed": 7},
+        },
+        prepared_file,
+    )
+
+    spec = mimii_acoustic_ablation(
+        prepared_file,
+        hidden_dims=[8, 8],
+        num_steps=4,
+        batch_size=2,
+        max_epochs=2,
+        patience=3,
+        seed=7,
+        checkpoint_root=tmp_path / "checkpoints",
+    )
+    session = NexuSession.from_scenario(
+        spec,
+        accelerator="cpu",
+        devices=1,
+        log_dir=tmp_path / "logs",
+        enable_loggers=False,
+        enable_progress_bar=False,
+    )
+    session.setup().fit()
+    assert "val/transport_swd" in session.trainer.callback_metrics
+    assert "val/swd_relative_reduction" in session.trainer.callback_metrics
+
+    directory = tmp_path / "checkpoints" / "prepared-seed7-mlp-8x8"
+    last = torch.load(directory / "last.ckpt", map_location="cpu", weights_only=False)
+    assert last["epoch"] == 1
+    assert last["global_step"] == 4
+    assert any(
+        "val/transport_swd" in name and state.get("best_model_score") is not None
+        for name, state in last["callbacks"].items()
+        if isinstance(state, dict)
+    )
