@@ -119,6 +119,10 @@ def test_end_to_end_train_and_validation_without_opening_test_data(tmp_path: Pat
         projections=8,
     )
     assert results["training"]["num_pairs"] == 4
+    assert set(results["training"]["per_machine_velocity_statistics"]) == {
+        "fan:id_00",
+        "fan:id_02",
+    }
     assert results["validation"]["num_pairs"] == 2
     assert len(results["training"]["neighbor_alignment"]) == 3
     assert len(results["training"]["pairing_alternative"]["by_machine"]) == 2
