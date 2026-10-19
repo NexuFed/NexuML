@@ -145,8 +145,10 @@ def test_validation_swd_reaches_checkpoint_selection(tmp_path: Path) -> None:
         enable_progress_bar=False,
     )
     session.setup().fit()
-    assert "val/transport_swd" in session.trainer.callback_metrics
-    assert "val/swd_relative_reduction" in session.trainer.callback_metrics
+    validation = session.validate()
+    assert validation
+    assert "val/transport_swd" in validation[0]
+    assert "val/swd_relative_reduction" in validation[0]
 
     directory = tmp_path / "checkpoints" / "prepared-seed7-mlp-8x8"
     last = torch.load(directory / "last.ckpt", map_location="cpu", weights_only=False)
