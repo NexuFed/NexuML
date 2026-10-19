@@ -136,7 +136,17 @@ transfer, determinism and invalid inputs for sliced Wasserstein, correct
 checkpoint selection and rejection of ambiguous checkpoint directories,
 and real acoustic-format validation/test batches from temporary fixture WAVs.
 
-## 6. Interpreting the real-data experiment
+## 6. Investigating target-velocity cancellation
+
+If the transported distribution barely moves, run the focused
+[train-only velocity diagnostic](mimii-velocity-diagnostics.md) before
+changing the Flow Matching model or its coupling. It separates
+unconditional target-direction cancellation, local velocity conflicts,
+training-only hypothetical OT matching and predictor underfitting.
+Neither the pairing baseline nor the checkpoint is selected using test
+data.
+
+## 7. Interpreting the real-data experiment
 
 A checkpoint with a lower fixed-time FM MSE may still have a worse SW1
 distribution match; report **both** rather than treating a low training
