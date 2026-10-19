@@ -230,6 +230,61 @@ log-mel, raw and standardized feature spaces.** Compare dimensionless
 relative reductions, baseline-normalized velocity error, stability and
 generalization instead. Use the same projection seed and count.
 
+### First controlled follow-up: independent coupling versus OT
+
+The independent-coupling prepared dataset already exists; do not
+re-extract frozen FISHER features. Train it using the same MLP 128x128,
+optimizer, training budget, and fixed validation-SWD selection as the
+existing OT experiment. Use a distinct checkpoint root:
+
+```bash
+prepared=.experiments/nex233-ablation/prepared/seed42
+python -m nexuml_library.evaluation.maintenance.ablation_train \
+  --prepared-file "$prepared/fisher-independent-standardized-seed42.pt" \
+  --checkpoint-root .experiments/checkpoints/nex233-independent-swd \
+  --width 128 --lr 0.0003 --batch-size 16 \
+  --max-epochs 300 --seed 42 --accelerator gpu
+```
+
+Evaluate both trained variants again with the extended evaluator.
+The OT command below reuses the **existing SWD-selected run** without
+retraining it:
+
+```bash
+report_dir=.experiments/nex233-ablation/reports
+mkdir -p "$report_dir"
+
+python -m nexuml_library.evaluation.maintenance.ablation_evaluate \
+  --checkpoint-dir .experiments/checkpoints/nex233-independent-swd/fisher-independent-standardized-seed42-mlp-128x128 \
+  --device cuda \
+  --output "$report_dir/fisher-independent-standardized-swd-trainval.json"
+
+python -m nexuml_library.evaluation.maintenance.ablation_evaluate \
+  --checkpoint-dir .experiments/checkpoints/nex233-swd/fisher-ot-standardized-seed42-mlp-128x128 \
+  --device cuda \
+  --output "$report_dir/fisher-ot-standardized-swd-trainval.json"
+
+python -m nexuml_library.evaluation.maintenance.ablation_compare \
+  --independent-report "$report_dir/fisher-independent-standardized-swd-trainval.json" \
+  --ot-report "$report_dir/fisher-ot-standardized-swd-trainval.json" \
+  --output "$report_dir/fisher-coupling-comparison.json"
+```
+
+Each report now includes `training_best` and `training_last`: pairing-invariant
+SWD over **all training recordings**, along with `by_machine` SWD for
+`id_00` and `id_02`. These diagnostics use the same Euler integrator,
+seeded projection count and initial/terminal SWD definition as validation.
+Training metrics never affect checkpoint selection. Neither evaluator
+reads the test partition unless `--include-test` is explicitly supplied;
+the comparison command rejects unsealed reports.
+
+The comparison validates matching preparation provenance, MLP widths,
+and source/target distribution baselines. Compare relative SWD improvement
+on training and validation at both best/last weights. Distinguish
+within-machine transport (training SWD improves) from machine-disjoint
+generalization (validation SWD improves). A negative validation improvement
+does **not** meet the no-transport baseline.
+
 Select configurations using validation results only. After a
 configuration and all hyperparameters are fixed, run the final best
 checkpoint on the **test** machine by adding --include-test to the
@@ -242,6 +297,7 @@ ruff check .
 ruff format --check .
 ty check
 pytest tests/library/test_ablation_distributional_validation.py -v
+pytest tests/library/test_ablation_coupling_comparison.py -v
 pytest tests/library/test_ablation_checkpoint.py -v
 pytest tests/library/test_mimii_acoustic_ablation.py -v
 pytest tests/library/test_fisher_encoder.py -v
