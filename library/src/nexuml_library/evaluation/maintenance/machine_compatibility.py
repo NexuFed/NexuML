@@ -358,9 +358,20 @@ def diagnose_machine_compatibility(
     if not training or not validation or set(training) & set(validation):
         raise ValueError("Expected disjoint nonempty training/validation machine groups")
     names = training + validation
-    healthy = {name: grouped[name]["healthy"] for name in names}
-    faulty = {name: grouped[name]["faulty"] for name in names}
     directions = _projection_directions(features.shape[-1], projections, seed)
+    # Canonicalize each marginal independently: seeded bootstrap estimates
+    # must not change when endpoint pair assignments are permuted.
+    axis = directions[:, 0]
+    healthy = {
+        name: values[torch.argsort(values @ axis, stable=True)]
+        for name in names
+        if (values := grouped[name]["healthy"]) is not None
+    }
+    faulty = {
+        name: values[torch.argsort(values @ axis, stable=True)]
+        for name in names
+        if (values := grouped[name]["faulty"]) is not None
+    }
     projected_h = {name: healthy[name] @ directions for name in names}
     projected_f = {name: faulty[name] @ directions for name in names}
     generator = torch.Generator(device="cpu").manual_seed(seed + 1)
