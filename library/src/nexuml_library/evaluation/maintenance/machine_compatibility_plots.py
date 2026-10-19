@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, cast
 
-import torch
 from torch import Tensor
 
 from nexuml_library.data.maintenance.prepared_endpoints import read_prepared_artifact
