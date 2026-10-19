@@ -281,3 +281,73 @@ def test_mimii_auto_download_rejects_zip_traversal(
         MIMIIAcousticEndpointPairs(root=root).build()
     assert not root.exists()
     assert not (tmp_path / "escape.txt").exists()
+
+
+def test_mimii_auto_download_resumes_partial_archive(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    archive_bytes = _zip_mimii_fixture(tmp_path / "source")
+    checksum = hashlib.md5(archive_bytes, usedforsecurity=False).hexdigest()
+    monkeypatch.setitem(mimii_download._MD5, "6_dB_fan.zip", checksum)
+
+    root = tmp_path / "cache" / "6_dB_fan"
+    root.parent.mkdir(parents=True)
+    offset = len(archive_bytes) // 3
+    partial = root.parent / "6_dB_fan.zip.part"
+    partial.write_bytes(archive_bytes[:offset])
+    requests: list[object] = []
+
+    def ranged_urlopen(request: object, timeout: int) -> io.BytesIO:
+        requests.append(request)
+        assert timeout == 120
+        reply = io.BytesIO(archive_bytes[offset:])
+        reply.status = 206  # type: ignore[attr-defined]
+        reply.headers = {  # type: ignore[attr-defined]
+            "Content-Range": f"bytes {offset}-{len(archive_bytes) - 1}/{len(archive_bytes)}",
+            "Content-Length": str(len(archive_bytes) - offset),
+        }
+        return reply
+
+    monkeypatch.setattr(mimii_download, "urlopen", ranged_urlopen)
+    runtime = MIMIIAcousticEndpointPairs(root=root).build()
+    assert len(runtime) == 12
+    assert len(requests) == 1
+    assert requests[0].get_header("Range") == f"bytes={offset}-"  # type: ignore[attr-defined]
+    assert (root.parent / "6_dB_fan.zip").read_bytes() == archive_bytes
+    assert not partial.exists()
+
+
+def test_mimii_auto_download_restarts_when_range_ignored(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    archive_bytes = _zip_mimii_fixture(tmp_path / "source")
+    checksum = hashlib.md5(archive_bytes, usedforsecurity=False).hexdigest()
+    monkeypatch.setitem(mimii_download._MD5, "6_dB_fan.zip", checksum)
+
+    root = tmp_path / "cache" / "6_dB_fan"
+    root.parent.mkdir(parents=True)
+    (root.parent / "6_dB_fan.zip.part").write_bytes(b"partial")
+    monkeypatch.setattr(
+        mimii_download, "urlopen", lambda request, timeout: io.BytesIO(archive_bytes)
+    )
+    assert len(MIMIIAcousticEndpointPairs(root=root).build()) == 12
+    assert (root.parent / "6_dB_fan.zip").read_bytes() == archive_bytes
+
+
+def test_mimii_download_displays_transferred_bytes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    archive_bytes = _zip_mimii_fixture(tmp_path / "source")
+    checksum = hashlib.md5(archive_bytes, usedforsecurity=False).hexdigest()
+    monkeypatch.setitem(mimii_download._MD5, "6_dB_fan.zip", checksum)
+    monkeypatch.setattr(
+        mimii_download, "urlopen", lambda request, timeout: io.BytesIO(archive_bytes)
+    )
+    root = tmp_path / "cache" / "6_dB_fan"
+    assert len(MIMIIAcousticEndpointPairs(root=root).build()) == 12
+    output = capsys.readouterr().err
+    assert "[MIMII] Connecting to Zenodo" in output
+    assert "[MIMII] Downloading" in output
+    assert "Transfer finished; verifying checksum" in output
+    assert "[MIMII] Extracting verified" in output
+    assert "[MIMII] Ready:" in output
