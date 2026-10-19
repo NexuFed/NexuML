@@ -108,9 +108,9 @@ Under `.experiments/nex233-mimii-evaluation/`:
 
 | File | Contents |
 | --- | --- |
-| `metrics.json` | Best/last epoch and global-step provenance, validation and held-out test metrics, SW1 trajectories and optional training history |
+| `metrics.json` | Checkpoint provenance, validation/test metrics and transport diagnostics |
 | `transport_distance.png` | Sliced W1 distance to faulty distribution along the flow |
-| `feature_pca.png` | Real healthy, real faulty and transported endpoints in a **descriptive** 2D PCA projection |
+| `feature_pca.png` | Descriptive PCA: healthy, faulty and transported features |
 | `loss_curves.png` | Train/val TensorBoard losses, only when `--tensorboard-run` is specified |
 
 PCA is used for illustration only; the quantitative distances are computed
