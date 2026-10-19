@@ -14,6 +14,7 @@ from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint
 
 from nexuml import callback
 from nexuml.core.types import DatasetSpec, PipelineSpec, ScenarioSpec
+from nexuml_library.evaluation.maintenance.ablation_checkpoint import SaveLatestEpoch
 from nexuml_library.data.maintenance.prepared_endpoints import (
     PreparedMaintenanceEndpointPairs,
     read_prepared_artifact,
@@ -109,9 +110,10 @@ def mimii_acoustic_ablation(
                     monitor="val/loss",
                     mode="min",
                     save_top_k=1,
-                    save_last=True,
-                    filename="epoch={epoch:02d}-step={step:06d}",
+                    save_last=False,
+                    filename="{epoch:02d}-{step:06d}",
                 ),
+                callback(SaveLatestEpoch, dirpath=str(checkpoint_dir)),
                 callback(EarlyStopping, monitor="val/loss", mode="min", patience=patience),
             ],
             "logging": default_logging(
