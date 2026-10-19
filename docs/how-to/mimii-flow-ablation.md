@@ -1,0 +1,193 @@
+# NEX-233: pretrained FISHER, normalization and OT coupling ablation
+
+The existing MIMII log-mel healthy-to-faulty flow experiment remains
+unchanged. The ablation tests three factors while reusing the existing
+NexuML flow matching path, vector field, loss and Euler integrator:
+
+| Factor | Conditions |
+| --- | --- |
+| Acoustic representation | Original log-mel spectral features; pretrained frozen FISHER |
+| Source–target coupling | Reproducible independent pairs; training-only per-machine finite OT |
+| Feature scaling | Unscaled features; per-coordinate pooled train-set standardization |
+
+These produce **eight controlled feature-space experiments** at the
+default [128, 128] flow MLP capacity. Two additional FISHER experiments
+with [512, 512] MLPs provide a capacity check; do not conflate frozen
+encoder size with trainable vector-field capacity.
+
+This is supervised distributional transport, **not** an official MIMII
+unsupervised anomaly-detection benchmark and **not** physical RUL inference.
+
+## 1. Prepare the feature datasets
+
+Install the existing optional pretrained requirements and SciPy:
+
+```bash
+uv sync --locked --all-packages --all-extras
+uv pip install einops scipy
+```
+
+The frozen FISHER checkpoint can run on CUDA; the model will be downloaded
+on first use. Only execute trusted Hugging Face remote code. For fully
+reproducible runs, pass an audited immutable revision with --revision.
+
+```bash
+python -m nexuml_library.evaluation.maintenance.ablation_prepare \
+  --frontend both \
+  --device cuda \
+  --machine-type fan \
+  --noise-db 6 \
+  --seed 42 \
+  --output-dir .experiments/nex233-ablation/prepared/seed42
+```
+
+The input default is the same MIMII archive used by the existing
+mimii-acoustic-flow scenario; pass --root PATH when appropriate.
+Use --no-download if all WAV files already exist.
+
+Output: one manifest.json and eight immutable artifacts:
+
+```text
+logmel-independent-raw-seed42.pt
+logmel-independent-standardized-seed42.pt
+logmel-ot-raw-seed42.pt
+logmel-ot-standardized-seed42.pt
+fisher-independent-raw-seed42.pt
+fisher-independent-standardized-seed42.pt
+fisher-ot-raw-seed42.pt
+fisher-ot-standardized-seed42.pt
+```
+
+**Each frontend is instantiated only once during preparation.** Both
+conditions use identical feature weights and preprocessing. All split
+assignments and original source filenames are preserved.
+
+For each raw feature matrix, standardization fits mean and standard
+deviation on **training healthy and training faulty recordings only**:
+
+\[
+\mu=\frac{1}{2N_{\mathrm{train}}}
+\sum_{i\in\mathrm{train}}(x_{0i}+x_{1i}),\qquad
+\sigma^2=\frac{1}{2N_{\mathrm{train}}}
+\sum_{i\in\mathrm{train}}
+\big((x_{0i}-\mu)^2+(x_{1i}-\mu)^2\big).
+\]
+
+OT is computed **after the selected scaling**, with squared Euclidean
+cost and exact Hungarian assignment. It matches recordings only **within
+each training machine identity**. Val/test pairings are never altered.
+Feature-space OT reduces transport cost but is not a physical
+wear-progression pairing. Train-only statistics, cost reduction and
+recording correspondence are written to each artifact.
+
+Prepared artifacts are locally trusted PyTorch files (weights-only
+loading) and are deliberately not overwritten. Separate seeds should
+use separate preparation directories.
+
+## 2. Train the eight matched configurations
+
+The dedicated entry point uses NexuSession.fit() then validate(), but
+**not** NexuSession.run(): the latter automatically tests every run.
+This is necessary to keep the test machine sealed during selection.
+
+```bash
+prepared=.experiments/nex233-ablation/prepared/seed42
+checkpoint_root=.experiments/checkpoints/nex233-ablation
+
+for frontend in logmel fisher; do
+  for coupling in independent ot; do
+    for scaling in raw standardized; do
+      file="$prepared/$frontend-$coupling-$scaling-seed42.pt"
+      python -m nexuml_library.evaluation.maintenance.ablation_train \
+        --prepared-file "$file" \
+        --checkpoint-root "$checkpoint_root" \
+        --width 128 \
+        --lr 0.0003 \
+        --max-epochs 300 \
+        --seed 42 \
+        --accelerator gpu
+    done
+  done
+done
+```
+
+Each configuration has a distinct run/checkpoint path and the same
+optimization budget. An existing checkpoint directory is rejected to
+prevent the Lightning last-v1/last-v2 ambiguity seen previously.
+
+The [512, 512] vector field is a second-stage capacity experiment.
+For an initial controlled comparison, run both coupling choices under
+standardized FISHER features:
+
+```bash
+for coupling in independent ot; do
+  python -m nexuml_library.evaluation.maintenance.ablation_train \
+    --prepared-file "$prepared/fisher-$coupling-standardized-seed42.pt" \
+    --checkpoint-root "$checkpoint_root" \
+    --width 512 \
+    --lr 0.0003 \
+    --max-epochs 300 \
+    --seed 42 \
+    --accelerator gpu
+done
+```
+
+Repeat on multiple seeds and retain all results, not only the strongest
+run. For the first engineering check, seed 42 is sufficient; scientific
+comparisons should use repeated seeds.
+
+## 3. Validate and select; do not test all candidates
+
+For example, evaluate the validation-best and last checkpoints
+of the FISHER OT + standardized baseline:
+
+```bash
+run=fisher-ot-standardized-seed42-mlp-128x128
+
+python -m nexuml_library.evaluation.maintenance.ablation_evaluate \
+  --checkpoint-dir "$checkpoint_root/$run" \
+  --device cuda \
+  --seed 42 \
+  --output ".experiments/nex233-ablation/reports/$run.json"
+```
+
+The default evaluator accesses only the training mean for the
+constant-velocity baseline and the held-out **validation** machine.
+It reports (best and last checkpoint):
+
+- SWD to the faulty endpoint distribution at five Euler flow times.
+- Healthy→faulty and transported→faulty SWD, including relative reduction.
+- Fixed-time FM MSE, zero-velocity MSE, and train-mean-velocity MSE.
+- Relative improvement over zero and a constant mean-shift SWD baseline.
+
+**Absolute feature SWD and FM MSE are not comparable across FISHER,
+log-mel, raw and standardized feature spaces.** Compare dimensionless
+relative reductions, baseline-normalized velocity error, stability and
+generalization instead. Use the same projection seed and count.
+
+Select configurations using validation results only. After a
+configuration and all hyperparameters are fixed, run the final best
+checkpoint on the **test** machine by adding --include-test to the
+evaluator command (and choose a distinct output JSON file).
+
+## 4. Quality checks
+
+```bash
+ruff check .
+ruff format --check .
+ty check
+pytest tests/library/test_mimii_acoustic_ablation.py -v
+pytest tests/library/test_fisher_encoder.py -v
+pytest tests/library/test_mimii_flow_transport.py -v
+pytest tests/_registry -v
+```
+
+Preparation and scenario unit tests do not download MIMII or FISHER,
+and the existing public NexuML core is unchanged.
+
+**Limitations:** The current split uses two training machine IDs and
+one validation ID. With only 256 training pairs, either representation
+can overfit or generalize poorly; train-standardization may also amplify
+low-variance features on unseen machines. The experiment measures
+transport between healthy/faulty recording distributions, not true
+monotonic degradation trajectories.
