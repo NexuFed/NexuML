@@ -242,9 +242,7 @@ def test_ablation_trainer_never_calls_automatic_test(
             self.trainer = SimpleNamespace(
                 global_step=16,
                 callbacks=[
-                    SaveLatestEpoch(
-                        tmp_path / "checkpoints" / "variant-seed7-mlp-128x128"
-                    )
+                    SaveLatestEpoch(tmp_path / "checkpoints" / "variant-seed7-mlp-128x128")
                 ],
             )
 
