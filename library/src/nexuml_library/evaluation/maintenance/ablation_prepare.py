@@ -244,6 +244,12 @@ def prepare_ablation(
         FileExistsError: If an existing variant artifact would be overwritten.
     """
     output_dir.mkdir(parents=True, exist_ok=True)
+    manifest_path = output_dir / "manifest.json"
+    if manifest_path.exists():
+        raise FileExistsError(
+            f"Experiment manifest already exists: {manifest_path}. "
+            "Use a new output directory for independent preparation runs."
+        )
     manifest: dict[str, Any] = {}
     for frontend in frontends:
         features, rows = extract_mimii_endpoints(
@@ -279,7 +285,7 @@ def prepare_ablation(
                 raise FileExistsError(f"Prepared artifact exists: {file}")
             torch.save(payload, file)
             manifest[name] = {"path": str(file.resolve()), **settings}
-    (output_dir / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
     return manifest
 
 
