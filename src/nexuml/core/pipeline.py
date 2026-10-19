@@ -60,7 +60,7 @@ class CompiledPipeline(nn.Module):
             elif isinstance(stage_layers, nn.Module):
                 yield stage_name, stage_name, stage_layers
 
-    def forward(  # ty: ignore[invalid-mutable-override]
+    def forward(
         self, x: TensorDict, y: TensorDict | None = None
     ) -> tuple[TensorDict, TensorDict | None]:
         for _stage_name, _layer_name, layer in self.iter_layers():
