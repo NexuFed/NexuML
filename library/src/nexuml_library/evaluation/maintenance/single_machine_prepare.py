@@ -23,6 +23,7 @@ def build_single_machine_artifacts(
     val_fraction: float = 0.25,
     seed: int = 42,
     include_original_test_machine: bool = False,
+    machine_group: str | None = None,
 ) -> dict[str, dict[str, Any]]:
     """Split FISHER embeddings within each machine without recording leakage.
 
@@ -38,6 +39,7 @@ def build_single_machine_artifacts(
         val_fraction: Fraction of recordings reserved for validation.
         seed: Fixed seed for within-machine recording splits and flow training.
         include_original_test_machine: Explicit opt-in to unseal original test ID.
+        machine_group: Optional exact group, e.g. fan:id_06. Other machines are excluded.
 
     Returns:
         Machine name to validated in-memory prepared artifact.
@@ -58,8 +60,12 @@ def build_single_machine_artifacts(
     features = cast(Tensor, source["features"])
     rows = cast(list[dict[str, Any]], source["rows"])
     machines = sorted({str(row["group_id"]) for row in rows})
+    if machine_group is not None and machine_group not in machines:
+        raise ValueError(f"Machine group absent from prepared source: {machine_group}")
     artifacts: dict[str, dict[str, Any]] = {}
     for index, machine in enumerate(machines):
+        if machine_group is not None and machine != machine_group:
+            continue
         indices = [i for i, row in enumerate(rows) if row["group_id"] == machine]
         original_splits = {rows[i]["split"] for i in indices}
         if len(original_splits) != 1:
@@ -146,6 +152,7 @@ def save_single_machine_artifacts(
     val_fraction: float = 0.25,
     seed: int = 42,
     include_original_test_machine: bool = False,
+    machine_group: str | None = None,
 ) -> dict[str, Any]:
     """Persist separate immutable artifacts and a manifest for each machine.
 
@@ -161,6 +168,7 @@ def save_single_machine_artifacts(
         val_fraction=val_fraction,
         seed=seed,
         include_original_test_machine=include_original_test_machine,
+        machine_group=machine_group,
     )
     directory = Path(output_dir).expanduser().resolve()
     paths = {
@@ -208,6 +216,7 @@ def main() -> None:
     parser.add_argument("--val-fraction", type=float, default=0.25)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--include-original-test-machine", action="store_true")
+    parser.add_argument("--machine-group", type=str)
     args = parser.parse_args()
     manifest = save_single_machine_artifacts(
         args.source_file,
@@ -216,6 +225,7 @@ def main() -> None:
         val_fraction=args.val_fraction,
         seed=args.seed,
         include_original_test_machine=args.include_original_test_machine,
+        machine_group=args.machine_group,
     )
     for machine, row in manifest["machines"].items():
         print(
