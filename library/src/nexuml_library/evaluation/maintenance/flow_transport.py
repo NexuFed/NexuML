@@ -81,7 +81,8 @@ def resolve_checkpoints(
             raise ValueError("Conflicting best-model paths; specify --best-checkpoint.")
         else:
             alternatives = sorted(
-                path for path in checkpoint_dir.glob("*.ckpt")
+                path
+                for path in checkpoint_dir.glob("*.ckpt")
                 if not path.name.startswith("last")
             )
             if len(alternatives) != 1:
