@@ -18,7 +18,7 @@ See `proposal.md` for motivation and the thirteen capability deltas for observab
 | `library/environments/isaaclab.py` and `_isaaclab_runtime.py` | The verified three-task EA provider is intentionally pinned to one source revision, cu128, PhysX, direct single-GPU collection and fresh-process scalar replay. It is not a generic backend or proof for a new release. |
 | Existing data, exports and tracking | Reuse typed registration, resolved configuration, datasets, source/dependency manifests, complete policy export and native TensorBoard/MLflow recording. |
 
-`add-isaaclab-gpu-robotics` has 42 original completed tasks and 23 open extensions. Its retained 15 native-image test passes are historical acceptance only. `add-mujoco-reference-workflows` is planned, owns alternative-simulator references and success-only outcome work, but its Meta-World dependency plan conflicts with the selected Newton family. The full roadmap snapshot is indexed in `coverage.md`; no source roadmap or sibling proposal is changed here.
+`add-isaaclab-gpu-robotics` has 42 original completed tasks and 23 open extensions. Its retained 15 native-image test passes are historical acceptance only. `add-mujoco-reference-workflows` is a historical plan whose alternative-simulator references and success-only outcome requirements are now imported into this umbrella. Its original Meta-World pin conflicts with the prior selected Newton family, and its impossible combined dependency closure is no longer authoritative. The full roadmap snapshot is indexed in `coverage.md`; no source roadmap or sibling proposal is changed here.
 
 The inspected running DevContainer is Ubuntu 26.04.1 with `compute,utility`, although its prepared NVIDIA configuration selects Ubuntu 24.04 plus graphics. NexuVibe currently declares Python 3.14 and uses `/env`; the user explicitly accepts changing that primary environment to Python 3.12 and CUDA 13. Prepared files are not effective runtime evidence.
 
@@ -34,41 +34,25 @@ The inspected running DevContainer is Ubuntu 26.04.1 with `compute,utility`, alt
 
 This change owns the forward Isaac-first architecture and full-program acceptance. Preserve the older 42-task result and existing policy packages. Before shared implementation, record which open legacy extension items are adopted here, retained as legacy-profile proof, or require an explicitly authorized artifact amendment. Do not check off the older two-environment extension from a one-environment migration, and do not archive either change by implication.
 
-`coverage.md` is the source-to-capability map. Implementation expands it to exact requirement/test/evidence identifiers and compares it with the source snapshot before completion. The MuJoCo change retains ownership of its native Humanoid/Reacher/Meta-World work; one designated owner implements shared success-only evaluator behavior, with both suites consuming it. Original live Gazebo and CARLA statuses remain unchanged except where this program actually supplies the required Gazebo proof; CARLA expansion remains external.
+`coverage.md` is the source-to-capability map. Implementation expands it to exact requirement/test/evidence identifiers and compares it with the source snapshot before completion. This umbrella owns the native MuJoCo Humanoid/Reacher/Meta-World workflows and GPU Playground tasks, with a single shared outcome evaluator/adapter owner. The historical MuJoCo plan shall not be executed as a second queue. Original live Gazebo and CARLA statuses remain unchanged except where this program actually supplies the required Gazebo proof; CARLA expansion remains external.
 
 **Rejected:** duplicate all existing specs under a new name, count old tests as new-release proof, or let two agents edit the same evaluator/contract concurrently.
 
-### D2. One canonical consumer-owned Python environment
+### D2. One primary consumer-owned Python environment and explicit compatibility lanes
 
-Select a compatible release-3.0 family rather than mixing old EA packages with a current tutorial. The following is a source-inspected **candidate**, not a validated combined lock:
+Maintain one automatically provisioned, pinned Python 3.12/CUDA-13 Isaac-first NexuVibe development environment where the currently tested Isaac/LeRobot/TorchRL/NexuML stack works. Treat Isaac Lab, Isaac Sim, Newton, Warp, MuJoCo, PyTorch/TorchRL and model versions in the old candidate table as **unverified release candidates**, not an immutable compatible set. Reinspect the pinned upstream tutorial, modern source APIs, CUDA wheels, licenses, driver requirements, resource budget and actual complete uv resolution. No default-weight download or unrelated package upgrade during discovery. Preserve original EA/cu128 evidence.
 
-| Component | Candidate / authority |
-| --- | --- |
-| OS / Python | Ubuntu 24.04, CPython 3.12; exact patch recorded by the consumer lock/setup |
-| Isaac Lab | Release 3.0 source `d061bf35a58273ef0cc8aceae76392166f9b7d15`, subject to its native and complete-composition gates |
-| SO-101 tutorial | `9a4286b4bc8a5720ac97f87e5e0140f7542c22d9`; its lock records the Lab revision above |
-| Torch family | 2.11.0+cu130 / torchvision 0.26.0+cu130, with matching audio/codec dependencies selected by the consumer |
-| Newton / Warp / MuJoCo | Newton 1.6.1, Warp 1.17.0, MuJoCo/MJWarp 3.12 family from the selected upstream recipe |
-| Isaac Sim | 6.2.0.0 candidate for this Lab revision; separate compatibility proof from historical Sim 6.1 |
-| TorchRL / TensorDict | Begin at the existing 0.14 family; verify exact installed DreamerV3/VLA/multi-agent APIs and freeze a compatible released pair, not moving documentation or unapproved nightlies |
-| ROS accelerated runtime | Isaac ROS 5.0/Lyrical on NVIDIA's Noble buildfarm; select and record Sim's independently supported bridge |
-| LeRobot / Arena / GR00T | Select compatible maintained releases and immutable model identities during the first joint-resolution gate; legacy Python-3.11 Arena recipes are not installation targets |
+NexuML library declares concrete named optional extras and core forwards only compatible groups. Plain NexuML remains simulator-free. Do not force all available native simulators, ROS/CUDA families, JAX and old Meta-World into one undifferentiated all extra, or restrict the Python range of all NexuML users merely because one benchmark requires an older Python/MuJoCo version. Record a tested compatibility matrix for primary and optional components including CPU, CUDA, EGL and OSMesa renderers.
 
-Concrete integration requirements belong in NexuML library extras, with root forwarding where appropriate; ordinary base packages remain simulator-free. NexuVibe selects the backend indexes and authoritative combined `uv.lock`, including its existing NexuFL dependency closure. Keep NexuML's standalone development lock for its own repository checks, not as a second deployed simulator profile. No automatic narrowing of all NexuML users' Python range merely because the configured developer environment selects 3.12.
+When *native* compatibility truly cannot be attained via maintained upstream releases, an explicitly reviewed, opt-in pinned process/worker or separately locked execution profile may host the incompatible benchmark. It must preserve normal NexuML scenario, policy, data and metrics semantics at an explicitly tested process boundary, while never serializing active physics handles. It remains blocked until real native and policy interoperability evidence exists, not a hidden fallback. This exception does not create an environment per algorithm or replace the primary setup.
 
-The old EA/cu128 image remains historical reproducibility material, not a required second daily-use environment. Port/revalidate the references on the canonical stack and version changed contracts; do not erase original artifacts or silently run them against new physics. Any additional compatibility environment requires a concrete conflict and explicit user approval and cannot substitute for canonical acceptance.
+### D3. Meta-World, Newton, MuJoCo and JAX cannot simply be combined by Python pinning
 
-**Rejected:** separate venv per framework, making bare `all` mean silently incompatible packages, or treating CUDA toolkit and wheel-runtime minor versions as identical concepts.
+The previously documented Meta-World 3.1.1/MuJoCo==3.3.0 requirement and Newton/MJWarp MuJoCo-3.12-family candidate conflict is substantive; an interpreter change alone cannot resolve it. Re-evaluate actual published metadata and maintained Meta-World alternatives; publish compatible selections with exact release and lock identities. The sibling MuJoCo proposal's all-extras closure and global >=3.12,<3.14 bound are **superseded in this umbrella design**; preserve sibling files for history. Avoid --no-deps, unsupported upstream patches, hidden pip fixes or silent benchmark removal.
 
-### D3. Treat dependency and installation conflicts as first-class gates
+Maintain three independent MuJoCo paths: (a) Gymnasium native CPU Humanoid-v5/Reacher-v5 reference PPO and headless replay; (b) native Meta-World MT1 reach-v3 with exact goal/task/action rules and success-only outcomes; (c) GPU MuJoCo Playground using its maintained MJWarp/MJX/renderer and real task assets. A JAX-native upstream PPO baseline stays labeled **external baseline**, not a NexuML Lightning/TorchRL learner. Only claim NexuML-owned GPU training when an actual supported Torch/MJWarp integration executes NexuML optimizer, checkpoint/resume, policy export and native evaluation. A future JAX learner requires an independent reviewed optimizer/serialization contract, not an informal TorchRL bridge.
 
-Published metadata establishes a real contradiction: Meta-World 3.1.1 requires `mujoco==3.3.0`; Newton 1.6.1 `[sim]` requires `mujoco~=3.12.0`, and MJWarp 3.12.0 requires `mujoco>=3.11.0`. These requirements cannot inhabit one interpreter. Changing Python does not fix them.
-
-Keep canonical Isaac authoritative. Inspect maintained Meta-World alternatives first. If none is compatible, propose an explicit coordinated amendment to the MuJoCo change's mandatory `all` closure or optional mutually exclusive selection; do not alter that proposal or drop the benchmark here without review. Merely removing an extra from `all` can still leave uv universal resolution conflicting: represent real exclusivity in the consumer/repository resolver configuration where needed. The independent roadmap benchmark remains blocked until its own accepted route works. Never patch upstream metadata, use `--no-deps`, pin an older Newton silently or claim full roadmap completion.
-
-Apply the same gate to LeRobot, Arena, GR00T, ROS and every newly selected package. Freeze source/model/asset hashes, licenses and the full transitive closure. Separate dependency presence from actual public API availability and native operation. Install one selected code stack automatically, but fetch large datasets/weights only from the explicitly configured approved reference set, not every upstream download.
-
-**Rejected:** repairing a successful minimal environment after the fact with untracked pip additions or claiming that a lock excluding requested capabilities proves the complete composition.
+Shared evaluator success-only changes have one code owner, regardless of simulator. Native task/asset/control contracts, terminal/reset transition parity, Python package integrity, CPU OSMesa/NVIDIA EGL and policy exports are independently tested in the chosen lane. Missing native prerequisites leave that capability visibly incomplete; other reference slices may still pass.
 
 ### D4. Coordinate DevContainer delivery without hidden sibling writes
 
@@ -228,10 +212,32 @@ No NexuFL implementation follows from this operation. Preserve its future interf
 
 **Rejected:** learned safety certification, automatic command enablement, hardware CI, automatic uploading, fleet updates or unaudited control setpoint writes to industrial machines.
 
+### D16. Treat the reference catalogue as an executable set of tests
+
+reference-catalogue.md is the embodiment/method matrix for Isaac, MuJoCo and LeRobot; tasks.md is the single implementation queue. Every mandatory row has independent build/native stepping, actual NexuML learning, interruption/resume, complete package export, fresh-process inference and closed-loop/scalar/media testing. Quality acceptance separately requires a pinned native success predicate and held-out/multi-seed outcomes, not a smoke. Exact SO-101 vial placement remains the anchor: six relative controls, correct home-reset evaluation, physical grasp/lift/insert/release and no hidden object attachment. Include direct camera PPO **and** teacher-to-camera distillation with identical deployed observations, and compare matched ACT, Diffusion and small flow policies on the same valid source splits. Privileged state-policy results are not misrepresented as observation-matched camera results.
+
+Keep the already listed OpenArm, G1, Go2, Crazyflie/PX4, TurtleBot3, UR10e/Rizon, UR5e and LumenPnP; require exact asset/task identities, not nearby substitutes. Include G1 Mimic locomanipulation, an OpenArm drawer/bimanual feasibility option, and bounded optional DexSuite/GR-1 references only after source/license/runtime verification. Full-program completion remains open for each mandatory asset and manual gate; optional exploratory examples are not quietly promoted to hard requirements.
+
+### D17. Human corrections, reward models and simulation-first offline-to-online improvement
+
+Augment the existing LeRobot v3 episode/data/capture ownership with intervention semantics, timestamped sensor/subtask/language/depth data, action-executed-versus-proposed differences, train/held-out split protection and dataset quality. Integrate DAgger-style correction capture (using upstream operators), one genuine SAC-based offline-to-online RLPD mix and simulated HIL-SERL with a trainable reward classifier. Optionally assess Robometer/TOPReward source/model/processor requirements before large downloads. Run matched old/new/failure suites and always distinguish learned reward/progress from measured task success. No autonomous hardware exploration, controller bypass or new teleoperation UI.
+
+### D18. Modern action models and asynchronous inference
+
+Use the existing compiled graph, processors and complete stateful-policy package for an actual small flow-matching/Diffusion Transformer reference alongside ACT and Diffusion. Preserve masked chunks, iterative sampling, RNG/seed, normalization, observation history, per-stream chunk/state buffers, reset and timeouts. Build an optional asynchronous policy-serving bridge only after ordinary local inference works; reject stale sensor frames and late chunks, with action fallback enforced by the external controller, not invented runtime safety certification. Select GR00T N1.7 versus legacy N1.5 explicitly from the maintained LeRobot release; SmolVLA and resource-gated pi0.5 remain required. Other new VLAs remain feasibility candidates until source/asset/compute checks pass.
+
+### D19. Benchmark parity and cross-backend evidence
+
+Retain Isaac Lab-Arena, exact Meta-World MT1 scoring and matching task/sensors/actions. Add one compatible LeRobot LIBERO/LIBERO-plus native suite and an optional RoboTwin 2.0 subset; do not rebuild evaluation engines. Pin suite/task/reset/object/seed/processor versions and record per-task success, failures, uncertainty, latency and resources. Native simulator policy success, offline shadow agreement and manually supervised hardware success are different evidence classes. Multi-run performance is not a substitute for required interoperability or license approval.
+
+### D20. One campaign, many independently reviewable slices
+
+Implement tasks 1–22 in dependency order; every slice lands focused tests, runnable user documentation, version/asset provenance and an actual native round trip before the next dependent slice claims readiness. A single agent/campaign can coordinate this programme, but it shall not duplicate the previous MuJoCo plan, rewrite existing session/compiler/framework architecture, wait for every P2 embodiment before releasing useful P0 milestones, or mark all required gates complete from CPU-only CI. Preserve tested checkpoint/report histories; follow ordinary approved cross-repository/container/hardware gates.
+
 ## Risks / Trade-offs
 
 - **[Program breadth]** -> Staged tasks and per-family proofs; do not turn the first arm milestone into a claim of full support or grow a generic framework preemptively.
-- **[Unsatisfiable unified dependencies]** -> Resolve the entire requested closure first, preserve exact conflicts and require reviewed compatibility decisions; no hidden environments/overrides.
+- **[Conflicting optional simulator/native dependencies]** -> Resolve the primary compatible graph first, maintain an explicit named profile matrix for incompatible Meta-World/JAX cases, and test a reviewed opt-in execution boundary; no hidden environments/overrides.
 - **[Upstream docs differ from installed/pinned code]** -> Immutable sources, explicit API inventory and native/numerical tests before adapters.
 - **[Sequence or processor changes break old policies]** -> Stateless default behavior, old-package/config round trips and exact new sequence/reset parity.
 - **[Two optimizer owners]** -> One Lightning-compatible stepping owner, serialized target/ratio/normalization state and exact update-count tests.
@@ -243,14 +249,22 @@ No NexuFL implementation follows from this operation. Preserve its future interf
 
 ## Migration Plan
 
-1. Freeze source/roadmap/baseline identities, ownership and old-change coordination; create the compatibility/API/license inventory before shared code changes.
+1. Freeze source/roadmap/baseline identities, reference-catalogue.md, historic MuJoCo ownership transfer and all required upstream API/license/compatibility candidates before shared code changes.
 2. Deliver the coordinated NexuVibe Python-3.12/cu130/system setup in its owning repository, obtain recreation timing and prove the canonical clean installation. Keep old images/checkpoints and rollback inputs.
 3. Add minimal physical/temporal contract and inference-state extensions with old-workflow regression tests, then port and revalidate the original references and vial task on the canonical stack.
-4. Implement data/IL/distillation and common evaluation; integrate real VLA and DreamerV3 through existing learner/model seams. Keep each slice runnable and tested before the next family.
-5. Add Arena/robustness, ROS/Gazebo/perception and exact embodiment references. Extend advanced physics, scaling and remote inspection only with their independent proofs.
+4. Validate classic MuJoCo/Meta-World and Playground native routes alongside canonical Isaac, then implement SO-101 data/ACT/Diffusion/flow/camera workflows, correction/reward learning and common evaluation; integrate pretrained VLA and DreamerV3 through existing seams. Keep each slice runnable and tested before the next family.
+5. Add Arena, compatible LIBERO and optional RoboTwin, robustness, ROS/Gazebo/perception and exact embodiment references. Extend advanced physics, scaling and remote inspection only with their independent proofs.
 6. Run full regression/distribution/install evidence and the separately approved real-arm/local-adaptation cycle. Reconcile all coverage rows and required gates before claiming full backend completion.
 
 Rollback is per slice through normal reviewed version control and the retained consumer lock/image/config. Do not delete or recreate user environments, caches, datasets, checkpoints or staged work automatically. Keep base imports and previous approved inference artifacts usable; an incompatible target gets an explicit migration/rejection, not changed physics under the same identity. Commit, merge and archive remain separately requested operations.
+
+## New source constraints for integrated change
+
+- https://github.com/isaac-sim/IsaacLabTutorial (maintained SO-101 state, camera, distillation and sim2real references; freeze actual release-specific task IDs)
+- https://github.com/google-deepmind/mujoco_playground (GPU MJWarp/MJX, upstream JAX and supported RSL PPO baseline paths; no implied TorchRL interop)
+- https://github.com/huggingface/lerobot/releases and https://huggingface.co/blog/lerobot-release-v060 (LeRobot v0.6+ model/processors, DAgger, reward API, depth and benchmarks; v0.6.1 import break must be audited)
+- https://metaworld.farama.org/evaluation/evaluation/ (native protocol)
+- The previous MuJoCo proposal is a source of requirements, not a second implementation plan.
 
 ## Source and evidence policy
 
