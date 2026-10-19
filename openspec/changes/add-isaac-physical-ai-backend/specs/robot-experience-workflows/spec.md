@@ -62,3 +62,11 @@ Industrial time-series and image streams SHALL retain their existing window/data
 #### Scenario: A machine anomaly dataset has no control actions
 - **WHEN** it is loaded and used for prediction training
 - **THEN** the ordinary dataset workflow operates without requiring a robot policy or simulator
+
+### Requirement: Depth, language and human interventions retain source and temporal semantics
+
+LeRobot v0.6+ episode ingestion SHALL preserve calibrated depth/RGB identities, sensor timestamps/rates, language/subtask boundaries and proposed versus executed policy actions. Intervention intervals, checkpoint provenance and leakage-safe train/held-out partitions SHALL survive conversions through maintained public dataset/processor APIs.
+
+#### Scenario: Camera frames lag arm control
+- **WHEN** camera, language and intervention events join a SO-101 training window
+- **THEN** stale or missing frames, masks, time alignment and original episode boundaries remain observable and held-out episodes never leak into training

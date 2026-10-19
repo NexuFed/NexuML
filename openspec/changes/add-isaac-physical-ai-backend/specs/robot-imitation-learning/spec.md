@@ -67,3 +67,15 @@ A maintained Diffusion Policy SHALL train, resume, export, reload and complete c
 - **WHEN** the same observation sequence, reset schedule and sampling seed are supplied
 - **THEN** the recorded inference scheduler, denoising parameters, processors and chunk execution reproduce reference actions within declared numerical tolerances
 - **AND** an unseeded stochastic difference is not silently described as deterministic parity
+
+### Requirement: SO-101 visual control includes teacher distillation and independent camera PPO
+
+The six-action physical-contact SO-101 vial task SHALL support a maintained state PPO teacher, deployed wrist-camera/proprioceptive student distillation and separately learned camera PPO from scratch. Their training and home-pose evaluation distributions, privilege barriers and control/processor contracts SHALL be recorded. ACT, Diffusion and small flow policies SHALL be compared only on matching input/task/episode protocols.
+
+#### Scenario: A camera actor expects privileged state
+- **WHEN** a visual student or direct camera-PPO actor exports or evaluates with unavailable privileged state
+- **THEN** the inference contract fails rather than copying critic/teacher inputs into deployable actors
+
+#### Scenario: The state teacher and camera student differ
+- **WHEN** results are compared on held-out home-pose vial placement
+- **THEN** their input privilege differences remain explicit and shaped return is not substituted for physical contact/release success

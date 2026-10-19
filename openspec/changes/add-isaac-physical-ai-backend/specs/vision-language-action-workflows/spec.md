@@ -75,3 +75,11 @@ A maintained pretrained π0.5 policy SHALL demonstrate inference, task-specific 
 - **WHEN** selected normalization lacks required training-split statistics or the run exceeds approved resources
 - **THEN** execution reports the missing prerequisite without reading held-out statistics, changing normalization silently or starting an unapproved remote job
 - **AND** neither package loading nor a tiny substitute model closes the complete-reference gate
+
+### Requirement: Maintained foundation-model versions and processors are explicit
+
+The GR00T reference SHALL target a currently verified maintained N1.7 integration, not silently reuse an obsolete N1.5 code/weight path. SmolVLA and the resource-gated pi0.5 remain complete workflows. Other models such as MolmoAct2 and Multitask DiT may enter only after versioned source/model/licensing/compute feasibility and matching action/embodiment reviews. Processor and tokenizer/normalizer identity SHALL survive complete policy packaging.
+
+#### Scenario: Legacy GR00T N1.5 weights are selected for N1.7
+- **WHEN** source, model or processor identity is incompatible
+- **THEN** policy loading fails explicitly or selects an independently validated legacy path rather than silently changing model semantics

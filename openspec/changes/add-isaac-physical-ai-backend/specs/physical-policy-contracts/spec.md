@@ -69,3 +69,11 @@ Physical-policy additions SHALL NOT require robot actions, episodes, ROS, langua
 #### Scenario: An existing industrial classifier is restored
 - **WHEN** it is compiled, trained and exported after the Physical AI extensions
 - **THEN** it retains its normal dataset, model and inference lifecycle without constructing interaction resources
+
+### Requirement: Timed asynchronous inference keeps state and control safety boundaries explicit
+
+Policies emitting asynchronous action chunks SHALL preserve observation/action timestamps, per-stream recurrent/chunk state, control-period and reset identity. Unsupported stale observations and expired deadlines SHALL be diagnosed and rejected. Physical robot controller safe-hold/fallback remains externally owned.
+
+#### Scenario: Two streams receive delayed chunks
+- **WHEN** one stream resets while another continues and a stale VLA result arrives
+- **THEN** only the reset stream loses pending state, stale results are not executed, and the continuing stream retains correct action order and timing
