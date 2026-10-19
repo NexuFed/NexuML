@@ -1,5 +1,14 @@
 # NexuML → NexuFL SO-101 learning contract (planned)
 
+## Linear issue and PR linkage
+
+- **Implementation issue:** [NEX-234](https://linear.app/nexufed/issue/NEX-234) — SO-101 local imitation learning and NexuML Python SDK handoff (Gate 0 / F01).
+- **PR branch (recommended from Linear):** `feature/nex-234-so-101-local-imitation-learning-and-nexuml-python-sdk`. PR title example: `NEX-234: SO-101 local behavior cloning and Python SDK handoff`.
+- **PR body:** include `Closes NEX-234` **only** on the PR that actually satisfies verified tasks 0.1–0.8. Planning-only PRs should say `Related to NEX-234`; do not close the issue.
+- Keep the PR small: do not merge the entire unfinished Physical AI umbrella to deliver the handoff. Later FL implementation is tracked by [NEX-235](https://linear.app/nexufed/issue/NEX-235).
+- **Status automation:** linking alone is not a guarantee of transitions; the Linear↔GitHub integration and team's workflow automations must be configured to move the issue on PR creation/review/merge.
+
+
 **Owner:** NexuML `feature/nex-212-add-reinforcement-learning` → tasks §0 / F01. **Consumer:** NexuFL `unify-client-initiated-federation-and-library` → `openspec/changes/federate-so101-imitation-learning/`. This file specifies a target handoff; it is **not** an implemented API.
 
 ## Minimal local proof and PR boundary
