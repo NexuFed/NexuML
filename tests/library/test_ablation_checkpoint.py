@@ -69,6 +69,12 @@ def test_last_checkpoint_updates_when_validation_best_stays_at_epoch_zero(
     assert final["global_step"] == 6
     assert best["epoch"] == 0
     assert final["epoch"] == 2
+    best_paths = {
+        state["best_model_path"]
+        for state in final["callbacks"].values()
+        if isinstance(state, dict) and "best_model_path" in state
+    }
+    assert best_paths == {best_callback.best_model_path}
     assert not torch.equal(
         best["state_dict"]["weight"],
         final["state_dict"]["weight"],
