@@ -166,7 +166,6 @@ class _AudioEndpointPairsRuntime(NexuDataset):
 
         Raises:
             ValueError: If the sample rate, PCM encoding or bit depth is unsupported.
-            wave.Error: If the file is not a supported WAV container.
         """
         with wave.open(str(file), "rb") as recording:
             sample_rate = recording.getframerate()
