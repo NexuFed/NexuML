@@ -190,8 +190,8 @@ def extract_mimii_endpoints(
         healthy = torch.stack([cast(Tensor, item["healthy_waveform"]) for item in items])
         faulty = torch.stack([cast(Tensor, item["faulty_waveform"]) for item in items])
         combined = torch.cat((healthy, faulty), dim=0).to(device)
-        if frontend == "fisher":
-            vectors = cast(Tensor, encoder(combined))
+        if isinstance(encoder, FISHEREncoder):
+            vectors = encoder(combined)
         else:
             vectors = cast(Tensor, encoder.forward_tensor(combined))
         flat = vectors.detach().flatten(1).float().cpu()
