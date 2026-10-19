@@ -94,16 +94,18 @@ def test_single_machine_holdouts_are_disjoint_and_train_normalized(
         assert not settings["original_test_machine_repurposed"]
         train = features[[i for i, row in enumerate(rows) if row["split"] == "train"]]
         assert torch.allclose(train.reshape(-1, 4).mean(0), torch.zeros(4), atol=1e-5)
-        assert torch.allclose(train.reshape(-1, 4).std(0, unbiased=False),
-                              torch.ones(4), atol=1e-5)
+        assert torch.allclose(
+            train.reshape(-1, 4).std(0, unbiased=False), torch.ones(4), atol=1e-5
+        )
         for key in ("healthy_file", "faulty_file"):
             training = {row[key] for row in rows if row["split"] == "train"}
             validation = {row[key] for row in rows if row["split"] == "val"}
             assert training.isdisjoint(validation)
 
-    assert build_single_machine_artifacts(file, seed=42) == pytest.approx(
-        artifacts
-    ) if False else True
+    again = build_single_machine_artifacts(file, seed=42)
+    for machine in artifacts:
+        assert torch.equal(artifacts[machine]["features"], again[machine]["features"])
+        assert artifacts[machine]["rows"] == again[machine]["rows"]
     # The original (including its sealed test rows) was not modified.
     assert torch.equal(before["features"], read_prepared_artifact(file)["features"])
 
