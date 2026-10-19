@@ -14,6 +14,7 @@ from nexuml_library.data.maintenance.prepared_endpoints import (
     PreparedMaintenanceEndpointPairs,
     read_prepared_artifact,
 )
+from nexuml_library.evaluation.maintenance import ablation_train
 from nexuml_library.evaluation.maintenance.ablation_evaluate import (
     evaluate_prepared_split,
 )
@@ -206,3 +207,54 @@ def test_scenario_rejects_inconsistent_seed(tmp_path: Path) -> None:
     )
     with pytest.raises(ValueError, match="seed"):
         mimii_acoustic_ablation(file, seed=42)
+
+
+def test_ablation_trainer_never_calls_automatic_test(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Scientific training path deliberately calls fit and validate only."""
+    features, rows = _example_features()
+    file = tmp_path / "variant-seed7.pt"
+    torch.save(
+        {
+            "format": "nex233-features-v1",
+            "features": features,
+            "rows": rows,
+            "settings": {"seed": 7},
+        },
+        file,
+    )
+    operations: list[str] = []
+
+    class FakeSession:
+        @classmethod
+        def from_scenario(cls, spec: Any, **kwargs: Any) -> FakeSession:
+            assert spec.name.startswith("mimii_acoustic_ablation")
+            return cls()
+
+        def setup(self) -> FakeSession:
+            operations.append("setup")
+            return self
+
+        def fit(self) -> FakeSession:
+            operations.append("fit")
+            return self
+
+        def validate(self) -> list[dict[str, float]]:
+            operations.append("validate")
+            return []
+
+        def test(self) -> None:
+            raise AssertionError("Test must not run in an ablation training session")
+
+    monkeypatch.setattr(ablation_train, "NexuSession", FakeSession)
+    ablation_train.train_ablation(
+        file,
+        checkpoint_root=tmp_path / "checkpoints",
+        width=128,
+        max_epochs=1,
+        seed=7,
+        accelerator="cpu",
+    )
+    assert operations == ["setup", "fit", "validate"]
