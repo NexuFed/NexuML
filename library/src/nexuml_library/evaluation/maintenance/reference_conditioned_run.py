@@ -170,7 +170,7 @@ def run_reference_conditioned_folds(
         "original_id06_test_role": "retired_exploratory",
         "folds": {},
     }
-    for fold, machine in enumerate(selected):
+    for machine in selected:
         entry = entries[machine]
         training_file = Path(entry["training_file"])
         assessment_file = Path(entry["assessment_file"])
@@ -204,7 +204,7 @@ def run_reference_conditioned_folds(
         directory = checkpoint_root / run_name
         if list(directory.glob("*.ckpt")):
             raise FileExistsError(f"Previous fold checkpoint(s) found: {directory}")
-        L.seed_everything(seed + fold, workers=True)
+        L.seed_everything(seed + sorted(entries).index(machine), workers=True)
         session = NexuSession.from_scenario(spec, accelerator=accelerator, devices=1)
         print(f"Training context={context_mode}, unseen machine={machine}")
         session.setup().fit()
