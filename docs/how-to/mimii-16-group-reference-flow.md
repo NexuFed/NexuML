@@ -247,6 +247,7 @@ ruff check .
 ruff format --check .
 ty check
 pytest tests/library/test_multifamily_reference_flow.py -v
+pytest tests/library/test_machine_family_comparison.py -v
 pytest tests/library/test_healthy_reference_flow.py -v
 pytest tests/_registry -v
 ```
