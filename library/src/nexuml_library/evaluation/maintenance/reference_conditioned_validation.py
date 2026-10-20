@@ -96,12 +96,21 @@ def evaluate_training_machine_validation(
     machines = cast(list[str], artifact["machine_groups"])
     per_machine: dict[str, dict[str, float]] = {}
     for index, name in enumerate(machines):
-        mask = [i for i, row in enumerate(rows) if row["split"] == "val" and row["group_id"] == name]
+        mask = [
+            i for i, row in enumerate(rows)
+            if row["split"] == "val" and row["group_id"] == name
+        ]
         if not mask:
             raise ValueError(f"Missing validation data for training machine {name}")
         per_machine[name] = evaluate_reference_transport(
-            flow, features[mask, 0], features[mask, 1], references[index],
-            device=device, projections=projections, batch_size=batch_size, seed=seed
+            flow,
+            features[mask, 0],
+            features[mask, 1],
+            references[index],
+            device=device,
+            projections=projections,
+            batch_size=batch_size,
+            seed=seed,
         )
     return {
         "by_machine": per_machine,
