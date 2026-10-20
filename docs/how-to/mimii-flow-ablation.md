@@ -712,7 +712,20 @@ Run the relevant unit and integration tests with:
 pytest tests/library/test_healthy_reference_flow.py -v
 ```
 
-## 8. Quality checks
+## 8. Expanded sixteen-group experiment
+
+To test zero-shot Flow Matching with more independent machine identities,
+we now extract FISHER embeddings for all four MIMII machine families:
+fan, pump, slider and valve (sixteen family-qualified machine IDs).
+The expanded experiment supports both leave-one-machine-out and
+leave-one-family-out protocols, reference/constant context controls, and
+multiple seeds while keeping all unhealthy held-out recordings unavailable
+to checkpoint selection.
+
+**Full preparation, training, testing and aggregation instructions:**
+[mimii-16-group-reference-flow.md](mimii-16-group-reference-flow.md).
+
+## 9. Quality checks
 
 ```bash
 ruff check .
