@@ -195,10 +195,13 @@ def run_reference_conditioned_folds(
             raise ValueError("Held-out machine may not appear in training data")
         if protocol == "leave_one_family_out_healthy_reference":
             family = machine.removeprefix("family:")
-            if len(assessment_files) != 4 or any(
-                group.split(":")[0] != family for group in assessment_files
+            expected_groups = set(training["settings"]["heldout_machines"])
+            if (
+                len(assessment_files) != 4
+                or set(assessment_files) != expected_groups
+                or any(group.split(":")[0] != family for group in assessment_files)
             ):
-                raise ValueError("Held-out family must contain all four machine IDs")
+                raise ValueError("Held-out family must contain its four recorded machine IDs")
         # File existence only; never deserialize unseen features before fit.
         for assessment_file in assessment_files.values():
             if not assessment_file.is_file():
@@ -283,13 +286,23 @@ def run_reference_conditioned_folds(
             "unseen_machine_groups": sorted(assessment_files),
             "context_mode": context_mode,
             "reference_size": int(training["references"].shape[1]),
-            "assessment_recordings": assessment_recordings,
+            "assessment_recordings": (
+                next(iter(assessment_recordings.values()))
+                if len(assessment_recordings) == 1
+                else assessment_recordings
+            ),
+            "assessment_recordings_by_machine": assessment_recordings,
             "best_checkpoint": str(best),
             "last_checkpoint": str(last),
             "train_machine_validation": validation,
             "unseen_machine_assessment": unseen,
             "unseen_by_machine": unseen_by_machine,
-            "context_sensitivity": sensitivity_by_machine,
+            "context_sensitivity": (
+                next(iter(sensitivity_by_machine.values()))
+                if len(sensitivity_by_machine) == 1
+                else sensitivity_by_machine
+            ),
+            "context_sensitivity_by_machine": sensitivity_by_machine,
             "zero_shot_faulty_labels_accessed_during_fit": False,
             "warning": (
                 "Exploratory MIMII machine/family holdout; original id_06 seal "
