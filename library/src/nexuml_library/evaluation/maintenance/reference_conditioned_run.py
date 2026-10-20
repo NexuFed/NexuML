@@ -1,8 +1,8 @@
-"""Run leave-one-machine-out healthy-reference Flow Matching on frozen FISHER.
+"""Run reference-conditioned Flow Matching with machine or family holdouts.
 
-Each fold trains and selects checkpoints exclusively on three machines.
-The fourth machine's assessment artifact is read only after fitting and
-validation-best checkpoint selection. Original id_06 is exploratory here.
+Checkpoints are fitted and selected on training-machine validation only.
+Unseen-machine assessment artifacts are first read after checkpoint selection.
+Both the legacy four-fan experiment and sixteen-group protocols are supported.
 """
 
 from __future__ import annotations
@@ -139,8 +139,12 @@ def run_reference_conditioned_folds(
         FileExistsError: If output reports already exist.
     """
     manifest = json.loads(Path(manifest_file).read_text())
-    if manifest.get("protocol") != "leave_one_machine_out_healthy_reference":
-        raise ValueError("Expected leave-one-machine-out healthy-reference manifest")
+    protocol = manifest.get("protocol")
+    if protocol not in {
+        "leave_one_machine_out_healthy_reference",
+        "leave_one_family_out_healthy_reference",
+    }:
+        raise ValueError("Expected machine- or family-held-out healthy-reference manifest")
     entries = cast(dict[str, dict[str, Any]], manifest["folds"])
     if heldout_machine is not None and heldout_machine not in entries:
         raise ValueError("Requested held-out machine not found in prepared folds")
@@ -163,7 +167,7 @@ def run_reference_conditioned_folds(
         ) else "cpu"
     )
     summary: dict[str, Any] = {
-        "protocol": "leave_one_machine_out_healthy_reference",
+        "protocol": protocol,
         "manifest": str(Path(manifest_file).expanduser().resolve()),
         "context_mode": context_mode,
         "selected_by": "train_machine_macro_val/transport_swd",
@@ -173,15 +177,32 @@ def run_reference_conditioned_folds(
     for machine in selected:
         entry = entries[machine]
         training_file = Path(entry["training_file"])
-        assessment_file = Path(entry["assessment_file"])
+        if "assessment_files" in entry:
+            assessment_files = {
+                group: Path(filename)
+                for group, filename in cast(
+                    dict[str, str], entry["assessment_files"]
+                ).items()
+            }
+        else:
+            assessment_files = {machine: Path(entry["assessment_file"])}
+        if not assessment_files:
+            raise ValueError("Holdout fold has no assessment machines")
         training = read_healthy_reference_training(training_file)
         if training["settings"]["heldout_machine"] != machine:
             raise ValueError(f"Training fold has incorrect held-out ID: {machine}")
-        if machine in training["machine_groups"]:
+        if set(assessment_files).intersection(training["machine_groups"]):
             raise ValueError("Held-out machine may not appear in training data")
-        # Do not load ANY unseen-machine assessment values during fitting.
-        if not assessment_file.is_file():
-            raise FileNotFoundError(assessment_file)
+        if protocol == "leave_one_family_out_healthy_reference":
+            family = machine.removeprefix("family:")
+            if len(assessment_files) != 4 or any(
+                group.split(":")[0] != family for group in assessment_files
+            ):
+                raise ValueError("Held-out family must contain all four machine IDs")
+        # File existence only; never deserialize unseen features before fit.
+        for assessment_file in assessment_files.values():
+            if not assessment_file.is_file():
+                raise FileNotFoundError(assessment_file)
         seed = int(manifest["seed"])
         spec = healthy_reference_flow_scenario(
             training_file,
@@ -216,39 +237,63 @@ def run_reference_conditioned_folds(
         validation = evaluate_training_machine_validation(
             flow, training_file, device=device, batch_size=batch_size, seed=seed
         )
-        # First access to unseen-machine support and faulty assessment
-        # observations: fitting and validation selection are already complete.
-        assessment = read_healthy_reference_assessment(assessment_file)
-        if assessment["heldout_machine"] != machine:
-            raise ValueError("Wrong held-out machine assessment artifact")
-        if assessment["settings"] != training["settings"]:
-            raise ValueError("Training/assessment scaling provenance mismatch")
-        healthy = cast(Tensor, assessment["features"])[:, 0]
-        faulty = cast(Tensor, assessment["features"])[:, 1]
-        reference = cast(Tensor, assessment["references"])
-        with torch.no_grad():
-            unseen = evaluate_reference_transport(
-                flow, healthy, faulty, reference,
-                device=device, batch_size=batch_size, seed=seed
-            )
-            sensitivity = _context_impact(
-                flow, assessment, training, device=device
-            )
+        # First access to unseen-machine assessment after validation selection.
+        unseen_by_machine: dict[str, dict[str, float]] = {}
+        sensitivity_by_machine: dict[str, dict[str, Any]] = {}
+        assessment_recordings: dict[str, int] = {}
+        for group, assessment_file in sorted(assessment_files.items()):
+            assessment = read_healthy_reference_assessment(assessment_file)
+            if assessment["heldout_machine"] != group:
+                raise ValueError(f"Wrong unseen machine in assessment: {group}")
+            if assessment["settings"] != training["settings"]:
+                raise ValueError("Training/assessment scaling provenance mismatch")
+            healthy = cast(Tensor, assessment["features"])[:, 0]
+            faulty = cast(Tensor, assessment["features"])[:, 1]
+            reference = cast(Tensor, assessment["references"])
+            with torch.no_grad():
+                unseen_by_machine[group] = evaluate_reference_transport(
+                    flow,
+                    healthy,
+                    faulty,
+                    reference,
+                    device=device,
+                    batch_size=batch_size,
+                    seed=seed,
+                )
+                sensitivity_by_machine[group] = _context_impact(
+                    flow, assessment, training, device=device
+                )
+            assessment_recordings[group] = len(healthy)
+        unseen = {
+            "initial_swd": sum(
+                value["initial_swd"] for value in unseen_by_machine.values()
+            ) / len(unseen_by_machine),
+            "transported_swd": sum(
+                value["transported_swd"] for value in unseen_by_machine.values()
+            ) / len(unseen_by_machine),
+            "swd_relative_reduction": sum(
+                value["swd_relative_reduction"]
+                for value in unseen_by_machine.values()
+            ) / len(unseen_by_machine),
+        }
         report = {
             "heldout_machine": machine,
+            "protocol": protocol,
             "known_training_machines": training["machine_groups"],
+            "unseen_machine_groups": sorted(assessment_files),
             "context_mode": context_mode,
-            "reference_size": int(reference.shape[0]),
-            "assessment_recordings": len(healthy),
+            "reference_size": int(training["references"].shape[1]),
+            "assessment_recordings": assessment_recordings,
             "best_checkpoint": str(best),
             "last_checkpoint": str(last),
             "train_machine_validation": validation,
             "unseen_machine_assessment": unseen,
-            "context_sensitivity": sensitivity,
+            "unseen_by_machine": unseen_by_machine,
+            "context_sensitivity": sensitivity_by_machine,
             "zero_shot_faulty_labels_accessed_during_fit": False,
             "warning": (
-                "Exploratory closed-family four-machine leave-one-out; "
-                "no physical degradation time or RUL calibration."
+                "Exploratory MIMII machine/family holdout; original id_06 seal "
+                "retired. No physical degradation time or RUL calibration."
             ),
         }
         report_paths[machine].write_text(json.dumps(report, indent=2) + "\n")
@@ -258,10 +303,11 @@ def run_reference_conditioned_folds(
             "unseen_machine_swd_relative_reduction": unseen["swd_relative_reduction"],
             "unseen_machine_initial_swd": unseen["initial_swd"],
             "unseen_machine_transported_swd": unseen["transported_swd"],
+            "unseen_by_machine": unseen_by_machine,
             "best_checkpoint": str(best),
         }
         print(
-            f"Held out {machine}: unseen SWD reduction "
+            f"Held out {machine}: macro unseen SWD reduction "
             f"{unseen['swd_relative_reduction']:+.2%}"
         )
     summary_path.write_text(json.dumps(summary, indent=2) + "\n")
