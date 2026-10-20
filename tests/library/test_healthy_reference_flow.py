@@ -12,7 +12,11 @@ from torch import Tensor
 
 from nexuml.core.components import LayerBuildContext
 from nexuml.core.config import ResolvedConfig
-from nexuml.training.lightning import NexuSession, create_runtime_artifacts
+from nexuml.training.lightning import (
+    NexuLightningModule,
+    NexuSession,
+    create_runtime_artifacts,
+)
 from nexuml_library.data.maintenance.healthy_reference import (
     read_healthy_reference_assessment,
     read_healthy_reference_training,
@@ -285,14 +289,16 @@ def test_scenario_compiles_one_training_step_and_machine_wise_validation(
     session.setup().fit()
     scores = session.validate()
     assert scores and "val/transport_swd" in scores[0]
-    machine_scores = evaluate_training_machine_validation(
-        cast(
-            _HealthyReferenceConditionedFlowRuntime,
-            next(
-                layer for stage, _, layer in session.trainer.model.pipeline.iter_layers()
-                if stage == "Flow"
-            ),
+    trained_module = cast(NexuLightningModule, session.trainer.model)
+    flow = cast(
+        _HealthyReferenceConditionedFlowRuntime,
+        next(
+            layer for stage, _, layer in trained_module.pipeline.iter_layers()
+            if stage == "Flow"
         ),
+    )
+    machine_scores = evaluate_training_machine_validation(
+        flow,
         training_file,
         device=torch.device("cpu"),
         batch_size=8,
@@ -305,13 +311,7 @@ def test_scenario_compiles_one_training_step_and_machine_wise_validation(
         manifest["folds"]["fan:id_06"]["assessment_file"]
     )
     score = evaluate_reference_transport(
-        cast(
-            _HealthyReferenceConditionedFlowRuntime,
-            next(
-                layer for stage, _, layer in session.trainer.model.pipeline.iter_layers()
-                if stage == "Flow"
-            ),
-        ),
+        flow,
         assessment["features"][:, 0],
         assessment["features"][:, 1],
         assessment["references"],
