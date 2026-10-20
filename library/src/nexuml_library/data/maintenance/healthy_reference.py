@@ -142,6 +142,16 @@ def read_healthy_reference_assessment(path: str | Path) -> dict[str, Any]:
         raise ValueError("Assessment requires recording identities")
     if len(identities) != len(set(identities)):
         raise ValueError("Duplicate held-out assessment file")
+    group = payload.get("heldout_machine")
+    if (
+        not isinstance(group, str)
+        or not group
+        or any(
+            row.get("group_id") != group or row.get("split") != "assessment"
+            for row in rows
+        )
+    ):
+        raise ValueError("Assessment rows must all belong to the held-out machine")
     if (
         len(support_files) != len(references)
         or len(support_files) != len(set(support_files))
