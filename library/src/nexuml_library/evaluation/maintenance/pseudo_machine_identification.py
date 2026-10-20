@@ -99,9 +99,7 @@ def _machine_partitions(
     return partitions
 
 
-def _swd_matrix(
-    projected: dict[str, FloatArray], names: list[str]
-) -> list[list[float]]:
+def _swd_matrix(projected: dict[str, FloatArray], names: list[str]) -> list[list[float]]:
     """Compute machine-wise sliced W1 from healthy training projections.
 
     Assumes the same projection basis across all machine distributions.
@@ -152,8 +150,7 @@ def _clusters(matrix: list[list[float]], names: list[str], count: int) -> dict[s
         _, first, second = min(candidates)
         merged = sorted(clusters[first] + clusters[second])
         clusters = [
-            cluster for index, cluster in enumerate(clusters)
-            if index not in (first, second)
+            cluster for index, cluster in enumerate(clusters) if index not in (first, second)
         ] + [merged]
     canonical = sorted(clusters, key=lambda members: members[0])
     return {name: i for i, members in enumerate(canonical) for name in members}
@@ -187,10 +184,14 @@ def _held_out_fault_compatibility(
             denominator = float(np.linalg.norm(first) * np.linalg.norm(second))
             cosine = float(np.dot(first, second) / denominator) if denominator > 0 else None
             same = assigned[left] == assigned[right]
-            pairs.append({
-                "left": left, "right": right, "same_healthy_pseudo_type": same,
-                "assessment_mean_fault_direction_cosine": cosine,
-            })
+            pairs.append(
+                {
+                    "left": left,
+                    "right": right,
+                    "same_healthy_pseudo_type": same,
+                    "assessment_mean_fault_direction_cosine": cosine,
+                }
+            )
             if cosine is not None:
                 (within if same else across).append(cosine)
     return {
@@ -237,8 +238,7 @@ def _score(
         "balanced_accuracy": float(balanced_accuracy_score(truth, predicted)),
         "macro_f1": float(f1_score(truth, predicted, labels=labels, zero_division=0)),
         "recall_by_label": {
-            str(label): float(matrix[i, i] / matrix[i].sum())
-            if matrix[i].sum() else None
+            str(label): float(matrix[i, i] / matrix[i].sum()) if matrix[i].sum() else None
             for i, label in enumerate(labels)
         },
         "confusion_matrix": matrix.tolist(),
@@ -324,8 +324,11 @@ def _one_seed(
     from sklearn.preprocessing import StandardScaler
 
     partition = _machine_partitions(
-        groups, names, seed=seed,
-        train_fraction=train_fraction, validation_fraction=validation_fraction
+        groups,
+        names,
+        seed=seed,
+        train_fraction=train_fraction,
+        validation_fraction=validation_fraction,
     )
     ids = {name: i for i, name in enumerate(names)}
     data = embeddings.numpy().astype(np.float64)
@@ -347,8 +350,7 @@ def _one_seed(
     directions /= np.maximum(np.linalg.norm(directions, axis=0, keepdims=True), 1e-12)
     healthy_projected = normalized[training_ids, 0] @ directions
     per_machine = {
-        name: healthy_projected[machine_labels[training_ids] == ids[name]]
-        for name in names
+        name: healthy_projected[machine_labels[training_ids] == ids[name]] for name in names
     }
     matrix = _swd_matrix(per_machine, names)
 
@@ -370,8 +372,11 @@ def _one_seed(
             trial = np.asarray([labels[name] for name in names], dtype=np.int64)
             agreement.append(float(adjusted_rand_score(assignment, trial)))
             partitions_equal += int(
-                all((assignment[i] == assignment[j]) == (trial[i] == trial[j])
-                    for i in range(len(names)) for j in range(len(names)))
+                all(
+                    (assignment[i] == assignment[j]) == (trial[i] == trial[j])
+                    for i in range(len(names))
+                    for j in range(len(names))
+                )
             )
         cluster_hypotheses[f"k{count}"] = {
             "machine_to_pseudo_type": original,
@@ -406,15 +411,18 @@ def _one_seed(
         }
         for training_condition in ("healthy_only", "faulty_only", "mixed"):
             training_parts = (
-                (0,) if training_condition == "healthy_only" else
-                (1,) if training_condition == "faulty_only" else (0, 1)
+                (0,)
+                if training_condition == "healthy_only"
+                else (1,)
+                if training_condition == "faulty_only"
+                else (0, 1)
             )
-            train_x = np.concatenate([latent[training_ids, state] for state in training_parts])
+            train_x = np.concatenate(
+                [latent[training_ids, state] for state in training_parts]
+            )
             train_y = np.concatenate([y[training_ids] for _ in training_parts])
             evaluations = {
-                f"{split}_{state_name}": (
-                    latent[partition[split], state], y[partition[split]]
-                )
+                f"{split}_{state_name}": (latent[partition[split], state], y[partition[split]])
                 for split in ("validation", "assessment")
                 for state, state_name in ((0, "healthy"), (1, "faulty"))
             }
@@ -423,9 +431,7 @@ def _one_seed(
             )
         if target_name == "machine_identity":
             evaluations = {
-                f"{split}_{state_name}": (
-                    latent[partition[split], state], y[partition[split]]
-                )
+                f"{split}_{state_name}": (latent[partition[split], state], y[partition[split]])
                 for split in ("validation", "assessment")
                 for state, state_name in ((0, "healthy"), (1, "faulty"))
             }
@@ -437,10 +443,7 @@ def _one_seed(
     return {
         "seed": seed,
         "counts": {
-            split: {
-                name: sum(groups[index] == name for index in indices)
-                for name in names
-            }
+            split: {name: sum(groups[index] == name for index in indices) for name in names}
             for split, indices in partition.items()
         },
         "preprocessing": {
@@ -501,9 +504,15 @@ def identify_pseudo_machine_types(
     endpoints, groups, names = _load_fisher(source_file)
     runs = [
         _one_seed(
-            endpoints, groups, names, seed=seed, train_fraction=train_fraction,
-            validation_fraction=validation_fraction, pca_components=pca_components,
-            projections=projections, bootstrap=bootstrap
+            endpoints,
+            groups,
+            names,
+            seed=seed,
+            train_fraction=train_fraction,
+            validation_fraction=validation_fraction,
+            pca_components=pca_components,
+            projections=projections,
+            bootstrap=bootstrap,
         )
         for seed in seeds
     ]
@@ -520,20 +529,31 @@ def identify_pseudo_machine_types(
                 averages[target][regime][split_state] = {
                     key: {
                         "mean": float(np.mean([row[key] for row in per_seed])),
-                        "std_across_splits": float(
-                            np.std([row[key] for row in per_seed], ddof=1)
-                        ) if len(per_seed) > 1 else None,
+                        "std_across_splits": (
+                            float(np.std([row[key] for row in per_seed], ddof=1))
+                            if len(per_seed) > 1
+                            else None
+                        ),
                     }
-                    for key in ("accuracy", "balanced_accuracy", "macro_f1",
-                                "multiclass_brier", "ece_10_bins")
+                    for key in (
+                        "accuracy",
+                        "balanced_accuracy",
+                        "macro_f1",
+                        "multiclass_brier",
+                        "ece_10_bins",
+                    )
                 }
         if target == "machine_identity":
             averages[target]["centroid_healthy_only"] = {
                 split_state: {
-                    key: float(np.mean([
-                        run["targets"][target]["centroid_healthy_only"][split_state][key]
-                        for run in runs
-                    ]))
+                    key: float(
+                        np.mean(
+                            [
+                                run["targets"][target]["centroid_healthy_only"][split_state][key]
+                                for run in runs
+                            ]
+                        )
+                    )
                     for key in ("accuracy", "macro_f1")
                 }
                 for split_state in runs[0]["targets"][target]["centroid_healthy_only"]
