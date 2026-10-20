@@ -248,10 +248,15 @@ def main() -> None:
             patience=args.patience,
             accelerator=args.accelerator,
         )
-    print(json.dumps({
-        mode: model["mean_over_seed_machine_macros"]
-        for mode, model in result["models"].items()
-    }, indent=2))
+    print(
+        json.dumps(
+            {
+                mode: model["mean_over_seed_machine_macros"]
+                for mode, model in result["models"].items()
+            },
+            indent=2,
+        )
+    )
 
 
 if __name__ == "__main__":
