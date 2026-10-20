@@ -18,6 +18,13 @@ def test_studio_ci_builds_once_and_tests_both_trusted_linux_installations(tmp_pa
     assert "pull_request" not in WORKFLOW["on"]
     assert "pull_request_target" not in WORKFLOW["on"]
     assert WORKFLOW["on"]["push"]["branches"] == ["**"]
+    tool_paths = next(
+        step["run"]
+        for step in WORKFLOW["jobs"]["package"]["steps"]
+        if step.get("name") == "Configure writable uv tool paths"
+    )
+    assert "UV_TOOL_DIR=$RUNNER_TEMP/" in tool_paths
+    assert "UV_TOOL_BIN_DIR=$RUNNER_TEMP/" in tool_paths
     assert WORKFLOW["jobs"]["test"]["runs-on"] == "ika-runner-gpu"
     assert any(
         "assert torch.cuda.is_available()" in step.get("run", "")

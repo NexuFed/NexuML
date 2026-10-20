@@ -113,6 +113,11 @@ jobs:
     needs: [static, test]
     runs-on: ika-runner
     steps:
+      - name: Configure writable uv tool paths
+        run: |
+          echo "UV_TOOL_DIR=$RUNNER_TEMP/package-tools-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_ENV"
+          echo "UV_TOOL_BIN_DIR=$RUNNER_TEMP/package-bin-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_ENV"
+
       - uses: actions/checkout@v5
 
       - uses: actions/setup-python@v6

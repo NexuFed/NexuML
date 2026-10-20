@@ -428,6 +428,13 @@ GitHub-hosted exception is required by npm OIDC.
   The maintainer explicitly approved restoring ika-runner-gpu only for those mandatory
   suites; no CUDA checks were removed. Both local project and tool package commands
   subsequently completed successfully, including all HTTP/WS and ownership checks.
+- Follow-up `39443435790` passed Python GPU suites on 3.12/3.13/3.14, Python/Studio
+  static gates and the single Studio build. Python package validation then exposed the
+  institute runner's unwritable default uv tools directory under HOME. The package job
+  now gives uvx explicit per-run tool/bin directories under writable runner temp, rather
+  than changing HOME permissions, installed packages or weakening validation.
+  Twine validation of both wheels/sdists passed offline with HOME deliberately set to
+  unwritable `/proc` and those explicit tool paths; focused CI tests and Actionlint passed.
 - GitHub repository approval policy was changed and confirmed from first-time-only to
   **all external fork contributors**. CI does not run fork PR checkout code. Organization
   runner-group inspection returned 403: its owner must confirm approved-workflow
