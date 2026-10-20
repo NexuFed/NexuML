@@ -471,7 +471,112 @@ creating just one new checkpoint run.
 Single-machine success would demonstrate within-domain learnability,
 **not** transferable fault mechanisms or calibrated degradation time.
 
-## 6. Quality checks
+## 6. Identify machine identities and exploratory pseudo-types
+
+**Before implementing a machine classifier + conditional flow**, measure
+whether FISHER embeddings contain enough information to recognize a machine
+from either **healthy** or **faulty** recordings.
+
+This is **not** classification of an established pseudo-machine-type.
+MIMII supplies four *known machine identities* (`id_00`, `id_02`,
+`id_04`, `id_06`), but no ground-truth labels for broader machine
+types that share transferable fault mechanisms. We measure both (a)
+known-machine identity recognition, and (b) learnability of provisional
+groups defined **only from healthy training distributions**.
+
+Because the previous exploratory work explicitly retired `id_06` as a
+sealed machine-disjoint test set, **all four identities participate**.
+We independently stratify recording pairs **within each machine** into
+60% training, 20% validation and 20% separate assessment observations.
+Healthy and faulty endpoints of the same pair remain in the same split,
+and recording file identities must be unique to prevent leakage.
+The assessment subset is exploratory: do not present it as a fresh,
+unseen-machine confirmatory test.
+
+### Reproducible evaluation
+
+Install the already-defined optional evaluation dependencies:
+
+```bash
+uv sync --locked --all-packages --all-extras
+```
+
+The source artifact must be **original FISHER-independent-raw**, not the
+machine-specific standardized artifacts, to avoid reusing previous
+training-only normalization fitted on the old machine split.
+
+```bash
+python -m nexuml_library.evaluation.maintenance.pseudo_machine_identification \
+  --source-file \
+    .experiments/nex233-ablation/prepared/seed42/fisher-independent-raw-seed42.pt \
+  --output \
+    .experiments/nex233-ablation/identification/fisher-machine-identification.json \
+  --plots-dir .experiments/nex233-ablation/identification/plots \
+  --seeds 42 43 44 45 46 \
+  --train-fraction 0.6 --validation-fraction 0.2 \
+  --pca-components 32 --projections 128 --bootstrap 32
+```
+
+For each seed, a `StandardScaler` and a 32-dimensional PCA representation
+are fitted **exclusively on healthy training embeddings** and then
+applied unchanged to all healthy/faulty validation and assessment
+embeddings. This controls the risk of learning faulty-specific preprocessing
+or leaking validation data into the representation.
+
+Three fixed, untuned logistic-regression classifiers are trained to
+predict each target:
+
+| Training observations | Assessment on | Interpretation |
+| --- | --- | --- |
+| Healthy only | Healthy and faulty | Primary inference/deployment diagnostic |
+| Faulty only | Healthy and faulty | Is identity recoverable from faulty signals? |
+| Healthy + faulty | Healthy and faulty | Does exposure to faults improve robustness? |
+
+The experiment measures two prediction targets:
+
+1. **Machine identity**: four real, closed-set known IDs. Report 4×4
+   confusion matrices and per-machine recall. A healthy-centroid
+   nearest-prototype classifier gives a simple baseline.
+2. **Pseudo-type hypotheses**: fix `K=2` and `K=3` *a priori*.
+   Machine-wise healthy **training** distributions are compared with
+   seeded sliced-W1 and grouped by deterministic average linkage.
+   A classifier then predicts the resulting coarse pseudo-labels
+   for held-out healthy and faulty recordings.
+
+For each condition the report includes accuracy, balanced accuracy,
+macro-F1, mean maximum predictive probability, multiclass Brier
+score and ten-bin expected calibration error. The CLI aggregates
+metrics over five independent within-machine recording splits, and
+reports per-seed confusion matrices.
+
+The pseudo-cluster study also reports bootstrap mean adjusted Rand index
+and the fraction of bootstrap draws yielding the exact same partition.
+The bootstrap resamples **healthy training recordings only**.
+
+### Interpret with care
+
+A high machine-ID score means FISHER retains machine identity, not
+necessarily that a machine-general conditional flow will succeed.
+High pseudo-cluster classification can be vacuous if a cluster
+contains only one machine: learning the machine ID then mapping to
+a cluster is not learning a transferable machine *type*.
+
+Faulty inference is performed only on observed anomalous endpoints,
+**not** on intermediate physical degradation stages. No RUL labels or
+synthetic flow-time intermediates are available here.
+
+If the healthy-only classifier is accurate on healthy but not faulty
+signals, a deployed router trained only on normal reference data may
+require explicit fault robustness. If both conditions are accurate,
+we can then evaluate whether the inferred groups actually share
+compatible healthy-to-faulty transport before conditioning the flow.
+
+Generated figures compare identity accuracy under healthy/faulty
+conditions, display the first-seed training-healthy machine SWD,
+and show held-out healthy/faulty confusion matrices for identity and
+pseudo-type targets.
+
+## 7. Quality checks
 
 ```bash
 ruff check .
@@ -481,6 +586,7 @@ pytest tests/library/test_ablation_distributional_validation.py -v
 pytest tests/library/test_ablation_coupling_comparison.py -v
 pytest tests/library/test_machine_compatibility.py -v
 pytest tests/library/test_single_machine_fisher.py -v
+pytest tests/library/test_pseudo_machine_identification.py -v
 pytest tests/library/test_ablation_checkpoint.py -v
 pytest tests/library/test_mimii_acoustic_ablation.py -v
 pytest tests/library/test_fisher_encoder.py -v
