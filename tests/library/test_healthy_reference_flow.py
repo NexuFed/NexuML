@@ -180,7 +180,13 @@ def test_leave_one_out_preparation_does_not_leak_faults_or_support(tmp_path: Pat
         seed=42,
     )
     assert training["machine_groups"] == ["fan:id_00", "fan:id_02", "fan:id_04"]
-    assert training["features"].shape[0] == 36
+    # 20 recordings - 4 support = 16 queries per training machine.
+    # Across three machines: 36 train queries + 12 validation queries.
+    assert training["features"].shape == (48, 2, 8)
+    assert sum(row["split"] == "train" for row in training["rows"]) == 36
+    assert sum(row["split"] == "val" for row in training["rows"]) == 12
+    assert training["settings"]["train_queries"] == 36
+    assert training["settings"]["validation_queries"] == 12
     assert training["references"].shape == (3, 4, 8)
     assert assessment["features"].shape == (16, 2, 8)
     assert assessment["references"].shape == (4, 8)
