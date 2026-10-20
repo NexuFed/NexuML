@@ -65,16 +65,40 @@ class CompiledPolicy(nn.Module):
     def forward(self, observation: TensorDict, *, deterministic: bool = True) -> TensorDict:
         output = self.forward_parameters(observation)
         actions = self.action_adapter(output, deterministic=deterministic)
+        if actions.batch_size != observation.batch_size:
+            raise ValueError("Action decoding must preserve the observation batch axes")
+        spec = getattr(self.pipeline.resolved_config, "policy", None)
+        if getattr(spec, "batch_mode", "independent") == "preserve":
+            if any(
+                found is not None and found != expected
+                for found, expected in zip(actions.names, observation.names, strict=True)
+            ):
+                raise ValueError("Action decoding changed named observation batch axes")
+            actions.names = observation.names
         self._validate_fields(actions, self.contract.actions, "Action")
         return actions
 
     def forward_parameters(self, observation: TensorDict) -> TensorDict:
-        """Run the neural graph while preserving arbitrary inference batch axes.
+        """Run independent samples or an explicitly batch-aware neural graph.
 
         Returns:
             Neural outputs for deployment or probabilistic learner integration.
+
+        Raises:
+            ValueError: If semantic batch axes would be flattened or the graph changes them.
         """
         self._validate_fields(observation, self.contract.observations, "Observation")
+        spec = getattr(self.pipeline.resolved_config, "policy", None)
+        if getattr(spec, "batch_mode", "independent") == "preserve":
+            output, _ = self.pipeline(observation.clone(), None)
+            if output.batch_size != observation.batch_size or output.names != observation.names:
+                raise ValueError("A batch-aware policy must preserve its observation batch axes")
+            return output
+        if {"time", "agent", "agents"}.intersection(observation.names):
+            raise ValueError(
+                "Temporal/agent batch axes require policy.batch_mode='preserve' "
+                "and a batch-aware graph, or explicit tensor feature axes"
+            )
         output, _ = self.pipeline(observation.reshape(-1).clone(), None)
         return output.reshape(observation.batch_size)
 

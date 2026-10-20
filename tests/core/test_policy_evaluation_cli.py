@@ -65,7 +65,7 @@ def test_replay_moves_portable_cpu_policy_only_with_explicit_device(
         assert restored.training.evaluation.episodes == episodes
         return {"eval/rl/return_mean": 1.0}
 
-    monkeypatch.setattr("nexuml.training.reinforcement.evaluate_policy", evaluate)
+    monkeypatch.setattr("nexuml.evaluation.policy.evaluate_policy", evaluate)
     command = ["evaluate", str(tmp_path), "-O", f"training.evaluation.episodes={episodes}"]
     if explicit_device:
         command += ["--device", expected]
@@ -210,7 +210,7 @@ def test_packaged_scalar_replay_without_training_or_encoders(
 def test_invalid_replay_override_fails_before_execution(
     override, diagnostic, replay_source, monkeypatch
 ):
-    monkeypatch.setattr("nexuml.training.reinforcement.evaluate_policy", fail_training)
+    monkeypatch.setattr("nexuml.evaluation.policy.evaluate_policy", fail_training)
     monkeypatch.setattr("nexuml.tracking.logger.create_loggers", fail_training)
     result = runner.invoke(app, ["evaluate", "package", "-O", override])
     assert result.exit_code != 0
@@ -218,7 +218,7 @@ def test_invalid_replay_override_fails_before_execution(
 
 
 def test_recording_with_zero_episodes_is_revalidated(replay_source, monkeypatch):
-    monkeypatch.setattr("nexuml.training.reinforcement.evaluate_policy", fail_training)
+    monkeypatch.setattr("nexuml.evaluation.policy.evaluate_policy", fail_training)
     monkeypatch.setattr("nexuml.tracking.logger.create_loggers", fail_training)
     result = runner.invoke(
         app,
@@ -238,7 +238,7 @@ def test_recording_with_zero_episodes_is_revalidated(replay_source, monkeypatch)
 @pytest.mark.parametrize("kind", ["pipeline", None])
 def test_non_policy_package_rejected(kind, replay_source, monkeypatch):
     replay_source.metadata["artifact_kind"] = kind
-    monkeypatch.setattr("nexuml.training.reinforcement.evaluate_policy", fail_training)
+    monkeypatch.setattr("nexuml.evaluation.policy.evaluate_policy", fail_training)
     result = runner.invoke(app, ["evaluate", "package"])
     assert result.exit_code != 0
     assert "complete exported policy package" in result.output
@@ -305,7 +305,7 @@ def test_native_logging_uses_explicit_source_frames_and_provenance(
         received.append(kwargs)
         return {"eval/rl/return_mean": 1.0}
 
-    monkeypatch.setattr("nexuml.training.reinforcement.evaluate_policy", evaluate)
+    monkeypatch.setattr("nexuml.evaluation.policy.evaluate_policy", evaluate)
     result = runner.invoke(app, ["evaluate", "package"])
     assert result.exit_code == 0, result.output
     assert received[0]["frame_step"] == (expected if expected is not None else 0)
@@ -362,7 +362,7 @@ def test_media_uses_same_native_loggers_after_preflight(
 
     monkeypatch.setattr("nexuml.tracking.logger.preflight_evaluation_media", preflight)
     monkeypatch.setattr("nexuml.tracking.logger.log_evaluation_media", media)
-    monkeypatch.setattr("nexuml.training.reinforcement.evaluate_policy", evaluate)
+    monkeypatch.setattr("nexuml.evaluation.policy.evaluate_policy", evaluate)
     logging = {"mlflow": {"tracking_uri": "sqlite:///replay.db"}}
     if tensorboard:
         logging["tensorboard"] = {}
@@ -391,7 +391,7 @@ def test_failure_finalizes_all_loggers_without_masking_primary(
     def evaluate(*args, **kwargs):
         raise error
 
-    monkeypatch.setattr("nexuml.training.reinforcement.evaluate_policy", evaluate)
+    monkeypatch.setattr("nexuml.evaluation.policy.evaluate_policy", evaluate)
     result = runner.invoke(app, ["evaluate", "package"])
     assert result.exit_code != 0
     assert (
@@ -418,7 +418,7 @@ def test_signal_exit_keeps_status_and_finalizes_failed_loggers(
     def evaluate(*args, **kwargs):
         raise SystemExit(143)
 
-    monkeypatch.setattr("nexuml.training.reinforcement.evaluate_policy", evaluate)
+    monkeypatch.setattr("nexuml.evaluation.policy.evaluate_policy", evaluate)
     result = runner.invoke(app, ["evaluate", "package"])
     assert result.exit_code == 143
     assert "Evaluation complete" not in result.output
@@ -430,7 +430,7 @@ def test_failed_media_preflight_prevents_evaluation(replay_source, native_loggin
         raise ValueError("missing media target")
 
     monkeypatch.setattr("nexuml.tracking.logger.preflight_evaluation_media", preflight)
-    monkeypatch.setattr("nexuml.training.reinforcement.evaluate_policy", fail_training)
+    monkeypatch.setattr("nexuml.evaluation.policy.evaluate_policy", fail_training)
     result = runner.invoke(
         app, ["evaluate", "package", "-O", "training.evaluation.video.enabled=true"]
     )

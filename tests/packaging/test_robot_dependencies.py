@@ -14,24 +14,31 @@ def test_robots_is_library_owned_forwarded_and_excluded_from_all():
     assert len(forwarding) == 1
     assert forwarding[0].name == "nexuml-library" and forwarding[0].extras == {"robots"}
     integrations = list(map(Requirement, library["project"]["optional-dependencies"]["robots"]))
-    assert {req.name for req in integrations} == {"nexuml-library", "isaaclab", "lerobot"}
+    assert len(integrations) == 1
+    assert integrations[0].name == "nexuml-library"
+    assert integrations[0].extras == {"isaac", "lerobot", "mujoco"}
     for manifest in (core, library):
         project = manifest["project"]
         assert project["requires-python"] == ">=3.12"
         assert all(
-            "robots" not in Requirement(value).extras
+            not {"robots", "isaac", "lerobot", "mujoco"}.intersection(Requirement(value).extras)
             for value in project["optional-dependencies"]["all"]
         )
         assert all(
             Requirement(value).name not in {"isaaclab", "lerobot"}
             for value in project["dependencies"]
         )
-    assert all(
-        bound.operator == ">="
-        for req in integrations
-        if req.name in {"isaaclab", "lerobot"}
-        for bound in req.specifier
-    )
+    for extra, package in (("isaac", "isaaclab"), ("lerobot", "lerobot")):
+        forwarding = list(map(Requirement, core["project"]["optional-dependencies"][extra]))
+        assert len(forwarding) == 1
+        assert forwarding[0].name == "nexuml-library" and forwarding[0].extras == {extra}
+        concrete = [
+            Requirement(value)
+            for value in library["project"]["optional-dependencies"][extra]
+            if Requirement(value).name == package
+        ]
+        assert len(concrete) == 1
+        assert all(bound.operator == ">=" for bound in concrete[0].specifier)
 
 
 def test_native_source_and_backend_choices_are_only_root_tool_configuration():

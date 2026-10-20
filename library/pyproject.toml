@@ -73,10 +73,15 @@ mujoco = [
     "nexuml-library[reinforcement]",
     "gymnasium[mujoco]>=1,<2",
 ]
-robots = [
-    "nexuml-library[reinforcement,video,mujoco]",
+isaac = [
+    "nexuml-library[reinforcement,video]",
     "isaaclab[isaacsim,ov,viser]>=3.0.0",
+]
+lerobot = [
     "lerobot[dataset,diffusion]>=0.6",
+]
+robots = [
+    "nexuml-library[isaac,lerobot,mujoco]",
 ]
 all = [
     "nexuml-library[audio,data,pretrained,eval,reinforcement]",

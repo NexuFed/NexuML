@@ -1,11 +1,21 @@
 """Lazy Ray-specific teardown repair for the pinned TorchRL collector."""
 
+from importlib.metadata import version
+
 import ray
 from torchrl.collectors.distributed.ray import RayCollector
 
 
 class _GracefulRayCollector(RayCollector):
     """Retain TorchRL collection/sync while closing environments before actor termination."""
+
+    def __init__(self, *args, **kwargs):
+        if version("torchrl").split("+")[0] != "0.14.0":
+            raise RuntimeError(
+                "Ray collection's lifecycle adapter is qualified for TorchRL 0.14.0; "
+                "use that version or requalify worker shutdown before enabling another release"
+            )
+        super().__init__(*args, **kwargs)
 
     def stop_remote_collectors(self):
         if not self.remote_collectors:

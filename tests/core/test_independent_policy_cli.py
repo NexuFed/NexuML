@@ -38,9 +38,11 @@ def independent_packages(tmp_path_factory):
             scenario.training.seed = 91
             scenario.training.evaluation = RLEvaluationSpec(episodes=0)
         contract = scenario.interaction.environment.describe()
-        policy = CompiledPolicy(
-            compile(scenario), scenario.policy.action_adapter.build(contract), contract
-        )
+        with torch.random.fork_rng(devices=[]):
+            torch.random.default_generator.manual_seed(0)
+            policy = CompiledPolicy(
+                compile(scenario), scenario.policy.action_adapter.build(contract), contract
+            )
         packages[name] = export_package(policy, root / name)
     return packages
 
@@ -192,7 +194,7 @@ def test_new_block_invalid_or_out_of_scope_overrides_fail_before_runtime_and_log
     override, diagnostic, offline_source, monkeypatch
 ):
     monkeypatch.setattr("nexuml.tracking.logger.create_loggers", forbidden)
-    monkeypatch.setattr("nexuml.training.reinforcement.evaluate_policy", forbidden)
+    monkeypatch.setattr("nexuml.evaluation.policy.evaluate_policy", forbidden)
     monkeypatch.setattr(GymnasiumEnvironment, "build", forbidden)
     result = runner.invoke(app, ["evaluate", "package", "-O", override])
     assert result.exit_code != 0
@@ -201,7 +203,7 @@ def test_new_block_invalid_or_out_of_scope_overrides_fail_before_runtime_and_log
 
 def test_new_block_video_with_zero_episodes_is_revalidated(offline_source, monkeypatch):
     monkeypatch.setattr("nexuml.tracking.logger.create_loggers", forbidden)
-    monkeypatch.setattr("nexuml.training.reinforcement.evaluate_policy", forbidden)
+    monkeypatch.setattr("nexuml.evaluation.policy.evaluate_policy", forbidden)
     result = runner.invoke(
         app,
         [
@@ -223,7 +225,7 @@ def test_explicit_block_rejects_legacy_override_instead_of_ignoring_it(
     if legacy:
         offline_source.config.training = cartpole_ppo().training
     monkeypatch.setattr("nexuml.tracking.logger.create_loggers", forbidden)
-    monkeypatch.setattr("nexuml.training.reinforcement.evaluate_policy", forbidden)
+    monkeypatch.setattr("nexuml.evaluation.policy.evaluate_policy", forbidden)
     result = runner.invoke(app, ["evaluate", "package", "-O", "training.evaluation.episodes=0"])
     assert result.exit_code != 0
     assert "policy_evaluation" in result.output and "training.evaluation" in result.output
@@ -249,7 +251,7 @@ def test_mixed_override_namespaces_fail_before_runtime_even_for_old_configuratio
     if reverse:
         overrides.reverse()
     monkeypatch.setattr("nexuml.tracking.logger.create_loggers", forbidden)
-    monkeypatch.setattr("nexuml.training.reinforcement.evaluate_policy", forbidden)
+    monkeypatch.setattr("nexuml.evaluation.policy.evaluate_policy", forbidden)
     result = runner.invoke(app, ["evaluate", "package", "-O", overrides[0], "-O", overrides[1]])
     assert result.exit_code != 0 and "mix" in result.output.lower()
     assert "policy_evaluation" in result.output and "training.evaluation" in result.output
@@ -261,7 +263,7 @@ def test_nested_new_override_does_not_initialize_missing_block(legacy, offline_s
     if legacy:
         offline_source.config.training = cartpole_ppo().training
     monkeypatch.setattr("nexuml.tracking.logger.create_loggers", forbidden)
-    monkeypatch.setattr("nexuml.training.reinforcement.evaluate_policy", forbidden)
+    monkeypatch.setattr("nexuml.evaluation.policy.evaluate_policy", forbidden)
     result = runner.invoke(app, ["evaluate", "package", "-O", "policy_evaluation.episodes=1"])
     assert result.exit_code != 0
     assert "policy_evaluation=" in "".join(result.output.split())
@@ -301,7 +303,7 @@ def test_policy_placement_uses_selected_episode_budget_without_disabled_allocati
             assert scenario.policy_evaluation.episodes == 1
             return {"eval/rl/return_mean": 1.0}
 
-        monkeypatch.setattr("nexuml.training.reinforcement.evaluate_policy", evaluate)
+        monkeypatch.setattr("nexuml.evaluation.policy.evaluate_policy", evaluate)
     else:
         monkeypatch.setattr(offline_source.policy, "forward", forbidden)
     forbid_training(monkeypatch)
@@ -372,7 +374,7 @@ def test_selected_block_controls_media_preflight_and_native_logger_sink(
 
     monkeypatch.setattr("nexuml.tracking.logger.preflight_evaluation_media", preflight)
     monkeypatch.setattr("nexuml.tracking.logger.log_evaluation_media", media)
-    monkeypatch.setattr("nexuml.training.reinforcement.evaluate_policy", evaluate)
+    monkeypatch.setattr("nexuml.evaluation.policy.evaluate_policy", evaluate)
     result = runner.invoke(
         app,
         [
@@ -398,7 +400,7 @@ def test_cancelled_error_preserves_cancellation_and_finalizes_every_logger_faile
     def evaluate(*args, **kwargs):
         raise error
 
-    monkeypatch.setattr("nexuml.training.reinforcement.evaluate_policy", evaluate)
+    monkeypatch.setattr("nexuml.evaluation.policy.evaluate_policy", evaluate)
     with pytest.raises(asyncio.CancelledError) as caught:
         runner.invoke(app, ["evaluate", "package"])
     assert caught.value is error
@@ -429,8 +431,9 @@ def test_actual_offline_package_records_real_gym_rgb_gif_mp4_and_tensorboard(
     block = {
         "episodes": 1,
         "seed": 0,
-        "max_steps_per_episode": 3,
-        "video": {"enabled": True, "format": "both", "max_frames": 3, "max_size": 64},
+        # Three steps can produce identical downscaled pixels for a valid left-action policy.
+        "max_steps_per_episode": 8,
+        "video": {"enabled": True, "format": "both", "max_frames": 8, "max_size": 64},
     }
     forbid_training(monkeypatch)
     result = runner.invoke(
@@ -449,16 +452,16 @@ def test_actual_offline_package_records_real_gym_rgb_gif_mp4_and_tensorboard(
     assert len(metadata_paths) == 1
     metadata_path = metadata_paths[0]
     metadata = json.loads(metadata_path.read_text())
-    assert metadata["formats"] == ["gif", "mp4"] and metadata["captured_frames"] == 3
+    assert metadata["formats"] == ["gif", "mp4"] and metadata["captured_frames"] == 8
     assert metadata["capture_capped"] and metadata["seeds"] == [0]
     assert metadata["source_size"] == [600, 400] and max(metadata["captured_size"]) == 64
-    assert metadata["metrics"]["eval/rl/length_mean"] == 3
+    assert metadata["metrics"]["eval/rl/length_mean"] == 8
     assert metadata["provenance"]["source_training_frames"] is None
     assert "algorithm" not in metadata["provenance"]["resolved_config"]["training"]
     with Image.open(metadata_path.with_suffix(".gif")) as gif:
         assert max(gif.size) == 64 and sum(1 for _ in ImageSequence.Iterator(gif)) >= 2
     video = imageio.mimread(str(metadata_path.with_suffix(".mp4")))
-    assert len(video) == 3 and max(video[0].shape[:2]) == 64
+    assert len(video) == 8 and max(video[0].shape[:2]) == 64
     run_dir = metadata_path.parents[2]
     events = EventAccumulator(str(run_dir)).Reload()
     preview = events.Images("eval/rl/episode")[0]

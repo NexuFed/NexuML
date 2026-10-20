@@ -245,13 +245,19 @@ def test_manually_assembled_offline_policy_runs_real_cpu_gym_without_a_learner(m
     forbid_training(monkeypatch)
     monkeypatch.setattr(GymnasiumEnvironment, "build", observe_build)
     metrics = evaluate_policy(policy, scenario)
-    assert set(metrics) == {
+    legacy_keys = {
         "eval/rl/return_mean",
         "eval/rl/return_std",
         "eval/rl/length_mean",
         "eval/rl/terminated",
         "eval/rl/truncated",
     }
+    assert set(metrics) == legacy_keys | {
+        key.replace("eval/rl/", "eval/policy/") for key in legacy_keys
+    }
+    assert all(
+        metrics[key] == metrics[key.replace("eval/rl/", "eval/policy/")] for key in legacy_keys
+    )
     assert metrics["eval/rl/length_mean"] == metrics["eval/rl/return_mean"] == 3
     assert metrics["eval/rl/terminated"] + metrics["eval/rl/truncated"] == 2
     assert all(np.isfinite(value) for value in metrics.values())

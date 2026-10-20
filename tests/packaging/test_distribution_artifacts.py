@@ -170,7 +170,7 @@ def test_distribution_artifacts() -> None:
     expected_all = [
         Requirement(requirement)
         for extra, requirements in core_extras.items()
-        if extra not in {"dev", "all", "robots"}
+        if extra not in {"dev", "all", "robots", "isaac", "lerobot", "mujoco"}
         for requirement in requirements
         if Requirement(requirement).name != "nexuml"
     ]

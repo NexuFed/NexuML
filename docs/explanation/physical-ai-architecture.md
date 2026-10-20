@@ -1,0 +1,151 @@
+# One architecture for Physical AI
+
+NexuML composes **ScenarioSpec → Compiler → Training/Execution → Policy →
+Evaluation/Export**. Robotics extends this path; it does not introduce another
+compiler, session, training engine or policy hierarchy. Dataset-only industrial,
+classical and self-supervised workflows need no environment or policy.
+
+## Ownership and dependencies
+
+| Responsibility | Owner | Integration boundary |
+| --- | --- | --- |
+| Portable definitions, contracts, registry and configuration | `core` | Definitions describe configuration; `build()` owns runtime construction |
+| Model/loss graph and input metadata | Shared compiler and `CompiledPipeline` | Dataset and interaction inputs use the same compile context |
+| Dataset training, tracking and checkpoints | `NexuSession` and Lightning | Supervised/self-supervised/imitation losses use ordinary pipeline components |
+| RL objectives and rollout state | Algorithm definition and RL Lightning module | TorchRL PPO owns its numerical objective, auxiliary state and optimizer updates |
+| Placement | `execution` | Local/Ray placement is not a simulator or learning-algorithm selector |
+| Deployable actions | `CompiledPolicy` | Pipeline + action adapter + physical observation/action contract |
+| Environment episodes | `evaluation.policy` | One runner independent of Lightning, TorchRL, collectors or simulator imports |
+| Demonstrations | `DataSpec`, `NexuDataset`, existing loaders | LeRobot is an optional source adapter, not an exclusive internal format |
+| Simulation and robot transport | Library environment providers | Lazy execution-local resources; native features remain backend-specific |
+| Persistence | Existing `core.export` APIs | Preserve legacy pipeline exports, complete policies and training checkpoints |
+
+Environment resources never enter a portable definition, model state or policy
+artifact. Common reset/step/close contracts stay small. Isaac physics selection,
+ROS clocks/controllers, CARLA synchronization and native rendering remain with
+their integrations rather than being generalized into core.
+
+## Policy batch layout
+
+The default `PolicySpec.batch_mode="independent"` retains legacy scalar and
+independent batched inference. It flattens outer sample dimensions for existing
+layers and restores them after execution. Named `time`, `agent` or `agents`
+batch dimensions are rejected rather than silently losing their meaning.
+
+`batch_mode="preserve"` passes the cloned TensorDict's batch shape/names directly
+to a graph that explicitly supports them. The graph must preserve that shape;
+the same input/output tensor and physical validation still applies. The setting
+survives YAML and complete-policy export/reload. Unnamed dimensions remain the
+caller's responsibility; NexuML cannot infer temporal meaning from a tensor size.
+
+Fixed histories/multimodal inputs may also use named **feature** axes through
+`TensorFieldContract.axes` and `DataSpec.input_contracts`. This preserves their
+rank without adding a sequence dataset engine. Neither layout mode implements
+hidden-state ownership, recurrence, chunk scheduling, stride, partial resets or
+processors. Those remain explicit extensions of `CompiledPolicy` in the existing
+Physical AI plan—not separate `RobotPolicy` or `VLAPolicy` classes.
+
+## Evaluation independent of the learner
+
+Use `nexuml.evaluation.policy.evaluate_policy` with
+`ScenarioSpec.policy_evaluation`. `PolicyEvaluationSpec` and `PolicyVideoSpec`
+are aliases of the original configuration classes, preserving their identities
+and serialization. Old imports from `training.reinforcement`, old
+`training.evaluation` configuration and seed precedence remain supported.
+
+The runner preserves policy modes, random streams, cleanup, episode limits,
+termination versus truncation, bounded recording and physical compatibility.
+`eval/policy/*` metrics have the same values as the retained `eval/rl/*` aliases;
+strict metric-key allowlists should account for the additive names. Existing
+TensorBoard recording tags remain unchanged.
+
+RL still requires a finite scalar reward. A non-RL policy may instead return
+`InteractionStep.reward=None` with a validated boolean `info["task_success"]`
+on the task device. Reward presence and outcome schema must remain consistent
+throughout a run. Rewardless evaluation reports **no return metric**, rather
+than inventing zero rewards. Success means any-step success under the native
+task's predicate; task-specific hold/contact requirements belong to that task.
+
+Optional task outcomes, also validated on the task device:
+
+- `joint_error_rad`: the existing finite nonnegative scalar error, preserved for
+  SO-101. It requires the existing paired success field.
+- `task_errors`: a mapping of identifier names to finite nonnegative floating
+  scalars, reported as `final_<name>_mean` across completed episodes. Reserved
+  joint-error/counter names cannot override the established fields.
+- `constraint_violations` and `action_violations`: nonnegative integral scalar
+  **event counts for that step**, summed across episodes. Omitted counters are
+  unknown, not fabricated zero measurements.
+
+Invalid policy actions still fail before actuation. Reported outcome counters
+are not a safety controller, permission to issue invalid actions or a reason to
+swallow exceptions. Mock tests never establish native task or hardware safety.
+
+## Four artifact categories
+
+1. **Trusted definitions:** locally installed, reviewed recipe/components and
+   their source/config identities. An inference `torch.package` is executable
+   trusted local content, not an untrusted network update.
+2. **Portable numerical state:** validated named tensors or adapters, exact
+   shapes/dtypes/trainable roles and base identity; suitable for Safetensors.
+3. **Private training checkpoints:** optimizer, learner auxiliaries, counters,
+   RNG and supported training state. Keep them local; do not call them inference
+   policies or share them as numerical updates.
+4. **Complete inference policies:** trained graph, action semantics, contracts
+   and supported required state. No live simulator, critic, optimizer or private
+   episodes. Existing export/load formats remain supported.
+
+NexuFL calls the installed Python `local_fit` SDK with trusted definitions,
+approved local data and compatible external tensors. NexuML returns validated
+numerical updates, counts, approved scalars and provenance. NexuFL alone owns
+aggregation, transport and orchestration. No NexuFL dependency, REST server,
+`FederatedTrainer` or gRPC layer belongs in NexuML.
+
+## Optional integrations and the primary environment
+
+Named `isaac`, `lerobot` and `mujoco` extras compose under the preserved `robots`
+umbrella. Neither package's `all` extra implicitly requests these native stacks.
+ROS/Gazebo and matching CARLA client/server/system prerequisites remain explicit;
+Python extras cannot install a ROS distribution, compatible drivers or servers.
+
+The consumer owns the reproducible Python/backend/index/source lock and reviewed
+dependency exceptions. Published compatibility minimums are not development pins.
+Keep one primary compatible Isaac/LeRobot/TorchRL environment; genuinely
+incompatible native components require a separately justified process boundary,
+not an environment manager or an environment per algorithm. No override is
+validated solely by successful resolution.
+
+Isaac's canonical Lab/Sim profile and historical EA Docker profile are distinct.
+Their source, asset, physics, interpreter and renderer evidence is not
+interchangeable. Use the supported `scripts/isaaclab/run.sh` whole-job boundary;
+the approved fast-close behavior does not repair upstream graceful shutdown.
+Gymnasium contract inference may briefly construct an environment; supply an
+explicit contract when discovery must remain simulator-free.
+
+The optional Ray collector's shutdown repair is isolated and qualified for
+TorchRL 0.14.0. Other TorchRL releases fail before worker allocation on that path;
+ordinary direct/process PPO is not globally capped. Requalification requires
+real copied-policy synchronization, iterator-exhaustion, cancellation/failure,
+owned/caller-owned runtime and environment-close tests before changing the gate.
+
+## Adding capabilities and reviewing changes
+
+Add algorithms as registered definitions with checkpoint-owned objectives/state,
+reusing the existing compiler, learner lifecycle, tracking and exports. Add
+simulators as lazy library providers with explicit native contracts and resource
+ownership; do not force unique backend features through artificial symmetry.
+Extend the existing data source/loader seams for sequence sampling, masks,
+train-only normalization and related-episode splits before model-specific work.
+
+The three-goal SO-101 state imitation/SDK reference remains the deterministic
+integration baseline, not evidence of arbitrary-goal generalization, vial
+manipulation, real hardware or federation. ACT, Diffusion, VLA/world models,
+Meta-World/Playground, additional embodiments and wider native/distributed/manual
+acceptance remain in the [unified Physical AI plan](https://github.com/NexuFed/NexuML/tree/feature/nex-212-add-reinforcement-learning/openspec/changes/add-isaac-physical-ai-backend).
+
+Review core contracts/evaluation, the SO-101 SDK, optional simulator adapters and
+distributed/runtime compatibility separately, in dependency order. Preserve the
+existing commits rather than mechanically splitting or rewriting published
+history. CI checks PRs targeting both `dev` and `main`, including retargeting;
+native jobs stay opt-in and require their declared prerequisites. Local tests
+alone do not establish remote CI, merge readiness or deployment acceptance.
