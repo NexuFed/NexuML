@@ -186,6 +186,28 @@ def test_cluster_labels_follow_healthy_distances_not_fault_annotations() -> None
         _clusters(distances, names, 4)
 
 
+def test_identification_plots_render_without_model_refitting(tmp_path: Path) -> None:
+    """Render state-wise held-out confusion matrices from persisted metrics."""
+    pytest.importorskip("sklearn")
+    pytest.importorskip("matplotlib")
+    from nexuml_library.evaluation.maintenance.pseudo_machine_identification_plots import (
+        plot_identification_report,
+    )
+
+    report = identify_pseudo_machine_types(
+        _source(tmp_path),
+        seeds=(42,),
+        pca_components=4,
+        projections=8,
+        bootstrap=4,
+    )
+    output = tmp_path / "plots"
+    plot_identification_report(report, output)
+    assert len(list(output.glob("*-confusion.png"))) == 6
+    assert (output / "identity-condition-comparison.png").is_file()
+    assert (output / "healthy-training-machine-swd.png").is_file()
+
+
 def test_invalid_or_duplicated_source_and_splits_are_rejected(tmp_path: Path) -> None:
     """Prevent shared-recording leakage and invalid split controls."""
     source = _source(tmp_path)
