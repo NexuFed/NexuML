@@ -114,6 +114,7 @@ def build_reference_conditioned_fold(
     heldout_indices.sort()
     query_indices = train_indices + val_indices
     machine_index = {name: index for index, name in enumerate(train_machines)}
+    train_set = set(train_indices)
     query_rows = [
         {
             **rows[i],
@@ -121,7 +122,6 @@ def build_reference_conditioned_fold(
             "original_split": rows[i]["split"],
             "reference_index": machine_index[str(rows[i]["group_id"])],
         }
-        for train_set in [set(train_indices)]
         for i in query_indices
     ]
     support_healthy_files = [
