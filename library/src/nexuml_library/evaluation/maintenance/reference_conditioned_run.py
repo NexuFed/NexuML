@@ -99,6 +99,7 @@ def run_reference_conditioned_folds(
     checkpoint_root: str | Path,
     reports_dir: str | Path,
     heldout_machine: str | None = None,
+    heldout_machines: tuple[str, ...] | None = None,
     context_mode: str = "reference",
     width: int = 128,
     context_dim: int = 32,
@@ -119,7 +120,8 @@ def run_reference_conditioned_folds(
         manifest_file: Manifest created by reference_conditioned_prepare.
         checkpoint_root: Parent directory for validation-selected checkpoints.
         reports_dir: Location for per-fold JSON and overall summary.
-        heldout_machine: Optional one fold to train instead of all four.
+        heldout_machine: Optional single held-out fold.
+        heldout_machines: Optional exact subset of held-out folds.
         context_mode: Healthy-reference conditioning or constant-context ablation.
         width: Width of both vector-field MLP hidden layers.
         context_dim: DeepSets output dimension.
@@ -146,9 +148,18 @@ def run_reference_conditioned_folds(
     }:
         raise ValueError("Expected machine- or family-held-out healthy-reference manifest")
     entries = cast(dict[str, dict[str, Any]], manifest["folds"])
-    if heldout_machine is not None and heldout_machine not in entries:
+    if heldout_machine is not None and heldout_machines is not None:
+        raise ValueError("Choose either a single held-out machine or a fold subset")
+    if heldout_machine is not None:
+        selected = [heldout_machine]
+    elif heldout_machines is not None:
+        if not heldout_machines or len(set(heldout_machines)) != len(heldout_machines):
+            raise ValueError("Held-out machine subset must be nonempty and unique")
+        selected = sorted(heldout_machines)
+    else:
+        selected = sorted(entries)
+    if any(machine not in entries for machine in selected):
         raise ValueError("Requested held-out machine not found in prepared folds")
-    selected = [heldout_machine] if heldout_machine is not None else sorted(entries)
     if context_mode not in {"reference", "constant"}:
         raise ValueError("Unknown context_mode")
     report_root = Path(reports_dir).expanduser().resolve()
@@ -334,6 +345,7 @@ def main() -> None:
     parser.add_argument("--checkpoint-root", type=Path, required=True)
     parser.add_argument("--reports-dir", type=Path, required=True)
     parser.add_argument("--heldout-machine", type=str)
+    parser.add_argument("--heldout-machines", nargs="+")
     parser.add_argument("--context-mode", choices=("reference", "constant"), default="reference")
     parser.add_argument("--width", type=int, default=128)
     parser.add_argument("--context-dim", type=int, default=32)
@@ -350,6 +362,9 @@ def main() -> None:
         checkpoint_root=args.checkpoint_root,
         reports_dir=args.reports_dir,
         heldout_machine=args.heldout_machine,
+        heldout_machines=(
+            tuple(args.heldout_machines) if args.heldout_machines is not None else None
+        ),
         context_mode=args.context_mode,
         width=args.width,
         context_dim=args.context_dim,
