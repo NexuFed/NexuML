@@ -57,24 +57,18 @@ def _aggregate(
 
 def test_paired_known_family_is_more_transferable(tmp_path: Path) -> None:
     """The comparison keeps each physical machine and split seed paired."""
-    machine = _aggregate(
-        tmp_path / "known.json", protocol="machine", offset=0.1
-    )
-    family = _aggregate(
-        tmp_path / "unseen.json", protocol="family", offset=-0.3
-    )
+    machine = _aggregate(tmp_path / "known.json", protocol="machine", offset=0.1)
+    family = _aggregate(tmp_path / "unseen.json", protocol="family", offset=-0.3)
     result = compare_machine_family_generalization(machine, family, family="fan")
     assert result["families"] == ["fan"]
     assert result["overall"]["machine_assessments"] == 8
-    assert result["overall"]["mean_relative_reduction"]["known_family_reference"] == (
-        pytest.approx(0.22)
+    assert result["overall"]["mean_relative_reduction"]["known_family_reference"] == pytest.approx(
+        0.22
     )
-    assert result["overall"]["mean_relative_reduction"]["unseen_family_reference"] == (
-        pytest.approx(-0.18)
+    assert result["overall"]["mean_relative_reduction"]["unseen_family_reference"] == pytest.approx(
+        -0.18
     )
-    assert result["overall"]["mean_reference_transfer_advantage_pp"] == (
-        pytest.approx(40.0)
-    )
+    assert result["overall"]["mean_reference_transfer_advantage_pp"] == pytest.approx(40.0)
     assert result["overall"]["positive_transport_count"]["known_family_reference"] == 8
     assert result["overall"]["positive_transport_count"]["unseen_family_reference"] == 0
     assert all(
@@ -85,12 +79,8 @@ def test_paired_known_family_is_more_transferable(tmp_path: Path) -> None:
 
 def test_comparison_requires_matching_seeds_and_identities(tmp_path: Path) -> None:
     """Different held-out sample IDs or split seeds are not compared."""
-    machine = _aggregate(
-        tmp_path / "known.json", protocol="machine", seeds=(42,)
-    )
-    family = _aggregate(
-        tmp_path / "unseen.json", protocol="family", seeds=(43,)
-    )
+    machine = _aggregate(tmp_path / "known.json", protocol="machine", seeds=(42,))
+    family = _aggregate(tmp_path / "unseen.json", protocol="family", seeds=(43,))
     with pytest.raises(ValueError, match="seeds"):
         compare_machine_family_generalization(machine, family)
     _aggregate(family, protocol="family", seeds=(42,), families=("pump",))
@@ -103,9 +93,7 @@ def test_comparison_rejects_duplicate_machine_records(tmp_path: Path) -> None:
     machine = _aggregate(
         tmp_path / "known.json", protocol="machine", seeds=(42,)
     )
-    family = _aggregate(
-        tmp_path / "unseen.json", protocol="family", seeds=(42,)
-    )
+    family = _aggregate(tmp_path / "unseen.json", protocol="family", seeds=(42,))
     payload = json.loads(machine.read_text())
     payload["models"]["reference"]["records"].append(
         dict(payload["models"]["reference"]["records"][0])
@@ -192,10 +180,12 @@ def test_known_family_runner_selects_four_machine_folds(
     )
     index = tmp_path / "index.json"
     index.write_text(
-        json.dumps({
-            "seeds": [42],
-            "manifests": {"42": {"machine": {"manifest": str(manifest)}}},
-        })
+        json.dumps(
+            {
+                "seeds": [42],
+                "manifests": {"42": {"machine": {"manifest": str(manifest)}}},
+            }
+        )
     )
     result = run_multifamily_experiments(
         index,
