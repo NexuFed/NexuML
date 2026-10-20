@@ -1,0 +1,80 @@
+{
+  "version": 1,
+  "setupWorktree": [
+    "UV_PROJECT_ENVIRONMENT=.venv uv sync --locked --extra all --extra dev && npm --prefix studio ci --include=dev && npm --prefix docs ci && npm --prefix docs run setup:python"
+  ],
+  "setupWorktreeWait": true,
+  "projectActions": [
+    {
+      "id": "dev-api",
+      "name": "Dev backend",
+      "icon": "server",
+      "command": ".venv/bin/python -m nexuml.cli.main serve --directory . --port 8000 --origin http://127.0.0.1:3200 --token-file \"$HOME/.nexuml-api-token\"",
+      "platforms": ["linux", "macos"]
+    },
+    {
+      "id": "dev-ui",
+      "name": "Dev UI",
+      "icon": "rocket",
+      "command": "NEXUML_STUDIO_TOKEN=\"$(cat \"$HOME/.nexuml-api-token\")\" NEXUML_STUDIO_API=http://127.0.0.1:8000 NEXUML_STUDIO_ORIGIN=http://127.0.0.1:3200 npm --prefix studio run dev -- --port 3200",
+      "autoOpenUrl": true,
+      "platforms": ["linux", "macos"]
+    },
+    {
+      "id": "format-python",
+      "name": "Format Python",
+      "icon": "code",
+      "command": ".venv/bin/ruff format .",
+      "platforms": ["linux", "macos"]
+    },
+    {
+      "id": "check-python",
+      "name": "Check Python",
+      "icon": "lint",
+      "command": ".venv/bin/ruff check . && .venv/bin/ruff format --check . && .venv/bin/ty check --python .venv/bin/python",
+      "platforms": ["linux", "macos"]
+    },
+    {
+      "id": "test-python-fast",
+      "name": "Test Python (fast CPU)",
+      "icon": "flask",
+      "command": "CUDA_VISIBLE_DEVICES=\"\" .venv/bin/python -m pytest -m \"not slow and not requires_gpu and not requires_data\"",
+      "platforms": ["linux", "macos"]
+    },
+    {
+      "id": "test-python",
+      "name": "Test Python (full + coverage)",
+      "icon": "flask",
+      "command": ".venv/bin/python -m pytest --cov=nexuml --cov=nexuml_library --cov-report=term-missing --cov-report=xml:reports/coverage.xml",
+      "platforms": ["linux", "macos"]
+    },
+    {
+      "id": "check-studio",
+      "name": "Check Studio",
+      "icon": "lint",
+      "command": "npm --prefix studio run typecheck && npm --prefix studio run lint",
+      "platforms": ["linux", "macos"]
+    },
+    {
+      "id": "test-studio",
+      "name": "Test Studio",
+      "icon": "flask",
+      "command": "npm --prefix studio test",
+      "platforms": ["linux", "macos"]
+    },
+    {
+      "id": "build-studio",
+      "name": "Build Studio",
+      "icon": "build",
+      "command": "npm --prefix studio run build",
+      "platforms": ["linux", "macos"]
+    },
+    {
+      "id": "build-docs",
+      "name": "Build docs",
+      "icon": "build",
+      "command": "npm --prefix docs run check",
+      "platforms": ["linux", "macos"]
+    }
+  ]
+}

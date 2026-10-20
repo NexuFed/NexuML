@@ -27,6 +27,19 @@ def test_storage_append_existing_key():
     assert got.shape == (5, 3)
 
 
+@pytest.mark.parametrize("memory_mapped", [False, True])
+def test_storage_append_tensordict(tmp_path, memory_mapped):
+    store = SharedStorage(memory_mapped=memory_mapped, map_location=tmp_path / "storage")
+    first = torch.ones(2, 3)
+    second = torch.full((3, 3), 2.0)
+    store.set("td", TensorDict({"a": first}, batch_size=[2]))
+    store.append("td", TensorDict({"a": second}, batch_size=[3]))
+    got = store.get("td")
+    assert isinstance(got, TensorDict)
+    assert got.batch_size == torch.Size([5])
+    assert torch.equal(got["a"], torch.cat([first, second], dim=0))
+
+
 def test_storage_append_new_key_initializes():
     store = SharedStorage(memory_mapped=False)
     store.append("y", torch.randn(2, 2))

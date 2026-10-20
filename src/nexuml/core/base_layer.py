@@ -83,9 +83,9 @@ class PipelineLayer(torch.nn.Module):
         if isinstance(keys, dict):
             keys = list(keys.keys())
         if isinstance(x, TensorDict) and len(keys) > 1:
-            return torch.cat([x[k] for k in keys], dim=1)  # ty: ignore[no-matching-overload]
+            return torch.cat([x[k] for k in keys], dim=1)
         elif isinstance(x, TensorDict):
-            return x[keys[0]]  # ty: ignore[invalid-return-type]
+            return x[keys[0]]
         return x
 
     def check_update(self) -> bool:
@@ -108,7 +108,7 @@ class PipelineLayer(torch.nn.Module):
         else:
             return None if y is None else y[self.label_key]  # ty: ignore[invalid-return-type]
 
-    def forward(
+    def forward(  # ty: ignore[invalid-mutable-override]
         self,
         x: TensorDict | torch.Tensor,
         y: TensorDict | None = None,
@@ -133,9 +133,9 @@ class PipelineLayer(torch.nn.Module):
 
             if self.label_key is not None:
                 y_input = self.get_label(x, y)
-                x_mod = self.forward_tensor(x_mod, y_input)  # ty: ignore[invalid-argument-type]
+                x_mod = self.forward_tensor(x_mod, y_input)
             else:
-                x_mod = self.forward_tensor(x_mod)  # ty: ignore[invalid-argument-type]
+                x_mod = self.forward_tensor(x_mod)
 
             if key_out is None:
                 pass

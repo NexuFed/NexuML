@@ -2,57 +2,66 @@
 
 ## Purpose
 
-Learning documentation covering the NexuML scenario concept, ScenarioSpec anatomy, and the distinction between registered scenarios and local scenario files.
+Canonical architecture and task documentation covering NexuML scenarios, current ScenarioSpec fields, registered recipes, persisted YAML, and trusted Python files without duplicated prerequisite articles.
 
 ## Requirements
 
 ### Requirement: Scenario Concept Page
 
-The documentation SHALL include a beginner-oriented scenario concept page under the learning path.
+The documentation SHALL explain scenarios in an accessible section of the canonical architecture path, with one linked create/run procedure. It SHALL NOT require a separate duplicated scenario learning article before users can run an experiment.
 
 #### Scenario: Beginner asks what a scenario is
 
-- **WHEN** a beginner opens the scenario learning page
-- **THEN** the page explains that a scenario declares data, pipeline, training, evaluation, logging, callbacks, tuning, checkpoint, and exports through `ScenarioSpec`.
+- **WHEN** a beginner opens the scenario explanation
+- **THEN** it explains that a Python recipe composes data, pipeline, training, evaluation, logging, callbacks, tuning, checkpoint policy, exports, and execution through `ScenarioSpec`
 
 #### Scenario: Beginner sees the lifecycle
 
-- **WHEN** a beginner reads the scenario learning page
-- **THEN** the page shows how a scenario becomes runnable through resolve, build, train, evaluate, and export.
+- **WHEN** a beginner reads the scenario explanation
+- **THEN** it shows how scenario composition leads to resolved configuration, a built pipeline, training/evaluation, and export
+- **AND** it identifies the actual CLI commands without suggesting a nonexistent standalone evaluation command
 
 ### Requirement: ScenarioSpec Anatomy
 
-The scenario learning page SHALL explain the main `ScenarioSpec` fields using implementation-current names from `src/nexuml/core/types.py`.
+The canonical scenario explanation SHALL use implementation-current fields from `ScenarioSpec` and distinguish component configuration from pipeline/data/evaluation routing. Exact field contracts SHALL be linked to reference rather than duplicated into multiple conceptual pages.
 
 #### Scenario: User reads minimal scenario example
 
-- **WHEN** the page shows a minimal scenario example
-- **THEN** it uses current types and preferred concepts such as `ScenarioSpec`, `DataSpec`, `PipelineSpec`, `LayerSpec`, `TrainingSpec`, and `EvaluationSpec`.
+- **WHEN** the explanation shows a minimal scenario example
+- **THEN** it uses current types and concepts such as `ScenarioSpec`, `DataSpec`, `PipelineSpec`, `LayerSpec`, `TrainingSpec`, and `EvaluationSpec`
+- **AND** the example is consistent with the linked runnable create/run guide
 
 #### Scenario: User reads layer explanation
 
-- **WHEN** the page explains a `LayerSpec`
-- **THEN** it explains that `component` contains a typed layer definition and `keys_in` / `keys_out` define TensorDict key contracts.
+- **WHEN** the explanation introduces a `LayerSpec`
+- **THEN** it explains that `component` contains a typed layer definition and `keys_in` / `keys_out` define TensorDict key contracts
 
 ### Requirement: Registered Scenario Versus Scenario File
 
-The documentation SHALL explain the difference between a registered scenario and a trusted Python scenario file.
+The canonical create/run guide SHALL distinguish registered recipes, resolved YAML, and trusted Python scenario files, including which commands accept each source. It SHALL preserve the trusted-code warning and provenance instructions beside file-execution commands.
 
 #### Scenario: User wants reusable CLI scenario
 
 - **WHEN** a user wants a scenario available by name to `nexuml resolve` and `nexuml train`
-- **THEN** the docs route them to registered scenarios and `@scenario`.
+- **THEN** the guide explains registered recipes, `@scenario`, and the required installed-library or local-root discovery path
 
 #### Scenario: User wants local experiment file
 
 - **WHEN** a user wants to run a local trusted Python file
-- **THEN** the docs route them to `--scenario-file` and explain the required `scenario() -> ScenarioSpec` or implementation-current loading pattern.
+- **THEN** the guide explains `--scenario-file` and the implementation-current `scenario() -> ScenarioSpec` loading contract
+- **AND** it states that the file executes trusted Python and explains optional provenance capture
+
+#### Scenario: User wants persisted configuration
+- **WHEN** a user chooses resolved YAML
+- **THEN** the guide explains how to resolve, inspect, build, and train that configuration
+- **AND** it does not imply that every CLI command accepts YAML or trusted files interchangeably
 
 ### Requirement: Scenario Docs Link To Tasks And Reference
 
-The scenario learning page SHALL link to task guides and generated reference instead of duplicating all details.
+The scenario explanation SHALL link to canonical create/run, trusted-file, library/extension, and generated API reference destinations rather than duplicate their full procedures or route readers through obsolete placeholder articles.
 
 #### Scenario: User needs to implement a scenario
 
-- **WHEN** a user finishes the scenario learning page
-- **THEN** the docs link to define-scenario, trusted scenario-file, custom-scenario, decorators, and generated API reference pages.
+- **WHEN** a user finishes the scenario explanation
+- **THEN** they can reach the current create/run procedure, trusted-file guidance, library extension instructions, decorator reference, and generated API
+- **AND** older scenario-learning and walkthrough URLs map to the appropriate canonical destination

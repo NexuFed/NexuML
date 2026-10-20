@@ -41,8 +41,8 @@ def create_dataloaders(
 
         from tensordict import TensorDict
 
-        x_out = TensorDict(x_td, batch_size=[len(xs)])  # ty: ignore[invalid-argument-type]
-        y_out = TensorDict(y_td, batch_size=[len(ys)]) if y_td else None  # ty: ignore[invalid-argument-type]
+        x_out = TensorDict(x_td, batch_size=[len(xs)])
+        y_out = TensorDict(y_td, batch_size=[len(ys)]) if y_td else None
         return x_out, y_out
 
     return {

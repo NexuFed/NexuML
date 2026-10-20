@@ -7,6 +7,7 @@ from nexuml.core.discovery import scenario
 from nexuml.core.types import LoaderSpec, PreprocessingSpec, ScenarioSpec
 from nexuml.data.export.tensor_shards import TensorShardsBackend
 from nexuml.data.loaders.definitions import TensorShardsLoader
+from nexuml_library.layers.model.resnet import ResNetType
 from nexuml_library.scenarios.data.roots import resolve_data_root
 from nexuml_library.scenarios.vision.mnist_resnet import mnist_resnet
 
@@ -14,7 +15,7 @@ from nexuml_library.scenarios.vision.mnist_resnet import mnist_resnet
 @scenario("mnist-resnet-shards")
 def mnist_resnet_shards(
     download: bool = True,
-    resnet_type: str = "resnet18",
+    resnet_type: ResNetType = "resnet18",
     pretrained: bool = False,
     cifar_stem: bool = True,
     lr: float = 1e-3,

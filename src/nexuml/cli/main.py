@@ -9,35 +9,37 @@ import warnings
 from pathlib import Path
 from typing import Any, Optional, cast
 
-# Suppress Lightning internal deprecation warnings we can't fix
-warnings.filterwarnings(
-    "ignore",
-    message=r"`isinstance\(treespec, LeafSpec\)` is deprecated",
-    category=FutureWarning,
-)
-
-# Silence Lightning marketing tips (litlogger / litmodels) before any Lightning import
-import lightning_utilities.core.rank_zero as _lu_rank_zero  # noqa: E402
-
-_original_rank_zero_info = _lu_rank_zero.rank_zero_info
-
-
-def _filtered_rank_zero_info(*args: Any, **kwargs: Any) -> None:
-    if args and isinstance(args[0], str):
-        msg = args[0]
-        if "litlogger" in msg or "litmodels" in msg:
-            return
-    _original_rank_zero_info(*args, **kwargs)
-
-
-_lu_rank_zero.rank_zero_info = _filtered_rank_zero_info
-
-import typer  # noqa: E402
-from rich.console import Console  # noqa: E402
-from rich.table import Table  # noqa: E402
+import typer
+from rich.console import Console
+from rich.table import Table
 
 app = typer.Typer(name="nexuml", help="NexuML pipeline framework CLI")
 console = Console()
+_runtime_warnings_configured = False
+
+
+def _configure_runtime_warnings() -> None:
+    """Apply suppression before command execution, never during help extraction."""
+    global _runtime_warnings_configured
+    if _runtime_warnings_configured:
+        return
+    warnings.filterwarnings(
+        "ignore",
+        message=r"`isinstance\(treespec, LeafSpec\)` is deprecated",
+        category=FutureWarning,
+    )
+    import lightning_utilities.core.rank_zero as rank_zero
+
+    original_rank_zero_info = rank_zero.rank_zero_info
+
+    def filtered_rank_zero_info(*args: Any, **kwargs: Any) -> None:
+        if args and isinstance(args[0], str):
+            if "litlogger" in args[0] or "litmodels" in args[0]:
+                return
+        original_rank_zero_info(*args, **kwargs)
+
+    rank_zero.rank_zero_info = filtered_rank_zero_info
+    _runtime_warnings_configured = True
 
 
 def _get_scenario_fn(name: str):
@@ -92,6 +94,7 @@ def scenario_resolve(
     output: Optional[Path] = typer.Option(None, "--output", "-o", help="Output YAML path"),
 ):
     """Resolve a named scenario to a YAML config file."""
+    _configure_runtime_warnings()
     from nexuml.core.compiler import compile
 
     scenario_fn = _get_scenario_fn(name)
@@ -111,6 +114,7 @@ def build(
     config_path: Path = typer.Argument(help="Path to resolved YAML config"),
 ):
     """Compile and validate a pipeline from a resolved YAML config."""
+    _configure_runtime_warnings()
     from nexuml.core.compiler import compile
     from nexuml.core.config import ResolvedConfig
 
@@ -181,6 +185,7 @@ def train_cmd(
     Raises:
         typer.Exit: If input validation fails or training encounters an error.
     """
+    _configure_runtime_warnings()
     scenario = None
     loaded_file = None
     if scenario_name or config_path or scenario_file:
@@ -256,50 +261,15 @@ def train_cmd(
         except Exception as exc:
             console.print(f"[yellow]Warning: diagram export failed: {exc}[/yellow]")
 
-    if scenario is not None:
-        from nexuml.core.types import RayExecutionSpec
+    from nexuml.execution import preflight, run
 
-        if isinstance(scenario.execution, RayExecutionSpec):
-            if trainer_checkpoint is not None:
-                console.print(
-                    "[red]--trainer-checkpoint is a local Lightning option; "
-                    "Ray recovery is managed by Ray RunConfig.[/red]"
-                )
-                raise typer.Exit(1)
-            from nexuml.execution import run_ray
+    if trainer_checkpoint is not None:
+        from nexuml.training.lightning import load_scenario_from_trainer_checkpoint
 
-            ray_result = run_ray(scenario)
-            if loaded_file is not None and artifact_dir is not None:
-                from nexuml.core.provenance import snapshot_scenario_file_run
-
-                snapshot_scenario_file_run(
-                    loaded_file,
-                    artifact_dir,
-                    command="train",
-                    command_args={
-                        "scenario_file": str(scenario_file),
-                        "max_epochs": max_epochs,
-                        "execution": "ray",
-                    },
-                )
-            console.print("[green]Ray training complete![/green]")
-            metrics = getattr(ray_result, "metrics", None)
-            if metrics:
-                console.print(f"  Metrics: {metrics}")
-            if scenario.exports:
-                console.print(
-                    "[yellow]Scenario model exports are currently local-only; "
-                    "use Ray run/checkpoint storage for distributed runs.[/yellow]"
-                )
-            return
-
-    from nexuml.training.lightning import NexuSession
-
-    session = NexuSession(
-        scenario=scenario,
-        trainer_checkpoint=trainer_checkpoint,
-    )
-    result = session.run()
+        if scenario is not None:
+            preflight(scenario, trainer_checkpoint=trainer_checkpoint)
+        scenario = load_scenario_from_trainer_checkpoint(trainer_checkpoint, fallback=scenario)
+    result = run(scenario, trainer_checkpoint=trainer_checkpoint)
     if loaded_file is not None and artifact_dir is not None:
         from nexuml.core.provenance import snapshot_scenario_file_run
 
@@ -314,27 +284,18 @@ def train_cmd(
             },
         )
 
-    if scenario is not None and scenario.exports:
-        from nexuml.core.export import export_package
-
-        for spec in scenario.exports:
-            if spec.kind == "train_package":
-                export_path = Path(spec.output) if spec.output else Path("exported_model")
-                export_package(
-                    result.policy if result.policy is not None else result.pipeline,
-                    export_path,
-                    lightning_module=result.lightning_module,
-                    trainer=result.trainer,
-                )
-                console.print(f"[green]Exported train package to {export_path}[/green]")
-            else:
-                console.print(f"[yellow]Skipping unsupported export kind: {spec.kind}[/yellow]")
-
-    console.print("[green]Training complete![/green]")
-    if result.interaction_results:
-        console.print(f"  RL evaluation: {result.interaction_results}")
-    if result.test_results:
+    status = result.get("status", "unknown") if isinstance(result, dict) else "succeeded"
+    console.print(f"Execution finished: {status}")
+    if isinstance(result, dict):
+        console.print_json(data=result)
+        if status != "succeeded":
+            raise typer.Exit(1)
+    elif getattr(result, "test_results", None):
         console.print(f"  Test results: {result.test_results}")
+    elif getattr(result, "metrics", None):
+        console.print(f"  Metrics: {result.metrics}")
+    if getattr(result, "interaction_results", None):
+        console.print(f"  RL evaluation: {result.interaction_results}")
 
 
 @app.command(name="evaluate", help="Evaluate a trusted exported policy without training")
@@ -554,6 +515,7 @@ def export_dataset_cmd(
     Raises:
         typer.Exit: If preprocessing is enabled without --preprocess-until-key.
     """
+    _configure_runtime_warnings()
     from nexuml.data.export import export_data_module
     from nexuml.training.lightning import (
         LightningFeatureExtractor,
@@ -624,6 +586,7 @@ def export_cmd(
     ),
 ):
     """Export a trained pipeline to a portable model package."""
+    _configure_runtime_warnings()
     from nexuml.core.export import export_package
     from nexuml.training.lightning import NexuSession
 
@@ -667,6 +630,7 @@ def smoke(
     download: bool = typer.Option(False, "--download", help="Download datasets before training"),
 ):
     """Run a full smoke-test: resolve → build → train → export → reload → infer."""
+    _configure_runtime_warnings()
     from tensordict import TensorDict
 
     from nexuml.core.compiler import compile
@@ -755,6 +719,7 @@ def tune_cmd(
     Raises:
         typer.Exit: If scenario input is ambiguous or loading fails.
     """
+    _configure_runtime_warnings()
     from nexuml.core.types import TuningSpec
     from nexuml.tuning.optuna_tuner import tune
 
@@ -900,6 +865,7 @@ def registry_list(
     Raises:
         typer.Exit: If *kind* is not one of the recognised values.
     """
+    _configure_runtime_warnings()
     kind = kind.lower()
     component_kinds = {
         "layers": ("layer", "Registered Layers"),
@@ -952,32 +918,10 @@ def backend_list(
     Raises:
         typer.Exit: If *category* does not match any registered backends.
     """
-    rows: list[tuple[str, str, str]] = []
+    _configure_runtime_warnings()
+    from nexuml.core.backends import backend_rows
 
-    def add(row_category: str, name: str, implementation: str) -> None:
-        if category is None or row_category == category:
-            rows.append((row_category, name, implementation))
-
-    from nexuml.data.export import get_export_backend, list_export_backends
-    from nexuml.core.registry import get_component_registry
-
-    for name in sorted(list_export_backends()):
-        backend_cls = get_export_backend(name)
-        add("data-export", name, f"{backend_cls.__module__}.{backend_cls.__name__}")
-
-    for entry in get_component_registry().entries(kind="loader_backend"):
-        add("data-loader", entry.name, entry.import_target)
-
-    add("training", "lightning", "nexuml.training.lightning.NexuSession")
-    add("training", "ray", "nexuml.execution.ray.run_ray")
-    add("tracking", "tensorboard", "nexuml.tracking.logger")
-    add("tracking", "dvclive", "nexuml.tracking.logger")
-    add("tracking", "mlflow", "nexuml.tracking.logger")
-    add("eval-storage", "memory", "nexuml.evaluation.storage")
-    add("eval-storage", "memmap", "nexuml.evaluation.storage")
-    add("pipeline-export", "package", "nexuml.core.export.export_package")
-    add("pipeline-export", "safetensors", "nexuml.core.export.export_safetensors")
-    add("pipeline-export", "onnx", "nexuml.core.export.export_onnx")
+    rows = [row for row in backend_rows() if category is None or row[0] == category]
 
     if category is not None and not rows:
         console.print(f"[red]Unknown backend category or no backends found: {category}[/red]")
@@ -992,6 +936,55 @@ def backend_list(
     console.print(table)
 
 
+@backend_app.command(name="catalog")
+def execution_catalog():
+    """List registered execution schemas and installation support without probing targets."""
+    _configure_runtime_warnings()
+    from nexuml.execution import catalog
+
+    console.print_json(data=catalog())
+
+
+@backend_app.command(name="discover")
+def execution_discover(
+    config: Path = typer.Option(..., "--config", "-c"),
+    timeout: float = typer.Option(10, min=0.1, max=60),
+):
+    """Read the configured target's sourced capacity, without starting training."""
+    _configure_runtime_warnings()
+    from nexuml.execution import discover
+
+    scenario = _load_scenario(None, config)
+    console.print_json(
+        data=discover(scenario.execution, scenario=scenario, timeout=timeout).model_dump(
+            mode="json"
+        )
+    )
+
+
+@backend_app.command(name="preflight")
+def execution_preflight(config: Path = typer.Option(..., "--config", "-c")):
+    """Validate the exact configured execution selection without submitting a job."""
+    _configure_runtime_warnings()
+    from nexuml.execution import preflight
+
+    review = preflight(_load_scenario(None, config))
+    console.print_json(data=review.get("summary", review) or {"validated": True})
+
+
+@backend_app.command(name="inspect")
+def execution_inspect(reference: Path = typer.Argument(...)):
+    """Inspect a recorded native reference, refusing a same-named UID replacement."""
+    _configure_runtime_warnings()
+    import json
+    from nexuml.execution import inspect
+    from nexuml.execution.schemas import NativeReference
+
+    console.print_json(
+        data=inspect(NativeReference.model_validate(json.loads(reference.read_text())))
+    )
+
+
 library_app = typer.Typer(help="Manage local library roots")
 app.add_typer(library_app, name="library")
 
@@ -1003,6 +996,7 @@ def library_add(
     ),
 ):
     """Add a local library root path to the NexuML config."""
+    _configure_runtime_warnings()
     from nexuml.core.discovery import LibraryConfig
 
     config = LibraryConfig.load()
@@ -1020,6 +1014,7 @@ def library_delete(
     Raises:
         typer.Exit: If the path is not currently configured as a library root.
     """
+    _configure_runtime_warnings()
     from nexuml.core.discovery import LibraryConfig
 
     config = LibraryConfig.load()
@@ -1035,6 +1030,7 @@ def library_delete(
 @library_app.command(name="list", help="List available library sources")
 def library_list():
     """List all available library sources (installed and local)."""
+    _configure_runtime_warnings()
     from nexuml.core.discovery import LibraryConfig, discover_entry_point_packages
 
     config = LibraryConfig.load()
@@ -1056,6 +1052,56 @@ def library_list():
         table.add_row("path", root)
 
     console.print(table)
+
+
+@app.command(name="serve", help="Serve the protected local Studio API (requires nexuml[api])")
+def serve_cmd(
+    directory: Path = typer.Option(
+        Path("."),
+        "--directory",
+        exists=True,
+        file_okay=False,
+        resolve_path=True,
+    ),
+    port: int = typer.Option(8000, "--port", min=1, max=65535),
+    origin: str = typer.Option("http://127.0.0.1:3000", "--origin"),
+    token_file: Optional[Path] = typer.Option(None, "--token-file", exists=True, dir_okay=False),
+):
+    """Start a loopback API using this installation; never install dependencies.
+
+    Raises:
+        typer.Exit: If API dependencies or protected startup settings are missing.
+    """
+    _configure_runtime_warnings()
+    try:
+        import uvicorn
+        import websockets  # noqa: F401 - verify the required WebSocket implementation
+
+        from nexuml.api.app import create_app
+        from nexuml.api.security import Settings, read_token
+    except ImportError as exc:
+        console.print(
+            "Server dependencies missing. Install nexuml[api] in this same environment "
+            "(uv tool install 'nexuml[api]' or uv add 'nexuml[api]').",
+            style="red",
+            markup=False,
+        )
+        raise typer.Exit(1) from exc
+
+    try:
+        settings = Settings(directory=directory, origin=origin, token=read_token(token_file))
+    except (OSError, ValueError) as exc:
+        console.print(str(exc), style="red", markup=False)
+        raise typer.Exit(1) from exc
+
+    console.print("Local API: discovery and build execute trusted Python, not sandboxed code.")
+    uvicorn.run(
+        create_app(settings),
+        host="127.0.0.1",
+        port=port,
+        access_log=False,
+        ws_max_size=65536,
+    )
 
 
 if __name__ == "__main__":

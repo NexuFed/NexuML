@@ -40,22 +40,11 @@ LayerSpec(
 
 The decorator identity is used for discovery, CLI inspection, and YAML restoration, not normal Python construction.
 
-## Entry Point
+## Discovery
 
-```toml
-[project.entry-points."nexuml.libraries"]
-my-library = "my_library"
-```
-
-For local development, registration does not require installation:
-
-```bash
-nexuml library add /path/to/my_library
-nexuml registry list layers
-nexuml registry list data
-nexuml registry list eval
-nexuml registry list scenarios
-```
+Follow [Register a library](register-library.md) to declare the package entry point,
+install it and verify discovery. For an uninstalled source tree, use
+[local library roots](library-cli.md) instead; registration does not install dependencies.
 
 The registered path can be the package directory itself (containing `__init__.py`),
 a directory containing packages, or a project with packages under `src/`.

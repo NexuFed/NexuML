@@ -1,0 +1,27 @@
+---
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+import { getCollection } from 'astro:content';
+import { changelogRoute, orderedEntries } from '../../changelog.mjs';
+import { globalUrl } from '../../../config.mjs';
+const entries = orderedEntries(await getCollection('changelog'));
+const months = [...new Set(entries.map(entry => entry.data.date.slice(0, 7)))];
+---
+<StarlightPage frontmatter={{ title: 'Changelog', description: 'Product updates and release notes.' }}>
+  <p>What changed in NexuML, and why it matters.</p>
+  {months.map(month => <section aria-label={month}>
+    <h2>{new Date(`${month}-01T00:00:00Z`).toLocaleDateString('en', { month: 'long', year: 'numeric', timeZone: 'UTC' })}</h2>
+    {entries.filter(entry => entry.data.date.startsWith(month)).map(entry => <article>
+      <div class="entry-date"><time datetime={entry.data.date}>{entry.data.date}</time><span>{entry.data.category}{entry.data.version && ` · ${entry.data.version}`}</span></div>
+      <div><h3><a href={globalUrl(`changelog/${changelogRoute(entry)}/`)}>{entry.data.title}</a></h3><p>{entry.data.summary}</p></div>
+    </article>)}
+  </section>)}
+</StarlightPage>
+<style>
+  section { margin-top: 3rem; }
+  article { display: grid; grid-template-columns: 9rem 1fr; gap: 2rem; padding-block: 2rem; border-bottom: 1px solid var(--sl-color-gray-5); }
+  .entry-date { display: grid; align-content: start; gap: .4rem; color: var(--sl-color-gray-2); font-size: .875rem; }
+  h3 { margin: 0 0 .75rem; font-size: 1.35rem; }
+  h3 a { color: var(--sl-color-text); text-decoration: none; }
+  h3 a:hover { text-decoration: underline; }
+  @media (max-width: 40rem) { article { grid-template-columns: 1fr; gap: .75rem; } }
+</style>

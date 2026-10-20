@@ -1,0 +1,55 @@
+---
+title: Backend reference
+description: Distinguish backend catalogs, execution definitions, optional dependency health, and storage families.
+---
+
+Reference-only: "backend" is not one universal interface. Each category owns an independent
+concern. Inspect registered definitions/implementations:
+
+```bash
+nexuml backend list
+nexuml backend list data-loader
+nexuml backend list data-export
+nexuml backend catalog
+```
+
+:::note[Catalog is not dependency health]
+A listed optional backend can still need a third-party package at materialization.
+For example, `DaliLoader` is registered even if `nvidia.dali` cannot import. Catalog
+reads are not live device/cluster health checks.
+:::
+
+## Data loading and dataset export
+
+Loader names are `torch` (portable), `dali` (optional platform-specific runtime), and
+`tensor_shards` (windowed materialized storage). See [data loading](/how-to/data-loading/).
+
+Dataset-export names include `numpy`, `numpy_mmap`, `torch`, `tensordict_memmap`,
+`webdataset`, and `tensor_shards`. Their artifact contract is documented in
+[dataset export](/how-to/export-dataset/).
+
+## Training and execution
+
+The training catalog exposes Lightning and Ray integrations. Lightning remains the canonical
+session/training lifecycle; Ray changes placement/setup. Registered execution definitions
+also represent Local, RayCluster, RayJob, Kubernetes Job, and PyTorchJob.
+`backend catalog` reports execution schemas/dependencies, not cluster probes.
+See [execution modes](/how-to/training-backends/) and
+[native discovery/preflight](/how-to/training-backends/jobs/).
+
+## Tracking and pipeline export
+
+Tracking integrations include TensorBoard, DVCLive, and MLflow; see
+[tracking](/how-to/tracking/). Pipeline export names include `package` (primary model
+package), `safetensors` (weights), and `onnx` (supported inference graph).
+See [model export/reload](/how-to/export/).
+
+## Distinct storage contracts
+
+Distance-estimator feature accumulation uses `ram` or `memmap`.
+`DistanceEstimatorSpec.create_feature_store()` applies configured path, sample limit,
+and retention. TensorDict temporary storage uses `memory` or `memmap` instead.
+**`ram` and `memory` are not aliases**; they belong to different storage families.
+
+Use the generated [types API](/reference/api/nexuml/core/types/) and
+[backend API](/reference/api/nexuml/core/backends/) for exact current definitions.
