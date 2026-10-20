@@ -1,5 +1,16 @@
 # Proposal
 
+## Focused native configuration, sensors, Viser and MARL ownership
+
+[generalize-isaac-native-configuration-and-marl](../generalize-isaac-native-configuration-and-marl/proposal.md)
+owns implementation and acceptance of its early Viser feasibility gate and
+milestones A–D. This umbrella remains the broader roadmap, not a duplicate queue
+for that slice. Its focused requirements govern the current unmerged native
+schema, strict read-only viewing, native TorchRL IPPO/MAPPO and preserved SO-101
+SDK/provenance boundaries. Historical evidence and completed tasks remain intact;
+MuJoCo, ROS 2, CARLA, ACT/Diffusion/VLA/world-model, robotics and independent
+federation obligations are neither removed nor completed by that focused change.
+
 ## Linear issue and PR linkage
 
 - **Implementation issue:** [NEX-234](https://linear.app/nexufed/issue/NEX-234) — SO-101 local imitation learning and NexuML Python SDK handoff (Gate 0 / F01).
