@@ -171,6 +171,9 @@ duplicate records, or incomplete four-ID families.
 **Interpret carefully:** The raw embedding data and held-out machine IDs are
 shared, but the two protocols use different training-only standardization
 statistics. Compare *relative* SWD reductions, not absolute SWD distances.
+This experiment changes both **family exposure** and **training group
+count** (15 versus 12), so a gain does not isolate the causal effect of
+same-family exposure without an additional matched-size control.
 Different split seeds resample the same physical machine groups, not new
 independent machines.
 
