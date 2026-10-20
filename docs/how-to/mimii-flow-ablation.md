@@ -585,7 +585,134 @@ conditions, display the first-seed training-healthy machine SWD,
 and show held-out healthy/faulty confusion matrices for identity and
 pseudo-type targets.
 
-## 7. Quality checks
+## 7. Healthy-reference-conditioned Flow Matching on unseen machines
+
+The classifier diagnostic found that known-machine identity is recognizable
+from healthy FISHER embeddings, but healthy-similar machines need not share
+fault directions. For deployment with only healthy examples from a **new**
+machine, evaluate a continuous **healthy-reference-conditioned flow** rather
+than forcing every new machine into a known categorical identity.
+
+The following code introduces library-only components:
+
+- `HealthyReferenceConditionedFlow`: a trainable, permutation-invariant
+  DeepSets context encoder (`phi -> mean -> rho`) and a shared MLP velocity
+  field `v(z,t,c)` with an Euler sampler. Context is computed once per
+  transport trajectory, not from the current faulty observation.
+- `HealthyReferenceMaintenancePairs`: a NexuML data source that supplies
+  two endpoint embeddings plus an immutable **healthy reference set** from
+  the same machine. It keeps reference recordings disjoint from all queries.
+- `healthy_reference_flow_scenario`: a normal NexuML scenario reusing the
+  existing independent-pair `PairedLinearFlowPath`, `FlowMatchingLoss`,
+  optimizer, logging, checkpoint callbacks and `NexuSession`.
+- LOMO preparation/training and post-selection assessment utilities.
+
+### 7.1 Prepare genuine leave-one-machine-out folds
+
+Use the original, untouched **FISHER-independent-raw** embeddings:
+
+```bash
+python -m nexuml_library.evaluation.maintenance.reference_conditioned_prepare \
+  --source-file \
+    .experiments/nex233-ablation/prepared/seed42/fisher-independent-raw-seed42.pt \
+  --output-dir .experiments/nex233-ablation/reference-context/seed42/prepared \
+  --reference-size 32 \
+  --validation-fraction 0.2 \
+  --seed 42
+```
+
+This prepares one fold per machine ID (`id_00/02/04/06`). In each fold:
+
+1. **Three training machines** have disjoint healthy support recordings
+   (`32` per machine), then disjoint training queries and validation
+   queries containing both healthy and faulty endpoints.
+2. The **fourth machine** provides only its `32` healthy support recordings
+   for test-time context inference. Its remaining healthy/faulty recordings
+   are stored in a **different assessment artifact**, never supplied to
+   the training dataset or validation selection.
+3. Feature-wise standardization is fitted on healthy *training* queries
+   plus healthy support from the **three training machines only**.
+   Neither training-machine validation recordings nor any data from the
+   held-out machine influence this normalization.
+4. Source and target endpoints are sampled from independently paired
+   original recordings. Flow time remains an abstract interpolation
+   parameter, not measured degradation time or remaining useful life.
+
+Per machine, the default 128 prepared pairs yield 32 healthy supports,
+approximately 77 train queries and 19 validation queries on training
+machines. The held-out machine has 96 assessment pairs with healthy
+support disjoint from assessment observations.
+
+The original `id_06` confirmatory test role has already been retired
+in prior experiments; these folds are **exploratory**, not a fresh sealed
+independent test. They nevertheless prevent the held-out machine's faulty
+embeddings from influencing training or checkpoint selection.
+
+### 7.2 Train a reference-conditioned flow
+
+```bash
+python -m nexuml_library.evaluation.maintenance.reference_conditioned_run \
+  --manifest \
+    .experiments/nex233-ablation/reference-context/seed42/prepared/manifest.json \
+  --checkpoint-root \
+    .experiments/nex233-ablation/reference-context/seed42/reference-checkpoints \
+  --reports-dir \
+    .experiments/nex233-ablation/reference-context/seed42/reference-reports \
+  --context-mode reference \
+  --width 128 --context-dim 32 --encoder-width 128 \
+  --num-steps 50 --lr 0.0003 --batch-size 16 \
+  --max-epochs 300 --patience 25 --accelerator gpu
+```
+
+To run one fold first, add `--heldout-machine fan:id_04`. For a
+CPU smoke run use `--accelerator cpu --max-epochs 2` and a **fresh**
+checkpoint/report root to avoid mixing experimental configurations.
+
+### 7.3 Matched context-ablation control
+
+To determine whether the velocity field actually *uses* the healthy
+reference distribution, also run `--context-mode constant` with separate
+checkpoint and report directories. This forces the context input to zero,
+preserving the conditional network's remaining architecture.
+
+This is a **context-ablation control**, not exactly the same parameter
+count or structure as the original unconditioned NEX-196 `Flow` model.
+The report also computes how much the predicted velocity changes when
+the held-out healthy context is swapped for another machine's reference
+set. A nonzero change demonstrates context sensitivity, **not** that
+the change is beneficial.
+
+Best checkpoints are chosen using the **unweighted mean of validation
+SWD across the three training machines**, never their pooled SWD and
+never the fourth machine. The selected checkpoint is then applied once
+to the fourth machine's healthy assessment embeddings, using context
+derived **only from its healthy support**. Held-out faulty observations
+are used solely to calculate post-training distributional SWD.
+
+Review `summary-reference.json` and `summary-constant.json` and
+per-machine JSON reports. Positive held-out relative SWD reduction
+supports learned cross-machine transport; comparison against the
+constant-context ablation tests whether the extra healthy context
+improves zero-shot behavior.
+
+### 7.4 Scientific limitations
+
+Four known MIMII fan machines provide only four leave-one-machine-out
+folds, not robust generalization evidence to new machine families.
+The context encoder could memorize characteristics of three training
+machines without learning useful behavior on the fourth. It must be
+checked with more independent machine IDs, fault modes and seeds.
+Even successful transport does **not** identify a unique faulty
+distribution from an arbitrary healthy distribution, infer degradation
+stage, or estimate calibrated remaining useful life.
+
+Run the relevant unit and integration tests with:
+
+```bash
+pytest tests/library/test_healthy_reference_flow.py -v
+```
+
+## 8. Quality checks
 
 ```bash
 ruff check .
