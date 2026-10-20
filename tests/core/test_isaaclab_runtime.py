@@ -13,7 +13,7 @@ import torch
 from tensordict import TensorDict
 
 from nexuml.core.components import EnvironmentBuildContext
-from nexuml.core.types import PhysicalTensorContract
+from nexuml.core.types import PhysicalTensorContract, SensorProcessingContract
 from nexuml_library.environments import _isaaclab_runtime
 from nexuml_library.environments.isaaclab import (
     IsaacLabEnvironment,
@@ -250,6 +250,89 @@ def test_constructor_owns_one_validated_native_batch(make_runtime):
     assert torch.equal(runtime.native.reset_calls[0][1], torch.arange(3))
 
 
+def _history_definition(*, owner="package"):
+    reference = IsaacLabEnvironment().describe()
+    field = reference.observations["observation"].model_copy(
+        update={
+            "shape": (8,),
+            "sensor": SensorProcessingContract(
+                owner=owner,
+                raw_shape=(4,),
+                raw_dtype="float32",
+                raw_layout="vector",
+                units="unitless",
+                scale=2.0,
+                offset=-1.0,
+                history_length=2,
+            ),
+        }
+    )
+    return IsaacLabEnvironment(
+        task="History-State-Reference",
+        contract=reference.model_copy(update={"observations": {"observation": field}}),
+        bindings=IsaacBindings(observations={"observation": ("policy",)}, processing="raw"),
+    )
+
+
+@pytest.mark.parametrize("owner", ["package", "external"])
+def test_package_history_uses_final_frames_then_caches_fresh_reset_without_advancing_peers(
+    make_runtime,
+    owner,
+):
+    instance = make_runtime(definition=_history_definition(owner=owner))
+    first = instance.reset()["observation"]
+    native = instance.native
+    initial = native.observation.clone() * 2 - 1
+    assert torch.equal(first, torch.cat((initial, initial), dim=-1))
+    native.next_truncated = [True, False, False]
+    transition = instance.step(_actions())
+    ending = native.final_observation.clone() * 2 - 1
+    assert torch.equal(transition.observation["observation"], torch.cat((initial, ending), dim=-1))
+    state = instance._processing_state.clone()
+    cached = instance.reset(mask=torch.tensor([True, False, False]))["observation"]
+    reset_frame = native.observation.clone() * 2 - 1
+    assert torch.equal(cached[0], torch.cat((reset_frame[0], reset_frame[0])))
+    assert torch.equal(cached[1:], transition.observation["observation"][1:])
+    assert torch.equal(
+        state["observation", "frames"], instance._processing_state["observation", "frames"]
+    )
+    assert len(native.reset_calls) == 1
+    native.next_truncated = [False, False, False]
+    following = instance.step(_actions()).observation
+    next_frame = native.observation.clone() * 2 - 1
+    assert torch.equal(following["observation"][0], torch.cat((reset_frame[0], next_frame[0])))
+
+
+@pytest.mark.parametrize("owner", ["package", "external"])
+def test_explicit_partial_reset_initializes_only_selected_package_history(make_runtime, owner):
+    instance = make_runtime(definition=_history_definition(owner=owner))
+    instance.reset()
+    instance.step(_actions())
+    previous = instance._processing_state.clone()
+    previous_observation = instance._observation.clone()
+    result = instance.reset(mask=torch.tensor([False, True, False]))["observation"]
+    frame = instance.native.observation[1] * 2 - 1
+    assert torch.equal(result[1], torch.cat((frame, frame)))
+    assert torch.equal(result[[0, 2]], previous_observation["observation"][[0, 2]])
+    assert torch.equal(
+        previous["observation", "frames"][[0, 2]],
+        instance._processing_state["observation", "frames"][[0, 2]],
+    )
+    assert len(instance.native.reset_calls) == 2
+
+
+def test_processed_bindings_never_guess_raw_sensor_transforms(make_runtime):
+    definition = _history_definition().model_copy(
+        update={
+            "bindings": IsaacBindings(observations={"observation": ("policy",)}),
+        }
+    )
+    native = _FakeNative()
+    with pytest.raises(ValueError, match="observation dimensions"):
+        make_runtime(native, definition=definition)
+    assert native.close_calls == 1 and native.step_calls == []
+
+
 def test_native_lazy_action_target_is_resolved_before_identity_validation(
     make_runtime, monkeypatch
 ):
@@ -464,6 +547,24 @@ def native_launch(monkeypatch, tmp_path):
                     kwargs={
                         "env_cfg_entry_point": (
                             "nexuml_library.environments._isaaclab_tasks:make_custom_cartpole_config"
+                        )
+                    },
+                ),
+                "NexuML-Cartpole-Categorical": SimpleNamespace(
+                    entry_point=(
+                        "nexuml_library.environments._isaaclab_categorical:make_categorical_cartpole_environment"
+                    ),
+                    kwargs={
+                        "env_cfg_entry_point": (
+                            "nexuml_library.environments._isaaclab_categorical:make_categorical_cartpole_config"
+                        )
+                    },
+                ),
+                "NexuML-Cartpole-Sensors": SimpleNamespace(
+                    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+                    kwargs={
+                        "env_cfg_entry_point": (
+                            "isaaclab_tasks.core.cartpole.cartpole_manager_camera_env_cfg:CartpoleCameraEnvCfg"
                         )
                     },
                 ),

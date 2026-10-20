@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import subprocess
 import sqlite3
+import shutil
 import sys
 
 import pytest
@@ -95,6 +96,7 @@ def test_upstream_native_learning_baseline(tmp_path, task):
 
 
 def _run(args, output, label, *, expected=0, process_scope=True):
+    assert shutil.disk_usage(ROOT).free >= 40 * 2**30
     output.mkdir(parents=True, exist_ok=True)
     env = {**os.environ, "NEXUML_LOGS_ROOT": str(output / "native-logs")}
     result = subprocess.run(
@@ -107,6 +109,7 @@ def _run(args, output, label, *, expected=0, process_scope=True):
         timeout=420,
     )
     (output / f"{label}.log").write_text(result.stdout)
+    assert shutil.disk_usage(ROOT).free >= 40 * 2**30
     assert result.returncode == expected, result.stdout
     return result.stdout
 
@@ -134,6 +137,20 @@ def test_native_so101_signed_controls_and_held_outcomes(tmp_path):
 def test_native_terminal_pixels_match_the_ending_scene_not_reset_scene(tmp_path):
     log = _run([ROOT / "tests/fixtures/isaaclab_terminal_rgb.py"], tmp_path, "terminal-rgb")
     assert "NATIVE_TERMINAL_PIXEL_AND_SCENE_IDENTITY_VERIFIED" in log
+
+
+@pytest.mark.parametrize("owner", ["package", "external"])
+def test_native_multimodal_values_terminal_scene_and_history(tmp_path, owner):
+    log = _run([ROOT / "tests/fixtures/isaaclab_sensors_probe.py", owner], tmp_path, "sensors")
+    assert "NATIVE_RGB_METRE_DEPTH_AND_EXACT_CLASS_LABELS_VERIFIED" in log
+    assert "NATIVE_FINAL_SCENE_HISTORY_AND_CACHED_SELECTED_RESET_VERIFIED" in log
+
+
+def test_native_categorical_class_force_and_signed_motion(tmp_path):
+    log = _run(
+        [ROOT / "tests/fixtures/isaaclab_categorical_probe.py"], tmp_path, "categorical-control"
+    )
+    assert "NATIVE_CATEGORICAL_CLASS_FORCE_AND_SIGNED_MOTION_VERIFIED" in log
 
 
 @pytest.mark.parametrize("task", ["Isaac-Cartpole", "Isaac-Cartpole-Direct"])
@@ -170,6 +187,12 @@ def test_registered_so101_uses_pinned_native_physics_resolution(tmp_path):
         "franka",
         "so101",
         "custom",
+        "categorical",
+        *[
+            f"{family}-{owner}"
+            for family in ("rgb", "depth", "segmentation", "mixed")
+            for owner in ("package", "external")
+        ],
     ],
 )
 def test_native_checkpoint_remaining_budget_export_and_scalar_replay(tmp_path, reference):
@@ -191,6 +214,8 @@ def test_native_checkpoint_remaining_budget_export_and_scalar_replay(tmp_path, r
             assert "COMPLETED_BUDGET_NO_SIMULATOR" in log
         else:
             assert "EXACT_PORTABLE_CPU_INFERENCE_VERIFIED" in log
+            if reference.endswith(("-package", "-external")):
+                assert "PORTABLE_NATIVE_SENSOR_SEQUENCE_SELECTED_RESET_PARITY" in log
     log = _run(
         [
             "-m",

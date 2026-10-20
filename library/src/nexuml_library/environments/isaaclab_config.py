@@ -116,6 +116,9 @@ class IsaacBindings(SpecModel):
         Annotated[tuple[Annotated[str, Field(min_length=1)], ...], Field(min_length=1)],
     ] = Field(min_length=1)
     action: str = Field(default="action", min_length=1)
+    processing: Literal["raw", "processed"] = Field(
+        default="processed", exclude_if=lambda value: value == "processed"
+    )
 
 
 class ViserSpec(SpecModel):
