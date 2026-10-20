@@ -80,7 +80,7 @@ class Observation(Callback):
     def on_fit_start(self, trainer, pl_module):
         self.record("progress", trainer, phase="fit")
 
-    def progress(self, trainer, phase, batch, total, *, force=False):
+    def progress(self, trainer, phase, batch, total, *, force=False) -> bool:
         """Publish real counters at most four times per second, plus boundaries.
 
         Returns:

@@ -327,3 +327,32 @@ symlink: **11 browser tests in 3.2 minutes**, plus runtime selection/immutabilit
 owned/attached shutdown. Retained artifacts:
 `/tmp/opencode/studio-ci-LkdO4F-alias/nexuml packaged smoke 9I1hRH/`.
 This reproduces the alias mechanism on Linux, not a claim of local macOS/Windows runs.
+
+Run `39344195578` confirmed the skill check, Python lint/format gates, all three
+Python/GPU suites, Studio static checks, and Linux tool packaging passed. Remaining
+failures were resolved at their responsible layers:
+
+- Canonicalize both sides of the launcher entrypoint comparison: Windows can retain a
+  short path in the module URL as well as argv.
+- Keep the browser test subprocess's original environment. Its initial Chromium launch
+  already finds the correct cache; inferring a cache root from three executable parents
+  breaks on macOS's `.app` bundle. Installed API/UI services still isolate their HOME.
+- Link the out-of-docs Studio README through the repository URL and annotate the existing
+  `Observation.progress` boolean return, fixing both strict-documentation warnings.
+- Two Linux project assertions expired after five seconds while validation was still
+  running. Failure-context snapshots show pending requests; screenshots captured just
+  afterward show the expected dialog/error. Those two assertions now use the existing
+  30-second API budget. No retries, sleeps, or acceptance conditions were removed.
+
+Local final proof passed: strict MkDocs build to a disposable output directory; four
+observation tests; 33 frontend tests; frontend lint; focused Ruff lint/format; and the
+entire packaged workflow through an aliased TMPDIR, including **11 browser tests in
+3.3 minutes** and owned/attached shutdown. Artifacts:
+`/tmp/opencode/studio-ci-LkdO4F-alias/nexuml packaged smoke tSMWjW/`.
+Documentation tools were installed only in a disposable test environment. Hosted
+macOS/Windows completion remains required before claiming portability acceptance.
+
+Correction: the Python type-check step uses `continue-on-error`; its successful step
+conclusion was initially misread. Its logs report **61 diagnostics**, and the final
+static gate correctly rejects them. Those diagnostics span feature code and skill/test
+fixtures and are a separate remaining blocker, not a passing gate or suppressed check.

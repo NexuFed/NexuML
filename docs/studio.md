@@ -1,7 +1,7 @@
 # Studio: local and authenticated HTTPS access
 
 NexuML Studio runs over your selected, already-installed NexuML. See the
-[Studio guide](../studio/README.md) for installation, editing, training and runtime selection.
+[Studio guide](https://github.com/NexuFed/NexuML/blob/main/studio/README.md) for installation, editing, training and runtime selection.
 Its API interface is **2**; neither mode changes Python execution or security semantics.
 
 ## Local/offline default

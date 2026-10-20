@@ -95,8 +95,8 @@ class Runtime(PipelineLayer):
     assert.equal(await page.locator("body").evaluate(element=>getComputedStyle(element).backgroundColor),"rgb(16, 16, 16)");
   }finally{await browser.close();}
   // Exercise the committed complete CPU browser workflow against the installed package.
-  run(process.execPath,[join(root,"node_modules/@playwright/test/cli.js"),"test"],{cwd:root,stdio:"inherit",env:{...env,
-    PLAYWRIGHT_BROWSERS_PATH:process.env.PLAYWRIGHT_BROWSERS_PATH ?? dirname(dirname(dirname(chromium.executablePath()))),
+  // Keep Playwright's original browser cache; only the launched services isolate HOME.
+  run(process.execPath,[join(root,"node_modules/@playwright/test/cli.js"),"test"],{cwd:root,stdio:"inherit",env:{...process.env,
     STUDIO_TEST_URL:origin,STUDIO_CONFIG_PATH:"tiny.yaml",STUDIO_LIBRARY_ROOT:libraryRoot}});
   assert.equal(await readFile(join(temporary,"package-lock.json"),"utf8"),before,"Startup changed packages");
   assert.equal(run(python,environmentCheck,{cwd:work,env}),beforePython,"Workflow changed the Python installation");

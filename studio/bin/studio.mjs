@@ -177,7 +177,7 @@ export async function launch(options) {
   }
 }
 
-if (process.argv[1] && await realpath(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && await realpath(process.argv[1]) === await realpath(fileURLToPath(import.meta.url))) {
   try {
     const options = argumentsFor(process.argv.slice(2));
     if (options.help) console.log("nexuml-studio [directory] [--nexuml executable | --python interpreter | --api origin --api-token-file file] [--port number] [--api-port number] [--host IPv4] [--public-origin https://host] [--no-open]\nHost/public origin also use NEXUML_STUDIO_HOST/NEXUML_STUDIO_PUBLIC_ORIGIN. Hosted mode requires an authenticated HTTPS reverse proxy; the API stays loopback-only.\nUses an existing NexuML with its api extra. Never installs or syncs Python packages. Trusted libraries/scenarios execute local Python, not sandboxed code.");

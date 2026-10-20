@@ -110,7 +110,7 @@ test("documented panel/keyboard paths and responsive visual acceptance",async({p
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
     if(width<1280){const sizes=await page.locator('.topbar button:visible,.nav-tabs button:visible,.topbar summary:visible,.run-tabs button:visible').evaluateAll(elements=>elements.map(element=>({label:element.textContent,height:element.getBoundingClientRect().height,width:element.getBoundingClientRect().width})));expect(sizes.filter(item=>item.height<44 || item.width<44)).toEqual([]);const boxes=await page.locator(".top-actions>*").evaluateAll(elements=>elements.map(element=>({left:element.getBoundingClientRect().left,right:element.getBoundingClientRect().right})));expect(boxes.slice(1).every((box,index)=>box.left>=boxes[index].right)).toBe(true);}
   }
-  await page.setViewportSize({width:1440,height:1000});await page.getByRole("button",{name:"Pipeline",exact:true}).click();await page.getByLabel("Output Dim",{exact:true}).fill(".5");await check(page);await expect(page.locator(".problems-list")).toContainText("output_dim");await page.screenshot({path:testInfo.outputPath("pipeline-error-1440.png")});
+  await page.setViewportSize({width:1440,height:1000});await page.getByRole("button",{name:"Pipeline",exact:true}).click();await page.getByLabel("Output Dim",{exact:true}).fill(".5");await check(page);await expect(page.locator(".problems-list")).toContainText("output_dim",{timeout:30000});await page.screenshot({path:testInfo.outputPath("pipeline-error-1440.png")});
   await page.emulateMedia({reducedMotion:"reduce"});expect(await page.evaluate(()=>matchMedia("(prefers-reduced-motion: reduce)").matches)).toBe(true);
   expect(submissions).toEqual([]);
 });

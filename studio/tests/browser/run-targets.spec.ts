@@ -41,7 +41,7 @@ test("runtime schema staging, stale target responses, accessible review and nati
   await page.route("**/api/v1/operations/*/cancel",route=>{phase="cancelled";return route.fulfill({json:operation()});});
   await page.goto("/");await openFile(page);
   const run=page.getByRole("button",{name:"Run…",exact:true});await expect(run).toBeEnabled({timeout:30000});
-  await run.press("Enter");const dialog=page.getByRole("dialog");await expect(dialog).toBeVisible();
+  await run.press("Enter");const dialog=page.getByRole("dialog");await expect(dialog).toBeVisible({timeout:30000});
   await dialog.locator("summary").filter({hasText:"Definition and raw execution settings"}).click();const initialExecution=await dialog.getByLabel("Raw execution settings",{exact:true}).inputValue();await dialog.getByLabel("Raw execution settings",{exact:true}).fill("null");await dialog.getByRole("button",{name:"Apply Raw execution settings",exact:true}).click();await expect(dialog.locator(".field-error")).toContainText(["buffer is retained"]);await expect(dialog.getByLabel("Execution backend",{exact:true})).toHaveValue("local:1");await dialog.getByLabel("Raw execution settings",{exact:true}).fill(initialExecution);await dialog.locator("summary").filter({hasText:"Definition and raw execution settings"}).click();
   await dialog.getByLabel("Execution backend",{exact:true}).selectOption("generic-fixture:1");await expect(dialog.locator('input[data-field="execution.params.target"]')).toHaveValue("initial");await expect(dialog.locator('input[data-field="execution.params.replicas"]')).toHaveValue("1");
   await dialog.getByLabel("Execution backend",{exact:true}).selectOption("sixth-fixture:1");
