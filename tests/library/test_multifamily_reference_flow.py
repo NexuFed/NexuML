@@ -260,9 +260,9 @@ def test_known_family_lomo_uses_fifteen_machines_and_matched_fan_queries(
     assert len(known_training["machine_groups"]) == 15
     assert len(unseen_training["machine_groups"]) == 12
     assert "fan:id_04" not in known_training["machine_groups"]
-    assert {
-        "fan:id_00", "fan:id_02", "fan:id_06"
-    }.issubset(set(known_training["machine_groups"]))
+    assert {"fan:id_00", "fan:id_02", "fan:id_06"}.issubset(
+        set(known_training["machine_groups"])
+    )
     assert all(
         row["group_id"] != "fan:id_04" for row in known_training["rows"]
     )
