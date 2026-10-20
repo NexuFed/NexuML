@@ -83,15 +83,28 @@ def test_no_app_is_allocated_for_a_job_that_never_builds_a_runtime():
 
 def test_nested_process_scope_does_not_close_the_outer_app():
     with runtime.isaaclab_process():
-        with pytest.raises(RuntimeError, match="cannot be nested"):
-            with runtime.isaaclab_process():
-                pytest.fail("nested job executed")
+        with runtime.isaaclab_process():
+            assert runtime._process_active
         assert runtime._process_active
 
 
 def test_native_allocation_requires_process_boundary_before_cuda_probe():
-    with pytest.raises(RuntimeError, match="scripts/isaaclab/run.py"):
+    with pytest.raises(RuntimeError, match="environment.job_scope"):
         runtime._create_environment(None, None, None)
+
+
+def test_conflicting_nested_definitions_reject_before_native_allocation():
+    from nexuml_library.environments.isaaclab import IsaacLabEnvironment
+
+    first = IsaacLabEnvironment()
+    second = IsaacLabEnvironment(task="Isaac-Reach-Franka")
+    with first.job_scope():
+        with first.job_scope():
+            assert runtime._process_definition == first
+        with pytest.raises(RuntimeError, match="Conflicting Isaac"):
+            with second.job_scope():
+                pytest.fail("conflicting scope executed")
+    assert not runtime._process_active
 
 
 def test_sigterm_unwinds_environment_and_logger_before_app_close(tmp_path):

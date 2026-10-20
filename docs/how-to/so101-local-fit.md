@@ -85,6 +85,89 @@ Safetensors and exports separate untrained/learned complete packages. Keep its
 handoff schema is `tests/fixtures/so101_local_fit_contract.json`; actual source,
 base-state, dataset and wheel hashes belong to the local run receipts.
 
+## Current receipt and implementation qualification
+
+The active `meta/info.json` stores `provenance.schema_version=2`. Do not confuse
+this with the SDK manifest/result schema, which remains version 1. At the receipt
+root, `environment` (task and physics), `interaction_contract`, `processor`,
+`expert`, `reset` and `success` describe task/data **semantics**. Root `seed`,
+`episode_seeds` and `split_episodes` retain the fixed episode protocol above.
+Viewer settings, file locations and current provider-file hashes do not become
+task semantics. Equal tensor widths never waive changed units, joint order,
+assets/calibration, action decoding, timing, processing or task distribution.
+
+`capture_provenance` retains the original capture's `source_sha256`, `packages`
+and `python`; `capture_sha256` hashes that whole projection using sorted-key,
+compact JSON (`allow_nan=False`). The exact source inventory is `isaaclab.py`,
+`_isaaclab_so101.py`, `_isaaclab_runtime.py`, `_isaaclab_tasks.py` and
+`isaaclab_config.py`. Package records contain nonempty `version` strings for
+`nexuml`, `nexuml-library`, `torch`, `lerobot`, `isaaclab` and `isaacsim`, including
+the capture's 40-hex-character Isaac Lab `revision`. Keep the original records
+and dataset bytes; never replace capture hashes with those of the running code.
+A matching hash proves consistency with a trusted record, not authentic native
+execution. Synthetic receipts are not native quality evidence.
+
+When those source hashes or the recorded Isaac revision differ from the current
+implementation, reuse fails closed unless the operator has independently
+established equivalent semantics and retained the named affected checks. Record
+that trusted local qualification at `meta/runtime_qualification.json` with exactly
+these keys (replace the explanatory placeholders with actual SHA256 values):
+
+```json
+{
+  "schema_version": 1,
+  "dataset_sha256": "<original validated receipt-and-frame checksum>",
+  "capture_sha256": "<original capture projection checksum>",
+  "semantic_sha256": "<canonical current _task_identity() checksum>",
+  "implementation_source_sha256": {
+    "isaaclab.py": "<current file SHA256>",
+    "_isaaclab_so101.py": "<current file SHA256>",
+    "_isaaclab_runtime.py": "<current file SHA256>",
+    "_isaaclab_tasks.py": "<current file SHA256>",
+    "isaaclab_config.py": "<current file SHA256>"
+  },
+  "isaaclab_revision": "70ab24fec3eabf51222817db0cdb5a4e7133bd7e",
+  "checks": {
+    "runtime": {"passed": true, "evidence_sha256": "<retained check evidence SHA256>"},
+    "sdk": {"passed": true, "evidence_sha256": "<retained check evidence SHA256>"},
+    "native_control": {"passed": true, "evidence_sha256": "<retained check evidence SHA256>"},
+    "native_export_replay": {"passed": true, "evidence_sha256": "<retained check evidence SHA256>"}
+  }
+}
+```
+
+`semantic_sha256` uses the same sorted-key compact JSON digest as
+`capture_sha256`. `dataset_sha256` is the existing SO-101 validator's checksum of
+the original receipt and ordered numeric transitions, **not** the SDK's separate
+local-window `data_hash`. Qualification is checked after those bytes and physical,
+split, timing and expert outcomes are validated. It is not included in that
+original dataset checksum and cannot waive a semantic or integrity mismatch.
+The JSON file is an operator trust assertion, not a signature or an automatic
+equivalence test; retain its actual evidence outside Git.
+
+An implementation-only refactor does not automatically require recapture. Keep
+old native evidence attributed to its original revision and add current runtime,
+SDK, native-control and export/replay qualification. Unknown or behavior-changing
+dynamics/capture/processor changes block reuse until equivalence is proven or
+new matching demonstrations and evaluation are collected in a **new** directory.
+Never rewrite original datasets/reports or relabel old samples. Unsupported old
+receipt schemas remain unsupported; there is no legacy reader/converter.
+
+The maintained recipe binds the narrow registered `SO101DemonstrationSource`.
+Its source build revalidates the full demonstrations and current qualification
+before ordinary dataset training, `NexuSession` or SDK fitting can read them;
+recipe construction alone is not admission. Every repeated fit revalidates;
+there is no mutable-path qualification cache. `local_fit` and
+`local_fit_manifest` signatures and the quality/numerical protocol above are
+unchanged. Source/schema/recipe changes still require independent consumer-pin
+review: producer validation is not proof of NexuFL compatibility.
+
+Native lifecycle and typed authoring use
+[whole-job environment scopes](isaac-native-configuration.md). Ordinary CLI
+train/evaluate own these scopes automatically. Python native collect/replay
+must keep export, evidence writes and explicit logger cleanup inside
+`with definition.job_scope():`; offline fitting does not launch Isaac.
+
 ## Python SDK trust boundary
 
 ```python

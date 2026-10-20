@@ -6,10 +6,12 @@ from hashlib import sha256
 import json
 import math
 from pathlib import Path
+import re
 from typing import TYPE_CHECKING, cast
 
 import numpy as np
 
+from nexuml.core.discovery import data_source
 from nexuml.core.types import (
     DataSpec,
     DatasetSpec,
@@ -50,6 +52,15 @@ PROCESSOR = {"name": "identity", "version": "v1"}
 EXPERT = {"name": "actor-goal-absolute-position", "version": "v1"}
 FPS = 30
 MAX_STEPS = 120
+_SOURCE_FILES = (
+    "isaaclab.py",
+    "_isaaclab_so101.py",
+    "_isaaclab_runtime.py",
+    "_isaaclab_tasks.py",
+    "isaaclab_config.py",
+)
+_PACKAGES = ("nexuml", "nexuml-library", "torch", "lerobot", "isaaclab", "isaacsim")
+_QUALIFICATION_CHECKS = {"runtime", "sdk", "native_control", "native_export_replay"}
 
 
 def _split_episodes(episodes: int) -> dict[str, list[int]]:
@@ -64,9 +75,10 @@ def _split_episodes(episodes: int) -> dict[str, list[int]]:
 
 
 def _task_identity() -> dict:
+    environment = IsaacLabEnvironment(task=TASK)
     return {
-        "environment": IsaacLabEnvironment(task=TASK).model_dump(mode="json"),
-        "interaction_contract": IsaacLabEnvironment(task=TASK).describe().model_dump(mode="json"),
+        "environment": {"task": environment.task, "physics": environment.physics},
+        "interaction_contract": environment.describe().model_dump(mode="json"),
         "processor": PROCESSOR,
         "expert": EXPERT,
         "reset": {
@@ -80,21 +92,62 @@ def _task_identity() -> dict:
 
 def _source_hashes() -> dict[str, str]:
     directory = Path(isaaclab.__file__).parent
-    return {
-        name: sha256((directory / name).read_bytes()).hexdigest()
-        for name in ("isaaclab.py", "_isaaclab_so101.py", "_isaaclab_runtime.py")
-    }
+    return {name: sha256((directory / name).read_bytes()).hexdigest() for name in _SOURCE_FILES}
+
+
+def _json_sha256(value: object) -> str:
+    return sha256(
+        json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
+    ).hexdigest()
+
+
+def _capture_provenance(packages: dict, python: str) -> dict:
+    """Build retained capture fields; package records are supplied by the local collector.
+
+    Returns:
+        Capture projection and its canonical digest, ready to merge into a receipt.
+    """
+    capture = {"source_sha256": _source_hashes(), "packages": packages, "python": python}
+    return {"capture_provenance": capture, "capture_sha256": _json_sha256(capture)}
+
+
+def _is_sha256(value: object) -> bool:
+    return isinstance(value, str) and re.fullmatch(r"[0-9a-fA-F]{64}", value) is not None
 
 
 def _receipt(info: dict) -> dict:
+    """Check retained semantics/capture/splits, not current-implementation admission.
+
+    Returns:
+        The complete original receipt, without rewriting capture identity.
+
+    Raises:
+        ValueError: If current-schema semantics, capture integrity or splits are invalid.
+    """
     receipt = info.get("provenance", {})
-    if not isinstance(receipt, dict) or receipt.get("schema_version") != 1:
-        raise ValueError("SO-101 demonstrations require provenance schema_version=1")
+    if (
+        not isinstance(receipt, dict)
+        or type(receipt.get("schema_version")) is not int
+        or receipt["schema_version"] != 2
+    ):
+        raise ValueError("SO-101 demonstrations require provenance schema_version=2")
     for key, expected in _task_identity().items():
         if receipt.get(key) != expected:
             raise ValueError(f"SO-101 demonstration {key} differs from the exact task contract")
-    if receipt.get("source_sha256") != _source_hashes():
-        raise ValueError("SO-101 demonstration source hashes differ from the pinned reference")
+    capture = receipt.get("capture_provenance")
+    if not isinstance(capture, dict):
+        raise ValueError("SO-101 demonstrations require retained capture provenance")
+    sources = capture.get("source_sha256")
+    if (
+        not isinstance(sources, dict)
+        or set(sources) != set(_SOURCE_FILES)
+        or not all(_is_sha256(value) for value in sources.values())
+    ):
+        raise ValueError("SO-101 capture requires exact source file names and SHA256 hashes")
+    if not _is_sha256(receipt.get("capture_sha256")) or receipt["capture_sha256"] != _json_sha256(
+        capture
+    ):
+        raise ValueError("SO-101 retained capture provenance digest mismatch")
     count, seed = info.get("total_episodes"), receipt.get("seed")
     if type(count) is not int:
         raise ValueError("SO-101 provenance requires an integer episode count")
@@ -107,19 +160,79 @@ def _receipt(info: dict) -> dict:
         or receipt.get("episode_seeds") != [seed + episode for episode in range(count)]
     ):
         raise ValueError("SO-101 episode seeds must be seed + episode ID")
-    packages = receipt.get("packages", {})
+    packages = capture.get("packages", {})
     if not isinstance(packages, dict):
         raise ValueError("SO-101 provenance requires exact runtime/package versions")
-    for name in ("nexuml", "nexuml-library", "torch", "lerobot", "isaaclab", "isaacsim"):
+    for name in _PACKAGES:
         if (
             not isinstance(packages.get(name), dict)
             or not isinstance(packages[name].get("version"), str)
-            or not packages[name]["version"]
+            or not packages[name]["version"].strip()
         ):
             raise ValueError("SO-101 provenance requires exact runtime/package versions")
-    if packages["isaaclab"].get("revision") != IsaacLabEnvironment(task=TASK).revision:
-        raise ValueError("SO-101 provenance requires the pinned Isaac Lab source revision")
+    revision = packages["isaaclab"].get("revision")
+    if not isinstance(revision, str) or re.fullmatch(r"[0-9a-fA-F]{40}", revision) is None:
+        raise ValueError("SO-101 capture requires the recorded Isaac Lab source revision")
+    if not isinstance(capture.get("python"), str) or not capture["python"].strip():
+        raise ValueError("SO-101 capture requires the recorded Python version")
     return receipt
+
+
+def _validate_runtime_qualification(root: Path, receipt: dict, dataset_sha256: str) -> None:
+    capture = receipt["capture_provenance"]
+    current = _source_hashes()
+    revision = IsaacLabEnvironment(task=TASK).revision
+    if (
+        capture["source_sha256"] == current
+        and capture["packages"]["isaaclab"]["revision"] == revision
+    ):
+        return
+    try:
+        qualification = json.loads((root / "meta/runtime_qualification.json").read_text())
+    except (OSError, ValueError) as error:
+        raise ValueError(
+            "SO-101 implementation drift requires local runtime qualification"
+        ) from error
+    expected = {
+        "schema_version": 1,
+        "dataset_sha256": dataset_sha256,
+        "capture_sha256": receipt["capture_sha256"],
+        "semantic_sha256": _json_sha256(_task_identity()),
+        "implementation_source_sha256": current,
+        "isaaclab_revision": revision,
+    }
+    if (
+        not isinstance(qualification, dict)
+        or set(qualification) != {*expected, "checks"}
+        or type(qualification.get("schema_version")) is not int
+        or any(qualification.get(key) != value for key, value in expected.items())
+    ):
+        raise ValueError(
+            "SO-101 runtime qualification does not match data/capture/current identity"
+        )
+    checks = qualification["checks"]
+    if not isinstance(checks, dict) or set(checks) != _QUALIFICATION_CHECKS:
+        raise ValueError("SO-101 runtime qualification requires all named affected checks")
+    for check in checks.values():
+        if (
+            not isinstance(check, dict)
+            or set(check) != {"passed", "evidence_sha256"}
+            or check["passed"] is not True
+            or not _is_sha256(check["evidence_sha256"])
+        ):
+            raise ValueError(
+                "SO-101 runtime qualification requires passed checks with evidence SHA256"
+            )
+
+
+@data_source("SO101Demonstrations", version="2")
+class SO101DemonstrationSource(LeRobotDataSource):
+    """Offline SO-101 episodes admitted by full integrity and runtime qualification checks."""
+
+    def build(self) -> _LeRobotDatasetRuntime:
+        dataset = cast("_LeRobotDatasetRuntime", super().build())
+        _validate_demonstration_dataset(self, dataset)
+        return dataset
 
 
 def so101_behavior_cloning(root: str) -> ScenarioSpec:
@@ -127,14 +240,16 @@ def so101_behavior_cloning(root: str) -> ScenarioSpec:
 
     The fixed three-goal distribution is shared across episode-disjoint splits;
     these splits do not demonstrate unseen-goal generalization. Identity v1 does
-    not fit normalization statistics on any split.
+    not fit normalization statistics on any split. Recipe construction alone does
+    not qualify implementation drift; every source build/fit checks complete
+    demonstrations and requires matching qualification before reuse.
 
     Returns:
         An ordinary supervised scenario with explicit deployment/evaluation contracts.
     """
     info = json.loads((Path(root).expanduser() / "meta/info.json").read_text())
     receipt = _receipt(info)
-    source = LeRobotDataSource(
+    source = SO101DemonstrationSource(
         root=root,
         repo_id=REPO_ID,
         split_episodes=receipt["split_episodes"],
@@ -205,18 +320,25 @@ def _observation(value) -> np.ndarray:
 def validate_so101_demonstrations(source: LeRobotDataSource) -> dict:
     """Validate complete local expert transitions using the existing offline reader.
 
-    This checks consistency, not authenticity of a claimed native receipt. It
-    returns only counts and content identities, never local filesystem paths.
+    This checks consistency, not authenticity of a claimed native receipt. A
+    runtime qualification is trusted operator-owned local evidence, not a
+    cryptographic or native-authenticity proof. It is read only after hashing the
+    original receipt and frames, and is never part of that dataset identity.
+    Returns only counts and content identities, never local filesystem paths.
+    Invalid semantics, splits, timing or expert outcomes raise ``ValueError``.
 
     Returns:
         Dataset/contract hashes and exact eligible frame-window/episode counts.
-
-    Raises:
-        ValueError: If physical semantics, splits, timing or expert outcomes differ.
     """
+    dataset = cast("_LeRobotDatasetRuntime", LeRobotDataSource.build(source))
+    return _validate_demonstration_dataset(source, dataset)
+
+
+def _validate_demonstration_dataset(
+    source: LeRobotDataSource, dataset: _LeRobotDatasetRuntime
+) -> dict:
     if source.input_keys != ("observation",) or source.action_key != "action":
         raise ValueError("SO-101 actor inputs must be only observation; target must be action")
-    dataset = cast("_LeRobotDatasetRuntime", source.build())
     info = dataset.info
     receipt = _receipt(info)
     splits = {key: list(value) for key, value in source.split_episodes.items()}
@@ -319,6 +441,8 @@ def validate_so101_demonstrations(source: LeRobotDataSource) -> dict:
             previous = following.copy()
         split = rows.iloc[0]["split"]
         counts[split]["windows"] += length
+    dataset_sha256 = digest.hexdigest()
+    _validate_runtime_qualification(Path(source.root).expanduser(), receipt, dataset_sha256)
     return {
         "schema_version": 1,
         "episodes": info["total_episodes"],
@@ -326,7 +450,7 @@ def validate_so101_demonstrations(source: LeRobotDataSource) -> dict:
         "train_episodes": counts["train"]["episodes"],
         "train_windows": counts["train"]["windows"],
         "splits": counts,
-        "dataset_sha256": digest.hexdigest(),
+        "dataset_sha256": dataset_sha256,
         "contract_sha256": sha256(
             json.dumps(receipt["interaction_contract"], sort_keys=True).encode()
         ).hexdigest(),
@@ -334,4 +458,8 @@ def validate_so101_demonstrations(source: LeRobotDataSource) -> dict:
     }
 
 
-__all__ = ["so101_behavior_cloning", "validate_so101_demonstrations"]
+__all__ = [
+    "SO101DemonstrationSource",
+    "so101_behavior_cloning",
+    "validate_so101_demonstrations",
+]

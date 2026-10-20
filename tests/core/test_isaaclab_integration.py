@@ -155,8 +155,22 @@ def test_native_public_wrapper_does_not_meet_the_complete_reset_contract(tmp_pat
         assert not result["terminal_truth"] and not result["timeout_target_truth"]
 
 
+def test_registered_so101_uses_pinned_native_physics_resolution(tmp_path):
+    log = _run([JOB, "so101", "config", tmp_path], tmp_path, "config", process_scope=False)
+    assert "PINNED_SO101_FIXED_PHYSICS_SELECTION_VERIFIED" in log
+
+
 @pytest.mark.parametrize(
-    "reference", ["cartpole", "cartpole-newton", "cartpole-direct", "franka", "so101"]
+    "reference",
+    [
+        "cartpole",
+        "cartpole-newton",
+        "cartpole-ovphysx",
+        "cartpole-direct",
+        "franka",
+        "so101",
+        "custom",
+    ],
 )
 def test_native_checkpoint_remaining_budget_export_and_scalar_replay(tmp_path, reference):
     for stage in ("interrupt", "resume", "complete", "infer"):
@@ -169,6 +183,8 @@ def test_native_checkpoint_remaining_budget_export_and_scalar_replay(tmp_path, r
         )
         if stage == "interrupt":
             assert "INTERRUPTED_CHECKPOINT_AND_FAILED_LOGGER_FINALIZED" in log
+            if reference == "custom":
+                assert "ACTUAL_CUSTOM_TASK_CONFIG_VERIFIED" in log
         elif stage == "resume":
             assert "ACTOR_CRITIC_OPTIMIZERS_COUNTERS_RESTORED" in log
         elif stage == "complete":

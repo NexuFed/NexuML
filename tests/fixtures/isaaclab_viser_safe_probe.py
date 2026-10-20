@@ -2,6 +2,7 @@
 
 import asyncio
 import base64
+from inspect import unwrap
 from concurrent.futures import ThreadPoolExecutor
 import os
 from pathlib import Path
@@ -78,9 +79,12 @@ def main(mode):
         import numpy as np
         import psutil
         import viser
+        import viser.infra
         from viser import _client_autobuild, _messages
         import warp as wp
         from websockets.sync.client import connect
+        from websockets.typing import Subprotocol
+        from isaaclab.utils import replace
         from isaaclab_visualizers.viser.viser_visualizer import NewtonViewerViser, ViserVisualizer
         from isaaclab_visualizers.viser.viser_visualizer_cfg import ViserVisualizerCfg
 
@@ -98,6 +102,7 @@ def main(mode):
             body = builder.add_body()
             builder.add_shape_sphere(body=body, radius=0.1)
             model = builder.finalize(device="cpu")
+        assert model.body_q is not None
         spectator = visualizer_type(cfg)
         spectator.backend = SimpleNamespace(model=model)
         server = None
@@ -119,6 +124,11 @@ def main(mode):
         try:
             if mode == "prechecks":
                 before = listeners()
+                backend = spectator.backend
+                spectator.backend = None
+                expect_error(RuntimeError, construct, "native scene backend")
+                assert spectator._viewer is None and before == listeners()
+                spectator.backend = backend
                 for changes in (
                     {"bind_address": "0.0.0.0"},
                     {"share": True},
@@ -129,7 +139,7 @@ def main(mode):
                     {"record_to_viser": "unsupported.viser"},
                     {"max_visible_envs": 1, "randomly_sample_visible_envs": True},
                 ):
-                    expect_error(ValueError, lambda: visualizer_type(cfg.replace(**changes)))
+                    expect_error(ValueError, lambda: visualizer_type(replace(cfg, **changes)))
                 os.environ["_VISER_PORT_OVERRIDE"] = str(port + 1)
                 try:
                     expect_error(ValueError, construct, "_VISER_PORT_OVERRIDE")
@@ -158,15 +168,15 @@ def main(mode):
                     assert signal.getsignal(signal.SIGALRM) is handler
                 finally:
                     signal.signal(signal.SIGALRM, original_handler)
-                errors = []
+                thread_errors = []
 
                 def from_thread():
-                    errors.append(expect_error(RuntimeError, construct, "main thread"))
+                    thread_errors.append(expect_error(RuntimeError, construct, "main thread"))
 
                 worker = Thread(target=from_thread)
                 worker.start()
                 worker.join(5)
-                assert not worker.is_alive() and len(errors) == 1
+                assert not worker.is_alive() and len(thread_errors) == 1
                 assert spectator._viewer is None and before == listeners()
                 print("PREBIND_CONFLICT_CONFIG_AND_SIGNAL_OWNERSHIP_VERIFIED", flush=True)
             elif mode in {"entry-sigterm", "entry-sigint"}:
@@ -174,7 +184,7 @@ def main(mode):
                 primary = SystemExit(143) if mode == "entry-sigterm" else KeyboardInterrupt()
                 previous_job_handler = signal.getsignal(delivered_signal)
                 previous_trace = sys.gettrace()
-                deadline_code = adapter._constructor_deadline.__wrapped__.__code__
+                deadline_code = unwrap(adapter._constructor_deadline).__code__
                 delivered = False
 
                 def cancel_job(_signum, _frame):
@@ -261,6 +271,7 @@ def main(mode):
                     else:
                         server.stop()
                         assert infra.stop_calls == 1
+                        assert infra.join_duration is not None
                         assert 0.98 <= infra.join_duration <= 1.3
                         stopped(server)
                     elapsed = monotonic() - began
@@ -484,7 +495,7 @@ def main(mode):
                 elif mode == "dispatch":
                     with connect(
                         f"ws://127.0.0.1:{port}",
-                        subprotocols=["viser-v1.1.1"],
+                        subprotocols=[Subprotocol("viser-v1.1.1")],
                         open_timeout=5,
                         close_timeout=5,
                     ) as connection:

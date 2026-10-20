@@ -12,6 +12,7 @@ import socket
 from threading import current_thread, main_thread
 from time import monotonic
 from types import SimpleNamespace
+from typing import NoReturn
 
 
 _SOURCE_HASHES = {
@@ -53,7 +54,10 @@ def _qualify_installation():
         if installed.version != expected:
             raise RuntimeError(f"Unqualified spectator distribution: {name} {installed.version}")
         for relative, digest in _SOURCE_HASHES.get(name, {}).items():
-            if sha256(installed.locate_file(relative).read_bytes()).hexdigest() != digest:
+            if (
+                sha256(Path(str(installed.locate_file(relative))).read_bytes()).hexdigest()
+                != digest
+            ):
                 raise RuntimeError(f"Unqualified spectator source: {relative}")
     lab = distribution("isaaclab")
     origin = json.loads(lab.read_text("direct_url.json") or "{}")
@@ -61,7 +65,7 @@ def _qualify_installation():
         raise RuntimeError("Unqualified Isaac Lab spectator revision")
     viser = distribution("viser")
     origin = json.loads(viser.read_text("direct_url.json") or "{}")
-    root = Path(viser.locate_file("viser")).resolve()
+    root = Path(str(viser.locate_file("viser"))).resolve()
     index = root / "client/build/index.html"
     if (
         origin.get("dir_info", {}).get("editable")
@@ -139,7 +143,7 @@ def spectator_visualizer_type():
         or viser.ViserServer.__name__ != "ViserServer"
         or _client_autobuild.ensure_client_is_built.__name__ != "ensure_client_is_built"
         or Path(viser.__file__).resolve()
-        != Path(distribution("viser").locate_file("viser/__init__.py")).resolve()
+        != Path(str(distribution("viser").locate_file("viser/__init__.py"))).resolve()
     ):
         raise RuntimeError("Viser spectator runtime identities lost qualification")
     for function, package, relative in (
@@ -151,7 +155,7 @@ def spectator_visualizer_type():
     ):
         if (
             Path(function.__code__.co_filename).resolve()
-            != Path(distribution(package).locate_file(relative)).resolve()
+            != Path(str(distribution(package).locate_file(relative))).resolve()
         ):
             raise RuntimeError(f"Unqualified spectator import origin: {relative}")
 
@@ -226,7 +230,7 @@ def spectator_visualizer_type():
         _server_type = PrivateServer
 
         @classmethod
-        def _get_viser(cls):
+        def _get_viser(cls) -> NoReturn:
             raise NotImplementedError("Spectator native recording/static playback is unsupported")
 
         def __init__(self, port):
@@ -238,12 +242,12 @@ def spectator_visualizer_type():
                     raise RuntimeError("Viser did not bind the exact requested private endpoint")
                 return server
 
-            self._get_viser = lambda: SimpleNamespace(ViserServer=private_server)
             try:
+                self.__dict__["_get_viser"] = lambda: SimpleNamespace(ViserServer=private_server)
                 # Bypass Isaac's constructor/global reassignment, not native geometry.
                 ViewerViser.__init__(self, port=port, verbose=False, share=False)
             finally:
-                del self._get_viser
+                self.__dict__.pop("_get_viser", None)
             self._metadata = {}
             self._isaaclab_plane_grid_cache = {}
             self._per_plot_folders = {}
@@ -289,6 +293,11 @@ def spectator_visualizer_type():
                 raise ValueError("Spectator native recording/static playback is unsupported")
             if self._viewer is not None:
                 raise RuntimeError("Spectator already owns a viewer")
+            backend = self.backend
+            if backend is None:
+                raise RuntimeError(
+                    "Spectator requires its native scene backend before construction"
+                )
             # A bind precheck closes ordinary conflicts; the postcheck still covers the race.
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as reservation:
                 reservation.bind(("127.0.0.1", self.cfg.port))
@@ -297,7 +306,7 @@ def spectator_visualizer_type():
             try:
                 with _constructor_deadline():
                     viewer.__init__(self.cfg.port)
-                viewer.set_model(self.backend.model)
+                viewer.set_model(backend.model)
                 viewer.show_particles = self.cfg.show_particles
                 self._setup_isaaclab_sidebar(viewer._server)
                 apply_viewer_visible_worlds(
