@@ -161,6 +161,9 @@ def run_multifamily_experiments(
 
     Returns:
         Aggregated SWD assessment over completed modes and seeds.
+
+    Raises:
+        FileExistsError: If a completed aggregate report already exists.
     """
     index = json.loads(Path(prepared_index).read_text())
     selected_seeds = seeds if seeds is not None else tuple(int(s) for s in index["seeds"])
