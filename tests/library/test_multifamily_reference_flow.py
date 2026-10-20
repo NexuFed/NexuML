@@ -25,6 +25,9 @@ from nexuml_library.evaluation.maintenance.multifamily_reference_prepare import 
 from nexuml_library.evaluation.maintenance.multifamily_reference_run import (
     summarize_multifamily_experiments,
 )
+from nexuml_library.evaluation.maintenance.reference_conditioned_prepare import (
+    build_reference_conditioned_fold,
+)
 from nexuml_library.evaluation.maintenance.reference_conditioned_run import (
     run_reference_conditioned_folds,
 )
@@ -233,6 +236,61 @@ def test_multi_seed_machine_and_family_manifest_roundtrip(tmp_path: Path) -> Non
             assert assessment["heldout_machine"].startswith("fan:")
     with pytest.raises(FileExistsError, match="overwrite"):
         prepare_multifamily_protocols(source, destination, reference_size=3)
+
+
+def test_known_family_lomo_uses_fifteen_machines_and_matched_fan_queries(
+    tmp_path: Path,
+) -> None:
+    """LOMO keeps three other fans; its unseen fan files match LOFO at same seed."""
+    source = _source(tmp_path)
+    known_training, known_assessment = build_reference_conditioned_fold(
+        source,
+        heldout_machine="fan:id_04",
+        reference_size=3,
+        validation_fraction=0.25,
+        seed=42,
+    )
+    unseen_training, unseen_assessments = build_family_holdout(
+        source,
+        heldout_family="fan",
+        reference_size=3,
+        validation_fraction=0.25,
+        seed=42,
+    )
+    assert len(known_training["machine_groups"]) == 15
+    assert len(unseen_training["machine_groups"]) == 12
+    assert "fan:id_04" not in known_training["machine_groups"]
+    assert {
+        "fan:id_00", "fan:id_02", "fan:id_06"
+    }.issubset(set(known_training["machine_groups"]))
+    assert all(
+        row["group_id"] != "fan:id_04" for row in known_training["rows"]
+    )
+    assert known_training["references"].shape == (15, 3, 8)
+    assert known_assessment["features"].shape == (9, 2, 8)
+    assert known_assessment["support_healthy_files"] == (
+        unseen_assessments["fan:id_04"]["support_healthy_files"]
+    )
+    for key in ("healthy_file", "faulty_file"):
+        assert {
+            row[key] for row in known_assessment["rows"]
+        } == {
+            row[key] for row in unseen_assessments["fan:id_04"]["rows"]
+        }
+    payload = read_prepared_artifact(source)
+    for i, row in enumerate(payload["rows"]):
+        if row["group_id"] == "fan:id_04":
+            payload["features"][i] += 1000.0
+    torch.save(payload, source)
+    after, _ = build_reference_conditioned_fold(
+        source,
+        heldout_machine="fan:id_04",
+        reference_size=3,
+        validation_fraction=0.25,
+        seed=42,
+    )
+    for key in ("features", "references", "training_mean", "training_std"):
+        assert torch.equal(known_training[key], after[key])
 
 
 def test_machine_family_validation_rejects_incomplete_groups(tmp_path: Path) -> None:
