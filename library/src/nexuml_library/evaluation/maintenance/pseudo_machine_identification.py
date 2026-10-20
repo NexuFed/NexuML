@@ -236,7 +236,9 @@ def _score(
         "num_recordings": int(len(truth)),
         "accuracy": float(accuracy_score(truth, predicted)),
         "balanced_accuracy": float(balanced_accuracy_score(truth, predicted)),
-        "macro_f1": float(f1_score(truth, predicted, labels=labels, average="macro", zero_division=0)),
+        "macro_f1": float(
+            f1_score(truth, predicted, labels=labels, average="macro", zero_division=0)
+        ),
         "recall_by_label": {
             str(label): float(matrix[i, i] / matrix[i].sum()) if matrix[i].sum() else None
             for i, label in enumerate(labels)
@@ -296,7 +298,9 @@ def _prototype_report(
         result[key] = {
             "num_recordings": int(len(truth)),
             "accuracy": float(accuracy_score(truth, predicted)),
-            "macro_f1": float(f1_score(truth, predicted, labels=labels, average="macro", zero_division=0)),
+            "macro_f1": float(
+                f1_score(truth, predicted, labels=labels, average="macro", zero_division=0)
+            ),
             "confusion_matrix": confusion_matrix(truth, predicted, labels=labels).tolist(),
         }
     return result
