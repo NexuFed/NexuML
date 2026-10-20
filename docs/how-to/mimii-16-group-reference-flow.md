@@ -116,7 +116,65 @@ against an identical-width constant-context control. Use a fresh output root
 for every new pilot or different configuration; existing checkpoints and
 reports are deliberately not overwritten.
 
-## 4. Pilot an unseen family
+## 4. Known-family machine transfer: four fan identities
+
+To test whether healthy-reference Flow Matching transfers to **new machines
+within a known type**, run four separate leave-one-machine-out folds.
+
+Every fold trains on **15 distinct machine IDs**: three other fan IDs and
+all twelve pump/slider/valve IDs. Only one fan machine is excluded from
+training, validation, and fitted normalization statistics at a time.
+
+The existing multi-family fold index already contains these partitions;
+**do not rerun FISHER extraction or fold preparation**.
+
+```bash
+python -m nexuml_library.evaluation.maintenance.multifamily_reference_run \
+  --prepared-index .experiments/nex233-multifamily/folds/index.json \
+  --output-root .experiments/nex233-multifamily/pilot-known-fan \
+  --protocol machine --seeds 42 \
+  --heldout-family fan \
+  --modes reference constant \
+  --width 128 --context-dim 32 --encoder-width 128 \
+  --num-steps 50 --lr 0.0003 --batch-size 16 \
+  --max-epochs 300 --patience 25 --accelerator gpu
+```
+
+The command executes **eight separate trainings**: four held-out fan IDs ×
+two context variants. Output:
+`.experiments/nex233-multifamily/pilot-known-fan/aggregate-machine.json`.
+A zero-transport baseline is always 0% relative SWD reduction.
+
+The earlier unseen-family pilot remains separately preserved as
+`.experiments/nex233-multifamily/pilot-family/aggregate-family.json`.
+
+Once both are complete, compare the **same four fan machine identities and
+seed 42** under both generalization protocols:
+
+```bash
+python -m nexuml_library.evaluation.maintenance.machine_family_comparison \
+  --machine-aggregate \
+    .experiments/nex233-multifamily/pilot-known-fan/aggregate-machine.json \
+  --family-aggregate \
+    .experiments/nex233-multifamily/pilot-family/aggregate-family.json \
+  --family fan \
+  --output-file \
+    .experiments/nex233-multifamily/comparisons/fan-known-vs-unseen-seed42.json
+```
+
+The comparison reports per-machine SWD reduction for both contexts under
+both protocols; the number of machines with positive transport; the
+conditioning advantage within each protocol; and known-family vs
+unseen-family transfer advantage. It refuses mismatched seeds, folds,
+duplicate records, or incomplete four-ID families.
+
+**Interpret carefully:** The raw embedding data and held-out machine IDs are
+shared, but the two protocols use different training-only standardization
+statistics. Compare *relative* SWD reductions, not absolute SWD distances.
+Different split seeds resample the same physical machine groups, not new
+independent machines.
+
+## 5. Pilot an unseen family
 
 ```bash
 python -m nexuml_library.evaluation.maintenance.multifamily_reference_run \
@@ -136,7 +194,7 @@ The runner evaluates `fan:id_00`, `fan:id_02`, `fan:id_04` and
 reference set. The family-level performance is an **unweighted average**
 of the four machine-level relative SWD reductions, not a pooled distance.
 
-## 5. Full benchmark
+## 6. Full benchmark
 
 For each protocol, choose a fresh output root and **omit
 `--heldout-machine`**. Set `--seeds 42 43 44 45 46` and
