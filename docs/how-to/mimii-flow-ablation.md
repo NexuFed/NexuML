@@ -553,6 +553,15 @@ The pseudo-cluster study also reports bootstrap mean adjusted Rand index
 and the fraction of bootstrap draws yielding the exact same partition.
 The bootstrap resamples **healthy training recordings only**.
 
+For each cluster hypothesis, the report also measures pairwise mean
+healthy-to-faulty displacement cosine similarities from **assessment**
+recordings and summarizes the within-cluster versus across-cluster
+similarities. Faulty assessment observations are used *after* the
+healthy-only clustering is fixed; they cannot change pseudo-type
+memberships. This is a diagnostic of whether acoustically similar
+machines actually have compatible fault transformations, not a
+criterion for choosing K.
+
 ### Interpret with care
 
 A high machine-ID score means FISHER retains machine identity, not
