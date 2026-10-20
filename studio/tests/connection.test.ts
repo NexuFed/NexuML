@@ -15,6 +15,8 @@ const env = {
   NEXUML_STUDIO_API: "http://127.0.0.1:8000",
   NEXUML_STUDIO_TOKEN: "private-runtime-value",
 };
+const proxyToken = "private-proxy-token-".repeat(3);
+const hostedEnv = { ...env, NEXUML_STUDIO_PUBLIC_ORIGIN: "https://studio.example", NEXUML_STUDIO_PROXY_TOKEN: proxyToken };
 const allowed = { host: "127.0.0.1:3000", origin: env.NEXUML_STUDIO_ORIGIN, "sec-fetch-site": "same-origin" };
 const request = (headers: Record<string, string> = allowed) => new Request(`${env.NEXUML_STUDIO_ORIGIN}/api/runtime`, { headers });
 
@@ -30,7 +32,7 @@ test("exact origins and opt-in IPv4 hosting", () => {
     expect(() => publicOrigin(value)).toThrow();
   }
   expect(listenHost(undefined, undefined)).toBe("127.0.0.1");
-  expect(listenHost(undefined, "https://studio.example")).toBe("0.0.0.0");
+  expect(listenHost(undefined, "https://studio.example")).toBe("127.0.0.1");
   expect(listenHost("192.168.1.20", "https://studio.example")).toBe("192.168.1.20");
   expect(listenHost("127.0.0.1", "https://studio.example")).toBe("127.0.0.1");
   for (const value of ["0.0.0.0", "192.168.1.20", "localhost", "::1", "127.1", "999.0.0.1", ""]) {
@@ -41,10 +43,10 @@ test("exact origins and opt-in IPv4 hosting", () => {
 test("local and public connections use actual Host, not the request URL or forwarded metadata", () => {
   expect(connectionFor(request(), env)).toEqual({ api: env.NEXUML_STUDIO_API,
     localOrigin: env.NEXUML_STUDIO_ORIGIN, browserOrigin: env.NEXUML_STUDIO_ORIGIN, token: env.NEXUML_STUDIO_TOKEN });
-  const hosted = { ...env, NEXUML_STUDIO_PUBLIC_ORIGIN: "https://studio.example:8443" };
-  expect(connectionFor(request(), hosted)).toMatchObject({ browserOrigin: env.NEXUML_STUDIO_ORIGIN });
+  const hosted = { ...hostedEnv, NEXUML_STUDIO_PUBLIC_ORIGIN: "https://studio.example:8443" };
+  expect(connectionFor(request({...allowed,"x-nexuml-studio-proxy":proxyToken}), hosted)).toMatchObject({ browserOrigin: env.NEXUML_STUDIO_ORIGIN });
   expect(connectionFor(request({ host: "studio.example:8443", origin: hosted.NEXUML_STUDIO_PUBLIC_ORIGIN,
-    "x-forwarded-host": "evil.example", "x-forwarded-proto": "http", "sec-fetch-site": "same-origin" }), hosted))
+    "x-forwarded-host": "evil.example", "x-forwarded-proto": "http", "sec-fetch-site": "same-origin", "x-nexuml-studio-proxy":proxyToken }), hosted))
     .toMatchObject({ browserOrigin: hosted.NEXUML_STUDIO_PUBLIC_ORIGIN });
   expect(connectionFor(request({ host: allowed.host }), env)).not.toBeInstanceOf(Response);
   expect(connectionFor(request({ ...allowed, "sec-fetch-site": "none" }), env)).not.toBeInstanceOf(Response);
@@ -54,20 +56,31 @@ test("local and public connections use actual Host, not the request URL or forwa
 });
 
 test("foreign Host, Origin, Fetch Metadata and forwarded-header spoofs fail closed without secrets", async () => {
-  const hosted = { ...env, NEXUML_STUDIO_PUBLIC_ORIGIN: "https://studio.example" };
+  const hosted = hostedEnv;
   for (const headers of [{ ...allowed, host: "evil.example" }, { ...allowed, host: "" },
     { ...allowed, origin: "https://evil.example" }, { ...allowed, origin: "" },
     { ...allowed, origin: hosted.NEXUML_STUDIO_PUBLIC_ORIGIN },
     { ...allowed, host: "studio.example" },
     { ...allowed, "sec-fetch-site": "cross-site" }, { ...allowed, "sec-fetch-site": "same-site" },
     { ...allowed, host: "evil.example", "x-forwarded-host": "studio.example", "x-forwarded-proto": "https" }]) {
-    const response = connectionFor(request(headers), hosted);
+    const response = connectionFor(request({...headers,"x-nexuml-studio-proxy":proxyToken}), hosted);
     expect(response).toBeInstanceOf(Response);
     if (!(response instanceof Response)) throw new Error("Expected rejection.");
     expect(response.status).toBe(403);
     expect(response.headers.get("cache-control")).toBe("no-store");
     expect(await response.text()).not.toContain(env.NEXUML_STUDIO_TOKEN);
   }
+});
+
+test("hosted connections require the proxy credential even with spoofed local/public browser headers", async () => {
+  for (const host of [allowed.host,"studio.example"]) for (const token of ["", "incorrect", env.NEXUML_STUDIO_TOKEN]) {
+    const response=connectionFor(request({host,origin:host===allowed.host ? allowed.origin : hostedEnv.NEXUML_STUDIO_PUBLIC_ORIGIN,
+      "x-nexuml-studio-proxy":token,"sec-fetch-site":"same-origin"}),hostedEnv);
+    expect(response).toBeInstanceOf(Response);
+    if(!(response instanceof Response))throw new Error("Expected rejection");
+    expect(response.status).toBe(401);expect(await response.text()).not.toContain(env.NEXUML_STUDIO_TOKEN);
+  }
+  expect(connectionFor(request(),{...hostedEnv,NEXUML_STUDIO_PROXY_TOKEN:""})).toBeInstanceOf(Response);
 });
 
 test("missing, malformed, non-loopback and identical runtime origins are uncached configuration errors", async () => {
@@ -90,11 +103,12 @@ test("missing, malformed, non-loopback and identical runtime origins are uncache
 test("dynamic proxy fixes upstream origin, preserves auth/query/upgrade and strips cookies and proxy metadata", () => {
   for (const [key, value] of Object.entries(env)) vi.stubEnv(key, value);
   vi.stubEnv("NEXUML_STUDIO_PUBLIC_ORIGIN", "https://studio.example");
+  vi.stubEnv("NEXUML_STUDIO_PROXY_TOKEN", proxyToken);
   const headers = { host: "studio.example", origin: "https://studio.example", authorization: "Bearer browser-token",
     "x-nexuml-interface": "2", cookie: "proxy-session=private", forwarded: "host=evil.example;proto=https",
     "x-forwarded-host": "evil.example", "x-forwarded-proto": "https", "x-forwarded-for": "203.0.113.1",
     "x-forwarded-port": "443", "x-real-ip": "203.0.113.1", via: "proxy",
-    upgrade: "websocket", connection: "Upgrade", "sec-websocket-key": "browser-key" };
+    upgrade: "websocket", connection: "Upgrade", "sec-websocket-key": "browser-key", "x-nexuml-studio-proxy":proxyToken };
   const incoming = new NextRequest("http://127.0.0.1:3000/api/v1/operations/one/events?after=7", { headers });
   const response = proxy(incoming);
   expect(config.matcher).toBe("/api/v1/:path*");
@@ -103,14 +117,14 @@ test("dynamic proxy fixes upstream origin, preserves auth/query/upgrade and stri
     host: "127.0.0.1:8000", origin: env.NEXUML_STUDIO_ORIGIN, upgrade: "websocket", connection: "Upgrade",
     "sec-websocket-key": "browser-key" })) expect(response.headers.get(`x-middleware-request-${key}`)).toBe(value);
   for (const key of ["cookie", "forwarded", "x-forwarded-host", "x-forwarded-proto", "x-forwarded-for",
-    "x-forwarded-port", "x-real-ip", "via"]) expect(response.headers.has(`x-middleware-request-${key}`)).toBe(false);
+    "x-forwarded-port", "x-real-ip", "via", "x-nexuml-studio-proxy"]) expect(response.headers.has(`x-middleware-request-${key}`)).toBe(false);
   expect([...response.headers.values()].join()).not.toContain(env.NEXUML_STUDIO_TOKEN);
   expect(incoming.headers.get("cookie")).toBe(headers.cookie);
   vi.stubEnv("NEXUML_STUDIO_API", "http://127.0.0.1:9001");
-  const unauthenticated = proxy(new NextRequest(incoming.url, { headers: { host: headers.host, origin: headers.origin } }));
+  const unauthenticated = proxy(new NextRequest(incoming.url, { headers: { host: headers.host, origin: headers.origin,"x-nexuml-studio-proxy":proxyToken } }));
   expect(unauthenticated.headers.get("x-middleware-rewrite")).toContain("127.0.0.1:9001");
   expect(unauthenticated.headers.has("x-middleware-request-authorization")).toBe(false);
-  expect(proxy(new NextRequest(incoming.url, { headers: { host: "evil.example" } })).status).toBe(403);
+  expect(proxy(new NextRequest(incoming.url, { headers: { host: "evil.example","x-nexuml-studio-proxy":proxyToken } })).status).toBe(403);
   vi.stubEnv("NEXUML_STUDIO_TOKEN", "");
   expect(proxy(incoming).status).toBe(503);
 });

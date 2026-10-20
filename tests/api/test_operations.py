@@ -267,7 +267,9 @@ def test_terminal_overwrite_bytes_survive_observation_and_raw_logs(tmp_path):
     raw = b"Download 1%\rDownload 2%\x1b[K\rDownload 100%\r\nReady\n"
     (folder / "logs.txt").write_bytes(raw)
     (folder / "events.jsonl").touch()
-    operations.observe(folder, SimpleNamespace(poll=lambda: 0, returncode=0), None)
+    with subprocess.Popen([sys.executable, "-c", "pass"]) as process:
+        process.wait(timeout=10)
+        operations.observe(folder, process, None)
     events = [json.loads(line) for line in (folder / "events.jsonl").read_text().splitlines()]
     assert (
         "".join(event["payload"]["text"] for event in events if event["kind"] == "log").encode()
@@ -275,6 +277,23 @@ def test_terminal_overwrite_bytes_survive_observation_and_raw_logs(tmp_path):
     )
     assert (folder / "logs.txt").read_bytes() == raw
     assert operations.status(folder.name)["status"] == "succeeded"
+
+
+def test_start_rechecks_active_operation_after_validation(tmp_path, monkeypatch):
+    operations = Operations(Settings(tmp_path, ORIGIN, TOKEN))
+    with subprocess.Popen([sys.executable, "-c", "pass"]) as process:
+        process.wait(timeout=10)
+
+        def validate(*args):
+            with operations.lock:
+                operations.active = ("another-operation", process)
+            return {"yaml": "name: validated"}
+
+        monkeypatch.setattr("nexuml.api.operations.call_worker", validate)
+        with pytest.raises(ApiError, match="Another operation started while validating") as error:
+            operations.start("build", {})
+        assert error.value.status == 409
+        assert not list(operations.root.iterdir())
 
 
 def test_build_failure_is_reported_without_changing_field_validation(tmp_path):

@@ -4,7 +4,20 @@ Local, single-user Next.js workbench over **your installed NexuML**. Ordinary Ne
 YAML remains the execution configuration; React Flow is only its ordered editor view.
 No accounts, payments, Python provisioning, cluster creation, or browser training.
 
-## Install built artifacts
+## Install and run
+
+Intended published installation (Node >=22.13, Python >=3.12):
+
+```sh
+uv tool install 'nexuml[api,library]'
+npm install -g @nexufed/nexuml-studio
+nexuml-studio .
+```
+
+The backend and frontend are separate installations and releases. Core NexuML commands
+do not need the optional API extra. After installation, local startup and assets work offline.
+
+### Testing unreleased artifacts
 
 These packages are not yet published. Use the wheel and npm tarball built from this
 change; do not assume the public registry versions already contain Studio/API:
@@ -16,13 +29,8 @@ npm install -g /path/to/nexufed-nexuml-studio-0.1.0.tgz
 nexuml-studio --nexuml /path/to/nexuml /path/to/work
 ```
 
-After releases containing this interface are published, normal package-name installation
-will be `uv tool install 'nexuml[api,library]'` and
-`npm install -g @nexufed/nexuml-studio`. Core commands do not require the API extra.
-
-Requirements: Node >=22.13, Python >=3.12 supported by the installed NexuML, and a
-modern browser. The launcher supports Linux/macOS/Windows; cross-platform smoke coverage
-is included, but a local Linux pass is not proof that unrun macOS/Windows jobs passed.
+Use a modern browser. Linux project/tool installations are checked in CI. macOS/Windows
+jobs are temporarily disabled at maintainer request; portability acceptance remains open.
 
 ## Choose an existing runtime
 
@@ -37,6 +45,25 @@ Paths with spaces are argument-array spawned, not interpreted as shell commands.
 An explicit Python interpreter invokes `-m nexuml.cli.main serve`; a uv-tool executable
 is invoked directly. Do not select an unrelated shell Python for an isolated uv tool.
 Custom libraries and the `api` extra must exist in **that installation**.
+
+To change installations, stop Studio and select a different `--nexuml` or `--python`.
+Updates are explicit user actions: for example `uv tool upgrade nexuml`, or install the
+desired `nexuml[api,library]` version into your project environment. Studio never runs these.
+
+Install a packaged custom library into the same environment: use
+`uv tool install --with my-nexuml-library 'nexuml[api,library]'` when installing the tool,
+or `uv pip install --python /project/.venv/bin/python my-nexuml-library` for a project.
+For trusted source roots, use Libraries → Add root or the selected installation's
+`nexuml library add /path/to/library`; install its dependencies yourself first.
+
+### Compatibility
+
+Studio **0.1.x** supports stable NexuML **>=0.2.1,<0.3.0** with **API interface 2**.
+Python >=3.12 remains NexuML's requirement. Package versions and the interface version
+are separate: supported backend patch releases do not require a Studio version bump.
+Unknown minors, prereleases and interfaces are rejected before the workbench/catalog
+opens. Errors name the selected/required version; choose or explicitly update the backend.
+The launcher and runtime details report the actual NexuML version, Python version and interpreter.
 
 The directory is filesystem context, not a Studio project. By default both services bind to
 `127.0.0.1`; random unused ports are selected by default. Set `--port 3000 --api-port 8000`
@@ -53,37 +80,52 @@ nexuml-studio --port 3000 --api http://127.0.0.1:8000 --api-token-file /private/
 The attached API must use this directory and allow `http://127.0.0.1:3000`. It is never
 stopped by the launcher. Owned services are stopped on Ctrl-C. The token stays out of
 arguments, URLs, build output and working-directory `.env` files. POSIX token files need
-mode 600; on Windows restrict the ACL. Bootstrap is uncached and exact-origin/Host/
-Fetch-Metadata protected; the browser keeps credentials only in memory.
+mode 600; on Windows restrict the ACL. Bootstrap is uncached and browser Host/Origin/
+Fetch-Metadata checked; these headers are **not authentication for arbitrary HTTP clients**.
+Local users/processes are trusted. The browser keeps credentials only in memory.
 
 No build, npm/uv/pip installation, dependency sync or internet access occurs on ordinary
 startup. Prebuilt UI/assets/fonts ship in the npm package. Next's runtime/cache uses a
-private temporary copy, not writable package assets. The directory is removed at clean
+private temporary copy, not writable package assets. Only npm's installed Next/React
+runtime packages are linked, using Windows junctions where needed. Standalone output was
+reviewed but traces build-host Sharp/libvips native binaries; excluding/repackaging those
+would add portability assumptions rather than simplify this single npm tarball.
+No Linux-built dependency tree is shipped. The directory is removed at clean
 shutdown; after a crash, stale `nexuml-studio-*` temporary directories can be removed
 after confirming their services have stopped. Training records remain under NexuML logs.
 
 ## Authenticated HTTPS website mode
 
 Local/offline mode needs no proxy, account or network access. To serve the same Studio
-through an existing authenticated HTTPS reverse proxy, opt in to one exact public origin:
+through an existing authenticated HTTPS reverse proxy, opt in to one exact public origin
+and a **separate private proxy credential** (not the Python API token):
 
 ```sh
-nexuml-studio --port 3000 --public-origin https://studio.example --no-open /path/to/work
-# Optionally bind a specific private IPv4 interface instead of all interfaces:
-nexuml-studio --port 3000 --host 192.168.1.20 --public-origin https://studio.example --no-open /path/to/work
+umask 077
+python -c 'import secrets; print(secrets.token_urlsafe(32))' > "$HOME/.nexuml-studio-proxy-token"
+nexuml-studio --port 3000 --public-origin https://studio.example \
+  --proxy-token-file "$HOME/.nexuml-studio-proxy-token" --no-open /path/to/work
 ```
 
-`NEXUML_STUDIO_PUBLIC_ORIGIN` and `NEXUML_STUDIO_HOST` supply the same settings; CLI flags
-take precedence. Without a public origin the UI defaults to `127.0.0.1`, and non-loopback
-binding is rejected. With a public origin the UI defaults to `0.0.0.0`. Host must be an
+`NEXUML_STUDIO_PUBLIC_ORIGIN`, `NEXUML_STUDIO_HOST` and `NEXUML_STUDIO_PROXY_TOKEN_FILE`
+supply the same settings; CLI flags take precedence. The UI defaults to `127.0.0.1`
+**even when hosted**. A non-loopback bind requires an explicit `--host` (for example a
+private interface), public origin and proxy credential, and emits a security warning.
+Host must be an
 IPv4 address; the public origin must be exact HTTPS, with no trailing slash, credentials,
 path, query or fragment. The printed/opened address is the public URL. Local access at
-`http://127.0.0.1:3000` still works when the chosen listen interface includes loopback.
+`http://127.0.0.1:3000` cannot bypass the proxy credential in hosted mode.
 
 Configure NetBird (or your existing proxy) with **one `/` target to the UI port**,
 **Pass Host Header enabled**, WebSocket forwarding, HTTPS and authentication/access
-restrictions. Do not publish the Python API port or add an API proxy target. Restrict
-direct access to the UI port to the trusted proxy/private network; anyone admitted to
+restrictions. After authenticating a trusted operator, the proxy must **overwrite**
+`X-NexuML-Studio-Proxy` with the private file's value on every upstream HTTP/WebSocket
+request. Never accept a client-supplied value or expose this credential in browser code,
+URLs, logs or responses. Configure this only on the server-side proxy. If your NetBird
+version cannot inject a private upstream header, place a header-injecting proxy on its
+restricted target or keep Studio local; identity/forwarded headers alone are insufficient.
+Do not publish the Python API port or add an API proxy target. Firewall any non-loopback
+UI port to the proxy host only; do not allow arbitrary private-network clients. Anyone admitted to
 Studio can obtain its runtime credential and invoke trusted local Python. This is a
 trusted-operator website, not a public or multi-tenant service. Studio does not configure
 NetBird or provide a login system.
@@ -93,7 +135,10 @@ to the runtime-selected loopback API, preserving browser bearer/first-frame WebS
 authentication, replacing upstream Host/Origin with the configured loopback values and
 discarding cookies and forwarded-proxy metadata. Bootstrap never discloses the API URL.
 Actual Host, optional Origin and Fetch Metadata are checked; forwarded host/proto headers
-cannot grant access. The Python API still binds to loopback and validates its original
+cannot grant access. In hosted mode the proxy credential is required for bootstrap and
+API traffic even with spoofed local/public Host/Origin headers; it is stripped before
+forwarding to Python. A public origin alone is never a login or an authentication boundary.
+The Python API still binds to loopback and validates its original
 local origin, token and interface version **2**. Attach mode still requires the API to
 allow the **local** UI origin, not the public HTTPS origin.
 
@@ -104,7 +149,8 @@ export NEXUML_STUDIO_ORIGIN=http://127.0.0.1:3000
 export NEXUML_STUDIO_API=http://127.0.0.1:8000
 export NEXUML_STUDIO_TOKEN="$(cat /private/token)"
 export NEXUML_STUDIO_PUBLIC_ORIGIN=https://studio.example
-export NEXUML_STUDIO_HOST=0.0.0.0
+export NEXUML_STUDIO_PROXY_TOKEN="$(cat "$HOME/.nexuml-studio-proxy-token")"
+export NEXUML_STUDIO_HOST=127.0.0.1
 npm run dev -- --hostname "$NEXUML_STUDIO_HOST" --port 3000
 ```
 
@@ -233,8 +279,8 @@ Ray delegates to existing NexuML guards/cluster connection and has driver logs/f
 results only. Native jobs display actual pending/terminal state and available bounded
 log tails, without fake scalar metrics/progress. External artifact URIs are references,
 not authorized local downloads. API shutdown/restart leaves unverified remote work
-ownership-unknown; **Inspect native reference** never resubmits it. Interface major 2
-requires matching Studio/Python versions. See the Python docs' native-job template/handoff
+ownership-unknown; **Inspect native reference** never resubmits it. See Compatibility
+above and the Python docs' native-job template/handoff
 guide before an operator-authorized cluster launch; no cluster smoke coverage is implied.
 No automatic recovery, hosted collaboration, browser training or provisioning is added.
 
@@ -246,7 +292,8 @@ No automatic recovery, hosted collaboration, browser training or provisioning is
 - **403/attach failure:** match `--origin`, Studio port, directory and private token.
   `localhost` and `127.0.0.1` are distinct origins.
 - **Hosted bootstrap/observations fail:** preserve the public Host header, match the exact
-  configured HTTPS origin and enable WebSocket forwarding. Do not solve this by relaxing
+  configured HTTPS origin, inject the private proxy credential and enable WebSocket forwarding.
+  Direct hosted listener access deliberately returns 401. Do not solve this by relaxing
   API origins or trusting `X-Forwarded-Host`/`X-Forwarded-Proto`.
 - **409 save:** an external file changed. Reload or save to a new path; no overwrite occurs.
 - **Busy:** wait for or stop the active local build/train/export. There is no queue.
@@ -264,8 +311,9 @@ npm ci
 npm run typecheck
 npm run lint
 npm test
-npm run build
-npm pack
+npm pack  # prepack builds once and includes LICENSE
+# Explicitly prepare an isolated backend from the matching Python wheels first.
+STUDIO_TEST_PYTHON=/path/to/test/python npm run test:package -- /path/to/built-studio.tgz
 ```
 
 Build/pack is a release task, never a normal-user startup task. API/Python checks and
@@ -273,10 +321,16 @@ installed-package/browser smoke instructions live in the repository's local API 
 Do not publish either artifact automatically. Dependencies are locked; ESLint uses v9
 because the stable Next plugins do not yet accept v10's peer range.
 
-The repository's `CI` workflow runs Python and Studio checks for both `main` and `dev`.
-Studio static checks run once; packaged browser checks reuse its validated Python wheels
-on Linux, macOS and Windows, each with project and uv-tool installations. All feed the
+The repository's `CI` workflow runs on trusted repository branch pushes (including
+`main` and `dev`), never fork PR events on persistent institute runners. Maintainers
+must review external contributions before bringing them onto a trusted branch.
+Studio static checks run once; one production npm tarball and the validated Python
+wheels are uploaded as immutable artifacts. Linux project/uv-tool jobs test those exact
+files, including cold installation, offline runtime and real CPU browser workflows.
+macOS/Windows matrix entries are temporarily disabled, not claimed as tested. All feed the
 single required `CI` gate. Package installation can download dependencies; installed
 startup, fonts and browser transport remain offline checks. Each matrix job retains its
 HTML browser report, smoke log and screenshots for seven days. Traces remain disabled
 because they can contain runtime credentials.
+The protected npm workflow publishes that CI artifact without rebuilding it; see
+the repository's [release guide](https://github.com/NexuFed/NexuML/blob/main/docs/development/release.md).

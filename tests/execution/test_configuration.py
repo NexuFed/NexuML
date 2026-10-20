@@ -1,5 +1,7 @@
 """Registered execution settings share NexuML's ordinary config boundary."""
 
+import json
+
 import pytest
 from pydantic import ValidationError
 
@@ -31,17 +33,23 @@ def test_builtin_round_trip(name):
     assert row["schema"] == type(definition).model_json_schema()
 
 
-def test_ray_execution_field_errors_keep_document_location():
+@pytest.mark.parametrize("workers", [0, "not-an-integer"])
+def test_ray_execution_field_errors_keep_document_location(workers):
+    with pytest.raises(ValidationError) as original:
+        RayClusterExecution.model_validate({"workers": workers})
     with pytest.raises(ValidationError) as error:
-        ResolvedConfig.from_yaml("""
+        ResolvedConfig.from_yaml(f"""
 name: invalid
 execution:
   type: ray-cluster
   version: '1'
   params:
-    workers: 0
+    workers: {workers}
 """)
-    assert error.value.errors()[0]["loc"] == ("execution", "params", "workers")
+    assert json.loads(error.value.json(include_url=False)) == [
+        {**item, "loc": ["execution", "params", *item["loc"]]}
+        for item in json.loads(original.value.json(include_url=False))
+    ]
 
 
 @pytest.mark.parametrize(

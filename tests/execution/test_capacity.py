@@ -207,11 +207,20 @@ def test_node_matches_explicit_labels_affinity_and_toleration():
 
 
 @pytest.mark.parametrize(
-    ("label", "operator", "bound"),
-    [("10", "Gt", "2"), ("9", "Lt", "10")],
+    ("label", "operator", "bound", "matches"),
+    [
+        ("10", "Gt", "2", True),
+        ("9", "Lt", "10", True),
+        (None, "Gt", "2", False),
+        (None, "Lt", "10", False),
+        ("not-an-integer", "Gt", "2", False),
+    ],
 )
-def test_required_affinity_gt_and_lt_compare_integer_labels(label, operator, bound):
-    node = _node(labels={"pool": "worker", "nexuml.io/size": label})
+def test_required_affinity_gt_and_lt_compare_integer_labels(label, operator, bound, matches):
+    labels = {"pool": "worker"}
+    if label is not None:
+        labels["nexuml.io/size"] = label
+    node = _node(labels=labels)
     pod_spec = {
         "affinity": {
             "nodeAffinity": {
@@ -228,7 +237,7 @@ def test_required_affinity_gt_and_lt_compare_integer_labels(label, operator, bou
         }
     }
 
-    assert node_matches(node, pod_spec, {}) is True
+    assert node_matches(node, pod_spec, {}) is matches
 
 
 def test_disjoint_node_gpu_capacity_does_not_combine_for_one_pod():

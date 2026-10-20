@@ -356,3 +356,75 @@ Correction: the Python type-check step uses `continue-on-error`; its successful 
 conclusion was initially misread. Its logs report **61 diagnostics**, and the final
 static gate correctly rejects them. Those diagnostics span feature code and skill/test
 fixtures and are a separate remaining blocker, not a passing gate or suppressed check.
+
+## Production packaging and release hardening — 2026-10-20
+
+Scope: PR #16 / NEX-115, independent Python/npm installation, packaging, compatibility,
+hosted transport and release CI. No UI redesign, Python provisioning, package publication,
+release tag or merge. Maintainer override disables macOS/Windows CI; their original
+portability acceptance remains unchecked. All Linux jobs use ika-runner, except the
+explicitly approved future npm publish-only GitHub-hosted job required by npm OIDC.
+
+### Diagnosis and corrections
+
+- Reviewed run `39346484315` logs and all six diagnostic artifacts. Browser assertions
+  were observing pending validation/catalog/save/review operations. Existing helpers now
+  await the exact response body and settled UI state within the existing API budget;
+  no retries, blanket timeout increases or acceptance checks were removed. Raw settings
+  use the actual semantic alert. Native reference and pending status are separate events;
+  the Python cancellation fixture now waits for both before asserting pending.
+- Compared original HEAD and `origin/dev` with ty 0.0.89 and all 248 CI dependency
+  versions matched: 76 versus 21 diagnostics (the historical run logged 61). Targeted
+  type/validation-boundary fixes now give zero diagnostics. Exactly five original base
+  suppressions were restored for PyTorch's documented `nn.Module.forward` override versus
+  its mutable-Callable stub; no blanket ignores, exclusions or disabled gates were added.
+  A typing import initially broke Torch package export; removing that import preserved
+  the existing export dependency boundary, verified against newly built wheels.
+- Retained standard `next start`: the standalone trace contains Linux Sharp/libvips
+  binaries. One portable npm tarball instead uses npm-resolved Next/React dependencies;
+  bundled frontend-only dependencies are build-time dependencies. The temporary runtime
+  copy protects installed assets/cache and only three runtime packages need links.
+- Shared launcher/browser compatibility policy requires stable NexuML >=0.2.1,<0.3.0
+  and interface 2 before exposing the workbench/catalog. Runtime identity reports Python
+  version/executable separately. Hosted mode stays loopback by default and requires a
+  separate private proxy credential; spoofed Host/Origin alone cannot obtain API access.
+  Existing package smoke exercises an actual authenticated proxy and Next HTTP/WS path,
+  including negative access paths; Next upgrade rejection is not assumed to be HTTP401.
+
+### Verification and release boundary
+
+- Frontend typecheck/lint, 36 unit tests and production build passed. The rebuilt
+  project-installed artifact passed all 11 browser workflows, including real CPU
+  training/reconnect/export, save conflict recovery and custom library removal.
+- Full Python suite passed: **463 passed, 8 skipped**, 62.46% coverage with the existing
+  50% gate unchanged. The complete uv-tool package smoke passed all **11 browser tests**,
+  offline assets, unchanged Python/npm installation records, explicit/PATH selection,
+  saved YAML CLI build, owned/attached shutdown and actual hosted HTTP/WebSocket security.
+  Both modes used the same tarball. Core-only wheel installation without the API/library
+  extras also passed. Evidence: `/tmp/opencode/studio-hardening-final/`,
+  `/tmp/opencode/nexuml packaged smoke vMaDWv/` and
+  `/tmp/opencode/studio-hardening-coverage-final.xml`. Remote GPU/platform acceptance is
+  not inferred from these local CPU results.
+- Repository Ruff lint/format and ty (explicit isolated interpreter), strict MkDocs,
+  Actionlint, Python wheels/sdists/Twine and distribution contents checks passed. Every
+  Python file in both final wheels matches the checkout. Runtime npm audit reports zero
+  vulnerabilities; five existing development-only ESLint/braces advisories have no safe
+  compatible fix advertised and were not hidden with a forced dependency downgrade.
+- The actual npm publication metadata validator accepted the built artifact and rejected
+  wrong commit identity and tampered bytes, without publishing. CI builds one npm
+  tarball with integrity/commit metadata, uploads immutable artifacts and tests those
+  exact files in clean project/tool installations. Normal startup never changes installed
+  dependencies. The required gate fails on failed/skipped/cancelled mandatory jobs.
+- OpenSpec 1.14.1 strict validation reports the same three pre-existing long-requirement
+  warnings in the untouched workbench spec on both original HEAD and this checkout.
+  They were not suppressed or rewritten outside the approved packaging/security scope.
+- Final full Python/package commands and remote Actions outcomes are recorded on PR #16;
+  no local Linux result establishes macOS/Windows portability. CI must pass for the exact
+  release commit before the protected publish workflow can consume its artifact.
+- GitHub repository approval policy was changed and confirmed from first-time-only to
+  **all external fork contributors**. CI does not run fork PR checkout code. Organization
+  runner-group inspection returned 403: its owner must confirm approved-workflow
+  restrictions and ephemeral/network-isolated runners. npm's public registry returns
+  E404 for Studio and the GitHub `npm` environment is not yet configured; package/scope,
+  MFA bootstrap if required, protected environment/tags and Trusted Publisher setup remain
+  owner actions documented in `docs/development/release.md`.

@@ -18,6 +18,7 @@ import { addStage, connect, disconnect, newSnapshot, placeNode, project, signatu
 import { schemaDefault } from "../model/schema";
 import { ApiError, request } from "../model/client";
 import type { Catalog, ConnectionInfo, Document, Entry, Layout, Operation, RecordValue, Snapshot } from "../model/types";
+import { compatibilityError } from "../bin/compatibility.mjs";
 
 const trainingSections=["Basics","Optimizer and schedule","Data loading","Execution","Checkpoints and logging"];
 const basicTraining=["max_epochs","batch_size","lr","accelerator","devices","precision"];
@@ -35,8 +36,9 @@ function Workbench() {
     if(!response.ok) throw new Error(data.error);return data as ConnectionInfo;
   }});
   const connection=boot.data;
-  const runtime=useQuery({queryKey:["runtime"],enabled:!!connection,queryFn:()=>request<{interface_version:number;nexuml_version:string;python_executable:string;working_directory:string}>(connection!,"/runtime")});
-  const catalog=useQuery({queryKey:["catalog"],enabled:!!connection,queryFn:()=>request<Catalog>(connection!,"/registry")});
+  const runtime=useQuery({queryKey:["runtime"],enabled:!!connection,queryFn:()=>request<{interface_version:number;nexuml_version:string;python_executable:string;python_version:string;working_directory:string}>(connection!,"/runtime")});
+  const incompatible=runtime.data ? compatibilityError(runtime.data) : null;
+  const catalog=useQuery({queryKey:["catalog"],enabled:!!connection && !!runtime.data && !incompatible,queryFn:()=>request<Catalog>(connection!,"/registry")});
   const [view,setView]=useState("Pipeline");
   const [panel,setPanel]=useState("Canvas");
   const [leftTab,setLeftTab]=useState("Structure");
@@ -206,7 +208,7 @@ function Workbench() {
     schema={{...modelSchema("TrainingSpec"),properties:Object.fromEntries(Object.entries(modelSchema("TrainingSpec")?.properties ?? {}).filter(([key])=>keys.includes(key))),required:modelSchema("TrainingSpec")?.required?.filter(key=>keys.includes(key))}}
     root={schema} basic={basic} prefix="training." errors={errors} rawLabel={keys.includes("optimizer") ? "Raw optimizer settings" : "Raw training settings"} {...fieldContext} onChange={(value,validate)=>edit(["training"],{...draft.config.training,...value},validate)}/>;
 
-  if(!connection || runtime.isError || runtime.data?.interface_version!==2) return <main className="startup"><div className="brand"><Layers/>NexuML <span>STUDIO</span></div><h1>{boot.isError || runtime.isError || (runtime.data && runtime.data.interface_version!==2) ? "Connection unavailable" : "Connecting to your runtime"}</h1><p>{boot.error?.message ?? runtime.error?.message ?? (runtime.data && runtime.data.interface_version!==2 ? "Studio requires interface 2. Use matching Python and Studio versions." : "Verifying the selected local NexuML installation…")}</p><p>Start with <code>nexuml-studio --python /path/to/python .</code> or choose an existing <code>nexuml</code> executable. Nothing is installed automatically.</p><Button onClick={()=>{void boot.refetch();void runtime.refetch();}}>Retry connection</Button></main>;
+  if(!connection || runtime.isError || !runtime.data || incompatible) return <main className="startup"><div className="brand"><Layers/>NexuML <span>STUDIO</span></div><h1>{boot.isError || runtime.isError || incompatible ? "Connection unavailable" : "Connecting to your runtime"}</h1><p>{boot.error?.message ?? runtime.error?.message ?? incompatible ?? "Verifying the selected local NexuML installation…"}</p>{runtime.data && <p>NexuML {runtime.data.nexuml_version} · Python {runtime.data.python_version} · {runtime.data.python_executable}</p>}<p>Start with <code>nexuml-studio --python /path/to/python .</code> or choose an existing <code>nexuml</code> executable. Nothing is installed automatically.</p><Button onClick={()=>{void boot.refetch();void runtime.refetch();}}>Retry connection</Button></main>;
   return <main className="workbench">
     <header className="topbar"><div className="brand"><Layers size={22}/>NexuML <span>STUDIO</span></div>
       <details className="scenario-menu"><summary aria-label="Scenario menu" title={runtime.data.working_directory}>{draft?.config.name ?? "Scenario"}<ChevronDown size={14}/></summary><div>
@@ -320,7 +322,7 @@ function Workbench() {
         {buildResult.data?.result && <details><summary>Expert: build result JSON</summary><pre>{JSON.stringify(buildResult.data.result,null,2)}</pre></details>}
       </div>}
       <div className="problems-list" aria-label="Draft problems">{errors.map((error,index)=><Button key={index} onClick={()=>navigate(error.loc)}>{error.loc.join(".")}: {error.message}</Button>)}{graph?.problems.map(problem=><p key={problem}>{problem}</p>)}</div>
-       <details><summary>Runtime and discovery details ({catalog.data?.errors.length ?? 0})</summary><code>{runtime.data.python_executable}</code><p>Interface 2 · {draft ? `${draft.order.length} ordered stages` : "No scenario selected"}</p>{catalog.data?.errors.map((error,index)=><p key={index}>{error.module}: {error.message}</p>)}</details>
+        <details><summary>Runtime and discovery details ({catalog.data?.errors.length ?? 0})</summary><code>Python {runtime.data.python_version} · {runtime.data.python_executable}</code><p>Interface 2 · {draft ? `${draft.order.length} ordered stages` : "No scenario selected"}</p>{catalog.data?.errors.map((error,index)=><p key={index}>{error.module}: {error.message}</p>)}</details>
       </div>
     </section>
     <Dialog.Root open={!!fileAction} onOpenChange={open=>{if(!open&&!pending)setFileAction(null);}}><Dialog.Portal><Dialog.Backdrop className="dialog-backdrop"/><Dialog.Popup className="dialog-popup" finalFocus={()=>document.querySelector<HTMLElement>(".scenario-menu summary")}>

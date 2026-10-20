@@ -245,6 +245,15 @@ def test_preflight_is_dry_run_and_template_revision_is_checked(tmp_path, monkeyp
         native.prepare_job(value, frozen_plan=plan)
 
 
+def test_preflight_rejects_non_kubernetes_resolved_execution(tmp_path):
+    value = scenario(tmp_path)
+    value.execution = value.execution.model_copy(update={"context": None})
+    plan = template_plan(value)
+    plan["resolved_execution"] = {"type": "local", "version": "1", "params": {}}
+    with pytest.raises(ExecutionError, match="Resolved execution must be a Kubernetes backend"):
+        native.prepare_job(value, frozen_plan=plan)
+
+
 @pytest.mark.parametrize("ack_lost", [False, True])
 def test_submit_once_and_inspect_ack_loss(tmp_path, monkeypatch, ack_lost):
     fake_api(monkeypatch)

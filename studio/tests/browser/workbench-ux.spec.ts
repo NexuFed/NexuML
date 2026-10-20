@@ -1,18 +1,18 @@
 import {expect,test} from "@playwright/test";
-import {check,fileAction,navigation,openFile,trainingSection} from "./helpers";
+import {apiAction,applyYaml,check,fileAction,loadStudio,navigation,observe,openFile,save,trainingSection} from "./helpers";
 
 test("source menu, first recipe save, retained YAML and explicit checks",async({page})=>{
-  await page.goto("/");
+  await loadStudio(page);
   await page.locator(".welcome").getByRole("button",{name:"Choose a recipe",exact:true}).click();
   await page.getByLabel("Discovered scenario").selectOption("synthetic-linear-ae-reconstruction");
-  await page.getByRole("button",{name:"Resolve recipe",exact:true}).click();
+  await apiAction(page,"/scenarios/synthetic-linear-ae-reconstruction/resolve",()=>page.getByRole("button",{name:"Resolve recipe",exact:true}).click());
   await expect(page.getByRole("dialog")).toBeHidden({timeout:30000});
   await expect(page.locator(".save-state")).toHaveText("Unsaved recipe");
   await page.locator(".top-actions").getByRole("button",{name:"Save",exact:true}).click();
   await expect(page.getByRole("dialog")).toBeVisible();
   const saved=`ux-recipe-${Date.now()}.yaml`;
   await page.getByLabel("Config path",{exact:true}).fill(saved);
-  await page.getByRole("button",{name:"Save file",exact:true}).click();
+  await save(page);
   await expect(page.locator(".save-state")).toHaveText("Saved",{timeout:30000});
   await openFile(page);
   await page.getByRole("button",{name:"1. LinearEncoder",exact:true}).first().click();
@@ -21,14 +21,14 @@ test("source menu, first recipe save, retained YAML and explicit checks",async({
   await fileAction(page,"Save as…");
   const path=`ux-file-${Date.now()}.yaml`;
   await page.getByLabel("Config path",{exact:true}).fill(path);
-  await page.getByRole("button",{name:"Save file",exact:true}).click();
+  await save(page);
   await expect(page.getByRole("dialog")).toBeHidden();
   await openFile(page,path);
   await expect(page.locator(".react-flow__node")).toContainText(["Sidecar label"]);
   await page.getByRole("button",{name:"YAML",exact:true}).click();
   const yaml=await page.getByLabel("Scenario YAML").inputValue();
   await page.getByLabel("Scenario YAML").fill("invalid: [yaml");
-  await page.getByRole("button",{name:"Apply YAML",exact:true}).click();
+  await applyYaml(page,422);
   await expect(page.getByRole("status").first()).not.toContainText("Waiting");
   await expect(page.getByRole("button",{name:/Problems \(/})).toHaveAttribute("aria-expanded","true");
   await page.getByRole("button",{name:"Close YAML",exact:true}).click();
@@ -39,7 +39,7 @@ test("source menu, first recipe save, retained YAML and explicit checks",async({
   await page.getByRole("button",{name:"Return to YAML",exact:true}).click();
   await expect(page.getByLabel("Scenario YAML")).toHaveValue("invalid: [yaml");
   await page.getByLabel("Scenario YAML").fill(yaml);
-  await page.getByRole("button",{name:"Apply YAML",exact:true}).click();
+  await applyYaml(page);
   await expect(page.getByRole("status").first()).toContainText("YAML applied");
   await page.getByRole("button",{name:"Close YAML",exact:true}).click();
   await check(page);
@@ -59,20 +59,20 @@ test("source menu, first recipe save, retained YAML and explicit checks",async({
   await page.getByRole("button",{name:"Cancel",exact:true}).click();
   await expect(page.getByLabel("Output Dim",{exact:true})).toHaveValue("4");
   await page.route("**/api/v1/config/save",route=>route.fulfill({status:409,json:{error:{code:"conflict",message:"File changed externally. Reload or save to a new path."}}}));
-  await page.locator(".top-actions").getByRole("button",{name:"Save",exact:true}).click();
+  await apiAction(page,"/config/save",()=>page.locator(".top-actions").getByRole("button",{name:"Save",exact:true}).click(),{status:409});
   await expect(page.getByRole("status").first()).toContainText("File changed externally");
   await expect(page.locator(".save-state")).toHaveText("Unsaved changes");
   await page.unroute("**/api/v1/config/save");
   await page.route("**/api/v1/config/layout/save",route=>route.fulfill({status:409,json:{error:{code:"conflict",message:"Layout changed externally. Reload or save to a new path."}}}));
-  await page.locator(".top-actions").getByRole("button",{name:"Save",exact:true}).click();
+  await apiAction(page,"/config/layout/save",()=>apiAction(page,"/config/save",()=>page.locator(".top-actions").getByRole("button",{name:"Save",exact:true}).click()),{status:409});
   await expect(page.getByRole("status").first()).toContainText("Layout changed externally");await expect(page.locator(".save-state")).toHaveText("Unsaved changes");
   await page.unroute("**/api/v1/config/layout/save");
-  await page.locator(".top-actions").getByRole("button",{name:"Save",exact:true}).click();await expect(page.locator(".save-state")).toHaveText("Saved",{timeout:30000});
+  await save(page,()=>page.locator(".top-actions").getByRole("button",{name:"Save",exact:true}).click());await expect(page.locator(".save-state")).toHaveText("Saved",{timeout:30000});
 });
 
 test("documented panel/keyboard paths and responsive visual acceptance",async({page},testInfo)=>{
   const submissions:string[]=[];page.on("request",request=>{if(request.method()==="POST" && /\/api\/v1\/(train|build|export)$/.test(new URL(request.url()).pathname))submissions.push(request.url());});
-  await page.goto("/");await openFile(page);
+  await loadStudio(page);await openFile(page);
   await expect(page.locator('.react-flow__node[data-id="data"]')).toHaveCSS("width","250px");
   await expect.poll(()=>page.locator('.react-flow__node[data-id="data"]').evaluate(node=>node.getBoundingClientRect().width)).toBeGreaterThan(240);
   await navigation(page,"Components");await page.getByLabel("Search components").fill("LinearEncoder");await navigation(page,"Structure");await navigation(page,"Components");await expect(page.getByLabel("Search components")).toHaveValue("LinearEncoder");
@@ -106,11 +106,11 @@ test("documented panel/keyboard paths and responsive visual acceptance",async({p
     await page.getByRole("button",{name:"Training",exact:true}).click();await trainingSection(page,"Basics");await page.screenshot({path:testInfo.outputPath(`training-${width}.png`)});
     await page.getByRole("button",{name:"Runs",exact:true}).click();await page.screenshot({path:testInfo.outputPath(`runs-empty-${width}.png`)});
     const retained=await page.getByLabel("Observed operation").locator("option").evaluateAll(options=>options.map(option=>({value:(option as HTMLOptionElement).value,text:option.textContent})).filter(option=>option.text?.startsWith("train") && option.text.includes("succeeded")));
-    if(retained.length){await page.getByLabel("Observed operation").selectOption(retained.at(-1)!.value);await expect(page.locator(".status-grid")).toContainText("succeeded");await expect(page.locator(".metric").first()).toBeVisible();await page.screenshot({path:testInfo.outputPath(`runs-${width}.png`)});if(width<1280){await page.locator(".metric").first().scrollIntoViewIfNeeded();await page.screenshot({path:testInfo.outputPath(`runs-metrics-${width}.png`)});await page.locator(".runs-view").evaluate(panel=>{panel.scrollTop=0;});}await page.getByLabel("Observed operation").selectOption("");}
+    if(retained.length){await observe(page,retained.at(-1)!.value);await expect(page.locator(".status-grid")).toContainText("succeeded");await expect(page.locator(".metric").first()).toBeVisible();await page.screenshot({path:testInfo.outputPath(`runs-${width}.png`)});if(width<1280){await page.locator(".metric").first().scrollIntoViewIfNeeded();await page.screenshot({path:testInfo.outputPath(`runs-metrics-${width}.png`)});await page.locator(".runs-view").evaluate(panel=>{panel.scrollTop=0;});}await page.getByLabel("Observed operation").selectOption("");}
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
     if(width<1280){const sizes=await page.locator('.topbar button:visible,.nav-tabs button:visible,.topbar summary:visible,.run-tabs button:visible').evaluateAll(elements=>elements.map(element=>({label:element.textContent,height:element.getBoundingClientRect().height,width:element.getBoundingClientRect().width})));expect(sizes.filter(item=>item.height<44 || item.width<44)).toEqual([]);const boxes=await page.locator(".top-actions>*").evaluateAll(elements=>elements.map(element=>({left:element.getBoundingClientRect().left,right:element.getBoundingClientRect().right})));expect(boxes.slice(1).every((box,index)=>box.left>=boxes[index].right)).toBe(true);}
   }
-  await page.setViewportSize({width:1440,height:1000});await page.getByRole("button",{name:"Pipeline",exact:true}).click();await page.getByLabel("Output Dim",{exact:true}).fill(".5");await check(page);await expect(page.locator(".problems-list")).toContainText("output_dim",{timeout:30000});await page.screenshot({path:testInfo.outputPath("pipeline-error-1440.png")});
+  await page.setViewportSize({width:1440,height:1000});await page.getByRole("button",{name:"Pipeline",exact:true}).click();await page.getByLabel("Output Dim",{exact:true}).fill(".5");await check(page,"Check fields",422);await expect(page.locator(".problems-list")).toContainText("output_dim",{timeout:30000});await page.screenshot({path:testInfo.outputPath("pipeline-error-1440.png")});
   await page.emulateMedia({reducedMotion:"reduce"});expect(await page.evaluate(()=>matchMedia("(prefers-reduced-motion: reduce)").matches)).toBe(true);
   expect(submissions).toEqual([]);
 });

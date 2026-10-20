@@ -1,0 +1,123 @@
+name: Publish Studio
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-studio
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: startsWith(github.event.release.tag_name, 'studio-v')
+    # npm Trusted Publishing does not support self-hosted runners. Publication only;
+    # all builds and tests remain on ika-runner. Never rebuild the release artifact.
+    runs-on: ubuntu-latest
+    environment:
+      name: npm
+      url: https://www.npmjs.com/package/@nexufed/nexuml-studio
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+
+      - name: Validate tag and protected release revision
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          node --input-type=module - <<'JS'
+          import { readFileSync } from 'node:fs';
+          import assert from 'node:assert/strict';
+          const pkg = JSON.parse(readFileSync('studio/package.json'));
+          assert.match(process.env.RELEASE_TAG, /^studio-v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/);
+          assert.equal(process.env.RELEASE_TAG, `studio-v${pkg.version}`);
+          assert.equal(pkg.name, '@nexufed/nexuml-studio');
+          JS
+          git merge-base --is-ancestor HEAD origin/main
+          test "$(gh api "repos/$GITHUB_REPOSITORY/branches/main" --jq .protected)" = true
+          test "$(gh api "repos/$GITHUB_REPOSITORY/environments/npm" \
+            --jq '[.protection_rules[] | select(.type == "required_reviewers" and .prevent_self_review == true and (.reviewers | length) > 0)] | length')" -eq 1
+
+      - name: Resolve successful CI and its immutable artifact
+        id: ci
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sha=$(git rev-parse HEAD)
+          run_id=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$sha&event=push&status=success&per_page=100" \
+            --jq '.workflow_runs | map(select(.head_branch == "main")) | sort_by(.created_at) | last | .id // empty')
+          test -n "$run_id"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id/jobs?per_page=100" \
+            --jq '[.jobs[] | select(.name == "CI" and .conclusion == "success")] | length')" -eq 1
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id/artifacts?per_page=100" > "$RUNNER_TEMP/studio-artifacts.json"
+          node --input-type=module - <<'JS'
+          import { readFileSync, appendFileSync } from 'node:fs';
+          import assert from 'node:assert/strict';
+          const artifacts = JSON.parse(readFileSync(`${process.env.RUNNER_TEMP}/studio-artifacts.json`)).artifacts
+            .filter(a => a.name === 'studio-distribution' && !a.expired);
+          assert.equal(artifacts.length, 1, 'Rerun CI for the exact main commit if its artifact expired.');
+          assert.equal(artifacts[0].workflow_run.head_sha, process.env.GITHUB_SHA);
+          appendFileSync(process.env.GITHUB_OUTPUT, `artifact-id=${artifacts[0].id}\n`);
+          JS
+          echo "run-id=$run_id" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/download-artifact@v7
+        with:
+          artifact-ids: ${{ steps.ci.outputs.artifact-id }}
+          path: release-studio
+          merge-multiple: true
+          github-token: ${{ github.token }}
+          run-id: ${{ steps.ci.outputs.run-id }}
+
+      - name: Verify tarball integrity and publication metadata
+        id: package
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          node --input-type=module - <<'JS'
+          import { readFileSync, appendFileSync } from 'node:fs';
+          import { createHash } from 'node:crypto';
+          import { execFileSync } from 'node:child_process';
+          import assert from 'node:assert/strict';
+          assert.equal(readFileSync('release-studio/commit.txt', 'utf8').trim(), process.env.GITHUB_SHA);
+          const [pack] = JSON.parse(readFileSync('release-studio/pack.json'));
+          const expected = JSON.parse(readFileSync('studio/package.json'));
+          assert.equal(pack.name, expected.name);
+          assert.equal(pack.version, expected.version);
+          assert.equal(pack.filename, `nexufed-nexuml-studio-${expected.version}.tgz`);
+          const tarball = `release-studio/${pack.filename}`;
+          assert.equal(`sha512-${createHash('sha512').update(readFileSync(tarball)).digest('base64')}`, pack.integrity);
+          const pkg = JSON.parse(execFileSync('tar', ['-xOf', tarball, 'package/package.json'], {encoding: 'utf8'}));
+          for (const key of ['name', 'version', 'repository', 'license', 'bin', 'engines', 'publishConfig'])
+            assert.deepEqual(pkg[key], expected[key], `Packed ${key} differs from the release commit.`);
+          assert.equal(pkg.name, '@nexufed/nexuml-studio');
+          assert.equal(pkg.repository.url, 'git+https://github.com/NexuFed/NexuML.git');
+          assert.equal(pkg.publishConfig.access, 'public');
+          assert.equal(pkg.publishConfig.provenance, true);
+          assert.equal(process.env.RELEASE_TAG, `studio-v${pkg.version}`);
+          appendFileSync(process.env.GITHUB_OUTPUT, `tarball=${tarball}\n`);
+          JS
+
+      - name: Install supported npm publishing CLI
+        run: npm install --global npm@11
+
+      - name: Publish the tested tarball with OIDC and provenance
+        run: npm publish "$TARBALL" --ignore-scripts --access public --provenance
+        env:
+          TARBALL: ${{ steps.package.outputs.tarball }}

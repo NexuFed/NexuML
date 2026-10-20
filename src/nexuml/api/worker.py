@@ -87,7 +87,7 @@ def catalog() -> dict:
         for e in components.entries()
     ]
     recipes = [
-        {"name": name, "import_target": f"{fn.__module__}.{fn.__qualname__}"}
+        {"name": name, "import_target": f"{fn.__module__}.{getattr(fn, '__qualname__')}"}
         for name, fn in sorted(scenarios.list().items())
     ]
     errors = [

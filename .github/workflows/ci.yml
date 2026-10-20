@@ -3,16 +3,15 @@ name: CI
 on:
   workflow_dispatch:
   push:
-    branches: [main, dev]
-  pull_request:
-    types: [opened, synchronize, reopened]
-    branches: [main, dev]
+    branches: ["**"]
+  # Institute runners must never execute fork pull_request code. Maintainers review
+  # external contributions before bringing them onto a trusted repository branch.
 
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -68,7 +67,7 @@ jobs:
         run: exit 1
 
   test:
-    runs-on: ika-runner-gpu
+    runs-on: ika-runner
     strategy:
       fail-fast: false
       matrix:
@@ -100,7 +99,7 @@ jobs:
           python - <<'PY'
           import torch
 
-          assert torch.cuda.is_available(), "CUDA is unavailable on ika-runner-gpu"
+          assert torch.cuda.is_available(), "CUDA is unavailable on ika-runner"
           capability = torch.cuda.get_device_capability()
           print(f"GPU: {torch.cuda.get_device_name()} (CC {capability[0]}.{capability[1]})")
           print(f"PyTorch: {torch.__version__}; architectures: {torch.cuda.get_arch_list()}")
@@ -111,7 +110,8 @@ jobs:
         run: pytest --cov=nexuml --cov=nexuml_library --cov-report=term-missing --cov-report=xml:reports/coverage.xml
 
   package:
-    runs-on: ubuntu-latest
+    needs: [static, test]
+    runs-on: ika-runner
     steps:
       - uses: actions/checkout@v5
 
@@ -217,17 +217,50 @@ jobs:
         if: ${{ always() && (steps.type.outcome != 'success' || steps.lint.outcome != 'success' || steps.test.outcome != 'success') }}
         run: exit 1
 
+  studio-build:
+    name: Studio build
+    needs: studio-static
+    runs-on: ika-runner
+    timeout-minutes: 15
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    defaults:
+      run:
+        working-directory: studio
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: studio/package-lock.json
+      - run: npm ci
+      - name: Build and pack exactly once
+        run: |
+          mkdir -p ../dist/studio
+          npm run prepack
+          npm pack --ignore-scripts --json --pack-destination ../dist/studio > ../dist/studio/pack.json
+          git rev-parse HEAD > ../dist/studio/commit.txt
+      - name: Upload immutable Studio distribution
+        uses: actions/upload-artifact@v6
+        with:
+          name: studio-distribution
+          retention-days: 7
+          path: dist/studio/
+          if-no-files-found: error
+
   studio-package:
     name: Studio package (${{ matrix.os }}, ${{ matrix.mode }})
     needs:
       - package
-      - studio-static
+      - studio-build
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        # macos-latest/windows-latest intentionally disabled pending owner approval.
+        os: [ika-runner]
         mode: [tool, project]
     defaults:
       run:
@@ -259,12 +292,31 @@ jobs:
           name: python-distributions
           path: dist
 
+      - name: Download the single Studio build
+        uses: actions/download-artifact@v7
+        with:
+          name: studio-distribution
+          path: dist/studio
+
+      - name: Verify artifact identity
+        run: |
+          test "$(cat dist/studio/commit.txt)" = "$(git rev-parse HEAD)"
+          node --input-type=module - <<'JS'
+          import { readFileSync } from 'node:fs';
+          import { createHash } from 'node:crypto';
+          import assert from 'node:assert/strict';
+          const [pack] = JSON.parse(readFileSync('dist/studio/pack.json'));
+          assert.equal(pack.name, '@nexufed/nexuml-studio');
+          assert.match(pack.filename, /^nexufed-nexuml-studio-\d+\.\d+\.\d+\.tgz$/);
+          assert.equal(`sha512-${createHash('sha512').update(readFileSync(`dist/studio/${pack.filename}`)).digest('base64')}`, pack.integrity);
+          JS
+
       - name: Install and verify isolated ${{ matrix.mode }} runtime
         run: >-
           python scripts/studio-test-runtime.py
           --wheel dist/nexuml/nexuml-*.whl
           --library-wheel dist/nexuml-library/nexuml_library-*.whl
-          --output "$RUNNER_TEMP/studio runtime ${{ matrix.mode }}"
+          --output "$RUNNER_TEMP/studio runtime ${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.mode }}"
           --mode ${{ matrix.mode }}
 
       - name: Install frontend dependencies
@@ -277,7 +329,7 @@ jobs:
 
       - name: Verify packaged startup and CPU browser workflow
         working-directory: studio
-        run: npm run test:package 2>&1 | tee package-smoke.log
+        run: npm run test:package -- ../dist/studio/*.tgz 2>&1 | tee package-smoke.log
 
       - name: Upload Studio test diagnostics
         if: ${{ always() }}
@@ -298,6 +350,7 @@ jobs:
       - test
       - package
       - studio-static
+      - studio-build
       - studio-package
     if: ${{ always() }}
     runs-on: ika-runner
@@ -309,12 +362,14 @@ jobs:
           TEST_RESULT: ${{ needs.test.result }}
           PACKAGE_RESULT: ${{ needs.package.result }}
           STUDIO_STATIC_RESULT: ${{ needs.studio-static.result }}
+          STUDIO_BUILD_RESULT: ${{ needs.studio-build.result }}
           STUDIO_PACKAGE_RESULT: ${{ needs.studio-package.result }}
         run: |
           echo "static: $STATIC_RESULT"
           echo "test:   $TEST_RESULT"
           echo "package: $PACKAGE_RESULT"
           echo "studio-static: $STUDIO_STATIC_RESULT"
+          echo "studio-build: $STUDIO_BUILD_RESULT"
           echo "studio-package: $STUDIO_PACKAGE_RESULT"
 
           {
@@ -325,13 +380,17 @@ jobs:
             echo "| Python tests | $TEST_RESULT |"
             echo "| Python packages | $PACKAGE_RESULT |"
             echo "| Studio static | $STUDIO_STATIC_RESULT |"
+            echo "| Studio build | $STUDIO_BUILD_RESULT |"
             echo "| Studio packages | $STUDIO_PACKAGE_RESULT |"
+            echo ""
+            echo "Linux project/tool verified here; macOS and Windows are disabled, not verified."
           } >> "$GITHUB_STEP_SUMMARY"
 
           if [ "$STATIC_RESULT" != "success" ] || \
              [ "$TEST_RESULT" != "success" ] || \
              [ "$PACKAGE_RESULT" != "success" ] || \
              [ "$STUDIO_STATIC_RESULT" != "success" ] || \
+             [ "$STUDIO_BUILD_RESULT" != "success" ] || \
              [ "$STUDIO_PACKAGE_RESULT" != "success" ]; then
             echo "One or more required CI jobs failed."
             exit 1

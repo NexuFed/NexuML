@@ -1,11 +1,12 @@
 import {expect,test} from "@playwright/test";
-import {openFile} from "./helpers";
+import {apiAction,loadStudio,observe,openFile} from "./helpers";
 
 test("frozen semantic comparison, shared loss coordinates and retained observations",async({page})=>{
   let launches=0;page.on("request",request=>{if(request.method()==="POST" && /\/api\/v1\/(train|build|export)$/.test(new URL(request.url()).pathname))launches++;});
   const id="e".repeat(32);let unavailable=false;
-  await page.goto("/");
-  const document=await page.evaluate(async()=>{const connection=await(await fetch("/api/runtime")).json();return (await fetch(`${connection.api}/api/v1/config/load`,{method:"POST",headers:{Authorization:`Bearer ${connection.token}`,"Content-Type":"application/json"},body:JSON.stringify({path:"tiny.yaml"})})).json();});
+  await loadStudio(page);
+  const loaded=await apiAction(page,"/config/load",()=>page.evaluate(async()=>{const connection=await(await fetch("/api/runtime")).json();await fetch(`${connection.api}/api/v1/config/load`,{method:"POST",headers:{Authorization:`Bearer ${connection.token}`,"Content-Type":"application/json"},body:JSON.stringify({path:"tiny.yaml"})});}));
+  const document=await loaded.json();
   const operation={id,kind:"train",status:"succeeded",sequence:0,semantic_revision:document.semantic_revision,telemetry:"fixture callbacks",cancellation:false,capabilities:{metrics:true,resume:true},result:{},artifacts:[]};
   await page.route("**/api/v1/operations",route=>route.fulfill({json:{operations:[operation]}}));
   await page.route(`**/api/v1/operations/${id}`,route=>route.fulfill({json:operation}));
@@ -20,7 +21,7 @@ test("frozen semantic comparison, shared loss coordinates and retained observati
       socket.close({code:1008,reason:"Fixture disconnected"});
     });
   });
-  await page.reload();await page.getByRole("button",{name:"Runs",exact:true}).click();await page.getByLabel("Observed operation").selectOption(id);
+  await loadStudio(page,()=>page.reload());await page.getByRole("button",{name:"Runs",exact:true}).click();await observe(page,id);
   await expect(page.locator(".status-grid")).toContainText("reload to reconnect");await expect(page.getByText("Replay history is incomplete.",{exact:false})).toBeVisible();
   await expect(page.getByText("Draft matches",{exact:false})).toHaveCount(0);
   const total=page.locator(".metric").filter({has:page.locator("span",{hasText:/^Total loss$/})});
@@ -34,7 +35,7 @@ test("frozen semantic comparison, shared loss coordinates and retained observati
   await page.getByRole("button",{name:"Pipeline",exact:true}).click();await page.getByRole("button",{name:"Move stage Encoder down",exact:true}).click();await page.getByRole("button",{name:"Runs",exact:true}).click();await expect(page.getByText("Draft differs",{exact:false})).toBeVisible();
   await page.getByRole("button",{name:"Configuration",exact:true}).click();await expect(page.getByLabel("Frozen launch YAML")).toContainText("Encoder:");
   page.once("dialog",dialog=>void dialog.dismiss());await page.getByRole("button",{name:"Open frozen settings as draft",exact:true}).click();await expect(page.locator(".execution-view")).toBeVisible();
-  page.once("dialog",dialog=>void dialog.accept());await page.getByRole("button",{name:"Open frozen settings as draft",exact:true}).click();await expect(page.locator(".training-view")).toBeVisible();await page.getByRole("button",{name:"Runs",exact:true}).click();await expect(page.getByText("Draft matches",{exact:false})).toBeVisible();
-  unavailable=true;await page.reload();await page.getByRole("button",{name:"Runs",exact:true}).click();await page.getByLabel("Observed operation").selectOption(id);await page.getByRole("button",{name:"Configuration",exact:true}).click();await expect(page.getByText("Frozen source unavailable",{exact:false})).toBeVisible();await expect(page.getByText(/Draft (matches|differs)/)).toHaveCount(0);
+  page.once("dialog",dialog=>void dialog.accept());await apiAction(page,`/operations/${id}/config`,()=>page.getByRole("button",{name:"Open frozen settings as draft",exact:true}).click(),{method:"GET"});await expect(page.locator(".training-view")).toBeVisible();await page.getByRole("button",{name:"Runs",exact:true}).click();await expect(page.getByText("Draft matches",{exact:false})).toBeVisible();
+  unavailable=true;await loadStudio(page,()=>page.reload());await page.getByRole("button",{name:"Runs",exact:true}).click();await observe(page,id,404);await page.getByRole("button",{name:"Configuration",exact:true}).click();await expect(page.getByText("Frozen source unavailable",{exact:false})).toBeVisible();await expect(page.getByText(/Draft (matches|differs)/)).toHaveCount(0);
   expect(launches).toBe(0);
 });

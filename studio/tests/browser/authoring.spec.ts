@@ -1,10 +1,10 @@
 import {expect,test} from "@playwright/test";
-import {check,fileAction,inspector,navigation,openFile,trainingSection} from "./helpers";
+import {check,fileAction,inspector,loadStudio,navigation,openFile,save,trainingSection} from "./helpers";
 
 test("typed settings, error focus, categorized drop, names and removable key routing",async({page},testInfo)=>{
   const failures:string[]=[];page.on("pageerror",error=>failures.push(error.message));
   page.on("dialog",dialog=>void dialog.accept());
-  await page.goto("/");await openFile(page);
+  await loadStudio(page);await openFile(page);
   await page.getByRole("button",{name:"Training",exact:true}).click();
   await trainingSection(page,"Execution");
   await expect(page.getByLabel("Execution backend",{exact:true})).toHaveValue("local:1");
@@ -15,7 +15,7 @@ test("typed settings, error focus, categorized drop, names and removable key rou
   await page.getByLabel("Execution backend",{exact:true}).selectOption("local:1");
   await trainingSection(page,"Basics");
   await page.getByLabel("Batch Size",{exact:true}).fill("0");
-  await check(page);
+  await check(page,"Check fields",422);
   await expect(page.locator(".problems-list")).toContainText("training.batch_size",{timeout:30000});
   await page.getByRole("button",{name:"Pipeline",exact:true}).click();
   await page.locator(".problems-list").getByRole("button").filter({hasText:"training.batch_size"}).first().click();
@@ -57,7 +57,7 @@ test("typed settings, error focus, categorized drop, names and removable key rou
   const yaml=await page.getByLabel("Scenario YAML").inputValue();expect(yaml).not.toContain("Dragged encoder");
   await page.getByRole("button",{name:"Close YAML",exact:true}).click();
   const saved=`authoring-${Date.now()}.yaml`;await fileAction(page,"Save as…");await page.getByLabel("Config path",{exact:true}).fill(saved);
-  await page.getByRole("button",{name:"Save file",exact:true}).click();
+  await save(page);
   await expect(page.getByRole("status")).toContainText("Configuration and separate layout saved.",{timeout:30000});
   await openFile(page,saved);
   await expect(page.locator(".react-flow__node")).toContainText(["Dragged encoder"]);

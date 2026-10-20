@@ -9,7 +9,7 @@ export function proxy(request: NextRequest) {
   destination.search = request.nextUrl.search;
   const headers = new Headers(request.headers);
   for (const key of [...headers.keys()]) {
-    if (["cookie", "forwarded", "x-real-ip", "via", "x-netbird-user", "x-netbird-groups"].includes(key) || key.startsWith("x-forwarded-")) {
+    if (["cookie", "forwarded", "x-real-ip", "via", "x-netbird-user", "x-netbird-groups", "x-nexuml-studio-proxy"].includes(key) || key.startsWith("x-forwarded-")) {
       headers.delete(key);
     }
   }

@@ -1,10 +1,10 @@
 import {expect,test} from "@playwright/test";
 import {parse,stringify} from "yaml";
-import {check,fileAction,inspector,navigation,openFile} from "./helpers";
+import {applyYaml,check,fileAction,inspector,loadStudio,navigation,openFile,save} from "./helpers";
 
 test("stage containers, explicit transfers/order, gesture undo and sidecar recovery",async({page},testInfo)=>{
   const failures:string[]=[];page.on("pageerror",error=>failures.push(error.message));page.on("dialog",dialog=>void dialog.accept());
-  await page.goto("/");await openFile(page);
+  await loadStudio(page);await openFile(page);
   const outline=page.locator(".outline");const encoder=page.locator('.react-flow__node[data-id="stage:Encoder"]');
   const fit=async()=>{await page.getByRole("button",{name:"Fit view",exact:true}).click();await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));};
   const readYaml=async()=>{await page.getByRole("button",{name:"YAML",exact:true}).click();const text=await page.getByLabel("Scenario YAML").inputValue();await page.getByRole("button",{name:"Close YAML",exact:true}).click();return text;};
@@ -78,7 +78,7 @@ test("stage containers, explicit transfers/order, gesture undo and sidecar recov
   await expect(page.getByRole("button",{name:"Redo",exact:true})).toBeEnabled();
   await outline.getByRole("button",{name:"1. Encoder",exact:true}).click();await page.locator(".properties-panel summary").filter({hasText:"Container size"}).click();
   await page.getByLabel("Stage width",{exact:true}).fill("700");
-  const saved=`containers-${Date.now()}.yaml`;await fileAction(page,"Save as…");await page.getByLabel("Config path",{exact:true}).fill(saved);await page.getByRole("button",{name:"Save file",exact:true}).click();
+  const saved=`containers-${Date.now()}.yaml`;await fileAction(page,"Save as…");await page.getByLabel("Config path",{exact:true}).fill(saved);await save(page);
   await expect(page.getByRole("status")).toContainText("Configuration and separate layout saved.",{timeout:30000});
   await openFile(page,saved);
   await outline.getByRole("button",{name:"1. Encoder",exact:true}).click();await page.locator(".properties-panel summary").filter({hasText:"Container size"}).click();await expect(page.getByLabel("Stage width",{exact:true})).toHaveValue("700");
@@ -93,14 +93,14 @@ test("stage containers, explicit transfers/order, gesture undo and sidecar recov
 
 test("skipped-stage previews, unowned insertion and keyboard placement alternatives",async({page})=>{
   const failures:string[]=[];page.on("pageerror",error=>failures.push(error.message));
-  await page.goto("/");page.on("dialog",dialog=>void dialog.accept());
+  await loadStudio(page);page.on("dialog",dialog=>void dialog.accept());
   await openFile(page);
   await page.locator(".outline").getByRole("button",{name:"Data configuration",exact:true}).click();await page.getByRole("button",{name:"Add stage",exact:true}).press("Enter");
   await expect(page.getByRole("dialog")).toContainText("Insert last");await page.getByLabel("New stage name",{exact:true}).fill("Last");await page.getByRole("button",{name:"Create stage",exact:true}).press("Enter");
   await expect(page.locator(".outline")).toContainText("4. Last");await page.getByRole("button",{name:"Undo",exact:true}).press("Enter");
   await page.getByRole("button",{name:"YAML",exact:true}).click();const config=parse(await page.getByLabel("Scenario YAML").inputValue());
   config.pipeline.stages.Skipped=[];config.data.skip_pipeline_stages=["Skipped"];
-  await page.getByLabel("Scenario YAML").fill(stringify(config));await page.getByRole("button",{name:"Apply YAML",exact:true}).click();
+  await page.getByLabel("Scenario YAML").fill(stringify(config));await applyYaml(page);
   await expect(page.getByRole("status")).toContainText("YAML applied",{timeout:30000});await page.getByRole("button",{name:"Close YAML",exact:true}).click();
   const outline=page.locator(".outline");const skipped=page.locator('.react-flow__node[data-id="stage:Skipped"]');
   await outline.getByRole("button",{name:"1. LinearEncoder",exact:true}).first().click();const id=await page.locator(".react-flow__node.selected").getAttribute("data-id");

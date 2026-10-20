@@ -31,6 +31,7 @@ def catalog() -> list[dict[str, Any]]:
     rows = []
     for entry in get_component_registry().entries(kind="execution_backend"):
         definition = entry.definition_type
+        assert issubclass(definition, ExecutionBackendDefinition)
         diagnostics = dependency_diagnostics(definition)
         rows.append(
             {
@@ -105,6 +106,7 @@ def inspect(reference: NativeReference) -> dict[str, Any]:
     definition = get_component_registry().get_type(
         "execution_backend", reference.backend, reference.version
     )
+    assert issubclass(definition, ExecutionBackendDefinition)
     return definition().inspect(reference)
 
 
@@ -117,4 +119,5 @@ def cancel(reference: NativeReference) -> dict[str, Any]:
     definition = get_component_registry().get_type(
         "execution_backend", reference.backend, reference.version
     )
+    assert issubclass(definition, ExecutionBackendDefinition)
     return definition().cancel(reference)

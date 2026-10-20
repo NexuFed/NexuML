@@ -19,7 +19,7 @@ def worker_environment() -> dict[str, str]:
     return {
         key: value
         for key, value in os.environ.items()
-        if key not in {"NEXUML_API_TOKEN", "NEXUML_STUDIO_TOKEN"}
+        if key not in {"NEXUML_API_TOKEN", "NEXUML_STUDIO_TOKEN", "NEXUML_STUDIO_PROXY_TOKEN"}
     }
 
 

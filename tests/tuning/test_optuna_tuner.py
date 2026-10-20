@@ -7,7 +7,8 @@ from typing import Any
 
 import pytest
 
-from nexuml.tuning.optuna_tuner import _resolve_search_space, build_objective
+from nexuml.core.types import TuningSpec
+from nexuml.tuning.optuna_tuner import _resolve_search_space, build_objective, tune
 
 
 class FakeTrial:
@@ -124,3 +125,46 @@ def test_build_objective_missing_metric_lists_available(vector_scenario_spec, mo
 
     assert "val/loss" in str(excinfo.value)
     assert "val/acc" in str(excinfo.value)
+
+
+@pytest.mark.parametrize("directions", [["minimize"], ["maximize"], ["minimize", "maximize"]])
+def test_tune_forwards_directions_unchanged(
+    vector_scenario_spec, tmp_path, monkeypatch, directions
+):
+    optuna = pytest.importorskip("optuna")
+    calls = []
+    study = SimpleNamespace(
+        optimize=lambda objective, n_trials: None,
+        best_trial=SimpleNamespace(number=0, params={}, value=0.5),
+        trials=[],
+    )
+
+    def create_study(**kwargs):
+        calls.append(kwargs)
+        return study
+
+    monkeypatch.setattr(optuna, "create_study", create_study)
+    spec = TuningSpec(directions=directions, n_trials=1, storage=str(tmp_path / "study.log"))
+    assert tune(vector_scenario_spec, {}, spec) is study
+    if len(directions) == 1:
+        assert calls[0]["direction"] == directions[0]
+        assert "directions" not in calls[0]
+    else:
+        assert calls[0]["directions"] == directions
+        assert "direction" not in calls[0]
+    assert spec.directions == directions
+
+
+@pytest.mark.parametrize("directions", [[], ["invalid"], ["MINIMIZE"], ["minimize", "invalid"]])
+def test_tune_preserves_optuna_direction_errors(vector_scenario_spec, tmp_path, directions):
+    optuna = pytest.importorskip("optuna")
+    with pytest.raises(ValueError) as expected:
+        if len(directions) == 1:
+            optuna.create_study(direction=directions[0])
+        else:
+            optuna.create_study(directions=directions)
+
+    spec = TuningSpec(directions=directions, storage=str(tmp_path / "study.log"))
+    with pytest.raises(ValueError) as actual:
+        tune(vector_scenario_spec, {}, spec)
+    assert str(actual.value) == str(expected.value)

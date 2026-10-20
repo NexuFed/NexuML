@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from nexuml.core.components import ExecutionBackendDefinition
+from nexuml.core.components import ComponentDefinition, ExecutionBackendDefinition
 from nexuml.core.discovery import DISCOVERED_ATTR, LibraryConfig, execution_backend
 from nexuml.core.registry import ComponentRegistry
 
@@ -17,6 +17,7 @@ def test_core_only_discovery():
     registry = ComponentRegistry()
     registry.scan([])
     entry = registry.get_entry("execution_backend", "local")
+    assert issubclass(entry.definition_type, ExecutionBackendDefinition)
     assert entry.definition_type.label == "Local"
     assert entry.definition_type.model_json_schema()["properties"] == {}
     assert not registry.errors
@@ -86,15 +87,20 @@ def test_library_execution_discovery(tmp_path, monkeypatch, source):
     try:
         registry.scan()
         entry = registry.get_entry("execution_backend", "test-execution")
+        assert issubclass(entry.definition_type, ExecutionBackendDefinition)
         assert entry.definition_type.model_json_schema()["properties"]["workers"]["default"] == 2
         assert entry.definition_type().run(None) == 2
         from nexuml.core.config import ResolvedConfig
         from nexuml.core.types import ScenarioSpec
 
         config = ResolvedConfig.from_scenario(
-            ScenarioSpec(name="extension", execution=entry.definition_type(workers=7))
+            ScenarioSpec(
+                name="extension", execution=entry.definition_type.model_validate({"workers": 7})
+            )
         )
-        assert ResolvedConfig.from_yaml(config.to_yaml()).execution.workers == 7
+        restored = ResolvedConfig.from_yaml(config.to_yaml()).execution
+        assert type(restored) is entry.definition_type
+        assert restored.model_dump()["workers"] == 7
         assert not registry.errors
     finally:
         for name in tuple(sys.modules):
@@ -102,9 +108,10 @@ def test_library_execution_discovery(tmp_path, monkeypatch, source):
                 sys.modules.pop(name)
 
 
-def test_execution_decorator_rejects_wrong_role():
+@pytest.mark.parametrize("definition", [object, ComponentDefinition])
+def test_execution_decorator_rejects_wrong_role(definition):
     with pytest.raises(TypeError, match="ExecutionBackendDefinition"):
-        execution_backend("invalid")(object)
+        execution_backend("invalid")(definition)
 
 
 def test_execution_conflict_is_reported_without_replacing_core(monkeypatch):
@@ -118,7 +125,7 @@ def test_execution_conflict_is_reported_without_replacing_core(monkeypatch):
     from types import ModuleType
 
     module = ModuleType("conflicting_execution")
-    module.ConflictingExecution = ConflictingExecution
+    setattr(module, "ConflictingExecution", ConflictingExecution)
     monkeypatch.setitem(sys.modules, module.__name__, module)
     registry = ComponentRegistry()
     registry.scan([module.__name__])

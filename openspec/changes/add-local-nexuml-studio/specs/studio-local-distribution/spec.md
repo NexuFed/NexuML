@@ -66,9 +66,22 @@ The launcher SHALL start local services on loopback, establish protected runtime
 - **WHEN** the user explicitly selects an existing local API and supplies its connection credentials
 - **THEN** Studio verifies interface/runtime compatibility and does not terminate that API when the frontend launcher exits
 
+#### Scenario: Backend package releases independently
+- **WHEN** Studio 0.1.x connects to the selected backend
+- **THEN** it accepts stable NexuML >=0.2.1,<0.3.0 with interface 2, reports NexuML/Python version and interpreter, and rejects unsupported versions before exposing the workbench/catalog with actionable required-version guidance
+
+#### Scenario: Authenticated hosted access is explicitly configured
+- **WHEN** an operator supplies a public HTTPS origin
+- **THEN** the Studio listener still defaults to 127.0.0.1 and requires a separate private proxy credential injected by an externally authenticated reverse proxy; non-loopback listening requires an explicit host and security warning
+- **AND** direct bootstrap/API access without that credential is rejected even with spoofed public/local Host/Origin headers, and proxy credentials are stripped before forwarding to Python
+
 ### Requirement: Released package portability
 
 Release validation SHALL test the packaged application, rather than only source-checkout development, on supported Linux, macOS, and Windows environments. Python core commands SHALL remain usable without the API extra, and Python artifacts SHALL NOT inadvertently include frontend build/dependency directories.
+
+#### Scenario: Maintainer temporarily restricts platform coverage
+- **WHEN** the 2026-10-20 maintainer override disables macOS/Windows CI
+- **THEN** Linux project/tool checks remain mandatory on ika-runner and cross-platform acceptance stays unverified until the other targets are restored and pass
 
 #### Scenario: Packaged application is tested on a supported operating system
 - **WHEN** release validation installs the npm package into a clean location
@@ -77,3 +90,16 @@ Release validation SHALL test the packaged application, rather than only source-
 #### Scenario: Core-only NexuML is installed
 - **WHEN** NexuML is installed without the API extra
 - **THEN** existing nonserver CLI operations remain available and do not require frontend or FastAPI imports
+
+### Requirement: Immutable independent npm release
+
+CI SHALL build the Studio npm tarball once, upload it as an immutable artifact and
+test that exact tarball against independently installed Python wheel environments.
+The required gate SHALL depend on all mandatory static, unit, package and installed
+workflow checks and reject failures, skips and cancellations. Untrusted fork code
+SHALL NOT execute on persistent institute runners.
+
+#### Scenario: Studio release is published
+- **WHEN** a matching `studio-v<package version>` GitHub release is approved
+- **THEN** publication verifies protected-main membership, successful CI for that exact commit, artifact identity/integrity and metadata, then publishes the tested tarball without rebuilding via protected-environment npm Trusted Publishing and provenance
+- **AND** no Python publication runs for a Studio tag, and Python `v*` releases do not publish Studio

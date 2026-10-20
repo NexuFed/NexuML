@@ -80,6 +80,8 @@ def _requirement_matches(requirement: dict, values: dict[str, str]) -> bool:
     if operator == "DoesNotExist":
         return key not in values
     if operator in {"Gt", "Lt"}:
+        if value is None:
+            return False
         try:
             return (
                 int(value) > int(choices[0]) if operator == "Gt" else int(value) < int(choices[0])

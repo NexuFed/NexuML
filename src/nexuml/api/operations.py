@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import builtins
 import json
 import os
 import re
@@ -138,7 +139,7 @@ class Operations:
         """
         return json.loads((self.folder(identity) / "status.json").read_text(encoding="utf-8"))
 
-    def list(self) -> list[dict]:
+    def list(self) -> builtins.list[dict]:
         """List API-observed invocations, not unrelated CLI processes.
 
         Returns:
@@ -193,6 +194,10 @@ class Operations:
                 status["status"] = payload["status"]
             write_json(folder / "status.json", status)
 
+    def _require_idle(self, message: str) -> None:
+        if self.active:
+            raise ApiError(409, "busy", message)
+
     def start(self, kind: str, payload: dict, *, timeout: float | None = None) -> dict:
         """Freeze a validated config and call the existing framework in an owned process.
 
@@ -203,17 +208,13 @@ class Operations:
             ApiError: If another resource-consuming call is active or startup fails.
         """
         with self.lock:
-            if self.active:
-                raise ApiError(
-                    409, "busy", "A build, training or export operation is already active."
-                )
+            self._require_idle("A build, training or export operation is already active.")
         checked = call_worker(
             "prepare_train" if kind == "train" else "validate", payload, self.settings.directory
         )
         with self.lock:
             # ponytail: one resource-consuming invocation; add allocation policy before concurrency.
-            if self.active:
-                raise ApiError(409, "busy", "Another operation started while validating.")
+            self._require_idle("Another operation started while validating.")
             identity = uuid.uuid4().hex
             folder = self.root / identity
             folder.mkdir(mode=0o700)

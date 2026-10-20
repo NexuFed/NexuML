@@ -128,7 +128,11 @@ def test_verified_remote_cancel_and_unknown_after_shutdown(runtime):
     ) as client:
         launched = client.post("/api/v1/train", json=body(seconds=30)).json()
         identity = launched["id"]
-        pending = wait(client, identity, lambda row: bool(row.get("native_reference")))
+        pending = wait(
+            client,
+            identity,
+            lambda row: bool(row.get("native_reference")) and row["status"] == "pending",
+        )
         assert pending["status"] == "pending"
         assert client.post("/api/v1/train", json=body()).status_code == 409
         # Discovery does not consume the active training slot.
@@ -170,11 +174,16 @@ def test_discovery_rejects_unauthorized_paths_and_credential_urls(runtime):
             f"http://host:8265/?token={secret}",
             f"user:{secret}@host:10001",
         ):
-            unsafe["data"]["execution"] = {
-                "type": "ray-cluster",
-                "version": "1",
-                "params": {"target": {"address": target}},
+            ray_request = {
+                "data": {
+                    "name": "unsafe",
+                    "execution": {
+                        "type": "ray-cluster",
+                        "version": "1",
+                        "params": {"target": {"address": target}},
+                    },
+                }
             }
-            rejected = client.post("/api/v1/execution/discover", json=unsafe)
+            rejected = client.post("/api/v1/execution/discover", json=ray_request)
             assert rejected.status_code == 422 and secret not in rejected.text
             assert rejected.json()["error"]["fields"][0]["loc"][:2] == ["execution", "params"]

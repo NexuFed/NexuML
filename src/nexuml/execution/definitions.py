@@ -33,7 +33,8 @@ class LocalExecution(ExecutionBackendDefinition):
         kwargs.pop("frozen_plan", None)
         session = NexuSession(scenario=scenario, **kwargs)
         if observer is not None:
-            session.trainer.callbacks.append(observer)
+            # Lightning's callback connector creates this attribute at runtime.
+            getattr(session.trainer, "callbacks").append(observer)
         result = session.run()
         if scenario.exports:
             from nexuml.execution.artifacts import export_requests

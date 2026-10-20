@@ -55,6 +55,9 @@
 
 - [x] 7.1 Configure the npm package/bin and production-asset build so startup does not build source or depend on checkout/cwd, with writable runtime/cache data outside packaged assets; verify `npm pack` contents exclude secrets/dev trees and an install into a clean directory serves assets/fonts offline.
 - [ ] 7.2 Add packaged-launch smoke coverage for Linux, macOS, and Windows, including executable/interpreter modes, paths with spaces, REST/WebSocket connection, and owned/attached shutdown; verify the package-installed test matrix rather than only development-server tests.
+
+  Maintainer override (2026-10-20): macOS/Windows CI temporarily disabled; retain this
+  portability gate as unchecked rather than inferring their results from Linux.
 - [x] 7.3 Verify Python wheel/sdist include the API but not frontend dependencies/build assets, and add uv-tool/project-install smoke checks using the built Python distribution; verify optional extras, actual runtime identity/discovery, and existing core-only CLI commands.
 - [x] 7.4 Document release-accurate Python/npm installation, supported Node/Python/OS requirements, PATH guidance, offline asset behavior, and troubleshooting; verify every documented normal-user launch without a repository clone and prepare release artifacts without publishing them automatically.
 

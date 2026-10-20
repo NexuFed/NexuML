@@ -1,14 +1,14 @@
 import {expect,test} from "@playwright/test";
-import {check as runCheck,inspector,openFile} from "./helpers";
+import {apiAction,check as runCheck,inspector,loadStudio,openFile} from "./helpers";
 
 test("data/layer/evaluation errors focus typed fields; runtime errors retain frozen settings",async({page})=>{
   page.on("dialog",dialog=>void dialog.accept());
-  await page.goto("/");
+  await loadStudio(page);
   await openFile(page);
   const check=async(path:string,field:string,repair:string,hide?:()=>Promise<void>)=>{
     await page.locator(`.properties-panel input[data-field="${field}"]`).fill("0.5");
     await hide?.();
-    await runCheck(page);
+    await runCheck(page,"Check fields",422);
     const problem=page.locator(".problems-list").getByRole("button").filter({hasText:path}).first();
     await expect(problem).toBeVisible({timeout:30000});
     await page.getByRole("button",{name:"Training",exact:true}).click();
@@ -48,7 +48,8 @@ test("data/layer/evaluation errors focus typed fields; runtime errors retain fro
   await page.getByRole("button",{name:"Pipeline",exact:true}).click();
   await expect(input).toHaveValue("features");
   await page.getByRole("button",{name:"Runs",exact:true}).click();
-  await page.getByRole("button",{name:"Open frozen settings as draft",exact:true}).first().click();
+  const identity=await page.getByLabel("Observed operation").inputValue();
+  await apiAction(page,`/operations/${identity}/config`,()=>page.getByRole("button",{name:"Open frozen settings as draft",exact:true}).first().click(),{method:"GET"});
   await expect(page.locator(".training-view")).toBeVisible({timeout:30000});
   await page.getByRole("button",{name:"Pipeline",exact:true}).click();
   await page.locator(".outline").getByRole("button",{name:"1. LinearEncoder",exact:true}).first().click();

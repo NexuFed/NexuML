@@ -3,6 +3,7 @@
 import argparse
 import json
 import math
+from importlib import import_module
 from pathlib import Path
 
 import torch
@@ -50,7 +51,8 @@ def component():
     Raises:
         AssertionError: If real execution accepts missing labels.
     """
-    from agent_demo.components import AbsoluteError
+    # These definitions are produced by the external workflow, not shipped with the fixture.
+    AbsoluteError = getattr(import_module("agent_demo.components"), "AbsoluteError")
 
     registry = get_component_registry()
     assert "agent_demo_mae" in {item.name for item in registry.entries()}
@@ -108,7 +110,7 @@ def component():
 
 def paper():
     """Check exact synthetic reference parity and native, non-overwriting routing."""
-    from agent_demo.paper import RMSNorm
+    RMSNorm = getattr(import_module("agent_demo.paper"), "RMSNorm")
 
     module = RMSNorm(eps=1e-6)
     assert not list(module.parameters()), "The reference has no learned scale"
@@ -124,6 +126,7 @@ def paper():
     torch.testing.assert_close(module(x), expected, atol=1e-6, rtol=1e-6)
     differentiable = x[1:].clone().requires_grad_()
     module(differentiable).sum().backward()
+    assert differentiable.grad is not None
     assert torch.isfinite(differentiable.grad).all()
     print("PASS: reference equation, zero/small inputs, epsilon placement, finite gradients")
     scenario = load_scenario("results/scenario.yaml")
@@ -177,7 +180,7 @@ def research():
         assert math.isclose(measured, evidence["validation_loss"], rel_tol=1e-6)
         observed[run.name] = measured
     print("PASS: three native attempts, unchanged protocol/cohort, recomputed validation scores")
-    print(json.dumps({"metrics": observed, "best_run": min(observed, key=observed.get)}))
+    print(json.dumps({"metrics": observed, "best_run": min(observed, key=observed.__getitem__)}))
 
 
 if __name__ == "__main__":

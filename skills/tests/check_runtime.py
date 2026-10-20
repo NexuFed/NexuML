@@ -25,7 +25,7 @@ class _MeanScore(PostTrainFitLayer):
         self.center = 0.0
 
     def collect_batch(self, x, y):
-        values = x[self.keys_in[0]]
+        values = x[next(iter(self.keys_in))]
         self.total += values.sum().item()
         self.count += values.numel()
 
@@ -33,7 +33,7 @@ class _MeanScore(PostTrainFitLayer):
         self.center = self.total / self.count
 
     def _transform_forward(self, x, y):
-        x[self.keys_out[0]] = (x[self.keys_in[0]] - self.center).abs().mean(dim=-1)
+        x[self.keys_out[0]] = (x[next(iter(self.keys_in))] - self.center).abs().mean(dim=-1)
         return x, y
 
     def _get_fit_state(self):
@@ -61,7 +61,9 @@ def main():
         AssertionError: If the installed behavior differs from the guidance.
     """
     text = (Path(__file__).resolve().parents[1] / "nexuml-library/SKILL.md").read_text()
-    snippet = re.search(r"```python\n(.*?)\n```", text, re.S).group(1)
+    match = re.search(r"```python\n(.*?)\n```", text, re.S)
+    assert match is not None, "Library skill is missing its Python example."
+    snippet = match.group(1)
     namespace = {}
     exec(snippet, namespace)
     definition = namespace["dropout"]

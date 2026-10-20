@@ -27,7 +27,9 @@ def main() -> None:
     parser.add_argument("--python", default=sys.executable)
     args = parser.parse_args()
     root = args.output.resolve()
-    root.mkdir(parents=True, exist_ok=True)
+    if root.exists():
+        parser.error("--output must be a new directory; never reuse an installed test environment")
+    root.mkdir(parents=True)
     home = root / "isolated user home"
     home.mkdir(exist_ok=True)
     env = {
@@ -40,6 +42,7 @@ def main() -> None:
     }
     # Verify packaging, not an editable checkout or its configured GPU index.
     env.pop("PYTHONPATH", None)
+    env.pop("PYTHONHOME", None)
     index = (
         []
         if os.name == "posix" and os.uname().sysname == "Darwin"
@@ -127,6 +130,17 @@ def main() -> None:
         assert identity["interface_version"] == 2
         assert identity["working_directory"] == str(root)
         executable = Path(identity["python_executable"])
+        subprocess.run(
+            [
+                str(executable),
+                "-I",
+                "-c",
+                "import nexuml,sys; from pathlib import Path; "
+                "assert Path(nexuml.__file__).resolve().is_relative_to(Path(sys.prefix).resolve())",
+            ],
+            env=env,
+            check=True,
+        )
         script = executable.parent / ("nexuml.exe" if os.name == "nt" else "nexuml")
         selected = {"STUDIO_TEST_PYTHON": str(executable), "STUDIO_TEST_NEXUML": str(script)}
         (root / "runtime.json").write_text(json.dumps(selected), encoding="utf-8")

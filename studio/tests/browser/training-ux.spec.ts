@@ -1,9 +1,9 @@
 import {expect,test} from "@playwright/test";
 import {parse} from "yaml";
-import {check,fileAction,inspector,openFile,trainingSection} from "./helpers";
+import {apiAction,check,fileAction,inspector,loadStudio,openFile,save,trainingSection} from "./helpers";
 
 test("exact form types, automatic fields, inheritance and retained invalid/custom settings",async({page})=>{
-  await page.goto("/");await openFile(page);
+  await loadStudio(page);await openFile(page);
   const read=async()=>{await page.getByRole("button",{name:"YAML",exact:true}).click();const config=parse(await page.getByLabel("Scenario YAML").inputValue());await page.getByRole("button",{name:"Close YAML",exact:true}).click();return config;};
   const original=await read();
   await page.getByRole("button",{name:"Training",exact:true}).click();
@@ -18,7 +18,7 @@ test("exact form types, automatic fields, inheritance and retained invalid/custo
   await page.getByLabel("Learning rate",{exact:true}).fill("1e-");
   await trainingSection(page,"Data loading");await trainingSection(page,"Basics");
   await expect(page.getByLabel("Learning rate",{exact:true})).toHaveValue("1e-");
-  await check(page);await expect(page.locator(".problems-list")).toContainText("training.lr");
+  await check(page,"Check fields",422);await expect(page.locator(".problems-list")).toContainText("training.lr");
   await trainingSection(page,"Execution");await page.locator(".problems-list button").filter({hasText:"training.lr"}).click();
   await expect(page.getByLabel("Learning rate",{exact:true})).toBeFocused();await page.getByLabel("Learning rate",{exact:true}).fill("1e-3");
   await page.locator('.training-content article:not([hidden])> .fields>details>summary').filter({hasText:"Raw configuration"}).click();
@@ -38,12 +38,12 @@ test("exact form types, automatic fields, inheritance and retained invalid/custo
   await page.locator('.training-content article:not([hidden])>.fields>details>summary').filter({hasText:"Raw configuration"}).click();
   const factories=JSON.parse(await page.getByLabel("Raw optimizer settings",{exact:true}).inputValue());
   factories.optimizer.args=[.9];factories.optimizer.kwargs={lr:.002,weight_decay:.01};
-  await page.getByLabel("Raw optimizer settings",{exact:true}).fill(JSON.stringify(factories));await page.getByRole("button",{name:"Apply Raw optimizer settings",exact:true}).click();
+  await page.getByLabel("Raw optimizer settings",{exact:true}).fill(JSON.stringify(factories));await apiAction(page,"/config/validate",()=>page.getByRole("button",{name:"Apply Raw optimizer settings",exact:true}).click());
   await expect(page.getByRole("button",{name:"Apply Raw optimizer settings",exact:true})).toHaveCount(0);
   await trainingSection(page,"Checkpoints and logging");await page.getByLabel("Resume Trainer checkpoint",{exact:true}).fill("retained.ckpt");await trainingSection(page,"Basics");await trainingSection(page,"Checkpoints and logging");await expect(page.getByLabel("Resume Trainer checkpoint",{exact:true})).toHaveValue("retained.ckpt");await page.getByLabel("Resume Trainer checkpoint",{exact:true}).fill("");
   config=await read();expect(config.training.batch_size).toBe(8);expect(config.data.loader.batch_size).toBeNull();expect(config.training.lr).toBe(.001);expect(config.training.scheduler.warmup).toBe(2);expect(config.training.optimizer.args).toEqual([.9]);expect(config.training.optimizer.kwargs).toEqual({lr:.002,weight_decay:.01});
   expect(config.pipeline).toEqual(original.pipeline);expect(config.logging).toEqual(original.logging);expect(config.evaluation).toEqual(original.evaluation);
-  const path=`training-ux-${Date.now()}.yaml`;await fileAction(page,"Save as…");await page.getByLabel("Config path",{exact:true}).fill(path);await page.getByRole("button",{name:"Save file",exact:true}).click();await expect(page.getByRole("dialog")).toBeHidden({timeout:30000});
+  const path=`training-ux-${Date.now()}.yaml`;await fileAction(page,"Save as…");await page.getByLabel("Config path",{exact:true}).fill(path);await save(page);await expect(page.getByRole("dialog")).toBeHidden({timeout:30000});
   await page.getByRole("button",{name:"Pipeline",exact:true}).click();await openFile(page,path);expect(await read()).toEqual(config);
   await page.locator(".outline").getByRole("button",{name:"1. LinearEncoder",exact:true}).first().click();
   await page.getByLabel("Output Dim",{exact:true}).fill("-");await inspector(page,"Routing");await inspector(page,"Settings");await expect(page.getByLabel("Output Dim",{exact:true})).toHaveValue("-");await page.getByLabel("Output Dim",{exact:true}).fill("2");

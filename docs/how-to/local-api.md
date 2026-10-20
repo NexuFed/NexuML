@@ -55,8 +55,10 @@ import FastAPI.
   browser origin is allowed. `localhost` and `127.0.0.1` are different origins.
 - REST requires `Authorization: Bearer <token>`. Optional `X-NexuML-Interface: 2`
   detects a mismatched client. Runtime identity is at `GET /api/v1/runtime`.
-  Interface major **2** requires matching Studio/Python versions; explicit old headers
-  fail with 409. The existing `/api/v1` transport prefix is unchanged.
+  Studio 0.1.x supports stable NexuML >=0.2.1,<0.3.0 with interface **2**; Python and npm
+  versions need not advance together. Runtime identity also reports Python's version
+  and executable. Explicit old interface headers fail with 409. The existing `/api/v1`
+  transport prefix is unchanged.
 - WebSocket upgrades require the exact allowed Origin. The first text frame must
   be `{"token":"<token>"}` within five seconds and at most 4096 bytes. No data is
   sent before authentication; invalid access closes with policy code 1008.

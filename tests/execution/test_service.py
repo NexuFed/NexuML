@@ -105,6 +105,6 @@ def test_resource_contract_rejects_unknown_fields_and_nonfinite_values():
     value = ResourceSnapshot(backend="local", source="limits", visible_nodes=0)
     assert value.model_dump()["visible_nodes"] == 0 and value.allocatable is None
     with pytest.raises(ValueError):
-        ResourceSnapshot(backend="local", source="limits", token="secret")
+        ResourceSnapshot.model_validate({"backend": "local", "source": "limits", "token": "secret"})
     with pytest.raises(ValueError):
         ResourceSnapshot(backend="local", source="limits", allocatable={"CPU": float("inf")})

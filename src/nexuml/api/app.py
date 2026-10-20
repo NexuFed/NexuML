@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import platform
 import sys
 from contextlib import asynccontextmanager
 from importlib.metadata import version
@@ -79,6 +80,7 @@ def create_app(settings: Settings) -> FastAPI:
             "interface_version": INTERFACE_VERSION,
             "nexuml_version": version("nexuml"),
             "python_executable": sys.executable,
+            "python_version": platform.python_version(),
             "working_directory": str(settings.directory),
         }
 

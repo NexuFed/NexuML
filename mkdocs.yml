@@ -82,6 +82,7 @@ nav:
   - Get started:
     - start/index.md
     - Installation: start/install.md
+    - Studio: studio.md
     - Your first scenario: start/train-cifar-resnet.md
   - Tutorials: tutorials.md
   - Guides:

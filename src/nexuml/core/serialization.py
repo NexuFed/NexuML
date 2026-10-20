@@ -92,7 +92,17 @@ def restore_model_data(data: Mapping[str, Any], model_type: type[BaseModel]) -> 
 def _located_error(error: ValidationError, *prefix: str | int) -> ValidationError:
     return ValidationError.from_exception_data(
         error.title,
-        [{**item, "loc": (*prefix, *item["loc"])} for item in error.errors(include_url=False)],
+        [
+            {
+                "type": item["type"],
+                "loc": (*prefix, *item["loc"]),
+                "input": item["input"],
+                "ctx": item["ctx"],
+            }
+            if "ctx" in item
+            else {"type": item["type"], "loc": (*prefix, *item["loc"]), "input": item["input"]}
+            for item in error.errors(include_url=False)
+        ],
     )
 
 

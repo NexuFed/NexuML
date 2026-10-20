@@ -277,7 +277,9 @@ def _ray_resources(
     try:
         from ray.util.state import list_nodes
 
-        rows = list_nodes(address=address, timeout=budget.remaining(), limit=limit, detail=True)
+        rows = list_nodes(
+            address=address, timeout=max(1, int(budget.remaining())), limit=limit, detail=True
+        )
         live = [row for row in rows if row.state == "ALIVE"]
         snapshot.reachable = True
         snapshot.visible_nodes = len(live)

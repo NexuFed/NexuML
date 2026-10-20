@@ -107,7 +107,7 @@ class _ReconstructionVisualizerRuntime(EvalAlgorithm):
             else:
                 payload[f"label__{label_key}"] = torch.full((original.shape[0],), float("nan"))
 
-        self._storage.add_batch(TensorDict(payload, batch_size=[original.shape[0]]))  # ty: ignore[invalid-argument-type]
+        self._storage.add_batch(TensorDict(payload, batch_size=[original.shape[0]]))
 
     def eval_end(self) -> None:
         pass

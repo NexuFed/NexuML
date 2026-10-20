@@ -118,7 +118,7 @@ def test_native_classification_observes_finalized_accuracy_and_f1(tmp_path, monk
     scenario.evaluation.algorithms = []
     path = tmp_path / "observations.jsonl"
     session = NexuSession(scenario, enable_progress_bar=False)
-    session.trainer.callbacks.append(Observation(path))
+    getattr(session.trainer, "callbacks").append(Observation(path))
     session.run()
     events = [json.loads(line) for line in path.read_text().splitlines()]
     samples = [event["payload"] for event in events if event["kind"] == "metrics"]

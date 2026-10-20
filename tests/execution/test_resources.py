@@ -78,7 +78,8 @@ def test_budgets_reject_unbounded_and_expire(monkeypatch):
         budget.remaining()
 
 
-def test_ray_read_only_live_nodes_are_not_kubernetes_nodes(monkeypatch):
+@pytest.mark.parametrize("timeout", [10, 0.1])
+def test_ray_read_only_live_nodes_are_not_kubernetes_nodes(monkeypatch, timeout):
     calls = []
     fake = SimpleNamespace(
         list_nodes=lambda **kwargs: (
@@ -97,11 +98,13 @@ def test_ray_read_only_live_nodes_are_not_kubernetes_nodes(monkeypatch):
         target={"address": "ray://explicit:10001", "dashboard_address": "http://explicit:8265"},
         resources_per_worker={"CPU": 4, "GPU": 1},
     )
-    value = resources._ray_resources(execution, limit=3)
+    value = resources._ray_resources(execution, timeout=timeout, limit=3)
     assert value.visible_nodes == 2 and value.matching_nodes == 1
     assert value.allocatable == {"CPU": 6, "GPU": 1}
     assert value.unallocated is None  # this supported API does not expose it
     assert calls[0]["address"] == "http://explicit:8265" and calls[0]["detail"]
+    assert isinstance(calls[0]["timeout"], int)
+    assert 0 < calls[0]["timeout"] <= max(1, timeout)
     assert not value.complete and "partial" in " ".join(value.diagnostics)
 
 
@@ -280,6 +283,7 @@ def test_unselected_multi_role_fit_stays_unknown_but_role_fits_are_reported(monk
         {"manifest": manifest},
     )
     assert result["allocatable"]["cpu"] == 8
+    assert result["unallocated"]["cpu"] == 8
     assert result["matching_nodes"] is None and result["nodes"][0]["eligible"] is None
     assert [role["matching_nodes"] for role in result["roles"]] == [1, 1]
     assert "overall fit is unknown" in " ".join(result["diagnostics"])

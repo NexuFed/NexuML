@@ -66,7 +66,10 @@ npm launcher                       selected existing NexuML installation
                                              in owned subprocesses
 ```
 
-The browser calls FastAPI directly on a separate loopback port. Next.js supplies protected runtime connection bootstrap information but does not proxy ML operations or implement a second API. Explicit origin restrictions cover both transports. This avoids relying on WebSocket upgrade proxying through ordinary Next.js Route Handlers or requiring a custom Next.js server.
+The browser uses its Studio origin for HTTP/WebSockets. Next.js forwards `/api/v1`
+to the selected loopback API with fixed upstream Host/Origin, preserving bearer and
+first-frame authentication and stripping cookies/proxy metadata. This is transport,
+not a second ML API; no custom Next.js server or new service is required.
 
 **Alternative rejected:** a Next.js-owned training service or a single custom Node server that duplicates framework behavior. The Python installation already owns the dependencies and domain APIs.
 
@@ -100,7 +103,13 @@ nexuml-studio .
 
 These are proposed interfaces, not commands currently supplied by this branch. Installation documentation must use the actual release's package index/version constraints; it must not imply that an unpublished package or PyPI release already exists. Windows examples use the corresponding executable paths.
 
-Missing NexuML/API dependencies or unsupported interface versions produce explicit setup errors. A runtime handshake reports the actual NexuML version, Python executable, working directory, and interface major version. It is a compatibility check, not a generic plugin/negotiation framework.
+Missing NexuML/API dependencies or unsupported versions produce explicit setup errors.
+Studio 0.1.x accepts stable NexuML >=0.2.1,<0.3.0 with interface 2; Python, Studio and
+interface versions remain separate. Shared launcher/browser policy rejects unknown
+minor/prerelease/interface versions before opening the workbench/catalog, with the
+required/selected version in the error. The handshake also reports Python's version,
+executable and working directory. Supported backend patch releases do not require a
+Studio bump. This is a compatibility check, not a negotiation framework.
 
 **Alternative rejected:** npm bootstrapping Python or locating uv internals and importing from their directories. Executable/interpreter selection already handles uv isolation correctly.
 
@@ -157,6 +166,16 @@ Local stop interrupts the owned process group/tree, waits a bounded grace period
 Both Next.js and FastAPI bind to loopback. The launcher generates a cryptographically random session token and passes it privately to owned child processes; it never includes the token in CLI arguments, URL parameters, `.env` files in the working directory, logs, or compiled assets. Manual/API-attach startup accepts a user-supplied environment/private-file token.
 
 Next.js's noncached, same-origin bootstrap route supplies runtime connection information to its own browser session after Host/Origin/Fetch-Metadata checks. Nothing secret uses build-time `NEXT_PUBLIC_*` variables. Browser REST requests authenticate with a bearer token held in memory. Allow only the actual Studio origin for API CORS; no wildcard origins or local-network exposure.
+
+Host/Origin/Fetch-Metadata checks constrain browsers, not arbitrary HTTP clients.
+Local users/processes are trusted. Hosted HTTPS access still defaults to 127.0.0.1;
+non-loopback listening requires explicit configuration and a firewall-to-proxy warning.
+Hosting additionally requires a private >=32-byte proxy token, supplied by a restricted
+file and overwritten into `X-NexuML-Studio-Proxy` by the externally authenticated proxy.
+Bootstrap and API forwarding reject missing/wrong proxy credentials, including direct
+requests spoofing public/local headers. Strip this credential before forwarding to
+Python. A public origin or forwarded identity header alone never establishes authentication.
+No account system, provisioning or mandatory service is introduced for local operation.
 
 For WebSockets, check Host and Origin before accepting the upgrade, then require the session token in a short-deadline first authentication frame before subscribing or sending any invocation data. Reject invalid/missing authentication, impose frame-size limits, and never log that frame. An initial frame avoids leaking credentials in WebSocket URLs and accounts for browser WebSocket clients not supporting arbitrary Authorization headers. Keep state-changing actions in authenticated REST.
 
@@ -318,11 +337,29 @@ Preserve the 4px spacing baseline, 24px gutters, 16px mobile margins, 4px contro
 
 The npm package `@nexufed/nexuml-studio` supplies the `nexuml-studio` launcher, compiled production Next.js assets, local fonts, and required runtime dependencies. Resolve assets relative to the package, not the user's cwd; pass the selected working directory to NexuML explicitly. Store mutable application runtime/cache data outside immutable package assets.
 
-Build once during release, not on user startup. Prefer normal prebuilt Next.js production output plus npm-installed runtime dependencies over copying a Linux-built standalone dependency tree into a supposedly cross-platform package. If standalone output is selected during implementation, build/package its platform-dependent assets correctly and explicitly include `public` and `.next/static`; the output mode alone is not a portability guarantee.
+Build/pack exactly once in CI, not once per test target or on user startup. Retain
+normal Next.js production output plus npm-installed Next/React runtime dependencies:
+the inspected standalone trace contains Linux Sharp/libvips native binaries. Avoid
+platform-specific artifacts or undocumented trace exclusions. Copy only production
+assets/config into a private disposable directory and link those three npm runtime
+packages; frontend-only build dependencies do not become installed runtime dependencies.
 
 Exclude source-checkout secrets, test fixtures, Python environments, and development dependency trees from npm artifacts. Keep Python wheel/sdist builds unchanged except for the API modules/extra. Existing frontend-free CLI commands remain lazily independent of FastAPI.
 
 Add scripts for frontend typecheck, lint, focused tests, browser tests, build, and package smoke validation. Validate `npm pack` output installed into a clean directory with both a uv-tool runtime and an existing project runtime. Run launcher/process/REST/WebSocket/asset checks on Linux, macOS, and Windows. A CPU-only synthetic installed-library scenario is the end-to-end training acceptance case; real cluster/GPU tests are optional and must not be silently started by ordinary CI.
+
+Maintainer override (2026-10-20): all Linux jobs use ika-runner; macOS/Windows entries
+are temporarily disabled, not considered verified. Original portability acceptance
+remains open. Trusted repository branch pushes/manual dispatch replace fork PR execution
+on institute infrastructure; missing fork checks must not become a passing gate.
+Python/npm builds upload immutable artifacts with npm integrity and commit identity;
+test jobs consume the same files and the required CI gate fails on any failed/skipped/
+cancelled dependency. Release `v*` and `studio-v*` namespaces are independent. npm
+publication verifies protected-main ancestry, exact successful CI/artifact identity and
+packed metadata, then publishes without rebuilding through a protected environment,
+OIDC and provenance. Its publish-only GitHub-hosted runner is explicitly approved
+because npm does not support self-hosted Trusted Publishing. Python publication remains
+independent. No release/tag/package is published during implementation.
 
 **Alternative rejected:** shipping a development checkout, asking users to build Next.js, assuming platform-specific traced dependencies work everywhere, or claiming success from `npm run dev` alone.
 

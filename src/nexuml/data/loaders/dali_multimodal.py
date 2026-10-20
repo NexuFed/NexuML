@@ -123,11 +123,11 @@ class KeyedDaliIterator(DALIGenericIterator):
         y_dict: dict[str, torch.Tensor] = {key: out[key] for key in self.y_keys if key in out}
         if self.metadata_labels is not None:
             indices = out[INDEX_OUTPUT].reshape(-1).long().cpu()
-            label_batch = cast(TensorDict, self.metadata_labels[indices])
+            label_batch = self.metadata_labels[indices]
             for key, value in label_batch.items():
                 y_dict[str(key)] = cast(torch.Tensor, value)
 
-        y = TensorDict(y_dict, batch_size=x.batch_size) if y_dict else None  # ty: ignore[invalid-argument-type]
+        y = TensorDict(y_dict, batch_size=x.batch_size) if y_dict else None
         return x, y
 
 

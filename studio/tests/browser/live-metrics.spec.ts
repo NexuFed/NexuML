@@ -1,12 +1,13 @@
 import {expect,test} from "@playwright/test";
 import {parseDocument,stringify} from "yaml";
+import {apiAction,applyYaml,loadStudio,observe,openRun,reviewRun} from "./helpers";
 
 test("real batch loss charts update while training and retain finalized classification metrics on reconnect",async({page},testInfo)=>{
   const failures:string[]=[];page.on("pageerror",error=>failures.push(error.message));
-  await page.goto("/");
+  await loadStudio(page);
   await page.locator(".welcome").getByRole("button",{name:"Choose a recipe",exact:true}).click();
   await page.getByLabel("Discovered scenario").selectOption("synthetic-linear-ae-multiclass");
-  await page.getByRole("button",{name:"Resolve recipe",exact:true}).click();
+  await apiAction(page,"/scenarios/synthetic-linear-ae-multiclass/resolve",()=>page.getByRole("button",{name:"Resolve recipe",exact:true}).click());
   await expect(page.getByRole("dialog")).toBeHidden({timeout:30000});
   await page.getByRole("button",{name:"YAML",exact:true}).click();
   const config=parseDocument(await page.getByLabel("Scenario YAML").inputValue()).toJS();
@@ -20,13 +21,13 @@ test("real batch loss charts update while training and retain finalized classifi
   config.training.accelerator="cpu";config.training.devices=1;
   config.training.metric_keys=["accuracy","f1"];config.evaluation.algorithms=[];
   await page.getByLabel("Scenario YAML").fill(stringify(config));
-  await page.getByRole("button",{name:"Apply YAML",exact:true}).click();
+  await applyYaml(page);
   await expect(page.getByRole("status")).toContainText("YAML applied",{timeout:30000});
   await page.getByRole("button",{name:"Close YAML",exact:true}).click();
-  await page.getByRole("button",{name:"Run…",exact:true}).click();
-  await page.getByRole("button",{name:"Review selection",exact:true}).click();
+  await openRun(page);
+  await reviewRun(page);
   await expect(page.getByRole("button",{name:"Run on Local",exact:true})).toBeEnabled();
-  await page.getByRole("button",{name:"Run on Local",exact:true}).click();
+  await apiAction(page,"/train",()=>page.getByRole("button",{name:"Run on Local",exact:true}).click(),{status:202});
   const loss=page.locator(".metric").filter({has:page.locator("span",{hasText:/^train\/loss$/})});
   await expect(loss).toBeVisible({timeout:30000});
   await expect(page.locator(".status-grid")).toContainText("running");
@@ -42,8 +43,8 @@ test("real batch loss charts update while training and retain finalized classifi
   }
   const identity=await page.getByLabel("Observed operation").inputValue();
   const retained=await loss.locator("svg").getAttribute("aria-label");
-  await page.reload();await page.getByRole("button",{name:"Runs",exact:true}).click();
-  await page.getByLabel("Observed operation").selectOption(identity);
+  await loadStudio(page,()=>page.reload());await page.getByRole("button",{name:"Runs",exact:true}).click();
+  await observe(page,identity);
   await expect(loss.locator("svg")).toHaveAttribute("aria-label",retained!,{timeout:30000});
   await page.setViewportSize({width:390,height:844});
   await page.screenshot({path:testInfo.outputPath("metric-charts-mobile.png"),fullPage:true});

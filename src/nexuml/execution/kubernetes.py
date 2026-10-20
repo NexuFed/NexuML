@@ -13,6 +13,7 @@ from typing import Any
 
 from nexuml.core.serialization import lower_component, restore_component
 from nexuml.execution.capacity import node_resources, pod_requests, quantities
+from nexuml.execution.definitions import KubernetesExecution
 from nexuml.execution.resources import DiscoveryBudget
 from nexuml.execution.schemas import NativeReference, ResourceSnapshot
 from nexuml.execution.semantics import ExecutionError
@@ -386,9 +387,12 @@ def _discover(
             name: sum(node.allocatable.get(name, 0) for node in snapshot.nodes) for name in names
         }
         if pods is not None:
+            unallocated = []
+            for node in snapshot.nodes:
+                assert node.unallocated is not None
+                unallocated.append(node.unallocated)
             snapshot.unallocated = {
-                name: sum(node.unallocated.get(name, 0) for node in snapshot.nodes)
-                for name in names
+                name: sum(row.get(name, 0) for row in unallocated) for name in names
             }
         snapshot.matching_nodes = (
             sum(bool(node.eligible) for node in snapshot.nodes) if selected_role else None
@@ -521,6 +525,8 @@ def prepare_job(
     execution = scenario.execution
     if plan.get("resolved_execution") and execution.context is None:
         resolved = restore_component(kind="execution_backend", value=plan["resolved_execution"])
+        if not isinstance(resolved, KubernetesExecution):
+            raise ExecutionError("Resolved execution must be a Kubernetes backend.")
         execution = execution.model_copy(update={"context": resolved.context})
     selected = scenario.model_copy(update={"execution": execution})
     source_revision = hashlib.sha256(
@@ -580,7 +586,9 @@ def cancel(reference: NativeReference) -> dict:
             "params": {"context": reference.context, "namespace": reference.namespace},
         },
     )
-    if not execution.capabilities.get("cancellation"):
+    if not isinstance(execution, KubernetesExecution) or not execution.capabilities.get(
+        "cancellation"
+    ):
         raise ExecutionError(
             "This backend cannot confirm native cancellation; use native operator tooling."
         )

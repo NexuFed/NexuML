@@ -8,7 +8,10 @@ Expose existing NexuML operations to a local user interface through REST and Web
 
 ### Requirement: Existing runtime identity
 
-The API SHALL run in the user-selected NexuML installation and report its NexuML version, Python executable, working directory, and interface version. It SHALL NOT combine libraries or dependencies from unrelated Python environments.
+The API SHALL run in the user-selected NexuML installation and report its NexuML
+version, Python version/executable, working directory, and interface version. Package
+versions SHALL remain separate from the API interface version. It SHALL NOT combine
+libraries or dependencies from unrelated Python environments.
 
 #### Scenario: API starts from a uv tool installation
 - **WHEN** the server is launched through the tool-installed NexuML executable

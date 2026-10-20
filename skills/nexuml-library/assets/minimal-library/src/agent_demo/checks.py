@@ -33,6 +33,7 @@ def main():
     dataset = PairedVectors(samples=8).build()
     x, y = dataset[0]
     assert len(dataset) == 8 and x.batch_size == torch.Size([])
+    assert y is not None
     assert x["features"].shape == (4,) and y["target"].shape == (4,)
     torch.testing.assert_close(y["target"], 2 * x["features"])
     torch.testing.assert_close(
