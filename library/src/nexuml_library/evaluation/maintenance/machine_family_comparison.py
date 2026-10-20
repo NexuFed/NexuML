@@ -99,11 +99,13 @@ def compare_machine_family_generalization(
     selected: set[tuple[int, str]] = set()
     for mode in ("reference", "constant"):
         machine_keys = {
-            key for key in machine_scores[mode]
+            key
+            for key in machine_scores[mode]
             if family is None or key[1].startswith(f"{family}:")
         }
         family_keys = {
-            key for key in family_scores[mode]
+            key
+            for key in family_scores[mode]
             if family is None or key[1].startswith(f"{family}:")
         }
         if machine_keys != family_keys:
@@ -116,9 +118,10 @@ def compare_machine_family_generalization(
     families = sorted({group.split(":")[0] for _, group in selected})
     for name in families:
         for seed in machine_seeds:
-            expected = {(seed, f"{name}:{identity}") for identity in (
-                "id_00", "id_02", "id_04", "id_06"
-            )}
+            expected = {
+                (seed, f"{name}:{identity}")
+                for identity in ("id_00", "id_02", "id_04", "id_06")
+            }
             if not expected.issubset(selected):
                 raise ValueError(f"Missing complete four-machine family {name} for seed {seed}")
     pairs: list[dict[str, Any]] = []
@@ -156,6 +159,7 @@ def compare_machine_family_generalization(
         "unseen_family_reference",
         "unseen_family_constant",
     )
+
     def average(items: list[dict[str, Any]], key: str) -> float:
         """Macro-average an equally weighted collection of machine scores."""
         return sum(float(item[key]) for item in items) / len(items)
@@ -211,9 +215,7 @@ def main() -> None:
     parser.add_argument("--machine-aggregate", type=Path, required=True)
     parser.add_argument("--family-aggregate", type=Path, required=True)
     parser.add_argument("--output-file", type=Path, required=True)
-    parser.add_argument(
-        "--family", choices=("fan", "pump", "slider", "valve")
-    )
+    parser.add_argument("--family", choices=("fan", "pump", "slider", "valve"))
     args = parser.parse_args()
     if args.output_file.exists():
         raise FileExistsError(f"Refusing to overwrite {args.output_file}")
