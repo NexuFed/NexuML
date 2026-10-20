@@ -14,7 +14,6 @@ from pathlib import Path
 from typing import Any, cast
 
 import numpy as np
-import torch
 from numpy.typing import NDArray
 from torch import Tensor
 
@@ -429,9 +428,7 @@ def _one_seed(
                 if training_condition == "faulty_only"
                 else (0, 1)
             )
-            train_x = np.concatenate(
-                [latent[training_ids, state] for state in training_parts]
-            )
+            train_x = np.concatenate([latent[training_ids, state] for state in training_parts])
             train_y = np.concatenate([y[training_ids] for _ in training_parts])
             result["classifiers"][training_condition] = _logistic_report(
                 train_x, train_y, evaluations, classes
@@ -452,9 +449,7 @@ def _one_seed(
             "standardizer_fit": "training_healthy_only",
             "pca_fit": "training_healthy_only",
             "pca_components": components,
-            "pca_explained_variance_ratio_sum": float(
-                np.sum(pca.explained_variance_ratio_)
-            ),
+            "pca_explained_variance_ratio_sum": float(np.sum(pca.explained_variance_ratio_)),
             "source_fisher_dim": int(embeddings.shape[-1]),
         },
         "healthy_train_swd": {"labels": names, "matrix": matrix},
@@ -525,8 +520,7 @@ def identify_pseudo_machine_types(
             averages[target][regime] = {}
             for split_state in evaluations:
                 per_seed = [
-                    run["targets"][target]["classifiers"][regime][split_state]
-                    for run in runs
+                    run["targets"][target]["classifiers"][regime][split_state] for run in runs
                 ]
                 averages[target][regime][split_state] = {
                     key: {
@@ -588,7 +582,11 @@ def identify_pseudo_machine_types(
 
 
 def main() -> None:
-    """Write seeded machine-identity and pseudo-type inference report."""
+    """Write seeded machine-identity and pseudo-type inference report.
+
+    Raises:
+        FileExistsError: If the output path already exists.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source-file", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
