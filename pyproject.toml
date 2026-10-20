@@ -155,11 +155,6 @@ convention = "google"
 extra-paths = ["src", "library/src"]
 
 [[tool.uv.index]]
-name = "pytorch-cu128"
-url = "https://download.pytorch.org/whl/cu128"
-explicit = true
-
-[[tool.uv.index]]
 name = "nvidia-pypi"
 url = "https://pypi.nvidia.com"
 explicit = true
@@ -168,10 +163,6 @@ explicit = true
 members = ["library"]
 
 [tool.uv.sources]
-torch = [{ index = "pytorch-cu128" }]
-torchvision = [{ index = "pytorch-cu128" }]
-torchaudio = [{ index = "pytorch-cu128" }]
-torchcodec = [{ index = "pytorch-cu128" }]
 nvidia-dali-cuda120 = [{ index = "nvidia-pypi" }]
 nexuml = { workspace = true } 
 nexuml-library = { workspace = true }
