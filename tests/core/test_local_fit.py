@@ -1,6 +1,7 @@
 """Small synthetic unit fixtures, never native SO-101 demonstration evidence."""
 
 from dataclasses import asdict
+import importlib
 import json
 
 import pandas as pd
@@ -11,6 +12,7 @@ from tensordict import TensorDict
 from nexuml.core.compiler import compile
 from nexuml.core.components import DataSourceDefinition
 from nexuml.core.discovery import data_source
+from nexuml.core.pipeline import CompiledPipeline
 from nexuml.core.serialization import lower_model
 from nexuml.core.types import (
     DataSpec,
@@ -302,3 +304,232 @@ def test_manifest_preserves_executable_stage_order(tmp_path):
             budget={"steps": 1},
             seed=0,
         )
+
+
+def test_bias_only_scope_is_applied_before_optimizer_and_repeats_exactly(tmp_path, monkeypatch):
+    args = request(tmp_path)
+    initial = args["initial_tensors"]
+    scope = tuple(name for name in initial if name.endswith(".bias"))
+    assert scope
+    manifest = local_fit_manifest(args["trusted_recipe"], initial, trainable_names=scope)
+    assert manifest["recipe_hash"] != args["model_manifest"]["recipe_hash"]
+    original_optimizer = CompiledPipeline.create_optimizer
+    optimizer_scopes = []
+
+    def checked_optimizer(pipeline):
+        selected = {name for name, param in pipeline.named_parameters() if param.requires_grad}
+        assert selected == set(scope)
+        optimizer_scopes.append(selected)
+        return original_optimizer(pipeline)
+
+    monkeypatch.setattr(CompiledPipeline, "create_optimizer", checked_optimizer)
+    selected_args: dict[str, Any] = {**args, "trainable_names": scope, "model_manifest": manifest}
+    result = local_fit(**selected_args)
+    repeated = local_fit(**selected_args)
+    assert len(optimizer_scopes) == 2
+    assert result.train_windows == 8 and result.episodes == 2
+    assert result.metrics["optimizer_steps"] == 3
+    assert result.metrics["consumed_windows"] == 12
+    assert result.provenance["model_manifest"] == manifest
+    assert set(result.updated_tensors) == set(initial)
+    for name, value in result.updated_tensors.items():
+        assert manifest["tensors"][name]["role"] == ("trainable" if name in scope else "frozen")
+        assert torch.equal(value, repeated.updated_tensors[name])
+        assert torch.equal(value, initial[name]) == (name not in scope)
+        assert value.device.type == "cpu" and not value.requires_grad
+
+
+def test_manifest_distinguishes_explicit_scope_without_changing_default(tmp_path):
+    args = request(tmp_path)
+    scenario, state = args["trusted_recipe"], args["initial_tensors"]
+    assert local_fit_manifest(scenario, state, trainable_names=None) == args["model_manifest"]
+    scope = tuple(state)
+    explicit = local_fit_manifest(scenario, state, trainable_names=scope)
+    assert explicit["tensors"] == args["model_manifest"]["tensors"]
+    assert explicit["base_version"] == args["model_manifest"]["base_version"]
+    assert explicit["recipe_hash"] != args["model_manifest"]["recipe_hash"]
+    assert explicit == local_fit_manifest(scenario, state, trainable_names=tuple(reversed(scope)))
+
+
+@pytest.mark.parametrize("bad", ["empty", "string", "list", "duplicate", "unknown", "type", "glob"])
+def test_reject_invalid_scope_before_dataset_build(tmp_path, monkeypatch, bad):
+    args = request(tmp_path)
+    name = next(iter(args["initial_tensors"]))
+    scope: Any = {
+        "empty": (),
+        "string": name,
+        "list": [name],
+        "duplicate": (name, name),
+        "unknown": ("not_a_parameter",),
+        "type": (name, []),
+        "glob": ("*.bias",),
+    }[bad]
+    monkeypatch.setattr(UnitEpisodes, "build", lambda *_: pytest.fail("unauthorized build"))
+    with pytest.raises(ValueError, match="scope"):
+        local_fit_manifest(args["trusted_recipe"], args["initial_tensors"], trainable_names=scope)
+    with pytest.raises(ValueError, match="scope"):
+        local_fit(**{**args, "trainable_names": scope})
+
+
+@pytest.mark.parametrize("bad", ["buffer", "frozen"])
+def test_reject_ineligible_tensor_scope_before_dataset_build(tmp_path, monkeypatch, bad):
+    args = request(tmp_path)
+    name = "unit_buffer" if bad == "buffer" else next(iter(args["initial_tensors"]))
+
+    def ineligible_pipeline(scenario):
+        pipeline = compile(scenario)
+        if bad == "buffer":
+            pipeline.register_buffer(name, torch.zeros(1))
+        else:
+            pipeline.get_parameter(name).requires_grad_(False)
+        return pipeline
+
+    if bad == "buffer":
+        args["initial_tensors"][name] = torch.zeros(1)
+    args["trainable_names"] = (name,)
+    module = importlib.import_module("nexuml.training.local_fit")
+    monkeypatch.setattr(module, "compile", ineligible_pipeline)
+    monkeypatch.setattr(UnitEpisodes, "build", lambda *_: pytest.fail("unauthorized build"))
+    with pytest.raises(ValueError, match="originally trainable parameter"):
+        local_fit(**args)
+
+
+def test_reject_scope_manifest_mismatch_before_dataset_build(tmp_path, monkeypatch):
+    args = request(tmp_path)
+    scope = tuple(name for name in args["initial_tensors"] if name.endswith(".bias"))
+    args["model_manifest"] = local_fit_manifest(
+        args["trusted_recipe"], args["initial_tensors"], trainable_names=scope
+    )
+    monkeypatch.setattr(UnitEpisodes, "build", lambda *_: pytest.fail("unauthorized build"))
+    with pytest.raises(ValueError, match="manifest"):
+        local_fit(**args)
+
+
+@pytest.mark.parametrize(
+    "device", [None, 0, "auto", "cpu:0", "cuda", "gpu", "mps", "cuda:-1", "cuda:0,1", "cuda:01"]
+)
+def test_reject_ambiguous_or_unsupported_device_before_dataset_build(tmp_path, monkeypatch, device):
+    args = request(tmp_path)
+    monkeypatch.setattr(UnitEpisodes, "build", lambda *_: pytest.fail("unauthorized build"))
+    monkeypatch.setattr(
+        torch.cuda, "is_available", lambda: pytest.fail("ambiguous device must not query CUDA")
+    )
+    with pytest.raises(ValueError, match="device"):
+        local_fit(**{**args, "device": device})
+
+
+@pytest.mark.parametrize("available,count,device", [(False, 0, "cuda:0"), (True, 1, "cuda:1")])
+def test_reject_unavailable_device_before_dataset_build(
+    tmp_path, monkeypatch, available, count, device
+):
+    args = request(tmp_path)
+    monkeypatch.setattr(torch.cuda, "is_available", lambda: available)
+    monkeypatch.setattr(torch.cuda, "device_count", lambda: count)
+    monkeypatch.setattr(UnitEpisodes, "build", lambda *_: pytest.fail("unauthorized build"))
+    with pytest.raises(ValueError, match="not available"):
+        local_fit(**{**args, "device": device})
+
+
+def test_episode_receipt_describes_physical_contract_once_without_changing_hash(
+    tmp_path, monkeypatch
+):
+    from nexuml.training.local_fit import _episode_receipt
+
+    scenario = recipe(tmp_path, robot=True)
+    dataset = UnitDataset(scenario.data.datasets[0].source)
+    expected = _episode_receipt(dataset, scenario)
+    original_describe = IsaacLabEnvironment.describe
+    calls = []
+
+    def counted_describe(environment):
+        calls.append(environment)
+        return original_describe(environment)
+
+    monkeypatch.setattr(IsaacLabEnvironment, "describe", counted_describe)
+    assert _episode_receipt(dataset, scenario) == expected
+    assert len(calls) == 1
+
+
+def test_repeated_fit_revalidates_changed_private_windows(tmp_path, monkeypatch):
+    args = request(tmp_path)
+    local_fit(**args)
+    original_getitem = UnitDataset.__getitem__
+
+    def changed_window(dataset, index):
+        x, y = original_getitem(dataset, index)
+        y["action"][0] = float("nan")
+        return x, y
+
+    monkeypatch.setattr(UnitDataset, "__getitem__", changed_window)
+    monkeypatch.setattr(
+        "nexuml.training.lightning.NexuSession.fit", lambda *_: pytest.fail("fit called")
+    )
+    with pytest.raises(ValueError, match="finite"):
+        local_fit(**args)
+
+
+def test_reject_changes_outside_selected_scope(tmp_path, monkeypatch):
+    from nexuml.training.lightning import NexuSession
+
+    args = request(tmp_path)
+    scope = tuple(name for name in args["initial_tensors"] if name.endswith(".bias"))
+    frozen = next(name for name in args["initial_tensors"] if name not in scope)
+    args["trainable_names"] = scope
+    args["model_manifest"] = local_fit_manifest(
+        args["trusted_recipe"], args["initial_tensors"], trainable_names=scope
+    )
+    original_fit = NexuSession.fit
+
+    def changed_frozen(session):
+        result = original_fit(session)
+        with torch.no_grad():
+            session.pipeline.get_parameter(frozen).add_(1)
+        return result
+
+    monkeypatch.setattr(NexuSession, "fit", changed_frozen)
+    with pytest.raises(ValueError, match="outside the shared trainable scope"):
+        local_fit(**args)
+
+
+@pytest.mark.requires_gpu
+def test_explicit_single_cuda_fit_updates_on_gpu_and_returns_cpu_tensors(tmp_path, monkeypatch):
+    from nexuml.training.lightning import NexuSession
+    from nexuml.training.local_fit import _hash
+
+    args = request(tmp_path)
+    steps = []
+    config_hashes = []
+    original_optimizer = CompiledPipeline.create_optimizer
+    original_fit = NexuSession.fit
+
+    def checked_step(optimizer, step_args, step_kwargs):
+        parameters = [param for group in optimizer.param_groups for param in group["params"]]
+        assert parameters and all(param.device == torch.device("cuda:0") for param in parameters)
+        gradients = [param.grad for param in parameters if param.grad is not None]
+        assert gradients and all(grad.device == torch.device("cuda:0") for grad in gradients)
+        steps.append(1)
+
+    def checked_optimizer(pipeline):
+        optimizer = original_optimizer(pipeline)
+        optimizer.register_step_post_hook(checked_step)
+        return optimizer
+
+    def checked_fit(session):
+        training = session.scenario.training
+        assert training.accelerator == session.accelerator == "gpu"
+        assert training.devices == session.devices == "0,"
+        assert training.precision == "32-true" and training.deterministic
+        config_hashes.append(_hash(lower_model(training)))
+        return original_fit(session)
+
+    monkeypatch.setattr(CompiledPipeline, "create_optimizer", checked_optimizer)
+    monkeypatch.setattr(NexuSession, "fit", checked_fit)
+    args["device"] = "cuda:0"
+    result = local_fit(**args)
+    assert len(steps) == result.metrics["optimizer_steps"] == 3
+    assert result.provenance["fit_config_hash"] == config_hashes[0]
+    assert result.provenance["model_manifest"] == args["model_manifest"]
+    assert result.train_windows == 8 and result.episodes == 2
+    for name, value in result.updated_tensors.items():
+        assert value.device.type == "cpu" and not value.requires_grad
+        assert not torch.equal(value, args["initial_tensors"][name])

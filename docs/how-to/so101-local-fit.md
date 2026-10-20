@@ -101,6 +101,7 @@ result = local_fit(
     budget={"steps": 50},  # alternatively {"epochs": 2}; exactly one positive integer
     seed=42,
     optimizer_mode="reset",
+    device="cpu",  # default; no automatic GPU selection
 )
 ```
 
@@ -111,17 +112,52 @@ locally; do not trust a remote manifest to select executable code. An incoming
 round's tensors replace the previous round's model state exactly. Every fit owns
 a fresh session and optimizer; optimizer continuation is rejected.
 
-The first SDK contract deliberately supports sequential single-process CPU fits,
-one complete on-disk episode source, fixed episode partitions, a fixed batch size
-and the ordinary Torch loader. It does not promise arbitrary window samplers,
-distributed training, hidden preprocessing or persistent per-site state. Existing
-supervised/RL session APIs retain their own broader capabilities.
+The NEX-234 CPU/reset reference remains the default. Fits are sequential and
+single-process, with one complete on-disk episode source, fixed episode partitions,
+a fixed batch size and the ordinary Torch loader. Optional `device="cuda:N"`
+selects exactly one operator-approved available GPU by its process-visible index;
+`auto`, unindexed `cuda`, indexed CPU and other accelerators are rejected before
+data loading. Both paths use deterministic training and `32-true` precision through
+the existing `NexuSession`; no mixed precision, distributed training or optimizer
+continuation is supported. CPU and CUDA results need not be bitwise identical.
+
+Single-CUDA execution requires a real optimizer-on-device proof on the approved
+stack before calling it tested; the argument alone is not GPU acceptance or a new
+native SO-101 quality result. With the GPU idle and approved for this check, set
+the deterministic cuBLAS environment **before** CUDA initialization:
+
+```bash
+CUBLAS_WORKSPACE_CONFIG=:4096:8 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 \
+  .venv/bin/pytest tests/core/test_local_fit.py -m requires_gpu -q
+```
+
+To update only an operator-selected subset, pass the same
+`trainable_names=("exact.parameter.name", ...)` to **both** `local_fit_manifest`
+and `local_fit`. The tuple must be nonempty, unique and contain only exact names
+of parameters already eligible for gradients in the installed recipe. Buffers,
+originally frozen parameters, unknown names and glob patterns are rejected before
+data loading. `None` preserves the original full eligible scope and default recipe
+hash; an explicit scope has its own recipe hash, even when selecting every eligible
+parameter. Unselected tensors are frozen and the returned full state must preserve
+them exactly. This is not a foundation-model, adapter or PEFT implementation.
+
+Arbitrary window samplers, hidden preprocessing and persistent per-site state
+remain unsupported here. Existing supervised/RL session APIs retain their own
+broader capabilities.
 
 The recipe's data binding is the local allowlist: `local_data` must match it
 exactly before the source is built. A caller changing that operator-owned recipe
 is privileged local code, not a remote authorization mechanism. Keep recipe
 construction and data validation in the installed client, not in a network
 request parser. Never deserialize a remote `torch.package` or pickle as an update.
+
+Each call recompiles/revalidates the model manifest and scans all episode metadata
+and numeric windows again; there is no admission cache over mutable paths. The
+physical `describe()` contract is captured once per episode receipt, without
+skipping any frame validation or changing receipt hashes. Keep the source stable
+during validation and training: revalidation is not an atomic snapshot guarantee.
+Future reuse requires content-versioned immutable model/data snapshots, explicit
+invalidation and separate admission/round tests before any cache is safe.
 
 Outputs are detached contiguous CPU named tensors plus approved finite scalar
 metrics and opaque hashes. `update_kind="full"` means full state, **not a delta**.
@@ -136,6 +172,8 @@ batch examples, including repeats across epochs; `optimizer_steps` is the actual
 Lightning count. Data hashes cover split/clock metadata and numerical inputs and
 targets, not private paths. Raw episodes, videos, dataset paths, sessions,
 optimizer buffers and training checkpoints are never returned.
+Provenance retains the selected-scope manifest and a `fit_config_hash` of the actual
+training configuration, including device selection, precision, seed and budget.
 
 ## Handoff boundary
 
