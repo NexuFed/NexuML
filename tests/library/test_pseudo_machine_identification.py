@@ -90,6 +90,16 @@ def test_identification_evaluates_healthy_and_faulty_with_separate_splits(
         assert run["preprocessing"]["standardizer_fit"] == "training_healthy_only"
         assert run["preprocessing"]["pca_fit"] == "training_healthy_only"
         assert len(run["pseudo_type_hypotheses"]["k2"]["machine_to_pseudo_type"]) == 4
+        for key in ("k2", "k3"):
+            compatibility = run["pseudo_type_hypotheses"][key][
+                "held_out_fault_compatibility"
+            ]
+            assert len(compatibility["pairs"]) == 6
+            assert not compatibility["assessment_faulty_used_to_assign_pseudo_types"]
+            assert all(
+                "assessment_mean_fault_direction_cosine" in pair
+                for pair in compatibility["pairs"]
+            )
         for target, data in run["targets"].items():
             classes = len(data["class_labels"])
             assert classes == (4 if target == "machine_identity" else int(target[-1]))
@@ -124,10 +134,16 @@ def test_healthy_pseudo_clusters_do_not_depend_on_faulty_embeddings(
         source, seeds=(42,), pca_components=4, projections=8, bootstrap=4
     )
     assert before["runs"][0]["healthy_train_swd"] == after["runs"][0]["healthy_train_swd"]
-    assert (
-        before["runs"][0]["pseudo_type_hypotheses"]
-        == after["runs"][0]["pseudo_type_hypotheses"]
-    )
+    for key in ("k2", "k3"):
+        old = before["runs"][0]["pseudo_type_hypotheses"][key]
+        new = after["runs"][0]["pseudo_type_hypotheses"][key]
+        for field in (
+            "machine_to_pseudo_type",
+            "pseudo_type_sizes_in_machine_identities",
+            "bootstrap_mean_ari",
+            "bootstrap_exact_partition_fraction",
+        ):
+            assert old[field] == new[field]
     for target in ("machine_identity", "pseudo_k2", "pseudo_k3"):
         old = before["runs"][0]["targets"][target]["classifiers"]["healthy_only"]
         new = after["runs"][0]["targets"][target]["classifiers"]["healthy_only"]
