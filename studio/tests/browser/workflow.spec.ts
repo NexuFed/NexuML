@@ -2,6 +2,8 @@ import { expect, test } from "@playwright/test";
 import {apiAction,applyYaml,check,fileAction,inspector,loadStudio,navigation,observe,openFile,openRun,reviewRun,save} from "./helpers";
 
 test("real CPU config edit/save/check/build/train/reconnect/export and corporate responsive shell",async({page},testInfo)=>{
+  // CI reached export at 117.7s; allow the remaining bounded checks, not slower individual requests.
+  test.setTimeout(180000);
   const failures:string[]=[];const external:string[]=[];
   page.on("pageerror",error=>failures.push(error.message));
   page.on("request",request=>{if(!["127.0.0.1","localhost"].includes(new URL(request.url()).hostname))external.push(request.url());});

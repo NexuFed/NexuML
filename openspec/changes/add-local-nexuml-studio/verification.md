@@ -442,3 +442,28 @@ GitHub-hosted exception is required by npm OIDC.
   E404 for Studio and the GitHub `npm` environment is not yet configured; package/scope,
   MFA bootstrap if required, protected environment/tags and Trusted Publisher setup remain
   owner actions documented in `docs/development/release.md`.
+
+### Installed project workflow aggregate deadline
+
+- Exact-head run `39446250947` (`bf0ec2a`) passed both static gates, all three
+  GPU/Python suites, the single Studio build, Python packaging and the complete
+  installed uv-tool mode. Installed project mode passed 10/11 browser tests; its
+  required CI gate correctly failed rather than hiding the remaining failure.
+- Extracted Playwright's embedded step report for both modes. Tool mode completed
+  the combined edit/save/check/build/train/reconnect/export/responsive workflow in
+  72.656s. Project mode completed training at 101.71s, reconnected at 112.31s and
+  accepted export at 117.66s. The 120s **test** deadline interrupted its unchanged
+  30s export assertion after only 2.45s, with export still running/connected.
+  Ordinary selected-interpreter calls took about 5s versus 2.8s in tool mode;
+  no individual API deadline expired.
+- This single combined workflow now has a 180s aggregate budget, enough to honor
+  the existing final export/open checks after the measured setup. The default 120s
+  deadline, 30s API/export waits, 45s training wait, all 11 workflows, assertions and
+  artifact/security/ownership checks remain unchanged. No retries or product edits.
+- Focused frontend typecheck/lint, 36 unit tests, strict MkDocs and the 11-test listing
+  passed. A source comparison confirms every prior workflow line/assertion remains
+  verbatim apart from the two added deadline/comment lines; default config, helpers
+  and package smoke are byte-identical to the previous head. Full project-installed
+  same-tarball proof passed all 11 workflows in 3.5m, including CPU workflow in 48.8s,
+  offline/dependency invariants, hosted HTTP/WS security and owned/attached cleanup.
+  Evidence: `/tmp/opencode/nexuml packaged smoke dHz9dG/`.
