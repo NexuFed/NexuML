@@ -21,6 +21,9 @@ from nexuml_library.evaluation.maintenance.reference_conditioned_prepare import 
     build_reference_conditioned_fold,
     save_reference_conditioned_folds,
 )
+from nexuml_library.evaluation.maintenance.reference_conditioned_run import (
+    run_reference_conditioned_folds,
+)
 from nexuml_library.evaluation.maintenance.reference_conditioned_validation import (
     evaluate_reference_transport,
     evaluate_training_machine_validation,
@@ -318,3 +321,46 @@ def test_scenario_compiles_one_training_step_and_machine_wise_validation(
     )
     assert score["initial_swd"] > 0
     assert score["transported_swd"] >= 0
+
+
+def test_one_fold_runner_selects_checkpoint_before_unseen_assessment(
+    tmp_path: Path,
+) -> None:
+    """End-to-end CPU run isolates unseen faults and emits one assessment report."""
+    source = _raw_source(tmp_path)
+    prepared = tmp_path / "prepared"
+    save_reference_conditioned_folds(
+        source,
+        prepared,
+        heldout_machine="fan:id_06",
+        reference_size=4,
+        validation_fraction=0.25,
+    )
+    result = run_reference_conditioned_folds(
+        prepared / "manifest.json",
+        checkpoint_root=tmp_path / "run-checkpoints",
+        reports_dir=tmp_path / "run-reports",
+        heldout_machine="fan:id_06",
+        context_mode="reference",
+        width=12,
+        context_dim=5,
+        encoder_width=10,
+        num_steps=2,
+        batch_size=8,
+        max_epochs=1,
+        patience=2,
+        accelerator="cpu",
+    )
+    assert list(result["folds"]) == ["fan:id_06"]
+    report = result["folds"]["fan:id_06"]
+    assert Path(report["best_checkpoint"]).is_file()
+    assert report["unseen_machine_initial_swd"] > 0
+    assert (tmp_path / "run-reports" / "summary-reference.json").is_file()
+    with pytest.raises(FileExistsError, match="overwrite"):
+        run_reference_conditioned_folds(
+            prepared / "manifest.json",
+            checkpoint_root=tmp_path / "run-checkpoints",
+            reports_dir=tmp_path / "run-reports",
+            heldout_machine="fan:id_06",
+            accelerator="cpu",
+        )
