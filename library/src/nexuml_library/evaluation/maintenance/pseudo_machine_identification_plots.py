@@ -37,8 +37,9 @@ def plot_identification_report(report: dict[str, Any], output_dir: str | Path) -
             ax.set_yticks(range(len(labels)), labels)
             for row in range(len(labels)):
                 for column in range(len(labels)):
-                    ax.text(column, row, str(confusion[row, column]), ha="center",
-                            va="center")
+                    ax.text(
+                        column, row, str(confusion[row, column]), ha="center", va="center"
+                    )
             ax.set(
                 xlabel="Predicted",
                 ylabel="True",
@@ -59,10 +60,7 @@ def plot_identification_report(report: dict[str, Any], output_dir: str | Path) -
             group[regime][f"assessment_{condition}"]["accuracy"]["mean"]
             for regime in regimes
         ]
-        ax.bar(
-            x + offset * width, series, width,
-            label=f"Assessment {condition}",
-        )
+        ax.bar(x + offset * width, series, width, label=f"Assessment {condition}")
     ax.set(
         xticks=x,
         xticklabels=["Healthy-trained", "Faulty-trained", "Mixed-trained"],
@@ -70,8 +68,9 @@ def plot_identification_report(report: dict[str, Any], output_dir: str | Path) -
         ylabel="Mean identity recognition accuracy",
         title="Known-machine routing across acoustic conditions",
     )
-    ax.axhline(1.0 / len(report["machine_groups"]), linestyle="--",
-               label="Balanced chance")
+    ax.axhline(
+        1.0 / len(report["machine_groups"]), linestyle="--", label="Balanced chance"
+    )
     ax.legend()
     fig.tight_layout()
     fig.savefig(output / "identity-condition-comparison.png", dpi=180)
@@ -86,8 +85,9 @@ def plot_identification_report(report: dict[str, Any], output_dir: str | Path) -
     ax.set_yticks(range(len(names)), names)
     for row in range(len(names)):
         for column in range(len(names)):
-            ax.text(column, row, f"{swd['matrix'][row][column]:.2f}",
-                    ha="center", va="center")
+            ax.text(
+                column, row, f"{swd['matrix'][row][column]:.2f}", ha="center", va="center"
+            )
     ax.set_title("Training-healthy FISHER sliced W1: pseudo-type hypothesis")
     fig.tight_layout()
     fig.savefig(output / "healthy-training-machine-swd.png", dpi=180)
