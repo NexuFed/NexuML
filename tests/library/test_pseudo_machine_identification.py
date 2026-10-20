@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-import numpy as np
 import pytest
 import torch
 
@@ -183,4 +182,3 @@ def test_invalid_or_duplicated_source_and_splits_are_rejected(tmp_path: Path) ->
             groups, sorted(set(groups)), seed=42,
             train_fraction=0.8, validation_fraction=0.2
         )
-    assert np.isfinite(np.float64(1.0))
