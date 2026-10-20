@@ -74,7 +74,11 @@ def read_healthy_reference_training(path: str | Path) -> dict[str, Any]:
         if row.get("group_id") not in names:
             raise ValueError("Query machine is absent from reference sets")
         index = row.get("reference_index")
-        if not isinstance(index, int) or names[index] != row["group_id"]:
+        if (
+            not isinstance(index, int)
+            or not 0 <= index < len(names)
+            or names[index] != row["group_id"]
+        ):
             raise ValueError("Query references do not match their machine")
         for key in ("healthy_file", "faulty_file"):
             filename = row.get(key)
