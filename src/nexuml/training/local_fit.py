@@ -9,6 +9,7 @@ import inspect
 import json
 import math
 from pathlib import Path
+import re
 from tempfile import TemporaryDirectory
 from typing import Any
 
@@ -69,19 +70,44 @@ def _check_recipe(recipe) -> None:
         raise ValueError("Local fit requires the deterministic single-process TorchLoader")
 
 
+def _apply_trainable_scope(
+    pipeline: torch.nn.Module, trainable_names: tuple[str, ...] | None
+) -> set[str]:
+    eligible = {name for name, param in pipeline.named_parameters() if param.requires_grad}
+    trainable = eligible
+    if trainable_names is not None:
+        if (
+            not isinstance(trainable_names, tuple)
+            or not trainable_names
+            or any(type(name) is not str for name in trainable_names)
+            or len(set(trainable_names)) != len(trainable_names)
+        ):
+            raise ValueError("Trainable scope requires a nonempty tuple of unique parameter names")
+        trainable = set(trainable_names)
+        if not trainable <= eligible:
+            raise ValueError("Trainable scope requires originally trainable parameter names")
+    if not trainable:
+        raise ValueError("Local fit requires a nonempty trainable scope")
+    for name, param in pipeline.named_parameters():
+        param.requires_grad_(name in trainable)
+    return trainable
+
+
 def local_fit_manifest(
-    trusted_recipe: ScenarioSpec, initial_tensors: Mapping[str, torch.Tensor]
+    trusted_recipe: ScenarioSpec,
+    initial_tensors: Mapping[str, torch.Tensor],
+    *,
+    trainable_names: tuple[str, ...] | None = None,
 ) -> dict[str, Any]:
     """Describe exact numeric state and locally installed model/physical semantics.
 
     The caller, not a remote request, owns ``trusted_recipe``. Build the expected
     manifest locally; never resolve an import, recipe or dataset from this manifest.
+    ``trainable_names`` may select only originally trainable parameters by exact name.
+    Unsupported recipes, initial states or scopes raise ``ValueError``.
 
     Returns:
         A numeric-state schema with content-pinned architecture and base identity.
-
-    Raises:
-        ValueError: If the recipe or initial state is unsupported or incompatible.
     """
     _check_recipe(trusted_recipe)
     # Compilation needs explicit input shapes, not access to private episodes.
@@ -90,9 +116,7 @@ def local_fit_manifest(
         pipeline = compile(trusted_recipe)
     state = pipeline.state_dict()
     _validate_tensors(initial_tensors, state)
-    trainable = {name for name, param in pipeline.named_parameters() if param.requires_grad}
-    if not trainable:
-        raise ValueError("Local fit requires a nonempty trainable scope")
+    trainable = _apply_trainable_scope(pipeline, trainable_names)
     code_types: set[type] = {type(module) for module in pipeline.modules()}
     code_types.update(
         type(layer.component)
@@ -120,6 +144,8 @@ def local_fit_manifest(
         "training": lower_model(trusted_recipe.training),
         "loader": lower_model(trusted_recipe.data.loader),
     }
+    if trainable_names is not None:
+        semantics["trainable_names"] = sorted(trainable)
     return {
         "schema_version": 1,
         "update_kind": "full",
@@ -181,9 +207,10 @@ def _episode_receipt(dataset, recipe) -> tuple[int, int, str]:
     train = meta[meta["split"] == "train"]
     if train.empty:
         raise ValueError("Local fit has no eligible training windows")
-    if recipe.interaction is not None:
+    contract = recipe.interaction.environment.describe() if recipe.interaction is not None else None
+    if contract is not None:
         recorded = getattr(dataset, "info", {}).get("provenance", {}).get("interaction_contract")
-        expected = lower_model(recipe.interaction.environment.describe())
+        expected = lower_model(contract)
         if recorded != expected:
             raise ValueError("Local episode physical/processor contract differs from the recipe")
     digest = hashlib.sha256()
@@ -192,8 +219,7 @@ def _episode_receipt(dataset, recipe) -> tuple[int, int, str]:
         x, y = dataset[index]
         if y is None:
             raise ValueError("Local fit requires numeric target windows")
-        if recipe.interaction is not None:
-            contract = recipe.interaction.environment.describe()
+        if contract is not None:
             if set(x.keys()) != set(contract.observations):
                 raise ValueError("Local data includes undeclared actor inputs")
             CompiledPolicy._validate_fields(x, contract.observations, "Local observation")
@@ -217,13 +243,17 @@ def local_fit(
     budget: Mapping[str, int],
     seed: int,
     optimizer_mode: str = "reset",
+    trainable_names: tuple[str, ...] | None = None,
+    device: str = "cpu",
 ) -> LocalFitResult:
     """Fit approved private episodes with NexuSession and a fresh optimizer each call.
 
     ``local_data`` must exactly match the operator-owned recipe binding. Budgets
     contain exactly one positive integer, ``steps`` or ``epochs``. One frame is
     one eligible window in this first, non-chunked contract; counts are not steps.
-    Calls are sequential, single-process CPU fits, independent of any simulator.
+    Calls are sequential single-process fits on CPU or one explicitly selected
+    available ``cuda:N`` device, independent of any simulator. ``trainable_names``
+    must match the operator-selected scope used to build the manifest.
 
     Returns:
         Validated CPU numeric tensors, allowlisted scalars and opaque fingerprints.
@@ -234,6 +264,17 @@ def local_fit(
     _check_recipe(trusted_recipe)
     if optimizer_mode != "reset":
         raise ValueError("Only optimizer_mode='reset' is supported")
+    devices: int | str = 1
+    if device == "cpu":
+        accelerator = "cpu"
+    elif isinstance(device, str) and re.fullmatch(r"cuda:(0|[1-9][0-9]*)", device):
+        index = int(device.split(":")[1])
+        if not torch.cuda.is_available() or index >= torch.cuda.device_count():
+            raise ValueError("Selected CUDA device is not available")
+        accelerator = "gpu"
+        devices = f"{index},"  # Lightning interprets an unseparated integer as a device count.
+    else:
+        raise ValueError("device must be 'cpu' or one explicit 'cuda:N' device")
     if type(seed) is not int or not 0 <= seed < 2**32:
         raise ValueError("seed must be an unsigned 32-bit integer")
     if not isinstance(budget, Mapping) or set(budget) not in ({"steps"}, {"epochs"}):
@@ -260,7 +301,7 @@ def local_fit(
         raise ValueError(
             "Local fit requires complete approved on-disk episodes with preserved splits"
         )
-    expected = local_fit_manifest(trusted_recipe, initial_tensors)
+    expected = local_fit_manifest(trusted_recipe, initial_tensors, trainable_names=trainable_names)
     if dict(model_manifest) != expected:
         raise ValueError("Model manifest/base/physical semantics differ from the installed recipe")
     state = {name: value.detach().cpu().clone() for name, value in initial_tensors.items()}
@@ -270,8 +311,8 @@ def local_fit(
             "max_steps": amount if "steps" in budget else None,
             "seed": seed,
             "deterministic": True,
-            "accelerator": "cpu",
-            "devices": 1,
+            "accelerator": accelerator,
+            "devices": devices,
             "strategy": "auto",
             "precision": "32-true",
         }
@@ -280,13 +321,14 @@ def local_fit(
     with TemporaryDirectory(prefix="nexuml-local-fit-") as private_run:
         session = NexuSession(
             scenario,
-            accelerator="cpu",
-            devices=1,
+            accelerator=accelerator,
+            devices=devices,
             log_dir=private_run,
             enable_loggers=False,
             enable_progress_bar=False,
         )
         session.pipeline.load_state_dict(state, strict=True)
+        _apply_trainable_scope(session.pipeline, trainable_names)
         windows, episodes, data_hash = _episode_receipt(session.data_module.dataset, scenario)
         consumption = _Consumption()
         getattr(session.trainer, "callbacks").append(consumption)
