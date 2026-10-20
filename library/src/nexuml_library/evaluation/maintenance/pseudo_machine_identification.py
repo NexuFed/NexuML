@@ -159,6 +159,48 @@ def _clusters(matrix: list[list[float]], names: list[str], count: int) -> dict[s
     return {name: i for i, members in enumerate(canonical) for name in members}
 
 
+def _held_out_fault_compatibility(
+    normalized: FloatArray,
+    machine_labels: IntArray,
+    assessment_ids: IntArray,
+    names: list[str],
+    assigned: dict[str, int],
+) -> dict[str, Any]:
+    """Check fault-shift agreement without influencing healthy-only grouping.
+
+    Faulty *assessment* observations are used only after the pseudo-type
+    memberships are fixed from healthy training distributions.
+
+    Returns:
+        Pairwise displacement cosine and within/across-pseudo-type averages.
+    """
+    shifts: dict[str, FloatArray] = {}
+    for machine_id, name in enumerate(names):
+        rows = assessment_ids[machine_labels[assessment_ids] == machine_id]
+        shifts[name] = normalized[rows, 1].mean(0) - normalized[rows, 0].mean(0)
+    within: list[float] = []
+    across: list[float] = []
+    pairs: list[dict[str, Any]] = []
+    for i, left in enumerate(names):
+        for right in names[i + 1 :]:
+            first, second = shifts[left], shifts[right]
+            denominator = float(np.linalg.norm(first) * np.linalg.norm(second))
+            cosine = float(np.dot(first, second) / denominator) if denominator > 0 else None
+            same = assigned[left] == assigned[right]
+            pairs.append({
+                "left": left, "right": right, "same_healthy_pseudo_type": same,
+                "assessment_mean_fault_direction_cosine": cosine,
+            })
+            if cosine is not None:
+                (within if same else across).append(cosine)
+    return {
+        "pairs": pairs,
+        "within_pseudo_type_mean_cosine": float(np.mean(within)) if within else None,
+        "across_pseudo_type_mean_cosine": float(np.mean(across)) if across else None,
+        "assessment_faulty_used_to_assign_pseudo_types": False,
+    }
+
+
 def _score(
     truth: IntArray,
     predicted: IntArray,
@@ -311,6 +353,7 @@ def _one_seed(
     matrix = _swd_matrix(per_machine, names)
 
     cluster_hypotheses: dict[str, Any] = {}
+    assessment_ids = np.asarray(partition["assessment"], dtype=np.int64)
     for count in (2, 3):
         if count >= len(names):
             continue
@@ -339,6 +382,9 @@ def _one_seed(
             "bootstrap_exact_partition_fraction": partitions_equal / bootstrap,
             "bootstrap_repetitions": bootstrap,
             "model_selection_uses_faulty_embeddings": False,
+            "held_out_fault_compatibility": _held_out_fault_compatibility(
+                normalized, machine_labels, assessment_ids, names, original
+            ),
         }
 
     representations = {"machine_identity": machine_labels}
