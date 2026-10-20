@@ -55,12 +55,8 @@ def _conditional_layer(
         ValueError: If a checkpoint is not a healthy-reference flow.
     """
     artifacts.pipeline.to(device).eval()
-    matches = [
-        layer for stage, _, layer in artifacts.pipeline.iter_layers() if stage == "Flow"
-    ]
-    if len(matches) != 1 or not isinstance(
-        matches[0], _HealthyReferenceConditionedFlowRuntime
-    ):
+    matches = [layer for stage, _, layer in artifacts.pipeline.iter_layers() if stage == "Flow"]
+    if len(matches) != 1 or not isinstance(matches[0], _HealthyReferenceConditionedFlowRuntime):
         raise ValueError("Expected trained HealthyReferenceConditionedFlow layer")
     return matches[0]
 
@@ -125,7 +121,7 @@ def run_reference_conditioned_folds(
         context_mode: Healthy-reference conditioning or constant-context ablation.
         width: Width of both vector-field MLP hidden layers.
         context_dim: DeepSets output dimension.
-        encoder_width: DeepSets pointwise hidden width.
+        encoder_width: DeepSets point-wise hidden width.
         num_steps: Euler integration step count.
         lr: Adam learning rate.
         batch_size: Flow Matching train batch size.
@@ -137,6 +133,7 @@ def run_reference_conditioned_folds(
         Per-fold validation-selected SWD and unseen-machine assessments.
 
     Raises:
+        FileNotFoundError: If the manifest file does not exist.
         ValueError: If split provenance or model configuration is inconsistent.
         FileExistsError: If output reports already exist.
     """
@@ -173,9 +170,9 @@ def run_reference_conditioned_folds(
         raise FileExistsError("Refusing to overwrite previous NEX-233 evaluation")
     report_root.mkdir(parents=True, exist_ok=True)
     device = torch.device(
-        "cuda" if accelerator == "gpu" or (
-            accelerator == "auto" and torch.cuda.is_available()
-        ) else "cpu"
+        "cuda"
+        if accelerator == "gpu" or (accelerator == "auto" and torch.cuda.is_available())
+        else "cpu"
     )
     summary: dict[str, Any] = {
         "protocol": protocol,
@@ -191,9 +188,7 @@ def run_reference_conditioned_folds(
         if "assessment_files" in entry:
             assessment_files = {
                 group: Path(filename)
-                for group, filename in cast(
-                    dict[str, str], entry["assessment_files"]
-                ).items()
+                for group, filename in cast(dict[str, str], entry["assessment_files"]).items()
             }
         else:
             assessment_files = {machine: Path(entry["assessment_file"])}
@@ -279,16 +274,14 @@ def run_reference_conditioned_folds(
                 )
             assessment_recordings[group] = len(healthy)
         unseen = {
-            "initial_swd": sum(
-                value["initial_swd"] for value in unseen_by_machine.values()
-            ) / len(unseen_by_machine),
-            "transported_swd": sum(
-                value["transported_swd"] for value in unseen_by_machine.values()
-            ) / len(unseen_by_machine),
+            "initial_swd": sum(value["initial_swd"] for value in unseen_by_machine.values())
+            / len(unseen_by_machine),
+            "transported_swd": sum(value["transported_swd"] for value in unseen_by_machine.values())
+            / len(unseen_by_machine),
             "swd_relative_reduction": sum(
-                value["swd_relative_reduction"]
-                for value in unseen_by_machine.values()
-            ) / len(unseen_by_machine),
+                value["swd_relative_reduction"] for value in unseen_by_machine.values()
+            )
+            / len(unseen_by_machine),
         }
         report = {
             "heldout_machine": machine,
@@ -330,10 +323,7 @@ def run_reference_conditioned_folds(
             "unseen_by_machine": unseen_by_machine,
             "best_checkpoint": str(best),
         }
-        print(
-            f"Held out {machine}: macro unseen SWD reduction "
-            f"{unseen['swd_relative_reduction']:+.2%}"
-        )
+        print(f"Held out {machine}: unseen SWD reduction {unseen['swd_relative_reduction']:+.2%}")
     summary_path.write_text(json.dumps(summary, indent=2) + "\n")
     return summary
 

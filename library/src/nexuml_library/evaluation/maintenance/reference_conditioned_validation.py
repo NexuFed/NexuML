@@ -88,6 +88,9 @@ def evaluate_training_machine_validation(
 
     Returns:
         Per-machine validation SWD and unweighted mean across machine IDs.
+
+    Raises:
+        ValueError: If validation data is missing for a training machine.
     """
     artifact = read_healthy_reference_training(training_file)
     features = cast(Tensor, artifact["features"])
@@ -97,8 +100,7 @@ def evaluate_training_machine_validation(
     per_machine: dict[str, dict[str, float]] = {}
     for index, name in enumerate(machines):
         mask = [
-            i for i, row in enumerate(rows)
-            if row["split"] == "val" and row["group_id"] == name
+            i for i, row in enumerate(rows) if row["split"] == "val" and row["group_id"] == name
         ]
         if not mask:
             raise ValueError(f"Missing validation data for training machine {name}")
@@ -120,7 +122,8 @@ def evaluate_training_machine_validation(
         / len(per_machine),
         "mean_relative_reduction": sum(
             row["swd_relative_reduction"] for row in per_machine.values()
-        ) / len(per_machine),
+        )
+        / len(per_machine),
     }
 
 
@@ -142,24 +145,17 @@ class HealthyReferenceTransportValidation(Callback):
         self.seed = seed
 
     @torch.no_grad()
-    def on_validation_epoch_end(
-        self, trainer: Trainer, pl_module: LightningModule
-    ) -> None:
+    def on_validation_epoch_end(self, trainer: Trainer, pl_module: LightningModule) -> None:
         """Log the macro-averaged conditional transport SWD for callbacks.
 
         Raises:
+            TypeError: If the Lightning module is not a NexuLightningModule.
             ValueError: If the expected trained conditional layer is missing.
         """
         if not isinstance(pl_module, NexuLightningModule):
             raise TypeError("Healthy-reference validation requires NexuLightningModule")
-        matches = [
-            layer
-            for stage, _, layer in pl_module.pipeline.iter_layers()
-            if stage == "Flow"
-        ]
-        if len(matches) != 1 or not isinstance(
-            matches[0], _HealthyReferenceConditionedFlowRuntime
-        ):
+        matches = [layer for stage, _, layer in pl_module.pipeline.iter_layers() if stage == "Flow"]
+        if len(matches) != 1 or not isinstance(matches[0], _HealthyReferenceConditionedFlowRuntime):
             raise ValueError("Expected one HealthyReferenceConditionedFlow runtime")
         scores = evaluate_training_machine_validation(
             matches[0],
