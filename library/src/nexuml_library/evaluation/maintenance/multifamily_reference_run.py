@@ -201,7 +201,12 @@ def main() -> None:
     parser.add_argument("--prepared-index", type=Path, required=True)
     parser.add_argument("--output-root", type=Path, required=True)
     parser.add_argument("--protocol", choices=("machine", "family"), required=True)
-    parser.add_argument("--modes", nargs="+", choices=("reference", "constant"), default=["reference", "constant"])
+    parser.add_argument(
+        "--modes",
+        nargs="+",
+        choices=("reference", "constant"),
+        default=["reference", "constant"],
+    )
     parser.add_argument("--seeds", type=int, nargs="+")
     parser.add_argument("--heldout-machine", type=str)
     parser.add_argument("--width", type=int, default=128)
