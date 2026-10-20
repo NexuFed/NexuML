@@ -286,6 +286,7 @@ def prepare_multifamily_protocols(
 
     Raises:
         ValueError: If complete MIMII source or requested options are invalid.
+        FileExistsError: If any requested output already exists.
     """
     _validated_source(source_file)
     if protocols not in {"both", "machine", "family"} or not seeds or len(set(seeds)) != len(seeds):
