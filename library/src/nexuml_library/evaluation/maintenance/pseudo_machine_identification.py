@@ -530,6 +530,7 @@ def main() -> None:
     parser.add_argument("--pca-components", type=int, default=32)
     parser.add_argument("--projections", type=int, default=128)
     parser.add_argument("--bootstrap", type=int, default=32)
+    parser.add_argument("--plots-dir", type=Path)
     args = parser.parse_args()
     report = identify_pseudo_machine_types(
         args.source_file,
@@ -544,6 +545,12 @@ def main() -> None:
     if args.output.exists():
         raise FileExistsError(f"Refusing to overwrite {args.output}")
     args.output.write_text(json.dumps(report, indent=2) + "\n")
+    if args.plots_dir is not None:
+        from nexuml_library.evaluation.maintenance.pseudo_machine_identification_plots import (
+            plot_identification_report,
+        )
+
+        plot_identification_report(report, args.plots_dir)
     for regime in ("healthy_only", "faulty_only", "mixed"):
         target = report["aggregate"]["machine_identity"][regime]
         healthy = target["assessment_healthy"]["accuracy"]["mean"]
