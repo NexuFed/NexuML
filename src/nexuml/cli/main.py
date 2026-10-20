@@ -6,6 +6,7 @@ import inspect
 import json
 import sys
 import warnings
+from contextlib import ExitStack
 from pathlib import Path
 from typing import Any, Optional, cast
 
@@ -332,130 +333,134 @@ def evaluate_cmd(
     from nexuml.tracking.logger import create_loggers, log_text_artifact
     from nexuml.evaluation.policy import evaluate_policy, resolve_policy_evaluation
 
-    loggers = []
-    failed = False
-    try:
-        policy, config, metadata = load_inference_package(policy_package)
-        if (
-            metadata.get("artifact_kind") != "policy"
-            or not callable(policy)
-            or any(
-                getattr(policy, name, None) is None
-                for name in ("pipeline", "action_adapter", "contract")
-            )
-            or not callable(getattr(policy, "parameters", None))
-        ):
-            raise ValueError(
-                "evaluate requires a complete exported policy package, not raw weights/pipeline"
-            )
-        policy = cast(CompiledPolicy, policy)
-        # torch.package may isolate Pydantic classes with unresolved serialization references.
-        policy.contract = InteractionContract.model_validate(metadata["interaction_contract"])
-        scenario = config.to_scenario()
-        if scenario.interaction is None or scenario.policy is None:
-            raise ValueError(
-                "policy package requires an embedded RL scenario or an offline scenario with "
-                "interaction, policy and policy_evaluation configuration"
-            )
-
-        keys = [item.partition("=")[0] for item in override or []]
-        new_path = any(
-            key == "policy_evaluation" or key.startswith("policy_evaluation.") for key in keys
-        )
-        legacy_path = any(
-            key == "training.evaluation" or key.startswith("training.evaluation.") for key in keys
-        )
-        if new_path and legacy_path:
-            raise ValueError("Cannot mix policy_evaluation and training.evaluation overrides")
-        evaluation_path = (
-            "policy_evaluation"
-            if scenario.policy_evaluation is not None or new_path
-            else "training.evaluation"
-        )
-        if scenario.policy_evaluation is None and new_path and "policy_evaluation" not in keys:
-            raise ValueError(
-                "Missing policy_evaluation block; supply a whole policy_evaluation={...} override"
-            )
-        for item in override or []:
-            key, separator, _ = item.partition("=")
-            if separator and not any(
-                key == allowed or key.startswith(f"{allowed}.")
-                for allowed in (
-                    evaluation_path,
-                    "logging",
-                    "interaction.evaluation_environment",
+    with ExitStack() as job:
+        loggers = []
+        failed = False
+        try:
+            policy, config, metadata = load_inference_package(policy_package)
+            if (
+                metadata.get("artifact_kind") != "policy"
+                or not callable(policy)
+                or any(
+                    getattr(policy, name, None) is None
+                    for name in ("pipeline", "action_adapter", "contract")
                 )
+                or not callable(getattr(policy, "parameters", None))
             ):
                 raise ValueError(
-                    f"Override {key!r} is not supported for replay: only {evaluation_path}, "
-                    "logging, and interaction.evaluation_environment may change; "
-                    "the packaged policy/pipeline cannot be replaced"
+                    "evaluate requires a complete exported policy package, not raw weights/pipeline"
                 )
-        apply_overrides(scenario, override or [])
-        # Assignment does not validate specs; serialization also restores whole-dict overrides.
-        scenario = ScenarioSpec.model_validate(
-            restore_model_data(lower_model(scenario), ScenarioSpec)
-        )
-        _, evaluation, _ = resolve_policy_evaluation(scenario)
-        if device is not None and evaluation.episodes:
-            policy.to(device)
-        video = evaluation.video
-        source_frames = metadata.get("training_frames")
-        if type(source_frames) is not int or source_frames < 0:
-            source_frames = None
-        frame_step = source_frames if source_frames is not None else 0
-        provenance = {
-            "source_package": str(policy_package.resolve()),
-            "source_config_hash": metadata.get("config_hash"),
-            "source_training_frames": source_frames,
-            "interaction_contract_hash": metadata.get("interaction_contract_hash"),
-            "resolved_config": lower_model(scenario),
-        }
-        loggers = create_loggers(scenario.logging, run_name=f"{scenario.name}-evaluation")
-        media_sink = None
-        if video.enabled:
-            from nexuml.tracking.logger import log_evaluation_media, preflight_evaluation_media
+            policy = cast(CompiledPolicy, policy)
+            # torch.package may isolate Pydantic classes with unresolved serialization references.
+            policy.contract = InteractionContract.model_validate(metadata["interaction_contract"])
+            scenario = config.to_scenario()
+            if scenario.interaction is None or scenario.policy is None:
+                raise ValueError(
+                    "policy package requires an embedded RL scenario or an offline scenario with "
+                    "interaction, policy and policy_evaluation configuration"
+                )
 
-            preflight_evaluation_media(loggers, video)
-
-            def media_sink(frames, metadata):
-                log_evaluation_media(loggers, frames, metadata, video, step=frame_step)
-
-        if loggers:
-            log_text_artifact(loggers, json.dumps(provenance, indent=2), "source_package.json")
-            log_text_artifact(
-                loggers, ResolvedConfig.from_scenario(scenario).to_yaml(), "config.yaml"
+            keys = [item.partition("=")[0] for item in override or []]
+            new_path = any(
+                key == "policy_evaluation" or key.startswith("policy_evaluation.") for key in keys
             )
-        metrics = evaluate_policy(
-            policy,
-            scenario,
-            media_sink=media_sink,
-            frame_step=frame_step,
-            provenance=provenance,
-        )
-        for logger in loggers:
-            logger.log_metrics(metrics, step=frame_step)
-    except SystemExit:
-        failed = True
-        raise
-    except (Exception, KeyboardInterrupt) as exc:
-        failed = True
-        console.print(f"[red]Evaluation failed: {str(exc) or 'cancelled'}[/red]")
-        raise typer.Exit(1) from exc
-    finally:
-        failed = failed or sys.exception() is not None
-        finalization_error = None
-        for logger in loggers:
-            try:
-                logger.finalize("failed" if failed else "success")
-            except (Exception, KeyboardInterrupt) as exc:
-                finalization_error = exc
-                console.print(f"[red]Evaluation logger finalization failed: {exc}[/red]")
-        if finalization_error is not None and not failed:
-            raise typer.Exit(1) from finalization_error
+            legacy_path = any(
+                key == "training.evaluation" or key.startswith("training.evaluation.")
+                for key in keys
+            )
+            if new_path and legacy_path:
+                raise ValueError("Cannot mix policy_evaluation and training.evaluation overrides")
+            evaluation_path = (
+                "policy_evaluation"
+                if scenario.policy_evaluation is not None or new_path
+                else "training.evaluation"
+            )
+            if scenario.policy_evaluation is None and new_path and "policy_evaluation" not in keys:
+                raise ValueError(
+                    "Missing policy_evaluation block; "
+                    "supply a whole policy_evaluation={...} override"
+                )
+            for item in override or []:
+                key, separator, _ = item.partition("=")
+                if separator and not any(
+                    key == allowed or key.startswith(f"{allowed}.")
+                    for allowed in (
+                        evaluation_path,
+                        "logging",
+                        "interaction.evaluation_environment",
+                    )
+                ):
+                    raise ValueError(
+                        f"Override {key!r} is not supported for replay: only {evaluation_path}, "
+                        "logging, and interaction.evaluation_environment may change; "
+                        "the packaged policy/pipeline cannot be replaced"
+                    )
+            apply_overrides(scenario, override or [])
+            # Assignment does not validate specs; serialization also restores whole-dict overrides.
+            scenario = ScenarioSpec.model_validate(
+                restore_model_data(lower_model(scenario), ScenarioSpec)
+            )
+            definition, evaluation, _ = resolve_policy_evaluation(scenario)
+            job.enter_context(definition.job_scope())
+            if device is not None and evaluation.episodes:
+                policy.to(device)
+            video = evaluation.video
+            source_frames = metadata.get("training_frames")
+            if type(source_frames) is not int or source_frames < 0:
+                source_frames = None
+            frame_step = source_frames if source_frames is not None else 0
+            provenance = {
+                "source_package": str(policy_package.resolve()),
+                "source_config_hash": metadata.get("config_hash"),
+                "source_training_frames": source_frames,
+                "interaction_contract_hash": metadata.get("interaction_contract_hash"),
+                "resolved_config": lower_model(scenario),
+            }
+            loggers = create_loggers(scenario.logging, run_name=f"{scenario.name}-evaluation")
+            media_sink = None
+            if video.enabled:
+                from nexuml.tracking.logger import log_evaluation_media, preflight_evaluation_media
 
-    console.print("[green]Evaluation complete![/green]")
-    console.print(f"  Policy evaluation (frame step {frame_step}): {metrics}")
+                preflight_evaluation_media(loggers, video)
+
+                def media_sink(frames, metadata):
+                    log_evaluation_media(loggers, frames, metadata, video, step=frame_step)
+
+            if loggers:
+                log_text_artifact(loggers, json.dumps(provenance, indent=2), "source_package.json")
+                log_text_artifact(
+                    loggers, ResolvedConfig.from_scenario(scenario).to_yaml(), "config.yaml"
+                )
+            metrics = evaluate_policy(
+                policy,
+                scenario,
+                media_sink=media_sink,
+                frame_step=frame_step,
+                provenance=provenance,
+            )
+            for logger in loggers:
+                logger.log_metrics(metrics, step=frame_step)
+        except SystemExit:
+            failed = True
+            raise
+        except (Exception, KeyboardInterrupt) as exc:
+            failed = True
+            console.print(f"[red]Evaluation failed: {str(exc) or 'cancelled'}[/red]")
+            raise typer.Exit(1) from exc
+        finally:
+            failed = failed or sys.exception() is not None
+            finalization_error = None
+            for logger in loggers:
+                try:
+                    logger.finalize("failed" if failed else "success")
+                except (Exception, KeyboardInterrupt) as exc:
+                    finalization_error = exc
+                    console.print(f"[red]Evaluation logger finalization failed: {exc}[/red]")
+            if finalization_error is not None and not failed:
+                raise typer.Exit(1) from finalization_error
+
+        console.print("[green]Evaluation complete![/green]")
+        console.print(f"  Policy evaluation (frame step {frame_step}): {metrics}")
 
 
 @app.command(name="export-dataset", help="Export a dataset view from a scenario or config")

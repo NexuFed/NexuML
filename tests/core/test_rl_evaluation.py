@@ -266,7 +266,7 @@ def test_task_outcome_presence_cannot_change_or_reuse_stale_values(
     assert FakeEnvironment.instances[-1].closed
 
 
-@pytest.mark.parametrize("change", ["period", "rate", "mapping", "joint-order", "revision"])
+@pytest.mark.parametrize("change", ["period", "rate", "mapping", "joint-order", "control-origin"])
 def test_replay_rejects_same_shape_but_changed_control_meaning(change):
     from nexuml.training.reinforcement import _validate_evaluation_contract
     from nexuml_library.environments.isaaclab import IsaacLabEnvironment
@@ -285,8 +285,8 @@ def test_replay_rejects_same_shape_but_changed_control_meaning(change):
                     "panda_joint1, panda_joint2", "panda_joint2, panda_joint1"
                 )
             },
-            "revision": {
-                "description": action.description.replace(IsaacLabEnvironment().revision, "0" * 40)
+            "control-origin": {
+                "description": action.description.replace("default joint pose", "zero joint pose")
             },
         }
         actual = expected.model_copy(

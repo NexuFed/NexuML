@@ -35,7 +35,9 @@ def main():
     parse_env_cfg = import_module("isaaclab_tasks.utils").parse_env_cfg
 
     from nexuml_library.environments.isaaclab import IsaacLabEnvironment
+    from nexuml_library.environments._isaaclab_tasks import register_reference_tasks
 
+    register_reference_tasks()
     definition = IsaacLabEnvironment(task=args.task, physics=args.physics)
     origin = json.loads(distribution("isaaclab").read_text("direct_url.json") or "{}")
     assert origin.get("vcs_info", {}).get("commit_id") == definition.revision
@@ -48,18 +50,15 @@ def main():
     if so101:
         from nexuml_library.environments._isaaclab_so101 import (
             JOINT_NAMES,
-            make_so101_config,
             validate_asset,
         )
 
-        cfg = make_so101_config(num_envs=8, device="cuda:0", seed=0)
-    else:
-        cfg = cast(
-            Any,
-            parse_env_cfg(
-                args.task, device="cuda:0", num_envs=8, overrides=[f"physics={args.physics}"]
-            ),
-        )
+    cfg = cast(
+        Any,
+        parse_env_cfg(
+            args.task, device="cuda:0", num_envs=8, overrides=[f"physics={args.physics}"]
+        ),
+    )
     cfg.seed = 0
     cfg.compute_final_obs = True
     if not direct:
@@ -72,14 +71,12 @@ def main():
             "device": "cuda:0",
             "visualizer": ["none"],
             "visualizer_explicit": True,
-            "fast_shutdown": args.physics == "isaacsim_physx",
+            "fast_shutdown": True,
         },
     ):
         env = cast(
             Any,
-            import_module("isaaclab.envs").ManagerBasedRLEnv(cfg=cfg)
-            if so101
-            else gym.make(args.task, cfg=cfg).unwrapped,
+            gym.make(args.task, cfg=cfg).unwrapped,
         )
         try:
             if so101:

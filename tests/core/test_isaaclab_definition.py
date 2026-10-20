@@ -33,7 +33,12 @@ from nexuml.core.types import (
     StrategySpec,
 )
 from nexuml_library.action_adapters.adapters import GaussianActionAdapter
-from nexuml_library.environments.isaaclab import IsaacLabEnvironment
+from nexuml_library.environments.isaaclab import (
+    IsaacLabEnvironment,
+    IsaacBindings,
+    isaac_task_config,
+)
+from nexuml_library.environments._isaaclab_tasks import configure_state_reference
 from nexuml_library.reinforcement.algorithms.ppo import PPO
 from nexuml_library.scenarios.reinforcement.isaaclab import (
     isaac_cartpole_ppo,
@@ -69,11 +74,18 @@ def test_static_contract_identity_configuration_and_inference(
     assert list(signature(factory).parameters) == ["total_frames", "frames_per_batch", "num_envs"]
     spec = factory()
     definition = spec.interaction.environment
-    assert definition == IsaacLabEnvironment(task=task)
+    assert definition == IsaacLabEnvironment(
+        task=task, task_config=isaac_task_config(configure_state_reference)
+    )
     assert definition.model_dump() == {
         "task": task,
         "revision": _REVISION,
         "physics": "isaacsim_physx",
+        "presets": (),
+        "task_config": isaac_task_config(configure_state_reference).model_dump(),
+        "contract": None,
+        "bindings": None,
+        "viewer": None,
     }
     with pytest.raises(ValidationError, match="frozen"):
         definition.task = "Isaac-Cartpole"
@@ -89,13 +101,13 @@ def test_static_contract_identity_configuration_and_inference(
     assert action.shape == (action_size,) and action.dtype == "float32"
     assert action.low == -1 and action.high == 1
     assert action.rate_hz == 1 / period
-    for identity in (task, _REVISION, "isaacsim_physx"):
+    for identity in (task, "isaacsim_physx"):
         assert identity in action.description
     lowered = lower_component(definition)
     assert lowered == {
         "type": "IsaacLabEnvironment",
-        "version": "1",
-        "params": definition.model_dump(),
+        "version": "2",
+        "params": definition.model_dump(mode="json"),
     }
     assert restore_component(kind="environment", value=lowered) == definition
     assert isinstance(spec.policy.action_adapter, GaussianActionAdapter)
@@ -172,13 +184,17 @@ def test_control_descriptions_preserve_physical_mapping_and_joint_order():
     )
 
 
-def test_legacy_artifact_contract_is_not_silently_reinterpreted():
-    old = IsaacLabEnvironment(revision="ae37b028ea415c91ea2bc32609efcd759ed2b974")
-    current = IsaacLabEnvironment()
-    assert old.describe() != current.describe()
-    assert restore_component(kind="environment", value=lower_component(old)) == old
-    with pytest.raises(ValidationError, match="original task/PhysX"):
-        IsaacLabEnvironment(revision=old.revision, physics="newton_mjwarp")
+def test_custom_task_keeps_explicit_contract_and_literal_bindings_without_resolution():
+    contract = IsaacLabEnvironment().describe()
+    definition = IsaacLabEnvironment(
+        task="installed_tasks:Custom-Cartpole",
+        physics="custom_backend",
+        presets=("custom_preset",),
+        contract=contract,
+        bindings=IsaacBindings(observations={"observation": ("custom", "state")}),
+    )
+    assert definition.describe() == contract
+    assert restore_component(kind="environment", value=lower_component(definition)) == definition
 
 
 @pytest.mark.parametrize("physics", ["newton_mjwarp", "isaacsim_physx", "ovphysx"])
@@ -255,8 +271,8 @@ assert not any(name.split(".")[0] in blocked for name in sys.modules)
         {"task": "Isaac-Cartpole-Direct-v0"},
         {"task": "IsaacContrib-Stack-Cube-SO101-v0"},
         {"revision": "v3.0.0-EA"},
-        {"physics": "physx"},
-        {"physics": "newton"},
+        {"physics": "physics=physx"},
+        {"presets": ("",)},
         {"contract": {}},
         {"image_shape": [3, 64, 64]},
         {"action_scale": 1},
@@ -424,7 +440,10 @@ def test_fresh_discovery_yaml_compile_and_inference_forbid_native_imports():
             raise AssertionError('static paths must not build a simulator')
         IsaacLabEnvironment.build = forbidden_build
         registry = get_scenario_registry()
-        for name in ('isaac-cartpole-ppo', 'isaac-franka-reach-ppo', 'isaac-so101-joint-reach-ppo'):
+        for name in (
+            'isaac-cartpole-ppo', 'isaac-franka-reach-ppo',
+            'isaac-so101-joint-reach-ppo', 'isaac-custom-cartpole-ppo',
+        ):
             scenario = registry.get(name)()
             restored = ResolvedConfig.from_yaml(ResolvedConfig.from_scenario(scenario).to_yaml())
             contract = restored.interaction.environment.describe()

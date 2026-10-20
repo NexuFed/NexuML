@@ -4,6 +4,7 @@ import importlib.abc
 import json
 from pathlib import Path
 import sys
+from typing import Any, cast
 
 
 def _equal(left, right):
@@ -19,19 +20,33 @@ def _equal(left, right):
 
 
 def _infer(output):
+    custom_runtime_modules = {
+        "nexuml_library.environments._isaaclab_tasks",
+        "nexuml_library.environments._isaaclab_runtime",
+        "nexuml_library.environments._isaaclab_so101",
+        "nexuml_library.environments._isaaclab_viser",
+    }
+
     class BlockOptional(importlib.abc.MetaPathFinder):
         def find_spec(self, fullname, path=None, target=None):
             first = fullname.split(".")[0]
-            if first.startswith(("isaaclab", "isaacsim")) or first in {
-                "omni",
-                "pxr",
-                "torchrl",
-                "PIL",
-                "imageio",
-                "imageio_ffmpeg",
-                "moviepy",
-                "av",
-            }:
+            if (
+                fullname in custom_runtime_modules
+                or first.startswith(("isaaclab", "isaacsim"))
+                or first
+                in {
+                    "omni",
+                    "pxr",
+                    "torchrl",
+                    "viser",
+                    "newton",
+                    "PIL",
+                    "imageio",
+                    "imageio_ffmpeg",
+                    "moviepy",
+                    "av",
+                }
+            ):
                 raise ImportError("optional inference runtime blocked: " + fullname)
 
     sys.meta_path.insert(0, BlockOptional())
@@ -57,6 +72,8 @@ def _infer(output):
             "omni",
             "pxr",
             "torchrl",
+            "viser",
+            "newton",
             "PIL",
             "imageio",
             "imageio_ffmpeg",
@@ -65,6 +82,7 @@ def _infer(output):
         }
         for name in sys.modules
     )
+    assert custom_runtime_modules.isdisjoint(sys.modules)
     print("EXACT_PORTABLE_CPU_INFERENCE_VERIFIED", flush=True)
 
 
@@ -84,15 +102,18 @@ def _train(task, stage, root):
         isaac_franka_reach_ppo,
         isaac_so101_joint_reach_ppo,
     )
+    from nexuml_library.scenarios.reinforcement.isaaclab_custom import isaac_custom_cartpole_ppo
 
     output = root / stage
     output.mkdir(parents=True, exist_ok=True)
     factory = {
         "cartpole": isaac_cartpole_ppo,
         "cartpole-newton": isaac_cartpole_ppo,
+        "cartpole-ovphysx": isaac_cartpole_ppo,
         "cartpole-direct": isaac_cartpole_ppo,
         "franka": isaac_franka_reach_ppo,
         "so101": isaac_so101_joint_reach_ppo,
+        "custom": isaac_custom_cartpole_ppo,
     }[task]
     saved = None
     if stage in {"resume", "complete"}:
@@ -107,11 +128,15 @@ def _train(task, stage, root):
         scenario = factory(
             total_frames=193 if stage == "rounded" else 256, frames_per_batch=128, num_envs=8
         )
-        if task in {"cartpole-newton", "cartpole-direct"}:
+        if task in {"cartpole-newton", "cartpole-ovphysx"}:
+            scenario.interaction.environment = scenario.interaction.environment.model_copy(
+                update={"physics": "ovphysx" if task == "cartpole-ovphysx" else "newton_mjwarp"}
+            )
+        elif task == "cartpole-direct":
             from nexuml_library.environments.isaaclab import IsaacLabEnvironment
 
             scenario.interaction.environment = IsaacLabEnvironment(
-                task="Isaac-Cartpole-Direct" if task == "cartpole-direct" else "Isaac-Cartpole",
+                task="Isaac-Cartpole-Direct",
                 physics="newton_mjwarp",
             )
         scenario.training.algorithm = scenario.training.algorithm.model_copy(
@@ -141,6 +166,14 @@ def _train(task, stage, root):
             Raises:
                 RuntimeError: To test checkpoint recovery and failed-job cleanup.
             """
+            if task == "custom" and stage == "interrupt":
+                assert runtime._active_runtime is not None
+                native = runtime._active_runtime
+                assert native.resolved_task == "NexuML-Custom-Cartpole"
+                assert native.native.cfg.episode_length_s == 2.0
+                assert native.native.cfg.scene.env_spacing == 3.0
+                assert native.native.num_envs == 8
+                print("ACTUAL_CUSTOM_TASK_CONFIG_VERIFIED", flush=True)
             if stage in {"interrupt", "terminate"}:
                 assert int(pl_module.frames) == 128
                 trainer.save_checkpoint(output / "intermediate.ckpt")
@@ -201,7 +234,7 @@ def _train(task, stage, root):
     finally:
         assert module._collector is None and finalized
         if stage in {"interrupt", "terminate"}:
-            assert finalized == ["failed"]
+            assert finalized and set(finalized) == {"failed"}
             assert int(module.frames) == 128 and len(shapes) == 1
             print("INTERRUPTED_CHECKPOINT_AND_FAILED_LOGGER_FINALIZED", flush=True)
     assert finalized == ["success"]
@@ -312,6 +345,33 @@ def _cancel_native():
     raise asyncio.CancelledError()
 
 
+def _so101_config():
+    from isaaclab.envs import ManagerBasedRLEnvCfg
+    from isaaclab_physx.physics import PhysxCfg
+    from isaaclab_tasks.utils import parse_env_cfg
+
+    from nexuml_library.environments._isaaclab_tasks import register_reference_tasks
+
+    register_reference_tasks()
+    cfg = parse_env_cfg(
+        "NexuML-SO101-Joint-Reach",
+        device="cuda:0",
+        num_envs=4,
+        overrides=["physics=isaacsim_physx"],
+    )
+    assert isinstance(cfg, ManagerBasedRLEnvCfg)
+    assert type(cfg.sim.physics) is PhysxCfg
+    assert cfg.sim.dt == 1 / 120 and cfg.decimation == 4 and cfg.scene.num_envs == 4
+    actions = cast(Any, cfg.actions)
+    assert actions.arm_action.scale == 0.5 and not actions.arm_action.use_default_offset
+    try:
+        parse_env_cfg("NexuML-SO101-Joint-Reach", overrides=["physics=newton_mjwarp"])
+    except ValueError:
+        print("PINNED_SO101_FIXED_PHYSICS_SELECTION_VERIFIED", flush=True)
+    else:
+        raise AssertionError("SO-101 selected a different backend")
+
+
 if __name__ == "__main__":
     reference, phase, directory = sys.argv[1:]
     task_root = Path(directory) / reference
@@ -321,5 +381,7 @@ if __name__ == "__main__":
         _cancel_replay(task_root)
     elif phase == "cancel-native":
         _cancel_native()
+    elif phase == "config":
+        _so101_config()
     else:
         _train(reference, phase, task_root)

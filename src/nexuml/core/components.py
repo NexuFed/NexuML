@@ -2,6 +2,7 @@
 
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
+from contextlib import AbstractContextManager, nullcontext
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Literal, NamedTuple
 
@@ -192,6 +193,10 @@ class EnvironmentDefinition(ComponentDefinition):
     """Portable environment configuration, never a live simulator or transport."""
 
     kind = "environment"
+
+    def job_scope(self) -> AbstractContextManager[None]:
+        """Return a resource-free whole-job scope unless a provider owns native lifetime."""
+        return nullcontext()
 
     @abstractmethod
     def describe(self) -> "InteractionContract":

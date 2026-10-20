@@ -20,6 +20,7 @@ from nexuml.interaction.runtime import InteractionStep
 
 
 _process_active = False
+_process_definition = None
 _process_launcher = None
 _active_runtime = None
 
@@ -34,20 +35,43 @@ def _terminate_job(signum, _frame):
 
 
 @contextmanager
-def isaaclab_process():
+def isaaclab_process(definition=None):
     """Fast-close an owned Kit app after the complete Python job finishes.
 
     Raises:
-        RuntimeError: If process scopes are nested.
+        RuntimeError: If a nested scope selects a different native job.
     """
-    global _process_active, _process_launcher
+    global _process_active, _process_definition, _process_launcher
     if _process_active:
-        raise RuntimeError("Isaac process scopes cannot be nested")
+        if (
+            definition is not None
+            and _process_definition is not None
+            and definition != _process_definition
+        ):
+            raise RuntimeError("Conflicting Isaac job scopes cannot be nested")
+        if _process_definition is None:
+            _process_definition = definition
+        yield
+        return
     previous_sigterm = signal.signal(signal.SIGTERM, _terminate_job)
     _process_active = True
+    _process_definition = definition
     try:
         try:
-            yield
+            primary = None
+            try:
+                yield
+            except BaseException as error:
+                primary = error
+                raise
+            finally:
+                if _active_runtime is not None:
+                    try:
+                        _active_runtime.close()
+                    except BaseException as error:
+                        if primary is None:
+                            raise
+                        primary.add_note(f"Isaac environment cleanup also failed: {error}")
         except BaseException as primary:
             if _process_launcher is not None:
                 traceback.print_exception(primary)
@@ -66,17 +90,25 @@ def isaaclab_process():
     finally:
         _process_launcher = None
         _process_active = False
+        _process_definition = None
         signal.signal(signal.SIGTERM, previous_sigterm)
 
 
 def _create_environment(owner, definition, context):
-    global _process_launcher, _active_runtime
+    global _process_definition, _process_launcher, _active_runtime
     if not _process_active:
         raise RuntimeError(
-            "Run Isaac jobs through scripts/isaaclab/run.py so fast shutdown follows "
-            "checkpoint/export/logger finalization and preserves the process exit status"
+            "Run Isaac jobs inside environment.job_scope() (normal train/evaluate do this "
+            "automatically) so native shutdown follows checkpoint/export/logger finalization"
         )
+    if _process_definition is not None and definition != _process_definition:
+        raise RuntimeError("Native environment conflicts with the active Isaac job definition")
+    _process_definition = definition
     device = owner.device
+    if definition.viewer is not None and context.purpose in definition.viewer.purposes:
+        raise RuntimeError(
+            "Requested Viser spectator construction is not yet qualified; viewer gate remains open"
+        )
     if device.type != "cuda" or not torch.cuda.is_available():
         raise ValueError("Isaac Lab requires a working single-GPU CUDA device")
     if context.purpose == "eval" and context.num_envs != 1:
@@ -85,16 +117,13 @@ def _create_environment(owner, definition, context):
         context.render_mode is not None and context.purpose != "eval"
     ):
         raise ValueError("Isaac rendering supports only fresh-process N=1 rgb_array replay")
-    if owner._rendering and (
-        definition.physics != "isaacsim_physx" or definition.task == "Isaac-Cartpole-Direct"
-    ):
-        raise ValueError("Isaac RGB replay currently requires a manager task with Kit PhysX")
     try:
         isaaclab = import_module("isaaclab")
         import_module("isaaclab_tasks")
         launch_simulation = import_module("isaaclab.app").launch_simulation
         has_kit = import_module("isaaclab.utils").has_kit
         parse_env_cfg = import_module("isaaclab_tasks.utils").parse_env_cfg
+        resolve_presets = import_module("isaaclab_tasks.utils.hydra").resolve_presets
     except ImportError as error:
         raise ImportError(
             "Isaac replay/training requires nexuml[robots] with the selected native sources"
@@ -125,55 +154,87 @@ def _create_environment(owner, definition, context):
         raise RuntimeError(
             "An Isaac application is already active; use fresh-process replay/training"
         )
-    cfg: Any
-    if definition.task == "NexuML-SO101-Joint-Reach":
-        from nexuml_library.environments._isaaclab_so101 import make_so101_config
+    _active_runtime = owner
+    from nexuml_library.environments._isaaclab_tasks import register_reference_tasks
+    import gymnasium as gym
 
-        cfg = make_so101_config(
-            num_envs=context.num_envs, device=str(device), seed=context.seed or 0
-        )
-    else:
-        # Registered task subclasses add fields absent from upstream's base config type.
-        cfg = cast(
-            Any,
-            parse_env_cfg(
-                definition.task,
-                device=str(device),
-                num_envs=context.num_envs,
-                overrides=[f"physics={definition.physics}"],
-            ),
-        )
+    register_reference_tasks()
+    # Resolve Gym's supported module:task form before Isaac strips the module prefix.
+    module, separator, task = definition.task.partition(":")
+    if separator:
+        import_module(module)
+    registered = gym.spec(task if separator else definition.task)
+    selections = []
+    if definition.physics is not None:
+        selections.append(f"physics={definition.physics}")
+    if definition.presets:
+        selections.append("presets=" + ",".join(definition.presets))
+    cfg = cast(
+        Any,
+        parse_env_cfg(
+            registered.id,
+            device=str(device),
+            num_envs=context.num_envs,
+            overrides=selections,
+        ),
+    )
     cfg.seed = context.seed if context.seed is not None else 0
     cfg.compute_final_obs = True
-    if definition.task != "Isaac-Cartpole-Direct":
-        cfg.observations.policy.enable_corruption = False
-        cfg.observations.policy.history_length = 0
+    physics_type = type(cfg.sim.physics)
+    if definition.task_config is not None:
+        cfg = definition.task_config.build(cfg)
+        cfg = resolve_presets(
+            cfg,
+            selected=(*definition.presets, *((definition.physics,) if definition.physics else ())),
+        )
+    native_envs = import_module("isaaclab.envs")
+    if not isinstance(cfg, (native_envs.ManagerBasedRLEnvCfg, native_envs.DirectRLEnvCfg)):
+        raise TypeError("Native customization must produce a manager/direct RL config")
+    if (
+        cfg.scene.num_envs != context.num_envs
+        or torch.device(cfg.sim.device) != device
+        or cfg.seed != (context.seed if context.seed is not None else 0)
+        or not cfg.compute_final_obs
+        or (definition.physics is not None and type(cfg.sim.physics) is not physics_type)
+        or has_kit()
+    ):
+        raise ValueError(
+            "Native customization changed protected count/device/seed/final-state/runtime settings"
+        )
+    if owner._rendering and (
+        definition.physics != "isaacsim_physx"
+        or not isinstance(cfg, native_envs.ManagerBasedRLEnvCfg)
+    ):
+        raise ValueError("Isaac RGB replay currently requires a manager task with Kit PhysX")
     if owner._rendering:
         from nexuml_library.environments._isaaclab_rgb import configure_rgb
 
         configure_rgb(cfg, owner)
     args = {
         "headless": True,
-        "fast_shutdown": definition.physics == "isaacsim_physx",
+        "fast_shutdown": True,
         "device": str(device),
         "visualizer": ["none"],
         "visualizer_explicit": True,
         "enable_cameras": owner._rendering,
     }
-    _active_runtime = owner
     launcher = launch_simulation(cfg, args)
     launcher.__enter__()
     owner._launcher = launcher
-    if definition.physics == "isaacsim_physx":
+    if has_kit():
         # Kit's fast close must follow whole-job checkpoint/export/logger finalization.
         _process_launcher, owner._launcher = owner._launcher, None
     signal.signal(signal.SIGTERM, _terminate_job)
-    import gymnasium as gym
-
-    if definition.task == "NexuML-SO101-Joint-Reach":
-        owner.native = import_module("isaaclab.envs").ManagerBasedRLEnv(cfg=cfg)
+    owner.native = gym.make(definition.task, cfg=cfg).unwrapped
+    native_envs = import_module("isaaclab.envs")
+    if isinstance(owner.native, native_envs.ManagerBasedRLEnv):
+        owner._direct = False
+    elif isinstance(owner.native, native_envs.DirectRLEnv):
+        owner._direct = True
     else:
-        owner.native = gym.make(definition.task, cfg=cfg).unwrapped
+        raise ValueError("Native task is not a supported manager/direct RL environment")
+    owner.resolved_task = registered.id
+    owner.resolved_config = import_module("isaaclab.utils").to_dict(cfg)
     if owner._rendering:
         from nexuml_library.environments._isaaclab_rgb import position_camera
 
@@ -190,7 +251,8 @@ class _IsaacLabRuntime:
         self._observation = None
         self._pending_reset = None
         self._so101 = definition.task == "NexuML-SO101-Joint-Reach"
-        self._direct = definition.task == "Isaac-Cartpole-Direct"
+        self._direct = False
+        self._bindings = definition.native_bindings()
         self._rendering = context.render_mode == "rgb_array"
         self._terminal_frame = None
         self._in_step = False
@@ -214,19 +276,24 @@ class _IsaacLabRuntime:
 
     def _validate_native(self, definition):
         env = self.native
-        size = self.contract.observations["observation"].shape
-        action_size = self.contract.actions["action"].shape
+        action_field = self.contract.actions[self._bindings.action]
         if (
             env.num_envs != self.contract.num_envs
             or torch.device(env.device) != self.device
-            or tuple(env.single_observation_space["policy"].shape) != size
-            or tuple(env.single_action_space.shape) != action_size
+            or tuple(env.single_action_space.shape) != action_field.shape
+            or str(env.single_action_space.dtype) != action_field.dtype
             or not math.isclose(env.step_dt, self.contract.control_period_s, rel_tol=1e-9)
             or not env.cfg.compute_final_obs
         ):
             raise ValueError(
                 "Native Isaac dimensions/device/control period/final-state settings mismatch"
             )
+        for key, path in self._bindings.observations.items():
+            space = env.single_observation_space
+            for part in path:
+                space = space[part]
+            if tuple(space.shape) != self.contract.observations[key].shape:
+                raise ValueError("Native Isaac observation dimensions/device contract mismatch")
         if definition.task == "Isaac-Cartpole-Direct":
             if (
                 env.cfg.cart_dof_name != "slider_to_cart"
@@ -242,21 +309,33 @@ class _IsaacLabRuntime:
         elif definition.task == "Isaac-Reach-Franka":
             name, joints, scale = "arm_action", [f"panda_joint{i}" for i in range(1, 8)], 0.5
             offset = torch.tensor([0.0, -0.569, 0.0, -2.810, 0.0, 3.037, 0.741])
-        else:
+        elif definition.task == "NexuML-SO101-Joint-Reach":
             from nexuml_library.environments._isaaclab_so101 import JOINT_NAMES, validate_asset
 
             validate_asset(env)
             name, joints, scale = "arm_action", list(JOINT_NAMES), 0.5
             offset = torch.tensor(0.0)
+        else:
+            self._validate_bound_controls()
+            return
         if env.action_manager.active_terms != [name]:
             raise ValueError("Native Isaac action terms differ from the pinned control mapping")
         term = env.action_manager.get_term(name)
+        mdp = import_module("isaaclab.envs.mdp")
+        implementation = (
+            mdp.JointEffortAction
+            if definition.task == "Isaac-Cartpole"
+            else mdp.JointPositionAction
+        )
+        self._validate_action_implementation(term, implementation)
         descriptor = term.IO_descriptor
+        native_offset = torch.as_tensor(descriptor.offset)
+        offset = offset.to(device=native_offset.device, dtype=native_offset.dtype)
         if (
             descriptor.joint_names != joints
             or term.cfg.scale != scale
             or term.cfg.clip is not None
-            or not torch.allclose(torch.as_tensor(descriptor.offset), offset, rtol=0, atol=1e-6)
+            or not torch.allclose(native_offset, offset, rtol=0, atol=1e-6)
             or (definition.task == "Isaac-Reach-Franka" and not term.cfg.use_default_offset)
             or (definition.task == "NexuML-SO101-Joint-Reach" and term.cfg.use_default_offset)
         ):
@@ -264,21 +343,84 @@ class _IsaacLabRuntime:
                 "Native Isaac joint order/scale/offset/clipping differs from the policy"
             )
 
+    @staticmethod
+    def _validate_action_implementation(term, implementation):
+        configured = term.cfg.class_type
+        if isinstance(configured, str):
+            configured = import_module("isaaclab.utils.string").string_to_callable(configured)
+        if type(term) is not implementation or configured is not implementation:
+            raise ValueError(
+                "Native Isaac action implementation/control mode differs from the policy"
+            )
+
+    def _validate_bound_controls(self):
+        field = self.contract.actions[self._bindings.action]
+        physical = field.physical
+        if physical is None:
+            return
+        manager = getattr(self.native, "action_manager", None)
+        if manager is None or len(manager.active_terms) != 1:
+            raise ValueError("Declared physical controls require a verifiable native action term")
+        term = manager.get_term(manager.active_terms[0])
+        descriptor = term.IO_descriptor
+        mdp = import_module("isaaclab.envs.mdp")
+        position = isinstance(term.cfg, mdp.JointPositionActionCfg)
+        if not (
+            (physical.control_mode == "effort" and isinstance(term.cfg, mdp.JointEffortActionCfg))
+            or (
+                physical.control_mode == "absolute_position"
+                and position
+                and not term.cfg.use_default_offset
+            )
+            or (
+                physical.control_mode == "relative_position"
+                and position
+                and term.cfg.use_default_offset
+            )
+        ):
+            raise ValueError("Native physical control mode differs from the declared contract")
+        self._validate_action_implementation(
+            term,
+            mdp.JointEffortAction if physical.control_mode == "effort" else mdp.JointPositionAction,
+        )
+        scale, offset = torch.as_tensor(descriptor.scale), torch.as_tensor(descriptor.offset)
+        if (
+            tuple(descriptor.joint_names) != physical.joints
+            or not torch.allclose(
+                scale, torch.tensor(physical.scale, device=scale.device, dtype=scale.dtype)
+            )
+            or not torch.allclose(
+                offset,
+                torch.tensor(physical.offset or (0.0,), device=offset.device, dtype=offset.dtype),
+            )
+            or term.cfg.clip is not None
+        ):
+            raise ValueError("Native physical control binding differs from the declared contract")
+
     def _state(self, observations):
-        value = observations["policy"]
-        expected = (self.contract.num_envs, *self.contract.observations["observation"].shape)
-        if value.shape != expected or value.dtype != torch.float32 or value.device != self.device:
-            raise ValueError("Native Isaac policy observation shape/dtype/device mismatch")
-        if not torch.isfinite(value).all():
-            raise ValueError("Native Isaac policy observations must be finite")
-        return value.clone()
+        result = TensorDict({}, batch_size=(self.contract.num_envs,), device=self.device)
+        for key, path in self._bindings.observations.items():
+            value = observations
+            for part in path:
+                value = value[part]
+            field = self.contract.observations[key]
+            if (
+                not isinstance(value, torch.Tensor)
+                or tuple(value.shape) != (self.contract.num_envs, *field.shape)
+                or str(value.dtype).removeprefix("torch.") != field.dtype
+                or value.device != self.device
+            ):
+                raise ValueError("Native Isaac policy observation shape/dtype/device mismatch")
+            result[key] = value.clone()
+        CompiledPolicy._validate_fields(
+            result, self.contract.observations, "Native Isaac observation"
+        )
+        return result
 
     def _pack(self, value):
         if self.contract.num_envs == 1:
-            return TensorDict({"observation": value.squeeze(0)}, batch_size=(), device=self.device)
-        return TensorDict(
-            {"observation": value}, batch_size=(self.contract.num_envs,), device=self.device
-        )
+            return value.squeeze(0)
+        return value
 
     def reset(self, *, seed=None, mask=None) -> TensorDict:
         if self._closed:
@@ -317,11 +459,13 @@ class _IsaacLabRuntime:
             raise RuntimeError("Reset an open Isaac runtime before stepping")
         expected_batch = () if self.contract.num_envs == 1 else (self.contract.num_envs,)
         if tuple(action.batch_size) != expected_batch or (
-            "action" in action and action["action"].device != self.device
+            self._bindings.action in action and action[self._bindings.action].device != self.device
         ):
             raise ValueError("Isaac actions must use the native batch and device")
         CompiledPolicy._validate_fields(action, self.contract.actions, "Action")
-        native_action = action["action"].reshape(self.contract.num_envs, -1)
+        native_action = action[self._bindings.action].reshape(
+            self.contract.num_envs, *self.contract.actions[self._bindings.action].shape
+        )
         self._terminal_frame = None
         self._in_step = True
         try:

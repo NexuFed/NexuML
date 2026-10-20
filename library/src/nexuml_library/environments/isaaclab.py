@@ -1,9 +1,10 @@
-"""Pinned state-only Isaac contracts; native resources exist only after build."""
+"""Portable native task declarations; simulation exists only inside an owned job."""
 
+from contextlib import AbstractContextManager
 from typing import TYPE_CHECKING, Literal
 
 import torch
-from pydantic import model_validator
+from pydantic import Field, model_validator
 
 from nexuml.core.components import EnvironmentBuildContext, EnvironmentDefinition
 from nexuml.core.discovery import environment
@@ -13,6 +14,12 @@ from nexuml.core.types import (
     PhysicalTensorContract,
     ReinforcementLearningSpec,
     TensorFieldContract,
+)
+from .isaaclab_config import (
+    IsaacBindings,
+    IsaacTaskConfigSpec,
+    ViserSpec,
+    isaac_task_config,
 )
 
 if TYPE_CHECKING:
@@ -57,38 +64,62 @@ _TASK_PROFILES: dict[str, tuple[int, int, float, str, str]] = {
 }
 
 
-@environment("IsaacLabEnvironment")
+@environment("IsaacLabEnvironment", version="2")
 class IsaacLabEnvironment(EnvironmentDefinition):
-    """Immutable candidate profile; description is not native compatibility proof."""
+    """Trusted registered task plus explicit portable configuration and I/O meaning."""
 
-    task: Literal[
-        "Isaac-Cartpole", "Isaac-Cartpole-Direct", "Isaac-Reach-Franka", "NexuML-SO101-Joint-Reach"
-    ] = "Isaac-Cartpole"
-    revision: Literal[
-        "ae37b028ea415c91ea2bc32609efcd759ed2b974",
-        "70ab24fec3eabf51222817db0cdb5a4e7133bd7e",
-    ] = "70ab24fec3eabf51222817db0cdb5a4e7133bd7e"
-    physics: Literal["isaacsim_physx", "newton_mjwarp", "ovphysx"] = "isaacsim_physx"
+    task: str = Field(default="Isaac-Cartpole", min_length=1, pattern=r"\S")
+    revision: Literal["70ab24fec3eabf51222817db0cdb5a4e7133bd7e",] = (
+        "70ab24fec3eabf51222817db0cdb5a4e7133bd7e"
+    )
+    physics: str | None = "isaacsim_physx"
+    presets: tuple[str, ...] = ()
+    task_config: IsaacTaskConfigSpec | None = None
+    contract: InteractionContract | None = None
+    bindings: IsaacBindings | None = None
+    viewer: ViserSpec | None = None
 
     @model_validator(mode="after")
     def _validate_profile(self):
-        if self.revision == "ae37b028ea415c91ea2bc32609efcd759ed2b974" and (
-            self.physics != "isaacsim_physx" or self.task == "Isaac-Cartpole-Direct"
+        selections = (*self.presets, *((self.physics,) if self.physics is not None else ()))
+        if any(
+            not item or not item.replace("_", "").replace("-", "").isalnum() for item in selections
         ):
-            raise ValueError("Legacy Isaac artifacts retain their original task/PhysX profile")
+            raise ValueError(
+                "Native physics/presets must be named selections, not override strings"
+            )
+        if len(set(self.presets)) != len(self.presets):
+            raise ValueError("Native presets must be unique and ordered")
+        if self.task not in _TASK_PROFILES and (self.contract is None or self.bindings is None):
+            raise ValueError("Custom native tasks require an explicit contract and bindings")
+        if self.contract is not None:
+            if self.contract.num_envs != 1:
+                raise ValueError(
+                    "Environment count belongs to the collector, not the task contract"
+                )
+            if self.contract.control_period_s is None:
+                raise ValueError("Native tasks require an explicit control period")
+            bindings = self.native_bindings()
+            if set(bindings.observations) != set(self.contract.observations):
+                raise ValueError("Native observation bindings must exactly match the contract")
+            if set(self.contract.actions) != {bindings.action}:
+                raise ValueError("Native single-agent tasks require one explicitly bound action")
         if self.task == "NexuML-SO101-Joint-Reach" and self.physics != "isaacsim_physx":
             raise ValueError(
                 "SO-101 joint reach requires its validated PhysX asset/control profile"
             )
         return self
 
+    def native_bindings(self) -> IsaacBindings:
+        """Return declared native paths, with the maintained reference's explicit mapping."""
+        return self.bindings or IsaacBindings(observations={"observation": ("policy",)})
+
     def describe(self) -> InteractionContract:
+        if self.contract is not None:
+            return self.contract
         obs_size, action_size, period, observation_description, mapping = _TASK_PROFILES[self.task]
         observation_physical = action_physical = system_physical = None
-        if (
-            self.task == "NexuML-SO101-Joint-Reach"
-            and self.revision == "70ab24fec3eabf51222817db0cdb5a4e7133bd7e"
-        ):
+        if self.task == "NexuML-SO101-Joint-Reach":
             from ._isaaclab_so101 import (
                 ASSET_LAYER_SHA256,
                 ASSET_MANIFEST_ID,
@@ -137,7 +168,7 @@ class IsaacLabEnvironment(EnvironmentDefinition):
                     high=1,
                     rate_hz=1 / period,
                     description=(
-                        f"task={self.task}; revision={self.revision}; physics={self.physics}; "
+                        f"task={self.task}; physics={self.physics}; "
                         f"normalized dimensionless [-1, 1] controls; period={period} s. {mapping}"
                     ),
                     physical=action_physical,
@@ -206,3 +237,22 @@ class IsaacLabEnvironment(EnvironmentDefinition):
         from nexuml_library.environments._isaaclab_runtime import _IsaacLabRuntime
 
         return _IsaacLabRuntime(self, context)
+
+    def job_scope(self) -> AbstractContextManager[None]:
+        """Own native lifetime through checkpoint/export and logger finalization.
+
+        Returns:
+            Lazy whole-job scope; entering it alone allocates no simulator.
+        """
+        from nexuml_library.environments._isaaclab_runtime import isaaclab_process
+
+        return isaaclab_process(self)
+
+
+__all__ = [
+    "IsaacLabEnvironment",
+    "IsaacTaskConfigSpec",
+    "IsaacBindings",
+    "ViserSpec",
+    "isaac_task_config",
+]

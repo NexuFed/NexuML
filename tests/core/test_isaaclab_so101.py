@@ -99,16 +99,13 @@ def test_module_import_does_not_load_optional_native_apis():
     assert callable(module.make_so101_config)
 
 
-def test_canonical_asset_identity_is_part_of_the_new_portable_contract_only():
+def test_canonical_asset_identity_is_part_of_the_current_portable_contract():
     from nexuml_library.environments.isaaclab import IsaacLabEnvironment
 
     definition = IsaacLabEnvironment(task="NexuML-SO101-Joint-Reach")
     current = definition.describe().actions["action"].description
     assert current is not None and so101.ASSET_SOURCE in current
     assert so101.ASSET_LAYER_SHA256["so101_new_calib.usda"] in current
-    old = definition.model_copy(update={"revision": "ae37b028ea415c91ea2bc32609efcd759ed2b974"})
-    previous = old.describe().actions["action"].description
-    assert previous is not None and so101.ASSET_SOURCE not in previous
     assert len(so101.ASSET_LAYER_SHA256) == 15
     assert all(len(value) == 64 for value in so101.ASSET_LAYER_SHA256.values())
 
@@ -171,9 +168,10 @@ def test_initial_observation_shape_probe_does_not_sample_or_allocate_task_state(
     assert not hasattr(env, "joint_reach_hold")
 
 
-def test_reset_maps_five_arm_joints_and_explicitly_holds_fixed_gripper():
+@pytest.mark.parametrize("selection", [None, slice(None)])
+def test_reset_maps_five_arm_joints_and_explicitly_holds_fixed_gripper(selection):
     env = _env()
-    so101._reset_joint_reach(env, None)
+    so101._reset_joint_reach(env, selection)
     robot = env.scene["robot"]
     assert robot.calls == ["position", "velocity", "target"]
     arm_ids = _arm_cfg(env).joint_ids
@@ -316,6 +314,7 @@ def task_config(monkeypatch):
         "isaaclab.sim": _Cfg(GroundPlaneCfg=_Cfg, DomeLightCfg=_Cfg, SimulationCfg=_Cfg),
         "isaaclab.utils": _Cfg(configclass=configclass),
         "isaaclab_physx.physics": _Cfg(PhysxCfg=_Cfg),
+        "isaaclab_tasks.utils": _Cfg(PresetCfg=_Cfg),
         "isaaclab_assets.robots.so101": _Cfg(SO101_CFG=asset),
     }
     monkeypatch.setattr(so101, "import_module", modules.__getitem__)

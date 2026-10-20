@@ -26,6 +26,7 @@ from nexuml_library.scenarios.imitation.so101 import (
     MAX_STEPS,
     REPO_ID,
     TASK,
+    _capture_provenance,
     _observation,
     _source_hashes,
     _split_episodes,
@@ -183,11 +184,9 @@ def collect(root: Path, *, episodes: int, seed: int) -> dict:
     from lerobot.datasets.lerobot_dataset import LeRobotDataset
 
     receipt = {
-        "schema_version": 1,
+        "schema_version": 2,
         **_task_identity(),
-        "source_sha256": _source_hashes(),
-        "packages": _packages(),
-        "python": platform.python_version(),
+        **_capture_provenance(_packages(), platform.python_version()),
         "seed": seed,
         "episode_seeds": list(range(seed, seed + episodes)),
         "split_episodes": splits,

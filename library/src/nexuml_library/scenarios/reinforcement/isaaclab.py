@@ -12,13 +12,17 @@ from nexuml.core.types import (
     TensorBoardSpec,
 )
 from nexuml_library.action_adapters.adapters import GaussianActionAdapter
-from nexuml_library.environments.isaaclab import IsaacLabEnvironment
+from nexuml_library.environments.isaaclab import IsaacLabEnvironment, isaac_task_config
+from nexuml_library.environments._isaaclab_tasks import configure_state_reference
 from nexuml_library.reinforcement.algorithms.ppo import PPO
 from nexuml_library.reinforcement.policies import continuous_policy_mlp
 
 
 def _isaac_ppo(name, task, total_frames, frames_per_batch, num_envs) -> ScenarioSpec:
-    definition = IsaacLabEnvironment(task=task)
+    definition = IsaacLabEnvironment(
+        task=task,
+        task_config=isaac_task_config(configure_state_reference),
+    )
     return ScenarioSpec(
         name=name,
         pipeline=continuous_policy_mlp(action_dim=definition.describe().actions["action"].shape[0]),

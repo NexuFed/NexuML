@@ -6,14 +6,20 @@ import json
 import sys
 import traceback
 from types import SimpleNamespace
+from typing import Any
 
 import pytest
 import torch
 from tensordict import TensorDict
 
 from nexuml.core.components import EnvironmentBuildContext
+from nexuml.core.types import PhysicalTensorContract
 from nexuml_library.environments import _isaaclab_runtime
-from nexuml_library.environments.isaaclab import IsaacLabEnvironment
+from nexuml_library.environments.isaaclab import (
+    IsaacLabEnvironment,
+    IsaacBindings,
+    isaac_task_config,
+)
 
 
 class _FakeLauncher:
@@ -35,16 +41,36 @@ class _FakeLauncher:
             raise self.close_error
 
 
+class _EffortAction(SimpleNamespace):
+    pass
+
+
+class _PositionAction(SimpleNamespace):
+    pass
+
+
+class _VelocityAction(SimpleNamespace):
+    pass
+
+
+class _PositionActionCfg(SimpleNamespace):
+    pass
+
+
+class _EffortActionCfg(SimpleNamespace):
+    pass
+
+
 class _FakeNative:
     def __init__(self, num_envs=3, *, close_error=None):
         self.num_envs = num_envs
         self.device = torch.device("cpu")
-        self.single_observation_space = {"policy": SimpleNamespace(shape=(4,))}
-        self.single_action_space = SimpleNamespace(shape=(1,))
+        self.single_observation_space: dict[str, Any] = {"policy": SimpleNamespace(shape=(4,))}
+        self.single_action_space = SimpleNamespace(shape=(1,), dtype="float32")
         self.step_dt = 1 / 60
         self.cfg = SimpleNamespace(compute_final_obs=True)
-        self.term = SimpleNamespace(
-            cfg=SimpleNamespace(scale=100.0, clip=None),
+        self.term: Any = _EffortAction(
+            cfg=SimpleNamespace(scale=100.0, clip=None, class_type=_EffortAction),
             IO_descriptor=SimpleNamespace(joint_names=["slider_to_cart"], offset=0.0),
         )
         self.action_manager = SimpleNamespace(active_terms=["joint_effort"], get_term=self.get_term)
@@ -103,9 +129,41 @@ class _FakeNative:
             raise self.close_error
 
 
+class _ManagerConfig(SimpleNamespace):
+    pass
+
+
+class _DirectConfig(SimpleNamespace):
+    pass
+
+
+def _change_owned_setting(cfg: Any, *, setting: str) -> None:
+    if setting == "count":
+        cfg.scene.num_envs += 1
+    elif setting == "device":
+        cfg.sim.device = "cuda:1"
+    elif setting == "seed":
+        cfg.seed += 1
+    elif setting == "physics":
+        cfg.sim.physics = object()
+    else:
+        cfg.compute_final_obs = False
+
+
 @pytest.fixture(autouse=True)
 def forbid_native_and_cuda(monkeypatch):
     original_import = builtins.__import__
+    original_import_module = _isaaclab_runtime.import_module
+
+    def native_module(name):
+        if name == "isaaclab.envs.mdp":
+            return SimpleNamespace(
+                JointEffortAction=_EffortAction,
+                JointPositionAction=_PositionAction,
+                JointEffortActionCfg=_EffortActionCfg,
+                JointPositionActionCfg=_PositionActionCfg,
+            )
+        return original_import_module(name)
 
     def guarded_import(name, *args, **kwargs):
         root = name.split(".")[0]
@@ -117,6 +175,7 @@ def forbid_native_and_cuda(monkeypatch):
         raise AssertionError("CPU tests must not probe or initialize CUDA")
 
     monkeypatch.setattr(builtins, "__import__", guarded_import)
+    monkeypatch.setattr(_isaaclab_runtime, "import_module", native_module)
     for name in ("is_available", "init", "_lazy_init"):
         monkeypatch.setattr(torch.cuda, name, forbidden_cuda)
 
@@ -152,6 +211,7 @@ def make_runtime(monkeypatch):
             assert received_definition is definition
             assert received_context is context
             owner._launcher = launcher
+            owner._direct = definition.task == "Isaac-Cartpole-Direct"
             launcher.__enter__()
             if attach_native:
                 owner.native = native
@@ -190,6 +250,30 @@ def test_constructor_owns_one_validated_native_batch(make_runtime):
     assert torch.equal(runtime.native.reset_calls[0][1], torch.arange(3))
 
 
+def test_native_lazy_action_target_is_resolved_before_identity_validation(
+    make_runtime, monkeypatch
+):
+    native = _FakeNative()
+    native.term.cfg.class_type = "native.actions:JointEffortAction"
+    original_import = _isaaclab_runtime.import_module
+    resolved = []
+
+    def native_module(name):
+        if name == "isaaclab.utils.string":
+
+            def resolve(target):
+                resolved.append(target)
+                return _EffortAction
+
+            return SimpleNamespace(string_to_callable=resolve)
+        return original_import(name)
+
+    monkeypatch.setattr(_isaaclab_runtime, "import_module", native_module)
+    instance = make_runtime(native)
+    assert resolved == ["native.actions:JointEffortAction"]
+    assert instance.native is native
+
+
 @pytest.mark.parametrize("scale", [100.0, 1.0])
 def test_direct_task_validates_its_public_control_mapping_without_a_manager(make_runtime, scale):
     native = _FakeNative()
@@ -218,12 +302,86 @@ def test_direct_task_validates_its_public_control_mapping_without_a_manager(make
         assert native.close_calls == 1
 
 
+@pytest.mark.parametrize(
+    "task", ["Isaac-Cartpole", "Isaac-Reach-Franka", "NexuML-SO101-Joint-Reach"]
+)
+@pytest.mark.parametrize("substitution", ["velocity", "forged-config"])
+def test_reference_rejects_same_shape_wrong_control_implementation(
+    make_runtime, monkeypatch, task, substitution
+):
+    native = _FakeNative()
+    definition = IsaacLabEnvironment(task=task)
+    contract = definition.describe()
+    native.single_observation_space["policy"].shape = contract.observations["observation"].shape
+    native.single_action_space.shape = contract.actions["action"].shape
+    assert contract.control_period_s is not None
+    native.step_dt = contract.control_period_s
+    expected = _EffortAction if task == "Isaac-Cartpole" else _PositionAction
+    native.term = (_VelocityAction if substitution == "velocity" else expected)(
+        cfg=SimpleNamespace(class_type=_VelocityAction),
+        IO_descriptor=native.term.IO_descriptor,
+    )
+    name = "joint_effort" if task == "Isaac-Cartpole" else "arm_action"
+    native.action_manager.active_terms = [name]
+    native.action_manager.get_term = lambda key: native.term
+    import nexuml_library.environments._isaaclab_so101 as so101
+
+    monkeypatch.setattr(so101, "validate_asset", lambda env: None)
+    with pytest.raises(ValueError, match="implementation/control mode"):
+        make_runtime(native, definition=definition)
+    assert native.reset_calls == native.step_calls == []
+    assert native.close_calls == 1
+
+
+@pytest.mark.parametrize("implementation", [_PositionAction, _VelocityAction])
+def test_custom_physical_contract_validates_executed_action_not_only_config(
+    make_runtime, implementation
+):
+    native = _FakeNative()
+    reference = IsaacLabEnvironment().describe()
+    field = reference.actions["action"].model_copy(
+        update={
+            "physical": PhysicalTensorContract(
+                units=("rad",),
+                frame="joint",
+                joints=("slider_to_cart",),
+                control_mode="absolute_position",
+                scale=(0.5,),
+                offset=(0.0,),
+            ),
+        }
+    )
+    definition = IsaacLabEnvironment(
+        task="Custom-Physical",
+        contract=reference.model_copy(update={"actions": {"action": field}}),
+        bindings=IsaacBindings(observations={"observation": ("policy",)}),
+    )
+    native.term = implementation(
+        cfg=_PositionActionCfg(class_type=implementation, use_default_offset=False, clip=None),
+        IO_descriptor=SimpleNamespace(joint_names=["slider_to_cart"], scale=0.5, offset=0.0),
+    )
+    if implementation is _PositionAction:
+        assert make_runtime(native, definition=definition).native is native
+    else:
+        with pytest.raises(ValueError, match="implementation/control mode"):
+            make_runtime(native, definition=definition)
+        assert native.close_calls == 1 and native.step_calls == []
+
+
 @pytest.fixture
 def native_launch(monkeypatch, tmp_path):
     """Exercise the real constructor with fake public native APIs and VCS metadata."""
     native = _FakeNative()
     native.device = torch.device("cuda:0")
-    native.cfg.observations = SimpleNamespace(policy=SimpleNamespace())
+    native.cfg = _ManagerConfig(
+        compute_final_obs=True,
+        observations=SimpleNamespace(
+            policy=SimpleNamespace(history_length=7, enable_corruption=True)
+        ),
+        sim=SimpleNamespace(physics=SimpleNamespace(), device="cuda:0"),
+        scene=SimpleNamespace(num_envs=3),
+        seed=17,
+    )
     source = tmp_path / "site-packages/isaaclab/__init__.py"
     state = SimpleNamespace(
         module=SimpleNamespace(__file__=str(source)),
@@ -232,25 +390,50 @@ def native_launch(monkeypatch, tmp_path):
         launchers=[],
         args=[],
         parsed=[],
+        kit_after_launch=False,
     )
 
     def launch(cfg, args):
         assert cfg is native.cfg
         state.args.append(args)
-        launcher = _FakeLauncher(native.events)
+
+        class Launcher(_FakeLauncher):
+            def __enter__(self):
+                result = super().__enter__()
+                state.has_kit = state.kit_after_launch
+                return result
+
+        launcher = Launcher(native.events)
         state.launchers.append(launcher)
         return launcher
 
     def parse(task, **kwargs):
         state.parsed.append((task, kwargs))
+        native.cfg.scene.num_envs = kwargs["num_envs"]
+        native.cfg.sim.device = kwargs["device"]
+        if task.endswith("-Direct"):
+            native.cfg = _DirectConfig(**vars(native.cfg))
         return native.cfg
 
     modules = {
         "isaaclab": state.module,
         "isaaclab_tasks": SimpleNamespace(),
         "isaaclab.app": SimpleNamespace(launch_simulation=launch),
-        "isaaclab.utils": SimpleNamespace(has_kit=lambda: state.has_kit),
+        "isaaclab.utils": SimpleNamespace(
+            has_kit=lambda: state.has_kit, to_dict=lambda cfg: vars(cfg)
+        ),
         "isaaclab_tasks.utils": SimpleNamespace(parse_env_cfg=parse),
+        "isaaclab_tasks.utils.hydra": SimpleNamespace(resolve_presets=lambda cfg, **kwargs: cfg),
+        "isaaclab.envs": SimpleNamespace(
+            ManagerBasedRLEnv=_FakeNative,
+            DirectRLEnv=type("Direct", (), {}),
+            ManagerBasedRLEnvCfg=_ManagerConfig,
+            DirectRLEnvCfg=_DirectConfig,
+        ),
+        "isaaclab.envs.mdp": SimpleNamespace(
+            JointEffortAction=_EffortAction,
+            JointPositionAction=_PositionAction,
+        ),
     }
     monkeypatch.setattr(_isaaclab_runtime, "import_module", modules.__getitem__)
     monkeypatch.setattr(
@@ -267,10 +450,29 @@ def native_launch(monkeypatch, tmp_path):
         "gymnasium",
         SimpleNamespace(
             make=lambda *args, **kwargs: SimpleNamespace(unwrapped=native),
+            registry={
+                "NexuML-SO101-Joint-Reach": SimpleNamespace(
+                    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+                    kwargs={
+                        "env_cfg_entry_point": (
+                            "nexuml_library.environments._isaaclab_so101:make_so101_config"
+                        )
+                    },
+                ),
+                "NexuML-Custom-Cartpole": SimpleNamespace(
+                    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+                    kwargs={
+                        "env_cfg_entry_point": (
+                            "nexuml_library.environments._isaaclab_tasks:make_custom_cartpole_config"
+                        )
+                    },
+                ),
+            },
+            spec=lambda task: SimpleNamespace(id=task),
         ),
     )
     context = EnvironmentBuildContext(purpose="train", device="cuda:0", num_envs=3, seed=17)
-    state.build = lambda **kwargs: _isaaclab_runtime._IsaacLabRuntime(
+    state.build = lambda context=context, **kwargs: _isaaclab_runtime._IsaacLabRuntime(
         IsaacLabEnvironment(**kwargs), context
     )
     state.native = native
@@ -279,6 +481,7 @@ def native_launch(monkeypatch, tmp_path):
 
 @pytest.mark.parametrize("physics", ["newton_mjwarp", "isaacsim_physx", "ovphysx"])
 def test_canonical_wheel_launch_and_profile_specific_owned_shutdown(native_launch, physics):
+    native_launch.kit_after_launch = physics == "isaacsim_physx"
     with _isaaclab_runtime.isaaclab_process():
         runtime = native_launch.build(physics=physics)
         assert native_launch.parsed == [
@@ -291,9 +494,10 @@ def test_canonical_wheel_launch_and_profile_specific_owned_shutdown(native_launc
                 },
             )
         ]
-        assert native_launch.args[0]["fast_shutdown"] == (physics == "isaacsim_physx")
+        assert native_launch.args[0]["fast_shutdown"] is True
         assert native_launch.native.cfg.compute_final_obs
-        assert native_launch.native.cfg.observations.policy.history_length == 0
+        assert native_launch.native.cfg.observations.policy.history_length == 7
+        assert native_launch.native.cfg.observations.policy.enable_corruption is True
         with pytest.raises(RuntimeError, match="already active"):
             native_launch.build(physics=physics)
         assert _isaaclab_runtime._active_runtime is runtime
@@ -345,9 +549,7 @@ def test_failed_launcher_enter_is_not_exited_twice(native_launch, monkeypatch):
         ("Isaac-Cartpole-Direct", "isaacsim_physx"),
     ],
 )
-def test_unqualified_renderer_combinations_fail_before_native_import(task, physics, monkeypatch):
-    monkeypatch.setattr(torch.cuda, "is_available", lambda: True)
-    definition = IsaacLabEnvironment(task=task, physics=physics)
+def test_unqualified_renderer_combinations_fail_before_native_launch(task, physics, native_launch):
     context = EnvironmentBuildContext(
         purpose="eval",
         device="cuda:0",
@@ -356,7 +558,8 @@ def test_unqualified_renderer_combinations_fail_before_native_import(task, physi
     )
     with _isaaclab_runtime.isaaclab_process():
         with pytest.raises(ValueError, match="manager task with Kit PhysX"):
-            definition.build(context)
+            native_launch.build(task=task, physics=physics, context=context)
+    assert not native_launch.launchers
 
 
 def test_actual_source_checkout_revision_is_used_without_wheel_vcs_metadata(
@@ -378,6 +581,74 @@ def test_actual_source_checkout_revision_is_used_without_wheel_vcs_metadata(
         runtime = native_launch.build(physics="newton_mjwarp")
         runtime.close()
     assert calls == [["git", "-C", str(checkout), "rev-parse", "HEAD"]]
+
+
+@pytest.mark.parametrize("setting", ["count", "device", "seed", "physics", "final-state"])
+def test_customizer_cannot_change_owned_settings_before_launch(native_launch, setting):
+    with _isaaclab_runtime.isaaclab_process():
+        with pytest.raises(ValueError, match="protected"):
+            native_launch.build(
+                task_config=isaac_task_config(_change_owned_setting, setting=setting)
+            )
+    assert not native_launch.launchers
+    assert _isaaclab_runtime._active_runtime is None
+
+
+def test_kit_ownership_is_detected_after_launch_not_inferred_from_physics(native_launch):
+    native_launch.kit_after_launch = True
+    with _isaaclab_runtime.isaaclab_process():
+        instance = native_launch.build(physics="newton_mjwarp")
+        instance.close()
+        assert not native_launch.launchers[0].exit_calls
+    assert len(native_launch.launchers[0].exit_calls) == 1
+
+
+def test_build_cannot_bypass_a_conflicting_job_definition(native_launch):
+    with IsaacLabEnvironment(task="Isaac-Reach-Franka").job_scope():
+        with pytest.raises(RuntimeError, match="conflicts with the active"):
+            native_launch.build()
+    assert not native_launch.parsed and not native_launch.launchers
+
+
+def test_custom_nested_observations_and_named_action_use_explicit_bindings(
+    make_runtime, monkeypatch
+):
+    native = _FakeNative()
+    native.single_observation_space = {"sensors": {"state": SimpleNamespace(shape=(4,))}}
+    original_reset, original_step = native.reset, native.step
+
+    def reset(**kwargs):
+        observations, info = original_reset(**kwargs)
+        return {"sensors": {"state": observations["policy"]}}, info
+
+    def step(actions):
+        observations, reward, terminated, truncated, info = original_step(actions)
+        info["final_obs"] = {"sensors": {"state": info["final_obs"]["policy"]}}
+        return {"sensors": {"state": observations["policy"]}}, reward, terminated, truncated, info
+
+    monkeypatch.setattr(native, "reset", reset)
+    monkeypatch.setattr(native, "step", step)
+    reference = IsaacLabEnvironment().describe()
+    contract = reference.model_copy(
+        update={
+            "observations": {"state": reference.observations["observation"]},
+            "actions": {"command": reference.actions["action"]},
+        }
+    )
+    definition = IsaacLabEnvironment(
+        task="Registered-Custom",
+        contract=contract,
+        bindings=IsaacBindings(observations={"state": ("sensors", "state")}, action="command"),
+    )
+    instance = make_runtime(native, definition=definition)
+    assert instance.reset()["state"].shape == (3, 4)
+    native.next_truncated = [True, False, False]
+    transition = instance.step(TensorDict({"command": torch.zeros(3, 1)}, batch_size=(3,)))
+    assert set(transition.observation.keys()) == {"state"}
+    assert torch.equal(transition.observation["state"], native.final_observation)
+    assert torch.equal(
+        instance.reset(mask=torch.tensor([True, False, False]))["state"], native.observation
+    )
 
 
 def test_unindexed_cuda_alias_matches_native_cuda_zero_without_initializing_cuda(make_runtime):

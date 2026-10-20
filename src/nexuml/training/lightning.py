@@ -896,6 +896,22 @@ class NexuSession:
                 result.update(mirrored_eval_metrics)
         return results
 
+    def finalize_loggers(self, status: str) -> None:
+        """Attempt all initialized loggers without allocation, then raise the first failure."""
+        if not isinstance(self._trainer_loggers, list):
+            return
+        first_error = None
+        for initialized_logger in self._trainer_loggers:
+            try:
+                initialized_logger.finalize(status)
+            except BaseException as error:
+                if first_error is None:
+                    first_error = error
+                else:
+                    first_error.add_note(f"Logger finalization also failed: {error!r}")
+        if first_error is not None:
+            raise first_error
+
     def run(self) -> TrainResult:
         """Execute the standard fit → validate → post-train fit → test flow.
 
@@ -903,44 +919,53 @@ class NexuSession:
             ``TrainResult`` containing the pipeline, module, trainer, and
             metric results.
         """
-        self.fit()
-        module = self.lightning_module
-        if isinstance(module, NexuRLLightningModule):
-            metrics = module.evaluate_current_policy()
+        try:
+            self.fit()
+            module = self.lightning_module
+            if isinstance(module, NexuRLLightningModule):
+                metrics = module.evaluate_current_policy()
+                return TrainResult(
+                    pipeline=self.pipeline,
+                    policy=module.policy,
+                    lightning_module=module,
+                    trainer=self.trainer,
+                    interaction_results=metrics,
+                    load_report=self.runtime.load_report,
+                )
+            # Skip validation for frozen eval runs (max_epochs=0) — no training happened
+            if (
+                isinstance(self.scenario.training, TrainingSpec)
+                and self.scenario.training.max_epochs == 0
+            ):
+                validation_results = []
+            else:
+                validation_results = self.validate()
+
+            self._fit_post_train_layers(self.data_module.train_dataloader())
+
+            test_results = self.test()
+            eval_algorithm_results = module.evaluation_results
+            if eval_algorithm_results:
+                logger.info("Eval algorithm results: %s", eval_algorithm_results)
+
             return TrainResult(
                 pipeline=self.pipeline,
-                policy=module.policy,
-                lightning_module=module,
+                policy=self.runtime.policy,
+                lightning_module=self.lightning_module,
                 trainer=self.trainer,
-                interaction_results=metrics,
+                validation_results=validation_results,
+                test_results=test_results,
                 load_report=self.runtime.load_report,
+                eval_algorithm_results=eval_algorithm_results,
             )
-        # Skip validation for frozen eval runs (max_epochs=0) — no training happened
-        if (
-            isinstance(self.scenario.training, TrainingSpec)
-            and self.scenario.training.max_epochs == 0
-        ):
-            validation_results = []
-        else:
-            validation_results = self.validate()
-
-        self._fit_post_train_layers(self.data_module.train_dataloader())
-
-        test_results = self.test()
-        eval_algorithm_results = module.evaluation_results
-        if eval_algorithm_results:
-            logger.info("Eval algorithm results: %s", eval_algorithm_results)
-
-        return TrainResult(
-            pipeline=self.pipeline,
-            policy=self.runtime.policy,
-            lightning_module=self.lightning_module,
-            trainer=self.trainer,
-            validation_results=validation_results,
-            test_results=test_results,
-            load_report=self.runtime.load_report,
-            eval_algorithm_results=eval_algorithm_results,
-        )
+        except BaseException as primary:
+            try:
+                self.finalize_loggers("failed")
+            except BaseException as error:
+                primary.add_note(f"Logger finalization also failed: {error!r}")
+                for note in tuple(getattr(error, "__notes__", ())):
+                    primary.add_note(note)
+            raise
 
     def _fit_post_train_layers(self, train_loader) -> None:
         """Run one predict pass per unfitted PostTrainFitLayer in pipeline order.
