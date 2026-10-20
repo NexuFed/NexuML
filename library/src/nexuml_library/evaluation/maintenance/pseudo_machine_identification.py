@@ -409,6 +409,14 @@ def _one_seed(
             "chance_accuracy_balanced": 1.0 / len(classes),
             "classifiers": {},
         }
+        evaluations: dict[str, tuple[FloatArray, IntArray]] = {
+            f"{split}_{state_name}": (
+                cast(FloatArray, latent[partition[split], state]),
+                cast(IntArray, y[partition[split]]),
+            )
+            for split in ("validation", "assessment")
+            for state, state_name in ((0, "healthy"), (1, "faulty"))
+        }
         for training_condition in ("healthy_only", "faulty_only", "mixed"):
             training_parts = (
                 (0,)
@@ -421,20 +429,10 @@ def _one_seed(
                 [latent[training_ids, state] for state in training_parts]
             )
             train_y = np.concatenate([y[training_ids] for _ in training_parts])
-            evaluations = {
-                f"{split}_{state_name}": (latent[partition[split], state], y[partition[split]])
-                for split in ("validation", "assessment")
-                for state, state_name in ((0, "healthy"), (1, "faulty"))
-            }
             result["classifiers"][training_condition] = _logistic_report(
                 train_x, train_y, evaluations, classes
             )
         if target_name == "machine_identity":
-            evaluations = {
-                f"{split}_{state_name}": (latent[partition[split], state], y[partition[split]])
-                for split in ("validation", "assessment")
-                for state, state_name in ((0, "healthy"), (1, "faulty"))
-            }
             result["centroid_healthy_only"] = _prototype_report(
                 latent[training_ids, 0], y[training_ids], evaluations, classes
             )
