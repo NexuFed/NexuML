@@ -23,7 +23,7 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ika-runner
 
     steps:
       - uses: actions/checkout@v7

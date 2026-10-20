@@ -98,6 +98,10 @@ _RUNTIME_EXTERN_PATTERNS = [
     "dvclive.**",
     "typer.**",
     "rich.**",
+    "ray.**",
+    "pyarrow.**",
+    "kubernetes.**",
+    "psutil.**",
 ]
 
 # Top-level names covered by the extern policy.
@@ -1067,7 +1071,7 @@ class _OnnxWrapper(torch.nn.Module):
         self.input_key = input_key
         self.output_key = output_key
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:  # ty: ignore[invalid-mutable-override]
         td = TensorDict({self.input_key: x}, batch_size=[x.shape[0]])
         x_out, _ = self.pipeline(td, None)
         return x_out[self.output_key]

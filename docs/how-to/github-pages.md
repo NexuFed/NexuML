@@ -18,14 +18,8 @@ The `docs.yml` CI workflow deploys automatically:
 
 ## 3. Build locally
 
-Install docs dependencies and serve locally:
-
-```bash
-uv sync --extra docs
-uv run mkdocs serve
-```
-
-Open [http://127.0.0.1:8000](http://127.0.0.1:8000).
+Use [Development installation](../development/install.md), then follow the
+[local docs commands](development.md#docs). The development extra includes MkDocs.
 
 ## 4. Build a static site
 
@@ -38,7 +32,7 @@ The site is written to `site/`.
 ## 5. Manually deploy a version
 
 ```bash
-uv run mike deploy --push --update-aliases 1.2.3 latest
+uv run mike deploy --push --update-aliases "${DOCS_VERSION:?Set the documentation release label}" latest
 uv run mike set-default --push latest
 ```
 

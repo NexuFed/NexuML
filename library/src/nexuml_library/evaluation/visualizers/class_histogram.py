@@ -5,13 +5,18 @@ from nexuml.core.discovery import eval_algorithm
 
 import logging
 from collections import Counter
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 from tensordict import TensorDict
 
 from nexuml.evaluation.algorithm import EvalAlgorithm
-from nexuml.core.components import EvalAlgorithmDefinition, EvalBuildContext
+from nexuml.core.components import (
+    ContextInput,
+    EvalAlgorithmDefinition,
+    EvalBuildContext,
+    EvalContextInputs,
+)
 from nexuml_library.evaluation.visualizers._plotting import (
     apply_axis_style,
     format_label,
@@ -25,17 +30,21 @@ logger = logging.getLogger(__name__)
 class ClassHistogramVisualizer(EvalAlgorithmDefinition):
     """Bar chart of class label distribution in train and test sets."""
 
+    context_inputs = EvalContextInputs(label_key=ContextInput(default="y_true"))
+
     title: str | None = None
 
     def build(self, context: EvalBuildContext) -> EvalAlgorithm:
+        assert self.context_inputs is not None
+        context = self.context_inputs.resolve(context)
         return _ClassHistogramVisualizerRuntime(
-            label_key=context.label_key or "y_true",
+            label_key=cast(str, context.label_key),
             title=self.title,
         )
 
 
 class _ClassHistogramVisualizerRuntime(EvalAlgorithm):
-    def __init__(self, label_key: str = "y_true", title: str | None = None) -> None:
+    def __init__(self, label_key: str, title: str | None = None) -> None:
         self.label_key = label_key
         self.title = title
         self._train_counts: Counter = Counter()

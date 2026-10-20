@@ -3,21 +3,32 @@
 The public algorithm definition stores semantic configuration. A private `EvalAlgorithm` runtime accumulates mutable evaluation state.
 
 ```python
+from typing import cast
+
 import torch
 from tensordict import TensorDict
 
-from nexuml.core.components import EvalAlgorithmDefinition, EvalBuildContext
+from nexuml.core.components import (
+    ContextInput,
+    EvalAlgorithmDefinition,
+    EvalBuildContext,
+    EvalContextInputs,
+    FeatureKey,
+)
 from nexuml.core.discovery import eval_algorithm
 from nexuml.evaluation.algorithm import EvalAlgorithm
 
 
 @eval_algorithm("l2_error")
 class L2Error(EvalAlgorithmDefinition):
-    prediction_key: str = "reconstructed"
+    context_inputs = EvalContextInputs(feature_key=ContextInput(default="features"))
+    prediction_key: FeatureKey = "reconstructed"
 
     def build(self, context: EvalBuildContext) -> EvalAlgorithm:
+        assert self.context_inputs is not None
+        context = self.context_inputs.resolve(context)
         return _L2ErrorRuntime(
-            feature_key=context.feature_key or "features",
+            feature_key=cast(str, context.feature_key),
             prediction_key=self.prediction_key,
         )
 
@@ -56,6 +67,10 @@ evaluation = EvaluationSpec(
 ```
 
 `enabled`, `name`, axis keys, feature keys, and label keys remain on the surrounding spec because they describe evaluation placement. Algorithm-specific values remain on the definition.
+
+Annotate intrinsic key parameters with `FeatureKey` or `LabelKey`, including optional and list forms such as `FeatureKey | None` and `list[LabelKey] | None`. Values still serialize as ordinary strings, nulls, and lists. Use native `Literal["tsne", "umap"]` types for closed string choices; no schema extras are needed.
+
+Declare only consumed context slots in `EvalContextInputs` and call its resolver in `build()`, including direct builds. `ContextInput(default="features")` uses the fallback for omitted, null, or empty values; explicit nonempty keys win. `ContextInput(required=True)` rejects missing/null keys without rejecting an empty string. The inherited `context_inputs = None` means unknown consumption; `EvalContextInputs()` means known no context inputs. Tooling reads the same declarations without constructing runtimes.
 
 Verify discovery with `nexuml registry list eval`. YAML uses the stable `l2_error@1` identity and validated parameters, while Python imports `L2Error` directly.
 

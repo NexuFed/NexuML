@@ -47,9 +47,17 @@ Issues = "https://github.com/NexuFed/NexuML/issues"
 Releases = "https://github.com/NexuFed/NexuML/releases"
 
 [project.optional-dependencies]
+api = [
+    "fastapi>=0.115,<1",
+    "uvicorn>=0.29,<1",
+    "websockets>=13,<17",
+    # API process ownership uses APIs supported by Isaac Sim's pinned psutil.
+    "psutil>=5.9.8,<9",
+]
 dev = [
     "pytest>=8.0",
     "pytest-cov>=4.0",
+    "httpx>=0.27,<1",
     "ruff>=0.4",
     "ty",
     "mkdocs-material>=9.6",
@@ -96,6 +104,9 @@ video = [
     "imageio[ffmpeg]>=2.37,<3",
     "imageio-ffmpeg>=0.6,<0.7",
 ]
+kubernetes = [
+    "kubernetes>=36,<37",
+]
 s3 = [
     "boto3>=1.34",
 ]
@@ -106,7 +117,7 @@ robots = [
     "nexuml-library[robots]>=0.2,<0.3",
 ]
 all = [
-    "nexuml[library,audio,data,tracking,tuning,dali,export,ray,s3,reinforcement,rendering,video]",
+    "nexuml[api,library,audio,data,tracking,tuning,dali,export,ray,kubernetes,s3,reinforcement,rendering,video]",
 ]
 
 [dependency-groups]
@@ -121,7 +132,7 @@ packages = ["src/nexuml"]
 
 [tool.hatch.build.targets.sdist]
 include = ["src/nexuml", "README.md", "LICENSE", "pyproject.toml"]
-exclude = ["library"]
+exclude = ["library", "studio"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -174,7 +185,7 @@ convention = "google"
 "src/nexuml/evaluation/__init__.py" = ["F822"]
 
 [tool.ty.environment]
-extra-paths = ["src", "library/src"]
+extra-paths = ["src", "library/src", "skills/nexuml-library/assets/minimal-library/src"]
 
 [tool.uv]
 default-groups = ["native-sources"]

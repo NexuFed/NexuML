@@ -4,7 +4,7 @@
 
 ## Prerequisites
 
-- NexuML installed (`uv sync`)
+- [NexuML installed](../start/install.md) in the selected environment
 - A local library directory with a Python package (containing `__init__.py`)
 
 ## Commands

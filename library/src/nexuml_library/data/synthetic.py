@@ -147,7 +147,7 @@ class _SyntheticDatasetRuntime(NexuDataset):
             y_data = {key: val[index] for key, val in self._targets.items()}
             # Always include reconstruction target
             y_data["reconstruction_target"] = self._features[index]
-            y = TensorDict(y_data, batch_size=[])  # ty: ignore[invalid-argument-type]
+            y = TensorDict(y_data, batch_size=[])
         else:
             y = TensorDict(
                 {"reconstruction_target": self._features[index]},

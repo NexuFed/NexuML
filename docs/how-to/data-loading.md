@@ -35,9 +35,6 @@ DataSpec(
 
 When `LoaderSpec.batch_size` is `None`, the effective batch size comes from `TrainingSpec.batch_size`. Setting an explicit loader batch size takes precedence and disables automatic batch-size probing.
 
-!!! note "Current 0.2 default"
-    `LoaderSpec` defaults to `TorchLoader()`. DALI is never selected implicitly.
-
 ## NVIDIA DALI
 
 Install the optional integration on a compatible Linux/CUDA environment:
@@ -63,7 +60,7 @@ The DALI runtime has two broad paths:
 - file-backed datasets with metadata can use native readers/decoders for supported audio, image, video, text, NumPy, and WebDataset data;
 - datasets that cannot use the native route may fall back to the Torch loader after the DALI backend itself has been initialized.
 
-A file-backed `NexuDataset` can expose metadata such as a `file` column and optional DALI sample-contract hints (`dali_x_keys`, layout, sequence length). The [audio tutorial](../tutorials.md) is intended to demonstrate this path once its 0.2 migration is complete.
+A file-backed `NexuDataset` can expose metadata such as a `file` column and optional DALI sample-contract hints (`dali_x_keys`, layout, sequence length). See the [audio tutorial](../tutorials.md) for the learning path.
 
 ## Tensor shards
 
