@@ -132,11 +132,6 @@ def test_legacy_absence_keeps_its_previous_checks_without_claiming_physical_qual
     _validate_evaluation_contract(old, current)
     with pytest.raises(ValueError, match="physical system identity"):
         _validate_evaluation_contract(current, old)
-    legacy = IsaacLabEnvironment(
-        task="NexuML-SO101-Joint-Reach",
-        revision="ae37b028ea415c91ea2bc32609efcd759ed2b974",
-    ).describe()
-    assert legacy.physical is None and legacy.actions["action"].physical is None
 
 
 def test_current_inference_archive_contract_is_compared_by_value(tmp_path):

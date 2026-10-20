@@ -148,6 +148,8 @@ def _reset_joint_reach(env, env_ids) -> None:
     """Reset named joints, fix the gripper target, and sample goals on Isaac's seeded device RNG."""
     if env_ids is None:
         env_ids = torch.arange(env.num_envs, device=env.device)
+    elif isinstance(env_ids, slice):
+        env_ids = torch.arange(env.num_envs, device=env.device)[env_ids]
     robot = env.scene["robot"]
     joint_ids, _ = robot.find_joints([*JOINT_NAMES, "gripper"], preserve_order=True)
     positions = torch.tensor((*HOME, GRIPPER_POSITION), device=env.device).repeat(len(env_ids), 1)
@@ -168,7 +170,7 @@ def _reset_joint_reach(env, env_ids) -> None:
     env.joint_reach_hold[env_ids] = 0
 
 
-def make_so101_config(*, num_envs: int, device: str, seed: int) -> Any:
+def make_so101_config(*, num_envs: int = 1, device: str = "cuda:0", seed: int = 0) -> Any:
     """Return a minimal manager config only inside the prepared Isaac execution process."""
     assets = import_module("isaaclab.assets")
     envs = import_module("isaaclab.envs")
@@ -178,6 +180,7 @@ def make_so101_config(*, num_envs: int, device: str, seed: int) -> Any:
     sim = import_module("isaaclab.sim")
     configclass = import_module("isaaclab.utils").configclass
     physx = import_module("isaaclab_physx.physics")
+    preset = import_module("isaaclab_tasks.utils").PresetCfg
     robot_cfg = cast(Any, import_module("isaaclab_assets.robots.so101").SO101_CFG).replace(
         prim_path="{ENV_REGEX_NS}/Robot"
     )
@@ -250,10 +253,17 @@ def make_so101_config(*, num_envs: int, device: str, seed: int) -> Any:
 
         reset_joint_reach = managers.EventTermCfg(func=_reset_joint_reach, mode="reset")
 
+    @configclass
+    class PhysicsCfg(preset):
+        """Expose only the maintained fixed PhysX backend to native selection."""
+
+        isaacsim_physx = physx.PhysxCfg()
+        default = isaacsim_physx
+
     return envs.ManagerBasedRLEnvCfg(
         scene=SceneCfg(num_envs=num_envs, env_spacing=1.5),
         sim=sim.SimulationCfg(
-            device=device, dt=1 / 120, render_interval=4, physics=physx.PhysxCfg()
+            device=device, dt=1 / 120, render_interval=4, physics=cast(Any, PhysicsCfg())
         ),
         seed=seed,
         decimation=4,
