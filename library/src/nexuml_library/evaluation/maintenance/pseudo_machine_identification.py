@@ -110,20 +110,20 @@ def _swd_matrix(
 
     Returns:
         Symmetric pairwise sliced-W1 matrix.
+
+    Raises:
+        ValueError: If a machine is empty or train sample counts differ.
     """
     matrix = [[0.0 for _ in names] for _ in names]
     for i, left in enumerate(names):
         for j in range(i + 1, len(names)):
             a, b = projected[left], projected[names[j]]
-            n = min(len(a), len(b))
-            # All machines have the same number of train recordings in the
-            # standard NEX-233 protocol. Reject unequal counts instead of
-            # introducing stochastic subsampling into clustering.
+            if not len(a) or not len(b):
+                raise ValueError("Empty machine distribution")
+            # Reject unbalanced training rather than subsample stochastically.
             if len(a) != len(b):
                 raise ValueError("Healthy SWD clustering requires balanced machine samples")
             distance = float(np.mean(np.abs(np.sort(a, axis=0) - np.sort(b, axis=0))))
-            if n == 0:
-                raise ValueError("Empty machine distribution")
             matrix[i][j] = matrix[j][i] = distance
     return matrix
 
@@ -257,7 +257,7 @@ def _logistic_report(
     """Train a fixed linear routing classifier and evaluate held-out conditions.
 
     Returns:
-        Condition-specific metrics and class prior with no parameter tuning.
+        State-specific recognition metrics with no hyperparameter tuning.
     """
     from sklearn.linear_model import LogisticRegression
 
@@ -558,7 +558,7 @@ def identify_pseudo_machine_types(
             "Pseudo-type labels are train-healthy-only hierarchical cluster hypotheses.",
             "Closed-set classification: all evaluated machine identities appear in training.",
             "Faulty endpoint does not specify a degradation stage or RUL.",
-            "Faulty-only and mixed training are diagnostic upper-bound comparisons.",
+            "Faulty-only and mixed training are alternative data-availability regimes.",
             "Cluster-label predictability does not demonstrate shared fault mechanisms.",
             "id_06 was previously a test machine and is now exploratory development data.",
         ],
