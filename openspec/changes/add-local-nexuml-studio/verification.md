@@ -467,3 +467,34 @@ GitHub-hosted exception is required by npm OIDC.
   same-tarball proof passed all 11 workflows in 3.5m, including CPU workflow in 48.8s,
   offline/dependency invariants, hosted HTTP/WS security and owned/attached cleanup.
   Evidence: `/tmp/opencode/nexuml packaged smoke dHz9dG/`.
+
+### Linux developer preview: first-launch polish
+
+- The welcome screen exposes actual backend-reported NexuML/Python identity and a
+  collapsed executable/directory/interface disclosure. The existing footer retains
+  runtime details after loading, rather than adding another permanent panel.
+- `Try an example` uses installed scenario discovery and the original resolve route.
+  Inspection of `synthetic-linear-ae-reconstruction` confirmed generated local data,
+  a small linear autoencoder and no service/download dependency. Only its editable
+  draft gets one CPU epoch / one device via normal config validation; library defaults,
+  graph projection, YAML save and explicit Run review/confirmation remain unchanged.
+- Existing launcher errors now identify the selected executable, invalid directory,
+  detected incompatible version or startup exit and user-run recovery commands. The
+  browser reports disconnection while retaining the draft; runtime identity refresh
+  uses the existing authenticated endpoint, with query retries still disabled.
+- Extended existing unit/browser/package checks cover the welcome actions, actual
+  identity, missing example, incompatible interface, retained disconnected draft,
+  real CPU example training/results/logs/artifacts and default browser-opener invocation.
+  All previous browser assertions and timeouts remain. No Python, transport, security,
+  dependency or platform-matrix changes. The two Studio guides lead with Linux setup
+  and first training, keeping unpublished-package and portability limitations explicit.
+- Local frontend typecheck/lint, 37 unit tests, production pack and strict MkDocs passed.
+  Full local Python suite: 463 passed / 8 skipped; ty and Ruff lint/format passed.
+  API transport/optional-extra checks: 5 passed. Read-only integrated review found no
+  material defects. Complete project-installed final-tarball proof passed 13 browsers
+  without retries in 4.1m; the new CPU example workflow took 23.3s. Automatic opener
+  invocation, selected interpreter, offline assets, dependency invariants, hosted
+  HTTP/WebSocket protection and owned/attached shutdown all passed. Desktop/mobile
+  welcome screenshots were inspected. Evidence: `/tmp/opencode/studio-preview-polish/`
+  and `/tmp/opencode/nexuml packaged smoke 1UFO8n/`. Full uv-tool proof and exact pushed
+  head CI are required before the final remote-green claim.

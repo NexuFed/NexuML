@@ -22,6 +22,7 @@ import { compatibilityError } from "../bin/compatibility.mjs";
 
 const trainingSections=["Basics","Optimizer and schedule","Data loading","Execution","Checkpoints and logging"];
 const basicTraining=["max_epochs","batch_size","lr","accelerator","devices","precision"];
+const exampleScenario="synthetic-linear-ae-reconstruction";
 
 export function Studio() {
   const [client] = useState(()=>new QueryClient({defaultOptions:{queries:{retry:false,refetchOnWindowFocus:false}}}));
@@ -36,9 +37,10 @@ function Workbench() {
     if(!response.ok) throw new Error(data.error);return data as ConnectionInfo;
   }});
   const connection=boot.data;
-  const runtime=useQuery({queryKey:["runtime"],enabled:!!connection,queryFn:()=>request<{interface_version:number;nexuml_version:string;python_executable:string;python_version:string;working_directory:string}>(connection!,"/runtime")});
+  const runtime=useQuery({queryKey:["runtime"],enabled:!!connection,queryFn:()=>request<{interface_version:number;nexuml_version:string;python_executable:string;python_version:string;working_directory:string}>(connection!,"/runtime"),refetchInterval:5000});
   const incompatible=runtime.data ? compatibilityError(runtime.data) : null;
   const catalog=useQuery({queryKey:["catalog"],enabled:!!connection && !!runtime.data && !incompatible,queryFn:()=>request<Catalog>(connection!,"/registry")});
+  const exampleAvailable=catalog.data?.scenarios.some(item=>item.name===exampleScenario);
   const [view,setView]=useState("Pipeline");
   const [panel,setPanel]=useState("Canvas");
   const [leftTab,setLeftTab]=useState("Structure");
@@ -200,6 +202,13 @@ function Workbench() {
     replace(document,sidecar.semantic_revision===document.semantic_revision ? sidecar.layout : undefined);setLayoutRevision(sidecar.base_revision);setFileAction(null);
     if(sidecar.layout && sidecar.semantic_revision!==document.semantic_revision)setMessage("External semantic revision changed. Stale layout ignored.");
   });};
+  const tryExample=()=>act(async()=>{
+    const document=await request<Document>(connection!,`/scenarios/${exampleScenario}/resolve`,{});
+    // Only this draft gets a short CPU run; installed recipe defaults stay unchanged.
+    document.data.training={...document.data.training,max_epochs:1,accelerator:"cpu",devices:1};
+    replace(await request<Document>(connection!,"/config/validate",{data:document.data,stage_order:document.stage_order}));
+    setView("Pipeline");setMessage("Example ready: one CPU epoch, generated data, no downloads. Inspect or edit the pipeline, then click Run… to review execution.");
+  });
   const saveDraft=()=>{if(!state.saved){setFileAction("save");return;}setFile(state.path);void save(state.path);};
   const buildStatus=!build ? "Not checked" : !buildCurrent ? "Needs rechecking" : buildResult.data?.status==="succeeded" ? "Passed" : buildResult.data?.status==="failed" ? "Failed" : "Checking";
   const problemCount=Math.max(errors.length,checkFailed ? 1 : 0)+(graph?.problems.length ?? 0)+(buildCurrent && buildResult.data?.status==="failed" ? Math.max(1,buildFailure?.fields?.length ?? 0) : 0);
@@ -208,7 +217,12 @@ function Workbench() {
     schema={{...modelSchema("TrainingSpec"),properties:Object.fromEntries(Object.entries(modelSchema("TrainingSpec")?.properties ?? {}).filter(([key])=>keys.includes(key))),required:modelSchema("TrainingSpec")?.required?.filter(key=>keys.includes(key))}}
     root={schema} basic={basic} prefix="training." errors={errors} rawLabel={keys.includes("optimizer") ? "Raw optimizer settings" : "Raw training settings"} {...fieldContext} onChange={(value,validate)=>edit(["training"],{...draft.config.training,...value},validate)}/>;
 
-  if(!connection || runtime.isError || !runtime.data || incompatible) return <main className="startup"><div className="brand"><Layers/>NexuML <span>STUDIO</span></div><h1>{boot.isError || runtime.isError || incompatible ? "Connection unavailable" : "Connecting to your runtime"}</h1><p>{boot.error?.message ?? runtime.error?.message ?? incompatible ?? "Verifying the selected local NexuML installation…"}</p>{runtime.data && <p>NexuML {runtime.data.nexuml_version} · Python {runtime.data.python_version} · {runtime.data.python_executable}</p>}<p>Start with <code>nexuml-studio --python /path/to/python .</code> or choose an existing <code>nexuml</code> executable. Nothing is installed automatically.</p><Button onClick={()=>{void boot.refetch();void runtime.refetch();}}>Retry connection</Button></main>;
+  if(!connection || !runtime.data || incompatible) return <main className="startup"><div className="brand"><Layers/>NexuML <span>STUDIO</span></div>
+    <h1>{boot.isError || runtime.isError || incompatible ? "Connection unavailable" : "Connecting to your runtime"}</h1>
+    <p>{boot.error?.message ?? incompatible ?? runtime.error?.message ?? "Verifying the selected local NexuML installation…"}</p>
+    {runtime.data && <p>NexuML {runtime.data.nexuml_version} · Python {runtime.data.python_version} · <code>{runtime.data.python_executable}</code></p>}
+    <p>Check the launcher terminal for startup errors. For a tool installation: <code>uv tool install &quot;nexuml[api,library]&quot;</code>. For an existing project: <code>nexuml-studio --python /path/to/project/.venv/bin/python .</code>. Stop the old launcher with Ctrl-C before changing runtimes. Nothing is installed automatically.</p>
+    <Button onClick={()=>{if(connection)void runtime.refetch();else void boot.refetch();}}>Retry connection</Button></main>;
   return <main className="workbench">
     <header className="topbar"><div className="brand"><Layers size={22}/>NexuML <span>STUDIO</span></div>
       <details className="scenario-menu"><summary aria-label="Scenario menu" title={runtime.data.working_directory}>{draft?.config.name ?? "Scenario"}<ChevronDown size={14}/></summary><div>
@@ -226,6 +240,7 @@ function Workbench() {
         </div></details>
          <Button data-run-trigger className="primary" disabled={!draft || pending || state.blocked || graph?.unconnected} title={graph?.unconnected ? "Connect required inputs before launching" : undefined} onClick={()=>act(async()=>{const checked=await request<Document>(connection,checkpoint ? "/train/prepare" : "/config/validate",{...payload(),...(checkpoint ? {trainer_checkpoint:checkpoint} : {})});setReview({document:checked,source:currentSignature});})}><Play size={15}/>Run…</Button></div>
     </header>
+    {runtime.isError && <div className="buffer-notice" role="alert"><span>Connection lost to NexuML. Your draft is retained; displayed runtime and run status may be stale. Check the launcher terminal. If Studio was restarted, reload this page; otherwise retry the connection.</span><Button onClick={()=>void runtime.refetch()}>Retry connection</Button></div>}
     <nav className="nav-tabs" aria-label="Workbench views"><div>{["Pipeline","Training","Runs"].map(tab=><Button key={tab} aria-current={view===tab?"page":undefined} onClick={()=>{setView(tab);setShowYaml(false);}}>{tab}</Button>)}</div><div>
       <Button aria-pressed={showLibraries} onClick={()=>setShowLibraries(!showLibraries)}><Library size={15}/>Libraries</Button>
       <Button disabled={!draft} aria-pressed={showYaml && view!=="Runs"} onClick={()=>{if(view==="Runs"){setView("Pipeline");setShowYaml(true);}else setShowYaml(!showYaml);}}><Code2 size={15}/>YAML</Button>
@@ -313,8 +328,16 @@ function Workbench() {
           <label className="field">Resume Trainer checkpoint<input aria-label="Resume Trainer checkpoint" placeholder="Optional authorized local .ckpt path" value={checkpoint} onChange={event=>setCheckpoint(event.target.value)}/></label><p className="muted">Resume follows checkpoint scenario semantics. Local only. Review the checkpoint-derived source at launch. Checkpoints are trusted Python inputs.</p></>}
       </article>)}</fieldset></div></section>}
     <div className="runs-view" hidden={view!=="Runs"}><Execution connection={connection} draft={draft} identity={operationId} choose={setOperationId} report={report} editSettings={()=>setView("Training")} loadSettings={identity=>act(async()=>{if(!discard())return;replace(await request<Document>(connection,`/operations/${identity}/config`));setView("Training");})}/></div>
-    {!draft && view!=="Runs" && <section className="welcome"><h1>Start with a scenario.</h1><p>Choose an installed recipe or open NexuML YAML.<br/>Your configuration stays local. NexuML runs it.</p><div className="toolbar"><Button className="primary" onClick={()=>setFileAction("recipe")}>Choose a recipe</Button><Button onClick={()=>setFileAction("open")}>Open YAML</Button></div><p className="muted">Discovery imports trusted definitions. Recipe resolution and build can execute Python.</p>{catalog.isError && <p className="field-error">{catalog.error.message}</p>}</section>}
-    <section className="diagnostics" aria-label="Problems and checks"><div className="diagnostic-heading"><Button aria-expanded={expandedProblems} onClick={()=>{setProblemsOpen(!expandedProblems);setDismissedBuild(build?.id ?? "");}}>Problems ({problemCount})<ChevronDown size={14}/></Button><span>Build: {buildStatus}</span><span className="muted">Local runtime · NexuML {runtime.data.nexuml_version}</span></div>
+    {!draft && view!=="Runs" && <section className="welcome">
+      <div className="welcome-runtime" data-connected={!runtime.isError}><strong>{runtime.isError ? "Connection lost to" : "Connected to"} NexuML {runtime.data.nexuml_version}</strong><p className="muted">Python {runtime.data.python_version} · Local runtime</p>
+        <details><summary>Runtime details</summary><dl><dt>Python executable</dt><dd><code>{runtime.data.python_executable}</code></dd><dt>Working directory</dt><dd><code>{runtime.data.working_directory}</code></dd><dt>API interface</dt><dd>{runtime.data.interface_version}</dd></dl></details></div>
+      <h1>Start with a scenario.</h1><p>Try a small CPU example, choose an installed recipe, or open NexuML YAML. Your configuration stays local. NexuML runs it.</p>
+      <div className="toolbar"><Button className="primary" disabled={pending || !exampleAvailable || runtime.isError} onClick={tryExample}>Try an example</Button><Button disabled={pending} onClick={()=>setFileAction("recipe")}>Choose a recipe</Button><Button disabled={pending} onClick={()=>setFileAction("open")}>Open YAML</Button></div>
+      <p className="muted">The example uses generated data, one CPU epoch and no downloads. Loading resolves trusted Python; training starts only after you confirm Run.</p>
+      {catalog.isPending && <p className="muted">Discovering installed recipes…</p>}
+      {catalog.isError ? <p className="field-error" role="alert">Recipe discovery failed: {catalog.error.message} Check the selected Python environment and its installed libraries.<Button onClick={()=>void catalog.refetch()}>Refresh discovery</Button></p> : catalog.data && !exampleAvailable && <p className="field-error">The example is not available in this Python environment. Install the base library in the same environment, for example <code>uv tool install --reinstall &quot;nexuml[api,library]&quot;</code> for a tool installation, then restart Studio. Or choose another installed recipe / open YAML.</p>}
+    </section>}
+    <section className="diagnostics" aria-label="Problems and checks"><div className="diagnostic-heading"><Button aria-expanded={expandedProblems} onClick={()=>{setProblemsOpen(!expandedProblems);setDismissedBuild(build?.id ?? "");}}>Problems ({problemCount})<ChevronDown size={14}/></Button><span>Build: {buildStatus}</span><span className="muted">{runtime.isError ? "Runtime disconnected" : `Local runtime · NexuML ${runtime.data.nexuml_version}`}</span></div>
       <div role="status">{pending ? "Waiting for selected NexuML…" : message}</div>
       <div hidden={!expandedProblems} className="diagnostic-details">
       {build && <div className="build-state">Build: {buildResult.data?.status ?? "connecting"}{!buildCurrent && " · stale (draft changed)"}{buildResult.data?.status==="succeeded" && buildCurrent && <code> · Final key shapes: {Object.entries(buildResult.data.result?.shapes as RecordValue ?? {}).map(([key,value])=>`${key} [${Array.isArray(value) ? value.join(" × ") : value}]`).join(" · ")}</code>}{buildResult.data?.status==="failed" && <p className="field-error" role="alert">{buildFailure?.message ?? "Build failed. Inspect its process logs and frozen launch configuration."}</p>}
@@ -322,7 +345,7 @@ function Workbench() {
         {buildResult.data?.result && <details><summary>Expert: build result JSON</summary><pre>{JSON.stringify(buildResult.data.result,null,2)}</pre></details>}
       </div>}
       <div className="problems-list" aria-label="Draft problems">{errors.map((error,index)=><Button key={index} onClick={()=>navigate(error.loc)}>{error.loc.join(".")}: {error.message}</Button>)}{graph?.problems.map(problem=><p key={problem}>{problem}</p>)}</div>
-        <details><summary>Runtime and discovery details ({catalog.data?.errors.length ?? 0})</summary><code>Python {runtime.data.python_version} · {runtime.data.python_executable}</code><p>Interface 2 · {draft ? `${draft.order.length} ordered stages` : "No scenario selected"}</p>{catalog.data?.errors.map((error,index)=><p key={index}>{error.module}: {error.message}</p>)}</details>
+        <details><summary>Runtime and discovery details ({catalog.data?.errors.length ?? 0})</summary>{(draft || view==="Runs") && <><code>Python {runtime.data.python_version} · {runtime.data.python_executable}</code><p>Working directory: <code>{runtime.data.working_directory}</code></p></>}<p>Interface {runtime.data.interface_version} · {draft ? `${draft.order.length} ordered stages` : "No scenario selected"}</p><p className="muted">Missing a custom library? Install it in this Python environment, or add a trusted source root in Libraries. Studio never installs dependencies.</p>{catalog.data?.errors.map((error,index)=><p key={index}>{error.module}: {error.message}</p>)}</details>
       </div>
     </section>
     <Dialog.Root open={!!fileAction} onOpenChange={open=>{if(!open&&!pending)setFileAction(null);}}><Dialog.Portal><Dialog.Backdrop className="dialog-backdrop"/><Dialog.Popup className="dialog-popup" finalFocus={()=>document.querySelector<HTMLElement>(".scenario-menu summary")}>

@@ -8,4 +8,6 @@ test("Studio supports independent backend patch releases, not unknown interfaces
   }
   expect(compatibilityError({interface_version:3,nexuml_version:"0.2.1"})).toContain("interface 3");
   expect(compatibilityError({})).toContain("unknown");
+  expect(compatibilityError({})).toContain('uv tool install --reinstall "nexuml[api,library]>=0.2.1,<0.3.0"');
+  expect(compatibilityError({})).toContain("--python /path/to/project/.venv/bin/python");
 });

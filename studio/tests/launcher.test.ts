@@ -17,7 +17,20 @@ test("explicit executable/interpreter/attach selection, spaced paths and invalid
     const file=join(directory,"fake nexuml");await writeFile(file,"fake executable");await chmod(file,0o700);
     expect(await executable(file)).toBe(file);
     await expect(executable("nonexistent-nexuml",{...process.env,PATH:directory})).rejects.toThrow("Executable not found");
+    await expect(executable("nonexistent-nexuml",{...process.env,PATH:directory})).rejects.toThrow('uv tool install "nexuml[api,library]"');
+    await expect(launch({directory:join(directory,"missing")})).rejects.toThrow(`Select an existing directory: nexuml-studio /path/to/work`);
+    await expect(launch({directory:file})).rejects.toThrow(file);
     expect(await freePort()).toBeGreaterThan(0);
+  } finally {await rm(directory,{recursive:true,force:true});}
+});
+
+test("backend startup exit names the selected executable and recovery command before UI starts",async()=>{
+  const directory=await mkdtemp(join(tmpdir(),"nexuml failed backend "));
+  const port=await freePort();
+  try {
+    // Node is deliberately not a Python interpreter; its -m failure is a real child exit.
+    await expect(launch({directory,python:process.execPath,port:String(port),"no-open":true})).rejects.toThrow(`NexuML API (${process.execPath}) exited during startup`);
+    await expect(fetch(`http://127.0.0.1:${port}`)).rejects.toThrow();
   } finally {await rm(directory,{recursive:true,force:true});}
 });
 

@@ -1,21 +1,56 @@
-# NexuML Studio (unreleased)
+# NexuML Studio 0.1.0 — Linux Developer Preview (unreleased)
 
 Local, single-user Next.js workbench over **your installed NexuML**. Ordinary NexuML
 YAML remains the execution configuration; React Flow is only its ordered editor view.
 No accounts, payments, Python provisioning, cluster creation, or browser training.
 
-## Install and run
+## Linux quickstart
 
-Intended published installation (Node >=22.13, Python >=3.12):
+Prerequisites: **Python >=3.12**, **Node >=22.13**, **uv**, and a modern browser.
 
 ```sh
-uv tool install 'nexuml[api,library]'
+uv tool install "nexuml[api,library]"
 npm install -g @nexufed/nexuml-studio
 nexuml-studio .
 ```
 
-The backend and frontend are separate installations and releases. Core NexuML commands
-do not need the optional API extra. After installation, local startup and assets work offline.
+Studio opens a local browser interface automatically. The welcome screen identifies the
+connected NexuML version and Python; **Runtime details** shows the executable and working
+directory. NexuML executes training in that Python environment, not in the browser.
+Libraries must be installed in the **same environment**. Nothing is installed or synced at
+startup; after installation, the example and local interface work offline.
+
+To use an existing project environment instead of the tool installation:
+
+```sh
+nexuml-studio --python /path/to/project/.venv/bin/python .
+```
+
+Keep the terminal running; **Ctrl-C** stops Studio and its owned local processes. Closing
+the browser does not stop training. Run outputs remain under `.experiments/` in the selected
+working directory, including Studio records in `.experiments/.studio/operations/`;
+`NEXUML_LOGS_ROOT` can relocate them. Runs → Artifacts shows actual output paths.
+Saved YAML stays at the path you choose.
+
+This is a **Linux developer preview**. macOS/Windows are not release-validated.
+Backend and frontend releases are independent; core NexuML does not need the optional API.
+The registry commands above apply once the preview is published. Until then, use the
+built candidates below; public registry versions must not be assumed to contain this work.
+
+## First training run
+
+1. Click **Try an example**. Studio resolves the installed
+   `synthetic-linear-ae-reconstruction` recipe, then validates an ordinary draft set to
+   **one CPU epoch**. Data is generated locally; no dataset download or service is needed.
+   Resolution calls trusted installed Python, but **does not start training**.
+2. Inspect the editable graph in **Pipeline**. **Training** holds normal execution settings;
+   **Save** writes portable NexuML YAML. The installed recipe's defaults are unchanged.
+3. Click **Run…**, inspect Local execution, choose **Review selection**, then **Run on Local**.
+4. **Runs** shows real **Metrics**, **Logs**, **Artifacts**, and the frozen **Configuration**.
+   Reload and select the same operation to inspect it again without relaunching.
+
+If the example is missing, install `nexuml-library` in the selected environment and restart
+Studio, or use **Choose a recipe** / **Open YAML**. Studio never installs it for you.
 
 ### Testing unreleased artifacts
 
@@ -286,9 +321,24 @@ No automatic recovery, hosted collaboration, browser training or provisioning is
 
 ## Troubleshooting
 
-- **Executable missing:** select `--nexuml`/`--python` explicitly or correct PATH.
+- **Executable missing (terminal, before browser opens):** install with
+  `uv tool install "nexuml[api,library]"`; use `uv tool update-shell` and reopen your shell if
+  `nexuml` is not on PATH. Or select `--nexuml`/`--python` explicitly.
 - **Missing API dependencies:** install the matching `api` extra yourself in the selected
-  installation. The launcher will not upgrade it.
+  installation, for example `uv tool install --reinstall "nexuml[api,library]"` for a tool,
+  or `uv pip install --python /project/.venv/bin/python "nexuml[api,library]"` for a project.
+  Read the terminal diagnostic and selected executable; the launcher will not upgrade it.
+- **Unsupported version:** Studio 0.1.x needs NexuML >=0.2.1,<0.3.0 and interface 2.
+  Select a compatible Python with `--python` or explicitly reinstall a supported version.
+- **Wrong Python / missing library:** check Runtime details. Install custom packages into
+  that interpreter (see Choose an existing runtime above), not your unrelated shell
+  Python. Discovery errors are available under Problems → Runtime and discovery details.
+- **Missing working directory:** select an existing directory; Studio does not create one.
+- **Backend exits or cannot start:** read its terminal output before the launcher error.
+  The selected executable and exit status are reported; fix that environment, then restart.
+- **Connection lost in the browser:** the draft is retained, but runtime/status values may
+  be stale. Check the launcher terminal, then **Retry connection**. If the launcher was
+  restarted, reload the page for its new session. Retained runs remain inspectable on disk.
 - **403/attach failure:** match `--origin`, Studio port, directory and private token.
   `localhost` and `127.0.0.1` are distinct origins.
 - **Hosted bootstrap/observations fail:** preserve the public Host header, match the exact

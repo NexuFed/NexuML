@@ -1,32 +1,60 @@
-# Studio: local and authenticated HTTPS access
+# NexuML Studio — Linux Developer Preview
 
 NexuML Studio runs over your selected, already-installed NexuML. See the
 [Studio guide](https://github.com/NexuFed/NexuML/blob/main/studio/README.md) for installation, editing, training and runtime selection.
 YAML is authoritative; Studio does not install or synchronize Python environments.
 
-## Install and run
+## Linux quickstart
 
-After compatible releases are published:
+Prerequisites: **Python >=3.12**, **Node >=22.13**, **uv**, and a modern browser.
 
 ```sh
-uv tool install 'nexuml[api,library]'
+uv tool install "nexuml[api,library]"
 npm install -g @nexufed/nexuml-studio
 nexuml-studio .
 ```
 
-These are the intended registry commands, not instructions for unreleased candidates.
-For those, install the separately built wheels/npm tarball described in the Studio guide.
-Node >=22.13 and a modern browser are required. Studio 0.1.x supports stable NexuML
+Studio opens a local browser interface. Its welcome screen shows the actual connected
+NexuML/Python versions; **Runtime details** shows the Python executable and working directory.
+Training runs in that selected Python environment. Install all base/custom libraries in
+the **same environment**, not an unrelated shell Python. To select an existing project:
+
+```sh
+nexuml-studio --python /path/to/project/.venv/bin/python .
+```
+
+Keep the terminal running. **Ctrl-C** stops Studio and its owned local processes; closing
+the browser does not stop training. Outputs remain under `.experiments/` in the working
+directory, with Studio records in `.experiments/.studio/operations/`, unless relocated
+using `NEXUML_LOGS_ROOT`. Runs → Artifacts shows actual paths. YAML saves where you choose.
+After installation the local interface and synthetic example work offline; no packages
+are installed, upgraded or synchronized at startup.
+
+**Linux developer preview:** macOS/Windows are not release-validated. Registry commands
+apply once compatible preview releases are published; for unreleased candidates, install
+the separately built wheels/npm tarball described in the Studio guide.
+Studio 0.1.x supports stable NexuML
 >=0.2.1,<0.3.0 (Python >=3.12) with **API interface 2**. Backend and frontend package
 versions are independent; supported backend patches do not force simultaneous releases.
 An incompatible backend is rejected before the workbench opens, with the required version.
 
-Select an existing project explicitly with `nexuml-studio --python /project/.venv/bin/python .`;
-use `.venv\Scripts\python.exe` on Windows. To change backend, stop and select another
-interpreter/executable or explicitly upgrade that installation yourself. Custom packages
-must be installed in that same environment; trusted source roots use Libraries → Add root
-or `nexuml library add`. See the Studio guide for tool/project installation examples.
-Linux project/tool installs are CI-tested; macOS/Windows validation is temporarily disabled.
+## First training run
+
+1. Click **Try an example** to resolve the installed synthetic autoencoder into an editable
+   **one-epoch CPU** draft. It generates data locally, with no downloads. Resolution executes
+   trusted installed Python; loading the example does **not** start training.
+2. Inspect/edit it in **Pipeline** and **Training**. **Save** writes ordinary NexuML YAML.
+3. Click **Run…** → **Review selection** → **Run on Local** to confirm execution.
+4. In **Runs**, inspect real **Metrics**, **Logs**, **Artifacts** and frozen **Configuration**.
+   Reload and select the retained operation to inspect it again, without retraining.
+
+**Choose a recipe** and **Open YAML** remain available. If the example or a custom library
+is missing, install it in the selected Python environment and restart Studio. Trusted
+source roots can also use Libraries → Add root or `nexuml library add`.
+For startup errors, read the launcher terminal; for a later disconnect, the UI retains
+your draft and offers **Retry connection**. Reload after restarting the launcher.
+See the [Studio guide](https://github.com/NexuFed/NexuML/blob/main/studio/README.md#troubleshooting)
+for installation/error recovery, custom libraries, attached APIs and execution backends.
 
 ## Local/offline default
 

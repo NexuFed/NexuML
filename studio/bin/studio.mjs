@@ -51,7 +51,7 @@ export async function executable(name, env = process.env) {
     try { await access(path, process.platform === "win32" ? constants.F_OK : constants.X_OK); if ((await stat(path)).isFile()) return path; }
     catch { /* Try the next PATH entry, never install a missing executable. */ }
   }
-  throw new Error(`Executable not found: ${name}. Select an existing installation with --nexuml or --python.`);
+  throw new Error(`Executable not found: ${name}. Install the backend with uv tool install "nexuml[api,library]" and ensure nexuml is on PATH (uv tool update-shell), or select an existing project: nexuml-studio --python /path/to/project/.venv/bin/python .`);
 }
 
 export async function freePort(value, host = "127.0.0.1") {
@@ -64,24 +64,24 @@ export async function freePort(value, host = "127.0.0.1") {
   });
 }
 
-async function ready(url, headers, child, token) {
+async function ready(url, headers, child, token, service) {
   const deadline = Date.now() + 60000;
   while (Date.now() < deadline) {
-    if (child && (child.exitCode !== null || child.signalCode !== null)) throw new Error("Owned service exited during startup. Check the selected NexuML API extra and server diagnostic above.");
+    if (child && (!child.pid || child.exitCode !== null || child.signalCode !== null)) throw new Error(`${service} exited during startup (${child.signalCode ?? child.exitCode ?? "could not spawn"}). Read the server diagnostic above. Ensure the selected environment contains nexuml[api,library]; for a tool installation use uv tool install --reinstall "nexuml[api,library]", or select your project with --python /path/to/project/.venv/bin/python.`);
     try {
       const response = await fetch(url, { headers, signal: AbortSignal.timeout(1000) });
       if (response.ok) return response;
-      if ([401,403,409].includes(response.status)) throw new Error(`Startup rejected (${response.status}). Studio requires ${backendRequirement}. Check token, exact origin and directory.`);
+      if ([401,403,409].includes(response.status)) throw new Error(`Startup rejected (${response.status}) by ${service}. Studio requires ${backendRequirement}. Check the selected API's version, private token file, exact origin and directory. For a different project use nexuml-studio --python /path/to/project/.venv/bin/python .`);
     } catch (error) {
       if (error.message.startsWith("Startup rejected")) throw error;
     }
     await new Promise(done => setTimeout(done, 150));
   }
-  throw new Error(`Service readiness timed out: ${url.replaceAll(token, "[redacted]")}`);
+  throw new Error(`${service} did not become ready within 60 seconds: ${url.replaceAll(token, "[redacted]")}. Check the server diagnostic above and that this selected environment has the API extra. Stop Studio with Ctrl-C before restarting.`);
 }
 
 async function stop(child) {
-  if (!child || child.exitCode !== null || child.signalCode !== null) return;
+  if (!child || !child.pid || child.exitCode !== null || child.signalCode !== null) return;
   const exited = new Promise(done => child.once("exit", done));
   if (process.platform === "win32") {
     // Windows SIGTERM is forceful. Stop the owned tree before losing its leader.
@@ -104,14 +104,20 @@ export async function launch(options) {
   if (hostedOrigin && !proxyFile) throw new Error("Hosted mode requires --proxy-token-file and an authenticated HTTPS reverse proxy.");
   const proxyToken = hostedOrigin ? await privateToken(proxyFile) : "";
   if (host !== "127.0.0.1") console.warn("WARNING: non-loopback Studio listener. Firewall this port to the authenticated proxy only; never expose the Python API port.");
-  const directory = await realpath(options.directory);
-  if (!(await stat(directory)).isDirectory()) throw new Error("Working directory must exist.");
+  let directory;
+  try {
+    directory = await realpath(options.directory);
+    if (!(await stat(directory)).isDirectory()) throw new Error("Not a directory");
+  } catch {
+    throw new Error(`Working directory does not exist, is not a directory, or cannot be accessed: ${options.directory}. Select an existing directory: nexuml-studio /path/to/work`);
+  }
   const port = await freePort(options.port, host);
   const origin = `http://127.0.0.1:${port}`;
   const browserOrigin = hostedOrigin ?? origin;
   let token = randomBytes(32).toString("base64url");
   let apiUrl;
   let apiChild;
+  let apiService="Attached NexuML API";
   let uiChild;
   let runtimeDirectory;
   let closing;
@@ -138,6 +144,8 @@ export async function launch(options) {
       if (apiPort === port) throw new Error("Studio and API need different ports.");
       apiUrl = `http://127.0.0.1:${apiPort}`;
       const command = await executable(options.python ?? options.nexuml ?? "nexuml");
+      apiService=`NexuML API (${command})`;
+      console.log(`Starting ${apiService}\nDirectory: ${directory}`);
       const args = [...(options.python ? ["-m", "nexuml.cli.main"] : []), "serve",
         "--directory", directory, "--port", String(apiPort), "--origin", origin];
       apiChild = spawn(command, args, {cwd:directory, env:{...process.env, NEXUML_API_TOKEN:token, NEXUML_STUDIO_PROXY_TOKEN:""},
@@ -145,11 +153,11 @@ export async function launch(options) {
       apiChild.on("error", error => console.error(`NexuML startup: ${error.message}`));
     }
     if (hostedOrigin && proxyToken === token) throw new Error("Proxy and API credentials must be different.");
-    const response = await ready(`${apiUrl}/api/v1/runtime`, {Authorization:`Bearer ${token}`, Origin:origin, "X-NexuML-Interface":"2"}, apiChild, token);
+    const response = await ready(`${apiUrl}/api/v1/runtime`, {Authorization:`Bearer ${token}`, Origin:origin, "X-NexuML-Interface":"2"}, apiChild, token, apiService);
     const identity = await response.json();
     const incompatible = compatibilityError(identity);
-    if (incompatible) throw new Error(incompatible);
-    if (await realpath(identity.working_directory) !== directory) throw new Error("Attached API directory differs from the selected working directory.");
+    if (incompatible) throw new Error(`${apiService}: ${incompatible}`);
+    if (await realpath(identity.working_directory) !== directory) throw new Error(`API working directory ${identity.working_directory} differs from selected ${directory}. Select the API's directory or restart it with --directory "${directory}".`);
     console.log(`NexuML ${identity.nexuml_version} · Python ${identity.python_version ?? "unknown"} · ${identity.python_executable}\nDirectory: ${directory}`);
     // Next can write runtime/cache files: use a private disposable copy, not npm assets.
     await access(join(packageDirectory, ".next", "BUILD_ID"));
@@ -172,16 +180,19 @@ export async function launch(options) {
       env:{...process.env, NODE_ENV:"production", NEXT_TELEMETRY_DISABLED:"1", NEXUML_STUDIO_TOKEN:token,
         NEXUML_STUDIO_API:apiUrl, NEXUML_STUDIO_ORIGIN:origin,
         NEXUML_STUDIO_HOST:host, NEXUML_STUDIO_PUBLIC_ORIGIN:hostedOrigin ?? "", NEXUML_STUDIO_PROXY_TOKEN:proxyToken}, stdio:"inherit", detached:process.platform !== "win32"});
-    await ready(`http://${host === "0.0.0.0" ? "127.0.0.1" : host}:${port}`, {}, uiChild, token);
+    await ready(`http://${host === "0.0.0.0" ? "127.0.0.1" : host}:${port}`, {}, uiChild, token, "Studio UI");
     console.log(`Studio ready: ${browserOrigin}`);
     if (!options["no-open"]) {
       const command = process.platform === "win32" ? "explorer.exe" : process.platform === "darwin" ? "open" : "xdg-open";
       const browser = spawn(command, [browserOrigin], {stdio:"ignore"});
-      browser.on("error", () => console.log("Open the Studio address in your browser."));
+      const openManually=()=>console.log(`Browser could not open automatically. Open ${browserOrigin} in your browser; keep this terminal running.`);
+      browser.on("error", openManually);
+      browser.on("exit", code => {if(code)openManually();});
       browser.unref();
     }
-    await Promise.race([new Promise(done => uiChild.once("exit", done)),
-      ...(apiChild ? [new Promise(done => apiChild.once("exit", done))] : [])]);
+    const exited=await Promise.race([new Promise(done => uiChild.once("exit", (code,signal)=>done({service:"Studio UI",code,signal}))),
+      ...(apiChild ? [new Promise(done => apiChild.once("exit", (code,signal)=>done({service:apiService,code,signal})))] : [])]);
+    if(!closing)throw new Error(`${exited.service} stopped (${exited.signal ?? exited.code}). Check its diagnostic above, then restart nexuml-studio with the same selected runtime and directory. Run records remain on disk.`);
   } finally {
     await shutdown();
     process.removeListener("SIGINT", onSignal);

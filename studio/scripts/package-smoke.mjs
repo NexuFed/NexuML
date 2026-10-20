@@ -1,5 +1,5 @@
 import { spawn, spawnSync } from "node:child_process";
-import { access, mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } from "node:fs/promises";
+import { access, chmod, mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { delimiter, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -74,6 +74,13 @@ class Runtime(PipelineLayer):
 `);
   const env={...process.env,HOME:home,USERPROFILE:home,NEXT_TELEMETRY_DISABLED:"1"};
   delete env.PYTHONPATH;delete env.PYTHONHOME;
+  const browserOpened=join(temporary,"browser-opened.txt");
+  if(process.platform==="linux") {
+    // Capture the default opener invocation without launching a desktop browser in CI.
+    const bin=join(temporary,"browser bin");await mkdir(bin);
+    const opener=join(bin,"xdg-open");await writeFile(opener,`#!/usr/bin/env node\nrequire("node:fs").writeFileSync(${JSON.stringify(browserOpened)},process.argv[2]);\n`);await chmod(opener,0o700);
+    env.PATH=`${bin}${delimiter}${env.PATH ?? ""}`;
+  }
   run(python,["-c","from pathlib import Path; from nexuml.core.config import ResolvedConfig; from nexuml_library.scenarios.asd.synthetic_linear_ae import synthetic_linear_ae_reconstruction; s=synthetic_linear_ae_reconstruction(feature_shape=(8,),num_samples=32,hidden_dims=[8],latent_dim=2,batch_size=8,max_epochs=1);s.training.accelerator='cpu';s.training.devices=1;ResolvedConfig.from_scenario(s).save(Path('tiny.yaml'))"],{cwd:work,env});
   await writeFile(join(work,"tiny.yaml.studio.json"),JSON.stringify({semantic_revision:"stale-fixture-revision",layout:{ids:{},positions:{data:{x:9999,y:9999}}}}));
   const before=await readFile(join(temporary,"package-lock.json"),"utf8");
@@ -81,13 +88,14 @@ class Runtime(PipelineLayer):
   const environmentCheck=["-c","import hashlib,importlib.metadata,json; from pathlib import Path; import sys; records=[(d.metadata['Name'],d.version,hashlib.sha256(d.read_text('RECORD').encode()).hexdigest()) for d in importlib.metadata.distributions() if d.read_text('RECORD')]; cfg=Path(sys.prefix)/'pyvenv.cfg'; print(json.dumps([sorted(records),cfg.read_text() if cfg.exists() else None]))"];
   const beforePython=run(python,environmentCheck,{cwd:work,env});
   const port=await freePort();const ownedApiPort=await freePort();const origin=`http://127.0.0.1:${port}`;
-  const launch=spawn(process.execPath,[join(installed,"bin/studio.mjs"),"--python",python,"--no-open","--port",String(port),"--api-port",String(ownedApiPort),work],{env,stdio:["ignore","pipe","pipe","ipc"]});children.push(launch);
+  const launch=spawn(process.execPath,[join(installed,"bin/studio.mjs"),"--python",python,...(process.platform==="linux" ? [] : ["--no-open"]),"--port",String(port),"--api-port",String(ownedApiPort),work],{env,stdio:["ignore","pipe","pipe","ipc"]});children.push(launch);
   let output="";launch.stdout.on("data",chunk=>output+=chunk);launch.stderr.on("data",chunk=>output+=chunk);
   await wait(origin,launch);
   const runtime=await (await wait(`${origin}/api/runtime`,launch,{Host:`127.0.0.1:${port}`})).json();
   assert.equal(runtime.api,origin,"Browser transport must use only the frontend origin");
   const identity=await (await fetch(`${runtime.api}/api/v1/runtime`,{headers:{Authorization:`Bearer ${runtime.token}`,Origin:origin}})).json();
   assert.equal(await realpath(identity.working_directory),await realpath(work));assert.equal(identity.interface_version,2);
+  assert.equal(resolve(identity.python_executable),resolve(python),"API must report the selected interpreter, not the shell Python");
   assert(!output.includes(runtime.token),"Token leaked to output");
   const library=await (await fetch(`${runtime.api}/api/v1/registry`,{headers:{Authorization:`Bearer ${runtime.token}`,Origin:origin}})).json();
   assert(library.scenarios.some(s=>s.name==="synthetic-linear-ae-reconstruction"));
@@ -102,6 +110,7 @@ class Runtime(PipelineLayer):
     await page.getByRole("dialog").waitFor({state:"hidden"});await page.locator(".pipeline-view").waitFor();
     assert.equal(await page.locator("body").evaluate(element=>getComputedStyle(element).backgroundColor),"rgb(16, 16, 16)");
   }finally{await browser.close();}
+  if(process.platform==="linux")assert.equal(await readFile(browserOpened,"utf8"),origin,"Default startup did not open the selected Studio URL");
   // Exercise the committed complete CPU browser workflow against the installed package.
   // Keep Playwright's original browser cache; only the launched services isolate HOME.
   run(process.execPath,[join(root,"node_modules/@playwright/test/cli.js"),"test"],{cwd:root,stdio:"inherit",env:{...process.env,
