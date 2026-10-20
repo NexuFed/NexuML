@@ -1,0 +1,58 @@
+import {expect,test} from "@playwright/test";
+import {apiAction,check as runCheck,inspector,loadStudio,openFile} from "./helpers";
+
+test("data/layer/evaluation errors focus typed fields; runtime errors retain frozen settings",async({page})=>{
+  page.on("dialog",dialog=>void dialog.accept());
+  await loadStudio(page);
+  await openFile(page);
+  const check=async(path:string,field:string,repair:string,hide?:()=>Promise<void>)=>{
+    await page.locator(`.properties-panel input[data-field="${field}"]`).fill("0.5");
+    await hide?.();
+    await runCheck(page,"Check fields",422);
+    const problem=page.locator(".problems-list").getByRole("button").filter({hasText:path}).first();
+    await expect(problem).toBeVisible({timeout:30000});
+    await page.getByRole("button",{name:"Training",exact:true}).click();
+    await problem.click();
+    await expect(page.locator(`.properties-panel input[data-field="${field}"]`)).toBeFocused();
+    await page.locator(`.properties-panel input[data-field="${field}"]`).fill(repair);
+  };
+  const dataAdvanced=page.locator('.properties-panel fieldset>div:not([hidden])>.fields>details>summary').getByText("Advanced",{exact:true});
+  await dataAdvanced.click();
+  await page.getByLabel("Num Classes mode",{exact:true}).selectOption({label:"Set value"});
+  await check("data.num_classes","data.num_classes","1",async()=>{
+    await dataAdvanced.click();
+    await expect(page.locator('input[data-field="data.num_classes"]')).toBeHidden();
+  });
+  await page.getByLabel("Num Classes mode",{exact:true}).selectOption({label:"Not set"});
+  await check("data.input_shapes.features.0","data.input_shapes.features.0","8");
+  await page.locator(".outline").getByRole("button",{name:"1. LinearEncoder",exact:true}).first().click();
+  await check("pipeline.stages.Encoder.0.component.params.output_dim","pipeline.stages.Encoder.0.component.params.output_dim","2");
+  await page.locator(".outline").getByRole("button",{name:"reconstruction_visualizer",exact:true}).click();
+  await page.locator(".properties-panel .component-fields>.fields>details>summary").getByText("Advanced",{exact:true}).click();
+  await check("evaluation.algorithms.0.algorithm.params.n_samples","evaluation.algorithms.0.algorithm.params.n_samples","8");
+  await page.locator(".outline").getByRole("button",{name:"1. LinearEncoder",exact:true}).first().click();
+  await inspector(page,"Routing");
+  const input=page.locator('input[data-field="pipeline.stages.Encoder.0.keys_in.0"]');
+  await input.fill("missing-runtime-input");
+  await runCheck(page,"Build model");
+  await expect(page.locator(".build-state")).toContainText("failed",{timeout:30000});
+  await expect(page.locator(".build-state .field-error")).toContainText("missing-runtime-input");
+  await input.fill("features");
+  await page.getByRole("button",{name:"Runs",exact:true}).click();
+  await expect(page.locator(".execution-error")).toContainText("missing-runtime-input");
+  await expect(page.locator(".execution-error")).toContainText("not later draft edits");
+  await page.getByRole("button",{name:"Inspect launch config",exact:true}).click();
+  await expect(page.getByLabel("Frozen launch YAML")).toContainText("missing-runtime-input");
+  await page.getByRole("button",{name:"Edit draft settings for a new run",exact:true}).click();
+  await expect(page.locator(".training-view")).toBeVisible();
+  await page.getByRole("button",{name:"Pipeline",exact:true}).click();
+  await expect(input).toHaveValue("features");
+  await page.getByRole("button",{name:"Runs",exact:true}).click();
+  const identity=await page.getByLabel("Observed operation").inputValue();
+  await apiAction(page,`/operations/${identity}/config`,()=>page.getByRole("button",{name:"Open frozen settings as draft",exact:true}).first().click(),{method:"GET"});
+  await expect(page.locator(".training-view")).toBeVisible({timeout:30000});
+  await page.getByRole("button",{name:"Pipeline",exact:true}).click();
+  await page.locator(".outline").getByRole("button",{name:"1. LinearEncoder",exact:true}).first().click();
+  await inspector(page,"Routing");
+  await expect(input).toHaveValue("missing-runtime-input");
+});

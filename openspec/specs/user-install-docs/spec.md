@@ -8,22 +8,54 @@ Installation documentation that prioritises the normal-user install path and kee
 
 ### Requirement: Normal User Install First
 
-The documentation SHALL present normal-user installation before development installation.
+The documentation SHALL present ordinary released-package installation before contributor setup. Python installation SHALL use PyPI, and Studio installation SHALL use npm, without requiring candidate artifacts or a source checkout.
 
 #### Scenario: User installs NexuML into their own project
 
 - **WHEN** a user follows the primary install page
-- **THEN** the docs instruct them to create or activate their own environment and install NexuML with `uv pip install "git+https://github.com/NexuFed/NexuML.git"`.
+- **THEN** the docs instruct them to create or activate their own environment and install the framework with `pip install nexuml` or the equivalent `uv pip install nexuml`
 
 #### Scenario: User installs the base library
 
-- **WHEN** a user follows the primary install page
-- **THEN** the docs instruct them to install the base library with `uv pip install "git+https://github.com/NexuFed/NexuML.git#subdirectory=library"`.
+- **WHEN** a user follows the primary install page and wants reusable components and scenarios
+- **THEN** the docs show `pip install "nexuml[library]"` or its uv equivalent
+- **AND** explain that the core framework also works without the optional base library
+- **AND** keep platform-specific extras and indexes outside the portable first-run path
+
+#### Scenario: User intentionally selects DALI
+
+- **WHEN** a user chooses a scenario or loader that explicitly requires DALI
+- **THEN** the docs identify DALI as an optional platform-specific backend
+- **AND** provide its separate installation and package-index instructions outside the default first-run path.
+
+#### Scenario: User locates default checkpoints
+
+- **WHEN** the first-run guide trains a scenario with the reusable default callbacks
+- **THEN** the docs explain that Lightning places checkpoints under the configured logger directory or trainer root
+- **AND** tell the user how to identify the resulting run-specific checkpoint path.
 
 #### Scenario: User needs development setup
 
-- **WHEN** a contributor or framework developer needs editable source checkout
-- **THEN** the docs route them to a separate development installation page with clone, `uv sync --all-extras`, activation, and editable library install instructions.
+- **WHEN** a contributor or framework developer needs an editable source checkout
+- **THEN** the docs route them to one contributor setup procedure covering clone, dependency installation, activation, and editable library installation
+
+#### Scenario: User starts Studio
+
+- **WHEN** a user follows Studio setup in their chosen Python environment
+- **THEN** the guide shows `pip install "nexuml[api,library]"`, `npm install -g @nexufed/nexuml-studio`, and `nexuml-studio .`
+- **AND** briefly explains how to select that environment if its executable is not on PATH
+- **AND** does not require a repository clone, frontend build, candidate wheel, release pin, or unpublished-package workaround
+
+#### Scenario: User selects an isolated tool environment
+
+- **WHEN** a user chooses uv-tool installation instead of a project environment
+- **THEN** the linked runtime-selection instructions keep API dependencies and component libraries in that selected environment without assuming the shell Python can import them
+
+#### Scenario: Reader opens release engineering documentation
+
+- **WHEN** a maintainer intentionally tests or publishes distributions
+- **THEN** the development guide retains applicable TestPyPI and immutable-artifact procedures
+- **AND** those procedures are not presented as normal-user prerequisites
 
 ### Requirement: No Clone Requirement For Beginner Tutorial
 
@@ -41,4 +73,30 @@ Installation examples SHALL use straight quotes and copy-pasteable shell command
 #### Scenario: User copies install command
 
 - **WHEN** a user copies the base library install command from the docs
-- **THEN** the command uses straight ASCII quotes around the Git URL and does not contain curly quotes.
+- **THEN** it uses straight ASCII quotes around `nexuml[library]` and does not contain curly quotes
+
+### Requirement: Published Container Installation Path
+
+The installation documentation SHALL present the GHCR CUDA image as an optional complete-environment path after the normal Python package installation path. It SHALL identify the image as containing both NexuML workspace packages and all optional extras.
+
+#### Scenario: User chooses the container environment
+
+- **WHEN** a user follows the container installation section
+- **THEN** the docs provide a copy-pasteable pull command for `ghcr.io/nexufed/nexuml:<nexuml-version>-cuda<cuda-version>`
+- **AND** recommend an explicit version-and-CUDA tag instead of omitting the tag.
+
+#### Scenario: User runs the image with a GPU
+
+- **WHEN** a user wants CUDA execution from the published image
+- **THEN** the docs show the required Docker GPU option
+- **AND** state that a compatible NVIDIA host driver and NVIDIA Container Toolkit are prerequisites.
+
+#### Scenario: User evaluates environment compatibility
+
+- **WHEN** a user selects a published image tag
+- **THEN** the docs identify the corresponding NexuML, Python, Ubuntu, and CUDA versions and explain the edge and immutable commit tag alternatives.
+
+#### Scenario: User looks for a Docker Hub image
+
+- **WHEN** Docker Hub mirroring has not been enabled
+- **THEN** the docs name GHCR as the supported registry and do not claim that a Docker Hub image is available.

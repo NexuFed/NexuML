@@ -11,11 +11,20 @@ from uuid import uuid4
 import lightning as L
 
 from nexuml.core.serialization import lower_model, restore_model_data
-from nexuml.core.types import RayExecutionSpec, ScenarioSpec, StrategySpec
+from nexuml.core.types import ScenarioSpec, StrategySpec
+from nexuml.execution.definitions import RayClusterExecution, RayClusterTarget
+from nexuml.execution.semantics import ExecutionError, ensure_distributed_semantics
 
 
-class RayExecutionError(RuntimeError):
-    """Raised when a Ray execution request cannot be represented cleanly."""
+class RayExecutionError(ExecutionError):
+    """Ray placement cannot preserve the requested execution semantics."""
+
+
+def _ensure_distributed_semantics(scenario: ScenarioSpec) -> None:
+    try:
+        ensure_distributed_semantics(scenario)
+    except ExecutionError as error:
+        raise RayExecutionError(str(error)) from error
 
 
 def _ray_strategy(config: str | StrategySpec) -> Any:
@@ -126,36 +135,6 @@ def _final_metrics(result: Any) -> dict[str, float | int]:
     return metrics
 
 
-def _ensure_distributed_semantics(scenario: ScenarioSpec) -> None:
-    """Reject pipeline phases whose distributed semantics are not defined yet.
-
-    Raises:
-        RayExecutionError: If the scenario contains stateful post-training work
-            that cannot yet be aggregated globally across Ray workers.
-    """
-    if scenario.evaluation.algorithms:
-        configured = ", ".join(
-            spec.name or spec.algorithm.component_name for spec in scenario.evaluation.algorithms
-        )
-        raise RayExecutionError(
-            "Ray execution does not yet support evaluation.algorithms with rank-sharded data: "
-            "evaluation algorithms accumulate state independently on each worker, so reducing "
-            "their final scalars would not reproduce global evaluation semantics. "
-            f"Configured algorithms: {configured}. Keep them disabled for Ray until global "
-            "evaluation-state aggregation is implemented."
-        )
-
-    for stage in scenario.pipeline.stages.values():
-        for layer_spec in stage:
-            if layer_spec.component.requires_post_train_fit:
-                raise RayExecutionError(
-                    "Ray execution does not yet support PostTrainFitLayer semantics: "
-                    "the post-train fit pass must see the full training set rather than one "
-                    "DALI rank shard. Keep this scenario local until distributed post-train "
-                    "finalization is implemented."
-                )
-
-
 def train_loop_per_worker(config: dict[str, Any]) -> None:
     """Run one Ray worker through the normal NexuML session lifecycle.
 
@@ -179,7 +158,7 @@ def train_loop_per_worker(config: dict[str, Any]) -> None:
     train.report(_final_metrics(result))
 
 
-def _scaling_config(execution: RayExecutionSpec) -> Any:
+def _scaling_config(execution: RayClusterExecution) -> Any:
     """Build Ray's native placement configuration.
 
     Returns:
@@ -203,7 +182,7 @@ def _scaling_config(execution: RayExecutionSpec) -> Any:
 
 def _run_config(
     scenario: ScenarioSpec,
-    execution: RayExecutionSpec,
+    execution: RayClusterExecution,
     worker_runtime_env: dict[str, Any],
     run_name: str | None = None,
 ) -> Any:
@@ -253,7 +232,7 @@ def _run_config(
     )
 
 
-def _connect(execution: RayExecutionSpec) -> dict[str, Any]:
+def _connect(execution: RayClusterExecution) -> dict[str, Any]:
     """Connect to the configured existing cluster without wrapping Ray Jobs.
 
     Returns:
@@ -302,7 +281,15 @@ def _connect(execution: RayExecutionSpec) -> dict[str, Any]:
     if execution.target.py_executable:
         runtime_env["py_executable"] = execution.target.py_executable
     if not ray.is_initialized():
-        ray.init(address=execution.target.address, runtime_env=runtime_env)
+        address = execution.target.address
+        if address == "auto" and os.getenv("RAY_ADDRESS"):
+            address = RayClusterTarget(address=os.environ["RAY_ADDRESS"]).address
+        ray.init(address=address, runtime_env=runtime_env)
+    else:
+        raise RayExecutionError(
+            "Ray is already connected. Shut down the caller-owned runtime before selecting "
+            "a cluster; NexuML will not silently reuse an unverified target."
+        )
     return dict(ray.get_runtime_context().runtime_env)
 
 
@@ -317,10 +304,11 @@ def run_ray(scenario: ScenarioSpec) -> Any:
             Ray dependencies are unavailable.
     """
     execution = scenario.execution
-    if not isinstance(execution, RayExecutionSpec):
-        raise RayExecutionError("run_ray requires scenario.execution.kind='ray'")
+    if not isinstance(execution, RayClusterExecution):
+        raise RayExecutionError("run_ray requires the registered ray-cluster execution definition")
 
     _ensure_distributed_semantics(scenario)
+    execution.preflight(scenario)
     runtime_env = _connect(execution)
     try:
         from ray.train.torch import TorchTrainer

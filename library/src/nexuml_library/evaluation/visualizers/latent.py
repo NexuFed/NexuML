@@ -5,14 +5,19 @@ from nexuml.core.discovery import eval_algorithm
 
 import logging
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 import numpy as np
 import torch
 from tensordict import TensorDict
 
 from nexuml.evaluation.algorithm import EvalAlgorithm
-from nexuml.core.components import EvalAlgorithmDefinition, EvalBuildContext
+from nexuml.core.components import (
+    ContextInput,
+    EvalAlgorithmDefinition,
+    EvalBuildContext,
+    EvalContextInputs,
+)
 from nexuml.evaluation.storage import ReservoirTensorDictBuffer
 from nexuml_library.evaluation.visualizers._plotting import (
     apply_axis_style,
@@ -31,16 +36,22 @@ class LatentVisualizer(EvalAlgorithmDefinition):
     Train and test samples are projected together and colored by label/split.
     """
 
-    method: str = "tsne"
+    context_inputs = EvalContextInputs(
+        feature_key=ContextInput(default="latent"),
+        label_key=ContextInput(default="y_true"),
+    )
+    method: Literal["tsne", "umap"] = "tsne"
     max_samples: int = 2000
     perplexity: int = 30
     storage_backend: str = "memory"
     storage_path: str | None = None
 
     def build(self, context: EvalBuildContext) -> EvalAlgorithm:
+        assert self.context_inputs is not None
+        context = self.context_inputs.resolve(context)
         return _LatentVisualizerRuntime(
-            feature_key=context.feature_key or "latent",
-            label_key=context.label_key or "y_true",
+            feature_key=cast(str, context.feature_key),
+            label_key=cast(str, context.label_key),
             **self.model_dump(),
         )
 
@@ -48,8 +59,8 @@ class LatentVisualizer(EvalAlgorithmDefinition):
 class _LatentVisualizerRuntime(EvalAlgorithm):
     def __init__(
         self,
-        feature_key: str = "latent",
-        label_key: str = "y_true",
+        feature_key: str,
+        label_key: str,
         method: str = "tsne",
         max_samples: int = 2000,
         perplexity: int = 30,

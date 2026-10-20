@@ -1,13 +1,7 @@
-# Development setup
+# Development workflow
 
-## Install dev dependencies
-
-```bash
-uv sync --all-extras
-source .venv/bin/activate
-uv pip install --link-mode=copy -e ".[all]"
-uv pip install --link-mode=copy -e "./library"
-```
+Use [Development installation](../development/install.md), then activate `.venv`.
+The `dev` extra includes the docs tools.
 
 ## Tests
 
@@ -93,10 +87,10 @@ openspec validate <change> --strict
 
 ## CI gates
 
-`.github/workflows/ci.yml` runs on every push and PR against `main`:
-
-1. Static job (`ika-runner`): linting, formatting, type checking (see sections above).
-2. Test job (`ika-runner-gpu`): full pytest suite with the coverage gate from `pyproject.toml`.
+CI checks Python static/GPU tests, packaging and Studio's Linux project/tool workflows
+under one required gate. It runs on trusted branch pushes or manual dispatch, not fork
+PR events; see the [runner trust boundary](../development/release.md#institute-runner-trust-boundary).
+macOS/Windows jobs remain disabled and unverified.
 
 Run all gates locally before opening a PR (see the sections above for individual commands). To trigger or monitor CI manually:
 
@@ -107,13 +101,36 @@ gh run watch <run-id>
 gh run view <run-id> --log-failed
 ```
 
-`act` can check YAML syntax but does not reproduce the self-hosted runner environment — treat it as a smoke check only.
+Local checks do not reproduce the institute runner or certify the disabled platforms.
+
+## Studio and skill checks
+
+```bash
+python skills/tests/check_skills.py
+python skills/tests/check_runtime.py
+npm --prefix studio run typecheck
+npm --prefix studio run lint
+npm --prefix studio test
+```
+
+For installed-package/browser verification, build Python distributions from the same
+checkout, then from `studio/`:
+
+```bash
+npm pack  # prepack builds and prepares the distribution
+STUDIO_TEST_PYTHON=/path/to/isolated/python npm run test:package -- /path/to/built-studio.tgz
+```
+
+Use matching backend/API and library wheels plus Playwright Chromium. CI prepares both
+environments with `scripts/studio-test-runtime.py` (see `--help`). Installed startup and
+browser assets are checked offline; traces stay off to protect credentials. Never
+publish during local checks; see [Release](../development/release.md).
 
 ## Dependency management
 
 ```bash
 uv add <package>        # add runtime dep
-uv add --dev <package>  # add dev dep
+uv add --optional dev <package>  # add tooling to the project's dev extra
 uv lock --upgrade       # update the lock file to latest packages
 uv sync                 # install all deps from uv.lock
 uv lock                 # regenerate uv.lock
@@ -147,6 +164,6 @@ feat(NEX-123): add export pipeline
 ## Docs
 
 ```bash
-uv sync --extra docs
 DISABLE_MKDOCS_2_WARNING=true mkdocs serve
+DISABLE_MKDOCS_2_WARNING=true mkdocs build --strict
 ```

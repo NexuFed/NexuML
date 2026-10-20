@@ -1,0 +1,101 @@
+---
+title: Scenario and configuration reference
+description: Locate spec ownership, typed routing, external factories, persistence, and exact generated ScenarioSpec fields.
+---
+
+import { Autodoc } from 'starlight-pydocs/components';
+
+`ScenarioSpec` is the Pydantic composition root. This is reference material;
+[create/run scenarios](/how-to/run-scenarios/) owns the runnable procedure.
+
+## Section ownership
+
+| Section | Responsibility |
+| --- | --- |
+| `name` | scenario identifier |
+| `pipeline` | ordered `PipelineSpec` stages / `LayerSpec` entries |
+| `training` | optimizer/scheduler, losses/metrics, epochs, batch size, accelerator/devices/strategy/precision |
+| `data` | typed sources, splits, loading, shapes/classes, preprocessing/materialization |
+| `evaluation` | reporting algorithms and selected test results |
+| `logging` | TensorBoard/MLflow/DVCLive/diagram settings or `None` |
+| `callbacks` | portable Lightning factory specs from `callback(...)` |
+| `tuning` | tuning configuration value; CLI file defaults use `TUNING_SPEC` |
+| `checkpoint` | selective weight reuse policy, not trainer resume |
+| `exports` | requested model artifacts |
+| `execution` | registered placement definition |
+
+The [types API](/reference/api/nexuml/core/types/) supplies exact field contracts/defaults,
+not this ownership summary.
+
+## Component settings versus routing
+
+`LayerSpec.component` is a typed `LayerDefinition`; `keys_in`, `keys_out`, labels,
+and scheduling are surrounding graph policy. The same distinction applies to
+`DataSpec.source`/`DatasetSpec.source` (`DataSourceDefinition`),
+`LoaderSpec.backend` (`LoaderBackendDefinition`), and `EvalAlgorithmSpec.algorithm`
+(`EvalAlgorithmDefinition`). Evaluation placement owns name/enabled/axes/feature/label keys.
+Evaluation algorithms report on test outputs; score-producing fitted model behavior
+belongs in pipeline layers.
+
+:::note[Loader precedence]
+Core `LoaderSpec` creates `TorchLoader()` by default. Select DALI or tensor shards
+explicitly. An explicit loader batch size overrides `TrainingSpec.batch_size`; `None`
+defers to training, including automatic probing.
+:::
+
+Use [direct `nn_module(...)`](/how-to/custom-layer/#prefer-a-direct-module) for ordinary
+one-input/one-output importable PyTorch modules. Rich context, labels, metadata, lifecycle,
+or routing require registered semantic definitions.
+
+## External factories
+
+Typed helpers reference real framework symbols instead of selector strings/parameter bags:
+
+```python
+import torch
+from lightning.pytorch.callbacks import ModelCheckpoint
+from nexuml import callback, optimizer, scheduler
+from nexuml.core.types import TrainingSpec
+
+training = TrainingSpec(
+    optimizer=optimizer(torch.optim.Adam, weight_decay=1e-4),
+    scheduler=scheduler(torch.optim.lr_scheduler.ConstantLR, factor=0.5),
+)
+callbacks = [callback(ModelCheckpoint, monitor="val/loss", save_top_k=1)]
+```
+
+`strategy(...)`/`writer(...)` apply the same importable-target plus JSON-safe constructor
+contract to Lightning strategies/preprocessing writers. Objects materialize where their
+runtime dependencies are available. Trusted imports/factory calls are not sandboxed.
+
+## Checkpoints and execution
+
+`CheckpointLoadSpec` initializes/reuses selected weights. Full trainer resume uses
+`nexuml train --trainer-checkpoint PATH`; see [checkpoints](/how-to/checkpoints/).
+
+Core execution definitions are `LocalExecution`, `RayClusterExecution`, `RayJobExecution`,
+`KubernetesJobExecution`, and `PyTorchJobExecution` in
+[execution definitions](/reference/api/nexuml/execution/definitions/). Libraries can add
+`ExecutionBackendDefinition` with `@execution_backend(...)`. Each owns schema/behavior;
+API/Studio do not maintain a separate provider list.
+
+```yaml
+execution:
+  type: local
+  version: "1"
+  params: {}
+```
+
+Legacy `execution.kind` is rejected. Convert to `type: local` or `type: ray-cluster`,
+`version: "1"`, and placement values in `params`; remove old `kind` fields including
+`target.kind`. Historical files are not rewritten. Training semantics remain in `TrainingSpec`.
+
+## Persistence and source-derived fields
+
+`ResolvedConfig.from_scenario(...).to_yaml()` lowers definitions to stable identity plus
+validated parameters; restoration discovers/validates again. Registered semantic components
+do not store mutable runtimes or concrete import paths. Direct external factory helpers
+store their explicit target/constructor values. Removed legacy selector fields are rejected,
+not silently translated.
+
+<Autodoc name="nexuml.core.types.ScenarioSpec" />

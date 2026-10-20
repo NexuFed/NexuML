@@ -1,0 +1,93 @@
+---
+title: Tune with Optuna
+description: Run bounded registered or trusted-file searches and select a metric actually emitted by the experiment.
+---
+
+**Goal:** compare scenario parameters under an explicit trial budget. **Prerequisites:** a
+working recipe/file, its data/runtime dependencies, and the optional tuning integration:
+
+```bash
+uv pip install "nexuml[tuning]"
+```
+
+`tune` accepts registered recipes or trusted Python files, **not resolved YAML**: structural
+and Python search logic does not survive that persistence format.
+
+## Registered recipe
+
+For a registered scenario with the intended tuning/search defaults:
+
+```bash
+nexuml tune my-scenario --n-trials 30
+```
+
+`TuningSpec` describes run defaults. For CLI file tuning, export it as `TUNING_SPEC`:
+
+```python
+from nexuml.core.types import TuningSpec
+
+TUNING_SPEC = TuningSpec(
+    n_trials=30,
+    directions=["minimize"],
+    metric_key="val/loss",
+    storage=".experiments/optuna/study.db",
+    prune=False,
+)
+```
+
+CLI flags override exported run defaults; use [generated options](/reference/cli/), not a
+copied flag table. The current CLI constructs its own defaults when no file `TUNING_SPEC`
+is supplied; do not assume `ScenarioSpec.tuning` alone controls a CLI study. Storage is
+a filesystem path which NexuML converts to a SQLite `.db` path, not an arbitrary Optuna
+storage URL. Set epoch limits in the scenario/factory; `train` options do not automatically
+exist on `tune`.
+
+## Complete small trusted-file search
+
+Save as `search.py` with an installed base library:
+
+```python
+from nexuml.core.types import ScenarioSpec, TuningSpec
+from nexuml_library.scenarios.asd.synthetic_linear_ae import synthetic_linear_ae_reconstruction
+
+SEARCH_SPACE = {
+    "training.lr": {"type": "float", "low": 1e-4, "high": 1e-2, "log": True},
+}
+TUNING_SPEC = TuningSpec(
+    n_trials=3, metric_key="val/loss", directions=["minimize"],
+    storage=".experiments/optuna/first-search.db",
+)
+
+
+def scenario() -> ScenarioSpec:
+    spec = synthetic_linear_ae_reconstruction(max_epochs=1)
+    spec.training.accelerator = "cpu"
+    spec.training.devices = 1
+    return spec
+```
+
+```bash
+nexuml tune --scenario-file search.py --artifact-dir artifacts/first-search --n-trials 3
+```
+
+Only run trusted files: they execute Python. Expect the completed study/best result and
+the configured Optuna store. Inspect `artifacts/first-search` for source/config/provenance,
+`search_space.json`, and `best_trial.json` when a best trial exists. Preserve a winning
+trial's actual resolved configuration separately; the source snapshot is not necessarily it.
+Use fresh run/study identities when comparing distinct protocols.
+
+## Choose the objective carefully
+
+The optimized metric must actually be emitted, such as `val/loss`. Evaluation-algorithm
+results are also consumed directly by the current tuner, with plain and `test/` keys.
+Use `evaluation.test_result_metrics` to expose selected scalars in ordinary test results too.
+Do not optimize an official held-out final test set: choosing `val/loss` does not disable
+the configured test phase. Exclude final-test sample identities from research runs and
+authorize final evaluation only after freezing the candidate/protocol.
+
+With configured MLflow, the integration can record study/trial runs. MLflow remains optional
+and separately installed/configured; see [tracking](/how-to/tracking/).
+
+Next, use [structural/conditional/derived search exports](/reference/tuning-file/) or
+[bounded autoresearch](/how-to/autoresearch/). A score improvement is not proof of novelty,
+convergence, or paper parity.

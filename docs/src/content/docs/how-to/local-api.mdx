@@ -1,0 +1,103 @@
+---
+title: Local Studio API
+description: Manually start the protected API and use its authenticated REST and WebSocket contracts.
+---
+
+**Goal:** operate or integrate the optional API over the selected installed NexuML.
+For the browser workbench, use [Studio](/studio/). This specialized transport guide does
+not provision Python, dependencies, environments, or clusters.
+
+## Start manually
+
+Create/activate your chosen Python environment and install:
+
+```sh
+pip install "nexuml[api,library]"
+```
+
+Set a random token in a private file **outside the working directory**. This POSIX example
+keeps it out of arguments/URLs:
+
+```sh
+umask 077
+python -c 'import secrets; print(secrets.token_urlsafe(32))' > "$HOME/.nexuml-api-token"
+nexuml serve --directory . --port 8000 --origin http://127.0.0.1:3000 \
+  --token-file "$HOME/.nexuml-api-token"
+```
+
+Alternatively set `NEXUML_API_TOKEN` in the server environment. Token files need mode 600
+on POSIX/restricted Windows ACL; keep them out of version control. Invoke a uv tool's own
+`nexuml`, not unrelated shell Python. A project interpreter can use
+`python -m nexuml.cli.main serve` with the same options. See [runtime selection](/studio/#choose-a-runtime).
+
+Expect a loopback server on the selected port. Attach Studio using the same directory,
+token, and exact allowed origin. Shutdown is Ctrl-C in the API terminal; a Studio launcher
+attached to this API will not stop it.
+
+## Authentication and REST reference
+
+- Only `127.0.0.1` is bound; Host must name a loopback host. `--origin` is an exact loopback
+  HTTP origin without a slash/path; `localhost` and `127.0.0.1` differ.
+- REST needs `Authorization: Bearer <token>`. The live, **authenticated**
+  [OpenAPI endpoint](http://127.0.0.1:8000/openapi.json) supplies request/response schemas
+  and routes on the example port. Fetch it with that header, not with a token in a URL;
+  a plain unauthenticated browser link is deliberately denied.
+- `GET /api/v1/runtime` reports the runtime/interface. Clients may send
+  `X-NexuML-Interface` with that value; mismatch is 409.
+- Catalog `schema` stays separate from native `io` bindings/fixed labels. Unknown contracts
+  remain unresolved; discovery does not build components. Studio/Python must support the
+  same interface; neither auto-updates packages.
+- Errors expose `error.code`, `error.message`, and optional `error.fields`
+  (`loc`, `message`, `type`) without echoing request inputs.
+- CORS/Host/Origin checks do not authenticate arbitrary HTTP clients. Discovery, resolution,
+  builds, and checkpoint loading execute trusted Python. Process separation is **not a sandbox**.
+
+### Configuration and conflicts
+
+Portable responses contain `data`, `yaml`, `stage_order`, and `semantic_revision`.
+Send `stage_order` back with JSON edits: integer-like JavaScript keys can reorder,
+but pipeline order is executable semantics. Layout is a separate `*.studio.json` sidecar
+for matching semantic revisions; it never controls membership/execution order.
+YAML comments/formatting are not preserved.
+
+Load returns `base_revision`; save requires it (null only for a new file). External
+changes produce 409 `conflict` without overwriting either version. Invalid YAML/fields
+produce 422, leaving saved files unchanged. File transport rejects traversal/symlink
+escapes outside the working directory. An external trusted library root permits discovery,
+not arbitrary HTTP browsing. Existing dataset/log path policies remain.
+
+## WebSocket observation and replay
+
+Connect to `ws://127.0.0.1:<api-port>/api/v1/operations/<id>/events?after=<sequence>`.
+Upgrade needs the exact allowed Origin. Within five seconds send the first text frame
+`{"token":"<token>"}` (maximum 4096 bytes). No data precedes authentication; invalid access
+closes with 1008. Never put credentials in the URL.
+
+The API sends a `snapshot`, then sequenced `progress`, `metrics`, `log`, `replay_gap`, and
+`terminal` events. Reconnect from the last sequence. Disconnect/reload only detaches
+observation and **never relaunches or cancels training**. Frames are bounded; awaited sends
+apply backpressure from disk replay. Missing/oversized history yields a replay gap.
+An oversized snapshot follows `replay_gap` with `partial: true`; fetch full
+`GET /api/v1/operations/{id}` status rather than replacing it with the reduced snapshot.
+Raw logs/observations remain on disk after UI truncation.
+
+## Operation lifecycle and limits
+
+One build/train/export may be active; another receives 409 `busy`, without a queue.
+Builds run constructors/dummy forwards. Local training uses `NexuSession.run()` and actual
+callback metrics, not parsed logs/fabricated progress. Resume reviews the checkpoint-derived
+scenario; later draft edits never change a run. Export requires completed local training
+and its actual checkpoint, never fresh random weights. Downloads are limited to authorized
+paths under the working directory/resolved logs root; external URIs remain references.
+
+Records live under `.experiments/.studio/operations/`, honoring `NEXUML_LOGS_ROOT`.
+Shutdown stops confirmed owned local work without promising a checkpoint. After restart,
+terminal records remain inspectable and old active records become `ownership_unknown`;
+no PID adoption/automatic resume occurs. A Ray driver exit does not prove workers stopped.
+Native shutdown detaches observation without claiming remote cancellation. Only
+Job/PyTorchJob advertise UID-verified foreground Stop; RayCluster/RayJob do not.
+Inspecting native references never resubmits them.
+
+Next, review [execution modes](/how-to/training-backends/) and
+[native limits](/how-to/training-backends/jobs/) before a separately authorized launch,
+or use [authenticated Studio hosting](/how-to/studio-hosting/) without exposing the API.

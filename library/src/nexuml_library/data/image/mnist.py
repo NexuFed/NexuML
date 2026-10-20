@@ -18,18 +18,19 @@ from nexuml.core.components import DataSourceDefinition
 class MNISTDataset(DataSourceDefinition):
     """In-memory MNIST dataset backed by ``self.data`` and metadata labels."""
 
+    fixed_label_keys = ("digit",)
+
     root: str | Path = "data/mnist"
     train: bool = True
     download: bool = False
     split: str | None = None
+    normalize: bool = False
 
     def build(self) -> NexuDataset:
         return _MNISTDatasetRuntime(**self.model_dump())
 
 
 class _MNISTDatasetRuntime(NexuDataset):
-    LABEL_NAMES = ["digit"]
-
     def __init__(
         self,
         root: str | Path = "data/mnist",
@@ -38,9 +39,11 @@ class _MNISTDatasetRuntime(NexuDataset):
         data=None,
         targets: Sequence[int] | torch.Tensor | None = None,
         split: str | None = None,
+        normalize: bool = False,
     ):
         dataset_data = data
         dataset_targets = targets
+        self.normalize = normalize
 
         if dataset_data is None:
             from torchvision import datasets, transforms
@@ -65,11 +68,13 @@ class _MNISTDatasetRuntime(NexuDataset):
             target_list = list(dataset_targets)
 
         split_name = split or ("fit" if train else "test")
-        meta = pd.DataFrame({"digit": target_list, "split": [split_name] * len(target_list)})
+        assert MNISTDataset.fixed_label_keys is not None
+        label_names = list(MNISTDataset.fixed_label_keys)
+        meta = pd.DataFrame({label_names[0]: target_list, "split": [split_name] * len(target_list)})
 
         super().__init__(
             meta=meta,
-            label_names=self.LABEL_NAMES,
+            label_names=label_names,
             do_split=False,
             modality="image",
             data=dataset_data,
@@ -89,4 +94,6 @@ class _MNISTDatasetRuntime(NexuDataset):
             features = features.float()
         if torch.max(features) > 1.0:
             features = features / 255.0
+        if self.normalize:
+            features = 2.0 * features - 1.0
         return TensorDict({"features": features}, batch_size=[])

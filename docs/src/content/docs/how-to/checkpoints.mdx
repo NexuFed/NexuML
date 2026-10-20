@@ -1,0 +1,92 @@
+---
+title: Checkpoints and weight reuse
+description: Create checkpoints, resume complete Lightning state, or selectively initialize a new model.
+---
+
+**Goal:** choose the correct checkpoint operation. **Prerequisites:** a working scenario,
+and an actual trusted checkpoint/export for resume or reuse. Loading these artifacts can
+execute Python; use only trusted sources.
+
+## Create Lightning checkpoints
+
+Add a callback to the scenario:
+
+```python
+from lightning.pytorch.callbacks import ModelCheckpoint
+from nexuml import callback
+
+callbacks = [callback(
+    ModelCheckpoint,
+    monitor="val/loss", mode="min", save_top_k=1, save_last=True,
+    dirpath=".experiments/checkpoints/my-run",
+)]
+```
+
+[Train](/how-to/run-scenarios/#train) and inspect the configured directory. If `dirpath`
+is omitted, Lightning uses the active logger's run directory or the trainer's
+`default_root_dir` without a logger. In Python, read `best_model_path`/`last_model_path`
+from the actual `ModelCheckpoint` callback after training. Do not guess a `version_0/...`
+path. Choose a fresh run directory rather than unintentionally mixing runs.
+
+## Resume the same Lightning run
+
+```bash
+nexuml train my-scenario --trainer-checkpoint /path/to/last.ckpt
+```
+
+This restores model, optimizer/scheduler, epoch/global step, and compatible callback state.
+A compatible NexuML checkpoint persists scenario information and supports checkpoint-only
+resume:
+
+```bash
+nexuml train --trainer-checkpoint /path/to/last.ckpt
+```
+
+Expect continuation of trainer state, not a fresh epoch-zero initialization. A checkpoint
+can already have reached its configured epoch limit; resuming does not imply more training.
+Checkpoint-derived configuration is authoritative, so do not assume unrelated draft/CLI
+changes rewrite that frozen run.
+
+## Reuse selected weights in a new scenario
+
+```python
+from nexuml.core.types import CheckpointLoadSpec
+
+checkpoint = CheckpointLoadSpec(
+    source="packages/pretrained",
+    include=["stages.Encoder.*"],
+    exclude=["*.Head.*"],
+    allow_missing=True,
+    allow_shape_mismatch=True,
+    freeze_loaded=False,
+)
+```
+
+Assign this to `ScenarioSpec.checkpoint`. It initializes a new model, optionally selecting
+or freezing loaded parameters; it does **not** resume the old optimizer or trainer.
+Inspect your compiled pipeline's `state_dict()` keys before choosing globs: these match
+actual keys, not semantic stage aliases. Verify the load report for loaded/skipped keys.
+
+Sources include exported directories/packages, state dicts, SafeTensors, and compatible
+Lightning artifacts handled by the export loader. Exact fields:
+
+| Field | Meaning |
+| --- | --- |
+| `source` | source path |
+| `include` / `exclude` | glob allow-/deny-list |
+| `allow_missing` | permit missing target values |
+| `allow_shape_mismatch` | skip incompatible source shapes |
+| `freeze_loaded` | freeze successfully loaded parameters |
+
+## Choose the next action
+
+| Intent | Use |
+| --- | --- |
+| save best/last | callback |
+| continue interrupted training | `--trainer-checkpoint` |
+| transfer learning / new architecture | `CheckpointLoadSpec` |
+| distribute a trained model | [export/reload](/how-to/export/) |
+
+The [Lightning comparison](/explanation/architecture/#coming-from-lightning) maps these
+operations to familiar Lightning concepts. [Generated export APIs](/reference/api/nexuml/core/export/)
+document supported weight loaders.

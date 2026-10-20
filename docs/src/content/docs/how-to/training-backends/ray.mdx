@@ -1,0 +1,130 @@
+---
+title: Run on an existing Ray cluster
+description: Configure Ray placement and storage while preserving the canonical Lightning session and explicit restrictions.
+---
+
+**Goal:** run an existing scenario on existing Ray workers. **Prerequisites:** an authorized
+reachable Ray cluster, compatible driver/worker environments, data/output access, and
+optional dependencies installed where used. NexuML does not create a parallel training loop.
+
+```bash
+uv pip install "nexuml[ray]"
+```
+
+Add `nexuml[s3]` for S3 run storage/data and install DALI separately when selected.
+Keep exact Python/Ray/image/CUDA choices in the consuming project/cluster configuration,
+not a compatibility table in the scenario.
+
+## Configure an existing cluster
+
+```python
+from nexuml.execution.definitions import RayClusterTarget, RayClusterExecution
+
+execution = RayClusterExecution(
+    target=RayClusterTarget(
+        address="ray://ray.example.org:10001",
+        working_dir=".",
+        py_executable="uv run --locked python",
+    ),
+    workers=4,
+    resources_per_worker={"CPU": 4, "GPU": 1},
+    storage_path="s3://my-bucket/nexuml/runs",
+)
+```
+
+Replace the target/storage with your reviewed infrastructure and attach `execution` to a
+scenario satisfying the restrictions below. Preflight/discover before explicitly launching:
+
+```bash
+nexuml backend discover --config configs/my-scenario.yaml --timeout 10
+nexuml backend preflight --config configs/my-scenario.yaml
+nexuml train --config configs/my-scenario.yaml
+```
+
+Each worker restores typed configuration and runs the normal `NexuSession` through
+Ray-prepared Lightning. Inspect the returned driver/native result, real metrics, and
+configured storage path; driver submission alone is not success, nor proof workers stopped.
+
+`address="auto"` resolves an existing connection or validated `RAY_ADDRESS`; discovery
+never initializes Ray. Shut down a caller-owned already initialized Ray runtime before
+launch so an unverified target cannot replace the reviewed selection. Set
+`target.dashboard_address` explicitly for bounded read-only node/resource discovery.
+
+## Lightning strategies
+
+`training.strategy` stays authoritative. Ray maps `auto`/`ddp`, `fsdp`, and `deepspeed`
+to its official Lightning integrations. Use `TrainingSpec(strategy="ddp")` or a typed
+real class for strategy-specific settings:
+
+```python
+from ray.train.lightning import RayFSDPStrategy
+from nexuml import strategy
+from nexuml.core.types import TrainingSpec
+
+training = TrainingSpec(strategy=strategy(RayFSDPStrategy, state_dict_type="full"))
+```
+
+The class/arguments remain navigable and statically checkable; required strategy packages
+must exist in workers.
+
+## Ray Jobs
+
+NexuML `RayJobExecution` means the **KubeRay RayJob resource**, not Ray Jobs API.
+Its infrastructure-owned template chooses a new job-scoped or existing cluster.
+For generic Ray Jobs API submission, use native tooling:
+
+```bash
+ray job submit --working-dir . -- \
+  uv run --locked nexuml train -c configs/my-scenario.yaml
+```
+
+Use Ray's own status/log/stop tooling. See [native templates](/how-to/training-backends/jobs/)
+for KubeRay handoff and ownership/cleanup rules.
+
+## Distributed semantic restrictions
+
+Ray rejects scenarios containing `evaluation.algorithms` or definitions declaring
+`requires_post_train_fit`. Both require global state across rank-sharded data.
+Until correct cross-worker finalization exists, keep those scenarios local instead of
+accepting changed semantics. Ordinary Lightning validation/test metrics can still reduce
+through the distributed trainer. The synthetic first-run recipe includes an evaluation
+algorithm, so do not send it unchanged to Ray.
+
+## Shared datasets and S3 WebDataset
+
+```text
+dataset → WebDataset export → S3 → ExportedDataset
+        → direct tar streaming + worker-local index staging → DALI WebDataset reader
+```
+
+Use [dataset export](/how-to/export-dataset/) or Python API, then base-library
+`ExportedDataset` for the remote root. It loads `config.yaml`, metadata, and small DALI
+`.idx` files; tar tensor payloads remain in S3 and are intended to be read directly by
+DALI, not Python/boto3. Remote exports avoid the per-sample Python WebDataset index;
+tar/index lists in `config.yaml` suffice for DALI.
+
+NexuML passes each `s3://...tar` directly to DALI's existing reader. Because its index
+parser needs local files, only `.idx` files are staged to worker-local temporary storage.
+DALI owns sharding with `shard_id=global_rank`, `num_shards=world_size`.
+
+:::warning[Verify direct S3 tar support on the target]
+DALI supports S3 in several readers, but WebDataset reader documentation does not
+explicitly guarantee cloud URLs. A real target-environment integration test must confirm
+this thin direct-tar boundary before production. Add a fallback only when demonstrated
+necessary by that check, not an assumed second caching/capability system.
+:::
+
+Credentials/endpoints come from normal AWS/provider environments and supported S3
+options, never persisted secrets.
+
+## Troubleshooting and next steps
+
+- **Imports:** install `nexuml[ray]` in driver/workers and required third-party strategies.
+- **Environment mismatch:** align project/cluster Python and Ray environments.
+- **Stateful-work rejection:** run locally until global-finalization semantics are supported.
+- **S3:** verify credential chains, endpoint/region, and worker access.
+- **DALI:** verify `python -c "import nvidia.dali"` in workers and target tar support.
+
+Cluster images, queues, volumes, selectors, tolerations, service accounts, CUDA, and
+autoscaling remain infrastructure-owned. Next, retain real run/storage evidence and use
+authorized native lifecycle/cleanup tooling; never assume a stopped driver cancelled workers.

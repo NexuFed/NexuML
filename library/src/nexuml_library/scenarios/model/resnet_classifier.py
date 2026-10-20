@@ -6,11 +6,11 @@ from nexuml.core.types import LayerSpec, PipelineSpec
 from nexuml_library.layers.head.classification_head import LatentClassificationHead
 from nexuml_library.layers.loss.classification_loss import ClassificationLoss
 from nexuml_library.layers.loss.classification_metrics import ClassificationMetrics
-from nexuml_library.layers.model.resnet import ResNet
+from nexuml_library.layers.model.resnet import ResNet, ResNetType
 
 
 def resnet_classifier(
-    resnet_type: str = "resnet18",
+    resnet_type: ResNetType = "resnet18",
     pretrained: bool = False,
     cifar_stem: bool | None = None,
     label_key: str = "class_labels",

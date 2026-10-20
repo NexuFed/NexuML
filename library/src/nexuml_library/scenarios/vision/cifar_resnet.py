@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from nexuml.core.discovery import scenario
 from nexuml.core.types import ScenarioSpec
+from nexuml_library.layers.model.resnet import ResNetType
 from nexuml_library.scenarios.data.cifar import cifar10_data, cifar100_data
 from nexuml_library.scenarios.evaluation.base import (
     classification_evaluation,
@@ -23,7 +24,7 @@ from nexuml_library.scenarios.training.defaults import (
 def cifar_resnet(
     dataset: str = "cifar10",
     download: bool = True,
-    resnet_type: str = "resnet18",
+    resnet_type: ResNetType = "resnet18",
     pretrained: bool = False,
     cifar_stem: bool | None = None,
     lr: float = 1e-3,

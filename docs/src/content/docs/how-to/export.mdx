@@ -1,0 +1,122 @@
+---
+title: Export and reload a model
+description: Package actual trained weights, reload with installed or packaged code, and run inference.
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+**Goal:** produce a portable trained-model artifact and verify inference.
+**Prerequisites:** installed runtime/component dependencies, a completed local training
+result or explicit trusted checkpoint, and a writable destination. Alternative formats
+may need `nexuml[export]`. This is distinct from [dataset export](/how-to/export-dataset/).
+
+:::warning[Trust the artifact]
+Model packages/checkpoints can execute Python when loaded. Only load artifacts from
+trusted sources; packaged source is not a sandbox.
+:::
+
+## Export the live trained model
+
+Set this in your scenario before [training](/how-to/run-scenarios/#train):
+
+```python
+from nexuml.core.types import ExportSpec
+
+exports = [ExportSpec(kind="train_package", output="packages/my-model")]
+```
+
+Assign `exports` to `ScenarioSpec.exports`. Local execution packages the **live trained
+pipeline/trainer after the session completes**, avoiding a guessed checkpoint filename.
+Inspect `packages/my-model` after successful training. Calling `NexuSession.run()` directly
+returns the training result; configured export orchestration belongs to execution/CLI.
+
+## Package an explicit checkpoint
+
+When you already have a real Lightning checkpoint matching a registered recipe:
+
+```bash
+nexuml export my-scenario --checkpoint /path/to/model.ckpt -o packages/my-model
+```
+
+Expect `Exported to packages/my-model`. The option is syntactically optional, but omission
+does **not** search for a latest checkpoint or train the model: it packages the newly
+constructed scenario pipeline. Do not call those initialized weights trained.
+
+## Inspect the package
+
+```text
+packages/my-model/
+├── pipeline.package
+├── state_dict.pt
+├── resolved_config.yaml
+├── metadata.json
+├── requirements.txt
+├── training_state.pt      # when training state is available
+└── lightning.ckpt         # when checkpoint/live trainer state is available
+```
+
+`pipeline.package` is the self-contained torch.package payload for NexuML/custom source.
+Heavy dependencies such as PyTorch remain external, recorded in metadata/requirements.
+Review/install them in the consuming environment. Preserve provenance with the package.
+
+## Reload and infer
+
+Choose which code should materialize the pipeline:
+
+<Tabs>
+<TabItem label="Installed code">
+
+Reconstruct against the currently installed code and load the saved state dict:
+
+```python
+from pathlib import Path
+from nexuml.core.export import load_package
+
+pipeline, resolved_config, metadata = load_package(Path("packages/my-model"))
+```
+
+</TabItem>
+<TabItem label="Packaged code">
+
+Load the pipeline object directly from `pipeline.package`:
+
+```python
+from pathlib import Path
+from nexuml.core.export import load_inference_package
+
+pipeline, resolved_config, metadata = load_inference_package(Path("packages/my-model"))
+```
+
+</TabItem>
+</Tabs>
+
+For a model whose `features` input has 64 values, run:
+
+```python
+import torch
+from tensordict import TensorDict
+
+x = TensorDict({"features": torch.randn(1, 64)}, batch_size=[1])
+pipeline.eval()
+with torch.no_grad():
+    x_out, y_out = pipeline(x, None)
+print(list(x_out.keys()))
+```
+
+Use **your exported configuration's** keys and shape (the default synthetic recipe has
+128 features, not 64). Expect pipeline-defined outputs, such as `latent`/`reconstructed`.
+Compare a fixed sample before/after reload for meaningful parity, not just file existence.
+
+## Other weight and graph formats
+
+The Python API provides `export_safetensors(...)` and `export_onnx(...)` separately from
+the primary package contract. Current local execution also dispatches configured
+`ExportSpec(kind="safetensors", ...)` and `ExportSpec(kind="onnx", ...)` requests through
+those functions. They produce weights/metadata or a supported inference graph, not the
+full train package. ONNX support depends on the pipeline's tensor/export behavior and
+optional dependencies; validate the resulting graph in your target runtime.
+
+An exported directory/package, state dict, SafeTensors file, or compatible Lightning
+checkpoint can initialize another scenario. Next, use [selective weight reuse](/how-to/checkpoints/)
+or plan the consuming application at the [deployment boundary](/how-to/deploy/).
+See [generated export APIs](/reference/api/nexuml/core/export/) for exact signatures.

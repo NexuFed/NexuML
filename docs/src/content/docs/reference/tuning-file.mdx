@@ -1,0 +1,145 @@
+---
+title: Tuning file reference
+description: Exact trusted Python exports and current scalar, structural, conditional, and derived search semantics.
+---
+
+Reference-only: use the [complete small tuning example](/how-to/tune/) for a first search.
+Files execute trusted Python and must define `scenario() -> ScenarioSpec` even when they
+provide a structural `build(**params)` factory. YAML cannot drive the CLI tuning command.
+
+## Exports
+
+| Export | Type | Purpose |
+| --- | --- | --- |
+| `HYPOTHESIS` | `str` | proposed mechanism/experiment description |
+| `PARENT` | `str` | parent name/path |
+| `TAGS` | `list[str]` or `str` | grouping labels |
+| `SEARCH_SPACE` | `dict` | sampling entries |
+| `TUNING_SPEC` | `TuningSpec` or `dict` | study settings |
+| `build` | callable returning `ScenarioSpec` | rebuild with structural keyword arguments |
+
+`search_space()`/`tuning_spec()` function exports are also supported when their uppercase
+value is absent. File loading validates exported types and the recipe/factory return value.
+See [scenario loader API](/reference/api/nexuml/core/scenario_loader/).
+
+## Numeric scalar entries
+
+Numeric dotted paths without `choices`, `when`, or `derived` are applied as attribute
+overrides to the returned spec:
+
+```python
+SEARCH_SPACE = {
+    "training.lr": {"type": "float", "low": 1e-5, "high": 1e-2, "log": True},
+    "training.max_epochs": {"type": "int", "low": 5, "high": 50},
+}
+```
+
+`float`/`int` pass `low`, `high`, optional `log`, and supported suggest options to the
+corresponding Optuna suggest method. `categorical` uses `choices`; omitted type plus
+`choices` means categorical.
+
+:::warning[Categorical and structural routing]
+The current resolver routes `choices`, `when`, and `derived` entries to the build factory,
+even if their key contains dots. Dotted structural names become nested dictionaries.
+Use an explicit factory for these entries; do not assume every dotted path is a scalar
+override. Without a factory, structural samples are not applied to the copied base scenario.
+:::
+
+## Complete structural example
+
+```python
+from nexuml.core.types import ScenarioSpec, TuningSpec
+from nexuml_library.scenarios.asd.synthetic_linear_ae import synthetic_linear_ae_reconstruction
+
+HYPOTHESIS = "Changing encoder width affects reconstruction under a fixed epoch budget"
+PARENT = "baseline"
+TAGS = ["synthetic", "width-search"]
+SEARCH_SPACE = {
+    "hidden_dim": {"type": "int", "low": 8, "high": 64},
+    "batch_size": {"type": "categorical", "choices": [32, 64, 128]},
+}
+TUNING_SPEC = TuningSpec(
+    n_trials=3, metric_key="val/loss", directions=["minimize"],
+    storage=".experiments/optuna/width-search.db", prune=False,
+)
+
+
+def build(hidden_dim: int = 16, batch_size: int = 64) -> ScenarioSpec:
+    spec = synthetic_linear_ae_reconstruction(
+        hidden_dims=[hidden_dim], batch_size=batch_size, max_epochs=1,
+    )
+    spec.name = "width-search"
+    spec.training.accelerator = "cpu"
+    spec.training.devices = 1
+    return spec
+
+
+def scenario() -> ScenarioSpec:
+    return build()
+```
+
+Save as `my_experiment.py`, then:
+
+```bash
+nexuml tune --scenario-file my_experiment.py --n-trials 3 \
+  --metric val/loss --direction minimize --storage .experiments/optuna/width-search.db
+```
+
+Expect `Tuning complete!` and best trial/parameters/value. The storage field/flag is a
+filesystem path; NexuML resolves the logs root, replaces its suffix with `.db`, and uses
+SQLite. It is **not** an arbitrary Optuna database URL. Existing scenario-named studies
+load from that store, so use separate identities/stores for different protocols.
+CLI flags override file `TUNING_SPEC`; absent a file export, the current CLI creates
+run defaults rather than reading `ScenarioSpec.tuning` automatically.
+
+## Conditional entries
+
+This reference fragment requires a matching `build(precision=..., batch_size=...)`:
+
+```python
+SEARCH_SPACE = {
+    "precision": {
+        "type": "categorical", "choices": ["32-true", "16-mixed"],
+        "when": {
+            "16-mixed": {
+                "batch_size": {"type": "categorical", "choices": [64, 128]},
+            },
+        },
+    },
+}
+```
+
+The sampled choice activates additional entries, all passed through factory routing.
+Choose hardware-supported precision and sensible factory defaults for inactive branches.
+
+## Derived entries
+
+Derived values use already sampled parameters. Arithmetic strings such as `"lr * 0.01"`
+are **not supported by the current restricted expression evaluator**. Use a callable
+for arithmetic, or supported conditional/comparison expressions:
+
+```python
+SEARCH_SPACE = {
+    "lr": {"type": "float", "low": 1e-5, "high": 1e-2, "log": True},
+    "weight_decay": {"derived": lambda **sampled: sampled["lr"] * 0.01},
+}
+```
+
+Supply a matching `build(lr=..., weight_decay=...)` which actually configures those
+values, for example with `optimizer(torch.optim.Adam, weight_decay=weight_decay)`.
+`when`, `derived`, and structural factories are Python-only; callable exports are trusted code.
+
+## Metrics and evidence
+
+Objectives must exist in trainer logged metrics or evaluation-algorithm results. The
+current tuner consumes algorithm results directly (also with `test/` aliases);
+`test_result_metrics` separately controls ordinary test-result exposure. Missing objectives
+fail with the available metric keys. Keep official final-test data out of search execution,
+not merely out of the metric name.
+
+Use `--artifact-dir` for snapshots, search space, and best-trial summary where available;
+preserve winning resolved configuration/environment/data separately. Current CLI output
+assumes a single best trial, so do not treat multiple configured directions as a verified
+multi-objective CLI workflow. Implementation: [Optuna tuner](/reference/api/nexuml/tuning/optuna_tuner/).
+Next, use [trusted-file provenance](/how-to/scenario-file/) or
+[bounded research selection](/how-to/autoresearch/).

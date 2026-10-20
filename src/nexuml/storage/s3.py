@@ -105,10 +105,13 @@ class S3Client:
         path = destination if isinstance(destination, S3Path) else S3Path.parse(destination)
         self._get_client().upload_file(str(source), path.bucket, path.key)
 
-    def upload_bytes(self, data: bytes, destination: str | S3Path) -> None:
+    def upload_bytes(
+        self, data: bytes, destination: str | S3Path, *, exclusive: bool = False
+    ) -> None:
         """Upload one in-memory object to S3."""
         path = destination if isinstance(destination, S3Path) else S3Path.parse(destination)
-        self._get_client().put_object(Bucket=path.bucket, Key=path.key, Body=data)
+        options = {"IfNoneMatch": "*"} if exclusive else {}
+        self._get_client().put_object(Bucket=path.bucket, Key=path.key, Body=data, **options)
 
     def download_file(self, source: str | S3Path, destination: str | Path) -> None:
         """Download one object to a local path."""

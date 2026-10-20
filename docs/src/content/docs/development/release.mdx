@@ -1,0 +1,200 @@
+---
+title: Publish a release
+description: Publish immutable exact-commit Python and Studio artifacts through protected Trusted Publishing workflows.
+---
+
+**Goal:** publish already validated artifacts, never rebuild or upload ad hoc replacements.
+**Prerequisites:** maintainer authorization, configured registry Trusted Publishers/protected
+environments, and successful exact-commit CI. This is an operator procedure, not a command
+to run while contributing documentation.
+
+Python `nexuml`/`nexuml-library` publish through `.github/workflows/release.yml`.
+Studio `@nexufed/nexuml-studio` uses `publish-studio.yml` with the same shared `vX.Y.Z`
+tags and GitHub Release events as Python. Tag pushes publish npm `next`; GitHub
+Release publication promotes that exact version to `latest` without another upload.
+Both consume one immutable candidate from successful **tag CI**, bound to the tag,
+peeled source commit, CI run/attempt, artifact IDs, and file hashes. Branch-CI artifacts
+are development checks, not release candidates.
+Never add publishing tokens to repository secrets.
+
+## Tag-selected versions
+
+Choose one unused stable `vX.Y.Z` tag; CI stamps `X.Y.Z` into both Python projects,
+Studio, and their owned lockfile version fields **before** builds and tests. No manual
+version bump, `SET_BY_CI` placeholder, generated commit, or tag rewrite is needed.
+Normal development retains valid fixed checked-in metadata, not a Git-derived revision
+version. Python's installed `__version__` and runtime API read distribution metadata.
+
+Stamping does not rewrite dependency compatibility ranges, Studio's backend/interface
+checks, third-party pins, historical documentation, or versioned examples. A new minor
+or major line requires deliberate compatibility review; today's `0.2` policy rejects
+`v0.3.0`. Matching package versions alone do not establish compatibility.
+
+## One-time Python configuration
+
+Claim both names on [PyPI](https://pypi.org/) and [TestPyPI](https://test.pypi.org/), then
+configure publishers:
+
+| Registry | Distribution | GitHub environment |
+| --- | --- | --- |
+| TestPyPI | `nexuml` | `testpypi` |
+| TestPyPI | `nexuml-library` | `testpypi-library` |
+| PyPI | `nexuml` | `pypi` |
+| PyPI | `nexuml-library` | `pypi-library` |
+
+Each uses owner `NexuFed`, repository `NexuML`, workflow `release.yml`. Create all four
+matching environments with required maintainer reviewers. Only publishing jobs receive
+`id-token: write`; no long-lived registry credential is stored.
+Permit shared `v*` tags in all publishing environments' deployment rules. Manual
+publication is tag-only; permitting `main` is unnecessary.
+
+## TestPyPI candidate
+
+After the frozen candidate is merged into main and **its exact commit's CI has
+passed**, create and push an unused compatible stable tag (for example, `v0.2.2`):
+
+```bash
+git tag v0.2.2 <validated-main-commit>
+git push origin v0.2.2
+```
+
+The push starts stamped **CI**, **Release** for TestPyPI, and **Publish Studio** for
+npm `next`. Before tag builds and tests, the read-only eligibility gate on `ika-runner` requires
+protected-main ancestry and successful main-branch CI for that exact peeled commit.
+The complete tagged source/GPU/documentation/package checks then test the stamped
+wheels, source distributions, and single npm tarball. The aggregate `CI` gate emits
+`release-candidate-<attempt>` only after every mandatory check succeeds.
+
+Publishers wait without publishing credentials for this unique candidate (up to 115
+minutes within a 120-minute job timeout). Failed/cancelled checks, malformed or moved
+tags, missing files, duplicate successful candidates, and metadata/hash mismatches
+fail closed. Ordinary main/dev pushes never publish packages. Do not publish the
+GitHub Release until TestPyPI verification and release testing pass.
+
+Manual dispatch remains available for a validated candidate or a failed run that
+has not uploaded the version yet:
+
+```bash
+gh workflow run release.yml --ref v0.2.2
+gh run list --workflow release.yml --limit 5
+gh run watch <run-id>
+```
+
+It selects the original candidate's `python-distributions-<attempt>` by immutable ID,
+publishes core then library through their protected TestPyPI environments,
+downloads the wheels again, checks their hashes, and verifies core-only and
+`nexuml[library]` installs against the explicit tag version. Successful verification
+retains `testpypi-verification-<attempt>` evidence tied to the candidate manifest hash.
+Third-party dependencies resolve from production PyPI. Inspect workflow results/artifact
+identity rather than assuming dispatch means publication.
+
+Original distributions, manifest, and verification evidence are retained for **seven
+days**; finish production within that window. If original files expire, use a fresh
+unused version tag, not a replacement build under the old version. Release never
+rebuilds or restamps files. TestPyPI uploads are immutable.
+
+If tag CI has never produced a successful candidate, fix the failure and rerun **all
+jobs of the original tag-push CI run**; a manual CI dispatch is not a candidate source.
+After a candidate succeeds, retry only failed publication against that same candidate,
+not CI. If publishing merely timed out waiting, dispatch the publisher on the tag
+after CI finishes. Do not retag, overwrite artifacts, or choose a newer substitute.
+
+## Production Python release
+
+1. Confirm the candidate manifest declares the intended version, TestPyPI passed,
+   and the matching Studio package on npm `next` passed release testing.
+2. Use the same stable `vX.Y.Z` tag already tested through TestPyPI.
+3. Publish its GitHub release to trigger production; approve `pypi`, then `pypi-library`.
+
+The workflow requires successful TestPyPI verification evidence for that exact candidate,
+publishes its original core then library files, and attaches those files to the existing
+GitHub release only after both uploads succeed. It never creates another GitHub Release.
+On partial upload failure, fix forward with a new patch release; never reuse an already
+published version. Separate `studio-v*` release tags are no longer supported.
+
+## Studio: one-time owner configuration
+
+1. Own npm scope `@nexufed` and grant intended maintainer access. If npm requires initial
+   publication before settings exist, an owner must bootstrap interactively with MFA using
+   the exact validated tarball. No placeholder/token workaround; implementation alone
+   must never publish a package.
+2. Protect GitHub environment **npm** with required reviewers/no self-review, restrict
+    deployment to protected shared `v*` tags, and protect
+   main, `v*`, and workflow edits.
+3. Add npm GitHub Actions Trusted Publisher: owner **NexuFed**, repo **NexuML**, workflow
+   **publish-studio.yml**, environment **npm**. Enable **Allow npm publish** and
+   **Allow npm dist-tag**; new publishers can default to stage-only, and dist-tag
+   permission is separate. Match case/filename exactly.
+4. Complete the first authorized publish within npm's current setup window or recreate an
+   expired publisher. Then require two-factor authentication and disallow tokens in npm access.
+
+Follow [official npm Trusted Publishing requirements](https://docs.npmjs.com/trusted-publishers)
+for supported Node/npm and GitHub-hosted runners; self-hosted publishing is unsupported.
+The protected publish-only job uses OIDC `id-token: write` and provenance without dependency
+installation/build or long-lived credentials. Only the npm publisher and four TestPyPI/PyPI
+package publisher jobs use GitHub-hosted `ubuntu-latest`. All other Linux CPU work uses
+`ika-runner`, including tag eligibility, publisher validation, documentation checks/staging,
+Pages deployment, TestPyPI install verification, GitHub release asset attachment, and the
+always-running aggregate CI gate. Pages deployment uses a Node API action, not a hosted-only
+package Trusted Publisher. Mandatory Python GPU suites use separately approved `ika-runner-gpu`.
+
+## Studio release
+
+1. Choose the shared stable tag. CI prepares both Python projects, `uv.lock`,
+   `studio/package.json`, and both Studio lockfile root versions automatically, then
+   checks agreement through `scripts/check-release-versions.py`. Launcher compatibility
+   remains enforced. Operators explicitly install API extra/custom libraries.
+2. Merge the reviewed candidate to protected main, wait for complete required CI on that
+   commit. Maintainer-disabled macOS/Windows acceptance remains unverified.
+3. Push the same `vX.Y.Z` tag used for TestPyPI. Wait for tag CI's
+   `studio-distribution-<attempt>` and candidate manifest. Studio is built/packed once;
+   Linux project/tool jobs test that tarball plus matching Python wheels. Approve **npm** to publish
+   **that tested tarball** with provenance to npm `next`, leaving `latest` unchanged.
+   Test the pair with the TestPyPI wheels and `@nexufed/nexuml-studio@next` (or pin the
+   exact version if another candidate has advanced `next`). Manual **Publish Studio**
+   dispatch also publishes to `next`, never `latest`.
+
+   ```bash
+   gh workflow run publish-studio.yml --ref v0.2.2
+   ```
+4. Publish the shared GitHub Release. After Python's production publication succeeds,
+   approve **npm** for promotion. The workflow repeats exact-commit/artifact validation,
+   checks the registry version's SHA-512 against the tested tarball, and moves `latest`
+   to **that exact version**, not whichever version `next` currently references. A missing
+   package or integrity mismatch blocks promotion. No rebuild or second package upload.
+
+The npm CLI is pinned to 11.21.0 for OIDC-authenticated dist-tag operations. Both
+workflows share triggers, but registry writes are not an atomic transaction:
+inspect both results before announcing the release. No automated nightly schedule is added.
+
+If original artifacts expire or multiple successful candidate identities exist for a tag,
+choose a fresh version. Validation failure never authorizes a replacement upload. After
+publication, npm versions are immutable.
+Users may explicitly install a previous compatible Studio/backend; maintainers can deprecate
+a bad npm version, interactively MFA-move `latest` to known-good, then ship a patch.
+No automatic unpublish or environment mutation. Python follows explicit pin/fix-forward
+recovery too; YAML remains usable without Studio.
+
+## Institute runner trust boundary
+
+Runtime CI uses trusted **repository branch pushes/manual dispatch** and eligible integrated
+tag pushes, not arbitrary fork
+PR execution. External code must be reviewed, then brought to a trusted branch before
+institute checks. Never approve arbitrary fork workflow execution just to obtain green CI.
+Automatic fork-PR documentation checks are skipped at the job condition before institute
+runner scheduling; there is no hosted fallback. Same-repository PR and non-PR documentation
+checks use `ika-runner`, with read-only permissions and no secrets. CI and documentation tag
+eligibility run on `ika-runner` before tag builds and tests, retaining protected-main ancestry
+and exact-commit main-CI requirements. The aggregate CI gate always runs on `ika-runner` and
+fails closed if eligibility or any other required job did not succeed.
+
+Fork workflow approval must cover **all external contributors**, not just first-time ones.
+Owners must restrict institute runner groups to approved repositories/workflows, retain
+approval rules, protect workflow edits, and provide ephemeral isolated instances without
+internal credentials/network access. A workflow condition cannot secure a public runner
+group against a malicious new workflow. Mandatory GPU assertions need real CUDA capacity;
+do not remove assertions or quietly skip checks to accommodate a misconfigured pool.
+
+Next, verify registry files, provenance, and install smoke results. Documentation archives
+publish through their own [preservation-aware procedure](/development/documentation/),
+not through an ad hoc reset of release directories.

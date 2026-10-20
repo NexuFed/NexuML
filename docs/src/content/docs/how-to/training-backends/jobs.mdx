@@ -1,0 +1,136 @@
+---
+title: Native jobs and capacity review
+description: Review operator-owned templates, scoped capacity, handoff, and UID-safe native job operations.
+---
+
+**Goal:** review and explicitly launch one scenario on existing infrastructure.
+**Prerequisites:** `nexuml[kubernetes]` in the selected Python installation, authorized
+context/namespace, reviewed image/code/data access, shared storage, and a healthy controller.
+Adapters use KubeRay `ray.io/v1` RayJob and Training Operator `kubeflow.org/v1` PyTorchJob.
+A served API does not prove controller health; **TrainJob is not PyTorchJob**.
+
+## Infrastructure-owned templates
+
+Start with the downloadable [Job](/how-to/training-backends/templates/job.yaml),
+[RayJob](/how-to/training-backends/templates/ray-job.yaml), or
+[PyTorchJob](/how-to/training-backends/templates/pytorch-job.yaml).
+These are **reviewable examples, not ready deployments**. Replace images with your reviewed
+NexuML/library installation; provision the referenced shared volume/service account;
+configure remote data/output access. Images, code, mounts, secrets, selectors, tolerations,
+and cleanup stay infrastructure-owned. NexuML neither builds images, installs packages,
+nor bundles your directory during handoff.
+
+Use Secret references/normal credential chains, never literal secrets in templates or
+execution settings. Do not apply templates directly: NexuML binds the config placeholder
+and unique invocation name only after review. Save the selected template locally and set
+the client-side path accordingly. For ordinary scenario YAML:
+
+```yaml
+execution:
+  type: kubernetes-job
+  version: "1"
+  params:
+    context: explicitly-selected-context
+    namespace: default
+    template: templates/job.yaml
+    handoff:
+      destination: shared/configs
+      worker_directory: /shared/configs
+    worker_group: training
+    container: training
+    resources: {cpu: "2", memory: "2Gi"}
+```
+
+The client `shared/configs` and pod `/shared/configs` must be **the same shared storage**
+with suitable permissions. Files are uniquely named/exclusively created. Alternatively,
+`handoff: {destination: "s3://your-bucket/configs"}` needs `nexuml[s3]` in client/remote
+images and their own authorized credential chains. S3 stores must support conditional
+`If-None-Match: *` non-overwrite writes. No credential, kubeconfig, or certificate is uploaded.
+
+`{{NEXUML_CONFIG}}` is allowed only in command/args/entrypoint fields. Job/PyTorchJob
+workers receive explicit **Local** execution; RayJob drivers receive **RayCluster**.
+Training/data/components do not change. RayJob's nested `ray` settings use registered
+`type/version/params`; worker `working_dir` defaults null because code must already be
+in the template-owned image. When targeting an existing Ray cluster, replace `rayClusterSpec`
+with operator `clusterSelector` and explicitly keep a cleanup policy that does not remove
+the shared cluster. NexuML does not infer cluster ownership or alter cleanup.
+
+PyTorchJob requires one `Master`, optional `Worker` replicas, named `pytorch` containers,
+equal explicit `--nproc-per-node`, and the template's operator
+`WORLD_SIZE/RANK/MASTER_ADDR/MASTER_PORT` launch arguments. `torchrun` supplies ranks/world
+size to Lightning. Supported semantics are external DDP (`training.strategy: auto` or `ddp`),
+not independent replicas. Stateful evaluation and post-train fitting are rejected.
+Device lists/custom strategies, heterogeneous local process counts, and standalone launchers
+are unsupported here. A CPU two-rank check does not certify an operator, GPU, or multi-host setup.
+
+## Discovery and preflight (no launch)
+
+```sh
+nexuml backend catalog
+nexuml backend discover --config scenario.yaml --timeout 10
+nexuml backend preflight --config scenario.yaml
+```
+
+Catalog reads schemas/dependency diagnostics without contacting clusters or executing
+kubeconfig auth helpers. Kubernetes discovery lists local contexts and probes only the
+selected/current context/namespace, without changing global context. Namespace/KubeRay
+candidates are read where authorized. Ray discovery reads only a configured HTTP(S)
+dashboard: no `ray.init`, network scan, cluster creation, or port forwarding. Ray node
+totals differ from Kubernetes inventory; immediate Ray availability remains unknown
+when the supported State API cannot expose it.
+
+Optional Ray `target.context`/`namespace` adds bounded selected-scope KubeRay candidate
+reads when Kubernetes dependencies exist. Those are cluster identities, not reachable
+endpoints or invented live Ray capacity. Configure reachable execution/dashboard addresses
+explicitly. Failed candidate reads preserve independent Ray observations.
+
+Snapshots contain `source`, `observed_at`, scope, `complete`, and diagnostics. `null` means
+unknown; `0` means observed zero. Local capacity separates affinity/cgroup-v2 limits from
+host totals and diagnoses unobservable platform/device limits. Kubernetes reports allocatable,
+request-based estimated unallocated capacity, quota, visible nodes, and per-role matching nodes.
+Requests include init/sidecars, overhead, and observable pod-level requests. CPU is cores;
+memory is bytes. Extended GPU/MIG/shared names remain separate **resource units**, not a
+combined physical-GPU count. Device models appear only when observed.
+
+Denied node/pod reads hide capacity, not create permission. Truncation is partial; missing
+pod accounting makes unallocated capacity unknown. Matching uses readiness, cordon,
+required selectors/affinity, taints, and **per-node** request fit—not aggregate worker
+arithmetic. Volumes, gang/inter-pod scheduling, controller health, autoscaling, and actual
+device allocation remain unresolved. No snapshot reserves capacity. Known quota/access/
+admission failures block preflight; unknown/free-capacity shortfalls can still produce
+native Pending. Server dry-run reviews the exact manifest without persisting it or
+promising scheduling.
+
+## Explicit operator smoke procedure
+
+:::warning[Separate launch authorization required]
+Do not run this procedure without operator authorization. Use a disposable selected
+context/namespace and reviewed image, volume, and service account. Read-only review
+does not grant permission to launch or delete workloads.
+:::
+
+Run the three read-only commands above and inspect exact worker derivation/template
+revision. Then authorize only that selected test scenario:
+
+```sh
+nexuml train --config scenario.yaml
+# Save the returned native_reference object to reference.json.
+nexuml backend inspect reference.json
+```
+
+Record context, namespace, API/kind, generated name/**UID**, dry-run evidence, actual
+terminal result, and available logs. Submission/driver exit is not success. If acknowledgement
+is lost, inspect the exact generated identity—never blindly rerun. Job/PyTorchJob Python
+`nexuml.execution.cancel(reference)` deletes only the UID-verified workload with foreground
+propagation and waits for termination. RayJob cancellation/log tails are not advertised;
+use authorized native tooling, not submitter termination as a cancellation claim.
+
+Remote artifact URIs are references; actual download permissions/storage are separate.
+Clean up only the recorded UID-verified disposable workload and invocation-specific configs/
+artifacts. Check names have not been reused. Never delete a shared Ray cluster, namespace,
+PVC, or service account. Acceptance tests use fake native APIs plus local CPU/torchrun;
+**no real cluster smoke is implied**. Remote mounts/code/data, operator compatibility,
+multi-host networking, and devices require this separately authorized environment check.
+
+Next, preserve the native result/evidence and use [Ray guidance](/how-to/training-backends/ray/)
+or [deployment boundaries](/how-to/deploy/) for infrastructure-specific follow-up.

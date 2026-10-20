@@ -1,0 +1,30 @@
+---
+title: Deployment boundary
+description: Separate NexuML model artifacts from infrastructure-owned serving and scheduling policy.
+---
+
+This is **reference-only boundary guidance**, not a ready-to-apply deployment manifest.
+NexuML does not prescribe an organization's registry, cluster, shared filesystem,
+credentials, ingress, or scheduler.
+
+Separate two concerns:
+
+1. **Artifact/runtime:** export the trained pipeline and install the dependency snapshot
+   recorded in the package.
+2. **Infrastructure:** choose reviewed images, registry, secrets, volumes/object storage,
+   node placement, ingress, and scheduling appropriate to your environment.
+
+Use [export and reload](/how-to/export/) for copyable package/inference commands. Inspect
+its pipeline payload, state dict, resolved config, metadata, and dependency information;
+verify reload/inference before treating the artifact as deployable. Do not silently
+substitute newly initialized weights.
+
+Build the consuming application's image from its own locked environment. Do not embed
+site-specific credentials or cluster addresses in reusable scenarios. NexuML supplies
+no public multi-tenant serving boundary or automatic cluster provisioning.
+
+For an existing Ray cluster, use [Ray execution](/how-to/training-backends/ray/).
+Infrastructure-owned KubeRay/native job templates can invoke the same `nexuml train`
+command; review [handoff, authorization, and cleanup](/how-to/training-backends/jobs/)
+before launching. Studio hosting is separately documented for
+[trusted authenticated operators](/how-to/studio-hosting/), not public SaaS.

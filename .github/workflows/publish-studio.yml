@@ -1,0 +1,104 @@
+name: Publish Studio
+
+on:
+  push:
+    tags: ["v*"]
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: publish-studio
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    if: (github.event_name == 'push' && !github.event.deleted) || github.event_name == 'workflow_dispatch' || startsWith(github.event.release.tag_name, 'v')
+    runs-on: ika-runner
+    timeout-minutes: 120
+    outputs:
+      ci-run-id: ${{ steps.candidate.outputs.run-id }}
+      manifest-id: ${{ steps.candidate.outputs.manifest-id }}
+      studio-id: ${{ steps.candidate.outputs.studio-id }}
+      version: ${{ steps.candidate.outputs.version }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Resolve the unique tested tag candidate
+        id: candidate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python scripts/release_candidate.py resolve --manifest candidate.json --dist validated-dist
+      - name: Verify protected npm environment
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test "$(gh api "repos/$GITHUB_REPOSITORY/environments/npm" \
+            --jq '[.protection_rules[] | select(.type == "required_reviewers" and .prevent_self_review == true and (.reviewers | length) > 0)] | length')" -eq 1
+
+  publish:
+    needs: validate
+    # npm Trusted Publishing does not support self-hosted runners. Publication only;
+    # all builds and tests remain on ika-runner. Never rebuild the release artifact.
+    runs-on: ubuntu-latest
+    environment:
+      name: npm
+      url: https://www.npmjs.com/package/@nexufed/nexuml-studio
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+
+      - uses: ./.github/actions/release-artifact
+        with:
+          manifest-id: ${{ needs.validate.outputs.manifest-id }}
+          artifact-id: ${{ needs.validate.outputs.studio-id }}
+          run-id: ${{ needs.validate.outputs.ci-run-id }}
+          directory: release-dist
+          group: studio
+
+      - name: Install supported npm publishing CLI
+        # OIDC dist-tag operations require npm >=11.21.0 on the 11.x line.
+        run: npm install --global npm@11.21.0
+
+      - name: Publish the tested tarball to next with OIDC and provenance
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        run: npm publish "$TARBALL" --tag next --ignore-scripts --access public --provenance
+        env:
+          TARBALL: release-dist/studio/nexufed-nexuml-studio-${{ needs.validate.outputs.version }}.tgz
+
+      - name: Promote the verified registry package to latest
+        if: github.event_name == 'release'
+        env:
+          RELEASE_VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          package="@nexufed/nexuml-studio@$RELEASE_VERSION"
+          npm view "$package" dist.integrity --json > "$RUNNER_TEMP/studio-registry-integrity.json"
+          node --input-type=module - <<'JS'
+          import { readFileSync } from 'node:fs';
+          import assert from 'node:assert/strict';
+          const [pack] = JSON.parse(readFileSync('release-dist/studio/pack.json'));
+          const integrity = JSON.parse(readFileSync(`${process.env.RUNNER_TEMP}/studio-registry-integrity.json`));
+          assert.equal(integrity, pack.integrity, 'Publish and test this exact CI tarball on next before promotion.');
+          JS
+          npm dist-tag add "$package" latest

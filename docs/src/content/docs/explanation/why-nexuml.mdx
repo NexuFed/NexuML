@@ -1,0 +1,36 @@
+---
+title: Why NexuML?
+description: Reuse implementations, make experiment composition explicit, and keep execution boundaries visible.
+---
+
+ML projects rarely become difficult because `torch.nn.Module` is difficult. Dataset
+handling, model wiring, training, evaluation, logging, and export gradually become
+project-specific glue. A reusable folder template still encourages copying that glue.
+
+NexuML separates **reusable implementations in libraries** from **one experiment's
+composition in a scenario**. Like a block-based system, it gives blocks explicit
+inputs/outputs and configuration, while keeping implementations in ordinary Python/PyTorch.
+You can replace an encoder without rewriting the dataset, loss, tracking, and training loop.
+
+## What works today
+
+- Typed, validated component definitions and [scenario composition](/how-to/run-scenarios/).
+- Explicit named TensorDict routing, compiler shape propagation, and [pipeline diagrams](/explanation/diagrams/).
+- Lightning training, evaluation, callbacks, full-state resume, and [selective weight reuse](/how-to/checkpoints/).
+- Torch/DALI/tensor-shard [data loading](/how-to/data-loading/) and separate [dataset export](/how-to/export-dataset/).
+- [Tracking](/how-to/tracking/), [Optuna tuning](/how-to/tune/), and [portable model artifacts/inference](/how-to/export/).
+- Local, Ray, and native-job [execution placement](/how-to/training-backends/) over the same lifecycle.
+- [Studio](/studio/) as a single-user workbench over your installed Python environment.
+
+## Direction and boundaries
+
+The direction is less duplicated experiment glue and more reusable, inspectable research
+components—not a new tensor framework, a second training loop, or an infrastructure platform.
+Current distributed execution deliberately rejects stateful evaluation/post-train fitting
+when global finalization is unsupported. Cluster provisioning, credentials, scheduling,
+and serving applications remain infrastructure-owned. Studio is trusted-operator software,
+not public multi-tenant SaaS; Python configurations and checkpoints are not sandboxed.
+
+For the concrete definition → persistence → materialization → TensorDict → Lightning →
+evaluation → export story, read [architecture](/explanation/architecture/).
+To try it rather than read further, use the [CPU first run](/start/first-run/).

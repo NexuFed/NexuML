@@ -1,0 +1,43 @@
+---
+title: Optional CIFAR ResNet example
+description: Inspect and train a base-library vision scenario after the synthetic first run.
+---
+
+**Goal:** run a real image-classification recipe. Complete the
+[synthetic CPU run](/start/first-run/) first if you want the smallest setup.
+
+**Prerequisites:** an installed base library, network access for the first CIFAR download,
+writable dataset/log directories, and the tracking/evaluation dependencies selected by
+the recipe. The recipe enables MLflow and TensorBoard and uses classification visualizers;
+install their optional integrations before running:
+
+```bash
+uv pip install "nexuml[library,tracking]" "nexuml-library[eval]"
+nexuml registry list scenarios
+nexuml resolve cifar-resnet --output configs/cifar-resnet.yaml
+nexuml build configs/cifar-resnet.yaml
+nexuml train --config configs/cifar-resnet.yaml --max-epochs 1 \
+  -O training.accelerator=cpu -O training.devices=1
+```
+
+`cifar-resnet` should appear in discovery. Resolution writes the named YAML; build
+reports the compiled stages and configured diagram path. Training downloads CIFAR
+if missing and runs Lightning's fit → validate → post-train fit → test lifecycle.
+CPU execution is supported but substantially more work than the synthetic example.
+The portable Torch loader is sufficient; DALI is not required.
+
+The default recipe uses the `cifar10` dataset helper and a ResNet classifier without
+pretrained weights. Inspect the resolved data roots and logging/export settings before
+launching. [Environment roots](/reference/environment/) explain relocation.
+Unlike the synthetic recipe, this recipe opts into logging, callbacks, diagrams, and
+train-package export. Read the reported paths and configured callback/logger directories;
+do not assume a `version_0` checkpoint path. See [tracking](/how-to/tracking/),
+[checkpoints](/how-to/checkpoints/), and [export](/how-to/export/).
+
+Expected completion is `Execution finished: succeeded` with test results.
+One epoch demonstrates execution, not a trained accuracy target. The source-derived
+[CIFAR recipe API](/reference/api/nexuml_library/scenarios/vision/cifar_resnet/)
+shows how reusable data, model, training, and evaluation helpers compose this example.
+
+Next, build a tutorial-owned model in the [external tutorials](/tutorials/), rather
+than copying this finished library recipe into a second walkthrough.

@@ -25,6 +25,7 @@ from nexuml.core.components import (
     DataSourceDefinition,
     EnvironmentDefinition,
     EvalAlgorithmDefinition,
+    ExecutionBackendDefinition,
     LayerDefinition,
     LoaderBackendDefinition,
     RLAlgorithmDefinition,
@@ -258,6 +259,22 @@ def rl_algorithm(
     """
     return _component_decorator(
         key, kind="rl_algorithm", expected_type=RLAlgorithmDefinition, version=version
+    )
+
+
+def execution_backend(
+    key: str, *, version: str = "1"
+) -> Callable[[type[DefinitionT]], type[DefinitionT]]:
+    """Register installation-owned execution settings and behavior.
+
+    Returns:
+        Definition class decorator.
+    """
+    return _component_decorator(
+        key,
+        kind="execution_backend",
+        expected_type=ExecutionBackendDefinition,
+        version=version,
     )
 
 

@@ -1,0 +1,66 @@
+@font-face {
+  font-family: Geist;
+  src: url('../assets/brand/geist-latin.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --sl-font: Geist, Arial, sans-serif;
+  --sl-color-white: #f3f3f3;
+  --sl-color-gray-1: #e0e0e0;
+  --sl-color-gray-2: #aaa;
+  --sl-color-gray-3: #aaa;
+  --sl-color-gray-4: #555;
+  --sl-color-gray-5: #303030;
+  --sl-color-gray-6: #181818;
+  --sl-color-black: #101010;
+  --sl-color-accent-low: #082d3d;
+  --sl-color-accent: #0da2e7;
+  --sl-color-accent-high: #51bdf0;
+  --sl-content-width: 48rem;
+  --sl-sidebar-width: 18rem;
+  --sl-text-h1: clamp(2rem, 4vw, 2.8rem);
+  --sl-text-h2: 1.65rem;
+  --sl-text-h3: 1.25rem;
+  --brand-teal: #20cb98;
+}
+
+:root[data-theme='light'] {
+  --sl-color-white: #101010;
+  --sl-color-gray-1: #242424;
+  --sl-color-gray-2: #444;
+  --sl-color-gray-3: #555;
+  --sl-color-gray-4: #aaa;
+  --sl-color-gray-5: #ddd;
+  --sl-color-gray-6: #f3f3f3;
+  --sl-color-black: #fff;
+  --sl-color-accent-low: #e1f4fc;
+  --sl-color-accent: #0075a8;
+  --sl-color-accent-high: #00547a;
+  --brand-teal: #007852;
+}
+
+body { -webkit-font-smoothing: antialiased; }
+h1, h2, h3 { font-weight: 500; letter-spacing: -.025em; text-wrap: balance; }
+.sl-markdown-content { line-height: 1.7; }
+.sl-markdown-content :is(p, li) { max-width: 74ch; }
+.site-title { gap: .8rem; color: var(--sl-color-white); font-size: 1.125rem; }
+.site-title img { width: 8.6rem; height: auto; }
+:root[data-theme='light'] .site-title img { filter: brightness(0); }
+.sl-markdown-content :is(img, video) { max-width: 100%; height: auto; }
+:focus-visible { outline: 2px solid var(--sl-color-accent); outline-offset: 4px; }
+::selection { background: var(--sl-color-accent); color: var(--sl-color-black); }
+.sl-markdown-content table { display: block; overflow-x: auto; }
+.sl-markdown-content :is(pre, code), .expressive-code { font-variant-ligatures: none; }
+.expressive-code .copy .feedback { transition: none; }
+.mermaid { overflow-x: auto; }
+.mermaid svg { max-width: 100%; height: auto; }
+@media (max-width: 30rem) {
+  .site-title img { width: 6rem; }
+  .site-title { gap: .5rem; font-size: 1rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}

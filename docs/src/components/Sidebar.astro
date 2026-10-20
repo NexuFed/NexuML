@@ -1,0 +1,17 @@
+---
+import DefaultSidebar from '@astrojs/starlight/components/Sidebar.astro';
+import VersionSelector from './VersionSelector.astro';
+import { target, base, globalUrl } from '../../config.mjs';
+---
+<VersionSelector />
+{target === 'versioned' && <DefaultSidebar />}
+<nav aria-label="Project links" class="project-links">
+  {target === 'changelog' && <a href={globalUrl('latest/')}>Documentation</a>}
+  <a href={globalUrl('changelog/')}>Changelog</a>
+  {target === 'versioned' && <a href={`${base}development/`}>Contributing</a>}
+</nav>
+<style>
+  .project-links { display: grid; gap: .5rem; margin-top: 1.5rem; }
+  a { padding-block: .5rem; color: var(--sl-color-gray-2); text-decoration: none; }
+  a:hover { color: var(--sl-color-text-accent); text-decoration: underline; }
+</style>

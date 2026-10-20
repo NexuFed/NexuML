@@ -1,0 +1,127 @@
+---
+title: Add a custom layer
+description: Choose a direct PyTorch module or implement a typed definition with a private PipelineLayer runtime.
+---
+
+**Goal:** add a reusable pipeline block. **Prerequisites:** an installed NexuML runtime,
+PyTorch, and a [discoverable library](/how-to/custom-library/) for registered definitions.
+Use `nn_module(...)` for an ordinary importable module with one tensor input and output;
+register a definition only for NexuML-specific context, labels, metadata, lifecycle, or richer routing.
+
+## Prefer a direct module
+
+```python
+import torch
+from nexuml import nn_module
+from nexuml.core.types import LayerSpec
+
+layer = LayerSpec(
+    component=nn_module(torch.nn.Dropout, p=0.5),
+    keys_in=["features"],
+    keys_out=["regularized"],
+)
+```
+
+The factory symbol remains navigable and needs no decorator or custom library registration.
+`ParamSpec` lets static checkers validate annotated factory arguments; NexuML does not
+inspect the constructor at runtime. Resolved YAML uses the one core identity:
+
+```yaml
+component:
+  type: NnModule
+  version: '1'
+  params:
+    factory: torch.nn.modules.dropout:Dropout
+    args: []
+    kwargs:
+      p: 0.5
+```
+
+The factory must be a top-level importable class/function with its dependency installed
+at compile time. Constructor values may recursively contain null, booleans, integers,
+finite floats, strings, lists/tuples, and string-key mappings. Live instances, lambdas,
+closures, local definitions, tensors, devices, dtypes, callables, and other process-local
+values are rejected.
+
+:::warning[Trusted factory execution]
+Compiling resolved config imports and invokes the recorded Python factory. Syntax
+validation does not make external code safe. Only compile configurations you trust.
+:::
+
+`IdentityLayer`, `Dropout`, and `Flatten` are not separate registered component identities.
+Use `nn_module(torch.nn.Identity)`, `nn_module(torch.nn.Dropout, ...)`, or
+`nn_module(torch.nn.Flatten, start_dim=1, end_dim=-1)` instead.
+
+## Register richer behavior
+
+Save this complete definition/runtime pair in `my_library/layers/scaled_relu.py`
+(under `src/` when using that layout):
+
+```python
+import torch
+from nexuml.core.base_layer import PipelineLayer
+from nexuml.core.components import LayerBuildContext, LayerDefinition
+from nexuml.core.discovery import layer
+
+
+@layer("scaled_relu")
+class ScaledReLU(LayerDefinition):
+    """Scale a ReLU activation."""
+
+    scale: float = 1.0
+
+    def build(self, context: LayerBuildContext) -> PipelineLayer:
+        return _ScaledReLURuntime(scale=self.scale, **context.runtime_kwargs())
+
+
+class _ScaledReLURuntime(PipelineLayer):
+    def __init__(self, scale: float, **kwargs):
+        super().__init__(**kwargs)
+        self.scale = scale
+
+    def forward_tensor(self, x: torch.Tensor, y=None) -> torch.Tensor:
+        return torch.relu(x) * self.scale
+```
+
+The public definition owns immutable semantic settings; the runtime owns mutable state.
+Shapes, keys, labels, shared storage, and scheduling come from `LayerBuildContext`, not
+definition fields. Pydantic validates `ScaledReLU(scale=2.0)` immediately and exposes
+`ScaledReLU.model_json_schema()`. Use native `Literal` types for fixed choices so validation
+and Studio controls share supported values without manual schema metadata.
+
+## Use and verify
+
+```python
+from nexuml.core.types import LayerSpec
+from my_library.layers.scaled_relu import ScaledReLU
+
+layer = LayerSpec(
+    component=ScaledReLU(scale=2.0),
+    keys_in=["features"],
+    keys_out=["activated"],
+)
+```
+
+Import the class directly; do not look it up by decorator name in Python. After
+[installing/registering the library](/how-to/custom-library/):
+
+```bash
+nexuml registry list layers --verbose
+```
+
+Expect `scaled_relu`, version `1`, its concrete type, and the `scale` field. A resolved
+configuration stores:
+
+```yaml
+component:
+  type: scaled_relu
+  version: '1'
+  params:
+    scale: 2.0
+```
+
+The library must remain discoverable to restore it. Add the `LayerSpec` to your
+[recipe](/how-to/run-scenarios/#define-a-recipe), resolve to an explicit config, then
+build/run it. The built pipeline should produce `activated` without replacing `features`.
+See generated [decorators](/reference/api/nexuml/core/discovery/) and
+[component contexts](/reference/api/nexuml/core/components/) for exact contracts.

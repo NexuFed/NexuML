@@ -1,0 +1,71 @@
+---
+title: Run trusted Python scenario files
+description: Use local experiment files with explicit provenance capture before promoting recipes into libraries.
+---
+
+**Goal:** run an exploratory local/agent-authored experiment without registering a recipe.
+**Prerequisites:** an installed base library and all imported dependencies in the selected
+environment. Reusable components/factories must remain importable.
+
+:::warning[Trusted execution]
+NexuML executes scenario files as Python. Only run files you trust. Provenance capture
+does not sandbox execution or capture every imported dependency/data file.
+:::
+
+## Define the file
+
+Save as `experiment.py` in your project:
+
+```python
+from nexuml.core.types import ScenarioSpec
+from nexuml_library.scenarios.asd.synthetic_linear_ae import synthetic_linear_ae_reconstruction
+
+HYPOTHESIS = "A one-epoch CPU baseline establishes the reconstruction workflow"
+PARENT = "baseline"
+TAGS = ["synthetic", "cpu"]
+
+
+def scenario() -> ScenarioSpec:
+    spec = synthetic_linear_ae_reconstruction()
+    spec.name = "local-reconstruction"
+    spec.training.max_epochs = 1
+    spec.training.accelerator = "cpu"
+    spec.training.devices = 1
+    return spec
+```
+
+The required contract is `scenario() -> ScenarioSpec`; no decorator is required.
+The example uses the same synthetic implementation as the first run with explicit local
+settings, without changing the installed recipe defaults.
+
+## Run and save provenance
+
+```bash
+nexuml train --scenario-file experiment.py --artifact-dir artifacts/exp-001
+```
+
+Expect `Execution finished: succeeded` and test results. After a successful run,
+the artifact directory includes `scenario.py`, `resolved_scenario.yaml`, `metadata.json`,
+`git.json`, and `command.json`. Relative artifact paths resolve against the detected
+project root; use an absolute path if you require an unambiguous destination. Reusing a
+directory can overwrite its snapshot files, so choose a fresh run directory.
+
+`HYPOTHESIS`, `PARENT`, and `TAGS` are optional provenance exports. Snapshots tie a source
+file to configuration and command/git metadata, but do not replace source/data/environment
+versioning. They are not automatic trained-model packages or checkpoints.
+
+## Tuning files
+
+```bash
+nexuml tune --scenario-file experiment.py --artifact-dir artifacts/search-001 --n-trials 20
+```
+
+Files may additionally export `SEARCH_SPACE`, `TUNING_SPEC`, and structural
+`build(**params) -> ScenarioSpec`. See the [tuning-file contract](/reference/tuning-file/)
+and [Optuna guide](/how-to/tune/). The tuning snapshot can include `search_space.json`
+and `best_trial.json`; preserve the winning resolved configuration separately.
+
+Next, promote a stable recipe into an [importable library](/how-to/custom-library/),
+decorate it with `@scenario`, and expose `nexuml.libraries` or a local root.
+See [source support](/how-to/run-scenarios/#choose-a-source) before assuming a different
+command accepts trusted files.

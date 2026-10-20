@@ -1,0 +1,19 @@
+name: Prepare tag-selected versions
+description: Stamp only disposable tag checkouts, without build caches or version commits.
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v7
+      with:
+        node-version: "22"
+        package-manager-cache: false
+    - uses: astral-sh/setup-uv@v10.0.1
+      with:
+        version: "latest"
+        enable-cache: false
+    - shell: bash
+      working-directory: ${{ github.workspace }}
+      env:
+        RELEASE_REF: ${{ github.ref }}
+        UV_NO_CACHE: "1"
+      run: uv run --no-project --python 3.12 python scripts/prepare-release.py --ref "$RELEASE_REF"

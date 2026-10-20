@@ -13,11 +13,13 @@ from nexuml.core.components import (
     DataSourceDefinition,
     EnvironmentDefinition,
     EvalAlgorithmDefinition,
+    ExecutionBackendDefinition,
     LayerDefinition,
     LoaderBackendDefinition,
     RLAlgorithmDefinition,
 )
 from nexuml.core.factory import factory_values, normalize_json_value, resolve_factory
+from nexuml.execution.definitions import LocalExecution
 
 if TYPE_CHECKING:
     from nexuml.evaluation.utils import FeatureStore
@@ -434,58 +436,6 @@ class ReinforcementLearningSpec(SpecModel):
     precision: str | int = "32-true"
 
 
-class LocalExecutionSpec(SpecModel):
-    """Run the scenario in the current process."""
-
-    kind: Literal["local"] = "local"
-
-
-class RayClusterTarget(SpecModel):
-    """Existing Ray cluster used by the thin Ray Train backend."""
-
-    kind: Literal["cluster"] = "cluster"
-    address: str = "auto"
-    working_dir: str | None = "."
-    py_executable: str | None = None
-
-
-class RayExecutionSpec(SpecModel):
-    """Ray placement configuration; training semantics stay in ``TrainingSpec``."""
-
-    kind: Literal["ray"] = "ray"
-    target: RayClusterTarget = Field(default_factory=RayClusterTarget)
-    workers: int | tuple[int, int] = 1
-    resources_per_worker: dict[str, float] = Field(default_factory=lambda: {"CPU": 1.0})
-    storage_path: str | None = None
-
-    @field_validator("workers")
-    @classmethod
-    def validate_workers(cls, value: int | tuple[int, int]) -> int | tuple[int, int]:
-        if isinstance(value, int):
-            if value < 1:
-                raise ValueError("execution.workers must be positive")
-            return value
-        minimum, maximum = value
-        if minimum < 1 or maximum < minimum:
-            raise ValueError("execution.workers range must satisfy 1 <= min <= max")
-        return value
-
-    @field_validator("resources_per_worker")
-    @classmethod
-    def validate_resources(cls, value: dict[str, float]) -> dict[str, float]:
-        if not value:
-            raise ValueError("execution.resources_per_worker must not be empty")
-        if any(not key.strip() or amount <= 0 for key, amount in value.items()):
-            raise ValueError("execution resources must have names and positive amounts")
-        return value
-
-
-ExecutionSpec = Annotated[
-    LocalExecutionSpec | RayExecutionSpec,
-    Field(discriminator="kind"),
-]
-
-
 class TargetSpec(SpecModel):
     """Specification for a synthetic target."""
 
@@ -761,7 +711,7 @@ class ScenarioSpec(SpecModel):
     tuning: TuningSpec | None = None
     checkpoint: CheckpointLoadSpec | None = None
     exports: list[ExportSpec] = Field(default_factory=list)
-    execution: ExecutionSpec = Field(default_factory=LocalExecutionSpec)
+    execution: ExecutionBackendDefinition = Field(default_factory=LocalExecution)
 
     @model_validator(mode="after")
     def validate_reinforcement(self) -> Self:
@@ -770,7 +720,7 @@ class ScenarioSpec(SpecModel):
         if isinstance(self.training, ReinforcementLearningSpec):
             if self.interaction is None or self.policy is None:
                 raise ValueError("reinforcement training requires scenario.interaction and policy")
-            if isinstance(self.execution, RayExecutionSpec):
+            if self.execution.component_name not in {"local", "ray-jobs-sdk"}:
                 # ponytail: single learner; enable Ray placement after distributed lifecycle tests.
                 raise ValueError(
                     "Ray learner placement for RL is not validated; use local execution"
@@ -778,3 +728,18 @@ class ScenarioSpec(SpecModel):
             if self.training.devices not in (1, "auto") or self.training.strategy != "auto":
                 raise ValueError("RL currently supports one learner with training.strategy='auto'")
         return self
+
+    @field_validator("execution", mode="before")
+    @classmethod
+    def restore_execution(cls, value: Any) -> ExecutionBackendDefinition:
+        if isinstance(value, ExecutionBackendDefinition):
+            return value
+        from nexuml.core.serialization import restore_component
+
+        if not isinstance(value, Mapping) or "kind" in value:
+            raise ValueError(
+                "execution requires type/version/params; replace legacy execution.kind."
+            )
+        return cast(
+            ExecutionBackendDefinition, restore_component(kind="execution_backend", value=value)
+        )

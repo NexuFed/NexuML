@@ -1,0 +1,80 @@
+---
+title: Run bounded autoresearch
+description: Give an agent an explicit experiment budget, preserve evidence, and protect final-test data.
+---
+
+**Goal:** compare configurations, architectures, and algorithm variants under an explicit
+research budget. **Prerequisites:** your own library/project, installed NexuML and data/
+runtime dependencies, a defined scorer/partition protocol, and agent skills where desired.
+A framework checkout, API server, and MCP are not required.
+
+## Give the agent a bounded task
+
+The repository's `skills/` contains independently installable `nexuml`, `nexuml-library`,
+`nexuml-reproduce-paper`, and `nexuml-autoresearch`. Install selected directories through
+your agent's supported mechanism; Python package installation does not install skills.
+Use the repository's [skill instructions](https://github.com/NexuFed/NexuML/blob/main/skills/README.md)
+for installation/validation.
+
+Open your external library project with those skills available. For example:
+
+```text
+Use NexuML to improve experiments/baseline.py.
+Select by validation loss under a 2 ms latency limit.
+Budget: 5 experiments, 3 epochs each, CPU only, no downloads.
+Preserve the baseline and exclude official final-test records from all search runs.
+```
+
+For a novel method rather than a configuration search, follow
+[algorithm development](https://github.com/NexuFed/NexuML/blob/main/skills/nexuml-library/references/algorithm-development.md):
+falsifiable mechanism, numerical checks, fair baselines/ablations. Validation improvement
+alone does not establish novelty.
+
+The agent should establish runtime, dataset/partition identities, scorer, constraints,
+and allowed edits; inspect existing evidence; propose a bounded experiment; then record
+actual results and keep/reject decisions. Reuse components first. Tuning is one option,
+not a prerequisite for every architecture change. Missing components belong in your library.
+After scope/budget agreement, the loop can continue without per-experiment approvals,
+while honoring explicit pauses/read-only requests and asking before consequential
+boundary changes or unresolved blockers.
+
+## Execute with one selected runtime
+
+[Scenario files](/how-to/scenario-file/) export `scenario() -> ScenarioSpec` and optional
+`HYPOTHESIS`, `PARENT`, `TAGS`. They run trusted Python, not sandboxed configuration.
+Keep reusable components/factories in the importable library. A global uv-tool NexuML
+cannot see dependencies installed only in a project's `.venv`.
+
+```bash
+.venv/bin/python -m nexuml.cli.main train \
+  --scenario-file experiments/baseline.py \
+  --artifact-dir experiments/run-001 --max-epochs 3
+
+.venv/bin/python -m nexuml.cli.main tune \
+  --scenario-file experiments/search.py \
+  --artifact-dir experiments/search-001 --n-trials 3
+```
+
+Create the files using the [trusted-file](/how-to/scenario-file/) or
+[tuning example](/how-to/tune/). Check installed CLI help. Tuning epoch limits belong
+in the scenario/factory; do not invent `tune` flags from `train`. Optional `SEARCH_SPACE`,
+`TUNING_SPEC`, and `build(**params)` follow [this contract](/reference/tuning-file/).
+
+## Preserve selection evidence
+
+Select/debug on validation/research data, never final-test feedback. Optimizing `val/loss`
+does not stop normal execution of a configured test phase. Exclude final-test sample
+identities and inspect actual loader membership, especially with fixed metadata assignments.
+Freeze candidate/protocol before separately authorized final-test evaluation.
+
+Use fresh scenario/run identities. Preserve baseline, source, commands, resolved configs,
+data/environment identities, measured latency/quality, failures, and keep/reject decisions.
+`--artifact-dir` snapshots help but do not capture all imports/data or necessarily the
+winning trial configuration; retain those separately. Expect concrete run directories and
+a finite decision record, not merely a claim of improvement.
+
+Promote verified reusable components/recipes without overwriting the baseline or discarding
+failed evidence. Report the best feasible candidate found within budget and uncertainty.
+A smoke pass is not convergence/paper parity. Framework failures need a minimal reproducer,
+not site-packages edits or hidden monkeypatches. Next, [package actual trained weights](/how-to/export/)
+and retain the evaluation protocol with the artifact.

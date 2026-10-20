@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Python 3.12+
+- Python
 - `uv` or another Python package installer
 
 You do **not** need to clone the NexuML repository to use it.
@@ -66,23 +66,24 @@ The base library has additional feature extras for optional datasets/models/eval
 
 ## Container image
 
-The GHCR image provides the complete development and training environment when you do not want to assemble the Python and CUDA dependencies yourself. Pull a release using its explicit NexuML and CUDA versions:
+The GHCR image provides the complete development and training environment when you do not want to assemble Python and CUDA dependencies yourself. Choose an explicit tag from the [registry](https://github.com/NexuFed/NexuML/pkgs/container/nexuml), then pull it:
 
 ```bash
-docker pull ghcr.io/nexufed/nexuml:0.2.0-cuda12.8.1
+read -r -p "Registry tag: " NEXUML_IMAGE_TAG
+docker pull "ghcr.io/nexufed/nexuml:${NEXUML_IMAGE_TAG:?Select a registry tag}"
 ```
 
 Run it with NVIDIA GPU access:
 
 ```bash
-docker run --rm -it --gpus all ghcr.io/nexufed/nexuml:0.2.0-cuda12.8.1
+docker run --rm -it --gpus all "ghcr.io/nexufed/nexuml:${NEXUML_IMAGE_TAG:?Select a registry tag}"
 ```
 
-This Linux AMD64 image contains NexuML 0.2.0, Python 3.13, Ubuntu 24.04, CUDA 12.8.1 development tools, both `nexuml` and `nexuml-library`, and every optional extra from both workspace packages. It is substantially larger than the normal Python installation.
+This Linux AMD64 image contains Python, Ubuntu, CUDA development tools, both `nexuml` and `nexuml-library`, and every optional extra from both workspace packages. It is substantially larger than the normal Python installation.
 
 GPU execution requires a compatible NVIDIA host driver and the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html). Building or starting the image without GPU access remains possible, but CUDA workloads require `--gpus all` or a narrower Docker GPU selection.
 
-Release tags use `<nexuml-version>-cuda<cuda-version>`. `edge-cuda12.8.1` tracks `main`, while `sha-<short-sha>-cuda12.8.1` identifies one immutable source revision. Always specify a tag: NexuML does not publish an unqualified `latest` image. GHCR (`ghcr.io/nexufed/nexuml`) is the supported registry; Docker Hub mirroring is not enabled.
+Release tags use `<nexuml-version>-cuda<cuda-version>`. Tags beginning `edge-cuda` track `main`; `sha-<short-sha>-cuda<cuda-version>` identifies one source revision. Always specify a tag: NexuML does not publish an unqualified `latest` image. GHCR is the supported registry; Docker Hub mirroring is not enabled.
 
 ## CUDA and PyTorch
 

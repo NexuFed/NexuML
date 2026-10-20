@@ -1,0 +1,32 @@
+---
+import commands from '../../.generated/cli.json';
+const anchor = (path: string) => path.replaceAll(' ', '-');
+---
+<nav aria-label="CLI commands"><ul>
+  {commands.map(command => <li><a href={`#${anchor(command.path)}`}>{command.path}</a></li>)}
+</ul></nav>
+{commands.map(command => <section aria-labelledby={anchor(command.path)}>
+  <h2 id={anchor(command.path)}><code>{command.path}</code></h2>
+  <p class="cli-help">{command.help}</p>
+  <div class="cli-parameters"><table>
+    <caption>Arguments and options for {command.path}</caption>
+    <thead><tr><th scope="col">Name</th><th scope="col">Type / default</th><th scope="col">Meaning</th></tr></thead>
+    <tbody>{command.parameters.map(parameter => <tr>
+      <th scope="row"><code>{[...parameter.opts, ...parameter.secondary_opts].join(', ') || parameter.name}</code>
+        {parameter.required && <small>required</small>}{parameter.multiple && <small>repeatable</small>}</th>
+      <td><code>{parameter.type}</code>{parameter.default !== null && <small>default: <code>{JSON.stringify(parameter.default)}</code></small>}</td>
+      <td>{parameter.help}</td>
+    </tr>)}</tbody>
+  </table></div>
+</section>)}
+<style>
+  section { margin-block: 3rem; }
+  h2 { scroll-margin-block-start: 6rem; }
+  .cli-help { white-space: pre-wrap; }
+  .cli-parameters { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+  caption { text-align: start; margin-bottom: .75rem; color: var(--sl-color-gray-2); }
+  th, td { padding: .75rem; border-bottom: 1px solid var(--sl-color-gray-5); text-align: start; vertical-align: top; }
+  small { display: block; margin-top: .3rem; font-weight: 400; }
+  code { overflow-wrap: anywhere; }
+</style>

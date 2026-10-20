@@ -14,7 +14,7 @@ import sys
 import tempfile
 from contextlib import ExitStack, closing, contextmanager
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Iterator, cast
+from typing import TYPE_CHECKING, Any, Generator, cast
 
 if TYPE_CHECKING:
     import numpy as np
@@ -54,7 +54,7 @@ def staged_artifact_path(
     artifact_name: str,
     *,
     prefix: str = "nexuml_artifact_",
-) -> Iterator[Path]:
+) -> Generator[Path, None, None]:
     """Yield a temporary filesystem path for building an artifact before logging it."""
     with tempfile.TemporaryDirectory(
         prefix=prefix,

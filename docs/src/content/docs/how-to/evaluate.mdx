@@ -1,0 +1,72 @@
+---
+title: Evaluate a model
+description: Distinguish pipeline metrics, post-train fitted model state, and reporting algorithms.
+---
+
+**Goal:** surface metrics from a completed run. **Prerequisites:** a working scenario
+whose pipeline emits the required outputs/labels. Evaluation is part of `nexuml train`;
+there is **no separate top-level `nexuml evaluate` command**.
+
+## Pipeline losses and metrics
+
+Layers emit named values such as `classification_loss`, `accuracy`, or `f1`.
+`TrainingSpec.loss_keys` selects/weights losses; `metric_keys` selects emitted pipeline
+metrics to log in train/validation/test. Merely naming a metric does not create it.
+
+## Post-train fitted pipeline layers
+
+Some score-producing layers require the completed training set after gradient training.
+They use `PostTrainFitLayer`. Local execution runs:
+
+```text
+fit → validate → fit each unfitted PostTrainFitLayer over the training loader → test
+```
+
+Their fitted state produces model outputs, such as anomaly scores, during test.
+Reporting/analysis is instead an evaluation-algorithm concern.
+
+## Configure a reporting algorithm
+
+For a scenario already producing `anomaly_score` with binary labels under `y_true`:
+
+```python
+from nexuml.core.types import EvalAlgorithmSpec, EvaluationSpec
+from nexuml_library.evaluation.anomalous_sound_detection.asd_evaluator import AnomalyEvaluator
+
+evaluation = EvaluationSpec(
+    algorithms=[EvalAlgorithmSpec(
+        algorithm=AnomalyEvaluator(score_key="anomaly_score", max_fpr=0.1),
+        label_key="y_true",
+    )],
+    test_result_metrics=["auc", "pauc"],
+)
+```
+
+Attach this section to that scenario and run:
+
+```bash
+nexuml train my-anomaly-scenario
+```
+
+This is not a replacement evaluation for the synthetic reconstruction example, which
+does not emit anomaly scores/labels. Validate the dataset population and label semantics
+before interpreting AUC.
+
+During test NexuML runs the pipeline, attaches declared/available evaluation metadata,
+calls each algorithm's `eval_batch(x, y)`, then `eval_end()`, `visualize(logger)`, and
+`results()`. Immutable semantic settings belong to the definition; accumulators belong
+to its private runtime.
+
+`EvalAlgorithmSpec` owns `name`, `enabled`, axis keys, `feature_key`, and `label_key`.
+`EvaluationSpec.test_result_metrics` chooses which returned scalars appear in test results:
+`"none"`, `"all"`, or a list. For the example, inspect `auc`/`pauc` in test results.
+Visualizations/files depend on configured [loggers](/how-to/tracking/); none are implied
+by naming a result alone.
+
+Ray rejects stateful `evaluation.algorithms` because independent worker accumulators
+would change their meaning. Keep these scenarios local; see
+[distributed restrictions](/how-to/training-backends/ray/#distributed-semantic-restrictions).
+
+Next, [add a custom algorithm](/how-to/custom-eval-algorithm/) or use a real emitted
+metric for [tuning](/how-to/tune/). Research selection must use validation/research data,
+not feedback from a held-out final test set.

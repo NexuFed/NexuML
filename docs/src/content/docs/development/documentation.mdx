@@ -1,0 +1,71 @@
+---
+title: Contribute to the documentation
+description: Build and validate MDX, automatic Python and CLI reference, and editorial updates without ML dependencies.
+---
+
+**Goal:** preview and validate a documentation change from a clean checkout.
+Use the Node runtime selected by `docs/.node-version`, npm, uv, and Git. Documentation
+tools are independent of Studio and the ML workspace.
+
+```bash
+npm --prefix docs ci
+npm --prefix docs run setup:python
+npm --prefix docs run dev
+```
+
+The authoring server prints its documentation-prefixed URL. Full-text search requires
+a static build; it is not available in the live authoring server.
+
+```bash
+npm --prefix docs run check
+npm --prefix docs run build
+npm --prefix docs run preview
+```
+
+`check` runs schema/MDX validation, lightweight CLI and tooling tests, Python lint,
+Astro type checks, both static targets, and rendered link/fragment/asset checks.
+`build` assembles a local-only preview of documentation and the global changelog.
+It neither fetches nor publishes historical archives. Expect a successful build
+message and previewable output under `docs/.output/`.
+
+## Author MDX
+
+Add pages under `docs/src/content/docs/` with nonempty `title` and `description`
+frontmatter. Use one canonical task procedure, expected outputs, and a next action.
+Use root-like Markdown links such as `[First run](/start/first-run/)`: the build
+scopes them to the current documentation base. Do not include the host, project
+prefix, or selected version in editorial links. Put download files in
+`docs/public/versioned/` and reference their root-like documentation paths.
+
+Starlight supports asides (`:::note`, `:::warning`), code copying, built-in tabs,
+and Mermaid fences. Import supported components in MDX rather than copying a shell.
+Generated reference is not handwritten MDX: Python source/docstrings feed the
+locked static Griffe/Pydocs integration; the actual Typer app feeds CLI JSON.
+New public Python modules appear automatically. Never install optional ML stacks
+to make extraction pass or create docs-only command definitions.
+
+## Browser and portability acceptance
+
+```bash
+npm --prefix docs run setup:browser
+npm --prefix docs run test:api
+npm --prefix docs run test:browser
+```
+
+Browser checks use excluded, temporary content/media fixtures and rebuild clean output
+afterward. They retain desktop/mobile screenshots, accessibility diagnostics, and
+failure traces under ignored test-result directories. API proofs exercise new public
+symbols and private filtering under project and root mounts. Repeat the complete build
+with `DOCS_SITE` and `DOCS_MOUNT` changed to check a future hosting configuration.
+
+## Changelog and publication
+
+Add one reviewed, schema-valid MDX entry to `docs/src/content/changelog/`; index and
+dated entry routes are generated automatically. Read `docs/changelog.md` for the template,
+metadata, accessibility/media requirements, and main-published update procedure.
+
+`docs/publication.md` describes archive ownership, preservation dry-runs, exact-revision
+checks, durable staging before the Pages queue, retries, recovery, and a future
+domain/provider migration. Maintainers change the Pages Source setting only at cutover
+after merge. No contributor preview command deploys the site, changes DNS, or rebuilds
+historical releases. GitHub Release notes remain independent of editorial entries.

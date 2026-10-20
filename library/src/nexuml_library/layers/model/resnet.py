@@ -4,7 +4,7 @@ from __future__ import annotations
 from nexuml.core.discovery import layer
 
 import logging
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 import torch
 import torch.nn as nn
@@ -14,13 +14,7 @@ from nexuml.core.components import LayerBuildContext, LayerDefinition
 
 logger = logging.getLogger(__name__)
 
-_RESNET_TYPES = {
-    "resnet18": ("resnet18", 512),
-    "resnet34": ("resnet34", 512),
-    "resnet50": ("resnet50", 2048),
-    "resnet101": ("resnet101", 2048),
-    "resnet152": ("resnet152", 2048),
-}
+ResNetType = Literal["resnet18", "resnet34", "resnet50", "resnet101", "resnet152"]
 
 
 @layer("ResNet")
@@ -38,7 +32,7 @@ class ResNet(LayerDefinition):
             Defaults to ``False`` when pretrained, ``True`` otherwise.
     """
 
-    resnet_type: str = "resnet18"
+    resnet_type: ResNetType = "resnet18"
     pretrained: bool = False
     cifar_stem: bool | None = None
 
@@ -52,7 +46,7 @@ class _ResNetRuntime(PipelineLayer):
         input_sizes: dict[str, tuple],
         keys_in: list[str],
         keys_out: list[str],
-        resnet_type: str = "resnet18",
+        resnet_type: ResNetType = "resnet18",
         pretrained: bool = False,
         cifar_stem: bool | None = None,
         **kwargs: Any,
@@ -63,10 +57,6 @@ class _ResNetRuntime(PipelineLayer):
             keys_out=keys_out,
             **kwargs,
         )
-
-        if resnet_type not in _RESNET_TYPES:
-            available = ", ".join(sorted(_RESNET_TYPES.keys()))
-            raise ValueError(f"Unsupported resnet_type '{resnet_type}'. Available: [{available}]")
 
         self.resnet_type = resnet_type
         self.pretrained = pretrained

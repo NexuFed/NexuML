@@ -1,0 +1,109 @@
+---
+title: NexuML Studio
+description: Install the local workbench and run the synthetic CPU example in your browser.
+---
+
+Studio is a local, single-user workbench over **your installed NexuML runtime**.
+Training runs in Python, not the browser; executable libraries and YAML are trusted
+inputs, not sandboxed code.
+
+## Install and launch
+
+You need Python, Node.js/npm, a browser, and an existing writable directory.
+Activate your Python environment, then:
+
+```sh
+pip install "nexuml[api,library]"
+npm install -g @nexufed/nexuml-studio
+nexuml-studio .
+```
+
+Studio opens a browser; **Runtime details** identifies the selected interpreter
+and directory. The launcher never installs dependencies or updates packages.
+Keep its terminal open: Ctrl-C stops Studio and confirmed owned local work;
+closing the browser does not stop training.
+
+## First training run
+
+1. Select **Try an example** for an editable one-epoch CPU draft of
+   `synthetic-linear-ae-reconstruction`. No data download is needed.
+2. Review **Pipeline** and **Training**, then **Save** the YAML. You can also
+   **Choose a recipe** or **Open YAML**.
+3. Use **Check → Check fields**, then **Check → Build model**. The latter
+   constructs the pipeline; field checks alone do not.
+4. Select **Run… → Review selection → Run on Local**. Review freezes the
+   settings used for that run.
+5. Inspect actual **Metrics**, **Logs**, **Artifacts**, and **Configuration**
+   in **Runs**. Reloading a tab does not relaunch training.
+
+This is the [CLI first-run example](/start/first-run/), not a quality or convergence
+benchmark. If the recipe is missing, install the base library in Studio's
+**selected Python environment**, then restart.
+
+## Edit and inspect safely
+
+- Add definitions from **Components** and edit routing in **Properties**.
+  **Structure/Execution order**, not canvas positions, controls execution;
+  move buttons and connection selectors work without dragging.
+- Semantic keys connect each layer to the latest preceding producer.
+  Layout lives in a separate `*.studio.json` sidecar, not executable YAML.
+  Undo/Redo supports completed edits.
+- Invalid YAML must be applied or discarded before saving/running; formatting
+  and comments are not retained. External save conflicts never overwrite files.
+  **Problems** links field errors to relevant controls.
+- Runs retain their frozen settings. Results are observed, not fabricated;
+  historical metrics may be visually truncated while files remain on disk.
+
+## Execution limits
+
+One build, train, or export operation runs at a time; there is no queue.
+Local Stop confirms process termination, not a new checkpoint. Resume
+requires an actual trusted trainer checkpoint; export requires completed
+local training and its checkpoint.
+
+Ray provides driver results, not guaranteed worker cancellation; native-job
+Stop support is backend-specific. After API restart, uncertain remote
+operations are not adopted or resubmitted. See [native-job restrictions](/how-to/training-backends/jobs/)
+and the [API lifecycle](/how-to/local-api/#operation-lifecycle-and-limits).
+Studio does not provision clusters or resume work automatically.
+
+## Choose a runtime
+
+```sh
+nexuml-studio .
+nexuml-studio --python /project/.venv/bin/python /project
+nexuml-studio --nexuml /path/to/nexuml /project
+```
+
+On Windows use `.venv\Scripts\python.exe`. Install `api` and libraries into
+that interpreter, not an unrelated shell Python. For an isolated tool,
+`uv tool install "nexuml[api,library]"`, then select its `nexuml` via
+`--nexuml`. For custom packages, install into that environment or use
+[**Libraries → Add root**](/how-to/custom-library/#local-library-roots)
+for trusted source (which does not install dependencies). Restart to switch runtimes.
+
+## Ports and attached APIs
+
+Services use loopback and free ports by default. `--port 3000 --api-port 8000`
+sets both ports; `--no-open` keeps the browser closed. To attach an
+[existing local API](/how-to/local-api/):
+
+```sh
+nexuml-studio --port 3000 --api http://127.0.0.1:8000 --api-token-file /private/token .
+```
+
+Both must use the same directory and exact UI origin. Attached APIs remain
+caller-owned. Keep tokens private and outside the working directory;
+browser credentials stay in memory. For remote access use
+[authenticated hosting](/how-to/studio-hosting/), **not** an exposed Python API.
+
+## Troubleshooting
+
+- **Missing executable, API, or library:** check **Runtime details**, install
+  into the selected environment, and restart.
+- **Connection lost:** inspect launcher output and **Retry connection**;
+  reload after restarting the launcher.
+- **Attach rejected:** match directory, token, and UI origin; `localhost`
+  and `127.0.0.1` are different origins.
+
+Contributor checks belong in [development setup](/development/install/).

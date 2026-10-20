@@ -82,12 +82,14 @@ nav:
   - Get started:
     - start/index.md
     - Installation: start/install.md
+    - Studio: studio.md
     - Your first scenario: start/train-cifar-resnet.md
   - Tutorials: tutorials.md
   - Guides:
     - how-to/index.md
     - Core workflow:
       - CLI lifecycle: how-to/cli-lifecycle.md
+      - Local Studio API: how-to/local-api.md
     - Scenarios and configuration:
       - Define a scenario: how-to/define-scenario.md
       - Run scenarios: how-to/run-scenarios.md
@@ -111,6 +113,7 @@ nav:
     - Execution:
       - Overview: how-to/training-backends/index.md
       - Ray: how-to/training-backends/ray.md
+      - Native jobs and capacity: how-to/training-backends/jobs.md
     - Extending NexuML:
       - Custom library: how-to/custom-library.md
       - Add a custom layer: how-to/custom-layer.md
