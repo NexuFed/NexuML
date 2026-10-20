@@ -8,7 +8,7 @@ Export complete physically meaningful actors and preserve trusted local-learning
 
 ### Requirement: PD1 Actor-only packages preserve complete inference
 
-Complete policy export SHALL preserve actors, sharing, processing/interface ownership, temporal reset and physical action decoding with reference parity. Clean inference SHALL require neither Isaac, TorchRL, Viser, custom simulator/config packages nor centralized critic inputs. Training-only state SHALL stay out of inference payloads. General train-export entries, sidecars and dependency manifests SHALL remain unchanged.
+Complete policy export SHALL preserve actors, sharing, processing/interface ownership, optional caller-owned processor-state initialization/step/partial-reset semantics (but not ephemeral live history), temporal reset and physical action decoding with reference parity. The existing stateless policy interface SHALL remain unchanged. Clean inference SHALL require neither Isaac, TorchRL, Viser, custom simulator/config packages nor centralized critic inputs. Training-only state SHALL stay out of inference payloads. General train-export entries, sidecars and dependency manifests SHALL remain unchanged.
 
 #### Scenario: A MAPPO multimodal actor is loaded cleanly
 - **WHEN** simulator, learner, viewer and custom task imports are blocked and source-workspace paths are absent
@@ -56,15 +56,15 @@ NEX-234 SDK entry points and validated requests SHALL preserve CPU/reset default
 
 ### Requirement: PD5 Consumer compatibility is explicit and independently owned
 
-Changes to active SO-101 fixtures/manifests SHALL include producer tests and a compatibility check against the actual NEX-235 consumer revision. Exact source-pin, recipe/schema and numeric deltas SHALL be reported. NexuFL adjustments SHALL remain independent follow-ups with no source edits in this change; failed pins SHALL NOT be bypassed or represented as compatibility. NexuML SHALL NOT acquire federation/transport responsibilities.
+Changes to active SO-101 fixtures/manifests SHALL include producer tests and a mandatory, **separately reported K2 cross-repository compatibility check** against the actual NEX-235 consumer revision. Exact source-pin, recipe/schema and numeric deltas SHALL be reported. A known older consumer pin SHALL block end-to-end integration acceptance, **not NexuML-only Milestone A acceptance** when its producer gates pass. NexuFL adjustments SHALL remain independent follow-ups with no source edits in this change; failed pins SHALL NOT be bypassed or represented as compatibility. NexuML SHALL NOT acquire federation/transport responsibilities.
 
 #### Scenario: A consumer pins earlier SDK source
 - **WHEN** the reviewed NEX-235 consumer rejects changed SDK/scenario files or a new semantic/recipe hash
-- **THEN** the exact old/new contract and independent requalification work are recorded, consumer acceptance remains blocked, and its source pins are not patched to manufacture a pass
+- **THEN** the exact old/new contract and independent requalification work are recorded, **cross-repository integration** remains blocked without retroactively failing verified NexuML producer gates, and consumer source pins are not patched to manufacture a pass
 
 ### Requirement: PD6 Completion states and evidence remain truthful
 
-Each milestone SHALL separately report implementation, unit/API, actual native/browser acceptance and blocked/unverified states. Required gates SHALL pass before milestone completion; skips or mocks SHALL NOT count. Focused verified commits SHALL exclude raw execution evidence and unrelated work. Full completion SHALL retain Viser and both algorithms and SHALL NOT close the broader Physical AI roadmap.
+Each milestone SHALL separately report implementation, unit/API, actual native/browser acceptance and blocked/unverified states. Producer milestone completion SHALL require the milestone's NexuML-owned gates; cross-repository K2 compatibility SHALL be reported distinctly and SHALL NOT be claimed on the strength of producer-only tests. Skips or mocks SHALL NOT count as required native/browser passes. Focused verified commits SHALL exclude raw execution evidence and unrelated work. Full completion SHALL retain Viser and both algorithms and SHALL NOT close the broader Physical AI roadmap.
 
 #### Scenario: Software checks pass without required native evidence
 - **WHEN** graphics, task assets, browser safety or consumer qualification is missing

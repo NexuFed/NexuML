@@ -16,7 +16,7 @@ All native/browser checks are explicitly opt-in. Pure CPU tests require no simul
 | C | Not implemented | Not executed | Not executed | F0 plus actual browser/read-only acceptance |
 | D | Not implemented | Source-plan API probes only | Not executed | Native groups, optimizers, export/continuation |
 
-This table is initial disposition, not a results ledger. During implementation keep detailed outcomes externally and update tracked tasks only on proof. A milestone's acceptance task closes after all listed required gates pass; external consumer failure remains blocked. Native/package data structures compiling do not imply acceptance. Small verified commits may describe implementation-only slices accurately, but may not claim an unpassed milestone complete.
+This table is initial disposition, not a results ledger. During implementation keep detailed outcomes externally and update tracked tasks only on proof. A **NexuML producer** milestone's acceptance task closes after its own listed gates pass. Mandatory **K2** is a separately tracked end-to-end NexuML–NexuFL integration gate: an older consumer pin does not make a passing producer milestone fail, but cross-repository compatibility cannot be claimed until K2 passes. Native/package data structures compiling do not imply acceptance. Small verified commits may describe implementation-only slices accurately, but may not claim an unpassed milestone complete.
 
 ## 0. Front-loaded feasibility
 
@@ -26,7 +26,7 @@ This table is initial disposition, not a results ledger. During implementation k
 
 Audit exact pinned viewer constructor/sidebar and supported callback/HTTP/WebSocket/native handoff paths. Identify supported read-only/private-host extension or the smallest isolated instance-local adapter that reuses native geometry while bypassing `NewtonViewerViser`'s global `ViserServer` reassignment. Qualify bind-before-listen and mutation denial through bounded actual constructor/dispatcher tests; no vendor edits, global patch, public-first transient socket or second scene renderer. Assert global class identity unchanged and actual listener private at the requested port; close proof resources on every outcome.
 
-**Pass:** a concrete safe seam and small reproducible tests prove viability. Full browser/training acceptance is still B2. **Fail/blocked:** unsupported seam, unsafe writes or missing prerequisites; stop dependent work, retain exact blocker and keep C/overall incomplete without deleting Viser. Do not implement the other milestones first in the hope that viewer safety will later work.
+**Pass:** a concrete safe seam and small reproducible tests prove viability. Full browser/training acceptance is still B2. **Fail/blocked:** unsupported seam, unsafe writes or missing prerequisites; stop viewer-dependent work, preserve the exact blocker and request a maintainer decision before continuing independent headless A/B work (or D after prerequisites). Do not proceed automatically, remove Viser or claim C/overall completion. Explicitly authorized headless work may pass its own gates without pretending F0 passed. Do not implement other milestones first in the hope that viewer safety will later work.
 
 ## 1. Static, API and schema verification
 
@@ -48,7 +48,7 @@ Tests cover normal CLI train and selected evaluation definitions, resumed scenar
 
 ### U1 — Sensors, processing and actions
 
-Author deterministic fixtures for RGB/depth/segmentation/mixed observations, layout/dtype/units, normalization, invalid depth/sanitization masks, wrong label vocabulary, missing/undeclared fields and nonfinite tensors. Exercise package-owned and external-runtime preprocessing/history with exact sequence/reset parity and rate/ordering metadata. Scalar categorical class mapping/event dimensions and continuous bounds/physical decoding require explicit numerical tests. Simulated cached-reset tests verify no duplicate reset and continuing-stream history; actual frames remain N2's responsibility.
+Author deterministic fixtures for RGB/depth/segmentation/mixed observations, layout/dtype/units, normalization, invalid depth/sanitization masks, wrong label vocabulary, missing/undeclared fields and nonfinite tensors. Test the optional caller-owned `CompiledPolicy` state lifecycle for package-owned processing: deterministic initialization, `(observation, state) -> (actions, next_state)`, targeted per-environment/group reset masks, no implicit global history, stable ordering/rates, interleaved independent environments and stateless `forward()` regression. Exercise external-runtime preprocessing/history with exact sequence/reset parity and rate/ordering metadata. Scalar categorical class mapping/event dimensions and continuous bounds/physical decoding require explicit numerical tests. Simulated cached-reset tests verify no duplicate reset and continuing-stream history; actual frames remain N2's responsibility.
 
 ### U2 — Single-agent PPO preservation
 
@@ -124,7 +124,7 @@ Perform display pause, camera movement, connect/disconnect/reconnect and support
 
 ### X1 — Complete portable computation and general format regression
 
-Run existing export/policy/packaging regressions and clean isolated import tests for each new sensor/action/group family. Use existing complete inference packaging on PyTorch 2.11, not an assumed native unshared `torch.export` graph. Block imports of `isaaclab`, `isaacsim`, native support modules, `omni`, `pxr`, TorchRL, Viser and the custom task/config package; remove workspace source paths. The artifact executes from declared actor inputs with no critic/optimizer/session construction, preserving sharing, distributions, decoded actions, preprocessing ownership and episode-reset sequences.
+Run existing export/policy/packaging regressions and clean isolated import tests for each new sensor/action/group family. Use existing complete inference packaging on PyTorch 2.11, not an assumed native unshared `torch.export` graph. Verify that a package-owned processor's **definition and initial/reset rules** are portable, that a fresh caller-owned state can be initialized after reload and partially reset without changing other streams, and that ephemeral runtime history is not mistaken for persisted model weights. Preserve the exact existing stateless `CompiledPolicy.forward()` interface. Block imports of `isaaclab`, `isaacsim`, native support modules, `omni`, `pxr`, TorchRL, Viser and the custom task/config package; remove workspace source paths. The artifact executes from declared actor inputs with no critic/optimizer/session construction, preserving sharing, distributions, decoded actions, preprocessing ownership and episode-reset sequences.
 
 Verify dependency metadata reflects actual external inference dependencies and contains no hidden simulator/learner/custom task requirement. For native training networks, any portable topology/weight transfer has action/processing/sharing parity. Test normal current export/reload and fresh native replay separately; inference load must not execute serialized factories. Existing general supervised train packages retain stable entries, sidecars, dependency manifests and continued-training behavior.
 
@@ -148,7 +148,7 @@ Re-resolve the actual NEX-235 branch/revision; initial target is `feature/nex-23
 
 Compare reviewed files/digests and manifests **before** executing consumer tests. Inspect `clients/python/src/nexufl_client/so101.py`; preserve its source-pin, `so101/<recipe_hash>`, safetensors named schema/roles, reset/full-weight result, approved metrics/counts, private binding/checksum and no continuation assumptions. On changed source pins do **not** monkeypatch them: record a failed/blocked compatibility gate and exact independent NexuFL review delta. On a compatible independently reviewed revision, run focused `tests/federation/test_so101_program.py` and existing installed probe/handoff checks under its already-approved test setup without sibling writes.
 
-Report old/new producer commit/source digests, receipt keys/version, semantic and physical/recipe hashes, any tensor schema changes (normally none), request/result parity and affected consumer fixtures/docs/tests. Actual new values are generated by implementation. Source/schema repinning or fixture updates belong to an independent NexuFL follow-up; no such edits/tasks are implemented here. A synthetic adapter test is not native federation/four-site evidence. Claim K2 pass only after unmodified reviewed consumer checks pass; otherwise preserve the exact blocker.
+Report old/new producer commit/source digests, receipt keys/version, semantic and physical/recipe hashes, any tensor schema changes (normally none), request/result parity and affected consumer fixtures/docs/tests. Actual new values are generated by implementation. Source/schema repinning or fixture updates belong to an independent NexuFL follow-up; no such edits/tasks are implemented here. A synthetic adapter test is not native federation/four-site evidence. Claim K2 pass only after unmodified reviewed consumer checks pass; otherwise preserve the exact **cross-repository integration** blocker. K2 must always be attempted and reported, but a consumer's intentionally older source pin is not a NexuML Milestone A **producer** acceptance gate; no claim of successful NexuFL integration is permitted while K2 is blocked.
 
 ## Coverage and completion mapping
 
@@ -186,10 +186,10 @@ Each normative requirement has WHEN/THEN scenarios in its spec. This table conne
 | PD2 | 1.6 | P1, K1 |
 | PD3 | 1.6 | P1, K1 native requalification |
 | PD4 | 1.7, 1.10, 1.11 | K1, X1 |
-| PD5 | 0.2, 1.8, 1.12, 5.2 | K2 |
+| PD5 | 0.2, 1.8, 1.12, 5.2 | Mandatory separately reported K2 integration check; not an A producer gate |
 | PD6 | milestone reviews, 5.1, 5.2 | coverage/status/evidence audit and all required gates |
 
-Acceptance aggregation: **A = S0–S2 + N1 + P1 + K1 + K2 + X1**; **B = S1 + U1 + U2 + N2 + X1**, with K1/K2 repeated if their contracts change; **C = F0 + B1 + B2**, preserving headless regressions; **D = S1 + U2–U6 + N3 + X1**, preserving earlier gates. Early feasibility is not C completion. Report exact failed or unexecuted gates rather than a blended “tests pass.”
+Acceptance aggregation for **NexuML producer milestones**: **A = S0–S2 + N1 + P1 + K1 + X1**; **B = S1 + U1 + U2 + N2 + X1**, with K1 repeated if its contract changes; **C = F0 + B1 + B2**, preserving headless regressions; **D = S1 + U2–U6 + N3 + X1**, preserving earlier gates. Separately report **cross-repository integration = K2**, attempted during A and repeated after any affected producer change or independently reviewed consumer requalification. Failed source pins block integration but **not** otherwise passing A/B producer acceptance. Early feasibility is not C completion; a failed F0 needs explicit maintainer authorization before unrelated headless work continues. Report exact failed/unexecuted gates rather than a blended “tests pass.”
 
 ## Planning validation and integrated audit
 
