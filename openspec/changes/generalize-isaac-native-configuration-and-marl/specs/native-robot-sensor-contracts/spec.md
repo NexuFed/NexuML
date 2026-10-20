@@ -20,15 +20,19 @@ Policies SHALL support state, RGB, depth, segmentation and mixed observations wi
 
 ### Requirement: SC2 Processing and temporal ownership are explicit
 
-Every inference preprocessing/history operation SHALL be owned by the portable package or an external runtime with an identically defined tensor interface. Contracts SHALL retain processor assets/version, history ordering/initialization/reset, sensor/control rates and timing. Export SHALL NOT claim raw-frame input when external processing is required. Existing processor/policy interfaces SHALL be reused.
+Every inference preprocessing/history operation SHALL be owned by the portable package or an external runtime with an identically defined tensor interface. Contracts SHALL retain processor assets/version, history ordering/initialization/reset, sensor/control rates and timing. When the package owns history, the existing stateless `CompiledPolicy` SHALL gain a **minimal opt-in, caller-owned processing-state path** with explicit initialization, observation/state-to-action/next-state stepping, and selected environment/group reset masks; it SHALL NOT rely on hidden global state or change ordinary stateless `forward()`. External runtime-owned history SHALL instead explicitly own its reset and timing semantics. Export SHALL NOT claim raw-frame input when external processing is required. No separate recurrent trainer, policy hierarchy or preprocessing framework SHALL be introduced.
 
 #### Scenario: History is externally supplied
 - **WHEN** a policy expects normalized stacked frames from an external runtime
 - **THEN** the artifact declares that interface, its buffer ordering/reset and rates, and rejects raw single frames or incompatible processing
 
 #### Scenario: Package-owned processing is reloaded
-- **WHEN** representative RGB/depth/segmentation sequences pass through the exported package
+- **WHEN** representative RGB/depth/segmentation sequences pass through the exported package with a newly initialized caller-owned state
 - **THEN** normalization, invalid-value treatment, state updates and decoded actions match the training reference, including reset boundaries
+
+#### Scenario: One environment resets while another continues
+- **WHEN** the caller applies a reset mask to a stateful package-owned history for one stream in a batch
+- **THEN** only the selected history returns to its declared initial state, all other streams continue with unchanged histories and actions, and the existing stateless `forward()` results remain unchanged
 
 ### Requirement: SC3 Pre-reset sensor data belongs to the ending episode
 

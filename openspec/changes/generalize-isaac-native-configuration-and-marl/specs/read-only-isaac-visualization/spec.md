@@ -8,11 +8,12 @@ Provide mandatory native Viser spectator viewing during training and replay with
 
 ### Requirement: V1 Private read-only construction is an early feasibility gate
 
-Before substantial implementation, the pinned native viewer SHALL be qualified for private read-only construction using supported APIs or a narrow isolated adapter reusing native scene rendering. Vendor-file edits, process-global monkeypatches and a second renderer SHALL NOT be used. Unqualified construction SHALL fail closed; Viser SHALL remain a required incomplete deliverable, not be deferred or removed.
+Before substantial implementation, the pinned native viewer SHALL be qualified for private read-only construction using supported APIs or a narrow isolated adapter reusing native scene rendering. Vendor-file edits, process-global monkeypatches and a second renderer SHALL NOT be used. Unqualified construction SHALL fail closed; Viser SHALL remain a required incomplete deliverable, not be deferred or removed. If early feasibility fails, viewer-dependent work SHALL stop and the maintainer SHALL receive a decision-ready blocker report; independently safe headless work MAY proceed only after an explicit maintainer decision, without closing Viser or overall acceptance.
 
 #### Scenario: Native construction relies on global server reassignment
 - **WHEN** no supported hook or qualified instance-local adapter can avoid that path and bind privately before listening
-- **THEN** the feasibility gate records the precise blocker and dependent work stops without exposing a viewer or claiming this pass complete
+- **THEN** the feasibility gate records the precise blocker and viewer-dependent work stops without exposing a viewer or claiming this pass complete
+- **AND** any continued independent headless A/B work requires an explicit maintainer decision; Viser acceptance remains blocked
 
 ### Requirement: V2 Spectator requests cannot mutate simulation
 
