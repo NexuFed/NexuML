@@ -9,7 +9,17 @@
 - **Status automation:** linking alone is not a guarantee of transitions; the Linear↔GitHub integration and team's workflow automations must be configured to move the issue on PR creation/review/merge.
 
 
-Source of truth: proposal.md, design.md, all capability specs (including the new local-learning-handoff spec), reference-catalogue.md and coverage.md. The first three verified planning tasks retain their historical checkmarks; every new consolidation task is unchecked. This is the single implementation queue for Isaac, ordinary MuJoCo/Meta-World, GPU MuJoCo Playground and Physical AI model/robot examples. Deliver tests and runnable documentation with each slice. Native, dataset, ROS, distributed and hardware checks require the declared prerequisites; static validation, skipped tests and old-profile evidence do not satisfy them.
+Source of truth: proposal.md, design.md, all capability specs (including the new local-learning-handoff spec), reference-catalogue.md and coverage.md. The first three verified planning tasks retain their historical checkmarks; every new consolidation task is unchecked. This is the umbrella coordination queue for Isaac, ordinary MuJoCo/Meta-World, GPU MuJoCo Playground and Physical AI model/robot examples; the focused ownership below prevents duplicate execution. Deliver tests and runnable documentation with each slice. Native, dataset, ROS, distributed and hardware checks require the declared prerequisites; static validation, skipped tests and old-profile evidence do not satisfy them.
+
+**Focused implementation owner:** [generalize-isaac-native-configuration-and-marl/tasks.md](../generalize-isaac-native-configuration-and-marl/tasks.md)
+owns early feasibility 0.1, A (1.1–1.12), B (2.1–2.7), C (3.1–3.6), D
+(4.1–4.12) and their acceptance. Route overlapping native configuration/lifecycle
+work in sections 3–5, grouped IPPO/MAPPO in 6.6, portable sensor/actor semantics
+and Viser portions of section 15 there, not a second checklist. The SO-101 gate
+0.1–0.8 and other historical checks below remain unchanged; the focused change
+owns new preservation regressions, not retroactive completion. Broader media,
+streaming, models, hardware and distributed gates remain here. Focused completion
+does not automatically check any umbrella task or authorize NexuFL edits.
 
 This is one staged program, not one unattended command or giant PR. Keep existing completed work intact. Cross-repository delivery must occur in its owning scope; no hidden NexuVibe/NexuFL edits, active-environment replacement, rebuild, unapproved download or hardware actuation is authorized by this task file.
 

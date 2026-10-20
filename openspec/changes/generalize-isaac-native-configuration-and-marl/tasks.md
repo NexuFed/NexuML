@@ -1,0 +1,69 @@
+# Tasks
+
+Authority: [proposal](proposal.md), [design](design.md), six capability specs and [verification plan](verification-plan.md). Requirement IDs below map to the coverage table there. All boxes are implementation work, not planning completion.
+
+Dependency order: **0.1 feasibility → A → B → C → D**. Stop dependent work at a failed feasibility gate; keep C mandatory and blocked, never silently defer it. Each milestone reports implementation, unit/API, native/browser and blocked/unverified states separately. Check off a milestone acceptance task only when all its required gates pass; record external consumer blockers explicitly. Deliver focused tests/docs with each slice and make small verified commits, not one final monolith. No sibling-repository edits, infrastructure changes or unapproved resources are authorized.
+
+## 0. Early Viser feasibility gate
+
+- [ ] 0.1 Qualify pinned native private/read-only construction before substantial work: source-audit constructors/dispatch/mutators, prefer supported injection or prove a narrow instance-local adapter bypasses global reassignment while reusing native geometry; add bounded constructor/bind/request-denial tests and document the exact hook or blocker. Verify **F0** and resource preflight **S0**; no vendor edits, global monkeypatch, public-first bind or second renderer (**V1, V2, V4, NC6**).
+- [ ] 0.2 Freeze the approved runtime/API/reference inventory and current regression baseline without installing anything; verify version/import boundaries, actual consumer revision, applicable test commands and unchanged source-plan numerical constraints under **S0, S1, K1**. Record separately what is source/API-qualified versus native-unverified (**NC1, NC6, TL1, PD5, PD6**).
+
+## 1. Milestone A — Native configuration and lifecycle
+
+- [ ] 1.1 Add typed `IsaacTaskConfigSpec`/`isaac_task_config(...)`, explicit contracts/bindings and portable optional `ViserSpec` declaration through existing factories/discovery; verify importable signature, mutate/replace behavior, bad arguments/targets and YAML round trips with native/CUDA imports blocked under **S1** (**NC1, NC2**).
+- [ ] 1.2 Replace task/profile literals with native registered built-in/custom task and preset resolution; preserve reference physical validation, reject unknown presets/conflicting protected settings, and verify actual type/workflow/count/device/rates/contracts under **S1, N1** (**NC2, NC5**).
+- [ ] 1.3 Remove unconditional noise/history/play transformations and superseded unmerged schema branches; directly update owned scenarios/examples/fixtures to the one current schema, verifying static restoration and existing supervised/general-export regressions under **S1, S2, X1** (**NC2, NC4**).
+- [ ] 1.4 Add the default environment job-scope seam and lazy native owner, safe same-job nesting and conflicting-runtime rejection; verify startup/import order, launcher-derived Kit ownership and no allocation for static/exhausted operations under **S1, S2** (**NC3**).
+- [ ] 1.5 Scope normal train/evaluate around the effective resume/selected evaluation environment and all checkpoint/export/logger cleanup; verify success/failure/SIGTERM status, separate-process replay and rejection of unsupported conflicting in-fit evaluation under **S2, N1** (**NC3**).
+- [ ] 1.6 Separate existing SO-101 semantic task/data identity from implementation/capture provenance in the single active receipt contract; retain integrity/asset/split/physical checks and add reject/requalify/no-automatic-recapture tests under **P1**. Preserve original data/reports, no legacy reader or generalized provenance service (**PD2, PD3, NC4**).
+- [ ] 1.7 Preserve NEX-234 SDK signatures, physical numerics, CPU/reset defaults, approved CUDA/scope behavior and private update boundaries; update only NexuML's authored contract fixture/tests if necessary, verifying **K1** and unchanged named tensors (**PD4**).
+- [ ] 1.8 Compare exact producer deltas with the re-resolved NEX-235 consumer and run compatible read-only consumer checks under **K2**; deliver exact pin/receipt/recipe/schema delta and independent NexuFL follow-up if blocked. Do not edit or monkeypatch consumer pins/tests (**PD5**).
+- [ ] 1.9 Add typed authoring/preset/custom-task examples and normal CLI/Python whole-job documentation; verify examples load statically under **S1** and the native commands run through **N1**, with clear trust and current-schema limits (**NC1, NC2, NC3, NC4**).
+- [ ] 1.10 Run **N1** for manager/direct Cartpole, Franka, genuine registered custom task, and affected SO-101 **K1** physical/learning/export/replay preservation; verify native config/transition oracle, real updates, cleanup and export without borrowing old-profile evidence (**NC5, PD4**).
+- [ ] 1.11 Run clean actor and installed-wheel/general regression gates **X1, K1**; verify no new simulator/MARL prerequisite for offline imitation or ordinary supervised functionality (**NC4, PD1, PD4**).
+- [ ] 1.12 Review A's four states and all **A** gates in the verification plan; check requirement coverage and create a focused verified local commit excluding execution evidence. Leave A acceptance open for native/consumer blockers rather than declaring producer-only success (**NC5, PD5, PD6**).
+
+## 2. Milestone B — Multimodal sensors and single-agent control
+
+- [ ] 2.1 Extend existing tensor/physical contracts and native bindings for RGB/depth/segmentation/mixed state, preserving finite processing and semantic identity; verify same-shape unit/label/processor mismatch rejection under **S1, U1** (**SC1**).
+- [ ] 2.2 Declare package-owned versus external-runtime preprocessing/history/timing using existing components; verify both supported ownership modes and reset-sequence parity under **U1, X1**, without a new processor framework (**SC2, PD1**).
+- [ ] 2.3 Preserve actual final sensor frames/history across same-step autoresets and continuing streams; add terminal freshness/cached-reset tests under **U1**, verify native final/reset scene identity under **N2** (**SC3**).
+- [ ] 2.4 Support continuous and scalar categorical actions with explicit physical decoding; add a distinctly registered small categorical reference if needed, verifying action event/class/bounds/timing tests under **U1** and real control under **N2** (**SC4**).
+- [ ] 2.5 Add bounded multimodal/categorical recipes and processing/interface documentation; verify static examples, small existing encoders, no pretrained downloads and native sensor values/updates under **S1, N2** (**SC1, SC2, SC4, NC6**).
+- [ ] 2.6 Run per-family current checkpoint/resume/export/reload and fresh replay under **N2, X1**; verify raw-to-action or declared-tensor-to-action parity, no critics/native imports for inference and unchanged ordinary PPO under **U2** (**SC2, SC3, SC4, PD1, TL1**).
+- [ ] 2.7 Review B's four states and required gates, retain exact supported renderer/preset combinations and focused tests/docs; create its verified local commit without raw evidence. Missing graphics/native values leave acceptance open (**SC4, NC6, PD6**).
+
+## 3. Milestone C — Complete read-only Viser
+
+- [ ] 3.1 Implement the **F0**-qualified optional library adapter reusing native scene methods and explicit train/separate-replay activation; verify no-viewer isolation, private construction and no global/vendor patches under **S1, B1** (**V1, V3, V4**).
+- [ ] 3.2 Allow only camera/display/environment selection/marker/supported plot operations; deny mutation at registration, actual supported callback/HTTP/WebSocket dispatch and native control handoff. Verify direct/stale/forged requests and isolated camera/RNG/sensor behavior under **B1** (**V2, V3**).
+- [ ] 3.3 Integrate exact localhost address/port checks, conflicts/reassignment, startup failures and completion/failure/cancellation cleanup; verify fail-closed behavior and no lingering owned listeners/threads under **B1, B2** (**V1, V4**).
+- [ ] 3.4 Document explicit train/replay activation and SSH/VS Code tunnel access with headless independence; verify static examples and actual private browser commands under **S1, B2** (**V3, V4**).
+- [ ] 3.5 Execute actual browser training and separate replay sessions under **B2**: navigate camera, select environments, attempt mutations, disconnect/reconnect and cancel/fail/finish; verify equivalent logical simulator/control/counter state and cleanup independently of policy sensor acceptance (**V2, V3, V4, V5**).
+- [ ] 3.6 Review C's four states, require **B1+B2** (not mocks/headless success), and create its focused verified commit; retain exact blocker if safety/graphics cannot be qualified, without removing C from this pass (**V1, V5, PD6**).
+
+## 4. Milestone D — Native TorchRL multi-agent learning
+
+- [ ] 4.1 Add minimal ordered fixed-group/actor-versus-critic contracts and typed native transitions using existing types/policies; verify incompatible sharing, heterogeneous spaces/distributions and persisted ordering under **S1, U3** (**MG1, MG4**).
+- [ ] 4.2 Extend native/TorchRL/collector routing to root `[N]`/`[N,T]` and child agent batches, preserving event log probabilities, group signals and physical frames; verify exact specs, flattening, root/team reporting and counters under **U3** (**MG2, MG5**).
+- [ ] 4.3 Convert actual agent and environment endings/validity with real final actor/critic observations; verify partial/all/simultaneous terminal/time-limit and unsupported privileged-state rejection under **U4**, without aliasing agent masks to `shifted_valid` (**MG3, MG4, TL3**).
+- [ ] 4.4 Compose portable shared/separate actors and local IPPO critics through current compiler/pipeline/key views, using suitable native modules only where useful; verify local-input independence, sharing identity and different action adapters under **U3, U5** (**MG1, MG4, TL2**).
+- [ ] 4.5 Compose homogeneous/heterogeneous MAPPO critics with suitable native `MultiAgentMLP`/`CrossGroupCritic` or equivalent existing graphs; verify unequal-width encoders, centralized cross-group gradients/value shapes and no actor privilege leakage under **U5** (**MG4, TL2**).
+- [ ] 4.6 Register thin native `IPPOLoss`/`MAPPOLoss`/`MultiAgentGAE` algorithms using current Lightning update ownership and public key/mask APIs; verify exact estimator/loss references, nonnormalizing defaults and preserved single-agent PPO under **U2, U4**. Reject unqualified normalization instead of writing replacement math (**TL1, TL3**).
+- [ ] 4.7 Integrate one optimizer owner per parameter set, aggregate shared gradients before one critic step and skip all-invalid independent actors; verify warmed momentum/decay, stale-grad clearing, shared identities and exact step counts under **U5** (**TL4**).
+- [ ] 4.8 Add complete current-schema checkpoint/resume for actors/critics/unique optimizers/counters/qualified buffers; verify controlled uninterrupted-versus-resumed equality and shared topology under **U6** (**TL5**).
+- [ ] 4.9 Extend complete actor-only export and grouped replay using existing inference format; verify **X1** with learner/simulator/custom imports and privileged inputs blocked, plus PyTorch-2.11-safe output/sharing/decoding parity (**PD1, TL5**).
+- [ ] 4.10 Add IPPO/MAPPO recipes, fixed-group authoring/critic/optimizer documentation and exact support matrix; verify static examples under **S1**, native Pendulum both-algorithm and Handover sharing round trips under **N3** (**MG1, TL1, TL2, TL6**).
+- [ ] 4.11 Run combined grouped image/vector and differing-action routing tests under **U3, X1**; require a corresponding native smoke under **N3** before advertising each such combination and leave untested combinations unverified (**MG1, MG2, SC1, SC4, TL6**).
+- [ ] 4.12 Review D's four states and **U2–U6, N3, X1** gates with real actor/critic changes, exact counters, resume and decentralized replay; create a focused verified local commit, requiring numerical correctness but not convergence (**TL6, PD6**).
+
+## 5. Integrated closeout
+
+- [ ] 5.1 Run the verification plan's cross-file coverage, regression/distribution and targeted normal/strict OpenSpec checks; verify every required gate has retained reviewable evidence or an explicit blocker, every supported combination has real proof, and no scope/legacy/provenance contradiction remains (**NC4, PD6**).
+- [ ] 5.2 Review all four milestone states, exact consumer follow-up and umbrella cross-links; verify no completed umbrella checkboxes/history were rewritten, no execution evidence staged and all A–D requirements remain mandatory before overall completion (**PD5, PD6**).
+
+## Workflow follow-up
+
+- NexuFL independently reviews source-pin/receipt/recipe/schema deltas and requalifies its NEX-235 consumer if required; this change never edits its source or bypasses pins. Re-run the read-only compatibility gate against the independently reviewed revision.
+- Push, external review publication, PR creation, merge and archive during implementation require their own authorization. The current request separately authorizes only this planning commit and a conditional non-force push on a clean branch.
