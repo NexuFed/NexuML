@@ -27,10 +27,87 @@ from nexuml.core.types import (
 )
 from nexuml_library.layers.model.linear_encoder import LinearEncoder
 from nexuml_library.action_adapters.adapters import (
+    BoundedNormal,
     DirectActionAdapter,
     GaussianActionAdapter,
     CategoricalActionAdapter,
 )
+
+
+@pytest.mark.parametrize("bound", [1.0, 2.0])
+def test_bounded_normal_saturated_samples_keep_finite_reproducible_likelihoods(bound):
+    loc = torch.full((8, 2), 20.0, requires_grad=True)
+    scale = torch.ones(8, 2, requires_grad=True)
+    distribution = BoundedNormal(loc, scale, torch.full((2,), -bound), torch.full((2,), bound))
+    torch.manual_seed(0)
+    sample = distribution.rsample()
+    upper = torch.nextafter(torch.tensor(bound), torch.tensor(-bound))
+    assert (sample == upper).all()
+    log_prob = distribution.log_prob(sample)
+    assert torch.isfinite(log_prob).all()
+    fresh = BoundedNormal(loc, scale, torch.full((2,), -bound), torch.full((2,), bound))
+    torch.testing.assert_close(fresh.log_prob(sample.detach()), log_prob, rtol=0, atol=0)
+    assert (fresh.sample() < bound).all() and (fresh.mode < bound).all()
+    (-log_prob.mean()).backward()
+    assert loc.grad is not None and torch.isfinite(loc.grad).all()
+    assert scale.grad is not None and torch.isfinite(scale.grad).all()
+
+
+def test_bounded_normal_interior_sampling_and_log_prob_match_existing_transforms():
+    from torch.distributions import (
+        Independent,
+        Normal,
+        TransformedDistribution,
+        TanhTransform,
+        AffineTransform,
+    )
+
+    loc, scale = torch.tensor([[0.2, -0.3]]), torch.tensor([[0.8, 0.9]])
+    bounds = torch.ones(2)
+    old = Independent(
+        TransformedDistribution(
+            Normal(loc, scale),
+            [
+                TanhTransform(cache_size=1),
+                AffineTransform(torch.zeros(2), bounds),
+            ],
+        ),
+        1,
+    )
+    current = BoundedNormal(loc, scale, -bounds, bounds)
+    torch.manual_seed(6)
+    reference = old.rsample()
+    torch.manual_seed(6)
+    actual = current.rsample()
+    assert torch.equal(actual, reference)
+    torch.testing.assert_close(current.log_prob(actual), old.log_prob(reference), rtol=0, atol=0)
+
+
+@pytest.mark.parametrize("bounds", [(-2.0, 1.0), (0.0, 1.0), (-3.0, 9.0), (1.0, 2.0)])
+@pytest.mark.parametrize("location", [-20.0, 20.0])
+@pytest.mark.parametrize("dtype", [torch.float16, torch.bfloat16, torch.float32, torch.float64])
+def test_bounded_normal_asymmetric_roundoff_keeps_fresh_likelihoods_finite(bounds, location, dtype):
+    loc = torch.full((8, 1), location, dtype=dtype, requires_grad=True)
+    scale = torch.ones(8, 1, dtype=dtype, requires_grad=True)
+    low, high = (torch.tensor([value], dtype=dtype) for value in bounds)
+    distribution = BoundedNormal(loc, scale, low, high)
+    torch.manual_seed(0)
+    sample = distribution.rsample()
+    assert ((sample > low) & (sample < high)).all()
+    log_prob = distribution.log_prob(sample)
+    assert torch.isfinite(log_prob).all()
+    fresh = BoundedNormal(loc, scale, low, high)
+    torch.testing.assert_close(fresh.log_prob(sample.detach()), log_prob, rtol=0, atol=0)
+    (-log_prob.mean()).backward()
+    assert loc.grad is not None and torch.isfinite(loc.grad).all()
+    assert scale.grad is not None and torch.isfinite(scale.grad).all()
+
+
+def test_bounded_normal_rejects_unrepresentable_action_interval():
+    low = torch.tensor([1.0])
+    high = torch.nextafter(low, torch.full_like(low, float("inf")))
+    with pytest.raises(ValueError, match="floating-point Gaussian interior"):
+        BoundedNormal(torch.zeros(1), torch.ones(1), low, high)
 
 
 def contract():

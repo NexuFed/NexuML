@@ -49,15 +49,27 @@ def register_reference_tasks() -> None:
     """
     import gymnasium as gym
 
-    entry = "isaaclab.envs:ManagerBasedRLEnv"
-    for task, config in (
+    manager = "isaaclab.envs:ManagerBasedRLEnv"
+    for task, entry, config in (
         (
             "NexuML-SO101-Joint-Reach",
+            manager,
             "nexuml_library.environments._isaaclab_so101:make_so101_config",
         ),
         (
             "NexuML-Custom-Cartpole",
+            manager,
             "nexuml_library.environments._isaaclab_tasks:make_custom_cartpole_config",
+        ),
+        (
+            "NexuML-Cartpole-Categorical",
+            "nexuml_library.environments._isaaclab_categorical:make_categorical_cartpole_environment",
+            "nexuml_library.environments._isaaclab_categorical:make_categorical_cartpole_config",
+        ),
+        (
+            "NexuML-Cartpole-Sensors",
+            manager,
+            "isaaclab_tasks.core.cartpole.cartpole_manager_camera_env_cfg:CartpoleCameraEnvCfg",
         ),
     ):
         registered = gym.registry.get(task)

@@ -1,6 +1,7 @@
 """Reference PPO wired from TorchRL objectives into Lightning manual optimization."""
 
 import torch
+from importlib import import_module
 from typing import Any, cast
 from pydantic import Field
 from torch import nn
@@ -30,9 +31,10 @@ class PPO(RLAlgorithmDefinition):
 
     def build(self, context: RLAlgorithmBuildContext) -> nn.Module:
         try:
-            from torchrl.modules import ProbabilisticActor
-            from torchrl.objectives import ClipPPOLoss
-            from torchrl.objectives.value import GAE
+            # Keep learner-only dependencies out of portable actor manifests.
+            ProbabilisticActor = import_module("torchrl.modules").ProbabilisticActor
+            ClipPPOLoss = import_module("torchrl.objectives").ClipPPOLoss
+            GAE = import_module("torchrl.objectives.value").GAE
             from tensordict.nn import InteractionType
         except ImportError as error:
             raise ImportError("PPO requires nexuml[reinforcement]") from error

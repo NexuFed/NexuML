@@ -1,8 +1,11 @@
 """Complete deployable policy: neural graph, action semantics and portable I/O."""
 
+from typing import Any, cast
+
 from tensordict import TensorDict
 from torch import nn
 
+from nexuml.core.components import LayerBuildContext
 from nexuml.core.pipeline import CompiledPipeline
 from nexuml.core.types import DataSpec, InteractionContract, TrainingSpec
 
@@ -13,17 +16,27 @@ class CompiledPolicy(nn.Module):
     pipeline: CompiledPipeline
     action_adapter: nn.Module
     contract: InteractionContract
+    processor: nn.Module | None
 
     def __init__(
         self,
         pipeline: CompiledPipeline,
         action_adapter: nn.Module,
         contract: InteractionContract,
+        processor: nn.Module | None = None,
     ):
         super().__init__()
+        if processor is None and any(
+            field.sensor is not None and field.sensor.owner == "package"
+            for field in contract.observations.values()
+        ):
+            raise ValueError(
+                "Package-owned sensor processing requires an explicit policy processor"
+            )
         self.pipeline = pipeline
         self.action_adapter = action_adapter
         self.contract = contract
+        self.processor = processor
 
     @classmethod
     def from_pipeline(
@@ -35,7 +48,9 @@ class CompiledPolicy(nn.Module):
             Complete policy sharing the supplied pipeline and its trained weights.
 
         Raises:
-            ValueError: If declarations are absent or offline inputs disagree.
+            ValueError: If declarations are absent, offline inputs disagree, or package-owned
+                sensors lack a processor.
+            TypeError: If the processor does not build a module.
         """
         scenario = pipeline.resolved_config
         if scenario.interaction is None or scenario.policy is None:
@@ -44,7 +59,71 @@ class CompiledPolicy(nn.Module):
             contract = scenario.interaction.environment.describe()
         if isinstance(scenario.training, TrainingSpec):
             cls._validate_dataset_contract(scenario.data, contract)
-        return cls(pipeline, scenario.policy.action_adapter.build(contract), contract)
+        processor = None
+        if scenario.policy.processor is not None:
+            keys = list(contract.observations)
+            processor = scenario.policy.processor.build(
+                LayerBuildContext(
+                    input_sizes={key: field.shape for key, field in contract.observations.items()},
+                    keys_in=keys,
+                    keys_out=keys,
+                    metadata={"interaction_contract": contract.model_dump(mode="json")},
+                )
+            )
+            if not isinstance(processor, nn.Module) or any(
+                not callable(getattr(processor, method, None))
+                for method in ("initialize_state", "step", "reset_state")
+            ):
+                raise TypeError(
+                    "A policy processor must build an nn.Module with explicit state methods"
+                )
+        return cls(pipeline, scenario.policy.action_adapter.build(contract), contract, processor)
+
+    def initialize_state(self, batch_size=(), *, device=None) -> TensorDict:
+        """Create caller-owned processing state, never live policy buffers.
+
+        Returns:
+            Fresh processing state on the requested or policy device.
+
+        Raises:
+            ValueError: If this policy has no processor.
+        """
+        if self.processor is None:
+            raise ValueError("Policy state requires an explicit processor")
+        if device is None:
+            parameter = next(self.pipeline.parameters(), None)
+            if parameter is not None:
+                device = parameter.device
+        return cast(Any, self.processor).initialize_state(batch_size, device=device)
+
+    def step(
+        self, observation: TensorDict, state: TensorDict, *, deterministic: bool = True
+    ) -> tuple[TensorDict, TensorDict]:
+        """Process one raw observation using explicit caller-owned history.
+
+        Returns:
+            Decoded actions and new processing state, without mutating inputs.
+
+        Raises:
+            ValueError: If this policy has no processor.
+        """
+        if self.processor is None:
+            raise ValueError("Policy state requires an explicit processor")
+        processed, next_state = cast(Any, self.processor).step(observation, state)
+        return self(processed, deterministic=deterministic), next_state
+
+    def reset_state(self, state: TensorDict, mask) -> TensorDict:
+        """Reset only selected streams in the supplied processing state.
+
+        Returns:
+            New caller-owned state; unselected streams keep their values.
+
+        Raises:
+            ValueError: If this policy has no processor.
+        """
+        if self.processor is None:
+            raise ValueError("Policy state requires an explicit processor")
+        return cast(Any, self.processor).reset_state(state, mask)
 
     @staticmethod
     def _validate_dataset_contract(data: DataSpec, contract: InteractionContract) -> None:
@@ -103,7 +182,9 @@ class CompiledPolicy(nn.Module):
         return output.reshape(observation.batch_size)
 
     @staticmethod
-    def _validate_fields(tensors: TensorDict, fields, role: str) -> None:
+    def _validate_fields(
+        tensors: TensorDict, fields, role: str, *, require_finite: bool = True
+    ) -> None:
         import torch
 
         for key, field in fields.items():
@@ -127,7 +208,7 @@ class CompiledPolicy(nn.Module):
                 )
                 if torch.any(tensor > high):
                     raise ValueError(f"{role} {key!r} is above its upper bound")
-            if tensor.is_floating_point() and not torch.isfinite(tensor).all():
+            if require_finite and tensor.is_floating_point() and not torch.isfinite(tensor).all():
                 raise ValueError(f"{role} {key!r} contains nonfinite values")
             if field.num_values is not None and torch.any(
                 (tensor < 0) | (tensor >= field.num_values)

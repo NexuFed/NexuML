@@ -16,6 +16,7 @@ import torch
 from tensordict import TensorDict
 
 from nexuml.core.policy import CompiledPolicy
+from nexuml.core.components import LayerBuildContext
 from nexuml.interaction.runtime import InteractionStep
 
 
@@ -261,6 +262,27 @@ class _IsaacLabRuntime:
         if self.device.type == "cuda" and self.device.index is None:
             self.device = torch.device("cuda:0")
         self.contract = definition.describe().model_copy(update={"num_envs": context.num_envs})
+        self._processor = None
+        self._processing_state = None
+        self._observation_fields = self.contract.observations
+        if self._bindings.processing == "raw":
+            from nexuml_library.layers.processing.sensor_history import SensorHistoryProcessor
+
+            keys = list(self.contract.observations)
+            self._processor = SensorHistoryProcessor().build(
+                LayerBuildContext(
+                    input_sizes={
+                        key: field.shape for key, field in self.contract.observations.items()
+                    },
+                    keys_in=keys,
+                    keys_out=keys,
+                    metadata={
+                        "interaction_contract": self.contract.model_dump(mode="json"),
+                        "execution_owner": "runtime",
+                    },
+                )
+            )
+            self._observation_fields = self._processor.raw_fields
         self.render_fps = 1 / self.contract.control_period_s
         try:
             _create_environment(self, definition, context)
@@ -282,6 +304,10 @@ class _IsaacLabRuntime:
             or torch.device(env.device) != self.device
             or tuple(env.single_action_space.shape) != action_field.shape
             or str(env.single_action_space.dtype) != action_field.dtype
+            or (
+                self.contract.action_space == "discrete"
+                and getattr(env.single_action_space, "n", None) != action_field.num_values
+            )
             or not math.isclose(env.step_dt, self.contract.control_period_s, rel_tol=1e-9)
             or not env.cfg.compute_final_obs
         ):
@@ -292,8 +318,12 @@ class _IsaacLabRuntime:
             space = env.single_observation_space
             for part in path:
                 space = space[part]
-            if tuple(space.shape) != self.contract.observations[key].shape:
+            if tuple(space.shape) != self._observation_fields[key].shape:
                 raise ValueError("Native Isaac observation dimensions/device contract mismatch")
+        self._validate_sensors()
+        if getattr(self, "resolved_task", definition.task) == "NexuML-Cartpole-Categorical":
+            self._validate_categorical_controls(action_field)
+            return
         if definition.task == "Isaac-Cartpole-Direct":
             if (
                 env.cfg.cart_dof_name != "slider_to_cart"
@@ -342,6 +372,31 @@ class _IsaacLabRuntime:
             raise ValueError(
                 "Native Isaac joint order/scale/offset/clipping differs from the policy"
             )
+
+    def _validate_categorical_controls(self, field):
+        from nexuml_library.environments._isaaclab_categorical import (
+            ACTION_FORCES,
+            categorical_cartpole_type,
+        )
+
+        physical = field.physical
+        env = self.native
+        if (
+            type(env) is not categorical_cartpole_type()
+            or env.action_forces != ACTION_FORCES
+            or env.cfg.cart_dof_name != "slider_to_cart"
+            or env.cfg.pole_dof_name != "cart_to_pole"
+            or env.cartpole.find_joints("slider_to_cart")[1] != ["slider_to_cart"]
+            or physical is None
+            or physical.control_mode != "effort"
+            or physical.units != ("N",)
+            or physical.frame != "joint"
+            or physical.joints != ("slider_to_cart",)
+            or physical.class_controls != tuple((force,) for force in ACTION_FORCES)
+            or physical.scale != (1.0,)
+            or physical.offset != (0.0,)
+        ):
+            raise ValueError("Native categorical class-to-effort mapping differs from the policy")
 
     @staticmethod
     def _validate_action_implementation(term, implementation):
@@ -397,13 +452,24 @@ class _IsaacLabRuntime:
         ):
             raise ValueError("Native physical control binding differs from the declared contract")
 
+    def _validate_sensors(self):
+        if any(
+            field.sensor is not None and field.modality in {"rgb", "depth", "segmentation"}
+            for field in self.contract.observations.values()
+        ):
+            validate = import_module(
+                "nexuml_library.environments._isaaclab_sensors"
+            ).validate_native_sensors
+            validate(self.native, self.contract, self._bindings)
+
     def _state(self, observations):
+        self._validate_sensors()
         result = TensorDict({}, batch_size=(self.contract.num_envs,), device=self.device)
         for key, path in self._bindings.observations.items():
             value = observations
             for part in path:
                 value = value[part]
-            field = self.contract.observations[key]
+            field = self._observation_fields[key]
             if (
                 not isinstance(value, torch.Tensor)
                 or tuple(value.shape) != (self.contract.num_envs, *field.shape)
@@ -413,9 +479,26 @@ class _IsaacLabRuntime:
                 raise ValueError("Native Isaac policy observation shape/dtype/device mismatch")
             result[key] = value.clone()
         CompiledPolicy._validate_fields(
-            result, self.contract.observations, "Native Isaac observation"
+            result,
+            self._observation_fields,
+            "Native Isaac observation",
+            require_finite=self._processor is None,
         )
         return result
+
+    def _process_reset(self, raw, mask):
+        if self._processor is None:
+            self._observation = raw
+        elif self._processing_state is None:
+            state = self._processor.initialize_state((self.contract.num_envs,), device=self.device)
+            self._observation, self._processing_state = self._processor.step(raw, state)
+        else:
+            state = self._processor.reset_state(self._processing_state, mask)
+            observation, selected = self._processor.step(raw[mask], cast(TensorDict, state[mask]))
+            assert self._observation is not None
+            self._observation[mask] = observation
+            state[mask] = selected
+            self._processing_state = state
 
     def _pack(self, value):
         if self.contract.num_envs == 1:
@@ -449,9 +532,10 @@ class _IsaacLabRuntime:
                 observations, _ = self.native.reset(
                     seed=seed, env_ids=reset.nonzero(as_tuple=False).flatten()
                 )
-            self._observation = self._state(observations)
+            self._process_reset(self._state(observations), reset)
         if self._pending_reset is not None:
             self._pending_reset &= ~requested
+        assert self._observation is not None
         return self._pack(self._observation.clone())
 
     def step(self, action: TensorDict) -> InteractionStep:
@@ -483,9 +567,9 @@ class _IsaacLabRuntime:
         reward, terminated, truncated = reward.clone(), terminated.clone(), truncated.clone()
         if not torch.isfinite(reward).all():
             raise ValueError("Native Isaac rewards must be finite")
-        self._observation = self._state(observations)
+        raw = self._state(observations)
         self._pending_reset = terminated | truncated
-        final = self._observation.clone()
+        final = raw.clone()
         if self._pending_reset.any():
             if "final_obs" not in info:
                 raise ValueError(
@@ -493,6 +577,14 @@ class _IsaacLabRuntime:
                 )
             terminal = self._state(info["final_obs"])
             final[self._pending_reset] = terminal[self._pending_reset]
+        if self._processor is None:
+            self._observation = raw
+        else:
+            assert self._processing_state is not None
+            final, self._processing_state = self._processor.step(final, self._processing_state)
+            self._observation = final.clone()
+            if self._pending_reset.any():
+                self._process_reset(raw, self._pending_reset)
         shape = (*expected_batch, 1)
         outcomes = None
         if self._so101:
@@ -531,6 +623,7 @@ class _IsaacLabRuntime:
         errors = []
         native, self.native = self.native, None
         self._observation = self._pending_reset = None
+        self._processing_state = self._processor = None
         if native is not None:
             try:
                 native.close()

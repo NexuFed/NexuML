@@ -35,10 +35,51 @@ class BoundedNormal(Independent):
             ],
         )
         super().__init__(transformed, low.ndim)
+        affine = transformed.transforms[-1]
+        unit = torch.nextafter(torch.ones_like(low), torch.zeros_like(low))
+        self._lower_interior, self._upper_interior = affine(-unit), affine(unit)
+        # Affine roundoff can still reach +/-1 on asymmetric or low-precision bounds.
+        for _ in range(4):
+            self._lower_interior = torch.where(
+                affine.inv(self._lower_interior) <= -1,
+                torch.nextafter(self._lower_interior, high),
+                self._lower_interior,
+            )
+            self._upper_interior = torch.where(
+                affine.inv(self._upper_interior) >= 1,
+                torch.nextafter(self._upper_interior, low),
+                self._upper_interior,
+            )
+        inverse_low, inverse_high = (
+            affine.inv(self._lower_interior),
+            affine.inv(self._upper_interior),
+        )
+        if not (
+            torch.isfinite(inverse_low).all()
+            and torch.isfinite(inverse_high).all()
+            and (inverse_low > -1).all()
+            and (inverse_high < 1).all()
+            and (self._lower_interior > low).all()
+            and (self._upper_interior < high).all()
+            and (self._lower_interior <= self._upper_interior).all()
+        ):
+            raise ValueError("Action bounds have no qualified floating-point Gaussian interior")
+
+    def _interior(self, action):
+        # Rounded endpoints have no finite inverse; keep stored-action likelihoods reproducible.
+        return action.clamp(self._lower_interior, self._upper_interior)
+
+    def sample(self, sample_shape=torch.Size()):
+        return self._interior(super().sample(sample_shape))
+
+    def rsample(self, sample_shape=torch.Size()):
+        return self._interior(super().rsample(sample_shape))
 
     @property
     def deterministic_sample(self):
-        return (self.low + self.high) / 2 + (self.high - self.low) / 2 * self.loc.tanh()
+        return self._interior(
+            (self.low + self.high) / 2 + (self.high - self.low) / 2 * self.loc.tanh()
+        )
 
     @property
     def mode(self):

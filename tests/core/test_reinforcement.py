@@ -382,7 +382,10 @@ def test_evaluation_override_is_fresh_deterministic_and_always_closed(tmp_path, 
 @pytest.mark.requires_optional("torchrl")
 @pytest.mark.requires_optional("gymnasium")
 @pytest.mark.parametrize("factory", [cartpole_ppo, pendulum_ppo])
-def test_partial_checkpoint_resumes_remaining_frames_and_optimizer_state(tmp_path, factory):
+@pytest.mark.parametrize("total_frames", [32, 64, 112])
+def test_partial_checkpoint_resumes_remaining_frames_and_optimizer_state(
+    tmp_path, factory, total_frames
+):
     from lightning.pytorch.callbacks import Callback
 
     checkpoint = tmp_path / "partial.ckpt"
@@ -392,8 +395,11 @@ def test_partial_checkpoint_resumes_remaining_frames_and_optimizer_state(tmp_pat
             trainer.save_checkpoint(checkpoint)
             raise RuntimeError("interrupted after checkpoint")
 
+    scenario = smoke_scenario(factory)
+    assert isinstance(scenario.training, ReinforcementLearningSpec)
+    scenario.training.total_frames = total_frames
     session = NexuSession(
-        smoke_scenario(factory),
+        scenario,
         log_dir=tmp_path / "first",
         enable_loggers=False,
         enable_progress_bar=False,
@@ -426,8 +432,9 @@ def test_partial_checkpoint_resumes_remaining_frames_and_optimizer_state(tmp_pat
     assert not resumed.scenario.training.evaluation.at_start
     assert resumed.scenario.training.evaluation.every_n_frames is None
     result = resumed.run()
-    assert int(resumed.lightning_module.frames) == 32
-    assert int(resumed.lightning_module.algorithm.updates) == 4
+    assert int(resumed.lightning_module.frames) == total_frames
+    assert int(resumed.lightning_module.batches) == total_frames // 16
+    assert int(resumed.lightning_module.algorithm.updates) == total_frames // 8
     assert (
         max(float(state["step"]) for state in result.trainer.optimizers[0].state.values())
         > optimizer_step

@@ -80,6 +80,8 @@ def _validate_evaluation_contract(policy_contract, actual):
                 fields += ("physical",)
             if expected.axes is not None:
                 fields += ("axes",)
+            if expected.sensor is not None:
+                fields += ("sensor", "rate_hz")
             if found is None or any(
                 getattr(found, name) != getattr(expected, name) for name in fields
             ):
