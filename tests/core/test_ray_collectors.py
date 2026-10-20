@@ -247,3 +247,17 @@ def test_unvalidated_ray_topologies_fail_before_allocation(collector, frames):
     )
     with pytest.raises(ValueError, match="Ray"):
         build_collector(GymnasiumEnvironment(), training, torch.nn.Linear(3, 1), "cpu")
+
+
+@pytest.mark.requires_optional("ray")
+@pytest.mark.requires_optional("torchrl")
+@pytest.mark.parametrize("release", ["0.13.0", "0.14.1", "0.15.0"])
+def test_ray_private_lifecycle_is_gated_before_worker_allocation(monkeypatch, release):
+    from nexuml.reinforcement import ray_collector
+
+    monkeypatch.setattr(ray_collector, "version", lambda name: release)
+    monkeypatch.setattr(
+        ray_collector.RayCollector, "__init__", lambda *a, **k: pytest.fail("worker allocation")
+    )
+    with pytest.raises(RuntimeError, match="qualified for TorchRL 0.14.0"):
+        ray_collector._GracefulRayCollector()

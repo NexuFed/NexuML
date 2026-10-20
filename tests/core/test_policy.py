@@ -22,6 +22,8 @@ from nexuml.core.types import (
     ScenarioSpec,
     TensorFieldContract,
     TrainingSpec,
+    PolicySpec,
+    InteractionSpec,
 )
 from nexuml_library.layers.model.linear_encoder import LinearEncoder
 from nexuml_library.action_adapters.adapters import (
@@ -217,3 +219,97 @@ def test_maintained_adapters_use_base_torch_and_preserve_sampling_semantics():
     assert 0 <= categorical(logits, deterministic=False)["action"].item() < 3
     with pytest.raises(ValueError, match="3 classes"):
         categorical(TensorDict({"action_logits": torch.zeros(1, 2)}, batch_size=[1]))
+
+
+@pytest.mark.parametrize("semantic_axis", ["time", "agent", "agents"])
+def test_independent_batch_mode_rejects_semantic_batch_axes(semantic_axis):
+    spec = scenario()
+    io = contract()
+    policy = CompiledPolicy(compile(spec), BoundedDirect(), io)
+    observation = TensorDict(
+        {"camera": torch.zeros(2, 3, 3, 8, 8, dtype=torch.uint8), "joints": torch.zeros(2, 3, 4)},
+        batch_size=[2, 3],
+        names=["environment", semantic_axis],
+    )
+    with pytest.raises(ValueError, match="batch_mode='preserve'"):
+        policy(observation)
+
+
+def test_preserved_batch_layout_keeps_temporal_computation_and_package_parity(
+    tmp_path, monkeypatch
+):
+    from nexuml.core.export import export_package, load_inference_package
+    from nexuml_library.environments.gymnasium import GymnasiumEnvironment
+
+    io = InteractionContract(
+        observations={"state": TensorFieldContract(shape=(2,), dtype="float32")},
+        actions={"action": TensorFieldContract(shape=(2,), dtype="float32")},
+        action_space="continuous",
+    )
+    spec = ScenarioSpec(
+        name="batch-aware-policy",
+        data=DataSpec(input_shapes={"state": [2]}),
+        pipeline=PipelineSpec(
+            stages={
+                "actor": [
+                    LayerSpec(
+                        component=nn_module(nn.Softmax, dim=1),
+                        keys_in=["state"],
+                        keys_out=["command"],
+                    )
+                ]
+            }
+        ),
+        interaction=InteractionSpec(environment=GymnasiumEnvironment(contract=io)),
+        policy=PolicySpec(
+            action_adapter=DirectActionAdapter(source_key="command"), batch_mode="preserve"
+        ),
+    )
+    restored = ResolvedConfig.from_yaml(ResolvedConfig.from_scenario(spec).to_yaml()).to_scenario()
+    policy = CompiledPolicy.from_pipeline(compile(restored), io)
+    values = torch.arange(12, dtype=torch.float32).reshape(2, 3, 2)
+    observation = TensorDict({"state": values}, [2, 3], names=["environment", "time"])
+    expected = values.softmax(dim=1)
+    actions = policy(observation)
+    assert torch.equal(actions["action"], expected)
+    assert actions.names == observation.names
+    assert policy.forward_parameters(observation).names == observation.names
+    assert "command" not in observation
+    package = export_package(policy, tmp_path / "temporal")
+    loaded, _, _ = load_inference_package(package)
+    reloaded_actions = loaded(observation)
+    assert torch.equal(reloaded_actions["action"], expected)
+    assert reloaded_actions.names == observation.names
+
+    # Equal sizes must not hide an environment/time transpose.
+    square = observation[:, :2]
+    graph_forward = policy.pipeline.forward
+
+    def swapped_graph(inputs, labels):
+        parameters, labels = graph_forward(inputs, labels)
+        return parameters.transpose(0, 1), labels
+
+    with monkeypatch.context() as patch:
+        patch.setattr(policy.pipeline, "forward", swapped_graph)
+        with pytest.raises(ValueError, match="preserve.*axes"):
+            policy(square)
+
+    decode = policy.action_adapter.forward
+
+    def swapped_decoder(parameters, **kwargs):
+        return decode(parameters, **kwargs).transpose(0, 1)
+
+    # Decoders without names are filled from the validated graph; explicit wrong names fail.
+    def renamed_decoder(parameters, **kwargs):
+        actions = decode(parameters, **kwargs)
+        actions.names = ["time", "environment"]
+        return actions
+
+    with monkeypatch.context() as patch:
+        patch.setattr(policy.action_adapter, "forward", renamed_decoder)
+        with pytest.raises(ValueError, match="changed named"):
+            policy(square)
+    with monkeypatch.context() as patch:
+        patch.setattr(policy.action_adapter, "forward", swapped_decoder)
+        with pytest.raises(ValueError, match="preserve.*axes"):
+            policy(observation)

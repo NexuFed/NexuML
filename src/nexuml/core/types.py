@@ -273,6 +273,7 @@ class PolicySpec(SpecModel):
     """Deployable action semantics attached to the scenario's neural pipeline."""
 
     action_adapter: ActionAdapterDefinition
+    batch_mode: Literal["independent", "preserve"] = "independent"
 
 
 _DEFAULT_OPTIMIZER_KWARGS: dict[str, object] = {"lr": 1e-3}
@@ -418,6 +419,11 @@ class RLEvaluationSpec(SpecModel):
         if self.video.enabled and self.episodes == 0:
             raise ValueError("evaluation.video requires evaluation.episodes > 0")
         return self
+
+
+# Keep class identities and archived config names compatible; these options are not RL-specific.
+PolicyEvaluationSpec = RLEvaluationSpec
+PolicyVideoSpec = RLVideoSpec
 
 
 class ReinforcementLearningSpec(SpecModel):
@@ -704,7 +710,7 @@ class ScenarioSpec(SpecModel):
     data: DataSpec = Field(default_factory=DataSpec)
     interaction: InteractionSpec | None = None
     policy: PolicySpec | None = None
-    policy_evaluation: RLEvaluationSpec | None = None
+    policy_evaluation: PolicyEvaluationSpec | None = None
     evaluation: EvaluationSpec = Field(default_factory=EvaluationSpec)
     logging: LoggingSpec | None = None
     callbacks: list[CallbackSpec] = Field(default_factory=list)
