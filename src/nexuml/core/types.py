@@ -6,7 +6,7 @@ from collections.abc import Callable, Mapping
 from math import isclose, prod
 from typing import TYPE_CHECKING, Annotated, Any, Literal, Self, cast
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictInt, field_validator, model_validator
 
 from nexuml.core.components import (
     ActionAdapterDefinition,
@@ -162,6 +162,9 @@ class PhysicalTensorContract(SpecModel):
     scale: tuple[float, ...] | None = None
     offset: tuple[float, ...] | None = None
     sensor_id: str | None = Field(default=None, min_length=1, pattern=r"\S")
+    class_controls: tuple[tuple[float, ...], ...] | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
 
     @model_validator(mode="after")
     def validate_control(self) -> Self:
@@ -173,6 +176,12 @@ class PhysicalTensorContract(SpecModel):
             raise ValueError("Physical action joints must be unique and ordered")
         if self.scale is not None and any(value == 0 for value in self.scale):
             raise ValueError("Physical action scale must be nonzero")
+        if self.class_controls is not None and (
+            self.control_mode is None
+            or not self.class_controls
+            or any(len(row) != len(self.joints) for row in self.class_controls)
+        ):
+            raise ValueError("Categorical controls require one physical command per ordered joint")
         return self
 
 
@@ -186,6 +195,57 @@ class PhysicalSystemContract(SpecModel):
     asset_source: str = Field(min_length=1, pattern=r"\S")
     asset_id: str = Field(min_length=1, pattern=r"\S")
     calibration_id: str = Field(min_length=1, pattern=r"\S")
+
+
+class SensorProcessingContract(SpecModel):
+    """Explicit raw sensor meaning and ownership of portable processing/history."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, allow_inf_nan=False)
+
+    owner: Literal["package", "external"]
+    processor_id: str = Field(default="SensorHistoryProcessor", min_length=1, pattern=r"\S")
+    processor_version: str = Field(default="1", min_length=1, pattern=r"\S")
+    assets: dict[str, Annotated[str, Field(pattern=r"^[0-9a-fA-F]{64}$")]] = Field(
+        default_factory=dict
+    )
+    raw_shape: tuple[Annotated[StrictInt, Field(gt=0)], ...]
+    raw_dtype: str = Field(min_length=1, pattern=r"\S")
+    raw_layout: Literal["vector", "HWC", "CHW", "HW"]
+    units: str = Field(min_length=1, pattern=r"\S")
+    scale: float = Field(default=1.0, strict=True)
+    offset: float = Field(default=0.0, strict=True)
+    depth_representation: Literal["z_depth", "range_depth"] | None = None
+    invalid_depth: Literal["reject", "mask_zero"] = "reject"
+    depth_min: float | None = Field(default=None, strict=True)
+    depth_max: float | None = Field(default=None, strict=True)
+    labels: tuple[tuple[Annotated[StrictInt, Field(ge=0)], str], ...] = ()
+    label_set_id: str | None = Field(default=None, min_length=1, pattern=r"\S")
+    history_length: StrictInt = Field(default=1, ge=1)
+    history_order: Literal["oldest_first"] = "oldest_first"
+    initialization: Literal["repeat_first", "zeros"] = "repeat_first"
+    timing: Literal["post_control", "pre_action"] = "post_control"
+    latency_steps: StrictInt = Field(default=0, ge=0)
+
+    @model_validator(mode="after")
+    def validate_sensor(self) -> Self:
+        ids = [identifier for identifier, _ in self.labels]
+        names = [name for _, name in self.labels]
+        if len(set(ids)) != len(ids) or len(set(names)) != len(names):
+            raise ValueError("Segmentation label IDs and values must be unique and ordered")
+        if any(not name.strip() for name in names):
+            raise ValueError("Segmentation label values must be nonempty")
+        if self.depth_min is not None and self.depth_min < 0:
+            raise ValueError("depth_min must be nonnegative")
+        if self.depth_max is not None and (
+            self.depth_min is None or self.depth_max <= self.depth_min
+        ):
+            raise ValueError("Depth bounds must satisfy 0 <= depth_min < depth_max")
+        if self.owner == "package" and self.depth_representation is not None:
+            if self.units != "m" or self.depth_min is None or self.depth_max is None:
+                raise ValueError(
+                    "Package-owned depth requires explicit bounds in metres (units='m')"
+                )
+        return self
 
 
 class TensorFieldContract(SpecModel):
@@ -203,6 +263,9 @@ class TensorFieldContract(SpecModel):
     description: str | None = None
     physical: PhysicalTensorContract | None = None
     axes: tuple[Annotated[str, Field(min_length=1, pattern=r"\S")], ...] | None = None
+    sensor: SensorProcessingContract | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
 
     @model_validator(mode="after")
     def validate_bounds(self) -> Self:
@@ -229,6 +292,14 @@ class TensorFieldContract(SpecModel):
                     raise ValueError(f"Physical {name} must have one or {width} values")
             if self.physical.joints and len(self.physical.joints) != width:
                 raise ValueError(f"Physical joint order must contain {width} names")
+            if self.physical.class_controls is not None and (
+                self.shape != ()
+                or self.dtype != "int64"
+                or self.num_values != len(self.physical.class_controls)
+            ):
+                raise ValueError(
+                    "Categorical physical controls require matching scalar int64 classes"
+                )
         return self
 
 
@@ -274,6 +345,7 @@ class PolicySpec(SpecModel):
 
     action_adapter: ActionAdapterDefinition
     batch_mode: Literal["independent", "preserve"] = "independent"
+    processor: LayerDefinition | None = Field(default=None, exclude_if=lambda value: value is None)
 
 
 _DEFAULT_OPTIMIZER_KWARGS: dict[str, object] = {"lr": 1e-3}

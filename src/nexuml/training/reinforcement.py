@@ -49,9 +49,7 @@ class NexuRLLightningModule(L.LightningModule):
             if scenario.training.seed is not None:
                 L.seed_everything(scenario.training.seed, workers=True)
             contract = scenario.interaction.environment.describe()
-            policy = CompiledPolicy(
-                compile(scenario), scenario.policy.action_adapter.build(contract), contract
-            )
+            policy = CompiledPolicy.from_pipeline(compile(scenario), contract)
         self.policy: CompiledPolicy = policy
         self.algorithm: Any = scenario.training.algorithm.build(
             RLAlgorithmBuildContext(policy, policy.contract)
@@ -99,7 +97,10 @@ class NexuRLLightningModule(L.LightningModule):
         return DataLoader(
             RolloutDataset(
                 self._collector if self._collector is not None else (),
-                batches=-(-remaining // self.training_spec.frames_per_batch),
+                # Lightning adds restored epoch progress; collection owns only remaining frames.
+                batches=(int(self.batches) + -(-remaining // self.training_spec.frames_per_batch))
+                if remaining
+                else 0,
             ),
             batch_size=None,
             num_workers=0,

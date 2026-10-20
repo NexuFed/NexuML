@@ -54,7 +54,13 @@ def lower_model(model: BaseModel) -> dict[str, Any]:
     Returns:
         Portable plain model data.
     """
-    return {name: _lower_value(getattr(model, name)) for name in type(model).model_fields}
+    lowered = {}
+    for name, field in type(model).model_fields.items():
+        value = getattr(model, name)
+        exclude_if = getattr(field, "exclude_if", None)
+        if exclude_if is None or not exclude_if(value):
+            lowered[name] = _lower_value(value)
+    return lowered
 
 
 def _lower_value(value: Any) -> Any:
