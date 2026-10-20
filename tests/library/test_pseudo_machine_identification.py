@@ -73,14 +73,15 @@ def test_identification_evaluates_healthy_and_faulty_with_separate_splits(
     """Closed-set evaluation uses all four machines without mixing recordings."""
     pytest.importorskip("sklearn")
     report = identify_pseudo_machine_types(
-        _source(tmp_path), seeds=(42, 43),
-        pca_components=4, projections=16, bootstrap=4
+        _source(tmp_path),
+        seeds=(42, 43),
+        pca_components=4,
+        projections=16,
+        bootstrap=4,
     )
     assert report["original_test_machine_repurposed"]
     assert len(report["machine_groups"]) == 4
-    assert set(report["aggregate"]) == {
-        "machine_identity", "pseudo_k2", "pseudo_k3"
-    }
+    assert set(report["aggregate"]) == {"machine_identity", "pseudo_k2", "pseudo_k3"}
     for run in report["runs"]:
         for machine in report["machine_groups"]:
             assert [
@@ -91,9 +92,7 @@ def test_identification_evaluates_healthy_and_faulty_with_separate_splits(
         assert run["preprocessing"]["pca_fit"] == "training_healthy_only"
         assert len(run["pseudo_type_hypotheses"]["k2"]["machine_to_pseudo_type"]) == 4
         for key in ("k2", "k3"):
-            compatibility = run["pseudo_type_hypotheses"][key][
-                "held_out_fault_compatibility"
-            ]
+            compatibility = run["pseudo_type_hypotheses"][key]["held_out_fault_compatibility"]
             assert len(compatibility["pairs"]) == 6
             assert not compatibility["assessment_faulty_used_to_assign_pseudo_types"]
             assert all(
@@ -165,8 +164,11 @@ def test_machine_splits_disjoint_and_deterministic(tmp_path: Path) -> None:
     assert sorted(sum(first.values(), [])) == list(range(80))
     assert all(
         set(first[left]).isdisjoint(first[right])
-        for left, right in (("train", "validation"), ("train", "assessment"),
-                            ("validation", "assessment"))
+        for left, right in (
+            ("train", "validation"),
+            ("train", "assessment"),
+            ("validation", "assessment"),
+        )
     )
 
 
@@ -195,6 +197,9 @@ def test_invalid_or_duplicated_source_and_splits_are_rejected(tmp_path: Path) ->
     groups = [str(i % 4) for i in range(80)]
     with pytest.raises(ValueError, match="leave no assessment"):
         _machine_partitions(
-            groups, sorted(set(groups)), seed=42,
-            train_fraction=0.8, validation_fraction=0.2
+            groups,
+            sorted(set(groups)),
+            seed=42,
+            train_fraction=0.8,
+            validation_fraction=0.2,
         )
