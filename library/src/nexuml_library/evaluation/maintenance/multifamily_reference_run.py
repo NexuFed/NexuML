@@ -32,7 +32,6 @@ def summarize_multifamily_experiments(
         identity counts with random-seed replication.
 
     Raises:
-        FileNotFoundError: If any requested run has no complete summary.
         ValueError: If the chosen modes, fold keys or protocols disagree.
     """
     if protocol not in {"machine", "family"}:
@@ -66,9 +65,7 @@ def summarize_multifamily_experiments(
         by_family: dict[str, list[float]] = {}
         for seed in seeds:
             for fold, result in sorted(record[str(seed)][mode].items()):
-                per_machine = cast(
-                    dict[str, dict[str, float]], result["unseen_by_machine"]
-                )
+                per_machine = cast(dict[str, dict[str, float]], result["unseen_by_machine"])
                 if not per_machine:
                     raise ValueError("Missing per-machine assessment in completed summary")
                 for group, values in sorted(per_machine.items()):
@@ -85,17 +82,14 @@ def summarize_multifamily_experiments(
                         }
                     )
         per_seed = {
-            str(seed): sum(
-                item["relative_reduction"] for item in records if item["seed"] == seed
-            ) / sum(item["seed"] == seed for item in records)
+            str(seed): sum(item["relative_reduction"] for item in records if item["seed"] == seed)
+            / sum(item["seed"] == seed for item in records)
             for seed in seeds
         }
         by_mode[mode] = {
             "per_seed_machine_macro_reduction": per_seed,
             "mean_over_seed_machine_macros": sum(per_seed.values()) / len(per_seed),
-            "positive_machine_assessments": sum(
-                item["relative_reduction"] > 0 for item in records
-            ),
+            "positive_machine_assessments": sum(item["relative_reduction"] > 0 for item in records),
             "machine_assessment_count": len(records),
             "by_family_mean_reduction": {
                 name: sum(values) / len(values) for name, values in sorted(by_family.items())
@@ -113,7 +107,8 @@ def summarize_multifamily_experiments(
                 "seed": item["seed"],
                 "fold": item["fold"],
                 "machine": item["machine"],
-                "conditioning_advantage_pp": 100 * (
+                "conditioning_advantage_pp": 100
+                * (
                     item["relative_reduction"]
                     - baseline[(item["seed"], item["fold"], item["machine"])]
                 ),
@@ -247,8 +242,10 @@ def main() -> None:
     parser.add_argument("--accelerator", choices=("auto", "cpu", "gpu"), default="auto")
     parser.add_argument("--summarize-only", action="store_true")
     args = parser.parse_args()
-    selected = tuple(args.seeds) if args.seeds is not None else tuple(
-        json.loads(args.prepared_index.read_text())["seeds"]
+    selected = (
+        tuple(args.seeds)
+        if args.seeds is not None
+        else tuple(json.loads(args.prepared_index.read_text())["seeds"])
     )
     if args.summarize_only:
         result = summarize_multifamily_experiments(
