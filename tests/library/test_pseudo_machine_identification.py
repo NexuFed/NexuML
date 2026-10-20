@@ -10,6 +10,8 @@ import torch
 
 from nexuml_library.evaluation.maintenance.pseudo_machine_identification import (
     _clusters,
+    _prototype_report,
+    _score,
     _load_fisher,
     _machine_partitions,
     identify_pseudo_machine_types,
@@ -65,6 +67,31 @@ def _source(tmp_path: Path) -> Path:
         path,
     )
     return path
+
+
+def test_machine_classification_metrics_use_multiclass_macro_f1() -> None:
+    """Ensure multiclass metrics do not fall back to scikit-learn binary defaults."""
+    import numpy as np
+
+    pytest.importorskip("sklearn")
+    from sklearn.metrics import f1_score
+
+    truth = np.asarray([0, 0, 1, 1, 2, 2], dtype=np.int64)
+    predicted = np.asarray([0, 1, 1, 1, 2, 0], dtype=np.int64)
+    probabilities = np.eye(3, dtype=np.float64)[predicted]
+    expected = float(f1_score(truth, predicted, average="macro", zero_division=0))
+
+    metrics = _score(truth, predicted, probabilities, [0, 1, 2])
+    assert metrics["macro_f1"] == pytest.approx(expected)
+
+    training = np.eye(3, dtype=np.float64)
+    outcome = _prototype_report(
+        training,
+        np.asarray([0, 1, 2], dtype=np.int64),
+        {"assessment_healthy": (training[predicted], truth)},
+        [0, 1, 2],
+    )
+    assert outcome["assessment_healthy"]["macro_f1"] == pytest.approx(expected)
 
 
 def test_identification_evaluates_healthy_and_faulty_with_separate_splits(
