@@ -179,13 +179,9 @@ def run_reference_conditioned_folds(
             raise ValueError(f"Training fold has incorrect held-out ID: {machine}")
         if machine in training["machine_groups"]:
             raise ValueError("Held-out machine may not appear in training data")
-        # Assessment is validated here only for file/protocol provenance.
-        # Its faulty values are not used by fitting or checkpoint selection.
-        assessment = read_healthy_reference_assessment(assessment_file)
-        if assessment["heldout_machine"] != machine:
-            raise ValueError("Wrong held-out machine assessment artifact")
-        if assessment["settings"] != training["settings"]:
-            raise ValueError("Training/assessment scaling provenance mismatch")
+        # Do not load ANY unseen-machine assessment values during fitting.
+        if not assessment_file.is_file():
+            raise FileNotFoundError(assessment_file)
         seed = int(manifest["seed"])
         spec = healthy_reference_flow_scenario(
             training_file,
@@ -220,7 +216,13 @@ def run_reference_conditioned_folds(
         validation = evaluate_training_machine_validation(
             flow, training_file, device=device, batch_size=batch_size, seed=seed
         )
-        # These are the first accesses to assessment endpoint tensors.
+        # First access to unseen-machine support and faulty assessment
+        # observations: fitting and validation selection are already complete.
+        assessment = read_healthy_reference_assessment(assessment_file)
+        if assessment["heldout_machine"] != machine:
+            raise ValueError("Wrong held-out machine assessment artifact")
+        if assessment["settings"] != training["settings"]:
+            raise ValueError("Training/assessment scaling provenance mismatch")
         healthy = cast(Tensor, assessment["features"])[:, 0]
         faulty = cast(Tensor, assessment["features"])[:, 1]
         reference = cast(Tensor, assessment["references"])
