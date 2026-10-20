@@ -362,8 +362,9 @@ fixtures and are a separate remaining blocker, not a passing gate or suppressed 
 Scope: PR #16 / NEX-115, independent Python/npm installation, packaging, compatibility,
 hosted transport and release CI. No UI redesign, Python provisioning, package publication,
 release tag or merge. Maintainer override disables macOS/Windows CI; their original
-portability acceptance remains unchecked. All Linux jobs use ika-runner, except the
-explicitly approved future npm publish-only GitHub-hosted job required by npm OIDC.
+portability acceptance remains unchecked. Linux CPU jobs use ika-runner, Python GPU
+suites use the explicitly approved ika-runner-gpu pool, and the future npm publish-only
+GitHub-hosted exception is required by npm OIDC.
 
 ### Diagnosis and corrections
 
@@ -421,6 +422,12 @@ explicitly approved future npm publish-only GitHub-hosted job required by npm OI
 - Final full Python/package commands and remote Actions outcomes are recorded on PR #16;
   no local Linux result establishes macOS/Windows portability. CI must pass for the exact
   release commit before the protected publish workflow can consume its artifact.
+- Initial pushed run `39423072836` passed Python/Studio static checks and the single
+  Studio build. All three GPU assertions correctly failed because ika-runner has no
+  CUDA, so dependent package jobs did not run and the required gate failed closed.
+  The maintainer explicitly approved restoring ika-runner-gpu only for those mandatory
+  suites; no CUDA checks were removed. Both local project and tool package commands
+  subsequently completed successfully, including all HTTP/WS and ownership checks.
 - GitHub repository approval policy was changed and confirmed from first-time-only to
   **all external fork contributors**. CI does not run fork PR checkout code. Organization
   runner-group inspection returned 403: its owner must confirm approved-workflow

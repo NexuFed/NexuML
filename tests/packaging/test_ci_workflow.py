@@ -18,6 +18,11 @@ def test_studio_ci_builds_once_and_tests_both_trusted_linux_installations(tmp_pa
     assert "pull_request" not in WORKFLOW["on"]
     assert "pull_request_target" not in WORKFLOW["on"]
     assert WORKFLOW["on"]["push"]["branches"] == ["**"]
+    assert WORKFLOW["jobs"]["test"]["runs-on"] == "ika-runner-gpu"
+    assert any(
+        "assert torch.cuda.is_available()" in step.get("run", "")
+        for step in WORKFLOW["jobs"]["test"]["steps"]
+    )
     job = WORKFLOW["jobs"]["studio-package"]
     assert {"package", "studio-build"} <= set(job["needs"])
     assert job["strategy"]["fail-fast"] is False

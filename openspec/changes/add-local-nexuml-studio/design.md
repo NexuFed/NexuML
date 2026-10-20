@@ -348,7 +348,8 @@ Exclude source-checkout secrets, test fixtures, Python environments, and develop
 
 Add scripts for frontend typecheck, lint, focused tests, browser tests, build, and package smoke validation. Validate `npm pack` output installed into a clean directory with both a uv-tool runtime and an existing project runtime. Run launcher/process/REST/WebSocket/asset checks on Linux, macOS, and Windows. A CPU-only synthetic installed-library scenario is the end-to-end training acceptance case; real cluster/GPU tests are optional and must not be silently started by ordinary CI.
 
-Maintainer override (2026-10-20): all Linux jobs use ika-runner; macOS/Windows entries
+Maintainer override (2026-10-20): Linux CPU jobs use ika-runner; the mandatory Python
+GPU suites use the explicitly approved ika-runner-gpu exception. macOS/Windows entries
 are temporarily disabled, not considered verified. Original portability acceptance
 remains open. Trusted repository branch pushes/manual dispatch replace fork PR execution
 on institute infrastructure; missing fork checks must not become a passing gate.

@@ -61,7 +61,8 @@ require **npm >=11.5.1**, **Node >=22.14** and **GitHub-hosted runners**; self-h
 runners are unsupported. The publish-only job uses Node 24 and npm 11, OIDC
 `id-token: write` and provenance in the protected environment, with no dependency
 installation/build or long-lived credential. This is the approved hosted-runner
-exception; Linux builds/tests and Python publication use `ika-runner`.
+exception; Linux CPU builds/tests and Python publication use `ika-runner`. The existing
+mandatory Python GPU suites use the separately approved `ika-runner-gpu` pool.
 
 ## Studio release
 
@@ -103,5 +104,5 @@ approved repositories/workflows, preserve that approval setting, protect workflo
 provide ephemeral, isolated runner instances without internal credentials/network access.
 A workflow condition alone cannot secure a public repository's runner group against a
 new malicious workflow. GPU assertions remain mandatory in the Python suite; the
-`ika-runner` pool must provide its required CUDA capacity. Do not remove that assertion
+`ika-runner-gpu` pool must provide its required CUDA capacity. Do not remove that assertion
 or quietly skip verification to accommodate a misconfigured pool.
