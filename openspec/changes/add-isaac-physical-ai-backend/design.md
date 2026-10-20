@@ -4,6 +4,20 @@
 
 See `proposal.md` for motivation and the declared capability deltas for observable behavior. This is a program-sized, staged change: planning readiness is not package, native, learning-quality or hardware readiness.
 
+### Focused slice authority
+
+[The native configuration/Viser/MARL design](../generalize-isaac-native-configuration-and-marl/design.md)
+and its specs/tasks own that slice's implementation and acceptance. For this
+unmerged slice, they refine D5–D7, D13 and D20: one current native schema without
+hypothetical checkpoint migration, native TorchRL numerical reuse, mandatory
+strictly read-only Viser with early private-construction qualification, and
+SO-101 semantic/provenance separation while preserving SDK behavior. General
+published/export compatibility remains; old debug-view mutation allowances do
+not authorize mutating this spectator. NexuFL edits and environment provisioning
+are not authorized by the focused scope. Coordinate overlap through its task
+links rather than duplicate implementation; all other roadmap gates and
+historical completion evidence remain unchanged.
+
 ### Inspected foundation
 
 | Existing seam | Current behavior and consequence |
@@ -378,7 +392,7 @@ Retain Isaac Lab-Arena, exact Meta-World MT1 scoring and matching task/sensors/a
 
 ### D20. One campaign, many independently reviewable slices
 
-Implement tasks 1–22 in dependency order; every slice lands focused tests, runnable user documentation, version/asset provenance and an actual native round trip before the next dependent slice claims readiness. A single agent/campaign can coordinate this programme, but it shall not duplicate the previous MuJoCo plan, rewrite existing session/compiler/framework architecture, wait for every P2 embodiment before releasing useful P0 milestones, or mark all required gates complete from CPU-only CI. Preserve tested checkpoint/report histories; follow ordinary approved cross-repository/container/hardware gates.
+Coordinate tasks 1–22 in dependency order, routing the focused native configuration/sensors/Viser/MARL overlap to its owning change above; every slice lands focused tests, runnable user documentation, version/asset provenance and an actual native round trip before the next dependent slice claims readiness. A single agent/campaign can coordinate this programme, but it shall not duplicate the previous MuJoCo plan, rewrite existing session/compiler/framework architecture, wait for every P2 embodiment before releasing useful P0 milestones, or mark all required gates complete from CPU-only CI. Preserve tested checkpoint/report histories; follow ordinary approved cross-repository/container/hardware gates.
 
 #### Verified milestone commits, without execution evidence
 
