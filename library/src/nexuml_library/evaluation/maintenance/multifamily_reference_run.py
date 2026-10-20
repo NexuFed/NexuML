@@ -144,6 +144,7 @@ def run_multifamily_experiments(
     modes: tuple[str, ...] = ("reference", "constant"),
     seeds: tuple[int, ...] | None = None,
     heldout_machine: str | None = None,
+    heldout_family: str | None = None,
     width: int = 128,
     context_dim: int = 32,
     encoder_width: int = 128,
@@ -165,11 +166,30 @@ def run_multifamily_experiments(
     Raises:
         FileExistsError: If a completed aggregate report already exists.
     """
+    if heldout_family is not None and heldout_machine is not None:
+        raise ValueError("Choose --heldout-machine or --heldout-family, not both")
+    if heldout_family is not None and protocol != "machine":
+        raise ValueError("--heldout-family selects machine folds only")
+    if heldout_family is not None and heldout_family not in {
+        "fan", "pump", "slider", "valve"
+    }:
+        raise ValueError("Unknown MIMII machine family")
     index = json.loads(Path(prepared_index).read_text())
     selected_seeds = seeds if seeds is not None else tuple(int(s) for s in index["seeds"])
     root = Path(output_root).expanduser().resolve()
     for seed in selected_seeds:
         source = Path(index["manifests"][str(seed)][protocol]["manifest"])
+        selected_machines: tuple[str, ...] | None = None
+        if heldout_family is not None:
+            manifest = json.loads(source.read_text())
+            selected_machines = tuple(
+                sorted(
+                    name for name in manifest["folds"]
+                    if name.startswith(f"{heldout_family}:")
+                )
+            )
+            if len(selected_machines) != 4:
+                raise ValueError("Expected four machine folds in selected family")
         for mode in modes:
             destination = root / f"seed{seed}" / protocol / mode
             run_reference_conditioned_folds(
@@ -177,6 +197,7 @@ def run_multifamily_experiments(
                 checkpoint_root=destination / "checkpoints",
                 reports_dir=destination,
                 heldout_machine=heldout_machine,
+                heldout_machines=selected_machines,
                 context_mode=mode,
                 width=width,
                 context_dim=context_dim,
@@ -212,6 +233,9 @@ def main() -> None:
     )
     parser.add_argument("--seeds", type=int, nargs="+")
     parser.add_argument("--heldout-machine", type=str)
+    parser.add_argument(
+        "--heldout-family", choices=("fan", "pump", "slider", "valve")
+    )
     parser.add_argument("--width", type=int, default=128)
     parser.add_argument("--context-dim", type=int, default=32)
     parser.add_argument("--encoder-width", type=int, default=128)
@@ -238,6 +262,7 @@ def main() -> None:
             modes=tuple(args.modes),
             seeds=selected,
             heldout_machine=args.heldout_machine,
+            heldout_family=args.heldout_family,
             width=args.width,
             context_dim=args.context_dim,
             encoder_width=args.encoder_width,
