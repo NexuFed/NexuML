@@ -108,6 +108,15 @@ library = [
 robots = [
     "nexuml-library[robots]>=0.2,<0.3",
 ]
+isaac = [
+    "nexuml-library[isaac]>=0.2,<0.3",
+]
+lerobot = [
+    "nexuml-library[lerobot]>=0.2,<0.3",
+]
+mujoco = [
+    "nexuml-library[mujoco]>=0.2,<0.3",
+]
 all = [
     "nexuml[api,library,audio,data,tracking,tuning,dali,export,ray,kubernetes,s3,reinforcement,rendering,video]",
 ]

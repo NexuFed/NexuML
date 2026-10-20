@@ -330,7 +330,7 @@ def evaluate_cmd(
         ScenarioSpec,
     )
     from nexuml.tracking.logger import create_loggers, log_text_artifact
-    from nexuml.training.reinforcement import evaluate_policy, resolve_policy_evaluation
+    from nexuml.evaluation.policy import evaluate_policy, resolve_policy_evaluation
 
     loggers = []
     failed = False

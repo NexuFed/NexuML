@@ -3234,8 +3234,17 @@ export = [
 kubernetes = [
     { name = "kubernetes" },
 ]
+isaac = [
+    { name = "nexuml-library", extra = ["isaac"] },
+]
+lerobot = [
+    { name = "nexuml-library", extra = ["lerobot"] },
+]
 library = [
     { name = "nexuml-library" },
+]
+mujoco = [
+    { name = "nexuml-library", extra = ["mujoco"] },
 ]
 ray = [
     { name = "ray", extra = ["default", "train"] },
@@ -3297,6 +3306,9 @@ requires-dist = [
     { name = "nexuml", extras = ["api", "library", "audio", "data", "tracking", "tuning", "dali", "export", "ray", "kubernetes", "s3", "reinforcement", "rendering", "video"], marker = "extra == 'all'", editable = "." },
     { name = "nexuml", extras = ["rendering"], marker = "extra == 'video'", editable = "." },
     { name = "nexuml-library", marker = "extra == 'library'", editable = "library" },
+    { name = "nexuml-library", extras = ["isaac"], marker = "extra == 'isaac'", editable = "library" },
+    { name = "nexuml-library", extras = ["lerobot"], marker = "extra == 'lerobot'", editable = "library" },
+    { name = "nexuml-library", extras = ["mujoco"], marker = "extra == 'mujoco'", editable = "library" },
     { name = "nexuml-library", extras = ["robots"], marker = "extra == 'robots'", editable = "library" },
     { name = "numpy", specifier = ">=1.26" },
     { name = "nvidia-dali-cuda120", marker = "sys_platform == 'linux' and extra == 'dali'", index = "https://pypi.nvidia.com/" },
@@ -3328,7 +3340,7 @@ requires-dist = [
     { name = "uvicorn", marker = "extra == 'api'", specifier = ">=0.29,<1" },
     { name = "websockets", marker = "extra == 'api'", specifier = ">=13,<17" },
 ]
-provides-extras = ["api", "dev", "audio", "data", "tracking", "tuning", "dali", "export", "ray", "reinforcement", "rendering", "video", "kubernetes", "s3", "library", "robots", "all"]
+provides-extras = ["api", "dev", "audio", "data", "tracking", "tuning", "dali", "export", "ray", "reinforcement", "rendering", "video", "kubernetes", "s3", "library", "robots", "isaac", "lerobot", "mujoco", "all"]
 
 [package.metadata.requires-dev]
 native-sources = [
@@ -3378,6 +3390,14 @@ eval = [
     { name = "scikit-learn" },
     { name = "umap-learn" },
 ]
+isaac = [
+    { name = "gymnasium", extra = ["classic-control"] },
+    { name = "isaaclab", extra = ["isaacsim", "ov", "viser"] },
+    { name = "nexuml", extra = ["reinforcement", "rendering", "video"] },
+]
+lerobot = [
+    { name = "lerobot", extra = ["dataset", "diffusion"] },
+]
 mujoco = [
     { name = "gymnasium", extra = ["mujoco"] },
     { name = "nexuml", extra = ["reinforcement"] },
@@ -3409,8 +3429,8 @@ requires-dist = [
     { name = "datasets", marker = "extra == 'data'", specifier = ">=2.18" },
     { name = "gymnasium", extras = ["classic-control"], marker = "extra == 'rendering'", specifier = ">=1,<2" },
     { name = "gymnasium", extras = ["mujoco"], marker = "extra == 'mujoco'", specifier = ">=1,<2" },
-    { name = "isaaclab", extras = ["isaacsim", "ov", "viser"], marker = "extra == 'robots'", git = "https://github.com/isaac-sim/IsaacLab.git?subdirectory=tools%2Fwheel_builder&rev=70ab24fec3eabf51222817db0cdb5a4e7133bd7e" },
-    { name = "lerobot", extras = ["dataset", "diffusion"], marker = "extra == 'robots'", specifier = ">=0.6" },
+    { name = "isaaclab", extras = ["isaacsim", "ov", "viser"], marker = "extra == 'isaac'", git = "https://github.com/isaac-sim/IsaacLab.git?subdirectory=tools%2Fwheel_builder&rev=70ab24fec3eabf51222817db0cdb5a4e7133bd7e" },
+    { name = "lerobot", extras = ["dataset", "diffusion"], marker = "extra == 'lerobot'", specifier = ">=0.6" },
     { name = "librosa", marker = "extra == 'audio'", specifier = ">=0.10" },
     { name = "matplotlib", marker = "extra == 'eval'", specifier = ">=3.8" },
     { name = "nexuml", editable = "." },
@@ -3418,9 +3438,10 @@ requires-dist = [
     { name = "nexuml", extras = ["rendering"], marker = "extra == 'rendering'", editable = "." },
     { name = "nexuml", extras = ["video"], marker = "extra == 'video'", editable = "." },
     { name = "nexuml-library", extras = ["audio", "data", "pretrained", "eval", "reinforcement"], marker = "extra == 'all'", editable = "library" },
+    { name = "nexuml-library", extras = ["isaac", "lerobot", "mujoco"], marker = "extra == 'robots'", editable = "library" },
     { name = "nexuml-library", extras = ["reinforcement"], marker = "extra == 'mujoco'", editable = "library" },
     { name = "nexuml-library", extras = ["reinforcement"], marker = "extra == 'rendering'", editable = "library" },
-    { name = "nexuml-library", extras = ["reinforcement", "video", "mujoco"], marker = "extra == 'robots'", editable = "library" },
+    { name = "nexuml-library", extras = ["reinforcement", "video"], marker = "extra == 'isaac'", editable = "library" },
     { name = "nexuml-library", extras = ["rendering"], marker = "extra == 'video'", editable = "library" },
     { name = "scikit-learn", marker = "extra == 'eval'", specifier = ">=1.4" },
     { name = "soundfile", marker = "extra == 'audio'", specifier = ">=0.12" },
@@ -3433,7 +3454,7 @@ requires-dist = [
     { name = "transformers", marker = "extra == 'pretrained'", specifier = ">=4.0" },
     { name = "umap-learn", marker = "extra == 'eval'", specifier = ">=0.5" },
 ]
-provides-extras = ["audio", "data", "pretrained", "eval", "reinforcement", "rendering", "video", "mujoco", "robots", "all"]
+provides-extras = ["audio", "data", "pretrained", "eval", "reinforcement", "rendering", "video", "mujoco", "isaac", "lerobot", "robots", "all"]
 
 [[package]]
 name = "numba"
