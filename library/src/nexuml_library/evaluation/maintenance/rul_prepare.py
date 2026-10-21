@@ -221,6 +221,7 @@ def prepare_cmapss(
         [str(i) for i in engine_ids], seed=seed, val_fraction=val_fraction
     )
     sequences: list[tuple[str, str, np.ndarray, np.ndarray]] = []
+    raw_rul_by_asset: dict[str, np.ndarray] = {}
     for origin, table in (("train", train), ("test", test)):
         ids = np.unique(table[:, 0].astype(np.int64))
         if origin == "test" and (
@@ -243,6 +244,7 @@ def prepare_cmapss(
             else:
                 split = "train" if str(engine) in train_ids else "val"
                 remaining = cycles[-1] - cycles
+            raw_rul_by_asset[name] = remaining.copy()
             if rul_cap is not None:
                 remaining = np.minimum(remaining, rul_cap)
             # Select only the declared sensors for paper-matched protocols.
@@ -264,6 +266,13 @@ def prepare_cmapss(
         padding_mode=padding_mode,
         train_full_windows_only=train_full_windows_only,
     )
+    raw_targets = torch.tensor(
+        [
+            float(raw_rul_by_asset[row["asset_id"]][row["step"]])
+            for row in rows
+        ],
+        dtype=torch.float32,
+    ).unsqueeze(-1)
     feature_names = (
         [f"setting_{i}" for i in range(1, 4)]
         + [f"sensor_{i}" for i in range(1, 22)]
@@ -274,6 +283,7 @@ def prepare_cmapss(
         "format": "nexuml-rul-windows-v1",
         "features": features,
         "targets": targets,
+        "raw_targets": raw_targets,
         "rows": rows,
         "settings": {
             "dataset": "cmapss",
