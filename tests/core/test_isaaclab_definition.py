@@ -147,6 +147,7 @@ def test_static_contract_identity_configuration_and_inference(
     assert restored.training.collector.num_envs_per_collector == 8
     assert _REVISION in yaml and "IsaacLabEnvironment" in yaml
     pipeline = compile(restored)
+    assert restored.policy.action_adapter is not None
     policy = CompiledPolicy(pipeline, restored.policy.action_adapter.build(contract), contract)
     for batch_shape in ((), (3,), (2, 3)):
         inputs = TensorDict(

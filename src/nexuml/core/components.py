@@ -198,6 +198,16 @@ class EnvironmentDefinition(ComponentDefinition):
         """Return a resource-free whole-job scope unless a provider owns native lifetime."""
         return nullcontext()
 
+    def checkpoint_identity(self) -> dict:
+        """Describe the environment configuration required for continuation.
+
+        Returns:
+            Portable component identity, without building execution resources.
+        """
+        from nexuml.core.serialization import lower_component
+
+        return lower_component(self)
+
     @abstractmethod
     def describe(self) -> "InteractionContract":
         """Describe tensor I/O without hardware connections or retained resources."""

@@ -192,8 +192,14 @@ def _create_environment(owner, definition, context):
             selected=(*definition.presets, *((definition.physics,) if definition.physics else ())),
         )
     native_envs = import_module("isaaclab.envs")
-    if not isinstance(cfg, (native_envs.ManagerBasedRLEnvCfg, native_envs.DirectRLEnvCfg)):
+    marl_config = getattr(native_envs, "DirectMARLEnvCfg", None)
+    owner._marl = marl_config is not None and isinstance(cfg, marl_config)
+    if not owner._marl and not isinstance(
+        cfg, (native_envs.ManagerBasedRLEnvCfg, native_envs.DirectRLEnvCfg)
+    ):
         raise TypeError("Native customization must produce a manager/direct RL config")
+    if owner._marl != bool(owner.contract.groups):
+        raise ValueError("Native DirectMARL type and declared grouped contract must agree")
     if (
         cfg.scene.num_envs != context.num_envs
         or torch.device(cfg.sim.device) != device
@@ -236,8 +242,7 @@ def _create_environment(owner, definition, context):
         # Kit's fast close must follow whole-job checkpoint/export/logger finalization.
         _process_launcher, owner._launcher = owner._launcher, None
     signal.signal(signal.SIGTERM, _terminate_job)
-    if viewing:
-        owner._context_class = import_module("isaaclab.sim").SimulationContext
+    owner._context_class = import_module("isaaclab.sim").SimulationContext
     owner.native = gym.make(definition.task, cfg=cfg).unwrapped
     if viewing:
         visualizers = cast(Any, owner.native).sim.visualizers
@@ -247,7 +252,14 @@ def _create_environment(owner, definition, context):
         ):
             raise RuntimeError("Native launcher did not retain the qualified spectator")
     native_envs = import_module("isaaclab.envs")
-    if isinstance(owner.native, native_envs.ManagerBasedRLEnv):
+    marl_environment = getattr(native_envs, "DirectMARLEnv", None)
+    if marl_environment is not None and isinstance(owner.native, marl_environment):
+        if not owner._marl:
+            raise ValueError("Native environment type disagrees with its DirectMARL config")
+        owner._direct = True
+    elif owner._marl:
+        raise ValueError("Native DirectMARL config did not construct a DirectMARLEnv")
+    elif isinstance(owner.native, native_envs.ManagerBasedRLEnv):
         owner._direct = False
     elif isinstance(owner.native, native_envs.DirectRLEnv):
         owner._direct = True
@@ -274,6 +286,8 @@ class _IsaacLabRuntime:
         self._pending_reset = None
         self._so101 = definition.task == "NexuML-SO101-Joint-Reach"
         self._direct = False
+        self._marl = False
+        self._marl_boundary = None
         self._bindings = definition.native_bindings()
         self._rendering = context.render_mode == "rgb_array"
         self._terminal_frame = None
@@ -318,6 +332,12 @@ class _IsaacLabRuntime:
             raise
 
     def _validate_native(self, definition):
+        if self._marl:
+            from ._isaaclab_marl import IsaacMARLBoundary
+
+            self._marl_boundary = IsaacMARLBoundary(self, definition)
+            self._marl_boundary.validate()
+            return
         env = self.native
         action_field = self.contract.actions[self._bindings.action]
         if (
@@ -529,6 +549,9 @@ class _IsaacLabRuntime:
     def reset(self, *, seed=None, mask=None) -> TensorDict:
         if self._closed:
             raise RuntimeError("Isaac runtime is closed")
+        if self._marl:
+            assert self._marl_boundary is not None
+            return self._marl_boundary.reset(seed=seed, mask=mask)
         self._terminal_frame = None
         count = self.contract.num_envs
         if mask is None:
@@ -560,6 +583,11 @@ class _IsaacLabRuntime:
         return self._pack(self._observation.clone())
 
     def step(self, action: TensorDict) -> InteractionStep:
+        if self._marl:
+            if self._closed:
+                raise RuntimeError("Isaac runtime is closed")
+            assert self._marl_boundary is not None
+            return self._marl_boundary.step(action)
         if self._closed or self._observation is None:
             raise RuntimeError("Reset an open Isaac runtime before stepping")
         expected_batch = () if self.contract.num_envs == 1 else (self.contract.num_envs,)
@@ -646,7 +674,7 @@ class _IsaacLabRuntime:
         if context_class is not None:
             # gym.make() may fail after opening a viewer, before returning its environment.
             sim = context_class.instance()
-            if sim is not None:
+            if sim is not None and self._spectator_type is not None:
                 for visualizer in (*sim.visualizers, *sim._pending_visualizers):
                     if type(visualizer) is self._spectator_type:
                         try:
@@ -656,6 +684,7 @@ class _IsaacLabRuntime:
         native, self.native = self.native, None
         self._observation = self._pending_reset = None
         self._processing_state = self._processor = None
+        self._marl_boundary = None
         if native is not None:
             try:
                 native.close()

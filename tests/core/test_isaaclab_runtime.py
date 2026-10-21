@@ -507,6 +507,9 @@ def native_launch(monkeypatch, tmp_path):
         ),
         "isaaclab_tasks.utils": SimpleNamespace(parse_env_cfg=parse),
         "isaaclab_tasks.utils.hydra": SimpleNamespace(resolve_presets=lambda cfg, **kwargs: cfg),
+        "isaaclab.sim": SimpleNamespace(
+            SimulationContext=SimpleNamespace(instance=lambda: None, clear_instance=lambda: None)
+        ),
         "isaaclab.envs": SimpleNamespace(
             ManagerBasedRLEnv=_FakeNative,
             DirectRLEnv=type("Direct", (), {}),
@@ -660,6 +663,32 @@ def test_an_existing_kitless_context_is_not_adopted_or_destroyed(native_launch, 
             native_launch.build()
     assert context.instance() is foreign
     assert native_launch.launchers == []
+
+
+def test_headless_native_constructor_failure_releases_its_partial_context(
+    native_launch, monkeypatch
+):
+    state = SimpleNamespace(sim=None)
+    events = native_launch.native.events
+
+    def clear():
+        state.sim = None
+        events.append("context.close")
+
+    native_launch.modules["isaaclab.sim"] = SimpleNamespace(
+        SimulationContext=SimpleNamespace(instance=lambda: state.sim, clear_instance=clear)
+    )
+
+    def fail_make(*args, **kwargs):
+        state.sim = object()
+        raise RuntimeError("headless native constructor failed")
+
+    monkeypatch.setattr(sys.modules["gymnasium"], "make", fail_make)
+    with _isaaclab_runtime.isaaclab_process():
+        with pytest.raises(RuntimeError, match="headless native constructor failed"):
+            native_launch.build()
+    assert state.sim is None and events.count("context.close") == 1
+    assert native_launch.launchers[0].exit_calls
 
 
 @pytest.mark.parametrize("physics", ["newton_mjwarp", "isaacsim_physx", "ovphysx"])

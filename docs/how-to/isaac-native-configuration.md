@@ -11,7 +11,8 @@ Static scenario discovery, `describe()`, resolve and YAML restoration do not
 launch Isaac, execute configuration functions or allocate CUDA. Native execution
 still requires the prepared, operator-approved stack, assets/licences and one
 available CUDA device. Do not replace an active environment or install another
-stack to run these examples. Native runs require at least **40 GiB free disk**.
+stack to run these examples. Monitor native runs and stop owned work at
+**4 GiB free disk**, the maintainer-revised resource threshold.
 
 ## Typed functions, not override strings
 
@@ -209,5 +210,7 @@ replay activation, display controls, private forwarding and ownership. The isola
 [constructor boundary](../explanation/isaac-spectator-boundary.md) is distinct from
 actual training/replay browser acceptance. Native/backend, policy sensor and MARL
 support still require their own real checks; viewing does not establish them.
+See [fixed-group IPPO/MAPPO](isaac-multi-agent-learning.md) for the qualified
+Pendulum/Handover paths and explicit limits on other grouped combinations.
 See [SO-101 local fit](so101-local-fit.md) for its separate capture/qualification
 and unchanged quality protocol.
