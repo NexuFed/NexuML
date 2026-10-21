@@ -96,11 +96,14 @@ The paper-specific scenario now excludes incomplete training windows,
 zero-pads short test histories, retains RUL labels in cycles (not
 fractions), and reports the asymmetric NASA score. The generic NexuML
 scenarios retain their original preprocessing defaults.
-The published evaluation's handling of uncapped official NASA test offsets
-remains to be independently verified; this scenario currently caps test
-labels at 130 cycles. Published results (FD001 RMSE 14.93, MAE 11.73,
-NASA score 410.97) therefore remain **reference numbers, not reproduced
-measurements**.
+Two held-out evaluators report MAE, RMSE and NASA score against both
+the 130-cycle capped labels and the **original uncapped NASA test RUL
+offsets**, with explicit metric names `rul_test_*` and
+`rul_official_raw/rul_test_*`. Training always uses capped labels and
+never trains against the raw test offset. The published evaluation's
+label convention requires verification before selecting which set of
+metrics to compare. Published results (FD001 RMSE 14.93, MAE 11.73,
+NASA score 410.97) are **reference numbers, not reproduced measurements**.
 
 The paper's 1D CNN is also implemented with convolution channels
 14→32→64→64, three same-padded kernel-3 convolutions, dropout 0.3,
@@ -136,12 +139,11 @@ nexuml train --config .experiments/rul-goel2026-cnn.yaml
 
 1. Reimplement the missing architectures and their reported architecture
    hyperparameters as NexuML library components.
-2. Preserve raw official NASA test RUL offsets separately from capped
-   training targets. Current NexuML RUL preparation caps both.
-3. Add the asymmetric NASA exponential score and document target conventions.
-4. Replicate reported train/validation selection, random seeds, number of
+2. Select the published paper's official test-label convention after
+   cross-checking its reported metric computations; both are now available.
+3. Replicate reported train/validation selection, random seeds, number of
    experiments, best-checkpoint and preprocessing procedures.
-5. Validate reported metrics only after exact native NexuML train/test runs.
+4. Validate reported metrics only after native NexuML train/test runs.
 
 The available protocol scenarios are **parameter-matched controls**, not
 paper reproductions. Their output should not be used to claim published
