@@ -172,6 +172,9 @@ class AutoCMapSSRULWindows(DataSourceDefinition):
     rul_cap: float = Field(default=125.0, gt=0)
     sensor_ids: list[int] | None = None
     normalization: Literal["zscore", "minmax"] = "zscore"
+    padding_mode: Literal["repeat_first", "zero"] = "repeat_first"
+    train_full_windows_only: bool = False
+    normalize_targets: bool = True
     download: bool = True
 
     def build(self) -> NexuDataset:
@@ -207,6 +210,9 @@ class AutoCMapSSRULWindows(DataSourceDefinition):
                 rul_cap=self.rul_cap,
                 sensor_ids=self.sensor_ids,
                 normalization=self.normalization,
+                padding_mode=self.padding_mode,
+                train_full_windows_only=self.train_full_windows_only,
+                normalize_targets=self.normalize_targets,
             )
             payload["settings"]["source_url"] = CMAPSS_ARCHIVE_URL
             digest = cmapss_source_sha256(Path(self.root).expanduser().resolve())
@@ -222,10 +228,16 @@ class AutoCMapSSRULWindows(DataSourceDefinition):
             or settings.get("seed") != self.seed
             or settings.get("window") != self.window
             or settings.get("stride") != self.stride
-            or float(settings.get("target_scale", 0)) != self.rul_cap
+            or float(settings.get("target_scale", 0)) != (
+                self.rul_cap if self.normalize_targets else 1.0
+            )
             or settings.get("rul_cap") != self.rul_cap
             or settings.get("sensor_ids") != self.sensor_ids
             or settings.get("normalization", "zscore") != self.normalization
+            or settings.get("padding_mode", "repeat_first") != self.padding_mode
+            or settings.get("train_full_windows_only", False)
+            != self.train_full_windows_only
+            or settings.get("normalize_targets", True) != self.normalize_targets
         ):
             raise ValueError("Cached C-MAPSS RUL artifact does not match the scenario")
         return _PreparedRULRuntime(str(artifact))
