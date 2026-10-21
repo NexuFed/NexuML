@@ -153,6 +153,121 @@ def test_native_categorical_class_force_and_signed_motion(tmp_path):
     assert "NATIVE_CATEGORICAL_CLASS_FORCE_AND_SIGNED_MOTION_VERIFIED" in log
 
 
+@pytest.mark.parametrize("noisy", [False, True])
+def test_native_spectator_uses_isolated_storage_and_preserves_sensor_trajectory(tmp_path, noisy):
+    import torch
+    import socket
+
+    with socket.socket() as reservation:
+        reservation.bind(("127.0.0.1", 0))
+        port = reservation.getsockname()[1]
+    assert port <= 64535
+    fixture = ROOT / "tests/fixtures/isaaclab_viser_job.py"
+    for mode in ("headless", "viewer"):
+        log = _run(
+            [fixture, *(["noise"] if noisy else []), tmp_path / f"{mode}.pt", mode, port],
+            tmp_path,
+            mode,
+        )
+        assert "NATIVE_SPECTATOR_SNAPSHOT_COMPLETE_AND_OWNED_THREADS_STOPPED" in log
+        if mode == "viewer":
+            assert "NATIVE_SPECTATOR_MODEL_STATE_CONTROL_STORAGE_ISOLATED" in log
+            if noisy:
+                assert (
+                    "CONNECTED_BEFORE_FIRST_RESET_NOISY_PLOTS_DO_NOT_COMPUTE_OR_CONSUME_RNG" in log
+                )
+    torch.testing.assert_close(
+        torch.load(tmp_path / "headless.pt", weights_only=True),
+        torch.load(tmp_path / "viewer.pt", weights_only=True),
+        rtol=0,
+        atol=0,
+    )
+
+
+@pytest.mark.requires_system
+def test_native_spectator_real_browser_train_replay_and_lifecycle(tmp_path):
+    import signal
+    import socket
+    import torch
+
+    for key in ("NEXUML_PLAYWRIGHT_MODULE", "NEXUML_CHROMIUM_EXECUTABLE"):
+        if not os.environ.get(key) or not Path(os.environ[key]).exists():
+            pytest.skip(f"{key} must select already-installed browser tooling; no installs")
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("An already-installed Node runtime is required for the browser probe")
+    with socket.socket() as reservation:
+        reservation.bind(("127.0.0.1", 0))
+        port = reservation.getsockname()[1]
+    assert port <= 64535
+    fixture = ROOT / "tests/fixtures/isaaclab_viser_job.py"
+    _run([fixture, "train", tmp_path / "train", port], tmp_path, "headless-train")
+    for mode in ("train-viewer", "replay-viewer", "failure-viewer", "cancel-viewer"):
+        assert shutil.disk_usage(ROOT).free >= 40 * 2**30
+        log_path = tmp_path / f"{mode}-browser.log"
+        with log_path.open("x") as log:
+            process = subprocess.Popen(
+                [
+                    node,
+                    str(ROOT / "tests/fixtures/isaaclab_viser_browser.cjs"),
+                    str(tmp_path / mode),
+                    mode,
+                    str(port),
+                ],
+                cwd=ROOT,
+                env=os.environ.copy(),
+                stdout=log,
+                stderr=subprocess.STDOUT,
+                start_new_session=True,
+            )
+            try:
+                process.wait(timeout=240)
+            finally:
+                if process.poll() is None:
+                    os.killpg(process.pid, signal.SIGTERM)
+                    try:
+                        process.wait(timeout=20)
+                    except subprocess.TimeoutExpired:
+                        os.killpg(process.pid, signal.SIGKILL)
+                process.wait(timeout=5)
+        assert process.returncode == 0, log_path.read_text()
+        assert "NATIVE_BROWSER_JOB_STATUS_AND_LISTENER_CLEANUP_VERIFIED" in log_path.read_text()
+        if mode == "train-viewer":
+            for name in ("trajectory.pt", "training-state.pt"):
+                torch.testing.assert_close(
+                    torch.load(tmp_path / "train" / name, weights_only=True),
+                    torch.load(tmp_path / mode / name, weights_only=True),
+                    rtol=0,
+                    atol=0,
+                )
+            _run([fixture, "replay", tmp_path / "replay", port], tmp_path, "headless-replay")
+        if mode == "replay-viewer":
+            torch.testing.assert_close(
+                torch.load(tmp_path / "replay/trajectory.pt", weights_only=True),
+                torch.load(tmp_path / "replay-viewer/trajectory.pt", weights_only=True),
+                rtol=0,
+                atol=0,
+            )
+        if mode in {"failure-viewer", "cancel-viewer"}:
+            finalizations = json.loads((tmp_path / mode / "logger-finalization.json").read_text())
+            assert finalizations and finalizations[-1]["status"] == "failed"
+            assert all(event["job_scope_active"] for event in finalizations)
+
+
+@pytest.mark.parametrize("mode", ["port-conflict", "startup-failure"])
+def test_native_spectator_partial_startup_releases_context_listener_and_threads(tmp_path, mode):
+    import socket
+
+    with socket.socket() as reservation:
+        reservation.bind(("127.0.0.1", 0))
+        port = reservation.getsockname()[1]
+    assert port <= 64535
+    log = _run(
+        [ROOT / "tests/fixtures/isaaclab_viser_job.py", mode, tmp_path / mode, port], tmp_path, mode
+    )
+    assert "NATIVE_PARTIAL_STARTUP_CONTEXT_LISTENER_AND_THREADS_RELEASED" in log
+
+
 @pytest.mark.parametrize("task", ["Isaac-Cartpole", "Isaac-Cartpole-Direct"])
 @pytest.mark.parametrize("mode", ["default", "default-reader", "native", "native-reader"])
 def test_native_public_wrapper_does_not_meet_the_complete_reset_contract(tmp_path, task, mode):

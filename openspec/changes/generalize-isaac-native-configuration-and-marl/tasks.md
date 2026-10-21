@@ -36,12 +36,12 @@ Dependency order: **0.1 feasibility → A → B → C → D**. If F0 fails, stop
 
 ## 3. Milestone C — Complete read-only Viser
 
-- [ ] 3.1 Implement the **F0**-qualified optional library adapter reusing native scene methods and explicit train/separate-replay activation; verify no-viewer isolation, private construction and no global/vendor patches under **S1, B1** (**V1, V3, V4**).
-- [ ] 3.2 Allow only camera/display/environment selection/marker/supported plot operations; deny mutation at registration, actual supported callback/HTTP/WebSocket dispatch and native control handoff. Verify direct/stale/forged requests and isolated camera/RNG/sensor behavior under **B1** (**V2, V3**).
-- [ ] 3.3 Integrate exact localhost address/port checks, conflicts/reassignment, startup failures and completion/failure/cancellation cleanup; verify fail-closed behavior and no lingering owned listeners/threads under **B1, B2** (**V1, V4**).
-- [ ] 3.4 Document explicit train/replay activation and SSH/VS Code tunnel access with headless independence; verify static examples and actual private browser commands under **S1, B2** (**V3, V4**).
-- [ ] 3.5 Execute actual browser training and separate replay sessions under **B2**: navigate camera, select environments, attempt mutations, disconnect/reconnect and cancel/fail/finish; verify equivalent logical simulator/control/counter state and cleanup independently of policy sensor acceptance (**V2, V3, V4, V5**).
-- [ ] 3.6 Review C's four states, require **B1+B2** (not mocks/headless success), and create its focused verified commit; retain exact blocker if safety/graphics cannot be qualified, without removing C from this pass (**V1, V5, PD6**).
+- [x] 3.1 Implement the **F0**-qualified optional library adapter reusing native scene methods and explicit train/separate-replay activation; verify no-viewer isolation, private construction and no global/vendor patches under **S1, B1** (**V1, V3, V4**).
+- [x] 3.2 Allow only camera/display/environment selection/marker/supported plot operations; deny mutation at registration, actual supported callback/HTTP/WebSocket dispatch and native control handoff. Verify direct/stale/forged requests and isolated camera/RNG/sensor behavior under **B1** (**V2, V3**).
+- [x] 3.3 Integrate exact localhost address/port checks, conflicts/reassignment, startup failures and completion/failure/cancellation cleanup; verify fail-closed behavior and no lingering owned listeners/threads under **B1, B2** (**V1, V4**).
+- [x] 3.4 Document explicit train/replay activation and SSH/VS Code tunnel access with headless independence; verify static examples and actual private browser commands under **S1, B2** (**V3, V4**).
+- [x] 3.5 Execute actual browser training and separate replay sessions under **B2**: navigate camera, select environments, attempt mutations, disconnect/reconnect and cancel/fail/finish; verify equivalent logical simulator/control/counter state and cleanup independently of policy sensor acceptance (**V2, V3, V4, V5**).
+- [x] 3.6 Review C's four states, require **B1+B2** (not mocks/headless success), and create its focused verified commit; retain exact blocker if safety/graphics cannot be qualified, without removing C from this pass (**V1, V5, PD6**).
 
 ## 4. Milestone D — Native TorchRL multi-agent learning
 

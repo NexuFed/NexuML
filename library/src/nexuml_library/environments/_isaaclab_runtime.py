@@ -106,10 +106,7 @@ def _create_environment(owner, definition, context):
         raise RuntimeError("Native environment conflicts with the active Isaac job definition")
     _process_definition = definition
     device = owner.device
-    if definition.viewer is not None and context.purpose in definition.viewer.purposes:
-        raise RuntimeError(
-            "Requested Viser spectator construction is not yet qualified; viewer gate remains open"
-        )
+    viewing = definition.viewer is not None and context.purpose in definition.viewer.purposes
     if device.type != "cuda" or not torch.cuda.is_available():
         raise ValueError("Isaac Lab requires a working single-GPU CUDA device")
     if context.purpose == "eval" and context.num_envs != 1:
@@ -151,7 +148,13 @@ def _create_environment(owner, definition, context):
         ).strip()
     if revision != definition.revision or sys.version_info[:2] != (3, 12):
         raise ValueError("Isaac Lab source revision/Python does not match the pinned profile")
-    if _active_runtime is not None or _process_launcher is not None or has_kit():
+    existing = sys.modules.get("isaaclab.sim.simulation_context")
+    if (
+        _active_runtime is not None
+        or _process_launcher is not None
+        or has_kit()
+        or (existing is not None and existing.SimulationContext.instance() is not None)
+    ):
         raise RuntimeError(
             "An Isaac application is already active; use fresh-process replay/training"
         )
@@ -211,11 +214,18 @@ def _create_environment(owner, definition, context):
         from nexuml_library.environments._isaaclab_rgb import configure_rgb
 
         configure_rgb(cfg, owner)
+    if viewing:
+        import_module("nexuml_library.environments._isaaclab_viser").configure_spectator(
+            cfg,
+            definition.viewer,
+            context.num_envs,
+        )
+        owner._spectator_type = cfg.sim.visualizer_cfgs[0].class_type
     args = {
         "headless": True,
         "fast_shutdown": True,
         "device": str(device),
-        "visualizer": ["none"],
+        "visualizer": ["viser"] if viewing else ["none"],
         "visualizer_explicit": True,
         "enable_cameras": owner._rendering,
     }
@@ -226,7 +236,16 @@ def _create_environment(owner, definition, context):
         # Kit's fast close must follow whole-job checkpoint/export/logger finalization.
         _process_launcher, owner._launcher = owner._launcher, None
     signal.signal(signal.SIGTERM, _terminate_job)
+    if viewing:
+        owner._context_class = import_module("isaaclab.sim").SimulationContext
     owner.native = gym.make(definition.task, cfg=cfg).unwrapped
+    if viewing:
+        visualizers = cast(Any, owner.native).sim.visualizers
+        if (
+            len(visualizers) != 1
+            or type(visualizers[0]) is not cfg.sim.visualizer_cfgs[0].class_type
+        ):
+            raise RuntimeError("Native launcher did not retain the qualified spectator")
     native_envs = import_module("isaaclab.envs")
     if isinstance(owner.native, native_envs.ManagerBasedRLEnv):
         owner._direct = False
@@ -248,6 +267,8 @@ class _IsaacLabRuntime:
     def __init__(self, definition, context):
         self.native: Any = None
         self._launcher = None
+        self._spectator_type = None
+        self._context_class = None
         self._closed = False
         self._observation = None
         self._pending_reset = None
@@ -621,12 +642,28 @@ class _IsaacLabRuntime:
         self._closed = True
         self._terminal_frame = None
         errors = []
+        context_class = self._context_class
+        if context_class is not None:
+            # gym.make() may fail after opening a viewer, before returning its environment.
+            sim = context_class.instance()
+            if sim is not None:
+                for visualizer in (*sim.visualizers, *sim._pending_visualizers):
+                    if type(visualizer) is self._spectator_type:
+                        try:
+                            visualizer.close()
+                        except BaseException as error:
+                            errors.append(error)
         native, self.native = self.native, None
         self._observation = self._pending_reset = None
         self._processing_state = self._processor = None
         if native is not None:
             try:
                 native.close()
+            except BaseException as error:
+                errors.append(error)
+        if context_class is not None and context_class.instance() is not None:
+            try:
+                context_class.clear_instance()
             except BaseException as error:
                 errors.append(error)
         native = None
