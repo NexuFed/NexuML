@@ -38,6 +38,7 @@ from nexuml_library.scenarios.maintenance.rul import (
     maintenance_rul_all,
     maintenance_rul_benchmark,
     maintenance_rul_cen2024_tsmixer_proxy,
+    maintenance_rul_goel2026_lstm_protocol,
     maintenance_rul_lu2025_tcn_protocol,
 )
 
@@ -445,6 +446,43 @@ def test_lu2025_preprocessing_sensor_minmax_and_cache_isolation(
         compiled.resolved_config.save(path)
         restored = ResolvedConfig.load(path).to_scenario()
         compile_pipeline(restored)
+
+
+def test_goel2026_lstm_architecture_and_training_protocol(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Resolved scenario reproduces Goel's LSTM head and known optimizer settings."""
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("NEXUML_RUL_PREPARED_FILE", raising=False)
+    scenario = maintenance_rul_goel2026_lstm_protocol()
+    source = scenario.data.datasets[0].source
+    assert isinstance(source, AutoCMapSSRULWindows)
+    assert source.window == 30
+    assert source.rul_cap == 130
+    assert source.normalization == "zscore"
+    assert len(source.sensor_ids or []) == 14
+    assert scenario.training.optimizer.factory == "torch.optim.rmsprop:RMSprop"
+    assert scenario.training.optimizer.kwargs["weight_decay"] == pytest.approx(1e-5)
+    assert scenario.training.lr == pytest.approx(1e-3)
+    assert scenario.training.batch_size == 64
+    assert scenario.training.max_epochs == 200
+    assert scenario.training.loss_keys == {"rul_loss": 1.0}
+    assert any("Goel2026PlateauLR" in item.factory for item in scenario.callbacks)
+    assert scenario.data.input_shapes["rul_history"] == [30, 14]
+
+    compiled = compile_pipeline(scenario)
+    x = TensorDict({"rul_history": torch.randn(2, 30, 14)}, batch_size=[2])
+    y = TensorDict({"rul": torch.tensor([[0.2], [0.4]])}, batch_size=[2])
+    output, _ = compiled(x, y)
+    assert output["predicted_rul"].shape == (2, 1)
+    output["rul_loss"].mean().backward()
+    assert any(parameter.grad is not None for parameter in compiled.parameters())
+    config = tmp_path / "goel2026.yaml"
+    compiled.resolved_config.save(config)
+    restored = ResolvedConfig.load(config).to_scenario()
+    assert restored.training.optimizer.factory == "torch.optim.rmsprop:RMSprop"
+    compile_pipeline(restored)
 
 
 def test_rul_rejects_window_level_cross_asset_leakage(tmp_path: Path) -> None:
