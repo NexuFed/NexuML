@@ -123,46 +123,29 @@ from the validated prepared artifact, so the same registered architectures
 work for both datasets. Each resolved configuration uses the standard
 NexuML Lightning training, validation, checkpoint, and test lifecycle.
 
-An optional `rul_configs` utility remains available for batch generation of
-resolved YAML files, but it is **not required** for training and is not part of
-the canonical workflow above.
+### One native NexuML scenario for all six RUL models
 
-### Run the complete independent RUL scenario suite
-
-NexuML's `ScenarioSpec` describes **one** training pipeline. It cannot
-nest six independent model-training scenarios. The library therefore provides
-a thin **suite orchestrator** that executes the conventional NexuML CLI
-separately for every registered model, with no custom training loop and
-no changes to the core framework.
+`maintenance-rul-all` is a **registered NexuML scenario** containing
+the five point-regression models and the quantile TCN as separate branches.
+No external suite script, custom trainer, or direct compiler invocation is
+required. Use the **same two commands** as any other NexuML scenario:
 
 ```bash
-python -m nexuml_library.evaluation.maintenance.rul_suite \
-  --prepared-files \
-    .experiments/rul/prepared/cmapss-FD001-seed42.pt \
-    .experiments/rul/prepared/xjtu-sy-seed42.pt \
-  --output-dir .experiments/rul/suite-seed42
+export NEXUML_RUL_PREPARED_FILE="$(realpath .experiments/rul/prepared/cmapss-FD001-seed42.pt)"
+
+nexuml resolve maintenance-rul-all --output .experiments/rul-all.yaml
+nexuml train --config .experiments/rul-all.yaml
 ```
 
-The suite runs **six registered model scenarios per prepared dataset**:
-feature MLP, LSTM, TCN, Transformer, TSMixer and quantile TCN. This yields
-12 **independent** training runs for the two files above, never a jointly
-optimized multi-head model. Every run uses, in order:
-
-1. `nexuml resolve SCENARIO --output CONFIG`
-2. `nexuml build CONFIG`
-3. `nexuml train --config CONFIG`
-
-The suite stores its resolved YAML files, CLI logs, isolated checkpoint roots,
-and per-run statuses in `<output-dir>/manifest.json`. It stops at the first
-failed NexuML command and records that failure. To protect provenance, it
-refuses to overwrite an existing output directory. Run a fresh directory for
-another seed or parameter sweep. Training and test metric computation remain
-inside the normal NexuML CLI lifecycle.
-
-For a small CLI smoke run, `--max-epochs 1` passes NexuML's existing
-training override to each run. Select a subset with `--scenarios NAME ...`.
-The `maintenance-rul-benchmark` alias is not repeated, since it duplicates
-the TCN point-regression configuration.
+Each model has its own trainable parameters, prediction tensor, loss, metrics,
+and named held-out RUL evaluator. The scenario has one datasource, one shared
+optimizer and training schedule, and one aggregate validation-loss checkpoint.
+Therefore this is a **jointly executed multi-branch comparison**, not six
+independent training/early-stopping runs. To benchmark fully independent model
+selection, use the six individual registered scenario names listed above and
+invoke the same native `nexuml resolve` and `nexuml train --config` commands
+for each. Different datasets (C-MAPSS versus XJTU-SY) also require their
+own resolved scenario, because their sensor-window shapes and RUL units differ.
 
 ### D. Quantile predictions
 
@@ -211,6 +194,5 @@ ruff format --check .
 ty check
 pytest tests/library/test_rul_benchmarks.py -v
 pytest tests/library/test_rul_native_cli.py -v
-pytest tests/library/test_rul_suite.py -v
 pytest tests/_registry -v
 ```
