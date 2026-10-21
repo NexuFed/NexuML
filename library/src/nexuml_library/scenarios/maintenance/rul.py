@@ -453,7 +453,9 @@ def maintenance_rul_all(
     return baseline.model_copy(
         update={
             "name": run_name,
-            "pipeline": PipelineSpec(stages={"RULModels": models, "RULLoss": objectives_and_metrics}),
+            "pipeline": PipelineSpec(
+                stages={"RULModels": models, "RULLoss": objectives_and_metrics}
+            ),
             "training": baseline.training.model_copy(
                 update={"loss_keys": loss_keys, "metric_keys": metric_keys}
             ),
