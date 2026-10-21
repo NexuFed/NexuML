@@ -118,6 +118,7 @@ def maintenance_rul_benchmark(
         depth=depth,
         dropout=dropout,
         output_dim=output_dim,
+        initialization_seed=seed,
     )
     pipeline = PipelineSpec(
         stages={
