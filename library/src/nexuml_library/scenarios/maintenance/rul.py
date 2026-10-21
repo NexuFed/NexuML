@@ -234,3 +234,63 @@ def maintenance_rul_benchmark(
             ),
         ],
     )
+
+
+@scenario("maintenance-rul-feature-mlp")
+def maintenance_rul_feature_mlp() -> ScenarioSpec:
+    """Construct the feature-window MLP RUL benchmark as a registered NexuML scenario.
+
+    Returns:
+        Typed feature-window MLP regression scenario for native resolve and train.
+    """
+    return maintenance_rul_benchmark(architecture="feature_mlp")
+
+
+@scenario("maintenance-rul-lstm")
+def maintenance_rul_lstm() -> ScenarioSpec:
+    """Construct the LSTM RUL benchmark as a registered NexuML scenario.
+
+    Returns:
+        Typed LSTM regression scenario for native resolve and train.
+    """
+    return maintenance_rul_benchmark(architecture="lstm")
+
+
+@scenario("maintenance-rul-tcn")
+def maintenance_rul_tcn() -> ScenarioSpec:
+    """Construct the causal TCN RUL benchmark as a registered NexuML scenario.
+
+    Returns:
+        Typed causal TCN regression scenario for native resolve and train.
+    """
+    return maintenance_rul_benchmark(architecture="tcn")
+
+
+@scenario("maintenance-rul-transformer")
+def maintenance_rul_transformer() -> ScenarioSpec:
+    """Construct the causal Transformer RUL benchmark as a registered NexuML scenario.
+
+    Returns:
+        Typed causal Transformer regression scenario for native resolve and train.
+    """
+    return maintenance_rul_benchmark(architecture="transformer")
+
+
+@scenario("maintenance-rul-tsmixer")
+def maintenance_rul_tsmixer() -> ScenarioSpec:
+    """Construct the TSMixer RUL benchmark as a registered NexuML scenario.
+
+    Returns:
+        Typed TSMixer regression scenario for native resolve and train.
+    """
+    return maintenance_rul_benchmark(architecture="tsmixer")
+
+
+@scenario("maintenance-rul-quantile-tcn")
+def maintenance_rul_quantile_tcn() -> ScenarioSpec:
+    """Construct the quantile TCN RUL benchmark as a registered scenario.
+
+    Returns:
+        Typed quantile regression scenario for native resolve and train.
+    """
+    return maintenance_rul_benchmark(architecture="tcn", objective="quantile")
