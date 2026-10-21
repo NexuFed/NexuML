@@ -38,6 +38,7 @@ from nexuml_library.layers.model.rul_forecaster import (
     RULRegressionObjective,
     TemporalRULForecaster,
 )
+from nexuml_library.layers.model.rul_paper_cnn import Goel2026CNNForecaster
 from nexuml_library.layers.model.rul_paper_lstm import Goel2026LSTMForecaster
 from nexuml_library.layers.model.rul_metrics import RULRegressionMetrics
 from nexuml_library.scenarios.training.defaults import (
@@ -701,6 +702,59 @@ def maintenance_rul_goel2026_lstm_protocol() -> ScenarioSpec:
             ),
             "callbacks": [
                 *base.callbacks,
+                callback(Goel2026PlateauLR, factor=0.5, patience=5),
+            ],
+        }
+    )
+
+
+@scenario("maintenance-rul-goel2026-cnn-protocol")
+def maintenance_rul_goel2026_cnn_protocol() -> ScenarioSpec:
+    """Apply Goel et al. (2026) FD001 CNN architecture and training protocol.
+
+    Matches their three 3x1 convolution blocks, dropout, 128-unit regression
+    head, and the same native RMSprop and plateau schedule as their LSTM.
+
+    Returns:
+        Native NexuML scenario with paper-aligned CNN model and data source.
+    """
+    baseline = maintenance_rul_goel2026_lstm_protocol()
+    run_name = baseline.name.replace("-lstm-", "-cnn-")
+    checkpoint_root = (
+        (os.environ.get("NEXUML_RUL_CHECKPOINT_ROOT") or "").strip()
+        or ".experiments/rul/checkpoints"
+    )
+    checkpoint_dir = Path(checkpoint_root).expanduser().resolve() / run_name
+    cnn_layer = LayerSpec(
+        component=Goel2026CNNForecaster(dropout=0.3, initialization_seed=42),
+        keys_in=["rul_history"],
+        keys_out=["predicted_rul"],
+    )
+    return baseline.model_copy(
+        update={
+            "name": run_name,
+            "logging": (
+                baseline.logging.model_copy(update={"run_name": run_name})
+                if baseline.logging is not None
+                else None
+            ),
+            "pipeline": PipelineSpec(
+                stages={
+                    "RULModel": [cnn_layer],
+                    "RULLoss": baseline.pipeline.stages["RULLoss"],
+                }
+            ),
+            "callbacks": [
+                callback(RULSeedOnFitStart, seed=42),
+                callback(
+                    ModelCheckpoint,
+                    dirpath=str(checkpoint_dir),
+                    monitor="val/loss",
+                    mode="min",
+                    save_top_k=1,
+                    save_last=True,
+                ),
+                callback(EarlyStopping, monitor="val/loss", patience=20, mode="min"),
                 callback(Goel2026PlateauLR, factor=0.5, patience=5),
             ],
         }
