@@ -133,7 +133,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--prepared-files", nargs="+", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
-    parser.add_argument("--architectures", nargs="+", default=list(MODEL_CHOICES), choices=MODEL_CHOICES)
+    parser.add_argument(
+        "--architectures", nargs="+", default=list(MODEL_CHOICES), choices=MODEL_CHOICES
+    )
     parser.add_argument(
         "--objectives", nargs="+", default=["huber"],
         choices=("mse", "mae", "huber", "quantile"),
