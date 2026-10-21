@@ -17,6 +17,7 @@ from nexuml.core.discovery import scenario
 from nexuml.core.types import (
     DataSpec,
     DatasetSpec,
+    EvalAlgorithmSpec,
     EvaluationSpec,
     LayerSpec,
     LoaderSpec,
@@ -24,6 +25,8 @@ from nexuml.core.types import (
     ScenarioSpec,
 )
 from nexuml_library.data.maintenance.rul import PreparedRULWindows, read_rul_artifact
+from nexuml_library.evaluation.maintenance.rul_evaluator import RULBenchmarkEvaluator
+from nexuml_library.evaluation.maintenance.rul_seed import RULSeedOnFitStart
 from nexuml_library.layers.model.rul_forecaster import (
     RULRegressionObjective,
     TemporalRULForecaster,
@@ -165,13 +168,32 @@ def maintenance_rul_benchmark(
             loss_keys={"rul_loss": 1.0},
             metric_keys=["rul_mae", "rul_rmse", "rul_late_error"],
         ),
-        evaluation=EvaluationSpec(metrics=[], algorithms=[]),
+        evaluation=EvaluationSpec(
+            metrics=[],
+            algorithms=[
+                EvalAlgorithmSpec(
+                    algorithm=RULBenchmarkEvaluator(
+                        target_scale=float(settings["target_scale"]),
+                        point_index=(
+                            min(range(len(q)), key=lambda i: abs(q[i] - 0.5))
+                            if objective == "quantile" else 0
+                        ),
+                        lower_index=0 if objective == "quantile" else None,
+                        upper_index=len(q) - 1 if objective == "quantile" else None,
+                    ),
+                    feature_key="predicted_rul",
+                    label_key="rul",
+                )
+            ],
+            test_result_metrics="all",
+        ),
         logging=default_logging(
             experiment_name="NEX-233 Remaining Useful Life",
             run_name=run_name,
             use_mlflow=False,
         ),
         callbacks=[
+            callback(RULSeedOnFitStart, seed=seed),
             callback(
                 ModelCheckpoint,
                 dirpath=str(checkpoint_dir),
