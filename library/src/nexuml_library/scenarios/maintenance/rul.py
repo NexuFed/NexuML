@@ -555,3 +555,63 @@ def maintenance_rul_all(
             ],
         }
     )
+
+
+# Published data and optimizer settings are not themselves architecture reproductions.
+# Both research papers include dedicated model modules absent from TemporalRULForecaster.
+_LU2025_SENSORS: list[int] = [
+    2, 3, 4, 7, 8, 9, 11, 12, 13, 14, 15, 17, 20, 21
+]
+
+
+@scenario("maintenance-rul-lu2025-tcn-protocol")
+def maintenance_rul_lu2025_tcn_protocol() -> ScenarioSpec:
+    """Match Lu et al. (2025) FD001 preprocessing/training settings with a TCN proxy.
+
+    This is a parameter/protocol control, not Lu's AD-TCN-MSCDIM architecture.
+    The original paper's adaptive dilation and cross-dimension modules are not
+    part of NexuML's generic TCN. Unreported loss/depth/dropout choices remain
+    NexuML proxies and cannot support an exact published-result comparison.
+
+    Returns:
+        Native NexuML scenario with paper-parameterized FD001 TCN baseline.
+    """
+    return maintenance_rul_benchmark(
+        architecture="tcn",
+        objective="mse",
+        cmapss_window=40,
+        cmapss_stride=1,
+        cmapss_sensor_ids=_LU2025_SENSORS,
+        cmapss_normalization="minmax",
+        cmapss_rul_cap=125.0,
+        cmapss_profile="lu2025-tcn-protocol",
+        hidden_dim=32,
+        batch_size=256,
+        lr=1e-3,
+        max_epochs=300,
+    )
+
+
+@scenario("maintenance-rul-cen2024-tsmixer-proxy")
+def maintenance_rul_cen2024_tsmixer_proxy() -> ScenarioSpec:
+    """Use Cen et al. (2024) FD001 protocol with NexuML's TSMixer proxy.
+
+    The paper uses MFSSCINet, not TSMixer; its feature/sequence attention
+    and SCINet interaction modules are NOT reproduced here. This scenario
+    only aligns confirmed data, objective, optimizer and batching choices.
+
+    Returns:
+        Native NexuML parameter-controlled TSMixer baseline, not MFSSCINet.
+    """
+    return maintenance_rul_benchmark(
+        architecture="tsmixer",
+        objective="mse",
+        cmapss_window=28,
+        cmapss_stride=1,
+        cmapss_sensor_ids=_LU2025_SENSORS,
+        cmapss_normalization="minmax",
+        cmapss_rul_cap=120.0,
+        cmapss_profile="cen2024-tsmixer-proxy",
+        batch_size=256,
+        lr=0.01,
+    )
