@@ -301,3 +301,179 @@ def maintenance_rul_quantile_tcn() -> ScenarioSpec:
         Typed quantile regression scenario for native resolve and train.
     """
     return maintenance_rul_benchmark(architecture="tcn", objective="quantile")
+
+# A single ordinary ScenarioSpec can train several independent model heads
+# on the same prepared data, but NexuML checkpoints and early stopping act
+# on the shared run. This is not six independently tuned training sessions.
+_RUL_COMPOSITE_ARCHITECTURES: tuple[
+    Literal["feature_mlp", "lstm", "tcn", "transformer", "tsmixer"], ...
+] = ("feature_mlp", "lstm", "tcn", "transformer", "tsmixer")
+
+
+@scenario("maintenance-rul-all")
+def maintenance_rul_all(
+    prepared_file: str | Path | None = None,
+    *,
+    hidden_dim: int = 96,
+    depth: int = 3,
+    dropout: float = 0.1,
+    lr: float = 3e-4,
+    batch_size: int = 64,
+    max_epochs: int = 150,
+    patience: int = 20,
+    seed: int | None = None,
+    checkpoint_root: str | Path | None = None,
+) -> ScenarioSpec:
+    """Train six RUL heads together using one native NexuML scenario.
+
+    The point-regression models and quantile TCN receive the same sensor
+    windows but have disjoint parameters, predictions, losses and metrics.
+    They share one optimizer, aggregate validation loss and checkpoint, so
+    this scenario is not a substitute for independently selected baselines.
+
+    Args:
+        prepared_file: Immutable RUL artifact or the standard environment override.
+        hidden_dim: Width of each model backbone.
+        depth: Depth of each model backbone.
+        dropout: Regularization applied to each backbone.
+        lr: Shared optimizer learning rate.
+        batch_size: Shared minibatch size.
+        max_epochs: Maximum number of training epochs.
+        patience: Early stopping patience for the aggregate loss.
+        seed: Optional split seed; inherited from the prepared artifact by default.
+        checkpoint_root: Optional NexuML checkpoint root.
+
+    Returns:
+        Composite ScenarioSpec for native nexuml resolve and train.
+
+    Raises:
+        ValueError: If the source artifact or requested configuration is invalid.
+        FileNotFoundError: If an explicitly selected prepared artifact does not exist.
+    """
+    baseline = maintenance_rul_benchmark(
+        prepared_file=prepared_file,
+        architecture="tcn",
+        objective="huber",
+        hidden_dim=hidden_dim,
+        depth=depth,
+        dropout=dropout,
+        lr=lr,
+        batch_size=batch_size,
+        max_epochs=max_epochs,
+        patience=patience,
+        seed=seed,
+        checkpoint_root=checkpoint_root,
+    )
+    baseline_model = baseline.pipeline.stages["RULModel"][0].component
+    assert isinstance(baseline_model, TemporalRULForecaster)
+    resolved_seed = baseline_model.initialization_seed
+    baseline_evaluator = baseline.evaluation.algorithms[0].algorithm
+    assert isinstance(baseline_evaluator, RULBenchmarkEvaluator)
+    target_scale = baseline_evaluator.target_scale
+
+    models: list[LayerSpec] = []
+    objectives_and_metrics: list[LayerSpec] = []
+    evaluators: list[EvalAlgorithmSpec] = []
+    loss_keys: dict[str, float] = {}
+    metric_keys: list[str] = []
+    branches = [(name, name, False) for name in _RUL_COMPOSITE_ARCHITECTURES]
+    branches.append(("quantile_tcn", "tcn", True))
+    for name, architecture, quantile in branches:
+        prediction_key = f"predicted_rul_{name}"
+        loss_key = f"rul_loss_{name}"
+        local_metric_keys = [
+            f"rul_mae_{name}", f"rul_rmse_{name}", f"rul_late_error_{name}"
+        ]
+        models.append(
+            LayerSpec(
+                component=TemporalRULForecaster(
+                    architecture=architecture,
+                    hidden_dim=hidden_dim,
+                    depth=depth,
+                    dropout=dropout,
+                    output_dim=3 if quantile else 1,
+                    initialization_seed=resolved_seed,
+                ),
+                keys_in=["rul_history"],
+                keys_out=[prediction_key],
+            )
+        )
+        objectives_and_metrics.extend(
+            [
+                LayerSpec(
+                    component=RULRegressionObjective(
+                        objective="quantile" if quantile else "huber"
+                    ),
+                    keys_in=[prediction_key],
+                    keys_out=[loss_key],
+                    label_key="rul",
+                ),
+                LayerSpec(
+                    component=RULRegressionMetrics(
+                        target_scale=target_scale,
+                        prediction_index=1 if quantile else 0,
+                    ),
+                    keys_in=[prediction_key],
+                    keys_out=local_metric_keys,
+                    label_key="rul",
+                ),
+            ]
+        )
+        loss_keys[loss_key] = 1.0 / 6.0
+        metric_keys.extend(local_metric_keys)
+        evaluators.append(
+            EvalAlgorithmSpec(
+                name=f"rul_{name}",
+                algorithm=RULBenchmarkEvaluator(
+                    target_scale=target_scale,
+                    point_index=1 if quantile else 0,
+                    lower_index=0 if quantile else None,
+                    upper_index=2 if quantile else None,
+                ),
+                feature_key=prediction_key,
+                label_key="rul",
+            )
+        )
+
+    run_name = baseline.name.replace("-tcn-huber-seed", "-all-seed")
+    selected_checkpoint_root = (
+        checkpoint_root
+        if checkpoint_root is not None
+        else os.environ.get("NEXUML_RUL_CHECKPOINT_ROOT", ".experiments/rul/checkpoints")
+    )
+    checkpoint_dir = Path(selected_checkpoint_root).expanduser().resolve() / run_name
+    logging = (
+        baseline.logging.model_copy(update={"run_name": run_name})
+        if baseline.logging is not None
+        else None
+    )
+    return baseline.model_copy(
+        update={
+            "name": run_name,
+            "pipeline": PipelineSpec(
+                stages={"RULModels": models, "RULLoss": objectives_and_metrics}
+            ),
+            "training": baseline.training.model_copy(
+                update={"loss_keys": loss_keys, "metric_keys": metric_keys}
+            ),
+            "evaluation": baseline.evaluation.model_copy(update={"algorithms": evaluators}),
+            "logging": logging,
+            "callbacks": [
+                callback(RULSeedOnFitStart, seed=resolved_seed),
+                callback(
+                    ModelCheckpoint,
+                    dirpath=str(checkpoint_dir),
+                    monitor="val/loss",
+                    mode="min",
+                    save_top_k=1,
+                    save_last=True,
+                ),
+                callback(
+                    EarlyStopping,
+                    monitor="val/loss",
+                    patience=patience,
+                    mode="min",
+                ),
+            ],
+        }
+    )
