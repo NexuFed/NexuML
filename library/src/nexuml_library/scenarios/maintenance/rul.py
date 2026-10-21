@@ -56,7 +56,7 @@ def maintenance_rul_benchmark(
     max_epochs: int = 150,
     patience: int = 20,
     seed: int | None = None,
-    checkpoint_root: str | Path = ".experiments/rul/checkpoints",
+    checkpoint_root: str | Path | None = None,
 ) -> ScenarioSpec:
     """Build an official NexuML regression scenario on prepared RUL trajectories.
 
@@ -80,7 +80,8 @@ def maintenance_rul_benchmark(
         max_epochs: Upper bound on optimization epochs.
         patience: Validation loss early-stopping patience.
         seed: Optional required split seed; defaults to the prepared artifact seed.
-        checkpoint_root: User-specified experiment output path.
+        checkpoint_root: Optional checkpoint root; defaults to
+            NEXUML_RUL_CHECKPOINT_ROOT or .experiments/rul/checkpoints.
 
     Returns:
         Fully typed scenario suitable for NexuML YAML resolution and training.
@@ -129,7 +130,12 @@ def maintenance_rul_benchmark(
         f"rul-{settings['dataset']}-{settings.get('subset', 'all')}-"
         f"{architecture}-{objective}-seed{resolved_seed}"
     )
-    checkpoint_dir = Path(checkpoint_root).expanduser().resolve() / run_name
+    selected_checkpoint_root = (
+        checkpoint_root
+        if checkpoint_root is not None
+        else os.environ.get("NEXUML_RUL_CHECKPOINT_ROOT", ".experiments/rul/checkpoints")
+    )
+    checkpoint_dir = Path(selected_checkpoint_root).expanduser().resolve() / run_name
     data = DataSpec(
         datasets=[
             DatasetSpec(
