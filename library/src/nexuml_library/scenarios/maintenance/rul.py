@@ -144,6 +144,7 @@ def maintenance_rul_benchmark(
         else os.environ.get("NEXUML_RUL_CHECKPOINT_ROOT", ".experiments/rul/checkpoints")
     )
     checkpoint_dir = Path(selected_checkpoint_root).expanduser().resolve() / run_name
+    source_definition: AutoCMapSSRULWindows | PreparedRULWindows
     if prepared_file is None and configured_file is None:
         source_definition = AutoCMapSSRULWindows(
             root=str(
