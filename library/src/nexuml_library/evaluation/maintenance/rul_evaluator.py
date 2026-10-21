@@ -22,6 +22,7 @@ class RULBenchmarkEvaluator(EvalAlgorithmDefinition):
     point_index: int = Field(default=0, ge=0)
     lower_index: int | None = Field(default=None, ge=0)
     upper_index: int | None = Field(default=None, ge=0)
+    include_nasa_score: bool = False
 
     def build(self, context: EvalBuildContext) -> EvalAlgorithm:
         """Create a streaming test metric accumulator.
@@ -36,6 +37,7 @@ class RULBenchmarkEvaluator(EvalAlgorithmDefinition):
             point_index=self.point_index,
             lower_index=self.lower_index,
             upper_index=self.upper_index,
+            include_nasa_score=self.include_nasa_score,
         )
 
 
@@ -51,6 +53,7 @@ class _RULBenchmarkRuntime(EvalAlgorithm):
         point_index: int,
         lower_index: int | None,
         upper_index: int | None,
+        include_nasa_score: bool = False,
     ) -> None:
         self.prediction_key = prediction_key
         self.label_key = label_key
@@ -58,6 +61,8 @@ class _RULBenchmarkRuntime(EvalAlgorithm):
         self.point_index = point_index
         self.lower_index = lower_index
         self.upper_index = upper_index
+        self.include_nasa_score = include_nasa_score
+        self.nasa_score = 0.0
         self.count = 0
         self.absolute = 0.0
         self.square = 0.0
@@ -89,6 +94,11 @@ class _RULBenchmarkRuntime(EvalAlgorithm):
         self.absolute += float(error.abs().sum())
         self.square += float(error.square().sum())
         self.late += float(error.clamp_min(0).sum())
+        if self.include_nasa_score:
+            positive = error[error >= 0].double()
+            negative = error[error < 0].double()
+            self.nasa_score += float(positive.div(10.0).expm1().sum())
+            self.nasa_score += float(negative.neg().div(13.0).expm1().sum())
         if self.lower_index is not None and self.upper_index is not None:
             if max(self.lower_index, self.upper_index) >= predicted.shape[1]:
                 raise ValueError("RUL prediction interval indices exceed output channels")
@@ -123,6 +133,8 @@ class _RULBenchmarkRuntime(EvalAlgorithm):
             "rul_test_late_bias": self.late / self.count,
             "rul_test_count": float(self.count),
         }
+        if self.include_nasa_score:
+            result["rul_test_nasa_score"] = self.nasa_score
         if self.lower_index is not None and self.upper_index is not None:
             result["rul_test_interval_coverage"] = self.covered / self.count
             result["rul_test_interval_width"] = self.interval_width / self.count
