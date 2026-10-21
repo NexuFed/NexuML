@@ -9,6 +9,7 @@ from pathlib import Path
 import numpy as np
 
 from nexuml.core.config import ResolvedConfig
+from nexuml_library.data.maintenance.rul import PreparedRULWindows
 from nexuml_library.evaluation.maintenance.rul_prepare import (
     prepare_cmapss,
     save_rul_artifact,
@@ -57,4 +58,6 @@ def test_native_nexuml_rul_cli_build_and_train(tmp_path: Path) -> None:
         assert result.returncode == 0, result.stdout + "\n" + result.stderr
     restored = ResolvedConfig.load(path).to_scenario()
     assert restored.data.input_shapes["rul_history"] == [3, 24]
-    assert restored.data.datasets[0].source.path == str(artifact)
+    source = restored.data.datasets[0].source
+    assert isinstance(source, PreparedRULWindows)
+    assert source.path == str(artifact)
