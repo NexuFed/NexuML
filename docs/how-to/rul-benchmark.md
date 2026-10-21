@@ -177,7 +177,8 @@ must be measured on held-out assets before making reliable-interval claims.
 
 Re-run preparation with `--seed 43`, `44`, etc., giving each run a new
 artifact and output YAML path. Set `NEXUML_RUL_PREPARED_FILE` to each artifact
-when invoking `nexuml resolve`; the scenario derives that artifact's seed. All windows from one physical asset must remain in one split.
+when invoking `nexuml resolve`; the scenario derives that artifact's seed.
+All windows from one physical asset must remain in one split.
 These seeds resample the same equipment; do not treat repeated seed runs as
 independent new machines or claim confidence from more window counts.
 
