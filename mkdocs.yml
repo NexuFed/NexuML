@@ -97,6 +97,7 @@ nav:
     - Training and evaluation:
       - Train a model: how-to/train.md
       - Reinforcement learning: how-to/reinforcement-learning.md
+      - State-only Isaac Cartpole: how-to/isaac-cartpole.md
       - SO-101 local fit SDK: how-to/so101-local-fit.md
       - Evaluate a model: how-to/evaluate.md
       - Checkpoints: how-to/checkpoints.md
