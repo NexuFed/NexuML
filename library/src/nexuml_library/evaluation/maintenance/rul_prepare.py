@@ -192,11 +192,9 @@ def prepare_cmapss(
         raise ValueError("C-MAPSS sensor selection must be unique IDs in 1..21")
     if normalization not in {"zscore", "minmax"}:
         raise ValueError("C-MAPSS normalization must be zscore or minmax")
-    indices = (
-        [0, 1, 2, *range(3, 24)]
-        if sensor_ids is None
-        else [sensor + 2 for sensor in sensor_ids]
-    )
+    indices = list(range(24)) if sensor_ids is None else [
+        sensor + 2 for sensor in sensor_ids
+    ]
     root = Path(root).expanduser()
     train = _cmapss_table(root / f"train_{subset}.txt")
     test = _cmapss_table(root / f"test_{subset}.txt")
@@ -249,6 +247,12 @@ def prepare_cmapss(
     features, targets, rows = _windowize(
         normalized, window=window, stride=stride, final_only_test=final_only_test
     )
+    feature_names = (
+        [f"setting_{i}" for i in range(1, 4)]
+        + [f"sensor_{i}" for i in range(1, 22)]
+        if sensor_ids is None
+        else [f"sensor_{i}" for i in sensor_ids]
+    )
     return {
         "format": "nexuml-rul-windows-v1",
         "features": features,
@@ -265,11 +269,7 @@ def prepare_cmapss(
             "rul_cap": rul_cap,
             "sensor_ids": sensor_ids,
             "normalization": normalization,
-            "feature_names": (
-                [*(f"setting_{i}" for i in range(1, 4)),
-                 *(f"sensor_{i}" for i in range(1, 22))]
-                if sensor_ids is None else [f"sensor_{i}" for i in sensor_ids]
-            ),
+            "feature_names": feature_names,
             "scaler": scaler,
             "split_assets": {
                 split: sorted({row["asset_id"] for row in rows if row["split"] == split})
