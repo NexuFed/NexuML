@@ -51,14 +51,16 @@ class _RULMetricsRuntime(PipelineLayer):
         self.prediction_index = prediction_index
 
     def forward(
-        self, x: TensorDict, y: TensorDict | None = None,
-    ) -> tuple[TensorDict, TensorDict | None]:
+        self, x: TensorDict | Tensor, y: TensorDict | None = None,
+    ) -> tuple[TensorDict | Tensor, TensorDict | None]:
         """Emit MAE, RMSE and positive late-prediction excess per batch.
 
         Returns:
             Existing feature/label pair with metric outputs. Errors have
             the original dataset's target unit (cycles or recordings).
         """
+        if not isinstance(x, TensorDict):
+            raise TypeError("RUL metrics expect a NexuML TensorDict")
         preds = cast(Tensor, x[cast(list[str], self.keys_in)[0]])
         truth = self.get_label(x, y)
         if truth is None:
