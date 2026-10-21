@@ -18,33 +18,6 @@ from nexuml.core.components import LayerBuildContext, LayerDefinition
 from nexuml.core.discovery import layer
 
 
-class _ResidualTCNBlock(nn.Module):
-    """Length-preserving residual dilated temporal convolution."""
-
-    def __init__(self, channels: int, dilation: int, dropout: float) -> None:
-        super().__init__()
-        self.branch = nn.Sequential(
-            nn.Conv1d(
-                channels, channels, kernel_size=3,
-                dilation=dilation, padding=dilation,
-            ),
-            nn.GELU(),
-            nn.Dropout(dropout),
-            nn.Conv1d(channels, channels, kernel_size=3,
-                      dilation=dilation, padding=dilation),
-            nn.Dropout(dropout),
-        )
-        self.activation = nn.GELU()
-
-    def forward(self, x: Tensor) -> Tensor:
-        """Apply two padded convolutions and residual connection.
-
-        Returns:
-            Features with the same channel and temporal dimensions.
-        """
-        return self.activation(x + self.branch(x))
-
-
 class _CausalTCNBlock(nn.Module):
     """Causal residual TCN block without future-time leakage."""
 
@@ -245,13 +218,15 @@ class _RULObjectiveRuntime(PipelineLayer):
         self.quantiles = quantiles if quantiles is not None else [0.1, 0.5, 0.9]
 
     def forward(
-        self, x: TensorDict, y: TensorDict | None = None,
-    ) -> tuple[TensorDict, TensorDict | None]:
+        self, x: TensorDict | Tensor, y: TensorDict | None = None,
+    ) -> tuple[TensorDict | Tensor, TensorDict | None]:
         """Populate NexuML's scalar RUL loss from normalized targets.
 
         Returns:
             Unmodified labels and features with an additional loss key.
         """
+        if not isinstance(x, TensorDict):
+            raise TypeError("RUL loss expects a NexuML TensorDict")
         predicted = cast(Tensor, x[cast(list[str], self.keys_in)[0]])
         target = self.get_label(x, y)
         if target is None:
