@@ -238,6 +238,20 @@ def test_resolved_scenario_roundtrip_and_no_custom_training(tmp_path: Path) -> N
         resolve_rul_configs([artifact], tmp_path / "configs")
 
 
+def test_default_rul_scenario_resolves_without_prepared_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Registry scenarios compile before the default FD001 artifact is prepared."""
+    monkeypatch.delenv("NEXUML_RUL_PREPARED_FILE", raising=False)
+    monkeypatch.chdir(tmp_path)
+    scenario = maintenance_rul_benchmark()
+    assert scenario.data.input_shapes["rul_history"] == [30, 24]
+    assert scenario.data.datasets[0].source is not None
+    compile_pipeline(scenario)
+    with pytest.raises(FileNotFoundError, match="Prepared RUL artifact"):
+        maintenance_rul_benchmark(tmp_path / "missing.pt")
+
+
 def test_rul_rejects_window_level_cross_asset_leakage(tmp_path: Path) -> None:
     """Prepared metadata cannot relabel a training asset as an evaluation asset."""
     root = tmp_path / "cmapss"
