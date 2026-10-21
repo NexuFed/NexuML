@@ -6,7 +6,7 @@ verbatim reproductions of specific leaderboard-winning paper variants.
 
 from __future__ import annotations
 
-from typing import Literal, cast
+from typing import Any, Literal, cast
 
 import torch
 from pydantic import Field
@@ -103,7 +103,7 @@ class _TemporalRULRuntime(PipelineLayer):
         dropout: float = 0.1,
         attention_heads: int = 4,
         output_dim: int = 1,
-        **kwargs: object,
+        **kwargs: Any,
     ) -> None:
         super().__init__(input_sizes=input_sizes, keys_in=keys_in, keys_out=keys_out, **kwargs)
         length, channels = tuple(input_sizes[keys_in[0]])
@@ -214,7 +214,7 @@ class _RULObjectiveRuntime(PipelineLayer):
     def __init__(
         self, input_sizes: dict[str, tuple], keys_in: list[str], keys_out: list[str],
         objective: str = "huber", quantiles: list[float] | None = None,
-        label_key: str = "rul", **kwargs: object,
+        label_key: str = "rul", **kwargs: Any,
     ) -> None:
         super().__init__(
             input_sizes=input_sizes, keys_in=keys_in, keys_out=keys_out,
