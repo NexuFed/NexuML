@@ -59,3 +59,26 @@ def test_native_nexuml_rul_cli_build_and_train(tmp_path: Path, scenario_name: st
     assert source.download is True
     assert source.root == str(root)
     assert Path(source.artifact_path).is_file()
+
+
+def test_native_resolve_with_empty_prepared_override(tmp_path: Path) -> None:
+    """The public CLI must ignore blank overrides and resolve without raw data."""
+    config = tmp_path / "rul-all.yaml"
+    env = os.environ.copy()
+    env["NEXUML_RUL_PREPARED_FILE"] = ""
+    result = subprocess.run(
+        ["nexuml", "resolve", "maintenance-rul-all", "--output", str(config)],
+        cwd=tmp_path,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=120,
+    )
+    assert result.returncode == 0, result.stdout + "\n" + result.stderr
+    scenario = ResolvedConfig.load(config).to_scenario()
+    source = scenario.data.datasets[0].source
+    assert isinstance(source, AutoCMapSSRULWindows)
+    assert source.download is True
+    assert Path(source.artifact_path) != tmp_path
+    assert not Path(source.artifact_path).exists()
