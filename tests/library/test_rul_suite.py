@@ -16,7 +16,8 @@ from nexuml_library.evaluation.maintenance.rul_suite import (
 
 
 def test_suite_uses_only_native_commands_and_isolates_datasets(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Each dataset-model pair gets its own resolve/build/train and checkpoints."""
     first, second = tmp_path / "cmapss.pt", tmp_path / "xjtu.pt"
@@ -31,8 +32,10 @@ def test_suite_uses_only_native_commands_and_isolates_datasets(
 
     monkeypatch.setattr(subprocess, "run", fake_run)
     result = run_rul_scenario_suite(
-        [first, second], tmp_path / "suite",
-        scenarios=RUL_SUITE_SCENARIOS[:2], max_epochs=1,
+        [first, second],
+        tmp_path / "suite",
+        scenarios=RUL_SUITE_SCENARIOS[:2],
+        max_epochs=1,
     )
 
     assert len(result["runs"]) == 4
@@ -44,7 +47,12 @@ def test_suite_uses_only_native_commands_and_isolates_datasets(
         assert resolve[0][3:] == ["--output", record["config"]]
         assert build[0] == ["nexuml", "build", record["config"]]
         assert train[0] == [
-            "nexuml", "train", "--config", record["config"], "--max-epochs", "1",
+            "nexuml",
+            "train",
+            "--config",
+            record["config"],
+            "--max-epochs",
+            "1",
         ]
         for _, env in (resolve, build, train):
             assert env["NEXUML_RUL_PREPARED_FILE"] == record["prepared_file"]
@@ -82,7 +90,9 @@ def test_suite_records_failure_and_stops(tmp_path: Path, monkeypatch: pytest.Mon
     monkeypatch.setattr(subprocess, "run", fake_run)
     with pytest.raises(RuntimeError, match="NexuML train failed"):
         run_rul_scenario_suite(
-            [artifact], tmp_path / "suite", scenarios=RUL_SUITE_SCENARIOS[:2],
+            [artifact],
+            tmp_path / "suite",
+            scenarios=RUL_SUITE_SCENARIOS[:2],
         )
     saved = json.loads((tmp_path / "suite" / "manifest.json").read_text())
     assert len(calls) == 3
