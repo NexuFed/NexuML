@@ -341,6 +341,8 @@ _RUL_COMPOSITE_ARCHITECTURES: tuple[_RULArchitecture, ...] = (
 def maintenance_rul_all(
     prepared_file: str | Path | None = None,
     *,
+    download: bool = True,
+    dataset_root: str | Path | None = None,
     hidden_dim: int = 96,
     depth: int = 3,
     dropout: float = 0.1,
