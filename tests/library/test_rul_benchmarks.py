@@ -497,6 +497,8 @@ def test_goel2026_lstm_architecture_and_training_protocol(
     evaluator = scenario.evaluation.algorithms[0].algorithm
     assert isinstance(evaluator, RULBenchmarkEvaluator)
     assert evaluator.include_nasa_score is True
+    assert len(scenario.evaluation.algorithms) == 2
+    assert scenario.evaluation.algorithms[1].label_key == "rul_raw"
     assert any("Goel2026PlateauLR" in item.factory for item in scenario.callbacks)
     assert scenario.data.input_shapes["rul_history"] == [30, 14]
 
@@ -570,7 +572,7 @@ def test_goel2026_padded_test_and_cycle_targets(tmp_path: Path) -> None:
         for engine in (1, 2) for cycle in range(1, 11)
     ]
     np.savetxt(tmp_path / "test_FD001.txt", np.asarray(test_rows))
-    np.savetxt(tmp_path / "RUL_FD001.txt", [3.0, 7.0])
+    np.savetxt(tmp_path / "RUL_FD001.txt", [160.0, 7.0])
     payload = prepare_cmapss(
         tmp_path,
         window=30,
@@ -589,7 +591,18 @@ def test_goel2026_padded_test_and_cycle_targets(tmp_path: Path) -> None:
     ]
     assert len(test_indices) == 2
     assert all(torch.all(payload["features"][i, :20] == 0) for i in test_indices)
-    assert sorted(float(payload["targets"][i, 0]) for i in test_indices) == [3.0, 7.0]
+    assert sorted(float(payload["targets"][i, 0]) for i in test_indices) == [7.0, 130.0]
+    assert sorted(float(payload["raw_targets"][i, 0]) for i in test_indices) == [
+        7.0, 160.0
+    ]
+    artifact = tmp_path / "goel-cycle-targets.pt"
+    save_rul_artifact(payload, artifact)
+    dataset = PreparedRULWindows(path=str(artifact)).build().get_split("test")
+    reported = sorted(
+        (float(dataset[i][1]["rul"][0]), float(dataset[i][1]["rul_raw"][0]))
+        for i in range(len(dataset))
+    )
+    assert reported == [(7.0, 7.0), (130.0, 160.0)]
     for i, row in enumerate(payload["rows"]):
         if row["split"] != "test":
             assert row["step"] >= 29
