@@ -155,5 +155,6 @@ ruff check .
 ruff format --check .
 ty check
 pytest tests/library/test_rul_benchmarks.py -v
+pytest tests/library/test_rul_native_cli.py -v
 pytest tests/_registry -v
 ```
