@@ -10,11 +10,7 @@ import numpy as np
 import pytest
 
 from nexuml.core.config import ResolvedConfig
-from nexuml_library.data.maintenance.rul import PreparedRULWindows
-from nexuml_library.evaluation.maintenance.rul_prepare import (
-    prepare_cmapss,
-    save_rul_artifact,
-)
+from nexuml_library.data.maintenance.rul import AutoCMapSSRULWindows
 
 
 @pytest.mark.parametrize("scenario_name", ("maintenance-rul-feature-mlp", "maintenance-rul-all"))
@@ -37,12 +33,10 @@ def test_native_nexuml_rul_cli_build_and_train(tmp_path: Path, scenario_name: st
                     for step in range(1, 5)]),
     )
     np.savetxt(root / "RUL_FD001.txt", [2.0])
-    payload = prepare_cmapss(root, window=3, seed=42)
-    artifact = tmp_path / "prepared.pt"
-    save_rul_artifact(payload, artifact)
     path = tmp_path / "config.yaml"
     env = os.environ.copy()
-    env["NEXUML_RUL_PREPARED_FILE"] = str(artifact)
+    env.pop("NEXUML_RUL_PREPARED_FILE", None)
+    env["NEXUML_CMAPSS_ROOT"] = str(root)
     for command in (
         ["nexuml", "resolve", scenario_name, "--output", str(path)],
         ["nexuml", "build", str(path)],
@@ -59,7 +53,9 @@ def test_native_nexuml_rul_cli_build_and_train(tmp_path: Path, scenario_name: st
         )
         assert result.returncode == 0, result.stdout + "\n" + result.stderr
     restored = ResolvedConfig.load(path).to_scenario()
-    assert restored.data.input_shapes["rul_history"] == [3, 24]
+    assert restored.data.input_shapes["rul_history"] == [30, 24]
     source = restored.data.datasets[0].source
-    assert isinstance(source, PreparedRULWindows)
-    assert source.path == str(artifact)
+    assert isinstance(source, AutoCMapSSRULWindows)
+    assert source.download is True
+    assert source.root == str(root)
+    assert Path(source.artifact_path).is_file()
