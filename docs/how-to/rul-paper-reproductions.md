@@ -102,10 +102,20 @@ labels at 130 cycles. Published results (FD001 RMSE 14.93, MAE 11.73,
 NASA score 410.97) therefore remain **reference numbers, not reproduced
 measurements**.
 
+The paper's 1D CNN is also implemented with convolution channels
+14→32→64→64, three same-padded kernel-3 convolutions, dropout 0.3,
+and the published 64×30→128→1 regression head. It uses the same data
+cache, RMSprop, scheduler and independent checkpointing as the LSTM.
+The authors report FD001 CNN RMSE 16.97 and NASA score 365.
+
 ```bash
 nexuml resolve maintenance-rul-goel2026-lstm-protocol \
   --output .experiments/rul-goel2026-lstm.yaml
 nexuml train --config .experiments/rul-goel2026-lstm.yaml
+
+nexuml resolve maintenance-rul-goel2026-cnn-protocol \
+  --output .experiments/rul-goel2026-cnn.yaml
+nexuml train --config .experiments/rul-goel2026-cnn.yaml
 ```
 
 ## Paper benchmarks not represented as exact NexuML scenarios
