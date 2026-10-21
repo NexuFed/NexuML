@@ -111,6 +111,9 @@ class _RULBenchmarkRuntime(EvalAlgorithm):
 
         Returns:
             Exact asset-window-weighted metrics in cycles or recordings.
+
+        Raises:
+            ValueError: If no held-out test samples were evaluated.
         """
         if self.count == 0:
             raise ValueError("RUL benchmark evaluator received zero test samples")
