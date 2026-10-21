@@ -78,8 +78,10 @@ Primary source: [arXiv:2604.27234, Section III, Algorithm 5, Training Protocol](
 | Window / stride | 30 / 1 | 30 / 1 |
 | Input sensors | 14 retained sensors | Same 14 |
 | Feature normalization | Train-only z-score | Train-only z-score |
-| RUL target cap | 130 cycles | 130 cycles |
+| RUL target cap | 130 cycles | 130 cycles, physical units |
 | Split / seed | 80/20 asset-disjoint, seed 42 | Same |
+| Short-test padding | Zero | Zero |
+| Incomplete training windows | Use full 30-cycle windows | Same |
 | LSTM | One layer, hidden dimension 32 | Same |
 | Head | Dropout 0.5, linear 32→8→8→1 with ReLU | Same |
 | Loss | MSE | MSE |
@@ -88,14 +90,17 @@ Primary source: [arXiv:2604.27234, Section III, Algorithm 5, Training Protocol](
 | Batch | 64 | 64 |
 | Scheduler | ReduceLROnPlateau, factor 0.5, patience 5 | Library callback, same |
 | Early stop / maximum epochs | Patience 20 / 200 epochs | Same |
+| Test NASA score | Exponential asymmetric penalty | Same formula |
 
-The original paper zero-pads short test sequences. NexuML's default
-preparation pads by repeating the earliest sensor observation instead.
-The current scenario also normalizes the capped target to a unit interval
-and uses capped official test labels; publication-fidelity of the
-test target convention is **not verified**. Consequently this is
-**architecture- and training-aligned**, but not an exact reproduction of
-the reported RMSE 14.93, MAE 11.73 or NASA score 410.97.
+The paper-specific scenario now excludes incomplete training windows,
+zero-pads short test histories, retains RUL labels in cycles (not
+fractions), and reports the asymmetric NASA score. The generic NexuML
+scenarios retain their original preprocessing defaults.
+The published evaluation's handling of uncapped official NASA test offsets
+remains to be independently verified; this scenario currently caps test
+labels at 130 cycles. Published results (FD001 RMSE 14.93, MAE 11.73,
+NASA score 410.97) therefore remain **reference numbers, not reproduced
+measurements**.
 
 ```bash
 nexuml resolve maintenance-rul-goel2026-lstm-protocol \
