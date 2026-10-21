@@ -76,8 +76,10 @@ def _windowize(
 
 def _scale_sequences(
     sequences: list[tuple[str, str, np.ndarray, np.ndarray]],
+    *,
+    normalization: str = "zscore",
 ) -> tuple[list[tuple[str, str, np.ndarray, np.ndarray]], dict[str, list[float]]]:
-    """Standardize features using training assets only.
+    """Normalize features using training assets only.
 
     Returns:
         Scaled sequences and the exact training-only normalization parameters.
@@ -91,14 +93,26 @@ def _scale_sequences(
     concat = np.concatenate(training, axis=0)
     if concat.ndim != 2 or not np.isfinite(concat).all():
         raise ValueError("Nonfinite training observations")
-    mean = concat.mean(axis=0)
-    std = concat.std(axis=0)
-    std = np.maximum(std, 1e-6)
+    if normalization == "zscore":
+        offset = concat.mean(axis=0)
+        scale = np.maximum(concat.std(axis=0), 1e-6)
+        statistics = {"mean": offset.tolist(), "std": scale.tolist()}
+    elif normalization == "minmax":
+        offset = concat.min(axis=0)
+        scale = np.maximum(concat.max(axis=0) - offset, 1e-6)
+        statistics = {
+            "mean": offset.tolist(),
+            "std": scale.tolist(),
+            "minimum": offset.tolist(),
+            "range": scale.tolist(),
+        }
+    else:
+        raise ValueError(f"Unknown RUL normalization: {normalization}")
     scaled = [
-        (asset, split, (samples - mean) / std, rul)
+        (asset, split, (samples - offset) / scale, rul)
         for asset, split, samples, rul in sequences
     ]
-    return scaled, {"mean": mean.tolist(), "std": std.tolist()}
+    return scaled, statistics
 
 
 def _split_assets(
@@ -153,6 +167,8 @@ def prepare_cmapss(
     stride: int = 1,
     rul_cap: float | None = 125.0,
     final_only_test: bool = True,
+    sensor_ids: list[int] | None = None,
+    normalization: str = "zscore",
 ) -> dict[str, Any]:
     """Construct supervised C-MAPSS RUL windows with official test targets.
 
@@ -168,6 +184,19 @@ def prepare_cmapss(
         raise ValueError("Unknown C-MAPSS subset")
     if window < 1 or stride < 1 or (rul_cap is not None and rul_cap <= 0):
         raise ValueError("Invalid window, stride or RUL cap")
+    if sensor_ids is not None and (
+        not sensor_ids
+        or len(set(sensor_ids)) != len(sensor_ids)
+        or any(sensor < 1 or sensor > 21 for sensor in sensor_ids)
+    ):
+        raise ValueError("C-MAPSS sensor selection must be unique IDs in 1..21")
+    if normalization not in {"zscore", "minmax"}:
+        raise ValueError("C-MAPSS normalization must be zscore or minmax")
+    indices = (
+        [0, 1, 2, *range(3, 24)]
+        if sensor_ids is None
+        else [sensor + 2 for sensor in sensor_ids]
+    )
     root = Path(root).expanduser()
     train = _cmapss_table(root / f"train_{subset}.txt")
     test = _cmapss_table(root / f"test_{subset}.txt")
@@ -206,9 +235,9 @@ def prepare_cmapss(
                 remaining = cycles[-1] - cycles
             if rul_cap is not None:
                 remaining = np.minimum(remaining, rul_cap)
-            # Operational settings (3) and sensor channels (21): 24 features.
-            sequences.append((name, split, part[:, 2:26], remaining))
-    sequences, scaler = _scale_sequences(sequences)
+            # Select only the declared sensors for paper-matched protocols.
+            sequences.append((name, split, part[:, 2:26][:, indices], remaining))
+    sequences, scaler = _scale_sequences(sequences, normalization=normalization)
     scale = float(rul_cap) if rul_cap is not None else float(
         max(np.max(rul) for _, split, _, rul in sequences if split == "train")
     )
@@ -234,10 +263,13 @@ def prepare_cmapss(
             "target_unit": "cycles",
             "target_scale": scale,
             "rul_cap": rul_cap,
-            "feature_names": [
-                *(f"setting_{i}" for i in range(1, 4)),
-                *(f"sensor_{i}" for i in range(1, 22)),
-            ],
+            "sensor_ids": sensor_ids,
+            "normalization": normalization,
+            "feature_names": (
+                [*(f"setting_{i}" for i in range(1, 4)),
+                 *(f"sensor_{i}" for i in range(1, 22))]
+                if sensor_ids is None else [f"sensor_{i}" for i in sensor_ids]
+            ),
             "scaler": scaler,
             "split_assets": {
                 split: sorted({row["asset_id"] for row in rows if row["split"] == split})
