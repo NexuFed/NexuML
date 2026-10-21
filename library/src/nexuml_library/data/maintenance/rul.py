@@ -106,7 +106,11 @@ class PreparedRULWindows(DataSourceDefinition):
     path: str = Field(min_length=1)
 
     def build(self) -> NexuDataset:
-        """Materialize the prepared features through the normal NexuML dataset API."""
+        """Materialize the prepared features through the normal NexuML dataset API.
+
+        Returns:
+            Dataset of sensor history windows and normalized RUL labels.
+        """
         return _PreparedRULRuntime(self.path)
 
 
