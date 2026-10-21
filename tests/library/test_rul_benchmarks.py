@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 import json
+import math
 import zipfile
 from pathlib import Path
 
@@ -23,7 +24,10 @@ from nexuml_library.data.maintenance.rul import (
     validate_rul_payload,
 )
 from nexuml_library.evaluation.maintenance.rul_configs import resolve_rul_configs
-from nexuml_library.evaluation.maintenance.rul_evaluator import _RULBenchmarkRuntime
+from nexuml_library.evaluation.maintenance.rul_evaluator import (
+    RULBenchmarkEvaluator,
+    _RULBenchmarkRuntime,
+)
 from nexuml_library.evaluation.maintenance.rul_prepare import (
     prepare_cmapss,
     prepare_xjtu_sy,
@@ -471,6 +475,9 @@ def test_goel2026_lstm_architecture_and_training_protocol(
     assert scenario.training.batch_size == 64
     assert scenario.training.max_epochs == 200
     assert scenario.training.loss_keys == {"rul_loss": 1.0}
+    evaluator = scenario.evaluation.algorithms[0].algorithm
+    assert isinstance(evaluator, RULBenchmarkEvaluator)
+    assert evaluator.include_nasa_score is True
     assert any("Goel2026PlateauLR" in item.factory for item in scenario.callbacks)
     assert scenario.data.input_shapes["rul_history"] == [30, 14]
 
@@ -486,6 +493,27 @@ def test_goel2026_lstm_architecture_and_training_protocol(
     restored = ResolvedConfig.load(config).to_scenario()
     assert restored.training.optimizer.factory == "torch.optim.rmsprop:RMSprop"
     compile_pipeline(restored)
+
+
+def test_asymmetric_nasa_score_for_paper_protocol() -> None:
+    """NexuML evaluates positive errors more harshly than negative errors."""
+    evaluator = _RULBenchmarkRuntime(
+        prediction_key="predicted_rul",
+        label_key="rul",
+        target_scale=1.0,
+        point_index=0,
+        lower_index=None,
+        upper_index=None,
+        include_nasa_score=True,
+    )
+    x = TensorDict(
+        {"predicted_rul": torch.tensor([[10.0], [20.0]])},
+        batch_size=[2],
+    )
+    y = TensorDict({"rul": torch.tensor([[0.0], [30.0]])}, batch_size=[2])
+    evaluator.eval_batch(x, y)
+    expected = math.expm1(10.0 / 10.0) + math.expm1(10.0 / 13.0)
+    assert evaluator.results()["rul_test_nasa_score"] == pytest.approx(expected)
 
 
 def test_goel2026_padded_test_and_cycle_targets(tmp_path: Path) -> None:
