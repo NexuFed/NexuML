@@ -139,10 +139,11 @@ def maintenance_rul_benchmark(
         )
     ):
         raise ValueError("Invalid paper-profile C-MAPSS preparation settings")
+    default_seed = 42 if seed is None else seed
     default_artifact = (
-        f".experiments/rul/prepared/cmapss-FD001-seed42-{cmapss_profile}.pt"
+        f".experiments/rul/prepared/cmapss-FD001-seed{default_seed}-{cmapss_profile}.pt"
         if cmapss_profile is not None
-        else ".experiments/rul/prepared/cmapss-FD001-seed42.pt"
+        else f".experiments/rul/prepared/cmapss-FD001-seed{default_seed}.pt"
     )
     selected_file = (
         prepared_file
@@ -162,7 +163,7 @@ def maintenance_rul_benchmark(
         settings = {
             "dataset": "cmapss",
             "subset": "FD001",
-            "seed": 42,
+            "seed": default_seed,
             "target_scale": float(
                 cmapss_rul_cap if cmapss_normalize_targets else 1.0
             ),
