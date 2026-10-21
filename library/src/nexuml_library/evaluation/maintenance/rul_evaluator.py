@@ -64,6 +64,7 @@ class _RULBenchmarkRuntime(EvalAlgorithm):
         self.late = 0.0
         self.covered = 0
         self.interval_width = 0.0
+        self.crossing_count = 0
 
     def eval_batch(self, x: TensorDict, y: TensorDict | None) -> None:
         """Accumulate exact errors from a held-out batch without fitting.
@@ -93,11 +94,17 @@ class _RULBenchmarkRuntime(EvalAlgorithm):
                 raise ValueError("RUL prediction interval indices exceed output channels")
             low = predicted[:, self.lower_index]
             high = predicted[:, self.upper_index]
-            if bool((low > high).any()):
-                # Quantile crossing is an evaluation failure, not a valid interval.
-                raise ValueError("Predicted RUL lower quantile exceeds upper quantile")
-            self.covered += int(((truth[:, 0] >= low) & (truth[:, 0] <= high)).sum())
-            self.interval_width += float(((high - low) * self.target_scale).sum())
+            self.crossing_count += int((low > high).sum())
+            # Use ordered endpoints for geometric coverage; report crossing
+            # rate independently so the raw quantile defect remains visible.
+            ordered_low = low.minimum(high)
+            ordered_high = high.maximum(low)
+            self.covered += int(
+                ((truth[:, 0] >= ordered_low) & (truth[:, 0] <= ordered_high)).sum()
+            )
+            self.interval_width += float(
+                ((ordered_high - ordered_low) * self.target_scale).sum()
+            )
 
     def results(self) -> dict[str, float]:
         """Report held-out MAE, RMSE and optionally interval calibration.
@@ -116,4 +123,5 @@ class _RULBenchmarkRuntime(EvalAlgorithm):
         if self.lower_index is not None and self.upper_index is not None:
             result["rul_test_interval_coverage"] = self.covered / self.count
             result["rul_test_interval_width"] = self.interval_width / self.count
+            result["rul_test_quantile_crossing_rate"] = self.crossing_count / self.count
         return result
