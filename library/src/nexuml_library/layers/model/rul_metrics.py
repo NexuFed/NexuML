@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import cast
+from typing import Any, cast
 
 from pydantic import Field
 from tensordict import TensorDict
@@ -40,7 +40,7 @@ class _RULMetricsRuntime(PipelineLayer):
         target_scale: float,
         prediction_index: int = 0,
         label_key: str = "rul",
-        **kwargs: object,
+        **kwargs: Any,
     ) -> None:
         super().__init__(
             input_sizes=input_sizes, keys_in=keys_in, keys_out=keys_out,
