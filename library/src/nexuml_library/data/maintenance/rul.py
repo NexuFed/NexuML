@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Self, cast
+from typing import Any, Literal, Self, cast
 
 import pandas as pd
 import torch
@@ -170,6 +170,8 @@ class AutoCMapSSRULWindows(DataSourceDefinition):
     window: int = Field(default=30, gt=0)
     stride: int = Field(default=1, gt=0)
     rul_cap: float = Field(default=125.0, gt=0)
+    sensor_ids: list[int] | None = None
+    normalization: Literal["zscore", "minmax"] = "zscore"
     download: bool = True
 
     def build(self) -> NexuDataset:
@@ -203,6 +205,8 @@ class AutoCMapSSRULWindows(DataSourceDefinition):
                 window=self.window,
                 stride=self.stride,
                 rul_cap=self.rul_cap,
+                sensor_ids=self.sensor_ids,
+                normalization=self.normalization,
             )
             payload["settings"]["source_url"] = CMAPSS_ARCHIVE_URL
             digest = cmapss_source_sha256(Path(self.root).expanduser().resolve())
@@ -220,6 +224,8 @@ class AutoCMapSSRULWindows(DataSourceDefinition):
             or settings.get("stride") != self.stride
             or float(settings.get("target_scale", 0)) != self.rul_cap
             or settings.get("rul_cap") != self.rul_cap
+            or settings.get("sensor_ids") != self.sensor_ids
+            or settings.get("normalization", "zscore") != self.normalization
         ):
             raise ValueError("Cached C-MAPSS RUL artifact does not match the scenario")
         return _PreparedRULRuntime(str(artifact))
