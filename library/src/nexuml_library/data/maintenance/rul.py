@@ -29,6 +29,7 @@ def validate_rul_payload(payload: dict[str, Any]) -> None:
     targets = payload.get("targets")
     rows = payload.get("rows")
     settings = payload.get("settings")
+    raw_targets = payload.get("raw_targets")
     if (
         not isinstance(features, Tensor)
         or features.ndim != 3
@@ -49,6 +50,14 @@ def validate_rul_payload(payload: dict[str, Any]) -> None:
         or float(settings.get("target_scale", 0)) <= 0
     ):
         raise ValueError("Malformed or nonfinite RUL windows")
+    if raw_targets is not None and (
+        not isinstance(raw_targets, Tensor)
+        or raw_targets.shape != targets.shape
+        or not raw_targets.is_floating_point()
+        or not bool(torch.isfinite(raw_targets).all())
+        or bool((raw_targets < 0).any())
+    ):
+        raise ValueError("Malformed official raw NASA RUL targets")
     asset_split: dict[str, str] = {}
     identifiers: set[tuple[str, int]] = set()
     actual = {"train": set(), "val": set(), "test": set()}
@@ -120,6 +129,7 @@ class _PreparedRULRuntime(NexuDataset):
     def __init__(self, path: str) -> None:
         payload = read_rul_artifact(path)
         self._rul_targets = cast(Tensor, payload["targets"])
+        self._rul_raw_targets = cast(Tensor | None, payload.get("raw_targets"))
         super().__init__(
             meta=pd.DataFrame.from_records(payload["rows"]),
             data=cast(Tensor, payload["features"]),
@@ -137,6 +147,11 @@ class _PreparedRULRuntime(NexuDataset):
         selected = list(indices)
         subset = super().take(selected)
         subset._rul_targets = self._rul_targets[selected]
+        subset._rul_raw_targets = (
+            self._rul_raw_targets[selected]
+            if self._rul_raw_targets is not None
+            else None
+        )
         return subset
 
     def load_item(self, idx: int, row: pd.Series) -> TensorDict:
@@ -156,7 +171,10 @@ class _PreparedRULRuntime(NexuDataset):
         Returns:
             Label TensorDict with rul [1].
         """
-        return TensorDict({"rul": self._rul_targets[idx]}, batch_size=[])
+        labels = {"rul": self._rul_targets[idx]}
+        if self._rul_raw_targets is not None:
+            labels["rul_raw"] = self._rul_raw_targets[idx]
+        return TensorDict(labels, batch_size=[])
 
 
 @data_source("AutoCMapSSRULWindows")
