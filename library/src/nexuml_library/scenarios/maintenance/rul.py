@@ -100,7 +100,7 @@ def maintenance_rul_benchmark(
     """
     if min(hidden_dim, depth, batch_size, max_epochs, patience) <= 0 or lr <= 0:
         raise ValueError("RUL training dimensions and learning rate must be positive")
-    configured_file = os.environ.get("NEXUML_RUL_PREPARED_FILE")
+    configured_file = (os.environ.get("NEXUML_RUL_PREPARED_FILE") or "").strip() or None
     selected_file = (
         prepared_file
         if prepared_file is not None
