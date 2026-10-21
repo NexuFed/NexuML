@@ -25,7 +25,11 @@ from nexuml.core.types import (
     PipelineSpec,
     ScenarioSpec,
 )
-from nexuml_library.data.maintenance.rul import PreparedRULWindows, read_rul_artifact
+from nexuml_library.data.maintenance.rul import (
+    AutoCMapSSRULWindows,
+    PreparedRULWindows,
+    read_rul_artifact,
+)
 from nexuml_library.evaluation.maintenance.rul_evaluator import RULBenchmarkEvaluator
 from nexuml_library.evaluation.maintenance.rul_seed import RULSeedOnFitStart
 from nexuml_library.layers.model.rul_forecaster import (
@@ -43,6 +47,8 @@ from nexuml_library.scenarios.training.defaults import (
 def maintenance_rul_benchmark(
     prepared_file: str | Path | None = None,
     *,
+    download: bool = True,
+    dataset_root: str | Path | None = None,
     architecture: Literal[
         "feature_mlp", "lstm", "tcn", "transformer", "tsmixer"
     ] = "tcn",
@@ -68,7 +74,9 @@ def maintenance_rul_benchmark(
 
     Args:
         prepared_file: Immutable artifact from rul_prepare. If omitted, use
-            NEXUML_RUL_PREPARED_FILE or the conventional FD001 location.
+            NEXUML_RUL_PREPARED_FILE or automatically retrieve official FD001.
+        download: Auto-download missing official C-MAPSS source data.
+        dataset_root: Local raw-data cache; defaults to NEXUML_CMAPSS_ROOT.
         architecture: Temporal backbone or feature MLP baseline.
         objective: Point regression or multi-quantile pinball loss.
         quantiles: Ascending pinball probabilities when using quantile objective.
@@ -136,10 +144,23 @@ def maintenance_rul_benchmark(
         else os.environ.get("NEXUML_RUL_CHECKPOINT_ROOT", ".experiments/rul/checkpoints")
     )
     checkpoint_dir = Path(selected_checkpoint_root).expanduser().resolve() / run_name
+    if prepared_file is None and configured_file is None:
+        source_definition = AutoCMapSSRULWindows(
+            root=str(
+                dataset_root
+                if dataset_root is not None
+                else os.environ.get("NEXUML_CMAPSS_ROOT", "data/cmapss")
+            ),
+            artifact_path=str(file_path),
+            seed=resolved_seed,
+            download=download,
+        )
+    else:
+        source_definition = PreparedRULWindows(path=str(file_path))
     data = DataSpec(
         datasets=[
             DatasetSpec(
-                source=PreparedRULWindows(path=str(file_path)),
+                source=source_definition,
                 modality="sensor",
                 split_type="keep",
             )
@@ -338,6 +359,8 @@ def maintenance_rul_all(
 
     Args:
         prepared_file: Immutable RUL artifact or the standard environment override.
+        download: Automatically retrieve missing official C-MAPSS data.
+        dataset_root: Local NASA raw-data cache for first-time preparation.
         hidden_dim: Width of each model backbone.
         depth: Depth of each model backbone.
         dropout: Regularization applied to each backbone.
@@ -357,6 +380,8 @@ def maintenance_rul_all(
     """
     baseline = maintenance_rul_benchmark(
         prepared_file=prepared_file,
+        download=download,
+        dataset_root=dataset_root,
         architecture="tcn",
         objective="huber",
         hidden_dim=hidden_dim,
