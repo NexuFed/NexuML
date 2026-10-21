@@ -55,7 +55,7 @@ def maintenance_rul_benchmark(
     batch_size: int = 64,
     max_epochs: int = 150,
     patience: int = 20,
-    seed: int = 42,
+    seed: int | None = None,
     checkpoint_root: str | Path = ".experiments/rul/checkpoints",
 ) -> ScenarioSpec:
     """Build an official NexuML regression scenario on prepared RUL trajectories.
@@ -79,7 +79,7 @@ def maintenance_rul_benchmark(
         batch_size: Mini-batch size.
         max_epochs: Upper bound on optimization epochs.
         patience: Validation loss early-stopping patience.
-        seed: Must match prepared asset split seed.
+        seed: Optional required split seed; defaults to the prepared artifact seed.
         checkpoint_root: User-specified experiment output path.
 
     Returns:
@@ -116,7 +116,8 @@ def maintenance_rul_benchmark(
         length, channels = 30, 24
     else:
         raise FileNotFoundError(f"Prepared RUL artifact does not exist: {file_path}")
-    if int(settings["seed"]) != seed:
+    resolved_seed = int(settings["seed"]) if seed is None else seed
+    if int(settings["seed"]) != resolved_seed:
         raise ValueError("RUL scenario seed must equal prepared artifact split seed")
     q = list(quantiles)
     if objective == "quantile" and (
@@ -126,7 +127,7 @@ def maintenance_rul_benchmark(
     output_dim = len(q) if objective == "quantile" else 1
     run_name = (
         f"rul-{settings['dataset']}-{settings.get('subset', 'all')}-"
-        f"{architecture}-{objective}-seed{seed}"
+        f"{architecture}-{objective}-seed{resolved_seed}"
     )
     checkpoint_dir = Path(checkpoint_root).expanduser().resolve() / run_name
     data = DataSpec(
@@ -147,7 +148,7 @@ def maintenance_rul_benchmark(
         depth=depth,
         dropout=dropout,
         output_dim=output_dim,
-        initialization_seed=seed,
+        initialization_seed=resolved_seed,
     )
     pipeline = PipelineSpec(
         stages={
@@ -219,7 +220,7 @@ def maintenance_rul_benchmark(
             use_mlflow=False,
         ),
         callbacks=[
-            callback(RULSeedOnFitStart, seed=seed),
+            callback(RULSeedOnFitStart, seed=resolved_seed),
             callback(
                 ModelCheckpoint,
                 dirpath=str(checkpoint_dir),
