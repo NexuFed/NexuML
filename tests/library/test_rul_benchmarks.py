@@ -30,7 +30,10 @@ from nexuml_library.layers.model.rul_forecaster import (
     _TemporalRULRuntime,
 )
 from nexuml_library.layers.model.rul_metrics import _RULMetricsRuntime
-from nexuml_library.scenarios.maintenance.rul import maintenance_rul_benchmark
+from nexuml_library.scenarios.maintenance.rul import (
+    maintenance_rul_all,
+    maintenance_rul_benchmark,
+)
 
 
 def _cmapss_files(folder: Path, *, extra_test: float = 0) -> None:
@@ -251,6 +254,45 @@ def test_default_rul_scenario_resolves_without_prepared_file(
     compile_pipeline(scenario)
     with pytest.raises(FileNotFoundError, match="Prepared RUL artifact"):
         maintenance_rul_benchmark(tmp_path / "missing.pt")
+
+
+def test_composite_rul_scenario_has_six_distinct_heads(tmp_path: Path) -> None:
+    """A single NexuML scenario exposes independent outputs and metrics per head."""
+    root = tmp_path / "cmapss"
+    _cmapss_files(root)
+    artifact = tmp_path / "prepared.pt"
+    save_rul_artifact(prepare_cmapss(root, window=3), artifact)
+    scenario = maintenance_rul_all(
+        artifact, hidden_dim=16, depth=1, batch_size=4, max_epochs=1, patience=1
+    )
+    assert len(scenario.pipeline.stages["RULModels"]) == 6
+    assert len(scenario.pipeline.stages["RULLoss"]) == 12
+    assert len(scenario.training.loss_keys) == 6
+    assert len(scenario.training.metric_keys) == 18
+    assert len(scenario.evaluation.algorithms) == 6
+    assert len({spec.name for spec in scenario.evaluation.algorithms}) == 6
+    assert sum(scenario.training.loss_keys.values()) == pytest.approx(1.0)
+
+    compiled = compile_pipeline(scenario)
+    x = TensorDict({"rul_history": torch.randn(2, 3, 24)}, batch_size=[2])
+    y = TensorDict({"rul": torch.tensor([[0.2], [0.4]])}, batch_size=[2])
+    result, labels = compiled(x, y)
+    assert labels is y
+    for name in ("feature_mlp", "lstm", "tcn", "transformer", "tsmixer", "quantile_tcn"):
+        prediction = result[f"predicted_rul_{name}"]
+        assert prediction.shape == (2, 3 if name == "quantile_tcn" else 1)
+        assert f"rul_loss_{name}" in result.keys()
+        assert f"rul_mae_{name}" in result.keys()
+    total_loss = sum(
+        result[key].mean() * weight for key, weight in scenario.training.loss_keys.items()
+    )
+    total_loss.backward()
+    assert any(parameter.grad is not None for parameter in compiled.parameters())
+    yaml_path = tmp_path / "composite.yaml"
+    compiled.resolved_config.save(yaml_path)
+    restored = ResolvedConfig.load(yaml_path).to_scenario()
+    assert len(restored.training.loss_keys) == 6
+    compile_pipeline(restored)
 
 
 def test_rul_rejects_window_level_cross_asset_leakage(tmp_path: Path) -> None:
