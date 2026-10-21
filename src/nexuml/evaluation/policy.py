@@ -24,7 +24,7 @@ from nexuml.core.types import (
 
 
 @contextmanager
-def _evaluation_state(policy, seed):
+def _evaluation_state(policy, seed, *, cuda_devices=()):
     modes = [(module, module.training) for module in policy.modules()]
     python_state, numpy_state = random.getstate(), np.random.get_state()
     devices = sorted(
@@ -33,6 +33,7 @@ def _evaluation_state(policy, seed):
             for tensor in (*policy.parameters(), *policy.buffers())
             if tensor.is_cuda
         }
+        | set(cuda_devices)
     )
     try:
         with torch.random.fork_rng(devices=devices):

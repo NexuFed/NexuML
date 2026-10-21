@@ -1,5 +1,10 @@
 # Isaac Lab execution
 
+For declarative state-only Cartpole training, use
+`nexuml train --scenario-file scripts/isaaclab/cartpole.py` in the prepared venv.
+The [Cartpole guide](../../docs/how-to/isaac-cartpole.md) covers the learning
+settings, private viewer, complete-policy export and held-out evaluation.
+
 ## Current worktree profile: Lab 3 / CUDA 13
 
 The root `pyproject.toml` and `uv.lock` select Python 3.12, CUDA-13 PyTorch,

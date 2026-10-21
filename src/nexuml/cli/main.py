@@ -294,22 +294,29 @@ def train_cmd(
         console.print(f"  RL evaluation: {result.interaction_results}")
 
 
-@app.command(name="evaluate", help="Evaluate a trusted exported policy without training")
+@app.command(name="evaluate", help="Evaluate a trusted exported model or policy without training")
 def evaluate_cmd(
-    policy_package: Path = typer.Argument(help="Trusted complete policy package directory or file"),
+    model_package: Path = typer.Argument(
+        help="Trusted model or complete policy package directory or file"
+    ),
+    scenario_file: Optional[Path] = typer.Option(
+        None,
+        "--scenario-file",
+        help="Trusted scenario() file supplying evaluation inputs/reporting, not model weights.",
+    ),
     device: Optional[str] = typer.Option(
         None,
         "--device",
-        help="Explicit policy/replay device; otherwise keep portable CPU placement.",
+        help="Explicit evaluation device; defaults to CPU.",
     ),
     override: Optional[list[str]] = typer.Option(
         None,
         "--override",
         "-O",
-        help="Override evaluation, logging, or evaluation-environment settings: key.path=value.",
+        help="Override data/evaluation/logging or policy replay settings: key.path=value.",
     ),
 ):
-    """Replay a complete packaged policy through fresh evaluation environments.
+    """Evaluate packaged models on test data or policies in fresh environments.
 
     Raises:
         ValueError: Invalid packages/overrides are diagnosed and converted to a CLI exit.
@@ -332,62 +339,96 @@ def evaluate_cmd(
         loggers = []
         failed = False
         try:
-            policy, config, metadata = load_inference_package(policy_package)
-            if (
-                metadata.get("artifact_kind") != "policy"
-                or not callable(policy)
-                or any(
-                    getattr(policy, name, None) is None
-                    for name in ("pipeline", "action_adapter", "contract")
-                )
-                or not callable(getattr(policy, "parameters", None))
-            ):
-                raise ValueError(
-                    "evaluate requires a complete exported policy package, not raw weights/pipeline"
-                )
-            policy = cast(CompiledPolicy, policy)
-            # torch.package may isolate Pydantic classes with unresolved serialization references.
-            policy.contract = InteractionContract.model_validate(metadata["interaction_contract"])
+            model, config, metadata = load_inference_package(model_package)
+            is_policy = metadata.get("artifact_kind") == "policy"
             scenario = config.to_scenario()
-            if scenario.interaction is None or scenario.policy is None:
-                raise ValueError(
-                    "policy package requires an embedded RL scenario or an offline scenario with "
-                    "interaction, policy and policy_evaluation configuration"
-                )
+            if scenario_file is not None:
+                from nexuml.core.scenario_loader import load_scenario_file
 
-            keys = [item.partition("=")[0] for item in override or []]
-            new_path = any(
-                key == "policy_evaluation" or key.startswith("policy_evaluation.") for key in keys
-            )
-            legacy_path = any(
-                key == "training.evaluation" or key.startswith("training.evaluation.")
-                for key in keys
-            )
-            if new_path and legacy_path:
-                raise ValueError("Cannot mix policy_evaluation and training.evaluation overrides")
-            evaluation_path = (
-                "policy_evaluation"
-                if scenario.policy_evaluation is not None or new_path
-                else "training.evaluation"
-            )
-            if scenario.policy_evaluation is None and new_path and "policy_evaluation" not in keys:
-                raise ValueError(
-                    "Missing policy_evaluation block; "
-                    "supply a whole policy_evaluation={...} override"
+                supplied = load_scenario_file(scenario_file).scenario
+                scenario.logging = supplied.logging
+                if is_policy:
+                    if scenario.interaction is None or supplied.interaction is None:
+                        raise ValueError("Policy evaluation scenario file requires an environment")
+                    scenario.interaction = scenario.interaction.model_copy(
+                        update={
+                            "evaluation_environment": supplied.interaction.evaluation_environment
+                            or supplied.interaction.environment
+                        }
+                    )
+                    if supplied.policy_evaluation is not None:
+                        scenario.policy_evaluation = supplied.policy_evaluation
+                else:
+                    scenario.data = supplied.data
+                    scenario.evaluation = supplied.evaluation
+            if is_policy:
+                if (
+                    not callable(model)
+                    or any(
+                        getattr(model, name, None) is None
+                        for name in ("pipeline", "action_adapter", "contract")
+                    )
+                    or not callable(getattr(model, "parameters", None))
+                ):
+                    raise ValueError("evaluate requires a complete exported policy package")
+                policy = cast(CompiledPolicy, model)
+                # torch.package isolates model classes; restore portable contract metadata.
+                policy.contract = InteractionContract.model_validate(
+                    metadata["interaction_contract"]
                 )
+                if scenario.interaction is None or scenario.policy is None:
+                    raise ValueError(
+                        "policy package requires an embedded RL scenario or an offline scenario "
+                        "with "
+                        "interaction, policy and policy_evaluation configuration"
+                    )
+                keys = [item.partition("=")[0] for item in override or []]
+                new_path = any(
+                    key == "policy_evaluation" or key.startswith("policy_evaluation.")
+                    for key in keys
+                )
+                legacy_path = any(
+                    key == "training.evaluation" or key.startswith("training.evaluation.")
+                    for key in keys
+                )
+                if new_path and legacy_path:
+                    raise ValueError(
+                        "Cannot mix policy_evaluation and training.evaluation overrides"
+                    )
+                evaluation_path = (
+                    "policy_evaluation"
+                    if scenario.policy_evaluation is not None or new_path
+                    else "training.evaluation"
+                )
+                if (
+                    scenario.policy_evaluation is None
+                    and new_path
+                    and "policy_evaluation" not in keys
+                ):
+                    raise ValueError(
+                        "Missing policy_evaluation block; "
+                        "supply a whole policy_evaluation={...} override"
+                    )
+                allowed = (evaluation_path, "logging", "interaction.evaluation_environment")
+                operation = "replay"
+            else:
+                if metadata.get("artifact_kind") not in (None, "pipeline") or not all(
+                    callable(getattr(model, name, None))
+                    for name in ("forward", "iter_layers", "parameters")
+                ):
+                    raise ValueError(
+                        "evaluate requires a complete exported policy package or model pipeline"
+                    )
+                allowed = ("data", "evaluation", "logging")
+                operation = "model evaluation"
             for item in override or []:
                 key, separator, _ = item.partition("=")
                 if separator and not any(
-                    key == allowed or key.startswith(f"{allowed}.")
-                    for allowed in (
-                        evaluation_path,
-                        "logging",
-                        "interaction.evaluation_environment",
-                    )
+                    key == prefix or key.startswith(f"{prefix}.") for prefix in allowed
                 ):
                     raise ValueError(
-                        f"Override {key!r} is not supported for replay: only {evaluation_path}, "
-                        "logging, and interaction.evaluation_environment may change; "
+                        f"Override {key!r} is not supported for {operation}: "
+                        f"only {', '.join(allowed)} may change; "
                         "the packaged policy/pipeline cannot be replaced"
                     )
             apply_overrides(scenario, override or [])
@@ -395,27 +436,30 @@ def evaluate_cmd(
             scenario = ScenarioSpec.model_validate(
                 restore_model_data(lower_model(scenario), ScenarioSpec)
             )
-            definition, evaluation, _ = resolve_policy_evaluation(scenario)
-            job.enter_context(definition.job_scope())
-            if device is not None and evaluation.episodes:
-                policy.to(device)
-            video = evaluation.video
+            if is_policy:
+                definition, evaluation, _ = resolve_policy_evaluation(scenario)
+                job.enter_context(definition.job_scope())
+                if device is not None and evaluation.episodes:
+                    policy.to(device)
             source_frames = metadata.get("training_frames")
             if type(source_frames) is not int or source_frames < 0:
                 source_frames = None
             frame_step = source_frames if source_frames is not None else 0
             provenance = {
-                "source_package": str(policy_package.resolve()),
+                "source_package": str(model_package.resolve()),
                 "source_config_hash": metadata.get("config_hash"),
                 "source_training_frames": source_frames,
                 "interaction_contract_hash": metadata.get("interaction_contract_hash"),
                 "resolved_config": lower_model(scenario),
             }
+            if scenario_file is not None:
+                provenance["evaluation_scenario_file"] = str(scenario_file.resolve())
             loggers = create_loggers(scenario.logging, run_name=f"{scenario.name}-evaluation")
             media_sink = None
-            if video.enabled:
+            if is_policy and evaluation.video.enabled:
                 from nexuml.tracking.logger import log_evaluation_media, preflight_evaluation_media
 
+                video = evaluation.video
                 preflight_evaluation_media(loggers, video)
 
                 def media_sink(frames, metadata):
@@ -426,13 +470,23 @@ def evaluate_cmd(
                 log_text_artifact(
                     loggers, ResolvedConfig.from_scenario(scenario).to_yaml(), "config.yaml"
                 )
-            metrics = evaluate_policy(
-                policy,
-                scenario,
-                media_sink=media_sink,
-                frame_step=frame_step,
-                provenance=provenance,
-            )
+            if is_policy:
+                metrics = evaluate_policy(
+                    policy,
+                    scenario,
+                    media_sink=media_sink,
+                    frame_step=frame_step,
+                    provenance=provenance,
+                )
+            else:
+                from nexuml.evaluation.dataset import evaluate_model
+                from nexuml.core.pipeline import CompiledPipeline
+
+                metrics = evaluate_model(
+                    cast(CompiledPipeline, model), scenario, device=device, loggers=loggers
+                )
+                # Trainer.test logs and finalizes on success; CLI retains failure cleanup.
+                loggers = []
             for logger in loggers:
                 logger.log_metrics(metrics, step=frame_step)
         except SystemExit:
@@ -455,7 +509,12 @@ def evaluate_cmd(
                 raise typer.Exit(1) from finalization_error
 
         console.print("[green]Evaluation complete![/green]")
-        console.print(f"  Policy evaluation (frame step {frame_step}): {metrics}")
+        label = (
+            f"Policy evaluation (frame step {frame_step})"
+            if is_policy
+            else "Model evaluation (test split)"
+        )
+        console.print(f"  {label}: {metrics}")
 
 
 @app.command(name="export-dataset", help="Export a dataset view from a scenario or config")
