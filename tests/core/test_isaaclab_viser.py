@@ -53,6 +53,8 @@ def test_pinned_viser_startup_failure_never_signals_constructor(tmp_path):
         "stop-late-ready",
         "stop-readiness-deadline",
         "dispatch",
+        "display",
+        "restart",
         "scene-error",
         "scene-interrupt",
         "scene-sigterm",

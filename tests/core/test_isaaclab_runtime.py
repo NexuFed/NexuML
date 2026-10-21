@@ -577,7 +577,89 @@ def native_launch(monkeypatch, tmp_path):
         IsaacLabEnvironment(**kwargs), context
     )
     state.native = native
+    state.modules = modules
     return state
+
+
+@pytest.mark.parametrize("purpose", ["train", "eval"])
+def test_viewer_requires_a_separate_purpose_opt_in_without_importing_viser(native_launch, purpose):
+    from nexuml_library.environments.isaaclab_config import ViserSpec
+
+    count = 3 if purpose == "train" else 1
+    native_launch.native.num_envs = count
+    context = EnvironmentBuildContext(purpose=purpose, device="cuda:0", num_envs=count, seed=17)
+    with _isaaclab_runtime.isaaclab_process():
+        runtime = native_launch.build(
+            context=context,
+            viewer=ViserSpec(
+                purposes=("eval",) if purpose == "train" else ("train",),
+            ),
+        )
+        assert native_launch.args[0]["visualizer"] == ["none"]
+        assert runtime._spectator_type is None
+
+
+@pytest.mark.parametrize("fail", ["none", "construction"])
+def test_exact_spectator_selection_and_partial_native_ownership(native_launch, monkeypatch, fail):
+    from nexuml_library.environments.isaaclab_config import ViserSpec
+
+    events = native_launch.native.events
+
+    class Spectator:
+        def close(self):
+            events.append("spectator.close")
+
+    spectator = Spectator()
+    sim = SimpleNamespace(
+        visualizers=[spectator] if fail == "none" else [],
+        _pending_visualizers=[] if fail == "none" else [spectator],
+    )
+
+    def configure(cfg, spec, count):
+        assert spec.port == 8080 and count == 3
+        cfg.sim.visualizer_cfgs = [SimpleNamespace(class_type=Spectator)]
+
+    native_launch.modules["nexuml_library.environments._isaaclab_viser"] = SimpleNamespace(
+        configure_spectator=configure,
+    )
+    native_launch.modules["isaaclab.sim"] = SimpleNamespace(
+        SimulationContext=SimpleNamespace(
+            instance=lambda: sim, clear_instance=lambda: events.append("context.close")
+        )
+    )
+    native_launch.native.sim = sim
+    if fail == "construction":
+
+        def fail_make(*args, **kwargs):
+            raise RuntimeError("native construction failed after viewer startup")
+
+        monkeypatch.setattr(sys.modules["gymnasium"], "make", fail_make)
+    with _isaaclab_runtime.isaaclab_process():
+        if fail == "construction":
+            with pytest.raises(RuntimeError, match="native construction failed"):
+                native_launch.build(viewer=ViserSpec())
+        else:
+            runtime = native_launch.build(viewer=ViserSpec())
+            assert runtime._spectator_type is Spectator
+            runtime.close()
+            assert events.index("spectator.close") < events.index("native.close")
+    assert native_launch.args[0]["visualizer"] == ["viser"]
+    assert events.count("spectator.close") == 1
+    assert events.count("context.close") == 1
+    assert native_launch.launchers[0].exit_calls
+
+
+def test_an_existing_kitless_context_is_not_adopted_or_destroyed(native_launch, monkeypatch):
+    foreign = object()
+    context = SimpleNamespace(instance=lambda: foreign)
+    monkeypatch.setitem(
+        sys.modules, "isaaclab.sim.simulation_context", SimpleNamespace(SimulationContext=context)
+    )
+    with _isaaclab_runtime.isaaclab_process():
+        with pytest.raises(RuntimeError, match="already active"):
+            native_launch.build()
+    assert context.instance() is foreign
+    assert native_launch.launchers == []
 
 
 @pytest.mark.parametrize("physics", ["newton_mjwarp", "isaacsim_physx", "ovphysx"])

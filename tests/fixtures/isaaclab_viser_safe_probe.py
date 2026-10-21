@@ -123,6 +123,25 @@ def main(mode):
 
         try:
             if mode == "prechecks":
+                from nexuml_library.environments.isaaclab_config import ViserSpec
+
+                configured = SimpleNamespace(sim=SimpleNamespace(default_visualizer_cfg=object()))
+                adapter.configure_spectator(
+                    configured, ViserSpec(port=port, eye=(3.0, 2.0, 1.0)), 1
+                )
+                (selected,) = configured.sim.visualizer_cfgs
+                assert configured.sim.default_visualizer_cfg is None
+                assert selected.eye == (3.0, 2.0, 1.0) and selected.bind_address == "127.0.0.1"
+                assert selected.port == port and not selected.share
+                expect_error(
+                    ValueError,
+                    lambda: adapter.configure_spectator(
+                        configured,
+                        ViserSpec(visible_env_indices=(1,)),
+                        1,
+                    ),
+                    "environment selection",
+                )
                 before = listeners()
                 backend = spectator.backend
                 spectator.backend = None
@@ -406,6 +425,19 @@ def main(mode):
                 assert ("127.0.0.1", port) not in listeners()
                 print("PARTIAL_SERVER_FAILURE_OWNERSHIP_AND_CLEANUP_VERIFIED", mode, flush=True)
             else:
+                if mode == "display":
+                    spectator._display_env_count = 1
+                if mode == "restart":
+                    with socket.socket() as listener:
+                        listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                        listener.bind(("127.0.0.1", port))
+                        listener.listen()
+                        client = socket.create_connection(("127.0.0.1", port))
+                        peer, _ = listener.accept()
+                        peer.shutdown(socket.SHUT_RDWR)
+                        peer.close()
+                        assert client.recv(1) == b""
+                        client.close()
                 construct()
                 viewer = spectator._viewer
                 server = viewer._server
@@ -419,7 +451,17 @@ def main(mode):
                 with urlopen(f"http://127.0.0.1:{port}/", timeout=5) as response:
                     assert response.status == 200
                 handles = list(server.gui._gui_input_handle_from_uuid.values())
-                assert [handle.label for handle in handles] == ["Pause Display"]
+                assert [handle.label for handle in handles] == (
+                    [
+                        "Pause Display",
+                        "Visible Environment",
+                        "Markers",
+                        "Live Plots",
+                        "Reset Camera",
+                    ]
+                    if mode == "display"
+                    else ["Pause Display"]
+                )
                 callback = handles[0]._impl.update_cb[0]
                 assert tuple(cell.cell_contents for cell in callback.__closure__) == (
                     spectator._display_state,
@@ -492,7 +534,7 @@ def main(mode):
                         print("UNCOOPERATIVE_PEER_BOUNDED_THREAD_CLEANUP_VERIFIED", flush=True)
                     finally:
                         peer.close()
-                elif mode == "dispatch":
+                elif mode in {"dispatch", "display", "restart"}:
                     with connect(
                         f"ws://127.0.0.1:{port}",
                         subprotocols=[Subprotocol("viser-v1.1.1")],
@@ -505,7 +547,18 @@ def main(mode):
 
                         send(camera())
                         assert connected.wait(5)
-                        for unknown in ("Pause Simulation", "Reset Episode", "stale-control-id"):
+                        for unknown in (
+                            "Pause Simulation",
+                            "Reset Episode",
+                            "stale-control-id",
+                            "configuration",
+                            "task",
+                            "action",
+                            "force",
+                            "control",
+                            "timing",
+                            "budget",
+                        ):
                             send(_messages.GuiUpdateMessage(unknown, {"value": True}))
                         send(_messages.ShareUrlRequest())
                         assert shared.wait(5)
@@ -519,9 +572,93 @@ def main(mode):
                             3,
                             4,
                         )
+                        if mode == "display":
+                            from isaaclab.managers import ObservationManager
+                            from isaaclab.ui.live_plots.manager_live_plots import ManagerLivePlots
+                            import torch
+
+                            display = spectator._display_state
+                            for handle in handles[1:]:
+                                for registered in handle._impl.update_cb:
+                                    assert display in [
+                                        c.cell_contents for c in registered.__closure__
+                                    ]
+                            select = handles[1]._impl.update_cb[0]
+                            select(SimpleNamespace(target=SimpleNamespace(value="0")))
+                            assert display.selection == "0"
+                            select(SimpleNamespace(target=SimpleNamespace(value="999")))
+                            assert display.selection == "0"
+                            for index, field in ((2, "markers"), (3, "plots")):
+                                handles[index]._impl.update_cb[0](
+                                    SimpleNamespace(target=SimpleNamespace(value=False))
+                                )
+                                assert getattr(display, field) is False
+                                handles[index]._impl.update_cb[0](
+                                    SimpleNamespace(target=SimpleNamespace(value=True))
+                                )
+                                assert getattr(display, field) is True
+                            handles[4]._impl.update_cb[0](None)
+                            assert display.reset_camera
+                            viewer.begin_frame(0.0)
+                            viewer.log_state(model.state())
+                            viewer.end_frame()
+                            assert viewer._scene_handles
+                            shown = {name for name, h in viewer._scene_handles.items() if h.visible}
+                            assert shown
+                            for handle in viewer._scene_handles.values():
+                                handle.visible = False
+                            viewer.begin_frame(1.0)
+                            viewer.log_state(model.state())
+                            viewer.end_frame()
+                            assert all(viewer._scene_handles[name].visible for name in shown)
+                            viewer.log_lines(
+                                "/frame_marker_probe",
+                                np.zeros((1, 3), dtype=np.float32),
+                                np.ones((1, 3), dtype=np.float32),
+                                colors=None,
+                            )
+                            viewer._scene_handles["/frame_marker_probe"].visible = False
+                            viewer.log_lines(
+                                "/frame_marker_probe",
+                                np.zeros((1, 3), dtype=np.float32),
+                                np.ones((1, 3), dtype=np.float32),
+                                colors=None,
+                            )
+                            assert viewer._scene_handles["/frame_marker_probe"].visible
+                            observation = ObservationManager.__new__(ObservationManager)
+                            observation._obs_buffer = None
+
+                            def must_not_compute():
+                                raise AssertionError("Spectator recomputed observations")
+
+                            observation.compute = must_not_compute
+                            spectator._live_plot_sources = [
+                                ManagerLivePlots("observations", observation)
+                            ]
+                            state_before = torch.get_rng_state()
+                            spectator.cfg.live_plots_update_interval = 1
+                            spectator._render_live_plots()
+                            assert torch.equal(state_before, torch.get_rng_state())
+                            assert viewer.apply_forces(model.state()) is None
+                            assert not viewer.is_paused()
+                            print(
+                                "DISPLAY_CALLBACKS_CACHED_PLOTS_AND_REUSED_GEOMETRY_VERIFIED",
+                                flush=True,
+                            )
 
                     async def direct_requests():
-                        for unknown in ("Pause Simulation", "Reset Episode", "stale-control-id"):
+                        for unknown in (
+                            "Pause Simulation",
+                            "Reset Episode",
+                            "stale-control-id",
+                            "configuration",
+                            "task",
+                            "action",
+                            "force",
+                            "control",
+                            "timing",
+                            "budget",
+                        ):
                             await server._websock_server._handle_incoming_message(
                                 0, _messages.GuiUpdateMessage(unknown, {"value": True})
                             )
