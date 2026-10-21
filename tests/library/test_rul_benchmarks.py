@@ -365,10 +365,13 @@ def test_default_rul_all_uses_lazy_auto_source(
     """Native scenario resolve requires no manual download or preprocessing."""
     monkeypatch.chdir(tmp_path)
     monkeypatch.delenv("NEXUML_RUL_PREPARED_FILE", raising=False)
-    scenario = maintenance_rul_all()
+    scenario = maintenance_rul_all(
+        download=False, dataset_root=tmp_path / "source-cache"
+    )
     dataset_source = scenario.data.datasets[0].source
     assert isinstance(dataset_source, AutoCMapSSRULWindows)
-    assert dataset_source.download is True
+    assert dataset_source.download is False
+    assert dataset_source.root == str(tmp_path / "source-cache")
     assert not (tmp_path / "data" / "cmapss").exists()
     compiled = compile_pipeline(scenario)
     assert len(compiled.loss_keys) == 6
