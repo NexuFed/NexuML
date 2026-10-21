@@ -638,9 +638,9 @@ def maintenance_rul_goel2026_lstm_protocol() -> ScenarioSpec:
     """Apply the Goel et al. (2026) FD001 LSTM architecture and training recipe.
 
     Implements their one-layer 32-unit LSTM, Dropout(0.5), 32-8-8-1
-    regressor, RMSprop and validation plateau schedule. This currently
-    retains NexuML's normalized/capped test-label convention, so the
-    reported paper RMSE cannot yet be claimed as an exact replication.
+    regressor, RMSprop and validation plateau schedule. The published
+    evaluation can be compared against capped and official raw RUL labels;
+    unknown publication details still preclude an exact-reproduction claim.
 
     Returns:
         Native NexuML FD001 scenario with paper-aligned LSTM and optimizer.
@@ -653,7 +653,7 @@ def maintenance_rul_goel2026_lstm_protocol() -> ScenarioSpec:
         cmapss_sensor_ids=_LU2025_SENSORS,
         cmapss_normalization="zscore",
         cmapss_rul_cap=130.0,
-        cmapss_profile="goel2026-lstm-protocol",
+        cmapss_profile="goel2026-lstm-protocol-raw",
         cmapss_padding_mode="zero",
         cmapss_train_full_windows_only=True,
         cmapss_normalize_targets=False,
@@ -683,10 +683,19 @@ def maintenance_rul_goel2026_lstm_protocol() -> ScenarioSpec:
             ),
         }
     )
+    raw_evaluator = EvalAlgorithmSpec(
+        name="rul_official_raw",
+        algorithm=RULBenchmarkEvaluator(
+            target_scale=1.0,
+            include_nasa_score=True,
+        ),
+        feature_key="predicted_rul",
+        label_key="rul_raw",
+    )
     return base.model_copy(
         update={
             "evaluation": base.evaluation.model_copy(
-                update={"algorithms": [paper_evaluator]}
+                update={"algorithms": [paper_evaluator, raw_evaluator]}
             ),
             "pipeline": PipelineSpec(
                 stages={
