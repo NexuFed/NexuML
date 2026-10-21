@@ -28,6 +28,7 @@ from nexuml_library.layers.model.rul_forecaster import (
     RULRegressionObjective,
     TemporalRULForecaster,
 )
+from nexuml_library.layers.model.rul_metrics import RULRegressionMetrics
 from nexuml_library.scenarios.training.defaults import (
     default_logging,
     default_training,
@@ -135,7 +136,20 @@ def maintenance_rul_benchmark(
                     keys_in=["predicted_rul"],
                     keys_out=["rul_loss"],
                     label_key="rul",
-                )
+                ),
+                LayerSpec(
+                    component=RULRegressionMetrics(
+                        target_scale=float(settings["target_scale"]),
+                        prediction_index=(
+                            min(range(len(q)), key=lambda i: abs(q[i] - 0.5))
+                            if objective == "quantile"
+                            else 0
+                        ),
+                    ),
+                    keys_in=["predicted_rul"],
+                    keys_out=["rul_mae", "rul_rmse", "rul_late_error"],
+                    label_key="rul",
+                ),
             ],
         }
     )
@@ -148,7 +162,7 @@ def maintenance_rul_benchmark(
             batch_size=batch_size,
             max_epochs=max_epochs,
             loss_keys={"rul_loss": 1.0},
-            metric_keys=[],
+            metric_keys=["rul_mae", "rul_rmse", "rul_late_error"],
         ),
         evaluation=EvaluationSpec(metrics=[], algorithms=[]),
         logging=default_logging(
