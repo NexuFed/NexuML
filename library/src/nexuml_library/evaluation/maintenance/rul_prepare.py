@@ -25,6 +25,8 @@ def _windowize(
     window: int,
     stride: int,
     final_only_test: bool,
+    padding_mode: str = "repeat_first",
+    train_full_windows_only: bool = False,
 ) -> tuple[Tensor, Tensor, list[dict[str, Any]]]:
     """Build causal left-edge-padded windows without joining asset sequences.
 
@@ -54,14 +56,19 @@ def _windowize(
         )
         if positions[-1] != len(observations) - 1:
             positions.append(len(observations) - 1)
+        if train_full_windows_only and split != "test":
+            positions = [stop for stop in positions if stop + 1 >= window]
         for stop in positions:
             start = max(0, stop - window + 1)
             segment = observations[start : stop + 1]
             if len(segment) < window:
-                segment = np.concatenate(
-                    [np.repeat(segment[:1], window - len(segment), axis=0), segment],
-                    axis=0,
+                missing = window - len(segment)
+                prefix = (
+                    np.zeros((missing, segment.shape[1]), dtype=segment.dtype)
+                    if padding_mode == "zero"
+                    else np.repeat(segment[:1], missing, axis=0)
                 )
+                segment = np.concatenate([prefix, segment], axis=0)
             features.append(torch.from_numpy(segment.copy()).float())
             labels.append(float(rul[stop]))
             metadata.append(
@@ -169,6 +176,9 @@ def prepare_cmapss(
     final_only_test: bool = True,
     sensor_ids: list[int] | None = None,
     normalization: str = "zscore",
+    padding_mode: str = "repeat_first",
+    train_full_windows_only: bool = False,
+    normalize_targets: bool = True,
 ) -> dict[str, Any]:
     """Construct supervised C-MAPSS RUL windows with official test targets.
 
@@ -192,6 +202,8 @@ def prepare_cmapss(
         raise ValueError("C-MAPSS sensor selection must be unique IDs in 1..21")
     if normalization not in {"zscore", "minmax"}:
         raise ValueError("C-MAPSS normalization must be zscore or minmax")
+    if padding_mode not in {"repeat_first", "zero"}:
+        raise ValueError("C-MAPSS padding mode must be repeat_first or zero")
     indices = list(range(24)) if sensor_ids is None else [
         sensor + 2 for sensor in sensor_ids
     ]
@@ -239,13 +251,18 @@ def prepare_cmapss(
     scale = float(rul_cap) if rul_cap is not None else float(
         max(np.max(rul) for _, split, _, rul in sequences if split == "train")
     )
-    scale = max(scale, 1.0)
+    scale = max(scale, 1.0) if normalize_targets else 1.0
     normalized = [
         (asset, split, values, rul / scale)
         for asset, split, values, rul in sequences
     ]
     features, targets, rows = _windowize(
-        normalized, window=window, stride=stride, final_only_test=final_only_test
+        normalized,
+        window=window,
+        stride=stride,
+        final_only_test=final_only_test,
+        padding_mode=padding_mode,
+        train_full_windows_only=train_full_windows_only,
     )
     feature_names = (
         [f"setting_{i}" for i in range(1, 4)]
@@ -269,6 +286,9 @@ def prepare_cmapss(
             "rul_cap": rul_cap,
             "sensor_ids": sensor_ids,
             "normalization": normalization,
+            "padding_mode": padding_mode,
+            "train_full_windows_only": train_full_windows_only,
+            "normalize_targets": normalize_targets,
             "feature_names": feature_names,
             "scaler": scaler,
             "split_assets": {
