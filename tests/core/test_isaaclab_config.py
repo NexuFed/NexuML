@@ -299,7 +299,6 @@ def test_bindings_require_explicit_nonempty_literal_mapping_paths():
     [
         {"observations": {}},
         {"observations": {"": ("policy",)}},
-        {"observations": {"observation": ()}},
         {"observations": {"observation": ("",)}},
         {"observations": {"observation": (1,)}},
         {"observations": {"observation": "policy"}},
@@ -309,6 +308,16 @@ def test_bindings_require_explicit_nonempty_literal_mapping_paths():
 def test_invalid_bindings_are_rejected(fields):
     with pytest.raises(ValidationError):
         IsaacBindings.model_validate(fields)
+
+
+def test_whole_agent_tensor_path_is_group_only_not_a_single_agent_mapping():
+    from nexuml_library.environments.isaaclab import IsaacLabEnvironment
+
+    local = IsaacBindings(observations={"observation": ()})
+    grouped = IsaacBindings(groups={"agents": local})
+    assert grouped.groups["agents"].observations["observation"] == ()
+    with pytest.raises(ValueError, match="Single-agent native observation paths"):
+        IsaacLabEnvironment(bindings=local)
 
 
 def test_viser_defaults_and_explicit_selection_are_portable():

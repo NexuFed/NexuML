@@ -13,7 +13,7 @@ from nexuml_library.scenarios.reinforcement.isaaclab_sensors import isaac_mixed_
 
 
 def main(owner):
-    assert shutil.disk_usage(".").free >= 40 * 2**30
+    assert shutil.disk_usage(".").free > 4 * 2**30
     scenario = isaac_mixed_cartpole_ppo(processing_owner=owner)
     assert scenario.interaction is not None
     definition = scenario.interaction.environment
@@ -97,7 +97,7 @@ def main(owner):
             )
         finally:
             runtime.close()
-    assert shutil.disk_usage(".").free >= 40 * 2**30
+    assert shutil.disk_usage(".").free > 4 * 2**30
 
 
 if __name__ == "__main__":

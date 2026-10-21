@@ -80,6 +80,29 @@ class NexuRLLightningModule(L.LightningModule):
     def configure_optimizers(self):
         return self.algorithm.configure_optimizers()
 
+    def on_load_checkpoint(self, checkpoint):
+        if not self.policy.contract.groups:
+            return
+        saved = ScenarioSpec.model_validate(
+            restore_model_data(checkpoint["hyper_parameters"]["scenario"], ScenarioSpec)
+        )
+        assert saved.interaction is not None
+        assert self.scenario.interaction is not None
+        if (
+            saved.interaction.environment.describe() != self.policy.contract
+            or saved.interaction.environment.checkpoint_identity()
+            != self.scenario.interaction.environment.checkpoint_identity()
+            or saved.policy != self.scenario.policy
+            or not isinstance(saved.training, ReinforcementLearningSpec)
+            or saved.training.algorithm != self.training_spec.algorithm
+            or saved.training.collector.num_envs_per_collector
+            != self.training_spec.collector.num_envs_per_collector
+        ):
+            raise ValueError(
+                "Grouped checkpoint requires unchanged task configuration, contracts, "
+                "sharing, algorithm and count"
+            )
+
     def train_dataloader(self):
         remaining = max(0, self.training_spec.total_frames - int(self.frames))
         if remaining and self._collector is None:
@@ -123,13 +146,22 @@ class NexuRLLightningModule(L.LightningModule):
                 f"train/rl/{name}", value, on_step=True, on_epoch=False, batch_size=rollout.numel()
             )
         self.log("train/rl/frames", self.frames.float(), on_step=True, on_epoch=False, batch_size=1)
-        self.log(
-            "train/rl/reward",
-            rollout["next", "reward"].float().mean(),
-            on_step=True,
-            on_epoch=False,
-            batch_size=1,
-        )
+        if "reward" in rollout["next"].keys():
+            self.log(
+                "train/rl/reward",
+                rollout["next", "reward"].float().mean(),
+                on_step=True,
+                on_epoch=False,
+                batch_size=1,
+            )
+        for group in self.policy.contract.groups:
+            self.log(
+                f"train/rl/{group}/agent_reward_mean",
+                rollout["next", group, "reward"].float().mean(),
+                on_step=True,
+                on_epoch=False,
+                batch_size=1,
+            )
         if int(self.batches) % self.training_spec.collector.policy_sync_interval_batches == 0:
             synchronize_policy(self._collector, self.algorithm.rollout_policy)
         interval = self.evaluation_spec.every_n_frames

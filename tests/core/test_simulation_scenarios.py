@@ -38,6 +38,7 @@ def test_optional_scenario_compiles_without_simulator_materialization(factory, m
     restored = ResolvedConfig.from_yaml(ResolvedConfig.from_scenario(spec).to_yaml()).to_scenario()
     assert restored.interaction is not None and restored.policy is not None
     contract = restored.interaction.environment.describe()
+    assert restored.policy.action_adapter is not None
     policy = CompiledPolicy(
         compile(restored), restored.policy.action_adapter.build(contract), contract
     )

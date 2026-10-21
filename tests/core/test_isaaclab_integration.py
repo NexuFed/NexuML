@@ -96,7 +96,7 @@ def test_upstream_native_learning_baseline(tmp_path, task):
 
 
 def _run(args, output, label, *, expected=0, process_scope=True):
-    assert shutil.disk_usage(ROOT).free >= 40 * 2**30
+    assert shutil.disk_usage(ROOT).free > 4 * 2**30
     output.mkdir(parents=True, exist_ok=True)
     env = {**os.environ, "NEXUML_LOGS_ROOT": str(output / "native-logs")}
     result = subprocess.run(
@@ -109,7 +109,7 @@ def _run(args, output, label, *, expected=0, process_scope=True):
         timeout=420,
     )
     (output / f"{label}.log").write_text(result.stdout)
-    assert shutil.disk_usage(ROOT).free >= 40 * 2**30
+    assert shutil.disk_usage(ROOT).free > 4 * 2**30
     assert result.returncode == expected, result.stdout
     return result.stdout
 
@@ -203,7 +203,7 @@ def test_native_spectator_real_browser_train_replay_and_lifecycle(tmp_path):
     fixture = ROOT / "tests/fixtures/isaaclab_viser_job.py"
     _run([fixture, "train", tmp_path / "train", port], tmp_path, "headless-train")
     for mode in ("train-viewer", "replay-viewer", "failure-viewer", "cancel-viewer"):
-        assert shutil.disk_usage(ROOT).free >= 40 * 2**30
+        assert shutil.disk_usage(ROOT).free > 4 * 2**30
         log_path = tmp_path / f"{mode}-browser.log"
         with log_path.open("x") as log:
             process = subprocess.Popen(

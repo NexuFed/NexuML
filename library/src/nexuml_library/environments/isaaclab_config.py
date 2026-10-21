@@ -6,7 +6,7 @@ import inspect
 from collections.abc import Callable, Mapping
 from typing import Annotated, Literal, Self
 
-from pydantic import ConfigDict, Field, StrictInt, field_validator
+from pydantic import ConfigDict, Field, StrictInt, field_validator, model_validator
 
 from nexuml.core.factory import factory_target
 from nexuml.core.types import FactorySpec, SpecModel
@@ -105,20 +105,36 @@ def isaac_task_config(fn: Callable[..., object], **kwargs: object) -> IsaacTaskC
 class IsaacBindings(SpecModel):
     """Map declared observation fields to literal native observation mapping keys.
 
-    Source paths index mappings only; components are never evaluated or used as
-    configuration attribute overrides. The action names the declared action field.
+    Source paths index mappings only; an empty group path selects the whole agent
+    tensor. Components are never evaluated as configuration overrides. The action
+    names the declared local action field.
     """
 
     model_config = ConfigDict(frozen=True, validate_default=True, allow_inf_nan=False)
 
     observations: dict[
         Annotated[str, Field(min_length=1)],
-        Annotated[tuple[Annotated[str, Field(min_length=1)], ...], Field(min_length=1)],
-    ] = Field(min_length=1)
+        tuple[Annotated[str, Field(min_length=1)], ...],
+    ] = Field(default_factory=dict)
+    groups: dict[str, IsaacBindings] = Field(
+        default_factory=dict, exclude_if=lambda value: not value
+    )
+    critic_observations: dict[str, tuple[Annotated[str, Field(min_length=1)], ...]] = Field(
+        default_factory=dict, exclude_if=lambda value: not value
+    )
     action: str = Field(default="action", min_length=1)
     processing: Literal["raw", "processed"] = Field(
         default="processed", exclude_if=lambda value: value == "processed"
     )
+
+    @model_validator(mode="after")
+    def _validate_groups(self):
+        if self.groups:
+            if self.observations or any(group.groups for group in self.groups.values()):
+                raise ValueError("Grouped native bindings require one flat binding per group")
+        elif not self.observations:
+            raise ValueError("Native bindings require observations or groups")
+        return self
 
 
 class ViserSpec(SpecModel):
