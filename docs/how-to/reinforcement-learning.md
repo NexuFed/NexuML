@@ -3,6 +3,10 @@
 RL uses the ordinary `NexuSession` and Lightning trainer. TorchRL supplies collection,
 GAE and clipped PPO losses; NexuML does not add another trainer.
 
+For a state-only native GPU learning example rather than a wiring smoke test, use
+[Train state-only Isaac Cartpole](isaac-cartpole.md): one declarative scenario file,
+private read-only Viser, automatic policy export and fresh-process evaluation.
+
 ## Ownership and mental model
 
 ```mermaid

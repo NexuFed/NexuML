@@ -85,6 +85,7 @@ _RUNTIME_EXTERN_PATTERNS = [
     "PIL.**",
     "tqdm.**",
     "sklearn.**",
+    "scipy.**",
     "matplotlib.**",
     "umap.**",
     "transformers.**",

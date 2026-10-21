@@ -11,39 +11,61 @@ not universal graphics or camera support.
 
 ## Enable training and separately enable replay
 
-Use the existing environment declaration and whole-job scope:
+For the CLI, put a declaration in `cartpole_live.py`:
 
 ```python
-from nexuml.core.serialization import lower_model
+from time import time_ns
+
+from nexuml.core.types import ExportSpec, ScenarioSpec
 from nexuml_library.environments.isaaclab_config import ViserSpec
 from nexuml_library.scenarios.reinforcement.isaaclab_sensors import isaac_mixed_cartpole_ppo
 
-scenario = isaac_mixed_cartpole_ppo(total_frames=256, frames_per_batch=64, num_envs=2)
-scenario.interaction.environment = scenario.interaction.environment.model_copy(
-    update={"viewer": ViserSpec(port=8080, max_visible_envs=2, lookat=(0.0, 0.0, 2.0))}
-)
-portable = lower_model(scenario)  # Inert data; no native runtime or server.
+def scenario() -> ScenarioSpec:
+    spec = isaac_mixed_cartpole_ppo(total_frames=256, frames_per_batch=64, num_envs=2)
+    spec.interaction.environment = spec.interaction.environment.model_copy(
+        update={"viewer": ViserSpec(port=8080, max_visible_envs=2, lookat=(0.0, 0.0, 2.0))}
+    )
+    spec.exports = [ExportSpec(output=f"/tmp/opencode/cartpole-{time_ns()}/policy")]
+    return spec
 ```
 
-Train through ordinary `nexuml train` or the
-[whole-job Python scope](isaac-native-configuration.md#normal-cli-and-whole-job-python-ownership).
+```bash
+nexuml train --scenario-file cartpole_live.py
+```
+
+The CLI owns the whole native job and exports; do not add a session runner to the
+file. This small sensor recipe deliberately exercises four-step episode resets;
+it is a viewing/processing example, not a convergence-ready training prescription.
+For custom direct Python orchestration, the
+[whole-job scope](isaac-native-configuration.md#normal-cli-and-whole-job-python-ownership)
+remains available.
 The configured purpose defaults to `("train",)`. A saved training spectator does
 **not** enable viewing when the policy is evaluated in a fresh process.
 
-For replay, explicitly replace the selected evaluation environment's viewer:
+For separately enabled CLI replay, use the same trusted scenario file to select
+the environment, then explicitly enable its evaluation viewer:
+
+```bash
+nexuml evaluate /approved/run/policy --scenario-file cartpole_live.py --device cuda:0 \
+  -O training.evaluation.episodes=10 \
+  -O 'interaction.evaluation_environment.viewer.purposes=["eval"]'
+```
+
+For direct Python replay, explicitly replace the selected evaluation environment's viewer:
 
 ```python
 from nexuml.evaluation.policy import evaluate_policy
 from nexuml.core.types import PolicyEvaluationSpec
 
-definition = scenario.interaction.environment.model_copy(
+spec = scenario()
+definition = spec.interaction.environment.model_copy(
     update={"viewer": ViserSpec(purposes=("eval",), port=8080)}
 )
-scenario.interaction.evaluation_environment = definition
-scenario.policy_evaluation = PolicyEvaluationSpec(episodes=10, max_steps_per_episode=120)
+spec.interaction.evaluation_environment = definition
+spec.policy_evaluation = PolicyEvaluationSpec(episodes=10, max_steps_per_episode=120)
 policy = policy.to("cuda:0")
 with definition.job_scope():
-    evaluation = evaluate_policy(policy, scenario)  # Existing evaluation owner.
+    evaluation = evaluate_policy(policy, spec)  # Existing evaluation owner.
 ```
 
 `policy` is the complete loaded policy, not just its neural pipeline. Native replay
