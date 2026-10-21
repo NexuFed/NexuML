@@ -37,6 +37,8 @@ from nexuml_library.layers.model.rul_metrics import _RULMetricsRuntime
 from nexuml_library.scenarios.maintenance.rul import (
     maintenance_rul_all,
     maintenance_rul_benchmark,
+    maintenance_rul_cen2024_tsmixer_proxy,
+    maintenance_rul_lu2025_tcn_protocol,
 )
 
 
@@ -395,6 +397,54 @@ def test_default_rul_all_uses_lazy_auto_source(
     compiled = compile_pipeline(scenario)
     assert len(compiled.loss_keys) == 6
     assert not (tmp_path / "data" / "cmapss").exists()
+
+
+def test_lu2025_preprocessing_sensor_minmax_and_cache_isolation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Paper settings select 14 exact sensors and fit minmax on training assets."""
+    root = tmp_path / "cmapss"
+    _cmapss_files(root)
+    baseline = prepare_cmapss(root, window=40, sensor_ids=[
+        2, 3, 4, 7, 8, 9, 11, 12, 13, 14, 15, 17, 20, 21
+    ], normalization="minmax")
+    assert baseline["features"].shape[1:] == (40, 14)
+    assert baseline["settings"]["feature_names"] == [
+        f"sensor_{index}" for index in [2, 3, 4, 7, 8, 9, 11, 12, 13, 14, 15, 17, 20, 21]
+    ]
+    assert baseline["settings"]["normalization"] == "minmax"
+    _cmapss_files(root, extra_test=1000.0)
+    altered = prepare_cmapss(root, window=40, sensor_ids=[
+        2, 3, 4, 7, 8, 9, 11, 12, 13, 14, 15, 17, 20, 21
+    ], normalization="minmax")
+    assert baseline["settings"]["scaler"] == altered["settings"]["scaler"]
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("NEXUML_RUL_PREPARED_FILE", raising=False)
+    lu = maintenance_rul_lu2025_tcn_protocol()
+    cen = maintenance_rul_cen2024_tsmixer_proxy()
+    lu_source = lu.data.datasets[0].source
+    cen_source = cen.data.datasets[0].source
+    assert isinstance(lu_source, AutoCMapSSRULWindows)
+    assert isinstance(cen_source, AutoCMapSSRULWindows)
+    assert lu_source.window == 40
+    assert lu_source.normalization == "minmax"
+    assert lu_source.sensor_ids == [2, 3, 4, 7, 8, 9, 11, 12, 13, 14, 15, 17, 20, 21]
+    assert lu.training.batch_size == 256
+    assert lu.training.lr == pytest.approx(1e-3)
+    assert lu.training.max_epochs == 300
+    assert lu.data.input_shapes["rul_history"] == [40, 14]
+    assert cen_source.window == 28
+    assert cen_source.rul_cap == 120
+    assert cen.training.lr == pytest.approx(0.01)
+    assert cen_source.artifact_path != lu_source.artifact_path
+    for scenario in (lu, cen):
+        compiled = compile_pipeline(scenario)
+        path = tmp_path / f"{scenario.name}.yaml"
+        compiled.resolved_config.save(path)
+        restored = ResolvedConfig.load(path).to_scenario()
+        compile_pipeline(restored)
 
 
 def test_rul_rejects_window_level_cross_asset_leakage(tmp_path: Path) -> None:
