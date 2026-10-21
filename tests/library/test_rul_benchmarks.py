@@ -560,6 +560,39 @@ def test_asymmetric_nasa_score_for_paper_protocol() -> None:
     assert evaluator.results()["rul_test_nasa_score"] == pytest.approx(expected)
 
 
+def test_official_raw_and_capped_nasa_evaluators_disagree() -> None:
+    """Both published target conventions remain separately measurable."""
+    x = TensorDict({"predicted_rul": torch.tensor([[130.0]])}, batch_size=[1])
+    y = TensorDict(
+        {"rul": torch.tensor([[130.0]]), "rul_raw": torch.tensor([[160.0]])},
+        batch_size=[1],
+    )
+    capped = _RULBenchmarkRuntime(
+        prediction_key="predicted_rul",
+        label_key="rul",
+        target_scale=1.0,
+        point_index=0,
+        lower_index=None,
+        upper_index=None,
+        include_nasa_score=True,
+    )
+    raw = _RULBenchmarkRuntime(
+        prediction_key="predicted_rul",
+        label_key="rul_raw",
+        target_scale=1.0,
+        point_index=0,
+        lower_index=None,
+        upper_index=None,
+        include_nasa_score=True,
+    )
+    for evaluator in (capped, raw):
+        evaluator.eval_batch(x, y)
+    assert capped.results()["rul_test_rmse"] == pytest.approx(0.0)
+    assert raw.results()["rul_test_rmse"] == pytest.approx(30.0)
+    assert capped.results()["rul_test_nasa_score"] == pytest.approx(0.0)
+    assert raw.results()["rul_test_nasa_score"] == pytest.approx(math.expm1(30.0 / 13))
+
+
 def test_goel2026_padded_test_and_cycle_targets(tmp_path: Path) -> None:
     """Short test histories receive zeros; outputs retain cycles, not fractions."""
     rows = []
