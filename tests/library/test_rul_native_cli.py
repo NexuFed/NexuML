@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import subprocess
-import sys
 from pathlib import Path
 
 import numpy as np
@@ -52,8 +51,8 @@ def test_native_nexuml_rul_cli_build_and_train(tmp_path: Path) -> None:
     path = tmp_path / "config.yaml"
     compile_pipeline(scenario).resolved_config.save(path)
     for command in (
-        [sys.executable, "-m", "nexuml.cli", "build", str(path)],
-        [sys.executable, "-m", "nexuml.cli", "train", "--config", str(path)],
+        ["nexuml", "build", str(path)],
+        ["nexuml", "train", "--config", str(path)],
     ):
         result = subprocess.run(
             command,
