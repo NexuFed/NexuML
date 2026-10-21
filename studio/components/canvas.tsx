@@ -96,9 +96,12 @@ function Editor({snapshot, selected, select, change, blocked,catalog,insert,repo
       nodeTypes={nodeTypes} defaultViewport={{x:24,y:32,zoom:1}} minZoom={.15} maxZoom={1.5} colorMode="dark"
       nodesDraggable={!blocked} nodesConnectable={!blocked} deleteKeyCode={null}
        selectionOnDrag={false} multiSelectionKeyCode={null} elevateNodesOnSelect={false}
-      isValidConnection={value=>validConnection(snapshot,value as Connection,catalog)}
+      isValidConnection={value=>validConnection(base,value as Connection)}
       onConnect={value=>act(()=>connect(snapshot,value,catalog))}
-      onReconnect={(edge,value)=>act(()=>connect(edge.target===value.target && edge.targetHandle===value.targetHandle ? snapshot : disconnect(snapshot,[edge],catalog),value,catalog))}
+      onReconnect={(edge,value)=>act(()=>{
+        const next=edge.target===value.target && edge.targetHandle===value.targetHandle ? snapshot : disconnect(snapshot,[edge],catalog);
+        return connect(next,value,catalog);
+      })}
       onEdgeClick={(_,edge)=>setEdgeId(edge.id)}
       onEdgesChange={changes=>{for(const update of changes)if(update.type==="select" && update.selected)setEdgeId(update.id);}}
       onPaneClick={()=>setEdgeId("")}

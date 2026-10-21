@@ -41,7 +41,6 @@ Each worker restores the typed scenario, creates the normal `NexuSession`, and e
 never initializes Ray. A caller-owned already initialized Ray runtime must be shut down
 before launch so an unverified target cannot replace the reviewed selection. Set
 `target.dashboard_address` explicitly for bounded read-only node/resource discovery.
-The optional Ray compatibility range remains `>=2.57,<2.59`.
 
 ## Lightning strategies
 

@@ -1,4 +1,4 @@
-# Public component contracts (typed NexuML 0.2)
+# Public component contracts
 
 Inspect the selected installation before using these signatures. The bundled
 starter contains runnable examples of datasets, loss layers, evaluators and

@@ -97,21 +97,9 @@ Do not look the component up by its decorator name in Python. The registered nam
 
 ## Register The Library
 
-For local development:
-
-```bash
-nexuml library add /path/to/my_library
-nexuml registry list layers
-```
-
-For an installed package:
-
-```toml
-[project.entry-points."nexuml.libraries"]
-my-library = "my_library"
-```
-
-The registry output reports `scaled_relu`, version `1`, its concrete type, and the `scale` field sourced from `model_json_schema()`.
+Follow [Register a library](register-library.md), or use a [local root](library-cli.md)
+for uninstalled source. Verify with `nexuml registry list layers`: output reports
+`scaled_relu`, version `1`, its concrete type, and the `scale` schema field.
 
 ## Persistence
 

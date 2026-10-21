@@ -22,24 +22,11 @@ component/scenario registries
 CLI inspection and YAML restoration
 ```
 
-## Entry-point library
-
-```toml
-[project.entry-points."nexuml.libraries"]
-my-library = "my_library"
-```
-
-The value is the importable package name. NexuML scans the package tree, so there is no separate central `register_all()` function to maintain.
-
-## Local development
-
-```bash
-nexuml library add /path/to/my_library
-nexuml library list
-nexuml registry list layers --verbose
-```
-
-Configured roots are rescanned on later NexuML invocations. You do not need to re-add a root after creating another component module.
+The entry-point value names an importable package; NexuML scans its tree without a
+central `register_all()` function. Configured local roots are rescanned on each
+invocation, so new modules need no re-registration. For setup procedures, see
+[Register a library](../how-to/register-library.md) and
+[Manage local roots](../how-to/library-cli.md).
 
 ## Resilient scanning
 

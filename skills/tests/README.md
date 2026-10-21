@@ -2,7 +2,17 @@
 
 Run `python skills/tests/check_skills.py` for install-payload/frontmatter/link
 checks. With compatible installed NexuML, run `python skills/tests/check_runtime.py`
-for routing, fitted-state and native tuning-contract checks.
+for the documented library example's routing/runtime smoke. Framework regressions
+live in pytest:
+
+| Former runtime-script assertion | Retained coverage |
+| --- | --- |
+| Unfitted test rejection; collection without scoring; centered score; preserved input; fitted checkpoint restore; test mode | `tests/core/test_post_train_layer.py::test_post_train_fit_lifecycle_and_checkpoint` |
+| Nested categorical parameter routing | `tests/tuning/test_optuna_tuner.py::test_resolve_search_space_categorical` |
+| Categorical value ignored without a factory; applied on rebuild; initial epoch override lost on rebuild | `tests/tuning/test_optuna_tuner.py::test_build_objective_categorical_factory_limits` |
+| Tune CLI exposes `--override`, not `--max-epochs` | `tests/tuning/test_optuna_tuner.py::test_tune_help_uses_override_not_max_epochs` |
+
+These regression tests use test doubles; no training or tuning job is launched.
 
 `evals/nexuml*.json` holds read-only response cases; `evals/workflows.json` holds
 bounded external-project execution cases; `evals/routing.json` holds near misses.

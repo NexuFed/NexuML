@@ -6,13 +6,13 @@ import { TerminalBuffer } from "../model/terminal";
 
 export function useObservation(connection:ConnectionInfo, identity:string) {
   const client = useQueryClient();
-  const [observed, setObserved] = useState<{id:string;events:Event[];metrics:Event[];state:string;truncated:boolean;gap:boolean;terminal:string;progress:Event["payload"]|null}>({id:"",events:[],metrics:[],state:"Detached",truncated:false,gap:false,terminal:"",progress:null});
+  const [observed, setObserved] = useState<{id:string;metrics:Event[];state:string;truncated:boolean;gap:boolean;terminal:string;progress:Event["payload"]|null}>({id:"",metrics:[],state:"Detached",truncated:false,gap:false,terminal:"",progress:null});
   useEffect(()=>{
     if(!identity) return;
-    let closed=false, cursor=0, socket:WebSocket, retry:ReturnType<typeof setTimeout>;
+    let closed=false, cursor=0, received=0, socket:WebSocket, retry:ReturnType<typeof setTimeout>;
     const update = (patch:Partial<typeof observed>) => setObserved(previous=>({...previous,...patch,id:identity}));
     const terminal=new TerminalBuffer();
-    update({events:[],metrics:[],state:"Connecting",truncated:false,gap:false,terminal:"",progress:null});
+    update({metrics:[],state:"Connecting",truncated:false,gap:false,terminal:"",progress:null});
     const attach=()=>{
       const url=new URL(`${connection.api}/api/v1/operations/${identity}/events`);
       url.protocol=url.protocol==="https:" ? "wss:" : "ws:";url.searchParams.set("after",String(cursor));
@@ -29,10 +29,10 @@ export function useObservation(connection:ConnectionInfo, identity:string) {
         if(event.kind==="log")terminal.write(String(event.payload.text));
         if(event.kind==="terminal") void client.invalidateQueries({queryKey:["operation",identity]});
         if(event.kind==="replay_gap") update({gap:true});
+        const truncated=++received>2000;
         setObserved(previous=>({id:identity,state:previous.id===identity ? previous.state : "Connected",
-          events:[...(previous.id===identity?previous.events:[]),event].slice(-2000),
           metrics:event.kind==="metrics" ? [...(previous.id===identity ? previous.metrics : []),event].slice(-2000) : previous.metrics,
-          truncated:previous.truncated || previous.events.length>=2000,gap:previous.gap,
+          truncated:previous.truncated || truncated,gap:previous.gap,
           terminal:event.kind==="log" ? terminal.text : previous.terminal,
           progress:event.kind==="progress" ? event.payload : previous.progress}));
       };
@@ -47,5 +47,5 @@ export function useObservation(connection:ConnectionInfo, identity:string) {
     attach();
     return ()=>{closed=true;clearTimeout(retry);socket?.close();};
   },[connection,identity,client]);
-  return observed.id===identity ? observed : {events:[],metrics:[],state:"Detached",truncated:false,gap:false,terminal:"",progress:null};
+  return observed.id===identity ? observed : {metrics:[],state:"Detached",truncated:false,gap:false,terminal:"",progress:null};
 }

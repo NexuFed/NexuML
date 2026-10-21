@@ -44,8 +44,8 @@ existing CLI/Python lifecycle, not a new training loop, scheduler or API server.
    request or explicit pause still excludes training.
 
 Read [CLI and config boundaries](references/cli-and-config.md) for concrete
-probes and supported forms. Examples describe the typed 0.2 API, not an assurance
-that every installed version supports it.
+probes and supported forms. Verify them against the selected installation rather
+than assuming every installed package exposes the same interface.
 
 ## Environment and discovery
 

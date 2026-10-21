@@ -1,211 +1,92 @@
-# Local Studio API (unreleased)
+# Local Studio API
 
-The API is an optional interface over the **selected installed NexuML**. It does not
-install Python, libraries, GPU dependencies, or environments. No account is needed.
-The Studio frontend is delivered separately; these instructions cover manual API startup.
+The optional API runs over the selected installed NexuML. For the browser workbench,
+use [Studio](../studio.md); this page covers manual startup and transport rules.
+It does not provision Python, dependencies or environments.
 
-## Installation
+## Start manually
 
-Use a distribution built from this change until a release containing the `api` extra
-is published. Install that wheel with the matching extra in your chosen environment:
+Create or activate your chosen Python environment and install:
 
-```bash
-uv tool install '/path/to/nexuml-0.2.1-py3-none-any.whl[api]'
-# Or, in an existing project environment:
-uv pip install '/path/to/nexuml-0.2.1-py3-none-any.whl[api]'
+```sh
+pip install "nexuml[api,library]"
 ```
 
-After a release containing the API is published, the package-name forms are:
+Set a random token in a private file **outside the working directory**. This POSIX
+example keeps it out of command arguments and URLs:
 
-```bash
-uv tool install 'nexuml[api]'
-uv tool install 'nexuml[api,library]'  # includes the base component library
-uv add 'nexuml[api,library]'          # existing uv project
-uv pip install 'nexuml[api,library]'  # existing active environment
-```
-
-Do not assume that `python` on PATH belongs to a uv-tool installation. Invoke that
-tool's `nexuml` entrypoint. For a project installation, invoke its existing interpreter
-directly (`.venv/bin/python`, or `.venv\Scripts\python.exe` on Windows):
-
-```bash
-/path/to/nexuml serve --directory /path/to/work --port 8000 --origin http://127.0.0.1:3000
-/path/to/.venv/bin/python -m nexuml.cli.main serve --directory /path/to/work
-```
-
-Set a random token first. This POSIX example uses a private file outside the working
-directory; the token is never a command-line argument or URL:
-
-```bash
+```sh
 umask 077
 python -c 'import secrets; print(secrets.token_urlsafe(32))' > "$HOME/.nexuml-api-token"
-nexuml serve --directory . --token-file "$HOME/.nexuml-api-token"
+nexuml serve --directory . --port 8000 --origin http://127.0.0.1:3000 \
+  --token-file "$HOME/.nexuml-api-token"
 ```
 
-Alternatively set `NEXUML_API_TOKEN` in the server's environment. A file must be private
-(`chmod 600` on POSIX; restrict its ACL on Windows). Keep it out of version control.
-Startup fails explicitly if the selected installation lacks server dependencies.
-No install or environment sync runs on startup. Existing nonserver commands do not
-import FastAPI.
+Alternatively set `NEXUML_API_TOKEN` in the server environment. Token files need mode
+600 on POSIX or a restricted Windows ACL; keep them out of version control. Invoke a
+uv tool's own `nexuml` executable, not an unrelated shell Python. A project interpreter
+can invoke `-m nexuml.cli.main serve` with the same options. See
+[runtime selection](../studio.md#choose-a-runtime) for isolated-tool installation.
 
-## Trust and authentication
+## Authentication and REST reference
 
-- The server binds only to `127.0.0.1`. Host headers must name a loopback host.
-- `--origin` must be an exact loopback HTTP origin, without a slash/path. Only that
-  browser origin is allowed. `localhost` and `127.0.0.1` are different origins.
-- REST requires `Authorization: Bearer <token>`. Optional `X-NexuML-Interface: 2`
-  detects a mismatched client. Runtime identity is at `GET /api/v1/runtime`.
-  Studio 0.1.x supports stable NexuML >=0.2.1,<0.3.0 with interface **2**; Python and npm
-  versions need not advance together. Runtime identity also reports Python's version
-  and executable. Explicit old interface headers fail with 409. The existing `/api/v1`
-  transport prefix is unchanged.
-- WebSocket upgrades require the exact allowed Origin. The first text frame must
-  be `{"token":"<token>"}` within five seconds and at most 4096 bytes. No data is
-  sent before authentication; invalid access closes with policy code 1008.
-- CORS is not authentication. Browser closure is not cancellation.
-- Discovery imports trusted local Python. Resolving a scenario calls its factory;
-  an explicit build runs component constructors and dummy forwards. Process separation
-  is **not a sandbox**. Do not use untrusted libraries or configurations.
+- The API binds only to `127.0.0.1`; Host must name a loopback host. `--origin` is an exact
+  loopback HTTP origin without a slash/path. `localhost` and `127.0.0.1` differ.
+- REST requires `Authorization: Bearer <token>`. Fetch **`/openapi.json` with that
+  header** for request/response schemas and routes; never put the token in a URL.
+  `GET /api/v1/runtime` reports the selected runtime/interface. Clients may send
+  `X-NexuML-Interface` using the reported interface value; a mismatch returns 409.
+- Errors expose `error.code`, `error.message` and optional `error.fields`
+  (`loc`, `message`, `type`), without echoing request inputs.
+- CORS/Host/Origin checks are not authentication for arbitrary HTTP clients. Discovery,
+  scenario resolution, builds and checkpoint loading execute trusted Python; process
+  separation is **not a sandbox**. Only use trusted libraries/configurations/checkpoints.
 
-The authenticated OpenAPI contract is available at `/openapi.json`; do not put the
-token in a browser URL. REST errors use `error.code`, `error.message`, and optional
-`error.fields` (`loc`, `message`, `type`) without echoing request inputs.
+### Configuration and conflicts
 
-## Discovery and configuration
+Portable responses include `data`, `yaml`, `stage_order` and `semantic_revision`.
+Send `stage_order` back with JSON edits: integer-like JavaScript object keys can reorder,
+but pipeline order is executable semantics. Layout is a separate `*.studio.json`
+sidecar and applies only to matching semantic revisions; it never controls membership
+or execution order. YAML comments/formatting are not preserved.
 
-| Route | Existing operation |
-| --- | --- |
-| `GET /api/v1/registry` | Fresh component/scenario discovery, schemas, sources, diagnostics and backend availability |
-| `GET /api/v1/scenarios` | Discovered scenario names and diagnostics |
-| `GET /api/v1/libraries` | Installed packages and existing configured roots |
-| `POST /api/v1/libraries` | Add `{"path":"..."}` through existing `LibraryConfig` |
-| `DELETE /api/v1/libraries` | Remove an explicitly configured root |
-| `POST /api/v1/scenarios/{name}/resolve` | Call the selected registered scenario factory, without compilation |
-| `POST /api/v1/scenarios/resolve-file` | Explicit trusted Python file within the selected directory |
-| `POST /api/v1/config/validate` | Validate exactly one of `yaml` text or portable `data` |
-| `POST /api/v1/config/load` | Load `{"path":"..."}` within the selected directory |
-| `POST /api/v1/config/save` | Validate and save `path`, `base_revision`, and config input |
-| `POST /api/v1/config/layout/load` | Read optional `path + ".studio.json"` sidecar |
-| `POST /api/v1/config/layout/save` | Save `path`, `base_revision`, `semantic_revision`, `layout` |
+Load returns `base_revision`; save requires it (null only for a new file). External
+changes yield 409 `conflict` without overwriting either version. Invalid YAML/fields
+yield 422 and leave saved files unchanged. Transport file access rejects traversal and
+symlink escapes outside the working directory. Adding an external trusted library root
+permits discovery, not arbitrary HTTP browsing. Existing dataset/log path policies remain.
 
-Responses contain NexuML's ordinary portable `data`, `yaml`, `stage_order` and a
-`semantic_revision`. Send `stage_order` back with JSON edits: JavaScript can reorder
-integer-like object keys, but pipeline stage order is executable semantics. The API
-restores that mapping order before model validation. Node positions never belong in it.
+## WebSocket observation and replay
 
-Forms consume each installed component's actual schema. Generic Python factory kwargs
-remain structured values; the API does not invent constructor fields/defaults.
-Definition schemas can carry presentation-only `x-nexuml-category` paths,
-`x-nexuml-outputs` declarations (`key`, `domain`), and `x-nexuml-routing` entries keyed
-by an evaluation config path (`domain`, optional actual runtime `default` and `required`).
-The registry returns these unchanged; discovery does not instantiate datasets/evaluators.
-Unknown or dynamic contracts remain runtime-only. Node display names live only in layout sidecars.
-The current graph takes feature outputs from `data.input_shapes`/`feature_key` and label
-outputs from targets/declared `y` outputs; other dataset domains remain runtime-only.
-Validation may import definitions, but does not compile or run a dummy forward.
-YAML comments/formatting and Python source formatting are not preserved; configuration
-meaning, identities/versions, key aliases, evaluation and execution settings are.
+Connect to `ws://127.0.0.1:<api-port>/api/v1/operations/<id>/events?after=<sequence>`.
+The upgrade requires the exact allowed Origin. Within five seconds send the first text
+frame `{"token":"<token>"}` (at most 4096 bytes). No data precedes authentication;
+invalid access closes with policy code 1008. Never put credentials in the URL.
 
-Load returns a file `base_revision`; save requires that revision (null only for a new
-file). External changes yield HTTP 409 `conflict` without overwriting either version.
-Invalid YAML/fields yield HTTP 422 and leave saved files unchanged. Layout is saved
-separately and should be applied only when its semantic revision matches the config.
-Studio's sidecar keeps stage/layer editor IDs, positions, container sizes and display names.
-Membership and execution order remain in ordinary `pipeline.stages` YAML plus the existing
-ordered transport view; a sidecar is never an executable graph. Header movement, resizing
-and within-stage placement do not invalidate builds. Explicit Structure/order-strip edits
-and previewed cross-stage transfers do; native validation/build remain authoritative.
-Matching older sidecars without sizes use defaults. See the Studio README for gesture,
-insertion-preview, skipped-stage warning and non-drag editing controls.
+The API sends a `snapshot`, then sequenced `progress`, `metrics`, `log`, `replay_gap`
+and `terminal` events. Reconnect from the last sequence; disconnect/reload only detaches
+observation and **never relaunches or cancels training**. Frames are bounded and awaited
+sends apply backpressure from disk replay. Missing/oversized history produces a replay
+gap. An oversized snapshot follows `replay_gap` with `partial: true`; fetch the full
+`GET /api/v1/operations/{id}` status instead of replacing it with the reduced snapshot.
+Raw logs and observations remain on disk even when the UI display is truncated.
 
-Transport reads/writes reject traversal and symlink escapes outside the selected working
-directory. Explicitly adding an external library root permits normal trusted discovery,
-not arbitrary HTTP file browsing. Dataset/log path policies remain NexuML's.
+## Operation lifecycle and limits
 
-## Build, train and observe
+One build/train/export operation may be active; another receives 409 `busy`, with no
+queue. Builds run constructors/dummy forwards. Local training uses `NexuSession.run()`;
+metrics come from actual callbacks, not parsed logs or fabricated progress. Resume
+reviews the trusted checkpoint-derived scenario; later draft edits do not alter a run.
+Export requires completed local training and its actual checkpoint, never fresh random
+weights. Downloads are limited to authorized paths under the working directory or
+resolved logs root; external artifact URIs remain references.
 
-`POST /api/v1/build` accepts the same configuration input, plus optional `timeout`
-(seconds; default 120). It **executes** the existing compiler, constructors and dummy
-forwards. Successful results contain final key shapes, not fabricated per-layer shapes.
-`POST /api/v1/train` uses the existing local `NexuSession.run()` lifecycle or existing
-Ray entrypoint or a registered native job adapter. All return HTTP 202 with an operation `id`. One build/train/export
-operation may be active; a second receives HTTP 409 `busy`. There is no queue.
-
-Local resume accepts `trainer_checkpoint`, an authorized trusted `.ckpt` file. Checkpoint
-loading can execute Python. `POST /api/v1/train/prepare` resolves the actual checkpoint
-scenario for launch review; the checkpoint's scenario, not later draft edits, is authoritative.
-Ray Trainer checkpoint resume is rejected; Ray retains its own recovery semantics.
-
-| Resource | Behavior |
-| --- | --- |
-| `GET /api/v1/operations` | Persisted API-started invocation snapshots |
-| `GET /api/v1/operations/{id}` | Actual state, frozen source revision, results, artifact references |
-| `GET /api/v1/operations/{id}/config` | Frozen ordinary launch configuration |
-| `POST /api/v1/operations/{id}/cancel` | Confirm stop of owned local process tree; no promised checkpoint |
-| `POST /api/v1/operations/{id}/inspect` | Explicitly inspect a recorded UID-bearing native reference; never resubmit |
-| `POST /api/v1/execution/discover` | Bounded read-only discovery for the supplied config/scope, outside the training slot |
-| `GET /api/v1/operations/{id}/artifacts/{index}` | Existing authorized artifact download |
-| `POST /api/v1/export` | `source_id`, `kind`, `output`; requires completed local training and its actual checkpoint |
-
-Export kinds are existing `train_package`, `safetensors`, and `onnx` (requires installed
-ONNX dependencies). Missing files/dependencies are explicit errors. Exports never
-compile a fresh pipeline and call its random weights "trained". Configured exports after
-training use that session's actual pipeline. Download paths must resolve within the
-working directory or the existing resolved logs root; references outside those roots
-remain references, not an unrestricted download facility.
-
-Observe at `ws://127.0.0.1:<api-port>/api/v1/operations/<id>/events?after=<sequence>`.
-Authenticate with the first frame described above (no token in the URL). The API sends
-a `snapshot`, then sequenced `progress`, `metrics`, `log`, `replay_gap`, and `terminal`
-events. Local scalar values come from actual Lightning callbacks. Logs are actual process
-output, not parsed progress bars. Ray shows driver logs and returned metrics only; remote
-worker telemetry/cancellation is not invented. Existing Ray evaluation/post-training-fit
-compatibility guards still apply, and the API never provisions a cluster.
-
-Training `metrics` events sample actual `train/*` callback scalars during batches,
-throttled alongside progress with first/final batch samples. Validation/test snapshots
-run after module epoch-end metric/evaluator finalization; sanity-check measurements are
-excluded. `training.loss_keys` selects weighted loss outputs, `training.metric_keys`
-selects pipeline metric outputs, and NexuML logs the weighted total as `<phase>/loss`.
-Neither observation nor Studio computes missing accuracy/F1 or changes training logging.
-Other native scalar callback metrics (for example learning-rate monitor values) remain observable.
-Charts use actual optimizer `step` coordinates and retain 2,000 metric snapshots separately
-from log/progress history; single samples render as points and raw history stays on disk.
-
-Local `progress` payloads expose observed `phase`, `epoch`, `step`, `batch`, `total`, and
-`max_epochs` when available. Batch updates are throttled to four per second plus phase/epoch
-boundaries and final batches. Unknown/nonfinite totals become null, not fabricated percentages.
-Preparation/downloads can precede Trainer callbacks and remain indeterminate. Studio renders
-supported carriage-return/backspace/ANSI cursor/erase updates safely as plain text, bounded to
-1,000 terminal lines and 4,096 columns; raw `logs.txt` is unchanged. This is not a full PTY emulator.
-
-Disconnect only detaches observation. Reconnect from the last sequence; it does not
-relaunch training. Individual frames are bounded; awaited sends apply backpressure
-directly from the disk replay, rather than an unbounded subscriber queue. Oversized or
-missing history is reported as a replay gap. Raw logs remain available on disk.
-An oversized snapshot is preceded by `replay_gap` and carries `partial: true`; fetch
-the complete status from `GET /api/v1/operations/{id}` rather than replacing a full
-operation with the reduced snapshot.
-
-Records live under `resolve_logs_root('.experiments/.studio/operations')`, honoring
-`NEXUML_LOGS_ROOT`.
-They are sidecars for existing invocations, not a second experiment/project database.
-
-API shutdown stops confirmed owned local work. It cannot claim Ray workers stopped
-when the driver exits. After a restart, terminal records remain inspectable; prior active
-records become `ownership_unknown`. No PID-based adoption or automatic resume occurs.
-
-The registry includes Python-owned `execution_backends` with registered identities,
-schemas, availability diagnostics, capabilities and presentation hints. Execution uses
-`type/version/params`, not the removed `execution.kind` union. `/train/prepare` returns
-safe native review summaries; `/train` rechecks template content revision and captures
-private exact manifest/worker YAML. Discovery/template/handoff filesystem inputs must
-stay inside the selected working directory; target URLs cannot embed credentials.
-Kubeconfig, auth helpers and cluster credentials stay in the selected Python runtime.
-
-Native jobs report submitted/pending/running and actual terminal states, not submitter
-success or fabricated percentages. Only Job/PyTorchJob advertise UID-verified foreground
-cancellation; RayCluster/RayJob Stop remains unsupported. Shutdown detaches native
-observation without claiming remote cancellation. Log tails are bounded; metrics and
-external artifacts remain unavailable/reference-only unless actually supplied. See
-[native job limits](training-backends/jobs.md) before an explicitly authorized launch.
+Records live under `.experiments/.studio/operations/`, honoring `NEXUML_LOGS_ROOT`.
+Shutdown stops confirmed owned local work, without promising a checkpoint. After restart,
+terminal records remain inspectable and prior active records become `ownership_unknown`;
+there is no PID adoption or automatic resume. A Ray driver exit is not proof that workers
+stopped. Native shutdown detaches observation without claiming remote cancellation.
+Only Job/PyTorchJob advertise UID-verified foreground Stop; RayCluster/RayJob do not.
+Inspecting a native reference never resubmits it. See
+[execution modes](training-backends/index.md) and [native job limits](training-backends/jobs.md)
+before a separately authorized cluster launch; the API never provisions a cluster.

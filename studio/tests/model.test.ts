@@ -40,13 +40,42 @@ describe("ordered config projection",()=>{
     expect(project(snapshot).nodes.find(node=>node.id===snapshot.ids["10"][0])?.position).toEqual({x:100,y:200});
   });
   test("connections reject forward references and old overwritten producers",()=>{
-    const snapshot=newSnapshot(fixture(),["10","2"]);
+    const snapshot=newSnapshot(fixture(),["10","2"]);const graph=project(snapshot);
     const target=snapshot.ids["2"][0];
     const correct={source:snapshot.ids["10"][0],sourceHandle:"output:features",target,targetHandle:"keys_in:input"};
-    expect(validConnection(snapshot,correct)).toBe(true);
-    expect(validConnection(snapshot,{...correct,source:"data"})).toBe(false);
-    expect(validConnection(snapshot,{source:target,sourceHandle:"output:loss",target:snapshot.ids["10"][0],targetHandle:"keys_in:features"})).toBe(false);
+    expect(validConnection(graph,correct)).toBe(true);
+    expect(validConnection(graph,{...correct,source:"data"})).toBe(false);
+    expect(validConnection(graph,{source:target,sourceHandle:"output:loss",target:snapshot.ids["10"][0],targetHandle:"keys_in:features"})).toBe(false);
     expect(connect(snapshot,correct).config.pipeline.stages["2"][0].keys_in).toEqual({input:"features"});
+  });
+  test("connection checks reject missing handles, empty outputs, self references and mismatched domains",()=>{
+    const config=fixture();config.pipeline.stages["10"][0].keys_out.push("");
+    const snapshot=newSnapshot(config,["10","2"]);const graph=project(snapshot);
+    const connection={source:snapshot.ids["10"][0],sourceHandle:"output:features",target:snapshot.ids["2"][0],targetHandle:"keys_in:input"};
+    for(const change of [
+      {source:"missing"},{target:"missing"},{sourceHandle:null},{targetHandle:null},
+      {sourceHandle:"output:missing"},{targetHandle:"keys_in:missing"},{sourceHandle:"output:"},
+      {target:connection.source,targetHandle:"keys_in:features"},
+      {source:"data",sourceHandle:"label:labels"},{sourceHandle:"meta_out:width"},
+      {targetHandle:"label_key:labels"},{targetHandle:"meta_in:size"},
+    ])expect(validConnection(graph,{...connection,...change})).toBe(false);
+    expect(validConnection(graph,{...connection,sourceHandle:"meta_out:width",targetHandle:"meta_in:size"})).toBe(true);
+    expect(validConnection(graph,{...connection,source:"data",sourceHandle:"label:labels",targetHandle:"label_key:labels"})).toBe(true);
+    expect(()=>connect(snapshot,{...connection,sourceHandle:"meta_out:width"})).toThrow("matching key domain");
+  });
+  test("only the last writer before each target is eligible, even with a later overwrite",()=>{
+    const config=fixture();config.pipeline.stages["2"].push(layer("later",["features"],["features"]));
+    const snapshot=newSnapshot(config,["10","2"]);const graph=project(snapshot);
+    const first=snapshot.ids["10"][0], [second,later]=snapshot.ids["2"];
+    const connection={source:first,sourceHandle:"output:features",target:second,targetHandle:"keys_in:input"};
+    expect(validConnection(graph,connection)).toBe(true);
+    expect(validConnection(graph,{...connection,source:later})).toBe(false);
+    expect(validConnection(graph,{...connection,source:"data"})).toBe(false);
+    const evaluation={...connection,target:"evaluation:0",targetHandle:"feature_key:features"};
+    expect(validConnection(graph,evaluation)).toBe(false);
+    expect(validConnection(graph,{...evaluation,source:later})).toBe(true);
+    expect(graph.edges.find(edge=>edge.target===second && edge.targetHandle===connection.targetHandle)?.source).toBe(first);
+    expect(graph.edges.find(edge=>edge.target===evaluation.target && edge.targetHandle===evaluation.targetHandle)?.source).toBe(later);
   });
   test("reordering keeps placement identity and configuration remains ordinary YAML",()=>{
     const config=fixture();config.pipeline.stages["10"].push(layer("third",["features"],["different"]));
@@ -107,6 +136,18 @@ describe("ordered config projection",()=>{
     const store=createDraftStore();store.getState().load({data:snapshot.config,stage_order:snapshot.order,yaml:"",semantic_revision:"source"},{ids:snapshot.ids,positions:{}});
     store.getState().change(disconnected);store.getState().undo();expect(store.getState().draft!.config).toEqual(snapshot.config);
   });
+  test("connections use post-disconnect handles rather than stale list-input handles",()=>{
+    const snapshot=newSnapshot(fixture(),["10","2"]);const graph=project(snapshot);
+    const edge=graph.edges.find(edge=>edge.target===snapshot.ids["10"][0])!;
+    const connection={source:edge.source,sourceHandle:edge.sourceHandle!,target:edge.target,targetHandle:edge.targetHandle!};
+    expect(validConnection(graph,connection)).toBe(true);
+    const disconnected=disconnect(snapshot,[edge]);const current=project(disconnected);
+    expect(validConnection(current,connection)).toBe(false);
+    expect(()=>connect(disconnected,connection)).toThrow("preceding producer");
+    const replacement={...connection,targetHandle:"keys_in:"};
+    expect(validConnection(current,replacement)).toBe(true);
+    expect(connect(disconnected,replacement).config.pipeline.stages["10"][0].keys_in).toEqual(["features"]);
+  });
   test("installed metadata projects dataset labels, evaluator parameter routes and honest defaults",()=>{
     const config=fixture();config.data.source={type:"Images",version:"1",params:{}};config.data.targets=[];
     config.evaluation.algorithms[0]={algorithm:{type:"Report",version:"1",params:{score_key:"loss"}},label_key:"class_labels"};
@@ -119,6 +160,25 @@ describe("ordered config projection",()=>{
     expect(score.source).toBe(snapshot.ids["2"][0]);
     const changed=disconnect(snapshot,[score],catalog);expect(changed.config.evaluation.algorithms[0].algorithm.params.score_key).toBe("");expect(project(changed,catalog).unconnected).toBe(true);
     expect(()=>disconnect(snapshot,[{target:"evaluation:0",targetHandle:"label_key:class_labels"}],catalog)).toThrow("inherits a runtime default");
+  });
+  test("evaluator connection checks use catalog schema defaults and routing domains",()=>{
+    const config=fixture();config.evaluation.algorithms=[{algorithm:{type:"Report",version:"1",params:{}}}];
+    const catalog:Catalog={scenarios:[],errors:[],libraries:{packages:[],roots:[]},schema:{},backends:{},components:[{
+      kind:"eval_algorithm",name:"Report",version:"1",import_target:"local.Report",schema:{
+        properties:{score_key:{type:"string",default:"loss"}},
+        "x-nexuml-routing":{"algorithm.params.score_key":{domain:"x",required:true},label_key:{domain:"y",default:"labels"}},
+      },
+    }]};
+    const snapshot=newSnapshot(config,["10","2"]);const graph=project(snapshot,catalog);
+    const score={source:snapshot.ids["2"][0],sourceHandle:"output:loss",target:"evaluation:0",targetHandle:"algorithm.params.score_key:loss"};
+    const label={source:"data",sourceHandle:"label:labels",target:"evaluation:0",targetHandle:"label_key:labels"};
+    expect(validConnection(graph,score)).toBe(true);expect(validConnection(graph,label)).toBe(true);
+    expect(validConnection(graph,{...score,source:"data",sourceHandle:"label:labels"})).toBe(false);
+    expect(validConnection(graph,{...score,targetHandle:"algorithm.params.score_key:"})).toBe(false);
+    expect(connect(snapshot,score,catalog).config.evaluation.algorithms[0].algorithm.params.score_key).toBe("loss");
+    expect(connect(snapshot,label,catalog).config.evaluation.algorithms[0].label_key).toBe("labels");
+    expect(snapshot.config.evaluation.algorithms[0].algorithm.params).toEqual({});
+    expect(()=>disconnect(snapshot,[label],catalog)).toThrow("inherits a runtime default");
   });
   test("names are sidecar-only, restore and undo; installed category metadata wins",()=>{
     const document:Document={data:fixture(),stage_order:["10","2"],yaml:"",semantic_revision:"source"};

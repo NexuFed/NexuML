@@ -10,7 +10,7 @@ export function yamlText(snapshot: Snapshot): string {
 
 export type DraftState = {
   draft: Snapshot | null; saved: string; savedLayout: string; path: string; baseRevision: string | null;
-  semanticRevision: string; past: Snapshot[]; future: Snapshot[]; blocked: boolean;
+  past: Snapshot[]; future: Snapshot[]; blocked: boolean;
   load: (document: Document, layout?: Layout) => void; select:(id:string)=>void;
   change: (snapshot: Snapshot) => void; undo: () => void; redo: () => void;
   markSaved: (document: Document, source?:Snapshot) => void;
@@ -21,7 +21,7 @@ export const layoutSignature=(snapshot:Snapshot)=>JSON.stringify([snapshot.ids,s
 
 export function createDraftStore() {
   return createStore<DraftState>((set, get) => ({
-    draft: null, saved: "", savedLayout:"", path: "scenario.yaml", baseRevision: null, semanticRevision: "",
+    draft: null, saved: "", savedLayout:"", path: "scenario.yaml", baseRevision: null,
     past: [], future: [], blocked: false,
     load: (document, layout) => {
       const draft = newSnapshot(document.data, document.stage_order);
@@ -35,7 +35,7 @@ export function createDraftStore() {
         if(layout.sizes && Object.values(layout.sizes).every(size=>size && Number.isFinite(size.width) && size.width>0 && Number.isFinite(size.height) && size.height>0))draft.sizes=layout.sizes;
       }
       set({draft, saved: document.path ? signature(draft) : "",savedLayout:layoutSignature(draft), path: document.path ?? "scenario.yaml",
-        baseRevision: document.base_revision ?? null, semanticRevision: document.semantic_revision,
+        baseRevision: document.base_revision ?? null,
         past: [], future: [], blocked: false});
     },
     change: draft => {
@@ -57,8 +57,7 @@ export function createDraftStore() {
     },
     markSaved: (document,source) => {
       const draft = source ?? get().draft!;
-      set({saved: signature(draft), path: document.path!, baseRevision: document.base_revision!,
-        semanticRevision: document.semantic_revision});
+      set({saved: signature(draft), path: document.path!, baseRevision: document.base_revision!});
     },
     markLayoutSaved: source => set({savedLayout:layoutSignature(source)}),
     block: blocked => set({blocked}),

@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import re
+import sys
 from types import SimpleNamespace
 from typing import Any
 
 import pytest
+from typer.testing import CliRunner
 
-from nexuml.core.types import TuningSpec
+from nexuml.cli.main import app
+from nexuml.core.types import ScenarioSpec, TrainingSpec, TuningSpec
 from nexuml.tuning.optuna_tuner import _resolve_search_space, build_objective, tune
 
 
@@ -37,6 +41,11 @@ def _fake_train_result(logged_metrics: dict[str, float]) -> SimpleNamespace:
         trainer=SimpleNamespace(logged_metrics=logged_metrics),
         eval_algorithm_results={},
     )
+
+
+@pytest.fixture
+def objective_optuna(monkeypatch):
+    monkeypatch.setitem(sys.modules, "optuna", SimpleNamespace(Trial=object))
 
 
 def test_resolve_search_space_scalar_override():
@@ -88,7 +97,9 @@ def test_resolve_search_space_derived():
     assert arch == {"lr": 0.001, "use_high_lr": True}
 
 
-def test_build_objective_rebuilds_scenario_per_trial(vector_scenario_spec, monkeypatch):
+def test_build_objective_rebuilds_scenario_per_trial(
+    vector_scenario_spec, monkeypatch, objective_optuna
+):
     seen: list[Any] = []
 
     def fake_train(scenario, registry=None, enable_progress_bar=False, run_name=None):
@@ -112,7 +123,9 @@ def test_build_objective_rebuilds_scenario_per_trial(vector_scenario_spec, monke
     assert vector_scenario_spec.training.lr == 1e-3
 
 
-def test_build_objective_missing_metric_lists_available(vector_scenario_spec, monkeypatch):
+def test_build_objective_missing_metric_lists_available(
+    vector_scenario_spec, monkeypatch, objective_optuna
+):
     def fake_train(scenario, registry=None, enable_progress_bar=False, run_name=None):
         return _fake_train_result({"val/loss": 0.5, "val/acc": 0.9})
 
@@ -125,6 +138,39 @@ def test_build_objective_missing_metric_lists_available(vector_scenario_spec, mo
 
     assert "val/loss" in str(excinfo.value)
     assert "val/acc" in str(excinfo.value)
+
+
+@pytest.mark.parametrize(
+    "use_factory, expected_batch_size, expected_max_epochs", [(False, 64, 3), (True, 16, 10)]
+)
+def test_build_objective_categorical_factory_limits(
+    monkeypatch, objective_optuna, use_factory, expected_batch_size, expected_max_epochs
+):
+    observed = []
+
+    def fake_train(scenario, **kwargs):
+        observed.append(scenario)
+        return _fake_train_result({"val/loss": 0.5})
+
+    def factory(training):
+        return ScenarioSpec(
+            name="rebuilt", training=TrainingSpec(batch_size=training["batch_size"])
+        )
+
+    monkeypatch.setattr("nexuml.training.lightning.train", fake_train)
+    base = ScenarioSpec(name="contract", training=TrainingSpec(max_epochs=3, batch_size=64))
+    space = {"training.batch_size": {"type": "categorical", "choices": [16, 32]}}
+    build_objective(base, space, build_factory=factory if use_factory else None)(FakeTrial())
+
+    assert observed[0].training.batch_size == expected_batch_size
+    assert observed[0].training.max_epochs == expected_max_epochs
+
+
+def test_tune_help_uses_override_not_max_epochs():
+    result = CliRunner().invoke(app, ["tune", "--help"])
+    assert result.exit_code == 0, result.output
+    help_text = re.sub(r"\x1b\[[0-9;]*m", "", result.output)
+    assert "--max-epochs" not in help_text and "--override" in help_text
 
 
 @pytest.mark.parametrize("directions", [["minimize"], ["maximize"], ["minimize", "maximize"]])

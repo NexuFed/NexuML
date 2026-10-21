@@ -1,6 +1,6 @@
 # Offline external-library example
 
-This tiny synthetic regression library demonstrates the typed NexuML 0.2.1
+This tiny synthetic regression library demonstrates the typed NexuML
 contracts. It is **not** a paper reproduction or a model-quality benchmark.
 It uses installed NexuML only, without `nexuml_library` or a framework checkout.
 
@@ -17,7 +17,6 @@ uv pip install --python /path/to/project/python -e .
 /path/to/project/python -m nexuml.cli.main train --scenario-file experiment.py --artifact-dir runs/smoke --max-epochs 1
 ```
 
-Use the release-appropriate package index if NexuML is not on the default index.
 The package declares its dependency; editable installation does not require a
 separate `library add`. Do not add `src/agent_demo` under another module name.
 

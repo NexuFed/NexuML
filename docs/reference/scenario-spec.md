@@ -63,7 +63,7 @@ DataSpec(
 )
 ```
 
-!!! note "Current 0.2 loader default"
+!!! note "Loader default"
     The core `LoaderSpec` default factory creates `TorchLoader()`. Select `DaliLoader()` or `TensorShardsLoader()` explicitly when a scenario requires either specialized backend.
 
 An explicit `LoaderSpec.batch_size` overrides `TrainingSpec.batch_size`. Leave it `None` to defer to the training batch size (including automatic batch-size probing).

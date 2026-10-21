@@ -1,7 +1,7 @@
 # Native jobs and capacity review
 
-Install `nexuml[kubernetes]` into the selected Python installation. This change tests
-Kubernetes Python client **36.x**, KubeRay `ray.io/v1` RayJob, and Training Operator
+Install `nexuml[kubernetes]` into the selected Python installation. The adapters use
+KubeRay `ray.io/v1` RayJob and Training Operator
 `kubeflow.org/v1` PyTorchJob. A served API is not proof of a healthy controller.
 Newer Kubeflow **TrainJob is not PyTorchJob** and is not substituted.
 

@@ -4,6 +4,8 @@ import json
 import re
 from pathlib import Path
 
+from ruamel.yaml import YAML
+
 
 def main():
     """Check skill identities, references and evaluation definitions."""
@@ -17,22 +19,21 @@ def main():
         text = (directory / "SKILL.md").read_text()
         assert text.startswith("---\n"), f"{name}: missing frontmatter"
         header, body = text[4:].split("\n---\n", 1)
-        assert f"name: {name}\n" in header + "\n", f"{name}: identity mismatch"
-        description = re.search(r"(?m)^description: >-\n((?:  [^\n]+\n?)+)", header + "\n")
-        assert description, f"{name}: expected an explicit multiline description"
-        summary = " ".join(line.strip() for line in description.group(1).splitlines())
-        assert 1 <= len(summary) <= 1024, f"{name}: description length outside spec"
-        assert re.search(r"(?m)^license: Apache-2\.0$", header), (
-            f"{name}: missing Apache-2.0 license"
+        values = YAML(typ="safe").load(header)
+        assert isinstance(values, dict), f"{name}: frontmatter must be a mapping"
+        assert values.get("name") == name, f"{name}: identity mismatch"
+        description = values.get("description")
+        assert isinstance(description, str) and 1 <= len(description.strip()) <= 1024, (
+            f"{name}: description length outside spec"
         )
-        assert re.search(r"(?m)^metadata:$", header), f"{name}: missing metadata"
-        assert re.search(r"(?m)^  author: NexuFed AI$", header), (
-            f"{name}: missing source attribution"
-        )
-        assert re.search(r'(?m)^  version: "\d+\.\d+\.\d+"$', header), (
+        assert values.get("license") == "Apache-2.0", f"{name}: missing Apache-2.0 license"
+        metadata = values.get("metadata")
+        assert isinstance(metadata, dict), f"{name}: missing metadata"
+        assert metadata.get("author") == "NexuFed AI", f"{name}: missing source attribution"
+        assert re.fullmatch(r"\d+\.\d+\.\d+", str(metadata.get("version", ""))), (
             f"{name}: expected independent semantic skill version"
         )
-        assert re.search(r'(?m)^  last-reviewed: "\d{4}-\d{2}-\d{2}"$', header), (
+        assert re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(metadata.get("last-reviewed", ""))), (
             f"{name}: missing review date"
         )
         assert len(body.splitlines()) < 500, f"{name}: body needs progressive disclosure"

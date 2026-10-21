@@ -60,18 +60,8 @@ Python uses concrete typed definitions directly. `LayerSpec` owns graph wiring; 
 
 ## Make the scenario discoverable
 
-For an installed library, expose its package with the entry point:
-
-```toml
-[project.entry-points."nexuml.libraries"]
-my-library = "my_library"
-```
-
-During local development you can instead register a path:
-
-```bash
-nexuml library add /path/to/my_library
-```
+Follow [Register a library](register-library.md) for an installed package, or
+[Manage local roots](library-cli.md) for uninstalled source.
 
 ## Verify the recipe
 

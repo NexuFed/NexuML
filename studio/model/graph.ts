@@ -122,8 +122,7 @@ export function project(snapshot: Snapshot, catalog?:Catalog, measured:Record<st
   return graph;
 }
 
-export function validConnection(snapshot: Snapshot, connection: Connection, catalog?:Catalog): boolean {
-  const graph = project(snapshot,catalog);
+export function validConnection(graph: Graph, connection: Connection): boolean {
   const source = graph.nodes.find(node => node.id === connection.source);
   const target = graph.nodes.find(node => node.id === connection.target);
   const output = source?.data.outputs.find(port => port.id === connection.sourceHandle);
@@ -136,8 +135,8 @@ export function validConnection(snapshot: Snapshot, connection: Connection, cata
 }
 
 export function connect(snapshot: Snapshot, connection: Connection, catalog?:Catalog): Snapshot {
-  if (!validConnection(snapshot, connection,catalog)) throw new Error("Choose the applicable preceding producer with a matching key domain.");
   const graph = project(snapshot,catalog);
+  if (!validConnection(graph, connection)) throw new Error("Choose the applicable preceding producer with a matching key domain.");
   const source = graph.nodes.find(node => node.id === connection.source)!;
   const target = graph.nodes.find(node => node.id === connection.target)!;
   const output = source.data.outputs.find(port => port.id === connection.sourceHandle)!;

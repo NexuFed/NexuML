@@ -1,7 +1,7 @@
 # Native tuning boundaries
 
 Inspect the selected installed CLI/signatures. These examples target typed
-NexuML 0.2 and do not require a framework checkout. Native tuning needs the
+NexuML definitions and do not require a framework checkout. Native tuning needs the
 `tuning` extra/Optuna in that same environment.
 
 ## Scenario file
@@ -122,6 +122,6 @@ them. Use explicit variants when they provide clearer controlled evidence.
 These details were checked against the CLI `tune` function and
 `nexuml.tuning.optuna_tuner` (`_resolve_search_space`, `_set_param_dict`,
 `build_objective`, `tune`). Inspect the installed versions; reference examples
-can lag implementation. Training-free checks are in `skills/tests/check_runtime.py`
-in the skill-kit repository; they are verification evidence, not a required runtime
-dependency for users installing just this skill.
+can lag implementation. Framework regression checks live in the repository's normal
+pytest suite; they are verification evidence, not a runtime dependency for users
+installing just this skill.

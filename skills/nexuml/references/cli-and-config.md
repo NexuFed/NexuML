@@ -1,6 +1,6 @@
 # Public CLI and configuration boundaries
 
-These probes describe NexuML's typed 0.2 API. Run from the user's project with
+These probes describe NexuML's typed API. Run from the user's project with
 the selected installation; check its help before relying on a command/option.
 No framework checkout or source `PYTHONPATH` is needed.
 

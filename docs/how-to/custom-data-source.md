@@ -56,12 +56,8 @@ data_list = DataSpec(
 
 Split, modality, preprocessing, label merging, loader policy, and graph input shapes stay on `DataSpec` or `DatasetSpec`. Dataset-specific values stay on `MyDataset`.
 
-Verify discovery with:
-
-```bash
-nexuml library add /path/to/my_library
-nexuml registry list data
-```
+Make the package discoverable through [library registration](register-library.md)
+or a [local root](library-cli.md), then verify with `nexuml registry list data`.
 
 YAML stores `type: my_dataset`, `version: '1'`, and validated parameters. It does not store the Python import path.
 

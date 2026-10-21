@@ -100,6 +100,7 @@ def catalog() -> dict:
         }
         for e in [*components.errors, *scenarios.errors]
     ]
+    execution_backends = execution_catalog()
     return {
         "libraries": {"packages": packages, "roots": LibraryConfig.load().roots},
         "components": entries,
@@ -110,10 +111,10 @@ def catalog() -> dict:
             {"category": category, "name": name, "import_target": target}
             for category, name, target in backend_rows()
         ],
-        "execution_backends": execution_catalog(),
+        "execution_backends": execution_backends,
         "backends": {
             row["type"]: {"available": row["available"], **row["capabilities"]}
-            for row in execution_catalog()
+            for row in execution_backends
         },
     }
 

@@ -21,16 +21,13 @@ permission to patch installed NexuML.
 ## Install the skills separately
 
 For compatible agents, the community `skills` CLI can discover and select
-individual skills (from the default branch once these files are merged):
+individual skills:
 
 ```sh
 npx skills add NexuFed/NexuML --list
 npx skills add NexuFed/NexuML --skill nexuml --skill nexuml-library
 ```
 
-During review of the `ui` branch, a direct skill directory URL is also a
-supported source for this CLI, for example
-`npx skills add https://github.com/NexuFed/NexuML/tree/ui/skills/nexuml`.
 The CLI and target agent must be available; these commands are documentation,
 not an installation test performed by this repository's CI. See the
 [CLI documentation](https://www.skills.sh/docs/cli).
@@ -60,13 +57,13 @@ with `uv pip install`. Install the user's library editably during development.
 must also have the custom library and its dependencies. Never merge it implicitly
 with a project's `.venv`. The optional `library` extra supplies the base library;
 `tuning` supplies Optuna. Neither is required for every custom library. Consult
-release-appropriate installation instructions before choosing an index or version.
+[installation instructions](https://nexufed.github.io/NexuML/start/install/)
+before adding platform-specific integrations.
 
 ## References and checks
 
-The examples target the typed NexuML 0.2 API. Inspect the actual installed version,
-schemas and CLI help; do not silently translate legacy configurations or assume
-unreleased interfaces exist.
+The examples use typed NexuML definitions. Inspect the installed schemas and CLI
+help; do not silently translate legacy configurations or assume unavailable interfaces.
 
 - [Public CLI/configuration boundaries](nexuml/references/cli-and-config.md)
 - [Library component contracts](nexuml-library/references/contracts.md)
@@ -81,9 +78,9 @@ Run structural checks from this repository with:
 python skills/tests/check_skills.py
 ```
 
-With compatible installed NexuML, `python skills/tests/check_runtime.py` also
-checks key preservation, fitted-score lifecycle/checkpoint state and tuning
-parameter/factory semantics. It uses test doubles; no study or training is run.
+With installed NexuML, `python skills/tests/check_runtime.py` runs the documented
+external-library example checks without a study or training run. Framework
+lifecycle/checkpoint and tuning regressions belong to the normal pytest suite.
 
 Repository-only cases live in `skills/tests/evals/`, outside the independently
 installed skill payloads. Read-only cases assess decisions/commands; workflow

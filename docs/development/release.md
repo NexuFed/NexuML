@@ -29,7 +29,7 @@ TestPyPI files are immutable. Bump both project versions before rerunning a cand
 ## Production release
 
 1. Confirm both projects declare the intended version and the TestPyPI candidate passed.
-2. Create and push the matching stable tag, for example `v0.2.0`.
+2. Create and push the matching stable `v<project version>` tag.
 3. Approve the protected `pypi` and `pypi-library` environment deployments in sequence.
 
 Publish a GitHub release for that tag to trigger production publication. The workflow
@@ -56,9 +56,9 @@ forward with a patch release. A `studio-v*` release skips this Python pipeline.
    otherwise recreate the expired publisher. Then select **Require two-factor
    authentication and disallow tokens** in npm publishing access.
 
-The [official npm requirements](https://docs.npmjs.com/trusted-publishers) currently
-require **npm >=11.5.1**, **Node >=22.14** and **GitHub-hosted runners**; self-hosted
-runners are unsupported. The publish-only job uses Node 24 and npm 11, OIDC
+Follow the [official npm requirements](https://docs.npmjs.com/trusted-publishers)
+for supported Node/npm installations and **GitHub-hosted runners**; self-hosted
+runners are unsupported. The publish-only job uses OIDC
 `id-token: write` and provenance in the protected environment, with no dependency
 installation/build or long-lived credential. Release workflows use GitHub-hosted
 `ubuntu-latest`, including the PyPI/TestPyPI jobs in `release.yml`.
@@ -67,8 +67,8 @@ mandatory Python GPU suites use the separately approved `ika-runner-gpu` pool.
 
 ## Studio release
 
-1. Release a compatible Python backend first. Studio 0.1.x accepts stable NexuML
-   >=0.2.1,<0.3.0 with interface 2; the package versions are independent. The API extra
+1. Release a compatible Python backend first; the launcher enforces its supported
+   runtime/interface contract. Package versions are independent. The API extra
    and custom libraries must be explicitly installed by the operator.
 2. Merge the reviewed candidate to protected `main`, wait for complete required **CI**
    on that exact commit, and verify the `studio-distribution` artifact is unexpired.
@@ -76,7 +76,7 @@ mandatory Python GPU suites use the separately approved `ika-runner-gpu` pool.
    separately built Python wheels. macOS/Windows jobs are temporarily disabled by
    maintainer request; their release acceptance remains unverified, not silently green.
 3. Create/push `studio-v<studio/package.json version>` and publish its GitHub release
-   (for example `studio-v0.1.0`; do not bump/tag merely to test this workflow).
+   (do not bump/tag merely to test this workflow).
 4. Approve the `npm` deployment. The workflow checks the tag/version, protected-main
    ancestry, successful push CI/main required gate, artifact ID/commit, SHA-512
    integrity and packed metadata, then publishes **that tarball** with provenance.
