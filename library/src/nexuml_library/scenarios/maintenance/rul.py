@@ -58,6 +58,9 @@ def maintenance_rul_benchmark(
     cmapss_normalization: Literal["zscore", "minmax"] = "zscore",
     cmapss_rul_cap: float = 125.0,
     cmapss_profile: str | None = None,
+    cmapss_padding_mode: Literal["repeat_first", "zero"] = "repeat_first",
+    cmapss_train_full_windows_only: bool = False,
+    cmapss_normalize_targets: bool = True,
     architecture: Literal[
         "feature_mlp", "lstm", "tcn", "transformer", "tsmixer"
     ] = "tcn",
@@ -92,6 +95,9 @@ def maintenance_rul_benchmark(
         cmapss_normalization: Train-only feature normalization method.
         cmapss_rul_cap: Training and currently evaluation label clipping threshold.
         cmapss_profile: Cache and run label distinguishing published protocols.
+        cmapss_padding_mode: How to fill incomplete sensor windows.
+        cmapss_train_full_windows_only: Exclude incomplete training windows.
+        cmapss_normalize_targets: Divide targets by cap for optimization.
         architecture: Temporal backbone or feature MLP baseline.
         objective: Point regression or multi-quantile pinball loss.
         quantiles: Ascending pinball probabilities when using quantile objective.
@@ -156,7 +162,9 @@ def maintenance_rul_benchmark(
             "dataset": "cmapss",
             "subset": "FD001",
             "seed": 42,
-            "target_scale": float(cmapss_rul_cap),
+            "target_scale": float(
+                cmapss_rul_cap if cmapss_normalize_targets else 1.0
+            ),
         }
         length = cmapss_window
         channels = 24 if cmapss_sensor_ids is None else len(cmapss_sensor_ids)
@@ -204,6 +212,9 @@ def maintenance_rul_benchmark(
             rul_cap=cmapss_rul_cap,
             sensor_ids=cmapss_sensor_ids,
             normalization=cmapss_normalization,
+            padding_mode=cmapss_padding_mode,
+            train_full_windows_only=cmapss_train_full_windows_only,
+            normalize_targets=cmapss_normalize_targets,
             download=download,
         )
     else:
@@ -641,6 +652,9 @@ def maintenance_rul_goel2026_lstm_protocol() -> ScenarioSpec:
         cmapss_normalization="zscore",
         cmapss_rul_cap=130.0,
         cmapss_profile="goel2026-lstm-protocol",
+        cmapss_padding_mode="zero",
+        cmapss_train_full_windows_only=True,
+        cmapss_normalize_targets=False,
         hidden_dim=32,
         depth=1,
         dropout=0.5,
