@@ -42,6 +42,7 @@ from nexuml_library.scenarios.maintenance.rul import (
     maintenance_rul_all,
     maintenance_rul_benchmark,
     maintenance_rul_cen2024_tsmixer_proxy,
+    maintenance_rul_goel2026_cnn_protocol,
     maintenance_rul_goel2026_lstm_protocol,
     maintenance_rul_lu2025_tcn_protocol,
 )
@@ -493,6 +494,29 @@ def test_goel2026_lstm_architecture_and_training_protocol(
     restored = ResolvedConfig.load(config).to_scenario()
     assert restored.training.optimizer.factory == "torch.optim.rmsprop:RMSprop"
     compile_pipeline(restored)
+
+
+def test_goel2026_cnn_paper_model_and_independent_checkpoint(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The two Goel paper models share data but not model/checkpoint artifacts."""
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("NEXUML_RUL_PREPARED_FILE", raising=False)
+    lstm = maintenance_rul_goel2026_lstm_protocol()
+    cnn = maintenance_rul_goel2026_cnn_protocol()
+    assert lstm.name != cnn.name
+    assert lstm.data.datasets[0].source == cnn.data.datasets[0].source
+    assert cnn.training.optimizer.factory == "torch.optim.rmsprop:RMSprop"
+    assert cnn.training.loss_keys == {"rul_loss": 1.0}
+    assert cnn.callbacks[1].kwargs["dirpath"] != lstm.callbacks[1].kwargs["dirpath"]
+    compiled = compile_pipeline(cnn)
+    x = TensorDict({"rul_history": torch.randn(2, 30, 14)}, batch_size=[2])
+    y = TensorDict({"rul": torch.tensor([[30.0], [50.0]])}, batch_size=[2])
+    result, _ = compiled(x, y)
+    assert result["predicted_rul"].shape == (2, 1)
+    result["rul_loss"].mean().backward()
+    assert any(param.grad is not None for param in compiled.parameters())
 
 
 def test_asymmetric_nasa_score_for_paper_protocol() -> None:
