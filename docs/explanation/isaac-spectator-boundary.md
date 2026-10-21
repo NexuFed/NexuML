@@ -20,9 +20,11 @@ files or process-global classes/functions are replaced.
   budget, reserving the pinned transport's synchronous one-second join. Failure
   to stop is an explicit job failure, never successful cleanup.
 
-The constructor sidebar permits display pause only. Final native pause/reset
-polls deny simulation handoff even if stale native flags are set. Camera and
-display state are not permission to mutate physics, task configuration or actors.
+The bare constructor probe permits display pause. Integrated jobs add only
+display environment selection, markers, cached plots and browser-camera controls.
+Final native pause/reset polls and force handoffs deny simulation mutation even
+if stale native flags are set. Camera/display state never authorizes physics,
+task configuration, timing/budget or actor changes.
 
 ## Scope of the gate
 
@@ -36,4 +38,5 @@ CUDA_VISIBLE_DEVICES='' NEXUML_RUN_SYSTEM_TESTS=1 OMP_NUM_THREADS=1 \
 
 These are constructor-safety checks, not training, replay, sensor or browser
 acceptance. Job activation, environment selection, markers, supported plots and
-actual training/replay browsers remain separate required integration gates.
+actual training/replay browsers have separate required integration gates; see
+[the viewing guide](../how-to/isaac-read-only-viser.md).

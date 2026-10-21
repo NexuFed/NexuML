@@ -204,11 +204,10 @@ choose factories, recipes, processors, archives or private paths. Actor-only
 inference does not reconstruct a simulator or execute saved configuration functions.
 
 `ViserSpec` is an inert, loopback-only declaration; omitted means no viewer.
-Runtime activation for a requested purpose currently **fails closed** pending job
-integration and Milestone C qualification. The isolated
-[constructor boundary](../explanation/isaac-spectator-boundary.md) is separate from
-actual training/replay browser acceptance. Do not advertise working
-viewing, policy sensors or MARL acceptance from these declarations or state-only
-examples. Native/backend, sensor and browser gates require their own real checks.
+See [read-only viewing](isaac-read-only-viser.md) for explicit training and separate
+replay activation, display controls, private forwarding and ownership. The isolated
+[constructor boundary](../explanation/isaac-spectator-boundary.md) is distinct from
+actual training/replay browser acceptance. Native/backend, policy sensor and MARL
+support still require their own real checks; viewing does not establish them.
 See [SO-101 local fit](so101-local-fit.md) for its separate capture/qualification
 and unchanged quality protocol.
