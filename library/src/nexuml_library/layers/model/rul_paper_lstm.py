@@ -1,4 +1,4 @@
-"""Goel et al. 2026 FD001 LSTM backbone reproduced from Algorithms 5 and 6."""
+"""Goel et al. 2026 FD001 LSTM architecture from Algorithm 5."""
 
 from __future__ import annotations
 
