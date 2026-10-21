@@ -204,9 +204,10 @@ def prepare_cmapss(
         raise ValueError("C-MAPSS normalization must be zscore or minmax")
     if padding_mode not in {"repeat_first", "zero"}:
         raise ValueError("C-MAPSS padding mode must be repeat_first or zero")
-    indices = list(range(24)) if sensor_ids is None else [
-        sensor + 2 for sensor in sensor_ids
-    ]
+    if sensor_ids is None:
+        indices = list(range(24))
+    else:
+        indices = [sensor + 2 for sensor in sensor_ids]
     root = Path(root).expanduser()
     train = _cmapss_table(root / f"train_{subset}.txt")
     test = _cmapss_table(root / f"test_{subset}.txt")
@@ -267,10 +268,7 @@ def prepare_cmapss(
         train_full_windows_only=train_full_windows_only,
     )
     raw_targets = torch.tensor(
-        [
-            float(raw_rul_by_asset[row["asset_id"]][row["step"]])
-            for row in rows
-        ],
+        [float(raw_rul_by_asset[row["asset_id"]][row["step"]]) for row in rows],
         dtype=torch.float32,
     ).unsqueeze(-1)
     feature_names = (
