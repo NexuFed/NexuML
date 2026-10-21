@@ -157,3 +157,69 @@ class _PreparedRULRuntime(NexuDataset):
             Label TensorDict with rul [1].
         """
         return TensorDict({"rul": self._rul_targets[idx]}, batch_size=[])
+
+
+@data_source("AutoCMapSSRULWindows")
+class AutoCMapSSRULWindows(DataSourceDefinition):
+    """Official NASA C-MAPSS RUL windows, downloaded and cached on first build."""
+
+    root: str = "data/cmapss"
+    artifact_path: str = ".experiments/rul/prepared/cmapss-FD001-seed42.pt"
+    subset: str = "FD001"
+    seed: int = 42
+    window: int = Field(default=30, gt=0)
+    stride: int = Field(default=1, gt=0)
+    rul_cap: float = Field(default=125.0, gt=0)
+    download: bool = True
+
+    def build(self) -> NexuDataset:
+        """Materialize a dataset, downloading and preparing missing data once.
+
+        Returns:
+            Labeled causal sensor windows with asset-disjoint splits.
+
+        Raises:
+            FileNotFoundError: If raw input data are absent and download is disabled.
+            ValueError: If the official source or prepared artifact is invalid.
+            RuntimeError: If NASA download fails.
+        """
+        from nexuml_library.data.maintenance.rul_download import (
+            CMAPSS_ARCHIVE_URL,
+            cmapss_source_sha256,
+            ensure_cmapss,
+        )
+        from nexuml_library.evaluation.maintenance.rul_prepare import (
+            prepare_cmapss,
+            save_rul_artifact,
+        )
+
+        artifact = Path(self.artifact_path).expanduser().resolve()
+        if not artifact.is_file():
+            source = ensure_cmapss(self.root, self.subset, download=self.download)
+            payload = prepare_cmapss(
+                source,
+                subset=self.subset,
+                seed=self.seed,
+                window=self.window,
+                stride=self.stride,
+                rul_cap=self.rul_cap,
+            )
+            payload["settings"]["source_url"] = CMAPSS_ARCHIVE_URL
+            digest = cmapss_source_sha256(Path(self.root).expanduser().resolve())
+            if digest is not None:
+                payload["settings"]["source_archive_sha256"] = digest
+            save_rul_artifact(payload, artifact)
+
+        prepared = read_rul_artifact(artifact)
+        settings = prepared["settings"]
+        if (
+            settings.get("dataset") != "cmapss"
+            or settings.get("subset") != self.subset
+            or settings.get("seed") != self.seed
+            or settings.get("window") != self.window
+            or settings.get("stride") != self.stride
+            or float(settings.get("target_scale", 0)) != self.rul_cap
+            or settings.get("rul_cap") != self.rul_cap
+        ):
+            raise ValueError("Cached C-MAPSS RUL artifact does not match the scenario")
+        return _PreparedRULRuntime(str(artifact))
