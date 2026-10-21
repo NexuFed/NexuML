@@ -260,6 +260,25 @@ def test_default_rul_scenario_resolves_without_prepared_file(
         maintenance_rul_benchmark(tmp_path / "missing.pt")
 
 
+@pytest.mark.parametrize("override", ["", "   "])
+def test_blank_prepared_file_environment_enables_auto_download(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    override: str,
+) -> None:
+    """An empty override must not resolve the current directory as a dataset."""
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("NEXUML_RUL_PREPARED_FILE", override)
+    scenario = maintenance_rul_all()
+    source = scenario.data.datasets[0].source
+    assert isinstance(source, AutoCMapSSRULWindows)
+    assert source.download is True
+    assert source.artifact_path == str(
+        (tmp_path / ".experiments/rul/prepared/cmapss-FD001-seed42.pt").resolve()
+    )
+    compile_pipeline(scenario)
+
+
 def test_composite_rul_scenario_has_six_distinct_heads(tmp_path: Path) -> None:
     """A single NexuML scenario exposes independent outputs and metrics per head."""
     root = tmp_path / "cmapss"
