@@ -7,6 +7,7 @@ import subprocess
 from pathlib import Path
 
 import numpy as np
+import pytest
 
 from nexuml.core.config import ResolvedConfig
 from nexuml_library.data.maintenance.rul import PreparedRULWindows
@@ -16,7 +17,12 @@ from nexuml_library.evaluation.maintenance.rul_prepare import (
 )
 
 
-def test_native_nexuml_rul_cli_build_and_train(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    "scenario_name", ("maintenance-rul-feature-mlp", "maintenance-rul-all")
+)
+def test_native_nexuml_rul_cli_build_and_train(
+    tmp_path: Path, scenario_name: str
+) -> None:
     """A labeled engine-disjoint scenario trains through CLI, never an ad-hoc loop."""
     root = tmp_path / "source"
     root.mkdir()
@@ -42,7 +48,7 @@ def test_native_nexuml_rul_cli_build_and_train(tmp_path: Path) -> None:
     env = os.environ.copy()
     env["NEXUML_RUL_PREPARED_FILE"] = str(artifact)
     for command in (
-        ["nexuml", "resolve", "maintenance-rul-feature-mlp", "--output", str(path)],
+        ["nexuml", "resolve", scenario_name, "--output", str(path)],
         ["nexuml", "build", str(path)],
         ["nexuml", "train", "--config", str(path), "--max-epochs", "1"],
     ):
