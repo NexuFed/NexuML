@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import cast
 
-import torch
 from pydantic import Field
 from tensordict import TensorDict
 from torch import Tensor
@@ -58,6 +57,10 @@ class _RULMetricsRuntime(PipelineLayer):
         Returns:
             Existing feature/label pair with metric outputs. Errors have
             the original dataset's target unit (cycles or recordings).
+
+        Raises:
+            TypeError: If model features are not supplied as a TensorDict.
+            ValueError: If the prediction channel or metric key count is invalid.
         """
         if not isinstance(x, TensorDict):
             raise TypeError("RUL metrics expect a NexuML TensorDict")
