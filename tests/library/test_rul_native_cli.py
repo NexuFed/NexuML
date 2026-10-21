@@ -82,3 +82,56 @@ def test_native_resolve_with_empty_prepared_override(tmp_path: Path) -> None:
     assert source.download is True
     assert Path(source.artifact_path) != tmp_path
     assert not Path(source.artifact_path).exists()
+
+
+@pytest.mark.parametrize(
+    "scenario_name",
+    (
+        "maintenance-rul-goel2026-lstm-protocol",
+        "maintenance-rul-goel2026-cnn-protocol",
+    ),
+)
+def test_native_goel2026_paper_scenarios_fit_without_custom_loop(
+    tmp_path: Path, scenario_name: str
+) -> None:
+    """Paper architecture, RMSprop and scheduler train using normal CLI."""
+    root = tmp_path / "source"
+    root.mkdir()
+    train_rows = [
+        [engine, cycle, *([float(engine + cycle * 0.1)] * 24)]
+        for engine in range(1, 9)
+        for cycle in range(1, 41)
+    ]
+    np.savetxt(root / "train_FD001.txt", np.asarray(train_rows))
+    test_rows = [
+        [engine, cycle, *([float(engine + cycle * 0.1)] * 24)]
+        for engine in (1, 2)
+        for cycle in range(1, 11)
+    ]
+    np.savetxt(root / "test_FD001.txt", np.asarray(test_rows))
+    np.savetxt(root / "RUL_FD001.txt", [3.0, 7.0])
+    config = tmp_path / "paper.yaml"
+    env = os.environ.copy()
+    env.pop("NEXUML_RUL_PREPARED_FILE", None)
+    env["NEXUML_CMAPSS_ROOT"] = str(root)
+    for command in (
+        ["nexuml", "resolve", scenario_name, "--output", str(config)],
+        ["nexuml", "build", str(config)],
+        ["nexuml", "train", "--config", str(config), "--max-epochs", "1"],
+    ):
+        result = subprocess.run(
+            command,
+            cwd=tmp_path,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=120,
+        )
+        assert result.returncode == 0, result.stdout + "\n" + result.stderr
+    restored = ResolvedConfig.load(config).to_scenario()
+    source = restored.data.datasets[0].source
+    assert isinstance(source, AutoCMapSSRULWindows)
+    assert source.rul_cap == 130
+    assert source.normalize_targets is False
+    assert source.train_full_windows_only is True
