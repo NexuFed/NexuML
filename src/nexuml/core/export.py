@@ -566,11 +566,13 @@ def export_package(
                     json.dumps(contract, sort_keys=True, separators=(",", ":")).encode()
                 ).hexdigest(),
                 "environment": lower_component(config.interaction.environment),
-                "action_adapter": lower_component(config.policy.action_adapter),
+                "action_adapter": lower_component(config.policy.action_adapter)
+                if config.policy.action_adapter is not None
+                else None,
                 "pipeline_state_prefix": "pipeline.",
-                "x_keys": list(policy.contract.observations),
+                "x_keys": list(policy.contract.groups or policy.contract.observations),
                 "y_keys": [],
-                "action_keys": list(policy.contract.actions),
+                "action_keys": list(policy.contract.groups or policy.contract.actions),
             }
         )
         if isinstance(config.training, ReinforcementLearningSpec):

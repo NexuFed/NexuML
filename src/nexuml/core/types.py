@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
+from keyword import iskeyword
 from math import isclose, prod
 from typing import TYPE_CHECKING, Annotated, Any, Literal, Self, cast
 
@@ -303,25 +304,152 @@ class TensorFieldContract(SpecModel):
         return self
 
 
+def _validate_module_identifier(value: str) -> None:
+    # Match public Module/ModuleDict names without importing torch during discovery.
+    reserved = {
+        "training",
+        "T_destination",
+        "forward",
+        "keys",
+        "values",
+        "items",
+        "update",
+        "clear",
+        "pop",
+        "add_module",
+        "register_module",
+        "register_parameter",
+        "register_buffer",
+        "register_backward_hook",
+        "register_full_backward_hook",
+        "register_full_backward_pre_hook",
+        "register_forward_hook",
+        "register_forward_pre_hook",
+        "register_load_state_dict_pre_hook",
+        "register_load_state_dict_post_hook",
+        "register_state_dict_pre_hook",
+        "register_state_dict_post_hook",
+        "call_super_init",
+        "dump_patches",
+        "get_buffer",
+        "get_extra_state",
+        "get_parameter",
+        "get_submodule",
+        "set_extra_state",
+        "set_submodule",
+        "state_dict",
+        "load_state_dict",
+        "parameters",
+        "named_parameters",
+        "buffers",
+        "named_buffers",
+        "children",
+        "named_children",
+        "modules",
+        "named_modules",
+        "apply",
+        "train",
+        "eval",
+        "requires_grad_",
+        "zero_grad",
+        "share_memory",
+        "to",
+        "to_empty",
+        "type",
+        "float",
+        "double",
+        "half",
+        "bfloat16",
+        "cpu",
+        "cuda",
+        "xpu",
+        "ipu",
+        "mtia",
+        "compile",
+        "extra_repr",
+    }
+    if not value.isidentifier() or value.startswith("_") or iskeyword(value) or value in reserved:
+        raise ValueError(f"Invalid module identifier {value!r}")
+
+
+class AgentGroupContract(SpecModel):
+    """Ordered compatible agents sharing one local observation/action interface."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, allow_inf_nan=False)
+
+    agents: tuple[Annotated[str, Field(min_length=1, pattern=r"\S")], ...] = Field(min_length=1)
+    observations: dict[str, TensorFieldContract] = Field(min_length=1)
+    actions: dict[str, TensorFieldContract] = Field(min_length=1)
+    action_space: Literal["continuous", "discrete"]
+
+    @model_validator(mode="after")
+    def validate_agents(self) -> Self:
+        if len(self.agents) != len(set(self.agents)):
+            raise ValueError("Group agent identities must be unique and ordered")
+        reserved = {
+            "reward",
+            "done",
+            "terminated",
+            "truncated",
+            "valid",
+            "raw_terminated",
+            "raw_truncated",
+            "state_value",
+            "advantage",
+            "value_target",
+        }
+        if reserved.intersection(self.observations.keys() | self.actions.keys()):
+            raise ValueError("Group fields must not overwrite learning or transition signals")
+        InteractionContract(
+            observations=self.observations, actions=self.actions, action_space=self.action_space
+        )
+        return self
+
+
 class InteractionContract(SpecModel):
     """Portable observation/action truth, independent of simulator frameworks."""
 
     model_config = ConfigDict(extra="forbid", frozen=True, allow_inf_nan=False)
 
-    observations: dict[str, TensorFieldContract] = Field(min_length=1)
-    actions: dict[str, TensorFieldContract] = Field(min_length=1)
+    observations: dict[str, TensorFieldContract] = Field(default_factory=dict)
+    actions: dict[str, TensorFieldContract] = Field(default_factory=dict)
     action_space: Literal["continuous", "discrete", "multi_discrete", "structured"]
     num_envs: int = Field(default=1, gt=0)
     control_period_s: float | None = Field(default=None, gt=0)
     physical: PhysicalSystemContract | None = None
+    groups: dict[str, AgentGroupContract] = Field(
+        default_factory=dict, exclude_if=lambda value: not value
+    )
+    critic_observations: dict[str, TensorFieldContract] = Field(
+        default_factory=dict, exclude_if=lambda value: not value
+    )
+    team_reward: bool = Field(default=False, exclude_if=lambda value: not value)
 
     @model_validator(mode="after")
     def validate_keys(self) -> Self:
-        for fields in (self.observations, self.actions):
+        if self.groups:
+            if self.observations or self.actions:
+                raise ValueError("Grouped contracts require empty root observations/actions")
+            agents = []
+            for name, group in self.groups.items():
+                _validate_module_identifier(name)
+                if name in {"next", "collector", "reward", "done", "terminated", "truncated"}:
+                    raise ValueError("Group names must not overwrite root transition metadata")
+                agents.extend(group.agents)
+                self.group_contract(name)
+            if len(agents) != len(set(agents)):
+                raise ValueError("Agent identities must be globally unique across groups")
+        elif not self.observations or not self.actions:
+            raise ValueError("Ungrouped contracts require nonempty observations and actions")
+        for fields in (self.observations, self.actions, self.critic_observations):
             if any(not key.strip() for key in fields):
                 raise ValueError("interaction field keys must be nonempty")
         if self.observations.keys() & self.actions.keys():
             raise ValueError("observation and action keys must be distinct")
+        if self.critic_observations.keys() & (
+            self.observations.keys() | self.actions.keys() | self.groups.keys()
+        ):
+            raise ValueError("Critic-only keys must be distinct from actor fields and groups")
         for field in self.actions.values():
             if (
                 field.physical is not None
@@ -332,6 +460,22 @@ class InteractionContract(SpecModel):
                 raise ValueError("Physical action rate must agree with the control period")
         return self
 
+    def group_contract(self, name: str) -> InteractionContract:
+        """Return only this group's actor-visible local contract.
+
+        Returns:
+            Ordinary contract retaining physical identity and control timing.
+        """
+        group = self.groups[name]
+        return InteractionContract(
+            observations=group.observations,
+            actions=group.actions,
+            action_space=group.action_space,
+            num_envs=self.num_envs,
+            control_period_s=self.control_period_s,
+            physical=self.physical,
+        )
+
 
 class InteractionSpec(SpecModel):
     """Interaction source, separate from datasets and learning algorithms."""
@@ -340,12 +484,44 @@ class InteractionSpec(SpecModel):
     evaluation_environment: EnvironmentDefinition | None = None
 
 
+class GroupPolicySpec(SpecModel):
+    """Existing local neural graph and explicit actor identity for each agent."""
+
+    pipeline: PipelineSpec
+    action_adapter: ActionAdapterDefinition
+    actor_ids: tuple[str, ...] = Field(min_length=1)
+    processor: LayerDefinition | None = Field(default=None, exclude_if=lambda value: value is None)
+
+    @field_validator("actor_ids")
+    @classmethod
+    def validate_actor_ids(cls, values: tuple[str, ...]) -> tuple[str, ...]:
+        for value in values:
+            _validate_module_identifier(value)
+        return values
+
+
 class PolicySpec(SpecModel):
     """Deployable action semantics attached to the scenario's neural pipeline."""
 
-    action_adapter: ActionAdapterDefinition
+    action_adapter: ActionAdapterDefinition | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
     batch_mode: Literal["independent", "preserve"] = "independent"
     processor: LayerDefinition | None = Field(default=None, exclude_if=lambda value: value is None)
+    groups: dict[str, GroupPolicySpec] = Field(
+        default_factory=dict, exclude_if=lambda value: not value
+    )
+
+    @model_validator(mode="after")
+    def validate_grouped_policy(self) -> Self:
+        if self.groups:
+            if self.action_adapter is not None or self.processor is not None:
+                raise ValueError("Grouped policies declare adapters/processors on each group only")
+            for name in self.groups:
+                _validate_module_identifier(name)
+        elif self.action_adapter is None:
+            raise ValueError("Ungrouped policy requires an action_adapter")
+        return self
 
 
 _DEFAULT_OPTIMIZER_KWARGS: dict[str, object] = {"lr": 1e-3}

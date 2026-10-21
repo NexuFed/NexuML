@@ -54,7 +54,7 @@ def expect_error(kind, fn, contains=None):
 def main(mode):
     root = Path(__file__).resolve().parents[2]
     assert os.environ.get("CUDA_VISIBLE_DEVICES") == ""
-    assert shutil.disk_usage(root).free >= 40 * 2**30
+    assert shutil.disk_usage(root).free > 4 * 2**30
     from nexuml_library.environments import _isaaclab_viser as adapter
 
     if mode == "static":
@@ -701,7 +701,7 @@ def main(mode):
             assert viser.infra.WebsockServer.start is original_infra_start
             assert not set(enumerate_threads()) - baseline_threads
             assert ("127.0.0.1", port) not in listeners()
-            assert shutil.disk_usage(root).free >= 40 * 2**30
+            assert shutil.disk_usage(root).free > 4 * 2**30
         print("OWNED_CLEANUP_SIGNAL_RESTORE_AND_VENDOR_IDENTITY_VERIFIED", mode, flush=True)
 
 

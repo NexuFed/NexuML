@@ -202,7 +202,7 @@ recipe=isaac-rgb-cartpole-ppo
 Use the explicit small overrides even for the categorical recipe's larger
 defaults. Training uses one synchronous direct collector and matching CUDA
 simulation/policy/storage/learner devices. In-fit evaluation stays disabled.
-Retain at least **40 GiB free** before and throughout native work; absent
+Monitor native work and stop owned jobs at **4 GiB free**; absent
 prerequisites are blockers, not permission to install or replace the environment.
 
 The qualified camera combination is exactly `physics="newton_mjwarp"`,
@@ -224,7 +224,8 @@ Isaac, TorchRL, Viser or custom task/configuration package. Simulation replay is
 separate: it requires the matching trusted installed task/configuration package
 and native runtime. Packages themselves remain trusted executable local code.
 
-Viser is independent and **not yet integrated for training/replay** here.
-Milestone C's private, read-only viewer and mandatory separate browser gate remain
-pending; requesting an unqualified viewer fails closed. A viewer screenshot is
-not proof of policy sensor values, and sensor probes are not browser acceptance.
+Viser is independent and opt-in. The [private read-only viewer](isaac-read-only-viser.md)
+has separate native training/replay browser qualification; unqualified viewer
+selections fail closed. A viewer screenshot is not proof of policy sensor values,
+and sensor probes are not browser acceptance. See [grouped learning](isaac-multi-agent-learning.md)
+for the distinct limits on native grouped sensors and history.

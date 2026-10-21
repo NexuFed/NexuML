@@ -66,6 +66,12 @@ def _validate_evaluation_contract(policy_contract, actual):
         raise ValueError("Evaluation control period does not match the policy")
     if policy_contract.physical is not None and actual.physical != policy_contract.physical:
         raise ValueError("Evaluation physical system identity does not match the policy")
+    if (
+        list(actual.groups) != list(policy_contract.groups)
+        or actual.groups != policy_contract.groups
+        or actual.team_reward != policy_contract.team_reward
+    ):
+        raise ValueError("Evaluation fixed groups, order or team reward semantics differ")
     for role in ("observations", "actions"):
         expected_fields = getattr(policy_contract, role)
         actual_fields = getattr(actual, role)
@@ -178,6 +184,7 @@ def _evaluate_episodes(
     if spec.video.enabled and media_sink is None:
         raise ValueError("Evaluation recording requires an artifact output sink")
     returns, lengths = [], []
+    grouped_returns = {}
     successes, final_errors = [], []
     task_errors, violations = {}, {}
     outcome_signature = None
@@ -239,18 +246,41 @@ def _evaluate_episodes(
 
             for episode in range(spec.episodes):
                 observation = runtime.reset(seed=None if seed is None else seed + episode)
-                if observation.batch_size:
+                expected_batch = (1,) if policy.contract.groups else ()
+                if tuple(observation.batch_size) != expected_batch:
                     raise ValueError("Evaluation requires unbatched episode observations")
                 if spec.video.enabled and episode == 0:
                     capture()
                 total, steps = 0.0, 0
+                agent_totals = {
+                    group: torch.zeros(len(declared.agents), dtype=torch.float64)
+                    for group, declared in policy.contract.groups.items()
+                }
                 episode_success, final_error = False, None
                 episode_errors = {}
                 while True:
                     transition = runtime.step(policy(observation, deterministic=spec.deterministic))
                     reward = transition.reward
-                    if reward is None and require_reward:
+                    if reward is None and require_reward and not policy.contract.groups:
                         raise ValueError("RL evaluation requires a task reward")
+                    if policy.contract.groups:
+                        signals = transition.groups
+                        if signals is None or tuple(signals.batch_size) != (1,):
+                            raise ValueError("Grouped evaluation requires typed group signals")
+                        for group, declared in policy.contract.groups.items():
+                            values = signals[group, "reward"]
+                            if (
+                                values.shape != (1, len(declared.agents), 1)
+                                or not values.is_floating_point()
+                                or not torch.isfinite(values).all()
+                            ):
+                                raise ValueError("Group rewards must be finite per-agent signals")
+                            valid = signals[group, "valid"]
+                            if valid.dtype != torch.bool or valid.shape != values.shape:
+                                raise ValueError("Group validity must match per-agent rewards")
+                            agent_totals[group] += (
+                                values.masked_fill(~valid, 0)[0, :, 0].detach().cpu().double()
+                            )
                     if reward is not None and (
                         not isinstance(reward, torch.Tensor)
                         or reward.numel() != 1
@@ -270,7 +300,7 @@ def _evaluate_episodes(
                         )
                         or transition.terminated.device != transition.truncated.device
                         or (reward is not None and reward.device != transition.terminated.device)
-                        or transition.observation.batch_size
+                        or tuple(transition.observation.batch_size) != expected_batch
                     ):
                         raise ValueError("Evaluation requires single-environment transitions")
                     info = transition.info or {}
@@ -296,7 +326,7 @@ def _evaluate_episodes(
                         tuple(sorted(errors)),
                         tuple(sorted(counters)),
                     )
-                    if reward is None and not signature[0]:
+                    if reward is None and not signature[0] and not policy.contract.groups:
                         raise ValueError("Rewardless evaluation requires validated task outcomes")
                     if outcome_signature is not None and signature != outcome_signature:
                         raise ValueError(
@@ -365,6 +395,11 @@ def _evaluate_episodes(
                     observation = transition.observation
                 if reward_signature:
                     returns.append(total)
+                for group, values in agent_totals.items():
+                    for agent, value in zip(
+                        policy.contract.groups[group].agents, values, strict=True
+                    ):
+                        grouped_returns.setdefault((group, agent), []).append(float(value))
                 lengths.append(steps)
                 if outcome_signature[0]:
                     successes.append(episode_success)
@@ -393,6 +428,8 @@ def _evaluate_episodes(
         metrics["eval/rl/return_std"] = float(values.std(unbiased=False))
     if successes:
         metrics["eval/rl/task_success_rate"] = sum(successes) / len(successes)
+    for (group, agent), values in grouped_returns.items():
+        metrics[f"eval/rl/{group}/{agent}/return_mean"] = sum(values) / len(values)
     if final_errors:
         metrics["eval/rl/final_joint_error_rad_mean"] = sum(final_errors) / len(final_errors)
     for name, values in task_errors.items():

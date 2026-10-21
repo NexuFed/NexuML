@@ -4,7 +4,7 @@ This is an authored acceptance protocol, not execution evidence. Requirement IDs
 
 ## Gate rules and environment
 
-Before native/server work, verify approved versions/source identities and at least **40 GiB free**, account for existing jobs and bound environment/camera counts, duration, VRAM and output sizes. Use only the worktree `.venv` (Lab 3.0/Sim 6.2/TorchRL 0.14/PyTorch 2.11+cu130 selections in design D5). No installs, upgrades, `/env`/driver/container changes, large pretrained downloads, public endpoints, paid/cloud compute or actuation. Missing graphics/Vulkan/assets/API prerequisites block only the corresponding proofs; do not claim completion or provision replacements.
+Before native/server work, verify approved versions/source identities and more than **4 GiB free**, monitor space throughout execution, account for existing jobs and bound environment/camera counts, duration, VRAM and output sizes. The maintainer explicitly replaced the original 40 GiB floor with this 4 GiB stop threshold during implementation. Use only the worktree `.venv` (Lab 3.0/Sim 6.2/TorchRL 0.14/PyTorch 2.11+cu130 selections in design D5). No installs, upgrades, `/env`/driver/container changes, large pretrained downloads, public endpoints, paid/cloud compute or actuation. Missing graphics/Vulkan/assets/API prerequisites block only the corresponding proofs; do not claim completion or provision replacements.
 
 All native/browser checks are explicitly opt-in. Pure CPU tests require no simulator/assets/hardware; native constructor qualification requires only its explicitly stated installed prerequisites. Do not skip a required gate into a pass. A failure preserves actual status and owned cleanup. Record exact commands, revision, seed, device, task/preset/assets, budgets, counters and output locations in fresh approved local evidence **outside Git**. Keep originals unchanged, never copy run evidence into these planning files.
 
@@ -32,7 +32,7 @@ Audit exact pinned viewer constructor/sidebar and supported callback/HTTP/WebSoc
 
 ### S0 — Immutable baseline and resource controls
 
-Record installed distribution/source identities, effective interpreter and available approved resources read-only; do not launch/import native runtime just to discover a scenario. Re-resolve NEX-235 consumer branch/revision before K2; distinguish its SDK pin from current producer. Verify the current repository's standard test commands and baseline failures without fixing unrelated functionality. Preflight disk before and during each native/server test and stop below 40 GiB free.
+Record installed distribution/source identities, effective interpreter and available approved resources read-only; do not launch/import native runtime just to discover a scenario. Re-resolve NEX-235 consumer branch/revision before K2; distinguish its SDK pin from current producer. Verify the current repository's standard test commands and baseline failures without fixing unrelated functionality. Preflight and monitor disk during each native/server test; stop owned work when free space reaches 4 GiB.
 
 ### S1 — Authoring, trust, persistence and exact APIs
 

@@ -90,8 +90,18 @@ class IsaacLabEnvironment(EnvironmentDefinition):
             )
         if len(set(self.presets)) != len(self.presets):
             raise ValueError("Native presets must be unique and ordered")
+        if self.task == "NexuML-SO101-Joint-Reach" and self.physics != "isaacsim_physx":
+            raise ValueError(
+                "SO-101 joint reach requires its validated PhysX asset/control profile"
+            )
         if self.task not in _TASK_PROFILES and (self.contract is None or self.bindings is None):
             raise ValueError("Custom native tasks require an explicit contract and bindings")
+        if (
+            self.bindings is not None
+            and not self.bindings.groups
+            and any(not path for path in self.bindings.observations.values())
+        ):
+            raise ValueError("Single-agent native observation paths must be nonempty")
         if self.contract is not None:
             if self.contract.num_envs != 1:
                 raise ValueError(
@@ -100,19 +110,47 @@ class IsaacLabEnvironment(EnvironmentDefinition):
             if self.contract.control_period_s is None:
                 raise ValueError("Native tasks require an explicit control period")
             bindings = self.native_bindings()
+            if self.contract.groups:
+                if tuple(bindings.groups) != tuple(self.contract.groups):
+                    raise ValueError("Native group bindings must match ordered contract groups")
+                if self.contract.critic_observations or bindings.critic_observations:
+                    raise ValueError(
+                        "Privileged critic state has no qualified pre-reset final-state source"
+                    )
+                for name, group in self.contract.groups.items():
+                    binding = bindings.groups[name]
+                    if set(binding.observations) != set(group.observations):
+                        raise ValueError(
+                            "Native group observation bindings must match the contract"
+                        )
+                    if set(group.actions) != {binding.action}:
+                        raise ValueError("Native groups require one explicitly bound action")
+                    if binding.critic_observations or binding.processing != "processed":
+                        raise ValueError("Native grouped raw/privileged processing is unsupported")
+                if bindings.processing != "processed":
+                    raise ValueError("Native grouped raw processing is unsupported")
+                return self
+            if bindings.groups:
+                raise ValueError("Grouped native bindings require a grouped contract")
             if set(bindings.observations) != set(self.contract.observations):
                 raise ValueError("Native observation bindings must exactly match the contract")
             if set(self.contract.actions) != {bindings.action}:
                 raise ValueError("Native single-agent tasks require one explicitly bound action")
-        if self.task == "NexuML-SO101-Joint-Reach" and self.physics != "isaacsim_physx":
-            raise ValueError(
-                "SO-101 joint reach requires its validated PhysX asset/control profile"
-            )
         return self
 
     def native_bindings(self) -> IsaacBindings:
         """Return declared native paths, with the maintained reference's explicit mapping."""
         return self.bindings or IsaacBindings(observations={"observation": ("policy",)})
+
+    def checkpoint_identity(self) -> dict:
+        """Retain native task meaning while permitting display-only viewer changes.
+
+        Returns:
+            Task-defining declaration with spectator settings excluded.
+        """
+        identity = super().checkpoint_identity()
+        identity["params"].pop("viewer", None)
+        return identity
 
     def describe(self) -> InteractionContract:
         if self.contract is not None:

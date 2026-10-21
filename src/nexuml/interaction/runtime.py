@@ -20,6 +20,7 @@ class InteractionStep:
     terminated: Tensor
     truncated: Tensor
     info: Mapping[str, Any] | None = None
+    groups: TensorDict | None = None
 
 
 class EnvironmentRuntime(Protocol):

@@ -29,7 +29,8 @@ before action. Do not substitute the historical EA profile or six-action vial ta
 Native execution needs the prepared isolated environment, CUDA device, approved
 NVIDIA EULA and cached licensed assets. The state-only reference needs no camera
 or graphics claim. Never rebuild the active container, replace `/env`, change
-drivers or actuate hardware to run it. Preserve at least 40 GiB available disk.
+drivers or actuate hardware to run it. Monitor owned jobs and stop at 4 GiB
+available disk, the maintainer-revised resource threshold.
 
 ```bash
 OMNI_KIT_ACCEPT_EULA=YES PYTHONPATH="$PWD/src:$PWD/library/src" \

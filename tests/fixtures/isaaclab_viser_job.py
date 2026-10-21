@@ -48,7 +48,7 @@ def browser_job(mode, output, port):
     from nexuml_library.environments import _isaaclab_runtime as runtime_module
 
     output.mkdir(parents=True, exist_ok=False)
-    assert shutil.disk_usage(".").free >= 40 * 2**30
+    assert shutil.disk_usage(".").free > 4 * 2**30
     viewing = mode.endswith("-viewer")
     trajectory = []
     marker_groups = []
@@ -250,12 +250,12 @@ def browser_job(mode, output, port):
             result.trainer.save_checkpoint(output / "complete.ckpt")
     torch.save(trajectory, output / "trajectory.pt")
     assert not [t for t in enumerate_threads() if t not in before_threads and t.is_alive()]
-    assert shutil.disk_usage(".").free >= 40 * 2**30
+    assert shutil.disk_usage(".").free > 4 * 2**30
     print("NATIVE_BROWSER_JOB_COMPLETE_AND_OWNED_THREADS_STOPPED", mode, flush=True)
 
 
 def snapshot(output, viewing, port, noisy=False):
-    assert shutil.disk_usage(".").free >= 40 * 2**30
+    assert shutil.disk_usage(".").free > 4 * 2**30
     scenario = isaac_mixed_cartpole_ppo()
     definition = scenario.interaction.environment
     if noisy:
@@ -357,7 +357,7 @@ def snapshot(output, viewing, port, noisy=False):
                 connection.close()
             runtime.close()
     assert not [t for t in enumerate_threads() if t not in baseline_threads and t.is_alive()]
-    assert shutil.disk_usage(".").free >= 40 * 2**30
+    assert shutil.disk_usage(".").free > 4 * 2**30
     print("NATIVE_SPECTATOR_SNAPSHOT_COMPLETE_AND_OWNED_THREADS_STOPPED", flush=True)
 
 
@@ -365,7 +365,7 @@ def startup_failure(mode, output, port):
     from isaaclab_viser_noisy import configure_failure
     from nexuml_library.environments.isaaclab import IsaacLabEnvironment, isaac_task_config
 
-    assert shutil.disk_usage(".").free >= 40 * 2**30
+    assert shutil.disk_usage(".").free > 4 * 2**30
     output.mkdir(parents=True, exist_ok=False)
     before_threads = set(enumerate_threads())
     reservation = socket.socket()

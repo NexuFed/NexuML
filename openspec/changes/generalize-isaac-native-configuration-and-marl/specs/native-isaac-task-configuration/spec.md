@@ -65,7 +65,7 @@ Native configuration/lifecycle acceptance SHALL include existing manager/direct 
 
 ### Requirement: NC6 Native qualification respects the pinned resource boundary
 
-This change SHALL use the approved worktree environment and pinned Lab/Sim/TorchRL/PyTorch-CUDA selections. Native work SHALL retain at least 40 GiB free and bounded resources. It SHALL NOT alter `/env`, drivers or containers, install replacements, download large pretrained models, expose public listeners, use unauthorized paid/cloud compute, actuate hardware or interfere with other jobs/worktrees.
+This change SHALL use the approved worktree environment and pinned Lab/Sim/TorchRL/PyTorch-CUDA selections. Native work SHALL monitor free space and stop owned work at 4 GiB free, using bounded resources. It SHALL NOT alter `/env`, drivers or containers, install replacements, download large pretrained models, expose public listeners, use unauthorized paid/cloud compute, actuate hardware or interfere with other jobs/worktrees.
 
 #### Scenario: Required native prerequisites are absent
 - **WHEN** disk falls below the minimum or graphics/assets/runtime prerequisites are unavailable

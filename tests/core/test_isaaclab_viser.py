@@ -14,7 +14,7 @@ import pytest
 def test_pinned_viser_startup_failure_never_signals_constructor(tmp_path):
     """Confirm the upstream failure without leaving its stuck constructor alive."""
     root = Path(__file__).resolve().parents[2]
-    assert shutil.disk_usage(root).free >= 40 * 2**30
+    assert shutil.disk_usage(root).free > 4 * 2**30
     process = subprocess.Popen(
         [sys.executable, "-u", str(root / "tests/fixtures/isaaclab_viser_startup_probe.py")],
         cwd=root,
@@ -39,7 +39,7 @@ def test_pinned_viser_startup_failure_never_signals_constructor(tmp_path):
     assert process.returncode is not None
     with socket.socket() as released:
         released.bind(("127.0.0.1", 65535))
-    assert shutil.disk_usage(root).free >= 40 * 2**30
+    assert shutil.disk_usage(root).free > 4 * 2**30
 
 
 @pytest.mark.requires_system
@@ -68,7 +68,7 @@ def test_pinned_viser_startup_failure_never_signals_constructor(tmp_path):
 )
 def test_safe_spectator_native_constructor_and_owned_cleanup(mode, tmp_path):
     root = Path(__file__).resolve().parents[2]
-    assert shutil.disk_usage(root).free >= 40 * 2**30
+    assert shutil.disk_usage(root).free > 4 * 2**30
     log_path = tmp_path / f"viser-safe-{mode}.log"
     with log_path.open("w") as log:
         process = subprocess.Popen(
@@ -96,4 +96,4 @@ def test_safe_spectator_native_constructor_and_owned_cleanup(mode, tmp_path):
         if mode == "static"
         else "OWNED_CLEANUP_SIGNAL_RESTORE_AND_VENDOR_IDENTITY_VERIFIED"
     ) in output, output
-    assert shutil.disk_usage(root).free >= 40 * 2**30
+    assert shutil.disk_usage(root).free > 4 * 2**30

@@ -89,6 +89,8 @@ def compile_context_from_interaction(contract: InteractionContract) -> PipelineC
     if not isinstance(contract, InteractionContract):
         raise TypeError("EnvironmentDefinition.describe() must return InteractionContract")
     _validate_input_dtypes(contract.observations, "Observation")
+    for name in contract.groups:
+        compile_context_from_interaction(contract.group_contract(name))
     return PipelineCompileContext(
         input_sizes={key: leaf.shape for key, leaf in contract.observations.items()},
         input_metadata={key: lower_model(leaf) for key, leaf in contract.observations.items()},

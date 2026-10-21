@@ -26,6 +26,7 @@ def test_contract_round_trip_and_export_without_carla(tmp_path, monkeypatch):
     restored = ResolvedConfig.from_yaml(ResolvedConfig.from_scenario(spec).to_yaml()).to_scenario()
     assert restored.interaction is not None and restored.policy is not None
     contract = restored.interaction.environment.describe()
+    assert restored.policy.action_adapter is not None
     policy = CompiledPolicy(
         compile(restored), restored.policy.action_adapter.build(contract), contract
     )
