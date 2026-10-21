@@ -19,6 +19,7 @@ from nexuml_library.data.maintenance.rul import (
     validate_rul_payload,
 )
 from nexuml_library.evaluation.maintenance.rul_configs import resolve_rul_configs
+from nexuml_library.evaluation.maintenance.rul_evaluator import _RULBenchmarkRuntime
 from nexuml_library.evaluation.maintenance.rul_prepare import (
     prepare_cmapss,
     prepare_xjtu_sy,
@@ -179,6 +180,30 @@ def test_quantile_loss_and_original_unit_metrics() -> None:
     assert float(measured["rul_mae"][0]) == pytest.approx(12.5)
     assert float(measured["rul_rmse"][0]) == pytest.approx(12.5)
     assert float(measured["rul_late_error"][0]) == 0.0
+
+
+def test_exact_rul_evaluator_and_quantile_coverage() -> None:
+    """Exact held-out aggregation differs from an unweighted mean of batch RMSEs."""
+    runtime = _RULBenchmarkRuntime(
+        prediction_key="predicted_rul", label_key="rul",
+        target_scale=100.0, point_index=1, lower_index=0, upper_index=2,
+    )
+    first = TensorDict({
+        "predicted_rul": torch.tensor([[0.1, 0.2, 0.3], [0.1, 0.8, 0.9]])
+    }, batch_size=[2])
+    y = TensorDict({"rul": torch.tensor([[0.2], [0.4]])}, batch_size=[2])
+    runtime.eval_batch(first, y)
+    second = TensorDict({
+        "predicted_rul": torch.tensor([[0.2, 0.5, 0.7]])
+    }, batch_size=[1])
+    y2 = TensorDict({"rul": torch.tensor([[0.6]])}, batch_size=[1])
+    runtime.eval_batch(second, y2)
+    result = runtime.results()
+    assert result["rul_test_count"] == 3
+    assert result["rul_test_mae"] == pytest.approx(50 / 3)
+    assert result["rul_test_rmse"] == pytest.approx((1700 / 3) ** 0.5)
+    assert result["rul_test_interval_coverage"] == pytest.approx(2 / 3)
+    assert result["rul_test_quantile_crossing_rate"] == 0
 
 
 def test_resolved_scenario_roundtrip_and_no_custom_training(tmp_path: Path) -> None:
