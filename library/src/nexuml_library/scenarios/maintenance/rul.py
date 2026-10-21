@@ -376,14 +376,15 @@ def maintenance_rul_all(
     evaluators: list[EvalAlgorithmSpec] = []
     loss_keys: dict[str, float] = {}
     metric_keys: list[str] = []
-    branches = [(name, name, False) for name in _RUL_COMPOSITE_ARCHITECTURES]
+    branches: list[
+        tuple[Literal["feature_mlp", "lstm", "tcn", "transformer", "tsmixer"] | str,
+              Literal["feature_mlp", "lstm", "tcn", "transformer", "tsmixer"], bool]
+    ] = [(name, name, False) for name in _RUL_COMPOSITE_ARCHITECTURES]
     branches.append(("quantile_tcn", "tcn", True))
     for name, architecture, quantile in branches:
         prediction_key = f"predicted_rul_{name}"
         loss_key = f"rul_loss_{name}"
-        local_metric_keys = [
-            f"rul_mae_{name}", f"rul_rmse_{name}", f"rul_late_error_{name}"
-        ]
+        local_metric_keys = [f"rul_mae_{name}", f"rul_rmse_{name}", f"rul_late_error_{name}"]
         models.append(
             LayerSpec(
                 component=TemporalRULForecaster(
@@ -401,9 +402,7 @@ def maintenance_rul_all(
         objectives_and_metrics.extend(
             [
                 LayerSpec(
-                    component=RULRegressionObjective(
-                        objective="quantile" if quantile else "huber"
-                    ),
+                    component=RULRegressionObjective(objective="quantile" if quantile else "huber"),
                     keys_in=[prediction_key],
                     keys_out=[loss_key],
                     label_key="rul",
@@ -450,9 +449,7 @@ def maintenance_rul_all(
     return baseline.model_copy(
         update={
             "name": run_name,
-            "pipeline": PipelineSpec(
-                stages={"RULModels": models, "RULLoss": objectives_and_metrics}
-            ),
+            "pipeline": PipelineSpec(stages={"RULModels": models, "RULLoss": objectives_and_metrics}),
             "training": baseline.training.model_copy(
                 update={"loss_keys": loss_keys, "metric_keys": metric_keys}
             ),
