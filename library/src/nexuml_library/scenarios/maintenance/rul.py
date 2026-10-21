@@ -673,8 +673,19 @@ def maintenance_rul_goel2026_lstm_protocol() -> ScenarioSpec:
         keys_in=["rul_history"],
         keys_out=["predicted_rul"],
     )
+    paper_evaluator = base.evaluation.algorithms[0].model_copy(
+        update={
+            "algorithm": RULBenchmarkEvaluator(
+                target_scale=1.0,
+                include_nasa_score=True,
+            ),
+        }
+    )
     return base.model_copy(
         update={
+            "evaluation": base.evaluation.model_copy(
+                update={"algorithms": [paper_evaluator]}
+            ),
             "pipeline": PipelineSpec(
                 stages={
                     "RULModel": [paper_layer],
