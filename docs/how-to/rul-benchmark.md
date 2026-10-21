@@ -25,32 +25,37 @@ reproductions of one particular paper's SOTA architecture or reported
 benchmark result. No accuracy claims are made until actual experiments
 have run. The former Flow Matching experiment remains separate.
 
-### A. C-MAPSS dataset preparation
+### A. C-MAPSS dataset: automatically downloaded
 
-Obtain the original **NASA C-MAPSS turbofan degradation simulation**
-files using the official NASA data repository. The raw directory must contain,
-for each selected subset, e.g. `train_FD001.txt`, `test_FD001.txt`,
-`RUL_FD001.txt`. This adapter deliberately **does not** download from
-unverified mirrors.
+**No manual dataset download or preprocessing is required for the default
+NASA C-MAPSS FD001 scenarios.** The registered `AutoCMapSSRULWindows`
+data source has `download=True` by default. On the first `nexuml train`,
+it downloads the official NASA PCoE ZIP, extracts only the selected
+subset's three text tables, prepares leakage-safe windows and caches the
+immutable artifact. Subsequent training runs reuse the cache.
 
-```bash
-python -m nexuml_library.evaluation.maintenance.rul_prepare \
-  --dataset cmapss --root data/cmapss --subset FD001 \
-  --output-file .experiments/rul/prepared/cmapss-FD001-seed42.pt \
-  --window 30 --stride 1 --seed 42 --rul-cap 125
-```
+- Official NASA download: 
+  `https://phm-datasets.s3.amazonaws.com/NASA/6.+Turbofan+Engine+Degradation+Simulation+Data+Set.zip`
+- Raw data cache: `data/cmapss/`
+- Prepared FD001 cache: `.experiments/rul/prepared/cmapss-FD001-seed42.pt`
+- Optional raw cache override: `NEXUML_CMAPSS_ROOT`
+- Optional override to use a prepared dataset: `NEXUML_RUL_PREPARED_FILE`
 
-The official training engines are split **by engine ID** into model-training
-and validation engines (default 80:20). The complete official test-engine
-prefixes are *never* used for model fitting, normalization or early stopping.
-By default, evaluation includes the **final window** of each truncated test
-engine, scored against the official terminal RUL offset.
+`nexuml resolve` compiles the declared input dimensions without
+network access. `nexuml train --config` performs the first-time
+download/preparation through the native dataset lifecycle. To disable
+automatic retrieval in Python, set the scenario parameter
+`download=False`; missing data then cause an actionable error.
 
-The 24 features are operating settings (3) plus sensors (21), retaining
-the full channels, without using future cycles. RUL targets represent
-`min(remaining_cycles,125) / 125`. This is a capped supervised task:
-test targets are also capped for mathematical consistency; compare only to
-published results using the same target-label convention.
+The official training engines are split **by engine ID** into
+model-training and validation engines (default 80:20). The complete
+official test-engine prefixes are *never* used for model fitting,
+normalization or early stopping. The final test window is scored
+against the official terminal RUL offset.
+
+The 24 input features are operating settings (3) plus sensors (21).
+Targets represent `min(remaining_cycles,125) / 125`. Compare against
+published work only under the same RUL target convention.
 
 ### B. XJTU-SY dataset preparation
 
@@ -78,32 +83,22 @@ source's acquisition interval and multiply by it. Never claim that
 
 ### C. Native scenario resolution and training
 
-**Use the conventional NexuML CLI.** Every RUL backbone is registered as a
-normal scenario, so no custom configuration generator, Python training script,
-or direct compiler call is required.
-
-After preparing an artifact, set its absolute path for the **resolve step**:
+**Use only the conventional NexuML CLI.** No extra dataset preparation,
+configuration generator or Python training script is needed for FD001.
 
 ```bash
-export NEXUML_RUL_PREPARED_FILE="$(realpath .experiments/rul/prepared/cmapss-FD001-seed42.pt)"
-
-nexuml resolve maintenance-rul-tcn \
-  --output .experiments/rul/configs/cmapss-FD001-tcn-seed42.yaml
-
-nexuml build .experiments/rul/configs/cmapss-FD001-tcn-seed42.yaml
-
-nexuml train --config .experiments/rul/configs/cmapss-FD001-tcn-seed42.yaml
+nexuml resolve maintenance-rul-tcn --output .experiments/rul-tcn.yaml
+nexuml train --config .experiments/rul-tcn.yaml
 ```
 
-The resolved YAML captures the prepared artifact's path, dimensions, target
-scale, split seed and model definition. Training loads the exact same
-prepared dataset; it does **not** re-split assets or refit normalization.
-The environment variable is needed for resolving the scenario, not for
-running the saved YAML. The default `maintenance-rul-benchmark` scenario
-is equivalent to the TCN baseline and has a known C-MAPSS FD001 fallback
-shape so generic registry compilation succeeds before the local dataset
-is available; **training still requires the actual prepared artifact**.
-An explicitly selected missing artifact causes an immediate error.
+The first training run retrieves the official NASA C-MAPSS data and
+persists the prepared windows. The resolved YAML contains the registered
+auto-downloading data source and its fixed FD001 settings. Resolution itself
+never downloads data; subsequent runs reuse local source and tensor caches.
+
+For already prepared datasets, `NEXUML_RUL_PREPARED_FILE` remains an optional
+resolve-time override. The scenario then derives input shape, target scale and
+seed from the validated artifact.
 
 Registered names for the backbone comparison:
 
@@ -128,14 +123,15 @@ NexuML Lightning training, validation, checkpoint, and test lifecycle.
 `maintenance-rul-all` is a **registered NexuML scenario** containing
 the five point-regression models and the quantile TCN as separate branches.
 No external suite script, custom trainer, or direct compiler invocation is
-required. Use the **same two commands** as any other NexuML scenario:
+required. Start with an empty local dataset cache:
 
 ```bash
-export NEXUML_RUL_PREPARED_FILE="$(realpath .experiments/rul/prepared/cmapss-FD001-seed42.pt)"
-
 nexuml resolve maintenance-rul-all --output .experiments/rul-all.yaml
 nexuml train --config .experiments/rul-all.yaml
 ```
+
+The default source downloads and prepares FD001 automatically on the first
+train invocation. The scenario remains directly usable by name.
 
 Each model has its own trainable parameters, prediction tensor, loss, metrics,
 and named held-out RUL evaluator. The scenario has one datasource, one shared
