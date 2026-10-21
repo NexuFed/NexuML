@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, Self, cast
 
 import pandas as pd
 import torch
@@ -123,14 +124,15 @@ class _PreparedRULRuntime(NexuDataset):
             do_split=False,
         )
 
-    def take(self, indices: list[int]) -> _PreparedRULRuntime:
+    def take(self, indices: Sequence[int]) -> Self:
         """Return a split-safe copy with corresponding RUL labels.
 
         Returns:
             Dataset view with aligned window tensors, provenance and targets.
         """
-        subset = super().take(indices)
-        subset._rul_targets = self._rul_targets[indices]
+        selected = list(indices)
+        subset = super().take(selected)
+        subset._rul_targets = self._rul_targets[selected]
         return subset
 
     def load_item(self, idx: int, row: pd.Series) -> TensorDict:
