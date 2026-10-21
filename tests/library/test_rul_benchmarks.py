@@ -287,6 +287,24 @@ def test_blank_prepared_file_environment_enables_auto_download(
     compile_pipeline(scenario)
 
 
+def test_seed_specific_auto_artifact_paths(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Independent NexuML seeds never reuse the same prepared split cache."""
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("NEXUML_RUL_PREPARED_FILE", raising=False)
+    scenario42 = maintenance_rul_benchmark(seed=42)
+    scenario43 = maintenance_rul_benchmark(seed=43)
+    source42 = scenario42.data.datasets[0].source
+    source43 = scenario43.data.datasets[0].source
+    assert isinstance(source42, AutoCMapSSRULWindows)
+    assert isinstance(source43, AutoCMapSSRULWindows)
+    assert source42.artifact_path.endswith("seed42.pt")
+    assert source43.artifact_path.endswith("seed43.pt")
+    assert source43.seed == 43
+    compile_pipeline(scenario43)
+
+
 def test_composite_rul_scenario_has_six_distinct_heads(tmp_path: Path) -> None:
     """A single NexuML scenario exposes independent outputs and metrics per head."""
     root = tmp_path / "cmapss"
