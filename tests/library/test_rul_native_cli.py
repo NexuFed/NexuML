@@ -42,7 +42,7 @@ def test_native_nexuml_rul_cli_build_and_train(tmp_path: Path) -> None:
     env = os.environ.copy()
     env["NEXUML_RUL_PREPARED_FILE"] = str(artifact)
     for command in (
-        ["nexuml", "resolve", "maintenance-rul-benchmark", "--output", str(path)],
+        ["nexuml", "resolve", "maintenance-rul-feature-mlp", "--output", str(path)],
         ["nexuml", "build", str(path)],
         ["nexuml", "train", "--config", str(path), "--max-epochs", "1"],
     ):
