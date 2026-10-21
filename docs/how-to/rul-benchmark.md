@@ -5,6 +5,11 @@ healthy/faulty Flow Matching. Train only through **NexuML's conventional
 `nexuml build` and `nexuml train --config` commands**. Neither preparation
 nor resolved-config generation trains a model.
 
+The publication-parameterized NexuML scenarios and their documented
+differences from the original paper architectures are described in
+[paper-protocol comparisons](rul-paper-reproductions.md). They are
+**not certified reproductions** of published FD001 RMSE values.
+
 ## Implemented scope
 
 - **Datasets:** NASA C-MAPSS (FD001–FD004, official test RUL offsets),
