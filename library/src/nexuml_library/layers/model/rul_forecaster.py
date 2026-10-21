@@ -158,6 +158,9 @@ class _TemporalRULRuntime(PipelineLayer):
 
         Returns:
             [B,output_dim] predictions, without target leakage.
+
+        Raises:
+            ValueError: If the input shape differs from the configured window.
         """
         if x.ndim != 3 or x.shape[1] != self.length:
             raise ValueError("RUL inputs must be [B,L,D] with configured L")
@@ -192,6 +195,9 @@ class RULRegressionObjective(LayerDefinition):
 
         Returns:
             RUL loss layer using the regular NexuML loss-key mechanism.
+
+        Raises:
+            ValueError: If the quantiles are not strictly increasing in (0, 1).
         """
         if self.objective == "quantile" and (
             not self.quantiles
@@ -224,6 +230,10 @@ class _RULObjectiveRuntime(PipelineLayer):
 
         Returns:
             Unmodified labels and features with an additional loss key.
+
+        Raises:
+            TypeError: If model features are not supplied as a TensorDict.
+            ValueError: If prediction and target dimensions disagree.
         """
         if not isinstance(x, TensorDict):
             raise TypeError("RUL loss expects a NexuML TensorDict")
