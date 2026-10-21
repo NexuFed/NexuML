@@ -239,7 +239,8 @@ def test_resolved_scenario_roundtrip_and_no_custom_training(tmp_path: Path) -> N
 
 
 def test_default_rul_scenario_resolves_without_prepared_file(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Registry scenarios compile before the default FD001 artifact is prepared."""
     monkeypatch.delenv("NEXUML_RUL_PREPARED_FILE", raising=False)
