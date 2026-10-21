@@ -101,6 +101,7 @@ class TemporalRULForecaster(LayerDefinition):
     dropout: float = Field(default=0.1, ge=0, lt=1)
     attention_heads: int = Field(default=4, gt=0)
     output_dim: int = Field(default=1, gt=0)
+    initialization_seed: int = 42
 
     def build(self, context: LayerBuildContext) -> PipelineLayer:
         """Construct a typed NexuML temporal forecaster.
@@ -108,7 +109,11 @@ class TemporalRULForecaster(LayerDefinition):
         Returns:
             Runtime model compatible with configured input/output keys.
         """
-        return _TemporalRULRuntime(**context.runtime_kwargs(), **self.model_dump())
+        parameters = self.model_dump()
+        seed = int(parameters.pop("initialization_seed"))
+        with torch.random.fork_rng(devices=[]):
+            torch.manual_seed(seed)
+            return _TemporalRULRuntime(**context.runtime_kwargs(), **parameters)
 
 
 class _TemporalRULRuntime(PipelineLayer):
