@@ -60,8 +60,9 @@ The [official npm requirements](https://docs.npmjs.com/trusted-publishers) curre
 require **npm >=11.5.1**, **Node >=22.14** and **GitHub-hosted runners**; self-hosted
 runners are unsupported. The publish-only job uses Node 24 and npm 11, OIDC
 `id-token: write` and provenance in the protected environment, with no dependency
-installation/build or long-lived credential. This is the approved hosted-runner
-exception; Linux CPU builds/tests and Python publication use `ika-runner`. The existing
+installation/build or long-lived credential. Release workflows use GitHub-hosted
+`ubuntu-latest`, including the PyPI/TestPyPI jobs in `release.yml`.
+Linux CPU builds/tests stay on `ika-runner`. The existing
 mandatory Python GPU suites use the separately approved `ika-runner-gpu` pool.
 
 ## Studio release

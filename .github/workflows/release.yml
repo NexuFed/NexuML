@@ -16,7 +16,7 @@ env:
 jobs:
   validate:
     if: github.event_name == 'workflow_dispatch' || startsWith(github.event.release.tag_name, 'v')
-    runs-on: ika-runner
+    runs-on: ubuntu-latest
     outputs:
       ci-run-id: ${{ steps.ci.outputs.run-id }}
       version: ${{ steps.version.outputs.version }}
@@ -102,7 +102,7 @@ jobs:
   publish-testpypi-core:
     if: github.event_name == 'workflow_dispatch'
     needs: validate
-    runs-on: ika-runner
+    runs-on: ubuntu-latest
     environment:
       name: testpypi
       url: https://test.pypi.org/p/nexuml
@@ -128,7 +128,7 @@ jobs:
     needs:
       - validate
       - publish-testpypi-core
-    runs-on: ika-runner
+    runs-on: ubuntu-latest
     environment:
       name: testpypi-library
       url: https://test.pypi.org/p/nexuml-library
@@ -154,7 +154,7 @@ jobs:
     needs:
       - validate
       - publish-testpypi-library
-    runs-on: ika-runner
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
 
@@ -195,7 +195,7 @@ jobs:
   publish-pypi-core:
     if: github.event_name == 'release'
     needs: validate
-    runs-on: ika-runner
+    runs-on: ubuntu-latest
     environment:
       name: pypi
       url: https://pypi.org/p/nexuml
@@ -220,7 +220,7 @@ jobs:
     needs:
       - validate
       - publish-pypi-core
-    runs-on: ika-runner
+    runs-on: ubuntu-latest
     environment:
       name: pypi-library
       url: https://pypi.org/p/nexuml-library
@@ -245,7 +245,7 @@ jobs:
     needs:
       - validate
       - publish-pypi-library
-    runs-on: ika-runner
+    runs-on: ubuntu-latest
     permissions:
       actions: read
       contents: write
