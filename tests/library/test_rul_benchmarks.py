@@ -300,7 +300,8 @@ def test_composite_rul_scenario_has_six_distinct_heads(tmp_path: Path) -> None:
 
 
 def test_auto_cmapss_source_download_and_cache(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """NASA ZIP retrieval is lazy, safe, and reused on repeated datasource builds."""
     fixture = tmp_path / "fixture"
@@ -358,7 +359,8 @@ def test_auto_cmapss_source_offline_and_unmatched_cache(tmp_path: Path) -> None:
 
 
 def test_default_rul_all_uses_lazy_auto_source(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Native scenario resolve requires no manual download or preprocessing."""
     monkeypatch.chdir(tmp_path)
