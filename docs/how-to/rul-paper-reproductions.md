@@ -69,6 +69,40 @@ nexuml resolve maintenance-rul-cen2024-tsmixer-proxy \
 nexuml train --config .experiments/rul-cen2024-proxy.yaml
 ```
 
+### Goel, Galchar & Kanu (2026), FD001: LSTM architecture and training protocol
+
+Primary source: [arXiv:2604.27234, Section III, Algorithm 5, Training Protocol](https://arxiv.org/pdf/2604.27234).
+
+| Field | Published FD001 | NexuML scenario |
+| --- | --- | --- |
+| Window / stride | 30 / 1 | 30 / 1 |
+| Input sensors | 14 retained sensors | Same 14 |
+| Feature normalization | Train-only z-score | Train-only z-score |
+| RUL target cap | 130 cycles | 130 cycles |
+| Split / seed | 80/20 asset-disjoint, seed 42 | Same |
+| LSTM | One layer, hidden dimension 32 | Same |
+| Head | Dropout 0.5, linear 32→8→8→1 with ReLU | Same |
+| Loss | MSE | MSE |
+| Optimizer / LR | RMSprop, 0.001 | Same |
+| Weight decay | 0.00001 | Same |
+| Batch | 64 | 64 |
+| Scheduler | ReduceLROnPlateau, factor 0.5, patience 5 | Library callback, same |
+| Early stop / maximum epochs | Patience 20 / 200 epochs | Same |
+
+The original paper zero-pads short test sequences. NexuML's default
+preparation pads by repeating the earliest sensor observation instead.
+The current scenario also normalizes the capped target to a unit interval
+and uses capped official test labels; publication-fidelity of the
+test target convention is **not verified**. Consequently this is
+**architecture- and training-aligned**, but not an exact reproduction of
+the reported RMSE 14.93, MAE 11.73 or NASA score 410.97.
+
+```bash
+nexuml resolve maintenance-rul-goel2026-lstm-protocol \
+  --output .experiments/rul-goel2026-lstm.yaml
+nexuml train --config .experiments/rul-goel2026-lstm.yaml
+```
+
 ## Paper benchmarks not represented as exact NexuML scenarios
 
 - **Li, Ding & Sun (2018), deep CNN:** the reported FD001 RMSE of 12.61
@@ -76,11 +110,6 @@ nexuml train --config .experiments/rul-cen2024-proxy.yaml
   forecaster currently offers an MLP, LSTM, TCN, Transformer and TSMixer,
   **not** that CNN. A hyperparameter-only rename would be misleading.
   Source: [Reliability Engineering & System Safety, 172, 1–11](https://doi.org/10.1016/j.ress.2017.11.021).
-- **Goel, Galchar & Kanu (2026):** the paper reports a **single-layer LSTM**
-  at FD001 RMSE 14.93, but a matching complete preprocessing/optimizer
-  configuration is not established here. The existing `maintenance-rul-lstm`
-  uses 3 layers, so it is **not** the same experiment.
-  Source: [arXiv:2604.27234](https://arxiv.org/abs/2604.27234).
 - **Hossain et al. (2026), stacking ensemble:** the published FD001
   RMSE 9.989 uses **four heterogeneous base learners** (LSTM, CNN, CNN-LSTM,
   CNN-GRU) and **out-of-fold XGBoost stacking**. Training six NexuML
