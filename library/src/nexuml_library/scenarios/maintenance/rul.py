@@ -305,9 +305,14 @@ def maintenance_rul_quantile_tcn() -> ScenarioSpec:
 # A single ordinary ScenarioSpec can train several independent model heads
 # on the same prepared data, but NexuML checkpoints and early stopping act
 # on the shared run. This is not six independently tuned training sessions.
-_RUL_COMPOSITE_ARCHITECTURES: tuple[
-    Literal["feature_mlp", "lstm", "tcn", "transformer", "tsmixer"], ...
-] = ("feature_mlp", "lstm", "tcn", "transformer", "tsmixer")
+_RULArchitecture = Literal["feature_mlp", "lstm", "tcn", "transformer", "tsmixer"]
+_RUL_COMPOSITE_ARCHITECTURES: tuple[_RULArchitecture, ...] = (
+    "feature_mlp",
+    "lstm",
+    "tcn",
+    "transformer",
+    "tsmixer",
+)
 
 
 @scenario("maintenance-rul-all")
@@ -376,10 +381,9 @@ def maintenance_rul_all(
     evaluators: list[EvalAlgorithmSpec] = []
     loss_keys: dict[str, float] = {}
     metric_keys: list[str] = []
-    branches: list[
-        tuple[Literal["feature_mlp", "lstm", "tcn", "transformer", "tsmixer"] | str,
-              Literal["feature_mlp", "lstm", "tcn", "transformer", "tsmixer"], bool]
-    ] = [(name, name, False) for name in _RUL_COMPOSITE_ARCHITECTURES]
+    branches: list[tuple[str, _RULArchitecture, bool]] = [
+        (name, name, False) for name in _RUL_COMPOSITE_ARCHITECTURES
+    ]
     branches.append(("quantile_tcn", "tcn", True))
     for name, architecture, quantile in branches:
         prediction_key = f"predicted_rul_{name}"
