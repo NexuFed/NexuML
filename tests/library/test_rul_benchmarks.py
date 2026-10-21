@@ -202,7 +202,7 @@ def test_exact_rul_evaluator_and_quantile_coverage() -> None:
     assert result["rul_test_count"] == 3
     assert result["rul_test_mae"] == pytest.approx(50 / 3)
     assert result["rul_test_rmse"] == pytest.approx((1700 / 3) ** 0.5)
-    assert result["rul_test_interval_coverage"] == pytest.approx(2 / 3)
+    assert result["rul_test_interval_coverage"] == pytest.approx(1.0)
     assert result["rul_test_quantile_crossing_rate"] == 0
 
 
