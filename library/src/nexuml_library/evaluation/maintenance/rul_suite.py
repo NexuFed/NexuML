@@ -120,6 +120,7 @@ def run_rul_scenario_suite(
         env["NEXUML_RUL_CHECKPOINT_ROOT"] = record["checkpoint_root"]
         log_path = Path(record["log"])
         for phase, command in zip(("resolve", "build", "train"), record["commands"], strict=True):
+            print(f"[{record['run_id']}] {phase}", flush=True)
             record["status"] = phase
             _write_manifest(manifest_path, manifest)
             with log_path.open("a", encoding="utf-8") as output:
@@ -158,19 +159,24 @@ def main() -> None:
     parser.add_argument("--prepared-files", nargs="+", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument(
-        "--scenarios", nargs="+", choices=RUL_SUITE_SCENARIOS,
+        "--scenarios",
+        nargs="+",
+        choices=RUL_SUITE_SCENARIOS,
         default=list(RUL_SUITE_SCENARIOS),
     )
     parser.add_argument("--max-epochs", type=int)
     args = parser.parse_args()
     manifest = run_rul_scenario_suite(
-        args.prepared_files, args.output_dir,
-        scenarios=args.scenarios, max_epochs=args.max_epochs,
+        args.prepared_files,
+        args.output_dir,
+        scenarios=args.scenarios,
+        max_epochs=args.max_epochs,
     )
-    print(json.dumps({
+    summary = {
         "manifest": str(Path(args.output_dir).expanduser().resolve() / "manifest.json"),
         "completed": sum(run["status"] == "completed" for run in manifest["runs"]),
-    }, indent=2))
+    }
+    print(json.dumps(summary, indent=2))
 
 
 if __name__ == "__main__":
