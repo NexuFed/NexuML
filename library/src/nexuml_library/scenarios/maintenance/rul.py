@@ -124,7 +124,11 @@ def maintenance_rul_benchmark(
         }
         length, channels = 30, 24
     else:
-        raise FileNotFoundError(f"Prepared RUL artifact does not exist: {file_path}")
+        raise FileNotFoundError(
+            f"Prepared RUL artifact is not a file: {file_path}. "
+            "To enable automatic NASA download, omit prepared_file and "
+            "unset NEXUML_RUL_PREPARED_FILE."
+        )
     resolved_seed = int(settings["seed"]) if seed is None else seed
     if int(settings["seed"]) != resolved_seed:
         raise ValueError("RUL scenario seed must equal prepared artifact split seed")
@@ -146,12 +150,14 @@ def maintenance_rul_benchmark(
     checkpoint_dir = Path(selected_checkpoint_root).expanduser().resolve() / run_name
     source_definition: AutoCMapSSRULWindows | PreparedRULWindows
     if prepared_file is None and configured_file is None:
+        configured_root = (os.environ.get("NEXUML_CMAPSS_ROOT") or "").strip()
+        selected_root = (
+            dataset_root
+            if dataset_root is not None
+            else configured_root or "data/cmapss"
+        )
         source_definition = AutoCMapSSRULWindows(
-            root=str(
-                dataset_root
-                if dataset_root is not None
-                else os.environ.get("NEXUML_CMAPSS_ROOT", "data/cmapss")
-            ),
+            root=str(selected_root),
             artifact_path=str(file_path),
             seed=resolved_seed,
             download=download,
