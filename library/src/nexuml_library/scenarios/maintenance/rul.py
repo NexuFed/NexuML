@@ -7,6 +7,7 @@ No custom trainer, Lightning loop or holdout-evaluation runner is needed.
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Literal
 
@@ -40,7 +41,7 @@ from nexuml_library.scenarios.training.defaults import (
 
 @scenario("maintenance-rul-benchmark")
 def maintenance_rul_benchmark(
-    prepared_file: str | Path = ".experiments/rul/prepared/cmapss-FD001-seed42.pt",
+    prepared_file: str | Path | None = None,
     *,
     architecture: Literal[
         "feature_mlp", "lstm", "tcn", "transformer", "tsmixer"
@@ -62,9 +63,12 @@ def maintenance_rul_benchmark(
     Test windows never enter optimizer fitting or checkpoint selection.
     The input dataset's already-normalized targets remain normalized for the
     initial benchmark; target_unit and target_scale are saved alongside data.
+    The default scenario can be resolved before C-MAPSS data preparation; it
+    requires the prepared artifact before actual training.
 
     Args:
-        prepared_file: Immutable artifact from rul_prepare.
+        prepared_file: Immutable artifact from rul_prepare. If omitted, use
+            NEXUML_RUL_PREPARED_FILE or the conventional FD001 location.
         architecture: Temporal backbone or feature MLP baseline.
         objective: Point regression or multi-quantile pinball loss.
         quantiles: Ascending pinball probabilities when using quantile objective.
@@ -83,15 +87,37 @@ def maintenance_rul_benchmark(
 
     Raises:
         ValueError: If settings, dimensions or split seed are inconsistent.
+        FileNotFoundError: If an explicitly selected prepared artifact is missing.
     """
     if min(hidden_dim, depth, batch_size, max_epochs, patience) <= 0 or lr <= 0:
         raise ValueError("RUL training dimensions and learning rate must be positive")
-    file_path = Path(prepared_file).expanduser().resolve()
-    payload = read_rul_artifact(file_path)
-    settings = payload["settings"]
+    configured_file = os.environ.get("NEXUML_RUL_PREPARED_FILE")
+    selected_file = (
+        prepared_file
+        if prepared_file is not None
+        else configured_file
+        if configured_file is not None
+        else ".experiments/rul/prepared/cmapss-FD001-seed42.pt"
+    )
+    file_path = Path(selected_file).expanduser().resolve()
+    if file_path.is_file():
+        payload = read_rul_artifact(file_path)
+        settings = payload["settings"]
+        _, length, channels = payload["features"].shape
+    elif prepared_file is None and configured_file is None:
+        # Known FD001 defaults make the registered scenario resolvable without
+        # the raw dataset. The normal datasource still requires real data to train.
+        settings = {
+            "dataset": "cmapss",
+            "subset": "FD001",
+            "seed": 42,
+            "target_scale": 125.0,
+        }
+        length, channels = 30, 24
+    else:
+        raise FileNotFoundError(f"Prepared RUL artifact does not exist: {file_path}")
     if int(settings["seed"]) != seed:
         raise ValueError("RUL scenario seed must equal prepared artifact split seed")
-    _, length, channels = payload["features"].shape
     q = list(quantiles)
     if objective == "quantile" and (
         not q or sorted(set(q)) != q or any(not 0 < p < 1 for p in q)
