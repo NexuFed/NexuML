@@ -35,7 +35,7 @@ subset's three text tables, prepares leakage-safe windows and caches the
 immutable artifact. Subsequent training runs reuse the cache.
 
 - Official NASA download: 
-  `https://phm-datasets.s3.amazonaws.com/NASA/6.+Turbofan+Engine+Degradation+Simulation+Data+Set.zip`
+  [NASA PCoE Turbofan Engine Degradation Simulation](https://www.nasa.gov/intelligent-systems-division/discovery-and-systems-health/pcoe/pcoe-data-set-repository/)
 - Raw data cache: `data/cmapss/`
 - Prepared FD001 cache: `.experiments/rul/prepared/cmapss-FD001-seed42.pt`
 - Optional raw cache override: `NEXUML_CMAPSS_ROOT`
