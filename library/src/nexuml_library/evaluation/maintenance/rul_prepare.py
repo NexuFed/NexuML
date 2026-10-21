@@ -130,6 +130,10 @@ def _cmapss_table(path: Path) -> np.ndarray:
 
     Returns:
         Two-dimensional finite numeric matrix.
+
+    Raises:
+        FileNotFoundError: If the requested sensor table does not exist.
+        ValueError: If the table has invalid columns or nonfinite entries.
     """
     if not path.is_file():
         raise FileNotFoundError(path)
@@ -157,6 +161,7 @@ def prepare_cmapss(
         Targets are divided by a saved scale for stable optimization.
 
     Raises:
+        FileNotFoundError: If a required official C-MAPSS file is missing.
         ValueError: If engine indices, official labels or arguments are invalid.
     """
     if subset not in {"FD001", "FD002", "FD003", "FD004"}:
@@ -249,6 +254,9 @@ def _bearing_features(path: Path) -> np.ndarray:
 
     Returns:
         Twelve features: six per vibration channel.
+
+    Raises:
+        ValueError: If the vibration file is missing valid sensor channels.
     """
     import pandas as pd
 
@@ -330,8 +338,16 @@ def prepare_xjtu_sy(
             paths = list(found[name].glob("*.csv"))
             if not paths:
                 raise ValueError(f"No vibration CSV recordings for {name}")
+
             def ordinal(path: Path) -> int:
-                """Return filename's recording number for chronological ordering."""
+                """Return a recording's chronological position from its filename.
+
+                Returns:
+                    Integer recording index.
+
+                Raises:
+                    ValueError: If the filename does not contain a numeric index.
+                """
                 if not path.stem.isdecimal():
                     raise ValueError(f"Unknown XJTU-SY recording order: {path.name}")
                 return int(path.stem)
