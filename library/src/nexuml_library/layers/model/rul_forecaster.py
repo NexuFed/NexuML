@@ -229,11 +229,12 @@ class _RULObjectiveRuntime(PipelineLayer):
 
     def __init__(
         self, input_sizes: dict[str, tuple], keys_in: list[str], keys_out: list[str],
-        objective: str = "huber", quantiles: list[float] | None = None, **kwargs: object,
+        objective: str = "huber", quantiles: list[float] | None = None,
+        label_key: str = "rul", **kwargs: object,
     ) -> None:
         super().__init__(
             input_sizes=input_sizes, keys_in=keys_in, keys_out=keys_out,
-            label_key="rul", **kwargs,
+            label_key=label_key, **kwargs,
         )
         self.objective = objective
         self.quantiles = quantiles if quantiles is not None else [0.1, 0.5, 0.9]
