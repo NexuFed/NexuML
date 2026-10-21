@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import io
 import json
+import zipfile
 from pathlib import Path
 
 import numpy as np
@@ -13,7 +15,9 @@ from tensordict import TensorDict
 
 from nexuml.core.compiler import compile as compile_pipeline
 from nexuml.core.config import ResolvedConfig
+from nexuml_library.data.maintenance import rul_download
 from nexuml_library.data.maintenance.rul import (
+    AutoCMapSSRULWindows,
     PreparedRULWindows,
     read_rul_artifact,
     validate_rul_payload,
@@ -293,6 +297,80 @@ def test_composite_rul_scenario_has_six_distinct_heads(tmp_path: Path) -> None:
     restored = ResolvedConfig.load(yaml_path).to_scenario()
     assert len(restored.training.loss_keys) == 6
     compile_pipeline(restored)
+
+
+def test_auto_cmapss_source_download_and_cache(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """NASA ZIP retrieval is lazy, safe, and reused on repeated datasource builds."""
+    fixture = tmp_path / "fixture"
+    _cmapss_files(fixture)
+    nested = io.BytesIO()
+    with zipfile.ZipFile(nested, "w") as archive:
+        for filename in ("train_FD001.txt", "test_FD001.txt", "RUL_FD001.txt"):
+            archive.write(fixture / filename, arcname=f"CMAPSSData/{filename}")
+    outer = io.BytesIO()
+    with zipfile.ZipFile(outer, "w") as archive:
+        archive.writestr("NASA/CMAPSSData.zip", nested.getvalue())
+    archive_bytes = outer.getvalue()
+    requested = 0
+
+    def mocked_urlopen(*args: object, **kwargs: object) -> io.BytesIO:
+        nonlocal requested
+        requested += 1
+        return io.BytesIO(archive_bytes)
+
+    monkeypatch.setattr(rul_download, "urlopen", mocked_urlopen)
+    root = tmp_path / "raw"
+    prepared_path = tmp_path / "prepared" / "cmapss.pt"
+    source = AutoCMapSSRULWindows(root=str(root), artifact_path=str(prepared_path))
+    assert not prepared_path.exists()
+    dataset = source.build()
+    assert len(dataset) > 0
+    assert prepared_path.exists()
+    assert requested == 1
+    payload = read_rul_artifact(prepared_path)
+    assert payload["settings"]["source_url"] == rul_download.CMAPSS_ARCHIVE_URL
+    assert len(payload["settings"]["source_archive_sha256"]) == 64
+    assert set(payload["settings"]["split_assets"]) == {"train", "val", "test"}
+
+    cached = source.build()
+    assert len(cached) == len(dataset)
+    assert requested == 1
+    assert (root / "train_FD001.txt").is_file()
+
+
+def test_auto_cmapss_source_offline_and_unmatched_cache(tmp_path: Path) -> None:
+    """Offline mode never downloads, and prepared artifacts are immutable."""
+    source = AutoCMapSSRULWindows(
+        root=str(tmp_path / "raw"),
+        artifact_path=str(tmp_path / "prepared.pt"),
+        download=False,
+    )
+    with pytest.raises(FileNotFoundError, match="C-MAPSS FD001"):
+        source.build()
+    root = tmp_path / "raw"
+    _cmapss_files(root)
+    source.build()
+    incompatible = source.model_copy(update={"seed": 43})
+    with pytest.raises(ValueError, match="does not match the scenario"):
+        incompatible.build()
+
+
+def test_default_rul_all_uses_lazy_auto_source(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Native scenario resolve requires no manual download or preprocessing."""
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("NEXUML_RUL_PREPARED_FILE", raising=False)
+    scenario = maintenance_rul_all()
+    dataset_source = scenario.data.datasets[0].source
+    assert isinstance(dataset_source, AutoCMapSSRULWindows)
+    assert dataset_source.download is True
+    assert not (tmp_path / "data" / "cmapss").exists()
+    compiled = compile_pipeline(scenario)
+    assert len(compiled.loss_keys) == 6
+    assert not (tmp_path / "data" / "cmapss").exists()
 
 
 def test_rul_rejects_window_level_cross_asset_leakage(tmp_path: Path) -> None:
