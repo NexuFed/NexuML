@@ -76,45 +76,61 @@ observed **training** lifetime. To report minutes, you must verify the
 source's acquisition interval and multiply by it. Never claim that
 `RUL=0` means a physical failure occurred precisely at the file boundary.
 
-### C. Resolve validated configurations
+### C. Native scenario resolution and training
+
+**Use the conventional NexuML CLI.** Every RUL backbone is registered as a
+normal scenario, so no custom configuration generator, Python training script,
+or direct compiler call is required.
+
+After preparing an artifact, set its absolute path for the **resolve step**:
 
 ```bash
-python -m nexuml_library.evaluation.maintenance.rul_configs \
-  --prepared-files \
-    .experiments/rul/prepared/cmapss-FD001-seed42.pt \
-    .experiments/rul/prepared/xjtu-sy-seed42.pt \
-  --output-dir .experiments/rul/configs \
-  --architectures feature_mlp lstm tcn transformer tsmixer \
-  --objectives huber --hidden-dim 96 --depth 3 \
-  --batch-size 64 --max-epochs 150 --patience 20
+export NEXUML_RUL_PREPARED_FILE="$(realpath .experiments/rul/prepared/cmapss-FD001-seed42.pt)"
+
+nexuml resolve maintenance-rul-tcn \
+  --output .experiments/rul/configs/cmapss-FD001-tcn-seed42.yaml
+
+nexuml build .experiments/rul/configs/cmapss-FD001-tcn-seed42.yaml
+
+nexuml train --config .experiments/rul/configs/cmapss-FD001-tcn-seed42.yaml
 ```
 
-This creates **ten resolved YAML files** plus a command manifest.
-It uses `compile(scenario).resolved_config.save(...)`, which is NexuML's
-standard *resolve* operation; the CLI's plain `nexuml resolve NAME`
-cannot parameterize all folds and run-time dataset paths without a separate
-factory. The default single-dataset scenario is also registered as
-`maintenance-rul-benchmark` so the normal named resolver is available
-after preparing its default artifact.
+The resolved YAML captures the prepared artifact's path, dimensions, target
+scale, split seed and model definition. Training loads the exact same
+prepared dataset; it does **not** re-split assets or refit normalization.
+The environment variable is needed for resolving the scenario, not for
+running the saved YAML. The default `maintenance-rul-benchmark` scenario
+is equivalent to the TCN baseline and has a known C-MAPSS FD001 fallback
+shape so generic registry compilation succeeds before the local dataset
+is available; **training still requires the actual prepared artifact**.
+An explicitly selected missing artifact causes an immediate error.
 
-**Each YAML is directly executable with the conventional CLI.**
+Registered names for the backbone comparison:
 
-```bash
-nexuml build \
-  .experiments/rul/configs/rul-cmapss-FD001-tcn-huber-seed42.yaml
+| Scenario | Architecture |
+| --- | --- |
+| `maintenance-rul-feature-mlp` | Feature-window MLP |
+| `maintenance-rul-lstm` | LSTM |
+| `maintenance-rul-tcn` | Causal TCN |
+| `maintenance-rul-transformer` | Causal Transformer |
+| `maintenance-rul-tsmixer` | TSMixer |
+| `maintenance-rul-quantile-tcn` | TCN with 0.1/0.5/0.9 pinball loss |
 
-nexuml train --config \
-  .experiments/rul/configs/rul-cmapss-FD001-tcn-huber-seed42.yaml
-```
+For XJTU-SY, point `NEXUML_RUL_PREPARED_FILE` to the prepared XJTU-SY
+artifact and resolve the desired scenario name to a different output YAML.
+The scenario derives `[window, feature_channels]`, target scale, and seed
+from the validated prepared artifact, so the same registered architectures
+work for both datasets. Each resolved configuration uses the standard
+NexuML Lightning training, validation, checkpoint, and test lifecycle.
 
-The generator records the exact commands in `manifest.json`; it does not
-call `NexuSession` or fit any neural network. To automate all configs,
-iterate through the manifest and run their **NexuML CLI commands** using
-ordinary shell scripting or job scheduling, never Python training loops.
+An optional `rul_configs` utility remains available for batch generation of
+resolved YAML files, but it is **not required** for training and is not part of
+the canonical workflow above.
 
 ### D. Quantile predictions
 
-Resolve with `--objectives quantile` in a fresh configuration directory.
+Use `maintenance-rul-quantile-tcn` with the same native
+`nexuml resolve` → `nexuml train --config` sequence.
 The 0.1/0.5/0.9 pinball model outputs conditional lower, median and upper
 RUL estimates. Its NexuML test evaluator reports actual coverage, width
 and quantile-crossing rate. This is **not conformal calibration**: coverage
@@ -122,8 +138,9 @@ must be measured on held-out assets before making reliable-interval claims.
 
 ### E. Multi-seed evaluation
 
-Re-run preparation with `--seed 43`, `44`, etc., giving each run new artifact
-and config paths. All windows from one physical asset must remain in one split.
+Re-run preparation with `--seed 43`, `44`, etc., giving each run a new
+artifact and output YAML path. Set `NEXUML_RUL_PREPARED_FILE` to each artifact
+when invoking `nexuml resolve`; the scenario derives that artifact's seed. All windows from one physical asset must remain in one split.
 These seeds resample the same equipment; do not treat repeated seed runs as
 independent new machines or claim confidence from more window counts.
 
