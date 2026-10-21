@@ -461,6 +461,9 @@ def test_goel2026_lstm_architecture_and_training_protocol(
     assert source.window == 30
     assert source.rul_cap == 130
     assert source.normalization == "zscore"
+    assert source.padding_mode == "zero"
+    assert source.train_full_windows_only is True
+    assert source.normalize_targets is False
     assert len(source.sensor_ids or []) == 14
     assert scenario.training.optimizer.factory == "torch.optim.rmsprop:RMSprop"
     assert scenario.training.optimizer.kwargs["weight_decay"] == pytest.approx(1e-5)
@@ -483,6 +486,43 @@ def test_goel2026_lstm_architecture_and_training_protocol(
     restored = ResolvedConfig.load(config).to_scenario()
     assert restored.training.optimizer.factory == "torch.optim.rmsprop:RMSprop"
     compile_pipeline(restored)
+
+
+def test_goel2026_padded_test_and_cycle_targets(tmp_path: Path) -> None:
+    """Short test histories receive zeros; outputs retain cycles, not fractions."""
+    rows = []
+    for engine in range(1, 9):
+        for cycle in range(1, 41):
+            rows.append([engine, cycle, *([float(engine + cycle)] * 24)])
+    np.savetxt(tmp_path / "train_FD001.txt", np.asarray(rows))
+    test_rows = [
+        [engine, cycle, *([float(engine + cycle)] * 24)]
+        for engine in (1, 2) for cycle in range(1, 11)
+    ]
+    np.savetxt(tmp_path / "test_FD001.txt", np.asarray(test_rows))
+    np.savetxt(tmp_path / "RUL_FD001.txt", [3.0, 7.0])
+    payload = prepare_cmapss(
+        tmp_path,
+        window=30,
+        seed=42,
+        rul_cap=130,
+        sensor_ids=[2, 3, 4, 7, 8, 9, 11, 12, 13, 14, 15, 17, 20, 21],
+        normalization="zscore",
+        padding_mode="zero",
+        train_full_windows_only=True,
+        normalize_targets=False,
+    )
+    assert payload["features"].shape[1:] == (30, 14)
+    assert payload["settings"]["target_scale"] == pytest.approx(1.0)
+    test_indices = [
+        i for i, row in enumerate(payload["rows"]) if row["split"] == "test"
+    ]
+    assert len(test_indices) == 2
+    assert all(torch.all(payload["features"][i, :20] == 0) for i in test_indices)
+    assert sorted(float(payload["targets"][i, 0]) for i in test_indices) == [3.0, 7.0]
+    for i, row in enumerate(payload["rows"]):
+        if row["split"] != "test":
+            assert row["step"] >= 29
 
 
 def test_rul_rejects_window_level_cross_asset_leakage(tmp_path: Path) -> None:
