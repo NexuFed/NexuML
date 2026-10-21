@@ -11,9 +11,10 @@ import os
 from pathlib import Path
 from typing import Literal
 
+import torch
 from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint
 
-from nexuml import callback
+from nexuml import callback, optimizer
 from nexuml.core.discovery import scenario
 from nexuml.core.types import (
     DataSpec,
@@ -31,11 +32,13 @@ from nexuml_library.data.maintenance.rul import (
     read_rul_artifact,
 )
 from nexuml_library.evaluation.maintenance.rul_evaluator import RULBenchmarkEvaluator
+from nexuml_library.evaluation.maintenance.rul_paper_callbacks import Goel2026PlateauLR
 from nexuml_library.evaluation.maintenance.rul_seed import RULSeedOnFitStart
 from nexuml_library.layers.model.rul_forecaster import (
     RULRegressionObjective,
     TemporalRULForecaster,
 )
+from nexuml_library.layers.model.rul_paper_lstm import Goel2026LSTMForecaster
 from nexuml_library.layers.model.rul_metrics import RULRegressionMetrics
 from nexuml_library.scenarios.training.defaults import (
     default_logging,
@@ -614,4 +617,66 @@ def maintenance_rul_cen2024_tsmixer_proxy() -> ScenarioSpec:
         cmapss_profile="cen2024-tsmixer-proxy",
         batch_size=256,
         lr=0.01,
+    )
+
+
+@scenario("maintenance-rul-goel2026-lstm-protocol")
+def maintenance_rul_goel2026_lstm_protocol() -> ScenarioSpec:
+    """Apply the Goel et al. (2026) FD001 LSTM architecture and training recipe.
+
+    Implements their one-layer 32-unit LSTM, Dropout(0.5), 32-8-8-1
+    regressor, RMSprop and validation plateau schedule. This currently
+    retains NexuML's normalized/capped test-label convention, so the
+    reported paper RMSE cannot yet be claimed as an exact replication.
+
+    Returns:
+        Native NexuML FD001 scenario with paper-aligned LSTM and optimizer.
+    """
+    base = maintenance_rul_benchmark(
+        architecture="lstm",
+        objective="mse",
+        cmapss_window=30,
+        cmapss_stride=1,
+        cmapss_sensor_ids=_LU2025_SENSORS,
+        cmapss_normalization="zscore",
+        cmapss_rul_cap=130.0,
+        cmapss_profile="goel2026-lstm-protocol",
+        hidden_dim=32,
+        depth=1,
+        dropout=0.5,
+        batch_size=64,
+        lr=1e-3,
+        max_epochs=200,
+        patience=20,
+        seed=42,
+    )
+    paper_layer = LayerSpec(
+        component=Goel2026LSTMForecaster(
+            hidden_dim=32,
+            dropout=0.5,
+            initialization_seed=42,
+        ),
+        keys_in=["rul_history"],
+        keys_out=["predicted_rul"],
+    )
+    return base.model_copy(
+        update={
+            "pipeline": PipelineSpec(
+                stages={
+                    "RULModel": [paper_layer],
+                    "RULLoss": base.pipeline.stages["RULLoss"],
+                }
+            ),
+            "training": base.training.model_copy(
+                update={
+                    "optimizer": optimizer(
+                        torch.optim.RMSprop, lr=1e-3, weight_decay=1e-5
+                    ),
+                }
+            ),
+            "callbacks": [
+                *base.callbacks,
+                callback(Goel2026PlateauLR, factor=0.5, patience=5),
+            ],
+        }
     )
