@@ -49,6 +49,12 @@ def maintenance_rul_benchmark(
     *,
     download: bool = True,
     dataset_root: str | Path | None = None,
+    cmapss_window: int = 30,
+    cmapss_stride: int = 1,
+    cmapss_sensor_ids: list[int] | None = None,
+    cmapss_normalization: Literal["zscore", "minmax"] = "zscore",
+    cmapss_rul_cap: float = 125.0,
+    cmapss_profile: str | None = None,
     architecture: Literal[
         "feature_mlp", "lstm", "tcn", "transformer", "tsmixer"
     ] = "tcn",
@@ -77,6 +83,12 @@ def maintenance_rul_benchmark(
             NEXUML_RUL_PREPARED_FILE or automatically retrieve official FD001.
         download: Auto-download missing official C-MAPSS source data.
         dataset_root: Local raw-data cache; defaults to NEXUML_CMAPSS_ROOT.
+        cmapss_window: Number of past cycles for automatic data preparation.
+        cmapss_stride: Stride for training windows.
+        cmapss_sensor_ids: Optional selected sensor IDs, excluding settings.
+        cmapss_normalization: Train-only feature normalization method.
+        cmapss_rul_cap: Training and currently evaluation label clipping threshold.
+        cmapss_profile: Cache and run label distinguishing published protocols.
         architecture: Temporal backbone or feature MLP baseline.
         objective: Point regression or multi-quantile pinball loss.
         quantiles: Ascending pinball probabilities when using quantile objective.
@@ -101,12 +113,33 @@ def maintenance_rul_benchmark(
     if min(hidden_dim, depth, batch_size, max_epochs, patience) <= 0 or lr <= 0:
         raise ValueError("RUL training dimensions and learning rate must be positive")
     configured_file = (os.environ.get("NEXUML_RUL_PREPARED_FILE") or "").strip() or None
+    if (
+        cmapss_window <= 0
+        or cmapss_stride <= 0
+        or cmapss_rul_cap <= 0
+        or (
+            cmapss_profile is not None
+            and (
+                not cmapss_profile
+                or any(
+                    char not in "abcdefghijklmnopqrstuvwxyz0123456789-"
+                    for char in cmapss_profile
+                )
+            )
+        )
+    ):
+        raise ValueError("Invalid paper-profile C-MAPSS preparation settings")
+    default_artifact = (
+        f".experiments/rul/prepared/cmapss-FD001-seed42-{cmapss_profile}.pt"
+        if cmapss_profile is not None
+        else ".experiments/rul/prepared/cmapss-FD001-seed42.pt"
+    )
     selected_file = (
         prepared_file
         if prepared_file is not None
         else configured_file
         if configured_file is not None
-        else ".experiments/rul/prepared/cmapss-FD001-seed42.pt"
+        else default_artifact
     )
     file_path = Path(selected_file).expanduser().resolve()
     if file_path.is_file():
@@ -120,9 +153,10 @@ def maintenance_rul_benchmark(
             "dataset": "cmapss",
             "subset": "FD001",
             "seed": 42,
-            "target_scale": 125.0,
+            "target_scale": float(cmapss_rul_cap),
         }
-        length, channels = 30, 24
+        length = cmapss_window
+        channels = 24 if cmapss_sensor_ids is None else len(cmapss_sensor_ids)
     else:
         raise FileNotFoundError(
             f"Prepared RUL artifact is not a file: {file_path}. "
@@ -147,6 +181,8 @@ def maintenance_rul_benchmark(
         if checkpoint_root is not None
         else os.environ.get("NEXUML_RUL_CHECKPOINT_ROOT", ".experiments/rul/checkpoints")
     )
+    if cmapss_profile is not None and prepared_file is None and configured_file is None:
+        run_name = f"{run_name}-{cmapss_profile}"
     checkpoint_dir = Path(selected_checkpoint_root).expanduser().resolve() / run_name
     source_definition: AutoCMapSSRULWindows | PreparedRULWindows
     if prepared_file is None and configured_file is None:
@@ -160,6 +196,11 @@ def maintenance_rul_benchmark(
             root=str(selected_root),
             artifact_path=str(file_path),
             seed=resolved_seed,
+            window=cmapss_window,
+            stride=cmapss_stride,
+            rul_cap=cmapss_rul_cap,
+            sensor_ids=cmapss_sensor_ids,
+            normalization=cmapss_normalization,
             download=download,
         )
     else:
