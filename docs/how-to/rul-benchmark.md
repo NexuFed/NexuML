@@ -127,6 +127,43 @@ An optional `rul_configs` utility remains available for batch generation of
 resolved YAML files, but it is **not required** for training and is not part of
 the canonical workflow above.
 
+### Run the complete independent RUL scenario suite
+
+NexuML's `ScenarioSpec` describes **one** training pipeline. It cannot
+nest six independent model-training scenarios. The library therefore provides
+a thin **suite orchestrator** that executes the conventional NexuML CLI
+separately for every registered model, with no custom training loop and
+no changes to the core framework.
+
+```bash
+python -m nexuml_library.evaluation.maintenance.rul_suite \
+  --prepared-files \
+    .experiments/rul/prepared/cmapss-FD001-seed42.pt \
+    .experiments/rul/prepared/xjtu-sy-seed42.pt \
+  --output-dir .experiments/rul/suite-seed42
+```
+
+The suite runs **six registered model scenarios per prepared dataset**:
+feature MLP, LSTM, TCN, Transformer, TSMixer and quantile TCN. This yields
+12 **independent** training runs for the two files above, never a jointly
+optimized multi-head model. Every run uses, in order:
+
+1. `nexuml resolve SCENARIO --output CONFIG`
+2. `nexuml build CONFIG`
+3. `nexuml train --config CONFIG`
+
+The suite stores its resolved YAML files, CLI logs, isolated checkpoint roots,
+and per-run statuses in `<output-dir>/manifest.json`. It stops at the first
+failed NexuML command and records that failure. To protect provenance, it
+refuses to overwrite an existing output directory. Run a fresh directory for
+another seed or parameter sweep. Training and test metric computation remain
+inside the normal NexuML CLI lifecycle.
+
+For a small CLI smoke run, `--max-epochs 1` passes NexuML's existing
+training override to each run. Select a subset with `--scenarios NAME ...`.
+The `maintenance-rul-benchmark` alias is not repeated, since it duplicates
+the TCN point-regression configuration.
+
 ### D. Quantile predictions
 
 Use `maintenance-rul-quantile-tcn` with the same native
@@ -173,5 +210,6 @@ ruff format --check .
 ty check
 pytest tests/library/test_rul_benchmarks.py -v
 pytest tests/library/test_rul_native_cli.py -v
+pytest tests/library/test_rul_suite.py -v
 pytest tests/_registry -v
 ```
