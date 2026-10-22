@@ -265,7 +265,9 @@ def test_full_patchformer_endpoint_artifact_preserves_tokens_without_fan(
         Raises:
             AssertionError: If an old RUL head is called.
         """
-        raise AssertionError("Sequence endpoint preparation cannot call PatchFormer FAN")
+        raise AssertionError(
+            "Sequence endpoint preparation cannot call PatchFormer FAN"
+        )
 
     monkeypatch.setattr(type(frozen.fan), "forward", reject_rul_head)
     prepared = tmp_path / "full-sequence-endpoints.pt"
