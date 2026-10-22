@@ -139,7 +139,8 @@ NexuML's own best-checkpoint audit manifests at training time:
 1. Prefer `.experiments/rul/audits/rul-FD001-controlled-patchformer-seed42.checkpoint.json`.
 2. If that model has not been trained, reuse the original already-trained
    FD001 seed-42 PatchFormer from
-   `.experiments/rul/audits/rul-cmapss-FD001-patchformer-direct-rul-adaptation-seed42.checkpoint.json`.
+   `.experiments/rul/audits/` under the original
+   `rul-cmapss-FD001-patchformer-direct-rul-adaptation-seed42.checkpoint.json`.
 
 Both model variants have compatible FD001 sensor preprocessing and
 128-dimensional DPAN embeddings. The selected checkpoint must exist,
