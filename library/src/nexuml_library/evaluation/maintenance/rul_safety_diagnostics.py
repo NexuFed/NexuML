@@ -53,6 +53,11 @@ def summarize_rul_sensor_stages(payload: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("RUL stage audit detected overlapping engine splits")
     normalized_rul = targets[:, 0].detach().cpu() * float(settings["target_scale"])
     final_features = features[:, -1, :].detach().cpu()
+    # A simple per-cycle temporal trend, not a test-derived feature.
+    temporal_slope = (
+        (features[:, -1, :] - features[:, 0, :])
+        / max(features.shape[1] - 1, 1)
+    ).detach().cpu()
     result: dict[str, Any] = {
         "source": "C-MAPSS prepared windows",
         "purpose": "Train/validation-only sensor-stage comparison; not test-tuned",
@@ -71,14 +76,23 @@ def summarize_rul_sensor_stages(payload: dict[str, Any]) -> dict[str, Any]:
         for low, high in _STAGE_BOUNDS:
             chosen = members & (normalized_rul >= low) & (normalized_rul < high)
             observed = final_features[chosen]
+            observed_slope = temporal_slope[chosen]
             label = f"{int(low)}-{int(high)}" if high != float("inf") else "120+"
             if observed.shape[0] == 0:
-                details[label] = {"count": 0, "mean": None, "std": None}
+                details[label] = {
+                    "count": 0,
+                    "mean": None,
+                    "std": None,
+                    "slope_mean": None,
+                    "slope_std": None,
+                }
             else:
                 details[label] = {
                     "count": len(observed),
                     "mean": observed.mean(dim=0).tolist(),
                     "std": observed.std(dim=0, unbiased=False).tolist(),
+                    "slope_mean": observed_slope.mean(dim=0).tolist(),
+                    "slope_std": observed_slope.std(dim=0, unbiased=False).tolist(),
                 }
         result["splits"][split] = details
 
@@ -99,6 +113,20 @@ def summarize_rul_sensor_stages(payload: dict[str, Any]) -> dict[str, Any]:
             contrasts.append({"sensor": name, "separation": float(contrast)})
         contrasts.sort(key=lambda entry: abs(float(entry["separation"])), reverse=True)
     result["train_midlife_late_sensor_contrast"] = contrasts
+    slope_contrasts: list[dict[str, float | str]] = []
+    if late["count"] and mid["count"]:
+        for name, mid_slope, late_slope, std_slope in zip(
+            settings["feature_names"],
+            mid["slope_mean"],
+            late["slope_mean"],
+            late["slope_std"],
+        ):
+            contrast = (mid_slope - late_slope) / max(std_slope, 1e-3)
+            slope_contrasts.append({"sensor": name, "separation": float(contrast)})
+        slope_contrasts.sort(
+            key=lambda entry: abs(float(entry["separation"])), reverse=True
+        )
+    result["train_midlife_late_slope_contrast"] = slope_contrasts
     return result
 
 
