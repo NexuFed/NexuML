@@ -48,6 +48,7 @@ class AutoPatchFormerFlowRULFeatures(DataSourceDefinition):
     diagnostics_file: str = ".experiments/rul/audits/patchformer-flowtime.json"
     encoding_batch_size: int = Field(default=64, gt=0)
     reference_count: int = Field(default=8, ge=1, le=32)
+    feature_mode: Literal["baseline_only", "with_flow"] = "with_flow"
 
     def build(self) -> NexuDataset:
         """Extract frozen model outputs and project on training health trajectories.
@@ -81,6 +82,8 @@ class AutoPatchFormerFlowRULFeatures(DataSourceDefinition):
         )
         source.build()
         source_payload = read_rul_artifact(self.prepared_rul_path)
+        if self.feature_mode == "baseline_only":
+            return self._build_baseline_only(source_payload, sensor_ids)
         endpoint_file = Path(self.endpoint_artifact).expanduser().resolve()
         if not endpoint_file.is_file():
             raise FileNotFoundError(
@@ -181,6 +184,7 @@ class AutoPatchFormerFlowRULFeatures(DataSourceDefinition):
             "seed": self.seed,
             "flow_checkpoint_sha256": flow_digest,
             "patchformer_checkpoint_sha256": patch_digest,
+            "patchformer_upstream_run": checkpoint.parent.name,
             "reference_count": int(trajectories.shape[0]),
             "selection": "training_healthy_endpoints_only",
             "val/flow_time_rul_pearson": pearson_flow_progress(
@@ -211,6 +215,94 @@ class AutoPatchFormerFlowRULFeatures(DataSourceDefinition):
             features=prepared_features,
             targets=cast(Tensor, source_payload["targets"]),
             raw_targets=cast(Tensor, source_payload["raw_targets"]),
+            meta=pd.DataFrame.from_records(rows),
+        )
+
+
+    def _build_baseline_only(
+        self, payload: dict[str, Any], sensor_ids: list[int]
+    ) -> NexuDataset:
+        """Cache frozen PatchFormer predictions without loading a Flow model.
+
+        The endpoint manifest is consulted only when one already exists, to
+        reuse the *exact* upstream PatchFormer of the flow/hybrid arms. It is
+        not required for baseline-only training or validation.
+
+        Args:
+            payload: Prepared immutable original C-MAPSS window observations.
+            sensor_ids: Paper-matched FD001/FD003 sensor identifiers.
+
+        Returns:
+            Split-safe baseline-only calibration dataset with zeroed flow inputs.
+
+        Raises:
+            ValueError: If a present flow endpoint references a different model.
+        """
+        checkpoint_hint: str | None = None
+        expected_digest: str | None = None
+        endpoint_file = Path(self.endpoint_artifact).expanduser()
+        if endpoint_file.is_file():
+            from nexuml_library.data.maintenance.prepared_endpoints import (
+                read_prepared_artifact,
+            )
+
+            endpoint = read_prepared_artifact(endpoint_file)
+            settings = cast(dict[str, Any], endpoint["settings"])
+            if (
+                settings.get("subset") != self.subset
+                or settings.get("seed") != self.seed
+                or settings.get("held_out_test_engine_labels_used") is not False
+                or Path(str(settings.get("source_rul_artifact"))).resolve()
+                != Path(self.prepared_rul_path).resolve()
+            ):
+                raise ValueError("Baseline-only endpoint provenance mismatch")
+            checkpoint_hint = str(settings["frozen_patchformer_checkpoint_path"])
+            expected_digest = str(settings["frozen_patchformer_checkpoint_sha256"])
+        checkpoint = resolve_patchformer_checkpoint(
+            self.subset, self.seed, checkpoint_path=checkpoint_hint
+        )
+        model = _PatchFormerModel(30, len(sensor_ids), 64, 5, 2, 0.1)
+        digest = _trusted_patchformer_weights(model, checkpoint)
+        if expected_digest is not None and digest != expected_digest:
+            raise ValueError("Baseline-only checkpoint differs from flow's PatchFormer")
+        model.eval()
+        windows = cast(Tensor, payload["features"])
+        rows = cast(list[dict[str, Any]], payload["rows"])
+        predictions: list[Tensor] = []
+        with torch.no_grad():
+            for batch in windows.split(self.encoding_batch_size):
+                predictions.append(model(batch).detach().float())
+        baseline = torch.cat(predictions, dim=0)
+        features = torch.cat(
+            (torch.zeros((len(windows), 2), dtype=baseline.dtype), baseline),
+            dim=1,
+        )
+        if not bool(torch.isfinite(features).all()):
+            raise ValueError("Nonfinite baseline PatchFormer predictions")
+        path = Path(self.diagnostics_file).expanduser().resolve()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            json.dumps(
+                {
+                    "subset": self.subset,
+                    "seed": self.seed,
+                    "feature_mode": "baseline_only",
+                    "selection": "frozen_patchformer_without_flow",
+                    "patchformer_upstream_run": checkpoint.parent.name,
+                    "patchformer_checkpoint_sha256": digest,
+                    "flow_checkpoint_sha256": None,
+                    "reference_count": 0,
+                    "test_labels_used_in_feature_fitting": False,
+                },
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        return _FlowRULFeatureRuntime(
+            features=features,
+            targets=cast(Tensor, payload["targets"]),
+            raw_targets=cast(Tensor, payload["raw_targets"]),
             meta=pd.DataFrame.from_records(rows),
         )
 
