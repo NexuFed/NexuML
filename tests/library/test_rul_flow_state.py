@@ -140,11 +140,19 @@ def test_no_patchformer_rul_predictor_is_called_during_feature_preparation(
         length: int, channels: int, width: int, patch_size: int,
         heads: int, dropout: float,
     ) -> _PatchFormerModel:
-        """Disable all FAN regression inference while keeping actual DPAN."""
+        """Disable FAN regression inference while retaining original DPAN.
+
+        Returns:
+            Encoder whose former RUL prediction path raises when called.
+        """
         model = _PatchFormerModel(length, channels, width, patch_size, heads, dropout)
 
         def forbid_predictor(*args: object, **kwargs: object) -> Tensor:
-            """Never invoke the original supervised PatchFormer RUL predictor."""
+            """Reject use of the former supervised PatchFormer RUL head.
+
+            Raises:
+                AssertionError: If the source calls the forbidden old head.
+            """
             raise AssertionError("PatchFormer RUL predictor must not be called")
 
         monkeypatch.setattr(model.fan, "forward", forbid_predictor)
