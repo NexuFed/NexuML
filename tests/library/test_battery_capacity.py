@@ -58,11 +58,15 @@ def test_battery_capacity_windows_use_real_next_cycle_ah_and_chronological_split
     val = source.get_split("val")
     test = source.get_split("test")
     assert len(train) > 0 and len(val) > 0 and len(test) > 0
-    assert set(train.meta["asset_id"]) == {"B0006", "B0007", "B0018"}
-    assert set(val.meta["asset_id"]) == {"B0006", "B0007", "B0018"}
-    assert set(test.meta["asset_id"]) == {"B0005"}
-    assert max(train.meta.loc[train.meta["asset_id"] == "B0006", "step"]) < (
-        min(val.meta.loc[val.meta["asset_id"] == "B0006", "step"])
+    train_meta, val_meta, test_meta = train.meta, val.meta, test.meta
+    assert train_meta is not None
+    assert val_meta is not None
+    assert test_meta is not None
+    assert set(train_meta["asset_id"]) == {"B0006", "B0007", "B0018"}
+    assert set(val_meta["asset_id"]) == {"B0006", "B0007", "B0018"}
+    assert set(test_meta["asset_id"]) == {"B0005"}
+    assert max(train_meta.loc[train_meta["asset_id"] == "B0006", "step"]) < (
+        min(val_meta.loc[val_meta["asset_id"] == "B0006", "step"])
     )
     x, labels = test[0]
     assert labels is not None
