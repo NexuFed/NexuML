@@ -4,11 +4,10 @@ from __future__ import annotations
 from nexuml.core.discovery import data_source
 
 from pathlib import Path
-from typing import Sequence
+from typing import ClassVar, Sequence
 
 import pandas as pd
 import torch
-from pydantic import ConfigDict
 from tensordict import TensorDict
 
 from nexuml.data.dataset import NexuDataset
@@ -19,13 +18,7 @@ from nexuml.core.components import DataSourceDefinition
 class CIFAR10Dataset(DataSourceDefinition):
     """CIFAR-10 dataset backed by ``self.data`` and metadata labels."""
 
-    model_config = ConfigDict(
-        json_schema_extra={
-            "x-nexuml-outputs": [
-                {"domain": "y", "key": "class_labels"},
-            ]
-        }
-    )
+    fixed_label_keys: ClassVar[tuple[str, ...]] = ("class_labels",)
 
     root: str | Path = "data/cifar10"
     train: bool = True
@@ -37,7 +30,6 @@ class CIFAR10Dataset(DataSourceDefinition):
 
 
 class _CIFAR10DatasetRuntime(NexuDataset):
-    LABEL_NAMES = ["class_labels"]
     NUM_CLASSES = 10
 
     def __init__(
@@ -75,11 +67,12 @@ class _CIFAR10DatasetRuntime(NexuDataset):
             target_list = list(dataset_targets)
 
         split_name = split or ("fit" if train else "test")
-        meta = pd.DataFrame({"class_labels": target_list, "split": [split_name] * len(target_list)})
+        label_names = list(CIFAR10Dataset.fixed_label_keys)
+        meta = pd.DataFrame({label_names[0]: target_list, "split": [split_name] * len(target_list)})
 
         super().__init__(
             meta=meta,
-            label_names=self.LABEL_NAMES,
+            label_names=label_names,
             do_split=False,
             modality="image",
             data=dataset_data,
@@ -113,13 +106,7 @@ class _CIFAR10DatasetRuntime(NexuDataset):
 class CIFAR100Dataset(DataSourceDefinition):
     """CIFAR-100 dataset backed by ``self.data`` and metadata labels."""
 
-    model_config = ConfigDict(
-        json_schema_extra={
-            "x-nexuml-outputs": [
-                {"domain": "y", "key": "class_labels"},
-            ]
-        }
-    )
+    fixed_label_keys: ClassVar[tuple[str, ...]] = ("class_labels",)
 
     root: str | Path = "data/cifar100"
     train: bool = True
@@ -168,12 +155,13 @@ class _CIFAR100DatasetRuntime(_CIFAR10DatasetRuntime):
             target_list = list(dataset_targets)
 
         split_name = split or ("fit" if train else "test")
-        meta = pd.DataFrame({"class_labels": target_list, "split": [split_name] * len(target_list)})
+        label_names = list(CIFAR100Dataset.fixed_label_keys)
+        meta = pd.DataFrame({label_names[0]: target_list, "split": [split_name] * len(target_list)})
 
         NexuDataset.__init__(
             self,
             meta=meta,
-            label_names=["class_labels"],
+            label_names=label_names,
             do_split=False,
             modality="image",
             data=dataset_data,

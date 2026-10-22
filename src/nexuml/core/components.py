@@ -3,9 +3,20 @@
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import Any, ClassVar
+from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import BaseModel, ConfigDict
+
+
+@dataclass(frozen=True, slots=True)
+class _KeyRole:
+    domain: Literal["x", "y"]
+
+
+FeatureKey = Annotated[str, _KeyRole("x")]
+"""A feature-tensor key; values and generated schemas remain ordinary strings."""
+LabelKey = Annotated[str, _KeyRole("y")]
+"""A label-tensor key, also usable inside optional and list annotations."""
 
 
 class ComponentDefinition(BaseModel, ABC):
@@ -67,6 +78,46 @@ class EvalBuildContext:
     label_key: str | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class ContextInput:
+    """One consumed context slot; a default replaces missing, null or empty values."""
+
+    required: bool = False
+    default: str | None = None
+
+    def resolve(self, value: str | None, name: str) -> str | None:
+        """Resolve a context key without rejecting historically accepted empty strings.
+
+        Returns:
+            Explicit key or its declared fallback.
+
+        Raises:
+            ValueError: If a required key is absent and has no fallback.
+        """
+        resolved = (value or self.default) if self.default is not None else value
+        if self.required and resolved is None:
+            raise ValueError(f"Evaluation requires explicit {name}.")
+        return resolved
+
+
+@dataclass(frozen=True, slots=True)
+class EvalContextInputs:
+    """Consumed evaluation slots; an omitted slot is unused, not a guessed route."""
+
+    feature_key: ContextInput | None = None
+    label_key: ContextInput | None = None
+
+    def resolve(self, context: EvalBuildContext) -> EvalBuildContext:
+        """Return runtime keys using the same rules exposed to tooling."""
+        return EvalBuildContext(
+            **{
+                name: rule.resolve(getattr(context, name), name)
+                for name in ("feature_key", "label_key")
+                if (rule := getattr(self, name)) is not None
+            }
+        )
+
+
 class LayerDefinition(ComponentDefinition):
     """Semantic configuration that materializes a pipeline layer."""
 
@@ -82,6 +133,8 @@ class DataSourceDefinition(ComponentDefinition):
     """Semantic configuration that materializes a dataset."""
 
     kind = "data_source"
+    # None is unknown; () declares that the source produces no labels.
+    fixed_label_keys: ClassVar[tuple[str, ...] | None] = None
 
     @abstractmethod
     def build(self) -> Any:
@@ -92,6 +145,8 @@ class EvalAlgorithmDefinition(ComponentDefinition):
     """Semantic configuration that materializes an evaluation algorithm."""
 
     kind = "eval_algorithm"
+    # None leaves context consumption unresolved for existing contributed definitions.
+    context_inputs: ClassVar[EvalContextInputs | None] = None
 
     @abstractmethod
     def build(self, context: EvalBuildContext) -> Any:

@@ -9,6 +9,7 @@ import torch
 pytest.importorskip("lightning")
 
 from nexuml.api.observation import Observation
+from nexuml.api.contracts import component_io
 from nexuml_library.data.image.cifar import CIFAR10Dataset
 from nexuml_library.evaluation.visualizers.reconstruction import ReconstructionVisualizer
 from nexuml_library.evaluation.visualizers.latent import LatentVisualizer
@@ -49,18 +50,20 @@ def test_real_counter_payloads_and_throttling(tmp_path, monkeypatch):
     assert events[-1]["total"] is None
 
 
-def test_schema_metadata_is_authoritative_and_preserves_model_validation():
-    assert CIFAR10Dataset.model_json_schema()["x-nexuml-outputs"] == [
-        {"domain": "y", "key": "class_labels"}
-    ]
-    routing = ReconstructionVisualizer.model_json_schema()["x-nexuml-routing"]
-    assert routing["algorithm.params.reconstructed_key"] == {"domain": "x", "required": True}
-    assert (
-        LatentVisualizer.model_json_schema()["x-nexuml-routing"]["feature_key"]["default"]
-        == "latent"
-    )
+def test_native_contracts_are_authoritative_and_preserve_model_validation():
+    assert component_io(CIFAR10Dataset)["labels"] == ["class_labels"]
+    routing = component_io(ReconstructionVisualizer)["inputs"]
+    assert next(item for item in routing if item["field"] == "reconstructed_key") == {
+        "source": "parameter",
+        "field": "reconstructed_key",
+        "domain": "x",
+        "collection": False,
+        "required": True,
+        "default": None,
+    }
+    assert component_io(LatentVisualizer)["inputs"][0]["default"] == "latent"
     assert "resnet18" in ResNet.model_json_schema()["properties"]["resnet_type"]["enum"]
-    assert ResNet.model_json_schema()["x-nexuml-category"] == ["Models", "Vision"]
+    assert not any(key.startswith("x-nexuml") for key in ResNet.model_json_schema())
     assert ResNet.model_config["frozen"] and ResNet.model_config["extra"] == "forbid"
 
 

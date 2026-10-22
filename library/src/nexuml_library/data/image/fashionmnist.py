@@ -4,11 +4,10 @@ from __future__ import annotations
 from nexuml.core.discovery import data_source
 
 from pathlib import Path
-from typing import Sequence
+from typing import ClassVar, Sequence
 
 import pandas as pd
 import torch
-from pydantic import ConfigDict
 from tensordict import TensorDict
 
 from nexuml.data.dataset import NexuDataset
@@ -19,13 +18,7 @@ from nexuml.core.components import DataSourceDefinition
 class FashionMNISTDataset(DataSourceDefinition):
     """In-memory FashionMNIST dataset backed by ``self.data`` and metadata labels."""
 
-    model_config = ConfigDict(
-        json_schema_extra={
-            "x-nexuml-outputs": [
-                {"domain": "y", "key": "category"},
-            ]
-        }
-    )
+    fixed_label_keys: ClassVar[tuple[str, ...]] = ("category",)
 
     root: str | Path = "data/fashionmnist"
     train: bool = True
@@ -37,8 +30,6 @@ class FashionMNISTDataset(DataSourceDefinition):
 
 
 class _FashionMNISTDatasetRuntime(NexuDataset):
-    LABEL_NAMES = ["category"]
-
     def __init__(
         self,
         root: str | Path = "data/fashionmnist",
@@ -74,11 +65,12 @@ class _FashionMNISTDatasetRuntime(NexuDataset):
             target_list = list(dataset_targets)
 
         split_name = split or ("fit" if train else "test")
-        meta = pd.DataFrame({"category": target_list, "split": [split_name] * len(target_list)})
+        label_names = list(FashionMNISTDataset.fixed_label_keys)
+        meta = pd.DataFrame({label_names[0]: target_list, "split": [split_name] * len(target_list)})
 
         super().__init__(
             meta=meta,
-            label_names=self.LABEL_NAMES,
+            label_names=label_names,
             do_split=False,
             modality="image",
             data=dataset_data,

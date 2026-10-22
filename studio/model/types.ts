@@ -14,7 +14,7 @@ export type Config = RecordValue & {
     source: Component | null; datasets: { source: Component }[]; targets: { key: string }[] };
   training: RecordValue & { loss_keys: Record<string, number>; metric_keys: string[] };
   evaluation: RecordValue & { algorithms: (RecordValue & { algorithm: Component;
-    feature_key?: string; label_key?: string; axis_keys?: (string | { key: string; source: string })[] })[] };
+    feature_key?: string | null; label_key?: string | null; axis_keys?: (string | { key: string; source: string })[] })[] };
 };
 export type Document = { data: Config; stage_order: string[]; yaml: string; semantic_revision: string;
   path?: string; base_revision?: string | null; launch_review?:RecordValue };
@@ -24,11 +24,11 @@ export type Schema = { type?: string; title?: string; description?: string; defa
   items?:Schema; prefixItems?:Schema[]; additionalProperties?:Schema|boolean;
   minItems?:number; maxItems?:number; minLength?:number; maxLength?:number;
   minimum?: number; maximum?: number; exclusiveMinimum?:number; exclusiveMaximum?:number;
-  $ref?: string; $defs?: Record<string, Schema>;
-  "x-nexuml-routing"?:Record<string,{domain:string;default?:string;required?:boolean}>;
-  "x-nexuml-outputs"?:{domain:string;key:string}[];
-  "x-nexuml-category"?:string[] };
-export type Entry = { kind: string; name: string; version: string; schema: Schema; import_target: string };
+  $ref?: string; $defs?: Record<string, Schema> };
+export type InputBinding = { source: "context" | "parameter"; field: string; domain: "x" | "y";
+  collection: boolean; required: boolean; default: string | string[] | null };
+export type ComponentIO = { labels: string[] | null; inputs_known: boolean; inputs: InputBinding[] };
+export type Entry = { kind: string; name: string; version: string; schema: Schema; import_target: string; io: ComponentIO };
 export type Catalog = { components: Entry[]; scenarios: { name: string }[]; errors: { module: string; message: string }[];
   libraries: { roots: string[]; packages: string[] }; schema: Schema; backends: Record<string, { available: boolean }>;
   execution_backends?:ExecutionBackend[] };

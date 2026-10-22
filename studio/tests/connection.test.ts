@@ -105,7 +105,7 @@ test("dynamic proxy fixes upstream origin, preserves auth/query/upgrade and stri
   vi.stubEnv("NEXUML_STUDIO_PUBLIC_ORIGIN", "https://studio.example");
   vi.stubEnv("NEXUML_STUDIO_PROXY_TOKEN", proxyToken);
   const headers = { host: "studio.example", origin: "https://studio.example", authorization: "Bearer browser-token",
-    "x-nexuml-interface": "2", cookie: "proxy-session=private", forwarded: "host=evil.example;proto=https",
+    "x-nexuml-interface": "3", cookie: "proxy-session=private", forwarded: "host=evil.example;proto=https",
     "x-forwarded-host": "evil.example", "x-forwarded-proto": "https", "x-forwarded-for": "203.0.113.1",
     "x-forwarded-port": "443", "x-real-ip": "203.0.113.1", via: "proxy",
     upgrade: "websocket", connection: "Upgrade", "sec-websocket-key": "browser-key", "x-nexuml-studio-proxy":proxyToken };
@@ -113,7 +113,7 @@ test("dynamic proxy fixes upstream origin, preserves auth/query/upgrade and stri
   const response = proxy(incoming);
   expect(config.matcher).toBe("/api/v1/:path*");
   expect(response.headers.get("x-middleware-rewrite")).toBe("http://127.0.0.1:8000/api/v1/operations/one/events?after=7");
-  for (const [key, value] of Object.entries({ authorization: headers.authorization, "x-nexuml-interface": "2",
+  for (const [key, value] of Object.entries({ authorization: headers.authorization, "x-nexuml-interface": "3",
     host: "127.0.0.1:8000", origin: env.NEXUML_STUDIO_ORIGIN, upgrade: "websocket", connection: "Upgrade",
     "sec-websocket-key": "browser-key" })) expect(response.headers.get(`x-middleware-request-${key}`)).toBe(value);
   for (const key of ["cookie", "forwarded", "x-forwarded-host", "x-forwarded-proto", "x-forwarded-for",

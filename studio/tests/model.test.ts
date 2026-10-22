@@ -3,9 +3,13 @@ import { parseDocument } from "yaml";
 import { addStage, connect, disconnect, moveLayer, newSnapshot, placeNode, project, reorderStage, signature, transferLayer, validConnection } from "../model/graph";
 import {category} from "../model/catalog";
 import { createDraftStore, layoutSignature, yamlText } from "../model/draft";
-import type { Catalog, Config, Document, Layer } from "../model/types";
+import type { Catalog, ComponentIO, Config, Document, Entry, InputBinding, Layer, Schema } from "../model/types";
 
 const layer=(name:string,keys:string[],output:string[]):Layer=>({component:{type:name,version:"1",params:{factory:"custom.Module",kwargs:{untouched:[1,2]}}},keys_in:keys,keys_out:output});
+const binding=(source:InputBinding["source"],field:string,domain:InputBinding["domain"],options:Partial<InputBinding>={}):InputBinding=>({source,field,domain,collection:false,required:false,default:null,...options});
+const entry=(kind:string,name:string,io:ComponentIO={labels:null,inputs_known:false,inputs:[]},schema:Schema={}):Entry=>({kind,name,version:"1",import_target:`local.${name}`,schema,io});
+const catalogOf=(components:Entry[]):Catalog=>({scenarios:[],errors:[],libraries:{packages:[],roots:[]},schema:{},backends:{},components});
+const contextCatalog=catalogOf([entry("eval_algorithm","evaluation",{labels:null,inputs_known:true,inputs:[binding("context","feature_key","x"),binding("context","label_key","y")]})]);
 function fixture():Config {
   return {name:"ordered",data:{source:null,datasets:[],feature_key:"features",input_shapes:{features:[8]},targets:[{key:"labels"}]},
     pipeline:{stages:{"10":[{...layer("first",["features"],["features"]),meta_out:{width:"latent_width"}}],
@@ -26,7 +30,7 @@ describe("ordered config projection",()=>{
     expect(signature(reordered)).not.toBe(signature(numeric));
   });
   test("explicit integer stage order, preceding overwritten producers and aliases",()=>{
-    const snapshot=newSnapshot(fixture(),["10","2"]);const graph=project(snapshot);
+    const snapshot=newSnapshot(fixture(),["10","2"]);const graph=project(snapshot,contextCatalog);
     expect(graph.nodes.filter(node=>node.data.kind==="layer").map(node=>node.data.title)).toEqual(["first","second"]);
     const second=snapshot.ids["2"][0];
     expect(graph.edges.find(edge=>edge.target===second && edge.targetHandle==="keys_in:input")?.source).toBe(snapshot.ids["10"][0]);
@@ -65,7 +69,7 @@ describe("ordered config projection",()=>{
   });
   test("only the last writer before each target is eligible, even with a later overwrite",()=>{
     const config=fixture();config.pipeline.stages["2"].push(layer("later",["features"],["features"]));
-    const snapshot=newSnapshot(config,["10","2"]);const graph=project(snapshot);
+    const snapshot=newSnapshot(config,["10","2"]);const graph=project(snapshot,contextCatalog);
     const first=snapshot.ids["10"][0], [second,later]=snapshot.ids["2"];
     const connection={source:first,sourceHandle:"output:features",target:second,targetHandle:"keys_in:input"};
     expect(validConnection(graph,connection)).toBe(true);
@@ -148,12 +152,12 @@ describe("ordered config projection",()=>{
     expect(validConnection(current,replacement)).toBe(true);
     expect(connect(disconnected,replacement).config.pipeline.stages["10"][0].keys_in).toEqual(["features"]);
   });
-  test("installed metadata projects dataset labels, evaluator parameter routes and honest defaults",()=>{
+  test("native I/O projects dataset labels, evaluator parameter routes and honest defaults",()=>{
     const config=fixture();config.data.source={type:"Images",version:"1",params:{}};config.data.targets=[];
     config.evaluation.algorithms[0]={algorithm:{type:"Report",version:"1",params:{score_key:"loss"}},label_key:"class_labels"};
-    const catalog:Catalog={scenarios:[],errors:[],libraries:{packages:[],roots:[]},schema:{},backends:{},components:[{kind:"data_source",name:"Images",version:"1",import_target:"local.data.images.Images",schema:{"x-nexuml-outputs":[{domain:"y",key:"class_labels"}]}},
-      {kind:"data_source",name:"Report",version:"1",import_target:"local.data.Report",schema:{}},
-      {kind:"eval_algorithm",name:"Report",version:"1",import_target:"local.evaluation.report.Report",schema:{"x-nexuml-routing":{label_key:{domain:"y",default:"y_true"},"algorithm.params.score_key":{domain:"x",required:true}}}}]};
+    const catalog=catalogOf([entry("data_source","Images",{labels:["class_labels"],inputs_known:false,inputs:[]}),
+      entry("data_source","Report"),entry("eval_algorithm","Report",{labels:null,inputs_known:true,inputs:[
+        binding("context","label_key","y",{default:"y_true"}),binding("parameter","score_key","x",{required:true})]})]);
     const snapshot=newSnapshot(config,["10","2"]);const graph=project(snapshot,catalog);
     expect(graph.edges.find(edge=>edge.target==="evaluation:0" && edge.targetHandle==="label_key:class_labels")?.source).toBe("data");
     const score=graph.edges.find(edge=>edge.target==="evaluation:0" && edge.targetHandle==="algorithm.params.score_key:loss")!;
@@ -161,14 +165,11 @@ describe("ordered config projection",()=>{
     const changed=disconnect(snapshot,[score],catalog);expect(changed.config.evaluation.algorithms[0].algorithm.params.score_key).toBe("");expect(project(changed,catalog).unconnected).toBe(true);
     expect(()=>disconnect(snapshot,[{target:"evaluation:0",targetHandle:"label_key:class_labels"}],catalog)).toThrow("inherits a runtime default");
   });
-  test("evaluator connection checks use catalog schema defaults and routing domains",()=>{
+  test("evaluator connection checks use native defaults and routing domains, not schema defaults",()=>{
     const config=fixture();config.evaluation.algorithms=[{algorithm:{type:"Report",version:"1",params:{}}}];
-    const catalog:Catalog={scenarios:[],errors:[],libraries:{packages:[],roots:[]},schema:{},backends:{},components:[{
-      kind:"eval_algorithm",name:"Report",version:"1",import_target:"local.Report",schema:{
-        properties:{score_key:{type:"string",default:"loss"}},
-        "x-nexuml-routing":{"algorithm.params.score_key":{domain:"x",required:true},label_key:{domain:"y",default:"labels"}},
-      },
-    }]};
+    const catalog=catalogOf([entry("eval_algorithm","Report",{labels:null,inputs_known:true,inputs:[
+      binding("parameter","score_key","x",{default:"loss"}),binding("context","label_key","y",{default:"labels"})]},
+    {properties:{score_key:{type:"string",default:"not_the_native_default"}}})]);
     const snapshot=newSnapshot(config,["10","2"]);const graph=project(snapshot,catalog);
     const score={source:snapshot.ids["2"][0],sourceHandle:"output:loss",target:"evaluation:0",targetHandle:"algorithm.params.score_key:loss"};
     const label={source:"data",sourceHandle:"label:labels",target:"evaluation:0",targetHandle:"label_key:labels"};
@@ -179,20 +180,25 @@ describe("ordered config projection",()=>{
     expect(connect(snapshot,label,catalog).config.evaluation.algorithms[0].label_key).toBe("labels");
     expect(snapshot.config.evaluation.algorithms[0].algorithm.params).toEqual({});
     expect(()=>disconnect(snapshot,[label],catalog)).toThrow("inherits a runtime default");
+    const removed=disconnect(snapshot,[score],catalog);
+    expect(removed.config.evaluation.algorithms[0].algorithm.params.score_key).toBe("");
+    expect(project(removed,catalog).nodes.find(node=>node.id==="evaluation:0")?.data.inputs[0].key).toBe("");
+    expect(connect(removed,{...score,targetHandle:"algorithm.params.score_key:"},catalog).config.evaluation.algorithms[0].algorithm.params.score_key).toBe("loss");
   });
-  test("names are sidecar-only, restore and undo; installed category metadata wins",()=>{
+  test("names are sidecar-only, restore and undo; groups follow module provenance",()=>{
     const document:Document={data:fixture(),stage_order:["10","2"],yaml:"",semantic_revision:"source"};
     const store=createDraftStore();store.getState().load(document);const original=store.getState().draft!;
     const named={...original,names:{data:"Input images",[original.ids["10"][0]]:"Encoder"}};store.getState().change(named);
     expect(signature(named)).toBe(signature(original));expect(yamlText(named)).not.toContain("Input images");expect(layoutSignature(named)).not.toBe(layoutSignature(original));
     store.getState().undo();expect(store.getState().draft?.names?.data).toBeUndefined();
     store.getState().load(document,{ids:named.ids,positions:named.positions,names:named.names});expect(project(store.getState().draft!).nodes[0].data.title).toBe("Input images");
-    expect(category({kind:"layer",name:"ResNet",version:"1",import_target:"library.layers.model.resnet.ResNet",schema:{"x-nexuml-category":["Models","Vision"]}})).toEqual(["Pipeline layers","Models","Vision"]);
+    expect(category({...entry("layer","ResNet"),import_target:"library.layers.model.resnet.ResNet"})).toEqual(["Pipeline layers","Models"]);
   });
   test("empty label, objective and evaluator collection ports keep their configured types",()=>{
     const config=fixture();config.pipeline.stages["10"][0].label_key=[];config.training.loss_keys={};config.training.metric_keys=[];
     config.evaluation.algorithms=[{algorithm:{type:"Report",version:"1",params:{label_keys:null}}}];
-    const catalog:Catalog={scenarios:[],errors:[],libraries:{packages:[],roots:[]},schema:{},backends:{},components:[{kind:"eval_algorithm",name:"Report",version:"1",import_target:"local.Report",schema:{properties:{label_keys:{anyOf:[{type:"array",items:{type:"string"}},{type:"null"}]}},"x-nexuml-routing":{"algorithm.params.label_keys":{domain:"y"}}}}]};
+    const catalog=catalogOf([entry("eval_algorithm","Report",{labels:null,inputs_known:true,inputs:[binding("parameter","label_keys","y",{collection:true})]},
+      {properties:{label_keys:{anyOf:[{type:"array",items:{type:"string"}},{type:"null"}]}}})]);
     let snapshot=newSnapshot(config,["10","2"]);
     snapshot=connect(snapshot,{source:"data",sourceHandle:"label:labels",target:snapshot.ids["10"][0],targetHandle:"label_key:$new"},catalog);
     expect(snapshot.config.pipeline.stages["10"][0].label_key).toEqual(["labels"]);
@@ -202,6 +208,89 @@ describe("ordered config projection",()=>{
     expect(snapshot.config.training.loss_keys).toEqual({loss:1});
     snapshot=connect(snapshot,{source:snapshot.ids["2"][0],sourceHandle:"output:loss",target:"objectives",targetHandle:"metric_keys:$new"},catalog);
     expect(snapshot.config.training.metric_keys).toEqual(["loss"]);
+  });
+  test("known source labels supplement configured labels; unknown is not known-empty",()=>{
+    const config=fixture();config.evaluation.algorithms=[];
+    config.data.source={type:"Images",version:"1",params:{}};
+    config.data.datasets=[{source:{type:"NoLabels",version:"1",params:{}}},{source:{type:"Dynamic",version:"1",params:{}}}];
+    const catalog=catalogOf([entry("data_source","Images",{labels:["labels","class_labels"],inputs_known:false,inputs:[]}),
+      entry("data_source","NoLabels",{labels:[],inputs_known:false,inputs:[]}),entry("data_source","Dynamic")]);
+    const snapshot=newSnapshot(config,["10","2"]);const before=signature(snapshot);const graph=project(snapshot,catalog);
+    expect(graph.nodes[0].data.outputs.filter(port=>port.domain==="y").map(port=>port.key)).toEqual(["labels","class_labels"]);
+    expect(graph.problems.filter(problem=>problem.includes("native source labels"))).toEqual([expect.stringContaining("Dynamic:")]);
+    expect(signature(snapshot)).toBe(before);
+    const missing=project(snapshot,catalogOf([]));
+    expect(missing.problems.filter(problem=>problem.includes("native source labels"))).toHaveLength(3);
+    expect(missing.nodes[0].data.outputs.filter(port=>port.domain==="y").map(port=>port.key)).toEqual(["labels"]);
+  });
+  test.each([undefined,null,""])("context fallback matches Python for %s and keeps the inherited removal guard",configured=>{
+    const config=fixture();config.evaluation.algorithms=[{algorithm:{type:"Report",version:"1",params:{}},feature_key:configured,label_key:configured}];
+    const catalog=catalogOf([entry("eval_algorithm","Report",{labels:null,inputs_known:true,inputs:[
+      binding("context","feature_key","x",{default:"features"}),binding("context","label_key","y",{required:true})]})]);
+    const snapshot=newSnapshot(config,["10","2"]);const graph=project(snapshot,catalog);
+    const inputs=graph.nodes.find(node=>node.id==="evaluation:0")!.data.inputs;
+    expect(inputs.map(input=>[input.field,input.key,input.defaultKey])).toEqual([["feature_key","features","features"],["label_key","",undefined]]);
+    expect(graph.unconnected).toBe(true);expect(graph.problems.join()).toContain("unconnected required input label_key");
+    expect(()=>disconnect(snapshot,[{target:"evaluation:0",targetHandle:"feature_key:features"}],catalog)).toThrow("inherits a runtime default");
+    const changed=connect(snapshot,{source:snapshot.ids["2"][0],sourceHandle:"output:loss",target:"evaluation:0",targetHandle:"feature_key:features"},catalog);
+    expect(changed.config.evaluation.algorithms[0].feature_key).toBe("loss");
+    expect(project(changed,catalog).nodes.find(node=>node.id==="evaluation:0")!.data.inputs[0].key).toBe("loss");
+    expect(()=>disconnect(changed,[{target:"evaluation:0",targetHandle:"feature_key:loss"}],catalog)).toThrow("inherits a runtime default");
+  });
+  test.each([undefined,null,""])("parameter defaults apply only when absent, not configured %s",configured=>{
+    const config=fixture();config.evaluation.algorithms=[{algorithm:{type:"Report",version:"1",params:{score_key:configured}}}];
+    const catalog=catalogOf([entry("eval_algorithm","Report",{labels:null,inputs_known:true,inputs:[binding("parameter","score_key","x",{default:"loss"})]})]);
+    const snapshot=newSnapshot(config,["10","2"]);const graph=project(snapshot,catalog);
+    const input=graph.nodes.find(node=>node.id==="evaluation:0")!.data.inputs[0];
+    expect(input.key).toBe(configured===undefined ? "loss" : "");expect(input.defaultKey).toBeUndefined();
+    const changed=connect(snapshot,{source:snapshot.ids["2"][0],sourceHandle:"output:loss",target:"evaluation:0",targetHandle:input.id},catalog);
+    expect(changed.config.evaluation.algorithms[0].algorithm.params.score_key).toBe("loss");
+    expect(disconnect(changed,[{target:"evaluation:0",targetHandle:"algorithm.params.score_key:loss"}],catalog).config.evaluation.algorithms[0].algorithm.params.score_key).toBe("");
+  });
+  test.each([{configured:undefined},{configured:null},{configured:[]},{configured:[""]}])("nullable collections stay arrays through connect/remove/reconnect from $configured",({configured})=>{
+    const config=fixture();config.evaluation.algorithms=[{algorithm:{type:"Report",version:"1",params:{label_keys:configured}}}];
+    const catalog=catalogOf([entry("eval_algorithm","Report",{labels:null,inputs_known:true,inputs:[binding("parameter","label_keys","y",{collection:true,required:true})]})]);
+    let snapshot=newSnapshot(config,["10","2"]);const empty={target:"evaluation:0",targetHandle:"algorithm.params.label_keys:"};
+    expect(project(snapshot,catalog).unconnected).toBe(true);
+    const connection={...empty,source:"data",sourceHandle:"label:labels"};
+    snapshot=connect(snapshot,connection,catalog);expect(snapshot.config.evaluation.algorithms[0].algorithm.params.label_keys).toEqual(["labels"]);
+    snapshot=disconnect(snapshot,[{...empty,targetHandle:"algorithm.params.label_keys:labels"}],catalog);
+    expect(snapshot.config.evaluation.algorithms[0].algorithm.params.label_keys).toEqual([]);expect(project(snapshot,catalog).unconnected).toBe(true);
+    expect(connect(snapshot,connection,catalog).config.evaluation.algorithms[0].algorithm.params.label_keys).toEqual(["labels"]);
+  });
+  test("omitted collection defaults retain every projected key on reconnect and removal",()=>{
+    const config=fixture();config.evaluation.algorithms=[{algorithm:{type:"Report",version:"1",params:{}}}];
+    const catalog=catalogOf([entry("eval_algorithm","Report",{labels:null,inputs_known:true,inputs:[binding("parameter","scores","x",{collection:true,default:["loss","features"]})]})]);
+    const snapshot=newSnapshot(config,["10","2"]);const score={target:"evaluation:0",targetHandle:"algorithm.params.scores:loss"};
+    const changed=connect(snapshot,{...score,source:snapshot.ids["10"][0],sourceHandle:"output:features"},catalog);
+    expect(changed.config.evaluation.algorithms[0].algorithm.params.scores).toEqual(["features","features"]);
+    expect(disconnect(snapshot,[score],catalog).config.evaluation.algorithms[0].algorithm.params.scores).toEqual(["features"]);
+    expect(disconnect(snapshot,[score,{...score,targetHandle:"algorithm.params.scores:features"}],catalog).config.evaluation.algorithms[0].algorithm.params.scores).toEqual([]);
+    for(const value of [null,[]]){
+      const cleared=structuredClone(snapshot);cleared.config.evaluation.algorithms[0].algorithm.params.scores=value;
+      expect(project(cleared,catalog).nodes.find(node=>node.id==="evaluation:0")!.data.inputs.map(input=>input.key)).toEqual([""]);
+      expect(connect(cleared,{source:snapshot.ids["2"][0],sourceHandle:"output:loss",target:"evaluation:0",targetHandle:"algorithm.params.scores:"},catalog).config.evaluation.algorithms[0].algorithm.params.scores).toEqual(["loss"]);
+    }
+    expect(snapshot.config.evaluation.algorithms[0].algorithm.params).toEqual({});
+    catalog.components[0].io.inputs[0].default=["","loss","features"];
+    expect(disconnect(snapshot,[score],catalog).config.evaluation.algorithms[0].algorithm.params.scores).toEqual(["","features"]);
+  });
+  test("unknown context keeps declared parameter and axis bindings without guessing context edges",()=>{
+    const snapshot=newSnapshot(fixture(),["10","2"]);snapshot.config.evaluation.algorithms[0].algorithm.params={reconstructed_key:"loss",unannotated_key:"features"};
+    const catalog=catalogOf([entry("eval_algorithm","evaluation",{labels:null,inputs_known:false,inputs:[binding("parameter","reconstructed_key","x")]},
+      {properties:{unannotated_key:{type:"string",default:"features"}}})]);
+    const before=signature(snapshot);const graph=project(snapshot,catalog);const evaluation=graph.nodes.find(node=>node.id==="evaluation:0")!;
+    expect(evaluation.data.inputs.map(input=>input.field)).toEqual(["algorithm.params.reconstructed_key"]);
+    expect(graph.edges.filter(edge=>edge.target===evaluation.id).map(edge=>edge.targetHandle)).toEqual(["algorithm.params.reconstructed_key:loss"]);
+    expect(graph.problems.join()).toContain("native evaluator context inputs are unknown");
+    expect(graph.problems.join()).toContain("resolves from dataset columns");expect(signature(snapshot)).toBe(before);
+    const absent=project(snapshot);expect(absent.nodes.find(node=>node.id===evaluation.id)!.data.inputs).toEqual([]);
+    expect(absent.problems.join()).toContain("native evaluator context inputs are unknown");
+    const knownEmpty=project(snapshot,catalogOf([entry("eval_algorithm","evaluation",{labels:null,inputs_known:true,inputs:[]})]));
+    expect(knownEmpty.problems.join()).not.toContain("native evaluator context inputs are unknown");
+    snapshot.config.evaluation.algorithms[0].axis_keys=["labels",{key:"features",source:"x"}];
+    expect(project(snapshot,catalog).nodes.find(node=>node.id===evaluation.id)!.data.inputs.map(input=>[input.field,input.domain,input.key])).toEqual([
+      ["algorithm.params.reconstructed_key","x","loss"],["axis_keys","y","labels"],["axis_keys","x","features"]]);
   });
   test("stage positions/sizes carry children, contain measured bounds and remain layout-only",()=>{
     const snapshot=newSnapshot(fixture(),["10","2"]);const id=snapshot.ids["10"][0];

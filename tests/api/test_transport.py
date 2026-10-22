@@ -64,11 +64,11 @@ def test_interface_version_header(tmp_path):
     settings = Settings(tmp_path, ORIGIN, TOKEN)
     with TestClient(create_app(settings), base_url="http://127.0.0.1:8000") as client:
         assert (
-            client.get("/api/v1/runtime", headers={**AUTH, "X-NexuML-Interface": "1"}).status_code
+            client.get("/api/v1/runtime", headers={**AUTH, "X-NexuML-Interface": "2"}).status_code
             == 409
         )
         assert (
-            client.get("/api/v1/runtime", headers={**AUTH, "X-NexuML-Interface": "2"}).status_code
+            client.get("/api/v1/runtime", headers={**AUTH, "X-NexuML-Interface": "3"}).status_code
             == 200
         )
 

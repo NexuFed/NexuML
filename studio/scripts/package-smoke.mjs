@@ -59,7 +59,12 @@ try {
   await writeFile(join(libraryPackage,"scale.py"),`from pydantic import Field
 from nexuml.core.discovery import layer
 from nexuml.core.components import LayerDefinition
+from nexuml.core.components import (
+    ContextInput, EvalAlgorithmDefinition, EvalContextInputs, FeatureKey,
+)
+from nexuml.core.discovery import eval_algorithm
 from nexuml.core.base_layer import PipelineLayer
+from nexuml.evaluation.algorithm import EvalAlgorithm
 @layer("studio-smoke-scale")
 class Scale(LayerDefinition):
     scale: float = Field(default=1.0, gt=0, description="Trusted smoke scale")
@@ -71,6 +76,18 @@ class Runtime(PipelineLayer):
         self.scale = scale
     def forward_tensor(self, x, y=None):
         return x * self.scale
+
+@eval_algorithm("studio-smoke-report")
+class Report(EvalAlgorithmDefinition):
+    context_inputs = EvalContextInputs(feature_key=ContextInput(default="features"))
+    score: FeatureKey = "reconstructed"
+    mask: FeatureKey | None = None
+    auxiliary: list[FeatureKey] | None = None
+    def build(self, context):
+        return ReportRuntime()
+class ReportRuntime(EvalAlgorithm):
+    def results(self):
+        return {}
 `);
   const env={...process.env,HOME:home,USERPROFILE:home,NEXT_TELEMETRY_DISABLED:"1"};
   delete env.PYTHONPATH;delete env.PYTHONHOME;
@@ -94,7 +111,7 @@ class Runtime(PipelineLayer):
   const runtime=await (await wait(`${origin}/api/runtime`,launch,{Host:`127.0.0.1:${port}`})).json();
   assert.equal(runtime.api,origin,"Browser transport must use only the frontend origin");
   const identity=await (await fetch(`${runtime.api}/api/v1/runtime`,{headers:{Authorization:`Bearer ${runtime.token}`,Origin:origin}})).json();
-  assert.equal(await realpath(identity.working_directory),await realpath(work));assert.equal(identity.interface_version,2);
+   assert.equal(await realpath(identity.working_directory),await realpath(work));assert.equal(identity.interface_version,3);
   assert.equal(resolve(identity.python_executable),resolve(python),"API must report the selected interpreter, not the shell Python");
   assert(!output.includes(runtime.token),"Token leaked to output");
   const library=await (await fetch(`${runtime.api}/api/v1/registry`,{headers:{Authorization:`Bearer ${runtime.token}`,Origin:origin}})).json();

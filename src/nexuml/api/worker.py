@@ -68,6 +68,7 @@ def catalog() -> dict:
         Existing library/component/scenario metadata and runtime dependency availability.
     """
     from nexuml.core.backends import backend_rows
+    from nexuml.api.contracts import component_io
     from nexuml.core.discovery import LibraryConfig, discover_library_packages
     from nexuml.core.registry import get_component_registry
     from nexuml.core.scenario_registry import get_scenario_registry
@@ -83,6 +84,7 @@ def catalog() -> dict:
             "version": e.version,
             "import_target": e.import_target,
             "schema": e.definition_type.model_json_schema(),
+            "io": component_io(e.definition_type),
         }
         for e in components.entries()
     ]

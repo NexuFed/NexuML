@@ -11,11 +11,17 @@ from typing import Any, cast
 import numpy as np
 import torch
 import torch.nn.functional as F
-from pydantic import ConfigDict
 from tensordict import TensorDict
 
 from nexuml.evaluation.algorithm import EvalAlgorithm
-from nexuml.core.components import EvalAlgorithmDefinition, EvalBuildContext
+from nexuml.core.components import (
+    ContextInput,
+    EvalAlgorithmDefinition,
+    EvalBuildContext,
+    EvalContextInputs,
+    FeatureKey,
+    LabelKey,
+)
 from nexuml.evaluation.storage import ReservoirTensorDictBuffer
 from nexuml_library.evaluation.visualizers._plotting import format_label, log_figure
 
@@ -26,28 +32,20 @@ logger = logging.getLogger(__name__)
 class ReconstructionVisualizer(EvalAlgorithmDefinition):
     """Shows side-by-side original vs reconstructed samples."""
 
-    model_config = ConfigDict(
-        json_schema_extra={
-            "x-nexuml-routing": {
-                "feature_key": {"domain": "x", "required": True},
-                "algorithm.params.reconstructed_key": {"domain": "x", "required": True},
-                "algorithm.params.mask_key": {"domain": "x"},
-                "algorithm.params.label_keys": {"domain": "y"},
-            }
-        }
-    )
+    context_inputs = EvalContextInputs(feature_key=ContextInput(required=True))
 
-    reconstructed_key: str
-    mask_key: str | None = None
-    label_keys: list[str] | None = None
+    reconstructed_key: FeatureKey
+    mask_key: FeatureKey | None = None
+    label_keys: list[LabelKey] | None = None
     n_samples: int = 8
     patch_size: int | tuple[int, int] | None = None
     storage_backend: str = "memory"
     storage_path: str | None = None
 
     def build(self, context: EvalBuildContext) -> EvalAlgorithm:
+        context = self.context_inputs.resolve(context)
         return _ReconstructionVisualizerRuntime(
-            feature_key=context.feature_key,
+            feature_key=cast(str, context.feature_key),
             **self.model_dump(),
         )
 
@@ -55,8 +53,8 @@ class ReconstructionVisualizer(EvalAlgorithmDefinition):
 class _ReconstructionVisualizerRuntime(EvalAlgorithm):
     def __init__(
         self,
-        feature_key: str | None = None,
-        reconstructed_key: str | None = None,
+        feature_key: str,
+        reconstructed_key: str,
         mask_key: str | None = None,
         label_keys: list[str] | None = None,
         n_samples: int = 8,
@@ -64,10 +62,6 @@ class _ReconstructionVisualizerRuntime(EvalAlgorithm):
         storage_backend: str = "memory",
         storage_path: str | None = None,
     ) -> None:
-        if feature_key is None or reconstructed_key is None:
-            raise ValueError(
-                "ReconstructionVisualizer requires explicit feature_key and reconstructed_key."
-            )
         self.feature_key = feature_key
         self.reconstructed_key = reconstructed_key
         self.mask_key = mask_key

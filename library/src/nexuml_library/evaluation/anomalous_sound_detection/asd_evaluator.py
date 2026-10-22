@@ -16,7 +16,13 @@ import torch
 from tensordict import NonTensorData, TensorDict
 
 from nexuml.core.discovery import eval_algorithm
-from nexuml.core.components import EvalAlgorithmDefinition, EvalBuildContext
+from nexuml.core.components import (
+    ContextInput,
+    EvalAlgorithmDefinition,
+    EvalBuildContext,
+    EvalContextInputs,
+    FeatureKey,
+)
 from nexuml.evaluation.algorithm import EvalAlgorithm
 from nexuml_library.evaluation.anomalous_sound_detection._metrics import (
     _binary_f1,
@@ -73,24 +79,17 @@ class AnomalyEvaluator(EvalAlgorithmDefinition):
     any score keys — score production is handled by pipeline layers.
     """
 
-    model_config = {
-        "json_schema_extra": {
-            "x-nexuml-routing": {
-                "label_key": {"domain": "y", "default": "y_true"},
-                "algorithm.params.score_key": {"domain": "x"},
-                "algorithm.params.decision_key": {"domain": "x"},
-            }
-        }
-    }
-    score_key: str = "anomaly_score"
-    decision_key: str | None = None
+    context_inputs = EvalContextInputs(label_key=ContextInput(default="y_true"))
+    score_key: FeatureKey = "anomaly_score"
+    decision_key: FeatureKey | None = None
     group_keys: list[str] | None = None
     dcase_metric_axes: dict[str, str] | None = None
     max_fpr: float = 0.1
 
     def build(self, context: EvalBuildContext) -> EvalAlgorithm:
+        context = self.context_inputs.resolve(context)
         return _AnomalyEvaluatorRuntime(
-            label_key=context.label_key or "y_true",
+            label_key=cast(str, context.label_key),
             **self.model_dump(),
         )
 
@@ -98,8 +97,8 @@ class AnomalyEvaluator(EvalAlgorithmDefinition):
 class _AnomalyEvaluatorRuntime(EvalAlgorithm):
     def __init__(
         self,
-        score_key: str = "anomaly_score",
-        label_key: str = "y_true",
+        score_key: str,
+        label_key: str,
         decision_key: str | None = None,
         group_keys: list[str] | None = None,
         dcase_metric_axes: dict[str, str] | None = None,
@@ -191,23 +190,19 @@ class _AnomalyEvaluatorRuntime(EvalAlgorithm):
 class AnomalyVisualizer(EvalAlgorithmDefinition):
     """Diagnostic visualization consuming declared score, feature, and grouping axes."""
 
-    model_config = {
-        "json_schema_extra": {
-            "x-nexuml-routing": {
-                "feature_key": {"domain": "x", "default": "latent"},
-                "label_key": {"domain": "y", "default": "y_true"},
-                "algorithm.params.score_key": {"domain": "x"},
-            }
-        }
-    }
-    score_key: str = "anomaly_score"
+    context_inputs = EvalContextInputs(
+        feature_key=ContextInput(default="latent"),
+        label_key=ContextInput(default="y_true"),
+    )
+    score_key: FeatureKey = "anomaly_score"
     group_keys: list[str] | None = None
     max_plot_samples: int = 2000
 
     def build(self, context: EvalBuildContext) -> EvalAlgorithm:
+        context = self.context_inputs.resolve(context)
         return _AnomalyVisualizerRuntime(
-            feature_key=context.feature_key or "latent",
-            label_key=context.label_key or "y_true",
+            feature_key=cast(str, context.feature_key),
+            label_key=cast(str, context.label_key),
             **self.model_dump(),
         )
 
@@ -215,9 +210,9 @@ class AnomalyVisualizer(EvalAlgorithmDefinition):
 class _AnomalyVisualizerRuntime(EvalAlgorithm):
     def __init__(
         self,
-        score_key: str = "anomaly_score",
-        feature_key: str | None = "latent",
-        label_key: str = "y_true",
+        score_key: str,
+        feature_key: str,
+        label_key: str,
         group_keys: list[str] | None = None,
         max_plot_samples: int = 2000,
     ) -> None:

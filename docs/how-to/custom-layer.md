@@ -80,6 +80,9 @@ ScaledReLU(scale=2.0)
 ScaledReLU.model_json_schema()
 ```
 
+Use native `Literal` types for fixed choices; validation and Studio dropdowns then share
+the same supported values without hand-written schema metadata.
+
 ## Use It In Python
 
 ```python

@@ -37,7 +37,7 @@ test("typed settings, error focus, categorized drop, names and removable key rou
   await page.locator('.canvas-toolbar').getByRole("button",{name:"Remove connection",exact:true}).click({timeout:5000});
   await page.getByRole("button",{name:"Undo",exact:true}).click();
   await navigation(page,"Components");await page.getByLabel("Search components").fill("ResNet");
-  await expect(page.locator(".component-list")).toContainText("Vision");
+   await expect(page.locator(".component-list")).toContainText("Models");
   await page.getByLabel("Search components").fill("LinearEncoder");
   const drag=page.locator('.component-list button').filter({hasText:"LinearEncoder"});
   const stage=page.locator('.react-flow__node[data-id="stage:Encoder"]');

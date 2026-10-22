@@ -10,7 +10,7 @@ import { randomBytes } from "node:crypto";
 import { createServer } from "node:net";
 import { parseArgs } from "node:util";
 import { listenHost, publicOrigin } from "./connection.mjs";
-import { backendRequirement, compatibilityError } from "./compatibility.mjs";
+import { backendRequirement, compatibilityError, interfaceVersion } from "./compatibility.mjs";
 
 const require = createRequire(import.meta.url);
 const packageDirectory = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -153,7 +153,7 @@ export async function launch(options) {
       apiChild.on("error", error => console.error(`NexuML startup: ${error.message}`));
     }
     if (hostedOrigin && proxyToken === token) throw new Error("Proxy and API credentials must be different.");
-    const response = await ready(`${apiUrl}/api/v1/runtime`, {Authorization:`Bearer ${token}`, Origin:origin, "X-NexuML-Interface":"2"}, apiChild, token, apiService);
+    const response = await ready(`${apiUrl}/api/v1/runtime`, {Authorization:`Bearer ${token}`, Origin:origin, "X-NexuML-Interface":String(interfaceVersion)}, apiChild, token, apiService);
     const identity = await response.json();
     const incompatible = compatibilityError(identity);
     if (incompatible) throw new Error(`${apiService}: ${incompatible}`);

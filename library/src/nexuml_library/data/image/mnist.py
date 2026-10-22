@@ -4,11 +4,10 @@ from __future__ import annotations
 from nexuml.core.discovery import data_source
 
 from pathlib import Path
-from typing import Sequence
+from typing import ClassVar, Sequence
 
 import pandas as pd
 import torch
-from pydantic import ConfigDict
 from tensordict import TensorDict
 
 from nexuml.data.dataset import NexuDataset
@@ -19,13 +18,7 @@ from nexuml.core.components import DataSourceDefinition
 class MNISTDataset(DataSourceDefinition):
     """In-memory MNIST dataset backed by ``self.data`` and metadata labels."""
 
-    model_config = ConfigDict(
-        json_schema_extra={
-            "x-nexuml-outputs": [
-                {"domain": "y", "key": "digit"},
-            ]
-        }
-    )
+    fixed_label_keys: ClassVar[tuple[str, ...]] = ("digit",)
 
     root: str | Path = "data/mnist"
     train: bool = True
@@ -38,8 +31,6 @@ class MNISTDataset(DataSourceDefinition):
 
 
 class _MNISTDatasetRuntime(NexuDataset):
-    LABEL_NAMES = ["digit"]
-
     def __init__(
         self,
         root: str | Path = "data/mnist",
@@ -77,11 +68,12 @@ class _MNISTDatasetRuntime(NexuDataset):
             target_list = list(dataset_targets)
 
         split_name = split or ("fit" if train else "test")
-        meta = pd.DataFrame({"digit": target_list, "split": [split_name] * len(target_list)})
+        label_names = list(MNISTDataset.fixed_label_keys)
+        meta = pd.DataFrame({label_names[0]: target_list, "split": [split_name] * len(target_list)})
 
         super().__init__(
             meta=meta,
-            label_names=self.LABEL_NAMES,
+            label_names=label_names,
             do_split=False,
             modality="image",
             data=dataset_data,

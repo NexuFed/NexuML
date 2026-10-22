@@ -1,11 +1,13 @@
 import type { Connection, Edge } from "@xyflow/react";
-import type { CardNode, Catalog, Component, Config, Graph, Layer, Port, RecordValue, Schema, Snapshot } from "./types";
-import { resolveSchema } from "./schema";
+import type { CardNode, Catalog, Component, Config, Graph, Layer, Port, RecordValue, Snapshot } from "./types";
 
 export const STAGE_INSET=90;
 
 const port = (key: string, domain = "x", field = "keys_in", alias?: string): Port =>
   ({ id: `${field}:${alias ?? key}`, key, domain, field, alias });
+
+// Omitted parameter defaults live in the projection until a route is edited.
+const collectionKeys=(value:unknown,inputs:Port[],field:string):string[]=>Array.isArray(value) ? value : inputs.filter(input=>input.field===field).map(input=>input.key);
 
 export function newSnapshot(config: Config, order: string[], previous?: Snapshot): Snapshot {
   const pool = new Map<string, string[]>();
@@ -28,7 +30,7 @@ export function project(snapshot: Snapshot, catalog?:Catalog, measured:Record<st
   const { config, order, ids, positions } = snapshot;
   const graph: Graph = { nodes: [], edges: [], problems: [] };
   const producers = new Map<string, { node: string; handle: string; rank: number }>();
-  const definition=(component:Component,kind:string)=>catalog?.components.find(item=>item.kind===kind && item.name===component.type && item.version===component.version)?.schema;
+  const definition=(component:Component,kind:string)=>catalog?.components.find(item=>item.kind===kind && item.name===component.type && item.version===component.version)?.io;
   const add = (node: CardNode) => {
     node.position = positions[node.id] ?? node.position;
     graph.nodes.push(node);
@@ -47,8 +49,11 @@ export function project(snapshot: Snapshot, catalog?:Catalog, measured:Record<st
   if (!features.length) features.push(config.data.feature_key ?? "features");
   const labels = (config.data.targets ?? []).map(target => target.key);
   const sources = [config.data.source, ...(config.data.datasets ?? []).map(dataset => dataset.source)].filter(Boolean);
-  const declared=sources.flatMap(source=>definition(source!,"data_source")?.["x-nexuml-outputs"] ?? []);
-  for(const output of declared)if(output.domain==="y" && !labels.includes(output.key))labels.push(output.key);
+  for(const source of sources){
+    const declared=definition(source!,"data_source")?.labels;
+    if(declared==null)graph.problems.push(`${source!.type}: native source labels are unknown. Explicit scenario labels remain available; other labels resolve at runtime.`);
+    else for(const key of declared)if(!labels.includes(key))labels.push(key);
+  }
   add({ id: "data", type: "card", position: {x: 30, y: 150}, data: { kind: "data", title: "Data",
     summary: sources.map(source => source!.type).join(" · ") || "Configured data source",
     inputs: [], outputs: [...features.map(key => port(key, "x", "output")), ...labels.map(key => port(key, "y", "label"))], rank: -1 }});
@@ -99,16 +104,16 @@ export function project(snapshot: Snapshot, catalog?:Catalog, measured:Record<st
       {...port("", "x", "loss_keys", "$new"),add:true}, {...port("", "x", "metric_keys", "$new"),add:true}], outputs: [], rank: rank++ } });
   (config.evaluation.algorithms ?? []).forEach((evaluation, index) => {
     const inputs = [];
-    const schema=definition(evaluation.algorithm,"eval_algorithm");
-    const routing:NonNullable<Schema["x-nexuml-routing"]>=schema?.["x-nexuml-routing"] ?? {feature_key:{domain:"x"},label_key:{domain:"y"}};
-    for(const [field,contract] of Object.entries(routing)){
-      const configured=field.split(".").reduce<unknown>((value,key)=>(value as RecordValue|undefined)?.[key],evaluation);
-      const property=field.startsWith("algorithm.params.") ? schema?.properties?.[field.slice("algorithm.params.".length)] : undefined;
-      const resolved=resolveSchema(property,schema);
-      const collection=resolved.type==="array" || (resolved.anyOf ?? resolved.oneOf)?.some(item=>resolveSchema(item,schema).type==="array");
-      const value=configured ?? property?.default ?? contract.default;
-      const keys=Array.isArray(value) && value.length ? value : [typeof value==="string" && value ? value : contract.default ?? ""];
-      for(const key of keys)inputs.push({...port(key,contract.domain,field),collection,defaultKey:contract.default,required:contract.required});
+    const io=definition(evaluation.algorithm,"eval_algorithm");
+    if(!io?.inputs_known)graph.problems.push(`${evaluation.algorithm.type}: native evaluator context inputs are unknown. Edit explicit scenario routes manually; no context connections are inferred.`);
+    for(const binding of io?.inputs ?? []){
+      const context=binding.source==="context";
+      const field=context ? binding.field : `algorithm.params.${binding.field}`;
+      const configured=context ? evaluation[binding.field] : evaluation.algorithm.params[binding.field];
+      const value=context ? configured || binding.default : configured===undefined ? binding.default : configured;
+      const keys=Array.isArray(value) && value.length ? value : [typeof value==="string" ? value : ""];
+      for(const key of keys)inputs.push({...port(key,binding.domain,field),collection:binding.collection,
+        defaultKey:context && typeof binding.default==="string" ? binding.default : undefined,required:binding.required});
     }
     for (const axis of evaluation.axis_keys ?? []) {
       const value = typeof axis === "string" ? { key: axis, source: "y" } : axis;
@@ -167,7 +172,10 @@ export function connect(snapshot: Snapshot, connection: Connection, catalog?:Cat
       const parts=input.field.split(".");let value=evaluation as RecordValue;
       for(const part of parts.slice(0,-1))value=value[part] as RecordValue;
       const key=parts.at(-1)!;
-      value[key]=input.collection ? input.key ? ((value[key] ?? []) as string[]).map(item=>item===input.key ? output.key : item) : [...(value[key] as string[] ?? []),output.key] : output.key;
+      if(input.collection){
+        const keys=collectionKeys(value[key],target.data.inputs,input.field);
+        value[key]=keys.includes(input.key) ? keys.map(item=>item===input.key ? output.key : item) : [...keys,output.key];
+      }else value[key]=output.key;
     }
   }
   return next;
@@ -196,7 +204,7 @@ export function disconnect(snapshot:Snapshot,edges:Pick<Edge,"target"|"targetHan
       else{
         const parts=input.field.split(".");let value=evaluation as RecordValue;
         for(const part of parts.slice(0,-1))value=value[part] as RecordValue;
-        const key=parts.at(-1)!;value[key]=Array.isArray(value[key]) ? (value[key] as string[]).filter(item=>item!==input.key) : "";
+        const key=parts.at(-1)!;value[key]=input.collection ? collectionKeys(value[key],node.data.inputs,input.field).filter(item=>item!==input.key) : "";
       }
     }
   }

@@ -13,7 +13,7 @@ from urllib.parse import urlsplit
 from fastapi import WebSocket, WebSocketDisconnect
 from starlette.responses import JSONResponse
 
-INTERFACE_VERSION = 2
+INTERFACE_VERSION = 3
 MAX_BODY = 2 * 1024 * 1024
 LOOPBACK_HOSTS = {"127.0.0.1", "localhost", "::1"}
 

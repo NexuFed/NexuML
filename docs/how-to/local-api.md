@@ -36,6 +36,9 @@ can invoke `-m nexuml.cli.main serve` with the same options. See
   header** for request/response schemas and routes; never put the token in a URL.
   `GET /api/v1/runtime` reports the selected runtime/interface. Clients may send
   `X-NexuML-Interface` using the reported interface value; a mismatch returns 409.
+- Catalog entries keep parameter `schema` separate from native `io` bindings and fixed
+  labels. Unknown contracts remain unresolved; discovery does not build components.
+  Studio and Python must support the same interface; neither updates packages automatically.
 - Errors expose `error.code`, `error.message` and optional `error.fields`
   (`loc`, `message`, `type`), without echoing request inputs.
 - CORS/Host/Origin checks are not authentication for arbitrary HTTP clients. Discovery,

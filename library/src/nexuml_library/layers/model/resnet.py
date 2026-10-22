@@ -4,24 +4,15 @@ from __future__ import annotations
 from nexuml.core.discovery import layer
 
 import logging
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 import torch
 import torch.nn as nn
-from pydantic import ConfigDict, Field
 
 from nexuml.core.base_layer import PipelineLayer
 from nexuml.core.components import LayerBuildContext, LayerDefinition
 
 logger = logging.getLogger(__name__)
-
-_RESNET_TYPES = {
-    "resnet18": ("resnet18", 512),
-    "resnet34": ("resnet34", 512),
-    "resnet50": ("resnet50", 2048),
-    "resnet101": ("resnet101", 2048),
-    "resnet152": ("resnet152", 2048),
-}
 
 
 @layer("ResNet")
@@ -39,8 +30,7 @@ class ResNet(LayerDefinition):
             Defaults to ``False`` when pretrained, ``True`` otherwise.
     """
 
-    model_config = ConfigDict(json_schema_extra={"x-nexuml-category": ["Models", "Vision"]})
-    resnet_type: str = Field(default="resnet18", json_schema_extra={"enum": list(_RESNET_TYPES)})
+    resnet_type: Literal["resnet18", "resnet34", "resnet50", "resnet101", "resnet152"] = "resnet18"
     pretrained: bool = False
     cifar_stem: bool | None = None
 
@@ -65,10 +55,6 @@ class _ResNetRuntime(PipelineLayer):
             keys_out=keys_out,
             **kwargs,
         )
-
-        if resnet_type not in _RESNET_TYPES:
-            available = ", ".join(sorted(_RESNET_TYPES.keys()))
-            raise ValueError(f"Unsupported resnet_type '{resnet_type}'. Available: [{available}]")
 
         self.resnet_type = resnet_type
         self.pretrained = pretrained

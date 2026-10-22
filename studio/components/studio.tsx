@@ -17,7 +17,8 @@ import { createDraftStore, layoutSignature, yamlText } from "../model/draft";
 import { addStage, connect, disconnect, newSnapshot, placeNode, project, signature, STAGE_INSET, transferLayer, validConnection } from "../model/graph";
 import { schemaDefault } from "../model/schema";
 import { ApiError, request } from "../model/client";
-import type { Catalog, ConnectionInfo, Document, Entry, Layout, Operation, RecordValue, Snapshot } from "../model/types";
+import { validateCatalog } from "../model/catalog";
+import type { ConnectionInfo, Document, Entry, Layout, Operation, RecordValue, Snapshot } from "../model/types";
 import { compatibilityError } from "../bin/compatibility.mjs";
 
 const trainingSections=["Basics","Optimizer and schedule","Data loading","Execution","Checkpoints and logging"];
@@ -39,7 +40,7 @@ function Workbench() {
   const connection=boot.data;
   const runtime=useQuery({queryKey:["runtime"],enabled:!!connection,queryFn:()=>request<{interface_version:number;nexuml_version:string;python_executable:string;python_version:string;working_directory:string}>(connection!,"/runtime"),refetchInterval:5000});
   const incompatible=runtime.data ? compatibilityError(runtime.data) : null;
-  const catalog=useQuery({queryKey:["catalog"],enabled:!!connection && !!runtime.data && !incompatible,queryFn:()=>request<Catalog>(connection!,"/registry")});
+  const catalog=useQuery({queryKey:["catalog"],enabled:!!connection && !!runtime.data && !incompatible,queryFn:async()=>validateCatalog(await request<unknown>(connection!,"/registry"))});
   const exampleAvailable=catalog.data?.scenarios.some(item=>item.name===exampleScenario);
   const [view,setView]=useState("Pipeline");
   const [panel,setPanel]=useState("Canvas");
@@ -217,12 +218,13 @@ function Workbench() {
     schema={{...modelSchema("TrainingSpec"),properties:Object.fromEntries(Object.entries(modelSchema("TrainingSpec")?.properties ?? {}).filter(([key])=>keys.includes(key))),required:modelSchema("TrainingSpec")?.required?.filter(key=>keys.includes(key))}}
     root={schema} basic={basic} prefix="training." errors={errors} rawLabel={keys.includes("optimizer") ? "Raw optimizer settings" : "Raw training settings"} {...fieldContext} onChange={(value,validate)=>edit(["training"],{...draft.config.training,...value},validate)}/>;
 
-  if(!connection || !runtime.data || incompatible) return <main className="startup"><div className="brand"><Layers/>NexuML <span>STUDIO</span></div>
-    <h1>{boot.isError || runtime.isError || incompatible ? "Connection unavailable" : "Connecting to your runtime"}</h1>
-    <p>{boot.error?.message ?? incompatible ?? runtime.error?.message ?? "Verifying the selected local NexuML installation…"}</p>
+  if(!connection || !runtime.data || incompatible || !catalog.data || catalog.isError) return <main className="startup"><div className="brand"><Layers/>NexuML <span>STUDIO</span></div>
+    <h1>{boot.isError || runtime.isError || incompatible || catalog.isError ? "Connection unavailable" : "Connecting to your runtime"}</h1>
+    <p>{boot.error?.message ?? incompatible ?? runtime.error?.message ?? catalog.error?.message ?? "Verifying the selected local NexuML installation and discovering its native I/O catalog…"}</p>
+    {draft && <p>Your draft and unapplied buffers are retained. Editing is blocked until discovery succeeds.</p>}
     {runtime.data && <p>NexuML {runtime.data.nexuml_version} · Python {runtime.data.python_version} · <code>{runtime.data.python_executable}</code></p>}
     <p>Check the launcher terminal for startup errors. For a tool installation: <code>uv tool install &quot;nexuml[api,library]&quot;</code>. For an existing project: <code>nexuml-studio --python /path/to/project/.venv/bin/python .</code>. Stop the old launcher with Ctrl-C before changing runtimes. Nothing is installed automatically.</p>
-    <Button onClick={()=>{if(connection)void runtime.refetch();else void boot.refetch();}}>Retry connection</Button></main>;
+    <Button onClick={()=>{if(connection){void runtime.refetch();if(runtime.data && !incompatible)void catalog.refetch();}else void boot.refetch();}}>Retry connection</Button></main>;
   return <main className="workbench">
     <header className="topbar"><div className="brand"><Layers size={22}/>NexuML <span>STUDIO</span></div>
       <details className="scenario-menu"><summary aria-label="Scenario menu" title={runtime.data.working_directory}>{draft?.config.name ?? "Scenario"}<ChevronDown size={14}/></summary><div>
@@ -334,8 +336,7 @@ function Workbench() {
       <h1>Start with a scenario.</h1><p>Try a small CPU example, choose an installed recipe, or open NexuML YAML. Your configuration stays local. NexuML runs it.</p>
       <div className="toolbar"><Button className="primary" disabled={pending || !exampleAvailable || runtime.isError} onClick={tryExample}>Try an example</Button><Button disabled={pending} onClick={()=>setFileAction("recipe")}>Choose a recipe</Button><Button disabled={pending} onClick={()=>setFileAction("open")}>Open YAML</Button></div>
       <p className="muted">The example uses generated data, one CPU epoch and no downloads. Loading resolves trusted Python; training starts only after you confirm Run.</p>
-      {catalog.isPending && <p className="muted">Discovering installed recipes…</p>}
-      {catalog.isError ? <p className="field-error" role="alert">Recipe discovery failed: {catalog.error.message} Check the selected Python environment and its installed libraries.<Button onClick={()=>void catalog.refetch()}>Refresh discovery</Button></p> : catalog.data && !exampleAvailable && <p className="field-error">The example is not available in this Python environment. Install the base library in the same environment, for example <code>uv tool install --reinstall &quot;nexuml[api,library]&quot;</code> for a tool installation, then restart Studio. Or choose another installed recipe / open YAML.</p>}
+      {!exampleAvailable && <p className="field-error">The example is not available in this Python environment. Install the base library in the same environment, for example <code>uv tool install --reinstall &quot;nexuml[api,library]&quot;</code> for a tool installation, then restart Studio. Or choose another installed recipe / open YAML.</p>}
     </section>}
     <section className="diagnostics" aria-label="Problems and checks"><div className="diagnostic-heading"><Button aria-expanded={expandedProblems} onClick={()=>{setProblemsOpen(!expandedProblems);setDismissedBuild(build?.id ?? "");}}>Problems ({problemCount})<ChevronDown size={14}/></Button><span>Build: {buildStatus}</span><span className="muted">{runtime.isError ? "Runtime disconnected" : `Local runtime · NexuML ${runtime.data.nexuml_version}`}</span></div>
       <div role="status">{pending ? "Waiting for selected NexuML…" : message}</div>

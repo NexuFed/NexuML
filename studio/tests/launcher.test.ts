@@ -63,9 +63,9 @@ test("CLI entrypoint runs when a parent directory is a filesystem alias",async()
   } finally {await rm(directory,{recursive:true,force:true});}
 });
 
-test("unsupported selected backend is rejected before UI startup without stopping the attached API",async()=>{
+test.each([{}, {interface_version:2,nexuml_version:"0.2.1"}, {interface_version:4,nexuml_version:"0.2.1"}, {interface_version:3,nexuml_version:"0.3.0"}])("unsupported selected backend %j is rejected before UI startup without stopping the attached API",async(identity)=>{
   const directory=await mkdtemp(join(tmpdir(),"nexuml compatibility "));
-  const server=createServer((_,response)=>response.end(JSON.stringify({interface_version:2,nexuml_version:"0.3.0",working_directory:directory})));
+  const server=createServer((_,response)=>response.end(JSON.stringify({...identity,working_directory:directory})));
   try {
     const tokenFile=join(directory,"token");await writeFile(tokenFile,"private-test-token-".repeat(3),{mode:0o600});
     await new Promise<void>(done=>server.listen(0,"127.0.0.1",done));

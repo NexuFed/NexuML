@@ -127,7 +127,7 @@ def main() -> None:
                 if time.monotonic() > deadline:
                     raise RuntimeError("Built installation startup timed out") from None
                 time.sleep(0.1)
-        assert identity["interface_version"] == 2
+        assert identity["interface_version"] == 3
         assert identity["working_directory"] == str(root)
         executable = Path(identity["python_executable"])
         subprocess.run(
