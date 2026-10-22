@@ -73,7 +73,13 @@ For each new run, NexuML writes under `.experiments/rul/audits/`:
 - `<run>.csv` and `<run>.json`: after testing, one row per
   official held-out FD001 engine, with prediction, original and
   capped targets, signed errors and NASA penalties, and the
-  original split/normalizer provenance.
+  original split/normalizer provenance. The safety scenarios additionally
+  compare **every held-out engine**, only after training, to reference
+  sensor-stage centroids estimated from *training engines alone*.
+  Each CSV includes nearest training RUL stage and distance for both
+  the final sensor vector and its causal within-window slope.
+  This is a descriptive nearest-centroid comparison, not an inferred
+  true RUL or a calibrated failure probability.
 
 The stage audit uses window-level summaries: many windows from one
 engine are correlated, so a large sample count is **not** a count of
