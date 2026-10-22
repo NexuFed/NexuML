@@ -42,7 +42,7 @@ def rollout_capacity_to_eol(
         history_normalized.ndim != 3
         or history_normalized.shape[-1] != 1
         or history_normalized.shape[1] == 0
-        or not torch.isfinite(history_normalized).all()
+        or not bool(torch.isfinite(history_normalized).all())
         or capacity_scale_ah <= 0
         or end_of_life_ah <= 0
         or max_cycles <= 0
