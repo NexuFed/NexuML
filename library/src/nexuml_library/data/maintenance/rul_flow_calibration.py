@@ -48,7 +48,9 @@ class AutoPatchFormerFlowRULFeatures(DataSourceDefinition):
     diagnostics_file: str = ".experiments/rul/audits/patchformer-flowtime.json"
     encoding_batch_size: int = Field(default=64, gt=0)
     reference_count: int = Field(default=8, ge=1, le=32)
-    feature_mode: Literal["baseline_only", "with_flow"] = "with_flow"
+    feature_mode: Literal[
+        "baseline_only", "with_flow", "flow_only", "encoder_only"
+    ] = "with_flow"
 
     def build(self) -> NexuDataset:
         """Extract frozen model outputs and project on training health trajectories.
@@ -82,7 +84,7 @@ class AutoPatchFormerFlowRULFeatures(DataSourceDefinition):
         )
         source.build()
         source_payload = read_rul_artifact(self.prepared_rul_path)
-        if self.feature_mode == "baseline_only":
+        if self.feature_mode in ("baseline_only", "encoder_only"):
             return self._build_baseline_only(source_payload, sensor_ids)
         endpoint_file = Path(self.endpoint_artifact).expanduser().resolve()
         if not endpoint_file.is_file():
@@ -145,15 +147,22 @@ class AutoPatchFormerFlowRULFeatures(DataSourceDefinition):
         with torch.no_grad():
             for sequence in original.split(self.encoding_batch_size):
                 raw = patch.forward_features(sequence).mean(dim=1)
-                baseline = patch(sequence)
                 latent = (raw - mean) / std
                 coordinates = project_flow_time(latent, trajectories)
-                batch = torch.cat((coordinates, baseline), dim=1)
+                if self.feature_mode == "flow_only":
+                    transported = flow.sample(latent)
+                    batch = torch.cat(
+                        (latent, transported - latent, coordinates), dim=1
+                    )
+                else:
+                    baseline = patch(sequence)
+                    batch = torch.cat((coordinates, baseline), dim=1)
                 if not bool(torch.isfinite(batch).all()):
                     raise ValueError("Nonfinite frozen PatchFormer/Flow RUL features")
                 features.append(batch)
         prepared_features = torch.cat(features, dim=0)
-        if prepared_features.shape != (len(rows), 3):
+        width = 258 if self.feature_mode == "flow_only" else 3
+        if prepared_features.shape != (len(rows), width):
             raise ValueError("Prepared flow RUL features disagree with source rows")
         val_indices = [
             i for i, row in enumerate(rows) if row["split"] == "val"
@@ -186,6 +195,8 @@ class AutoPatchFormerFlowRULFeatures(DataSourceDefinition):
             "patchformer_checkpoint_sha256": patch_digest,
             "patchformer_upstream_run": checkpoint.parent.name,
             "reference_count": int(trajectories.shape[0]),
+            "feature_mode": self.feature_mode,
+            "uses_patchformer_regression_head": self.feature_mode != "flow_only",
             "selection": "training_healthy_endpoints_only",
             "val/flow_time_rul_pearson": pearson_flow_progress(
                 prepared_features[val_indices, 0], labels[val_indices]
@@ -271,14 +282,22 @@ class AutoPatchFormerFlowRULFeatures(DataSourceDefinition):
         predictions: list[Tensor] = []
         with torch.no_grad():
             for batch in windows.split(self.encoding_batch_size):
-                predictions.append(model(batch).detach().float())
+                if self.feature_mode == "encoder_only":
+                    predictions.append(model.forward_features(batch).mean(dim=1))
+                else:
+                    predictions.append(model(batch).detach().float())
         baseline = torch.cat(predictions, dim=0)
-        features = torch.cat(
-            (torch.zeros((len(windows), 2), dtype=baseline.dtype), baseline),
-            dim=1,
-        )
+        if self.feature_mode == "encoder_only":
+            features = torch.cat(
+                (baseline, torch.zeros((len(windows), 130))), dim=1
+            )
+        else:
+            features = torch.cat(
+                (torch.zeros((len(windows), 2), dtype=baseline.dtype), baseline),
+                dim=1,
+            )
         if not bool(torch.isfinite(features).all()):
-            raise ValueError("Nonfinite baseline PatchFormer predictions")
+            raise ValueError("Nonfinite frozen PatchFormer features")
         path = Path(self.diagnostics_file).expanduser().resolve()
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(
@@ -286,7 +305,10 @@ class AutoPatchFormerFlowRULFeatures(DataSourceDefinition):
                 {
                     "subset": self.subset,
                     "seed": self.seed,
-                    "feature_mode": "baseline_only",
+                    "feature_mode": self.feature_mode,
+                    "uses_patchformer_regression_head": (
+                        self.feature_mode == "baseline_only"
+                    ),
                     "selection": "frozen_patchformer_without_flow",
                     "patchformer_upstream_run": checkpoint.parent.name,
                     "patchformer_checkpoint_sha256": digest,
