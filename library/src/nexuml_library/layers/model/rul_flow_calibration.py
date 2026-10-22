@@ -1,4 +1,4 @@
-"""Train-only calibrated RUL heads for frozen PatchFormer latent-flow coordinates.
+"""RUL ablations for frozen PatchFormer baseline and latent-flow coordinates.
 
 The data source supplies deterministic flow progress, trajectory distance and
 supervised PatchFormer baseline predictions, never RUL labels as model inputs.
@@ -19,9 +19,9 @@ from nexuml.core.discovery import layer
 
 @layer("PatchFormerFlowRULHead")
 class PatchFormerFlowRULHead(LayerDefinition):
-    """Small MLP mapping flow time to RUL, optionally correcting PatchFormer."""
+    """Matched MLPs isolating flow geometry from supervised calibration."""
 
-    mode: Literal["flow_time", "hybrid"] = "flow_time"
+    mode: Literal["flow_time", "flow_geometry", "baseline_only", "hybrid"] = "flow_time"
     hidden_dim: int = Field(default=32, gt=0)
     dropout: float = Field(default=0.1, ge=0.0, lt=1.0)
     initialization_seed: int = 42
@@ -50,7 +50,7 @@ class _PatchFormerFlowRULRuntime(PipelineLayer):
         input_sizes: dict[str, tuple],
         keys_in: list[str],
         keys_out: list[str],
-        mode: Literal["flow_time", "hybrid"],
+        mode: Literal["flow_time", "flow_geometry", "baseline_only", "hybrid"],
         hidden_dim: int,
         dropout: float,
         **kwargs: Any,
@@ -61,7 +61,12 @@ class _PatchFormerFlowRULRuntime(PipelineLayer):
         if len(keys_in) != 1 or input_sizes[keys_in[0]] != (3,):
             raise ValueError("Flow RUL head expects [time, distance, baseline] triples")
         self.mode = mode
-        input_width = 1 if mode == "flow_time" else 3
+        input_width = {
+            "flow_time": 1,
+            "flow_geometry": 2,
+            "baseline_only": 1,
+            "hybrid": 3,
+        }[mode]
         self.regressor = nn.Sequential(
             nn.Linear(input_width, hidden_dim),
             nn.SiLU(),
@@ -72,7 +77,7 @@ class _PatchFormerFlowRULRuntime(PipelineLayer):
         )
 
     def forward_tensor(self, x: Tensor, y: Tensor | None = None) -> Tensor:
-        """Regress RUL from flow time alone or flow/forecast residual features.
+        """Regress RUL from isolated geometric or supervised input features.
 
         Returns:
             One prediction [batch,1] in physical remaining-cycle units.
@@ -84,6 +89,11 @@ class _PatchFormerFlowRULRuntime(PipelineLayer):
             raise ValueError("Flow calibration expects [batch,3] features")
         if self.mode == "flow_time":
             return 130.0 * torch.sigmoid(self.regressor(x[:, :1]))
-        normalized = torch.cat((x[:, :2], x[:, 2:3] / 130.0), dim=1)
-        residual = 30.0 * torch.tanh(self.regressor(normalized))
-        return x[:, 2:3] + residual
+        if self.mode == "flow_geometry":
+            return 130.0 * torch.sigmoid(self.regressor(x[:, :2]))
+        baseline = x[:, 2:3]
+        inputs = baseline / 130.0 if self.mode == "baseline_only" else torch.cat(
+            (x[:, :2], baseline / 130.0), dim=1
+        )
+        residual = 30.0 * torch.tanh(self.regressor(inputs))
+        return baseline + residual
