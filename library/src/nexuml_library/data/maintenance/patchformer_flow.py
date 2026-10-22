@@ -118,6 +118,17 @@ class AutoPatchFormerFlowEndpoints(DataSourceDefinition):
             raise FileNotFoundError(
                 "Set NEXUML_PATCHFORMER_CHECKPOINT to a trained PatchFormer .ckpt"
             )
+        checkpoint = Path(self.checkpoint_path).expanduser().resolve()
+        allowed_runs = {f"rul-{self.subset}-controlled-patchformer-seed{self.seed}"}
+        if self.subset == "FD001" and self.seed == 42:
+            allowed_runs.add(
+                "rul-cmapss-FD001-patchformer-direct-rul-adaptation-seed42"
+            )
+        if checkpoint.parent.name not in allowed_runs:
+            raise ValueError(
+                "PatchFormer checkpoint must belong to the corresponding "
+                f"subset/seed experiment: {sorted(allowed_runs)}"
+            )
         sensor_ids = (
             sorted([*_FD001_SENSORS, 6])
             if self.subset == "FD003"
@@ -148,9 +159,7 @@ class AutoPatchFormerFlowEndpoints(DataSourceDefinition):
             heads=2,
             dropout=0.1,
         )
-        digest = _trusted_patchformer_weights(
-            model, Path(self.checkpoint_path).expanduser().resolve()
-        )
+        digest = _trusted_patchformer_weights(model, checkpoint)
         model.eval()
         windows = cast(Tensor, prepared["features"])
         labels = cast(Tensor, prepared["targets"]).flatten()
@@ -245,6 +254,7 @@ class AutoPatchFormerFlowEndpoints(DataSourceDefinition):
                         Path(self.prepared_rul_path).resolve()
                     ),
                     "frozen_patchformer_checkpoint_sha256": digest,
+                    "frozen_patchformer_upstream_run": checkpoint.parent.name,
                     "held_out_test_engine_labels_used": False,
                 },
             },
