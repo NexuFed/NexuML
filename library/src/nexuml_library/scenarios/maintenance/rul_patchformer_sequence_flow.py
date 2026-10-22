@@ -15,7 +15,9 @@ from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint
 from nexuml import callback
 from nexuml.core.discovery import scenario
 from nexuml.core.types import DatasetSpec, PipelineSpec, ScenarioSpec
-from nexuml_library.data.maintenance.patchformer_flow import AutoPatchFormerFlowEndpoints
+from nexuml_library.data.maintenance.patchformer_flow import (
+    AutoPatchFormerFlowEndpoints,
+)
 from nexuml_library.evaluation.maintenance.ablation_validation import (
     DistributionalTransportValidation,
 )
