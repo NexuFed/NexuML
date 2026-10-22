@@ -95,6 +95,7 @@ class _RULPerEngineAuditRuntime(EvalAlgorithm):
         """Record an exact per-engine residual for one native test batch.
 
         Raises:
+            RuntimeError: If the prepared FD001 audit data is missing.
             ValueError: If sample provenance, labels or predictions disagree.
         """
         self._load()
@@ -150,7 +151,12 @@ class _RULPerEngineAuditRuntime(EvalAlgorithm):
             }
 
     def eval_end(self) -> None:
-        """Write a deterministic CSV and protocol manifest after native test."""
+        """Write a deterministic CSV and protocol manifest after native test.
+
+        Raises:
+            RuntimeError: If the prepared audit data is missing.
+            ValueError: If the test set is incomplete or asset splits overlap.
+        """
         self._load()
         if self._test_rows is None or self._payload is None:
             raise RuntimeError("Missing prepared audit data")
