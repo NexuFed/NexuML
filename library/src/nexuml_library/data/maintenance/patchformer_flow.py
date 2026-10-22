@@ -52,10 +52,10 @@ def _trusted_patchformer_weights(
         raise FileNotFoundError(
             f"Train PatchFormer first and set its best checkpoint: {checkpoint_path}"
         )
-    # Lightning checkpoints are local trusted files; weights_only is used to
-    # avoid unsafe arbitrary Python deserialization at dataset construction.
+    # The user explicitly selects this trusted local Lightning checkpoint.
+    # Lightning callback/optimizer metadata is not necessarily weights-only safe.
     payload = torch.load(
-        checkpoint_path, map_location="cpu", weights_only=True
+        checkpoint_path, map_location="cpu", weights_only=False
     )
     if not isinstance(payload, dict):
         raise ValueError("Expected a NexuML checkpoint dictionary")
