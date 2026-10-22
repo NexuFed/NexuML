@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import copy
 import json
+from collections.abc import Callable
 from pathlib import Path
+from typing import cast
 
 import numpy as np
 import pytest
@@ -13,9 +15,10 @@ from tensordict import TensorDict
 
 from nexuml.core.compiler import compile as compile_pipeline
 from nexuml.core.config import ResolvedConfig
+from nexuml.core.types import ScenarioSpec
 from nexuml_library.evaluation.maintenance.rul_prepare import prepare_cmapss
+from nexuml_library.evaluation.maintenance.rul_engine_audit import RULPerEngineAudit
 from nexuml_library.evaluation.maintenance.rul_safety_diagnostics import (
-    RULSensorStageAudit,
     summarize_rul_sensor_stages,
 )
 from nexuml_library.layers.model.rul_safety import (
@@ -63,8 +66,8 @@ def test_asymmetric_rul_loss_weights_optimistic_predictions() -> None:
     y = TensorDict({"rul": torch.tensor([[10.0], [20.0]])}, batch_size=[2])
     result, _ = runtime(x, y)
     assert isinstance(result, TensorDict)
-    loss = result["rul_loss"].mean()
-    assert float(loss) == pytest.approx(150.0)
+    loss = cast(torch.Tensor, result["rul_loss"]).mean()
+    assert loss.item() == pytest.approx(150.0)
     loss.backward()
     assert predicted.grad is not None
     assert predicted.grad[:, 0].tolist() == pytest.approx([20.0, -10.0])
@@ -114,12 +117,10 @@ def test_train_val_sensor_stage_audit_does_not_consult_test_data(
 def test_safety_scenario_isolated_from_paper_reproduction(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
-    scenario_fn: object,
-    baseline_fn: object,
+    scenario_fn: Callable[[], ScenarioSpec],
+    baseline_fn: Callable[[], ScenarioSpec],
 ) -> None:
     """Cost-sensitive runs have independent checkpoints and unchanged Goel data."""
-    assert callable(scenario_fn)
-    assert callable(baseline_fn)
     monkeypatch.chdir(tmp_path)
     monkeypatch.delenv("NEXUML_RUL_PREPARED_FILE", raising=False)
     safety = scenario_fn()
@@ -128,17 +129,18 @@ def test_safety_scenario_isolated_from_paper_reproduction(
     assert safety.data == paper.data
     assert safety.training.optimizer == paper.training.optimizer
     assert safety.pipeline.stages["RULModel"] == paper.pipeline.stages["RULModel"]
-    assert isinstance(
-        safety.pipeline.stages["RULLoss"][0].component, RULAsymmetricSquaredLoss
-    )
-    assert safety.pipeline.stages["RULLoss"][0].component.overestimate_weight == 2.0
+    safety_component = safety.pipeline.stages["RULLoss"][0].component
+    assert isinstance(safety_component, RULAsymmetricSquaredLoss)
+    assert safety_component.overestimate_weight == 2.0
     assert safety.training.loss_keys == {"rul_loss": 1.0}
     assert safety.callbacks[1].kwargs["dirpath"] != paper.callbacks[1].kwargs["dirpath"]
     assert any("RULSensorStageAudit" in item.factory for item in safety.callbacks)
     assert not any("RULSensorStageAudit" in item.factory for item in paper.callbacks)
-    assert safety.evaluation.algorithms[2].algorithm.output_file != (
-        paper.evaluation.algorithms[2].algorithm.output_file
-    )
+    safety_audit = safety.evaluation.algorithms[2].algorithm
+    paper_audit = paper.evaluation.algorithms[2].algorithm
+    assert isinstance(safety_audit, RULPerEngineAudit)
+    assert isinstance(paper_audit, RULPerEngineAudit)
+    assert safety_audit.output_file != paper_audit.output_file
     compiled = compile_pipeline(safety)
     dims = safety.data.input_shapes["rul_history"]
     batch = TensorDict({"rul_history": torch.randn(2, *dims)}, batch_size=[2])
