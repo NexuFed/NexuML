@@ -147,5 +147,7 @@ def test_native_goel2026_paper_scenarios_fit_without_custom_loop(
         if "Goel2026RestoreBestWeights" in entry.factory
     ]
     assert len(checkpoint_callbacks) == 1
-    checkpoint_audit = Path(checkpoint_callbacks[0].kwargs["output_file"])
+    checkpoint_output = checkpoint_callbacks[0].kwargs["output_file"]
+    assert isinstance(checkpoint_output, str)
+    checkpoint_audit = Path(checkpoint_output)
     assert checkpoint_audit.is_file()
