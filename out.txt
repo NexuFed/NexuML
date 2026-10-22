@@ -1,0 +1,99 @@
+error[not-subscriptable]: Cannot subscript object of type `int` with no `__getitem__` method
+   --> library/src/nexuml_library/evaluation/maintenance/rul_repro_summary.py:177:25
+    |
+177 |                         entry["delta_safety_minus_goel"][metric] for entry in per_seed
+    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+error[not-subscriptable]: Cannot subscript object of type `int` with no `__getitem__` method
+   --> library/src/nexuml_library/evaluation/maintenance/rul_repro_summary.py:177:25
+    |
+177 |                         entry["delta_safety_minus_goel"][metric] for entry in per_seed
+    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+error[not-subscriptable]: Cannot subscript object of type `int` with no `__getitem__` method
+   --> library/src/nexuml_library/evaluation/maintenance/rul_repro_summary.py:177:25
+    |
+177 |                         entry["delta_safety_minus_goel"][metric] for entry in per_seed
+    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+error[not-subscriptable]: Cannot subscript object of type `int` with no `__getitem__` method
+   --> library/src/nexuml_library/evaluation/maintenance/rul_repro_summary.py:177:25
+    |
+177 |                         entry["delta_safety_minus_goel"][metric] for entry in per_seed
+    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+error[not-subscriptable]: Cannot subscript object of type `None` with no `__getitem__` method
+  --> tests/library/test_battery_capacity.py:61:16
+   |
+61 |     assert set(train.meta["asset_id"]) == {"B0006", "B0007", "B0018"}
+   |                ^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+error[not-subscriptable]: Cannot subscript object of type `None` with no `__getitem__` method
+  --> tests/library/test_battery_capacity.py:62:16
+   |
+62 |     assert set(val.meta["asset_id"]) == {"B0006", "B0007", "B0018"}
+   |                ^^^^^^^^^^^^^^^^^^^^
+   |
+
+error[not-subscriptable]: Cannot subscript object of type `None` with no `__getitem__` method
+  --> tests/library/test_battery_capacity.py:63:16
+   |
+63 |     assert set(test.meta["asset_id"]) == {"B0005"}
+   |                ^^^^^^^^^^^^^^^^^^^^^
+   |
+
+error[unresolved-attribute]: Attribute `loc` is not defined on `None` in union `DataFrame | None`
+  --> tests/library/test_battery_capacity.py:64:16
+   |
+64 |     assert max(train.meta.loc[train.meta["asset_id"] == "B0006", "step"]) < (
+   |                ^^^^^^^^^^^^^^
+   |
+
+error[not-subscriptable]: Cannot subscript object of type `None` with no `__getitem__` method
+  --> tests/library/test_battery_capacity.py:64:31
+   |
+64 |     assert max(train.meta.loc[train.meta["asset_id"] == "B0006", "step"]) < (
+   |                               ^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+error[unresolved-attribute]: Attribute `loc` is not defined on `None` in union `DataFrame | None`
+  --> tests/library/test_battery_capacity.py:65:13
+   |
+65 |         min(val.meta.loc[val.meta["asset_id"] == "B0006", "step"])
+   |             ^^^^^^^^^^^^
+   |
+
+error[not-subscriptable]: Cannot subscript object of type `None` with no `__getitem__` method
+  --> tests/library/test_battery_capacity.py:65:26
+   |
+65 |         min(val.meta.loc[val.meta["asset_id"] == "B0006", "step"])
+   |                          ^^^^^^^^^^^^^^^^^^^^
+   |
+
+error[not-subscriptable]: Cannot subscript object of type `object` with no `__getitem__` method
+   --> tests/library/test_rul_generalization.py:226:16
+    |
+226 |         assert entry["paired_delta_summary"]["nasa"]["improved_seeds"] == 3
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+error[not-subscriptable]: Cannot subscript object of type `object` with no `__getitem__` method
+   --> tests/library/test_rul_generalization.py:227:16
+    |
+227 |         assert entry["paired_delta_summary"]["rmse"]["mean"] == pytest.approx(-5.0)
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+error[not-subscriptable]: Cannot subscript object of type `object` with no `__getitem__` method
+   --> tests/library/test_rul_generalization.py:228:20
+    |
+228 |         assert len(entry["per_seed"]) == 3
+    |                    ^^^^^^^^^^^^^^^^^
+    |
+
+Found 14 diagnostics

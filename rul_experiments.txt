@@ -1,0 +1,245 @@
+===== Goel 2026 LSTM =====
+Resolved config saved to .experiments/rul-goel-lstm.yaml
+Training scenario: rul-cmapss-FD001-lstm-mse-seed42-goel2026-lstm-protocol-raw
+Diagram exported to .experiments/diagrams/rul-cmapss-FD001-lstm-mse-seed42-goel2026-lstm-protocol-raw.md
+
+------------------------------------------------------------
+  NexuML  |  rul-cmapss-FD001-lstm-mse-seed42-goel2026-lstm-protocol-raw
+------------------------------------------------------------
+  Backends     train: lightning, data: torch
+------------------------------------------------------------
+  TensorBoard  .experiments/tensorboard/NEX-233 Remaining Useful Life/rul-cmapss-FD001-lstm-mse-seed42-goel2026-lstm-protocol-raw_v0
+    tensorboard --logdir .experiments/tensorboard/NEX-233 Remaining Useful Life --port 6007 --host 0.0.0.0
+------------------------------------------------------------
+
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+Seed set to 42
+/workspaces/NexuFed/NexuML-predictive/.venv/lib/python3.12/site-packages/lightning/pytorch/trainer/connectors/data_connector.py:434: The 'val_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=15` in the `DataLoader` to improve performance.
+/workspaces/NexuFed/NexuML-predictive/.venv/lib/python3.12/site-packages/lightning/pytorch/trainer/connectors/data_connector.py:434: The 'train_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=15` in the `DataLoader` to improve performance.
+Epoch 34/199 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 220/220 0:00:01 • 0:00:00 122.66it/s v_num: w_v0 train/loss: 161.251 val/loss: 228.635
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃      Validate metric      ┃       DataLoader 0        ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│         val/loss          │    228.63540649414062     │
+│       val/rul_loss        │    228.63540649414062     │
+└───────────────────────────┴───────────────────────────┘
+Validation ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 58/58 0:00:00 • 0:00:00 189.09it/s  
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+/workspaces/NexuFed/NexuML-predictive/.venv/lib/python3.12/site-packages/lightning/pytorch/trainer/connectors/data_connector.py:434: The 'test_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=15` in the `DataLoader` to improve performance.
+/workspaces/NexuFed/NexuML-predictive/.venv/lib/python3.12/site-packages/lightning/pytorch/utilities/data.py:79: Trying to infer the `batch_size` from an ambiguous collection. The batch size we found is 64. To avoid any miscalculations, use `self.log(..., batch_size=batch_size)`.
+/workspaces/NexuFed/NexuML-predictive/.venv/lib/python3.12/site-packages/lightning/pytorch/utilities/data.py:79: Trying to infer the `batch_size` from an ambiguous collection. The batch size we found is 36. To avoid any miscalculations, use `self.log(..., batch_size=batch_size)`.
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃                  Test metric                   ┃                  DataLoader 0                  ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│   eval/RULBenchmarkEvaluator/rul_test_count    │                     100.0                      │
+│ eval/RULBenchmarkEvaluator/rul_test_late_bias  │                6.58908224105835                │
+│    eval/RULBenchmarkEvaluator/rul_test_mae     │               11.393285751342773               │
+│ eval/RULBenchmarkEvaluator/rul_test_nasa_score │               435.9866638183594                │
+│    eval/RULBenchmarkEvaluator/rul_test_rmse    │               15.512892723083496               │
+│      eval/rul_official_raw/rul_test_count      │                     100.0                      │
+│    eval/rul_official_raw/rul_test_late_bias    │                6.58908224105835                │
+│       eval/rul_official_raw/rul_test_mae       │               11.993285179138184               │
+│   eval/rul_official_raw/rul_test_nasa_score    │               454.6253967285156                │
+│      eval/rul_official_raw/rul_test_rmse       │               16.12562370300293                │
+│   test/RULBenchmarkEvaluator/rul_test_count    │                     100.0                      │
+│ test/RULBenchmarkEvaluator/rul_test_late_bias  │                6.58908224105835                │
+│    test/RULBenchmarkEvaluator/rul_test_mae     │               11.393285751342773               │
+│ test/RULBenchmarkEvaluator/rul_test_nasa_score │               435.9866638183594                │
+│    test/RULBenchmarkEvaluator/rul_test_rmse    │               15.512892723083496               │
+│                   test/loss                    │               240.64984130859375               │
+│                 test/rul_loss                  │               240.64984130859375               │
+│      test/rul_official_raw/rul_test_count      │                     100.0                      │
+│    test/rul_official_raw/rul_test_late_bias    │                6.58908224105835                │
+│       test/rul_official_raw/rul_test_mae       │               11.993285179138184               │
+│   test/rul_official_raw/rul_test_nasa_score    │               454.6253967285156                │
+│      test/rul_official_raw/rul_test_rmse       │               16.12562370300293                │
+└────────────────────────────────────────────────┴────────────────────────────────────────────────┘
+Testing ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2/2 0:00:00 • 0:00:00 169.17it/s  
+Eval algorithm results: {'RULBenchmarkEvaluator/rul_test_mae': 11.393285522460937, 'RULBenchmarkEvaluator/rul_test_rmse': 15.512892508632135, 'RULBenchmarkEvaluator/rul_test_late_bias': 6.589082336425781, 'RULBenchmarkEvaluator/rul_test_count': 100.0, 'RULBenchmarkEvaluator/rul_test_nasa_score': 435.98667046026566, 'rul_official_raw/rul_test_mae': 11.993285522460937, 'rul_official_raw/rul_test_rmse': 16.125624079493015, 'rul_official_raw/rul_test_late_bias': 6.589082336425781, 'rul_official_raw/rul_test_count': 100.0, 'rul_official_raw/rul_test_nasa_score': 454.62539663459785}
+Training complete!
+  Test results: [{'test/rul_loss': 240.64984130859375, 'test/loss': 240.64984130859375, 'eval/RULBenchmarkEvaluator/rul_test_mae': 11.393285751342773, 
+'test/RULBenchmarkEvaluator/rul_test_mae': 11.393285522460937, 'eval/RULBenchmarkEvaluator/rul_test_rmse': 15.512892723083496, 'test/RULBenchmarkEvaluator/rul_test_rmse': 15.512892508632135, 
+'eval/RULBenchmarkEvaluator/rul_test_late_bias': 6.58908224105835, 'test/RULBenchmarkEvaluator/rul_test_late_bias': 6.589082336425781, 'eval/RULBenchmarkEvaluator/rul_test_count': 100.0, 
+'test/RULBenchmarkEvaluator/rul_test_count': 100.0, 'eval/RULBenchmarkEvaluator/rul_test_nasa_score': 435.9866638183594, 'test/RULBenchmarkEvaluator/rul_test_nasa_score': 435.98667046026566, 
+'eval/rul_official_raw/rul_test_mae': 11.993285179138184, 'test/rul_official_raw/rul_test_mae': 11.993285522460937, 'eval/rul_official_raw/rul_test_rmse': 16.12562370300293, 
+'test/rul_official_raw/rul_test_rmse': 16.125624079493015, 'eval/rul_official_raw/rul_test_late_bias': 6.58908224105835, 'test/rul_official_raw/rul_test_late_bias': 6.589082336425781, 
+'eval/rul_official_raw/rul_test_count': 100.0, 'test/rul_official_raw/rul_test_count': 100.0, 'eval/rul_official_raw/rul_test_nasa_score': 454.6253967285156, 
+'test/rul_official_raw/rul_test_nasa_score': 454.62539663459785}]
+===== Goel 2026 CNN =====
+Resolved config saved to .experiments/rul-goel-cnn.yaml
+Training scenario: rul-cmapss-FD001-cnn-mse-seed42-goel2026-cnn-protocol-raw
+Diagram exported to .experiments/diagrams/rul-cmapss-FD001-cnn-mse-seed42-goel2026-cnn-protocol-raw.md
+
+------------------------------------------------------------
+  NexuML  |  rul-cmapss-FD001-cnn-mse-seed42-goel2026-cnn-protocol-raw
+------------------------------------------------------------
+  Backends     train: lightning, data: torch
+------------------------------------------------------------
+  TensorBoard  .experiments/tensorboard/NEX-233 Remaining Useful Life/rul-cmapss-FD001-cnn-mse-seed42-goel2026-cnn-protocol-raw_v0
+    tensorboard --logdir .experiments/tensorboard/NEX-233 Remaining Useful Life --port 6007 --host 0.0.0.0
+------------------------------------------------------------
+
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+Seed set to 42
+/workspaces/NexuFed/NexuML-predictive/.venv/lib/python3.12/site-packages/lightning/pytorch/trainer/connectors/data_connector.py:434: The 'val_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=15` in the `DataLoader` to improve performance.
+/workspaces/NexuFed/NexuML-predictive/.venv/lib/python3.12/site-packages/lightning/pytorch/trainer/connectors/data_connector.py:434: The 'train_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=15` in the `DataLoader` to improve performance.
+Epoch 27/199 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 220/220 0:00:01 • 0:00:00 130.31it/s v_num: w_v0 train/loss: 150.318 val/loss: 349.019
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃      Validate metric      ┃       DataLoader 0        ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│         val/loss          │     349.0192565917969     │
+│       val/rul_loss        │     349.0192565917969     │
+└───────────────────────────┴───────────────────────────┘
+Validation ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 58/58 0:00:00 • 0:00:00 183.24it/s  
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+/workspaces/NexuFed/NexuML-predictive/.venv/lib/python3.12/site-packages/lightning/pytorch/trainer/connectors/data_connector.py:434: The 'test_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=15` in the `DataLoader` to improve performance.
+/workspaces/NexuFed/NexuML-predictive/.venv/lib/python3.12/site-packages/lightning/pytorch/utilities/data.py:79: Trying to infer the `batch_size` from an ambiguous collection. The batch size we found is 64. To avoid any miscalculations, use `self.log(..., batch_size=batch_size)`.
+/workspaces/NexuFed/NexuML-predictive/.venv/lib/python3.12/site-packages/lightning/pytorch/utilities/data.py:79: Trying to infer the `batch_size` from an ambiguous collection. The batch size we found is 36. To avoid any miscalculations, use `self.log(..., batch_size=batch_size)`.
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃                  Test metric                   ┃                  DataLoader 0                  ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│   eval/RULBenchmarkEvaluator/rul_test_count    │                     100.0                      │
+│ eval/RULBenchmarkEvaluator/rul_test_late_bias  │               4.248328685760498                │
+│    eval/RULBenchmarkEvaluator/rul_test_mae     │               11.885039329528809               │
+│ eval/RULBenchmarkEvaluator/rul_test_nasa_score │               361.35577392578125               │
+│    eval/RULBenchmarkEvaluator/rul_test_rmse    │               15.984628677368164               │
+│      eval/rul_official_raw/rul_test_count      │                     100.0                      │
+│    eval/rul_official_raw/rul_test_late_bias    │               4.248328685760498                │
+│       eval/rul_official_raw/rul_test_mae       │               12.485038757324219               │
+│   eval/rul_official_raw/rul_test_nasa_score    │               415.0466003417969                │
+│      eval/rul_official_raw/rul_test_rmse       │               17.066017150878906               │
+│   test/RULBenchmarkEvaluator/rul_test_count    │                     100.0                      │
+│ test/RULBenchmarkEvaluator/rul_test_late_bias  │               4.248328685760498                │
+│    test/RULBenchmarkEvaluator/rul_test_mae     │               11.885039329528809               │
+│ test/RULBenchmarkEvaluator/rul_test_nasa_score │               361.35577392578125               │
+│    test/RULBenchmarkEvaluator/rul_test_rmse    │               15.984628677368164               │
+│                   test/loss                    │               255.50836181640625               │
+│                 test/rul_loss                  │               255.50836181640625               │
+│      test/rul_official_raw/rul_test_count      │                     100.0                      │
+│    test/rul_official_raw/rul_test_late_bias    │               4.248328685760498                │
+│       test/rul_official_raw/rul_test_mae       │               12.485038757324219               │
+│   test/rul_official_raw/rul_test_nasa_score    │               415.0466003417969                │
+│      test/rul_official_raw/rul_test_rmse       │               17.066017150878906               │
+└────────────────────────────────────────────────┴────────────────────────────────────────────────┘
+Testing ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2/2 0:00:00 • 0:00:00 103.75it/s  
+Eval algorithm results: {'RULBenchmarkEvaluator/rul_test_mae': 11.8850390625, 'RULBenchmarkEvaluator/rul_test_rmse': 15.984628541488695, 'RULBenchmarkEvaluator/rul_test_late_bias': 4.248328704833984, 'RULBenchmarkEvaluator/rul_test_count': 100.0, 'RULBenchmarkEvaluator/rul_test_nasa_score': 361.35576716928495, 'rul_official_raw/rul_test_mae': 12.4850390625, 'rul_official_raw/rul_test_rmse': 17.06601669345398, 'rul_official_raw/rul_test_late_bias': 4.248328704833984, 'rul_official_raw/rul_test_count': 100.0, 'rul_official_raw/rul_test_nasa_score': 415.0465917581432}
+Training complete!
+  Test results: [{'test/rul_loss': 255.50836181640625, 'test/loss': 255.50836181640625, 'eval/RULBenchmarkEvaluator/rul_test_mae': 11.885039329528809, 
+'test/RULBenchmarkEvaluator/rul_test_mae': 11.8850390625, 'eval/RULBenchmarkEvaluator/rul_test_rmse': 15.984628677368164, 'test/RULBenchmarkEvaluator/rul_test_rmse': 15.984628541488695, 
+'eval/RULBenchmarkEvaluator/rul_test_late_bias': 4.248328685760498, 'test/RULBenchmarkEvaluator/rul_test_late_bias': 4.248328704833984, 'eval/RULBenchmarkEvaluator/rul_test_count': 100.0, 
+'test/RULBenchmarkEvaluator/rul_test_count': 100.0, 'eval/RULBenchmarkEvaluator/rul_test_nasa_score': 361.35577392578125, 'test/RULBenchmarkEvaluator/rul_test_nasa_score': 361.35576716928495,
+'eval/rul_official_raw/rul_test_mae': 12.485038757324219, 'test/rul_official_raw/rul_test_mae': 12.4850390625, 'eval/rul_official_raw/rul_test_rmse': 17.066017150878906, 
+'test/rul_official_raw/rul_test_rmse': 17.06601669345398, 'eval/rul_official_raw/rul_test_late_bias': 4.248328685760498, 'test/rul_official_raw/rul_test_late_bias': 4.248328704833984, 
+'eval/rul_official_raw/rul_test_count': 100.0, 'test/rul_official_raw/rul_test_count': 100.0, 'eval/rul_official_raw/rul_test_nasa_score': 415.0466003417969, 
+'test/rul_official_raw/rul_test_nasa_score': 415.0465917581432}]
+===== Lu 2025 TCN =====
+Resolved config saved to .experiments/rul-lu-tcn.yaml
+Training scenario: rul-cmapss-FD001-tcn-mse-seed42-lu2025-tcn-protocol
+Diagram exported to .experiments/diagrams/rul-cmapss-FD001-tcn-mse-seed42-lu2025-tcn-protocol.md
+
+------------------------------------------------------------
+  NexuML  |  rul-cmapss-FD001-tcn-mse-seed42-lu2025-tcn-protocol
+------------------------------------------------------------
+  Backends     train: lightning, data: torch
+------------------------------------------------------------
+  TensorBoard  .experiments/tensorboard/NEX-233 Remaining Useful Life/rul-cmapss-FD001-tcn-mse-seed42-lu2025-tcn-protocol_v0
+    tensorboard --logdir .experiments/tensorboard/NEX-233 Remaining Useful Life --port 6007 --host 0.0.0.0
+------------------------------------------------------------
+
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+Seed set to 42
+/workspaces/NexuFed/NexuML-predictive/.venv/lib/python3.12/site-packages/lightning/pytorch/trainer/connectors/data_connector.py:434: The 'val_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=15` in the `DataLoader` to improve performance.
+/workspaces/NexuFed/NexuML-predictive/.venv/lib/python3.12/site-packages/lightning/pytorch/trainer/connectors/data_connector.py:434: The 'train_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=15` in the `DataLoader` to improve performance.
+Epoch 71/299 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 64/64 0:00:01 • 0:00:00 55.39it/s v_num: l_v0 train/loss: 0.012 val/loss: 0.011
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃      Validate metric      ┃       DataLoader 0        ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│         val/loss          │    0.01142855267971754    │
+│       val/rul_loss        │    0.01142855267971754    │
+└───────────────────────────┴───────────────────────────┘
+Validation ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 17/17 0:00:00 • 0:00:00 70.56it/s  
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+/workspaces/NexuFed/NexuML-predictive/.venv/lib/python3.12/site-packages/lightning/pytorch/trainer/connectors/data_connector.py:434: The 'test_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=15` in the `DataLoader` to improve performance.
+/workspaces/NexuFed/NexuML-predictive/.venv/lib/python3.12/site-packages/lightning/pytorch/utilities/data.py:79: Trying to infer the `batch_size` from an ambiguous collection. The batch size we found is 100. To avoid any miscalculations, use `self.log(..., batch_size=batch_size)`.
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃                  Test metric                  ┃                 DataLoader 0                  ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│   eval/RULBenchmarkEvaluator/rul_test_count   │                     100.0                     │
+│ eval/RULBenchmarkEvaluator/rul_test_late_bias │               8.742406845092773               │
+│    eval/RULBenchmarkEvaluator/rul_test_mae    │               11.6154203414917                │
+│   eval/RULBenchmarkEvaluator/rul_test_rmse    │              14.398056030273438               │
+│   test/RULBenchmarkEvaluator/rul_test_count   │                     100.0                     │
+│ test/RULBenchmarkEvaluator/rul_test_late_bias │               8.742406845092773               │
+│    test/RULBenchmarkEvaluator/rul_test_mae    │               11.6154203414917                │
+│   test/RULBenchmarkEvaluator/rul_test_rmse    │              14.398056030273438               │
+│                   test/loss                   │             0.013267457485198975              │
+│                 test/rul_loss                 │             0.013267457485198975              │
+└───────────────────────────────────────────────┴───────────────────────────────────────────────┘
+Testing ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1/1 0:00:00 • 0:00:00 0.00it/s  
+Eval algorithm results: {'RULBenchmarkEvaluator/rul_test_mae': 11.615419921875, 'RULBenchmarkEvaluator/rul_test_rmse': 14.39805623816979, 'RULBenchmarkEvaluator/rul_test_late_bias': 8.742406616210937, 'RULBenchmarkEvaluator/rul_test_count': 100.0}
+Training complete!
+  Test results: [{'test/rul_loss': 0.013267457485198975, 'test/loss': 0.013267457485198975, 'eval/RULBenchmarkEvaluator/rul_test_mae': 11.6154203414917, 
+'test/RULBenchmarkEvaluator/rul_test_mae': 11.615419921875, 'eval/RULBenchmarkEvaluator/rul_test_rmse': 14.398056030273438, 'test/RULBenchmarkEvaluator/rul_test_rmse': 14.39805623816979, 
+'eval/RULBenchmarkEvaluator/rul_test_late_bias': 8.742406845092773, 'test/RULBenchmarkEvaluator/rul_test_late_bias': 8.742406616210937, 'eval/RULBenchmarkEvaluator/rul_test_count': 100.0, 
+'test/RULBenchmarkEvaluator/rul_test_count': 100.0}]
+===== Cen 2024 TSMixer Proxy =====
+Resolved config saved to .experiments/rul-cen-proxy.yaml
+Training scenario: rul-cmapss-FD001-tsmixer-mse-seed42-cen2024-tsmixer-proxy
+Diagram exported to .experiments/diagrams/rul-cmapss-FD001-tsmixer-mse-seed42-cen2024-tsmixer-proxy.md
+
+------------------------------------------------------------
+  NexuML  |  rul-cmapss-FD001-tsmixer-mse-seed42-cen2024-tsmixer-proxy
+------------------------------------------------------------
+  Backends     train: lightning, data: torch
+------------------------------------------------------------
+  TensorBoard  .experiments/tensorboard/NEX-233 Remaining Useful Life/rul-cmapss-FD001-tsmixer-mse-seed42-cen2024-tsmixer-proxy_v0
+    tensorboard --logdir .experiments/tensorboard/NEX-233 Remaining Useful Life --port 6007 --host 0.0.0.0
+------------------------------------------------------------
+
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+Seed set to 42
+/workspaces/NexuFed/NexuML-predictive/.venv/lib/python3.12/site-packages/lightning/pytorch/trainer/connectors/data_connector.py:434: The 'val_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=15` in the `DataLoader` to improve performance.
+/workspaces/NexuFed/NexuML-predictive/.venv/lib/python3.12/site-packages/lightning/pytorch/trainer/connectors/data_connector.py:434: The 'train_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=15` in the `DataLoader` to improve performance.
+Epoch 53/149 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 64/64 0:00:01 • 0:00:00 54.59it/s v_num: y_v0 train/loss: 0.005 val/loss: 0.012
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃      Validate metric      ┃       DataLoader 0        ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│         val/loss          │   0.012131022289395332    │
+│       val/rul_loss        │   0.012131022289395332    │
+└───────────────────────────┴───────────────────────────┘
+Validation ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 17/17 0:00:00 • 0:00:00 68.78it/s  
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+/workspaces/NexuFed/NexuML-predictive/.venv/lib/python3.12/site-packages/lightning/pytorch/trainer/connectors/data_connector.py:434: The 'test_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=15` in the `DataLoader` to improve performance.
+/workspaces/NexuFed/NexuML-predictive/.venv/lib/python3.12/site-packages/lightning/pytorch/utilities/data.py:79: Trying to infer the `batch_size` from an ambiguous collection. The batch size we found is 100. To avoid any miscalculations, use `self.log(..., batch_size=batch_size)`.
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃                  Test metric                  ┃                 DataLoader 0                  ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│   eval/RULBenchmarkEvaluator/rul_test_count   │                     100.0                     │
+│ eval/RULBenchmarkEvaluator/rul_test_late_bias │               5.670054912567139               │
+│    eval/RULBenchmarkEvaluator/rul_test_mae    │                 9.69482421875                 │
+│   eval/RULBenchmarkEvaluator/rul_test_rmse    │              14.229316711425781               │
+│   test/RULBenchmarkEvaluator/rul_test_count   │                     100.0                     │
+│ test/RULBenchmarkEvaluator/rul_test_late_bias │               5.670054912567139               │
+│    test/RULBenchmarkEvaluator/rul_test_mae    │                 9.69482421875                 │
+│   test/RULBenchmarkEvaluator/rul_test_rmse    │              14.229316711425781               │
+│                   test/loss                   │              0.01406065747141838              │
+│                 test/rul_loss                 │              0.01406065747141838              │
+└───────────────────────────────────────────────┴───────────────────────────────────────────────┘
+Testing ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1/1 0:00:00 • 0:00:00 0.00it/s  
+Eval algorithm results: {'RULBenchmarkEvaluator/rul_test_mae': 9.69482421875, 'RULBenchmarkEvaluator/rul_test_rmse': 14.229316815337622, 'RULBenchmarkEvaluator/rul_test_late_bias': 5.670054931640625, 'RULBenchmarkEvaluator/rul_test_count': 100.0}
+Training complete!
+  Test results: [{'test/rul_loss': 0.01406065747141838, 'test/loss': 0.01406065747141838, 'eval/RULBenchmarkEvaluator/rul_test_mae': 9.69482421875, 'test/RULBenchmarkEvaluator/rul_test_mae': 
+9.69482421875, 'eval/RULBenchmarkEvaluator/rul_test_rmse': 14.229316711425781, 'test/RULBenchmarkEvaluator/rul_test_rmse': 14.229316815337622, 'eval/RULBenchmarkEvaluator/rul_test_late_bias':
+5.670054912567139, 'test/RULBenchmarkEvaluator/rul_test_late_bias': 5.670054931640625, 'eval/RULBenchmarkEvaluator/rul_test_count': 100.0, 'test/RULBenchmarkEvaluator/rul_test_count': 100.0}]

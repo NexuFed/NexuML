@@ -44,7 +44,8 @@ def _read_scores(
             expected_fold = group if protocol == "machine" else f"family:{family}"
             if (
                 seed not in seeds
-                or group not in {
+                or group
+                not in {
                     f"{family}:id_00",
                     f"{family}:id_02",
                     f"{family}:id_04",
@@ -99,14 +100,10 @@ def compare_machine_family_generalization(
     selected: set[tuple[int, str]] = set()
     for mode in ("reference", "constant"):
         machine_keys = {
-            key
-            for key in machine_scores[mode]
-            if family is None or key[1].startswith(f"{family}:")
+            key for key in machine_scores[mode] if family is None or key[1].startswith(f"{family}:")
         }
         family_keys = {
-            key
-            for key in family_scores[mode]
-            if family is None or key[1].startswith(f"{family}:")
+            key for key in family_scores[mode] if family is None or key[1].startswith(f"{family}:")
         }
         if machine_keys != family_keys:
             raise ValueError("LOMO and LOFO need exactly the same machine/seed assessments")
@@ -119,8 +116,7 @@ def compare_machine_family_generalization(
     for name in families:
         for seed in machine_seeds:
             expected = {
-                (seed, f"{name}:{identity}")
-                for identity in ("id_00", "id_02", "id_04", "id_06")
+                (seed, f"{name}:{identity}") for identity in ("id_00", "id_02", "id_04", "id_06")
             }
             if not expected.issubset(selected):
                 raise ValueError(f"Missing complete four-machine family {name} for seed {seed}")
@@ -139,18 +135,12 @@ def compare_machine_family_generalization(
                 "known_family_constant": machine_constant,
                 "unseen_family_reference": family_reference,
                 "unseen_family_constant": family_constant,
-                "reference_transfer_advantage_pp": 100 * (
-                    machine_reference - family_reference
-                ),
-                "constant_transfer_advantage_pp": 100 * (
-                    machine_constant - family_constant
-                ),
-                "known_family_conditioning_advantage_pp": 100 * (
-                    machine_reference - machine_constant
-                ),
-                "unseen_family_conditioning_advantage_pp": 100 * (
-                    family_reference - family_constant
-                ),
+                "reference_transfer_advantage_pp": 100 * (machine_reference - family_reference),
+                "constant_transfer_advantage_pp": 100 * (machine_constant - family_constant),
+                "known_family_conditioning_advantage_pp": 100
+                * (machine_reference - machine_constant),
+                "unseen_family_conditioning_advantage_pp": 100
+                * (family_reference - family_constant),
             }
         )
     score_keys = (
@@ -161,25 +151,29 @@ def compare_machine_family_generalization(
     )
 
     def average(items: list[dict[str, Any]], key: str) -> float:
-        """Macro-average an equally weighted collection of machine scores."""
+        """Macro-average an equally weighted collection of machine scores.
+
+        Returns:
+            The arithmetic mean of the selected score across all items.
+        """
         return sum(float(item[key]) for item in items) / len(items)
 
     def metrics(items: list[dict[str, Any]]) -> dict[str, Any]:
-        """Aggregate four model/protocol variants without pooling observations."""
+        """Aggregate four model/protocol variants without pooling observations.
+
+        Returns:
+            Aggregate assessment counts, mean reductions, and comparison metrics.
+        """
         return {
             "machine_assessments": len(items),
-            "mean_relative_reduction": {
-                key: average(items, key) for key in score_keys
-            },
+            "mean_relative_reduction": {key: average(items, key) for key in score_keys},
             "positive_transport_count": {
                 key: sum(item[key] > 0 for item in items) for key in score_keys
             },
             "mean_reference_transfer_advantage_pp": average(
                 items, "reference_transfer_advantage_pp"
             ),
-            "mean_constant_transfer_advantage_pp": average(
-                items, "constant_transfer_advantage_pp"
-            ),
+            "mean_constant_transfer_advantage_pp": average(items, "constant_transfer_advantage_pp"),
             "known_family_conditioning_advantage_pp": average(
                 items, "known_family_conditioning_advantage_pp"
             ),
@@ -196,8 +190,7 @@ def compare_machine_family_generalization(
         "families": families,
         "overall": metrics(pairs),
         "by_family": {
-            name: metrics([item for item in pairs if item["family"] == name])
-            for name in families
+            name: metrics([item for item in pairs if item["family"] == name]) for name in families
         },
         "per_machine_seed": pairs,
         "caveat": (
@@ -210,7 +203,11 @@ def compare_machine_family_generalization(
 
 
 def main() -> None:
-    """Write a paired LOMO/LOFO report without overwriting prior work."""
+    """Write a paired LOMO/LOFO report without overwriting prior work.
+
+    Raises:
+        FileExistsError: If the output file already exists.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--machine-aggregate", type=Path, required=True)
     parser.add_argument("--family-aggregate", type=Path, required=True)

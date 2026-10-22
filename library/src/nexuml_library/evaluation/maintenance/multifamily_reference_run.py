@@ -160,6 +160,7 @@ def run_multifamily_experiments(
 
     Raises:
         FileExistsError: If a completed aggregate report already exists.
+        ValueError: If incompatible or invalid held-out selections are given.
     """
     if heldout_family is not None and heldout_machine is not None:
         raise ValueError("Choose --heldout-machine or --heldout-family, not both")

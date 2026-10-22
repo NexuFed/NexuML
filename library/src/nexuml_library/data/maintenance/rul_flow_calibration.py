@@ -60,9 +60,7 @@ class AutoPatchFormerFlowRULFeatures(DataSourceDefinition):
             FileNotFoundError: If trained PatchFormer or Flow checkpoints are absent.
             ValueError: If feature provenance is inconsistent or nonfinite.
         """
-        sensor_ids = [
-            2, 3, 4, 7, 8, 9, 11, 12, 13, 14, 15, 17, 20, 21
-        ]
+        sensor_ids = [2, 3, 4, 7, 8, 9, 11, 12, 13, 14, 15, 17, 20, 21]
         if self.subset == "FD003":
             sensor_ids = sorted([*sensor_ids, 6])
         source = AutoCMapSSRULWindows(
@@ -115,13 +113,9 @@ class AutoPatchFormerFlowRULFeatures(DataSourceDefinition):
             raise ValueError("PatchFormer backbone changed since the flow was trained")
         patch.eval()
         flow_checkpoint = resolve_latent_flow_checkpoint(self.subset, self.seed)
-        flow, flow_digest = load_frozen_latent_flow(
-            flow_checkpoint, seed=self.seed
-        )
+        flow, flow_digest = load_frozen_latent_flow(flow_checkpoint, seed=self.seed)
         reference_rows = cast(list[dict[str, Any]], endpoint["rows"])
-        train_indices = [
-            i for i, row in enumerate(reference_rows) if row["split"] == "train"
-        ]
+        train_indices = [i for i, row in enumerate(reference_rows) if row["split"] == "train"]
         endpoints = cast(Tensor, endpoint["features"])
         if not train_indices:
             raise ValueError("Frozen flow has no training healthy references")
@@ -155,12 +149,8 @@ class AutoPatchFormerFlowRULFeatures(DataSourceDefinition):
         prepared_features = torch.cat(features, dim=0)
         if prepared_features.shape != (len(rows), 3):
             raise ValueError("Prepared flow RUL features disagree with source rows")
-        val_indices = [
-            i for i, row in enumerate(rows) if row["split"] == "val"
-        ]
-        training_indices = [
-            i for i, row in enumerate(rows) if row["split"] == "train"
-        ]
+        val_indices = [i for i, row in enumerate(rows) if row["split"] == "val"]
+        training_indices = [i for i, row in enumerate(rows) if row["split"] == "train"]
         # Geometry diagnostics are descriptive and use no official test targets.
         labels = cast(Tensor, source_payload["targets"])
         val_asset_indices: dict[str, list[int]] = {}
@@ -195,22 +185,19 @@ class AutoPatchFormerFlowRULFeatures(DataSourceDefinition):
                 labels[training_indices],
             ),
             "val/engine_progression_pearson_mean": (
-                sum(valid_progression) / len(valid_progression)
-                if valid_progression else None
+                sum(valid_progression) / len(valid_progression) if valid_progression else None
             ),
             "val/engine_progression_positive_fraction": (
-                sum(value > 0 for value in valid_progression)
-                / len(valid_progression)
-                if valid_progression else None
+                sum(value > 0 for value in valid_progression) / len(valid_progression)
+                if valid_progression
+                else None
             ),
             "val/engine_progression_count": len(valid_progression),
             "test_labels_used_in_feature_fitting": False,
         }
         destination = Path(self.diagnostics_file).expanduser().resolve()
         destination.parent.mkdir(parents=True, exist_ok=True)
-        destination.write_text(
-            json.dumps(geometry, indent=2) + "\n", encoding="utf-8"
-        )
+        destination.write_text(json.dumps(geometry, indent=2) + "\n", encoding="utf-8")
         return _FlowRULFeatureRuntime(
             features=prepared_features,
             targets=cast(Tensor, source_payload["targets"]),
@@ -218,10 +205,7 @@ class AutoPatchFormerFlowRULFeatures(DataSourceDefinition):
             meta=pd.DataFrame.from_records(rows),
         )
 
-
-    def _build_baseline_only(
-        self, payload: dict[str, Any], sensor_ids: list[int]
-    ) -> NexuDataset:
+    def _build_baseline_only(self, payload: dict[str, Any], sensor_ids: list[int]) -> NexuDataset:
         """Cache frozen PatchFormer predictions without loading a Flow model.
 
         The endpoint manifest is consulted only when one already exists, to
@@ -311,14 +295,21 @@ class _FlowRULFeatureRuntime(NexuDataset):
     """Same row order and official split indices as the original RUL artifact."""
 
     def __init__(
-        self, *, features: Tensor, targets: Tensor,
-        raw_targets: Tensor, meta: pd.DataFrame,
+        self,
+        *,
+        features: Tensor,
+        targets: Tensor,
+        raw_targets: Tensor,
+        meta: pd.DataFrame,
     ) -> None:
         self._rul_targets = targets
         self._rul_raw_targets = raw_targets
         super().__init__(
-            meta=meta, data=features,
-            label_names=[], modality="sensor", do_split=False,
+            meta=meta,
+            data=features,
+            label_names=[],
+            modality="sensor",
+            do_split=False,
         )
 
     def take(self, indices: Sequence[int]) -> Self:
