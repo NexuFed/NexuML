@@ -9,7 +9,6 @@ from typing import Literal
 
 import numpy as np
 import pytest
-import torch
 
 from nexuml.core.compiler import compile as compile_pipeline
 from nexuml.core.config import ResolvedConfig
