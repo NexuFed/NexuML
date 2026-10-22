@@ -733,7 +733,10 @@ def maintenance_rul_goel2026_lstm_protocol() -> ScenarioSpec:
             "callbacks": [
                 *base.callbacks,
                 callback(Goel2026PlateauLR, factor=0.5, patience=5),
-                callback(Goel2026RestoreBestWeights),
+                callback(
+                    Goel2026RestoreBestWeights,
+                    output_file=f".experiments/rul/audits/{base.name}.checkpoint.json",
+                ),
             ],
         }
     )
@@ -807,7 +810,10 @@ def maintenance_rul_goel2026_cnn_protocol() -> ScenarioSpec:
                 ),
                 callback(EarlyStopping, monitor="val/loss", patience=20, mode="min"),
                 callback(Goel2026PlateauLR, factor=0.5, patience=5),
-                callback(Goel2026RestoreBestWeights),
+                callback(
+                    Goel2026RestoreBestWeights,
+                    output_file=f".experiments/rul/audits/{run_name}.checkpoint.json",
+                ),
             ],
         }
     )
