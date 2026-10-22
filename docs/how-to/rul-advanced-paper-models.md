@@ -30,6 +30,12 @@ paper's exact threshold and ETDataset input preprocessing are not
 established by the PDF alone. The C-MAPSS recipes below are **architecture
 transfer experiments**, not comparable published-protocol reproductions.
 
+For the **paired 30-cycle FD001/FD003 generalization program** and
+the frozen-embedding flow-matching experiments, see
+[PatchFormer generalization and latent Flow Matching](rul-patchformer-flow-and-generalization.md).
+These are separate, registered NexuML scenarios with explicit seed
+and checkpoint provenance.
+
 ## 1. C-MAPSS FD001 architecture comparisons
 
 Each model ingests causal normalized turbine windows and emits a scalar
