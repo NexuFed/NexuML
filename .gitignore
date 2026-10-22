@@ -249,3 +249,5 @@ studio/tsconfig.tsbuildinfo
 studio/playwright-report/
 studio/test-results/
 studio/LICENSE
+
+.nexuml/
