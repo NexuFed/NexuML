@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import csv
+import json
 from pathlib import Path
 from typing import Literal, cast
 
@@ -17,6 +18,7 @@ from nexuml.core.config import ResolvedConfig
 from nexuml_library.data.maintenance.patchformer_flow import (
     AutoPatchFormerFlowEndpoints,
     _trusted_patchformer_weights,
+    resolve_patchformer_checkpoint,
 )
 from nexuml_library.data.maintenance.prepared_endpoints import read_prepared_artifact
 from nexuml_library.data.maintenance.rul import (
@@ -175,6 +177,79 @@ def test_frozen_patchformer_endpoints_exclude_official_test_labels(
     changed = read_prepared_artifact(source.output_file)
     assert torch.equal(changed["features"], baseline)
     assert changed["settings"]["feature_mean"] == before
+
+
+
+def _write_best_manifest(root: Path, run: str) -> Path:
+    """Write the native callback's minimal checkpoint manifest for a run.
+
+    Returns:
+        Path to the corresponding test checkpoint.
+    """
+    checkpoint = root / ".experiments/rul/checkpoints" / run / "epoch=0.ckpt"
+    checkpoint.parent.mkdir(parents=True, exist_ok=True)
+    checkpoint.write_bytes(b"trusted placeholder")
+    manifest = root / ".experiments/rul/audits" / f"{run}.checkpoint.json"
+    manifest.parent.mkdir(parents=True, exist_ok=True)
+    manifest.write_text(
+        json.dumps({"best_model_path": str(checkpoint)}) + "\n",
+        encoding="utf-8",
+    )
+    return checkpoint
+
+
+def test_flow_finds_existing_original_patchformer_without_env(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """FD001 seed 42 reuses the original run when controlled run is absent."""
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv(
+        "NEXUML_PATCHFORMER_CHECKPOINT", "/unused/obsolete/configuration.ckpt"
+    )
+    original = (
+        "rul-cmapss-FD001-patchformer-direct-rul-adaptation-seed42"
+    )
+    expected = _write_best_manifest(tmp_path, original)
+    assert resolve_patchformer_checkpoint("FD001", 42) == expected
+    flow = patchformer_embedding_flow("FD001", 42)
+    source = flow.data.datasets[0].source
+    assert isinstance(source, AutoPatchFormerFlowEndpoints)
+    assert source.checkpoint_path is None
+
+    controlled = "rul-FD001-controlled-patchformer-seed42"
+    preferred = _write_best_manifest(tmp_path, controlled)
+    assert resolve_patchformer_checkpoint("FD001", 42) == preferred
+
+
+def test_flow_checkpoint_missing_has_native_training_instruction(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Resolve never needs checkpoint; dataset build reports the upstream step."""
+    monkeypatch.chdir(tmp_path)
+    flow = patchformer_embedding_flow("FD003", 43)
+    assert isinstance(flow.data.datasets[0].source, AutoPatchFormerFlowEndpoints)
+    with pytest.raises(
+        FileNotFoundError, match="maintenance-rul-controlled-fd003-patchformer-s43"
+    ):
+        resolve_patchformer_checkpoint("FD003", 43)
+
+
+def test_flow_rejects_wrong_seed_checkpoint_manifest(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Reject mislabeled manifests, avoiding silent cross-seed model reuse."""
+    monkeypatch.chdir(tmp_path)
+    controlled = "rul-FD003-controlled-patchformer-seed44"
+    bad = _write_best_manifest(tmp_path, controlled)
+    requested = tmp_path / ".experiments/rul/audits" / (
+        "rul-FD003-controlled-patchformer-seed43.checkpoint.json"
+    )
+    requested.write_text(
+        json.dumps({"best_model_path": str(bad)}) + "\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="Stale or mismatched"):
+        resolve_patchformer_checkpoint("FD003", 43)
 
 
 def test_checkpoint_embedding_weights_match_upstream_model(tmp_path: Path) -> None:
