@@ -81,8 +81,11 @@ class _RULPerEngineAuditRuntime(EvalAlgorithm):
         payload = read_rul_artifact(self.artifact_path)
         if "raw_targets" not in payload:
             raise ValueError("RUL audit needs original uncapped NASA labels")
-        rows = [dict(row, artifact_index=index) for index, row in enumerate(payload["rows"])
-                if row["split"] == "test"]
+        rows = [
+            dict(row, artifact_index=index)
+            for index, row in enumerate(payload["rows"])
+            if row["split"] == "test"
+        ]
         if not rows or len({row["asset_id"] for row in rows}) != len(rows):
             raise ValueError("RUL per-engine audit requires one final window per test asset")
         self._payload = payload
@@ -154,9 +157,16 @@ class _RULPerEngineAuditRuntime(EvalAlgorithm):
         if len(self._records) != len(self._test_rows):
             raise ValueError("Audit saw fewer engines than the official test set")
         fields = (
-            "asset_id", "step", "predicted_rul", "true_rul_capped",
-            "true_rul_raw", "error_capped", "error_raw", "nasa_capped",
-            "nasa_raw", "target_was_capped",
+            "asset_id",
+            "step",
+            "predicted_rul",
+            "true_rul_capped",
+            "true_rul_raw",
+            "error_capped",
+            "error_raw",
+            "nasa_capped",
+            "nasa_raw",
+            "target_was_capped",
         )
         destination = self.output_file
         destination.parent.mkdir(parents=True, exist_ok=True)
@@ -165,14 +175,18 @@ class _RULPerEngineAuditRuntime(EvalAlgorithm):
             writer = csv.DictWriter(handle, fieldnames=fields)
             writer.writeheader()
             writer.writerows(
-                sorted(self._records.values(), key=lambda row: int(row["asset_id"].split(":")[-1]))
+                sorted(
+                    self._records.values(),
+                    key=lambda row: int(row["asset_id"].split(":")[-1]),
+                )
             )
         partial.replace(destination)
 
         settings = self._payload["settings"]
         splits = settings["split_assets"]
-        if set(splits["train"]) & set(splits["val"]):
-            raise ValueError("Engine-level training/validation leakage detected")
+        for left, right in (("train", "val"), ("train", "test"), ("val", "test")):
+            if set(splits[left]) & set(splits[right]):
+                raise ValueError(f"Engine-level {left}/{right} leakage detected")
         scaler = json.dumps(settings["scaler"], sort_keys=True, separators=(",", ":"))
         manifest = {
             "format": "nexuml-rul-engine-audit-v1",
