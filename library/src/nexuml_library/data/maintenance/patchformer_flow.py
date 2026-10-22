@@ -182,6 +182,7 @@ class AutoPatchFormerFlowEndpoints(DataSourceDefinition):
     train_pairs: int = Field(default=512, gt=0)
     val_pairs: int = Field(default=128, gt=0)
     embedding_batch_size: int = Field(default=64, gt=0)
+    sequence_embeddings: bool = False
 
     def build(self) -> NexuDataset:
         """Prepare immutable paired endpoints without official test-label leakage.
@@ -265,13 +266,17 @@ class AutoPatchFormerFlowEndpoints(DataSourceDefinition):
                 ]
 
                 def encode(indices: list[int]) -> Tensor:
-                    """Encode one fixed endpoint collection without gradient.
+                    """Encode frozen DPAN without invoking PatchFormer's RUL head.
 
                     Returns:
-                        Mean-pooled, pre-regression PatchFormer DPAN embeddings.
+                        Full [N,L,D] DPAN sequence or legacy mean-pooled [N,D].
                     """
                     parts = [
-                        model.forward_features(windows[batch]).mean(dim=1)
+                        (
+                            model.forward_features(windows[batch])
+                            if self.sequence_embeddings
+                            else model.forward_features(windows[batch]).mean(dim=1)
+                        )
                         for batch in (
                             indices[start : start + self.embedding_batch_size]
                             for start in range(0, len(indices), self.embedding_batch_size)
@@ -319,7 +324,13 @@ class AutoPatchFormerFlowEndpoints(DataSourceDefinition):
                     "seed": self.seed,
                     "healthy_min_rul": self.healthy_min_rul,
                     "faulty_max_rul": self.faulty_max_rul,
-                    "embedding_dim": int(mean.numel()),
+                    "embedding_dim": int(mean.shape[-1]),
+                    "feature_layout": (
+                        "sequence" if self.sequence_embeddings else "vector"
+                    ),
+                    "sequence_length": (
+                        int(mean.shape[0]) if self.sequence_embeddings else None
+                    ),
                     "feature_normalization": "train_endpoints_only",
                     "feature_mean": mean.tolist(),
                     "feature_std": std.tolist(),
