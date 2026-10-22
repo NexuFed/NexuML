@@ -295,9 +295,11 @@ class _AdvancedRULRuntime(PipelineLayer):
             input_sizes=input_sizes, keys_in=keys_in, keys_out=keys_out, **kwargs
         )
         length, channels = input_sizes[keys_in[0]]
-        if length < 2 or channels < 2:
-            raise ValueError("Advanced RUL backbones require [length>=2,channels>=2]")
+        if length < 2 or channels < 1:
+            raise ValueError("Advanced backbones require [length>=2,channels>=1]")
         if architecture == "dmm_ja":
+            if channels < 2:
+                raise ValueError("DMM-JA dynamic fusion requires at least two modalities")
             if hidden_dim % 2:
                 raise ValueError("DMM-JA bidirectional LSTM requires even hidden_dim")
             self.backbone = _JumpAwareFusion(
