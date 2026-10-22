@@ -11,17 +11,15 @@ from tensordict import TensorDict
 
 from nexuml.core.compiler import compile as compile_pipeline
 from nexuml.core.config import ResolvedConfig
-from nexuml_library.data.maintenance.rul import AutoCMapSSRULWindows
 from nexuml_library.data.maintenance.rul_flow_calibration import (
     AutoPatchFormerFlowRULFeatures,
-    _FlowRULFeatureRuntime,
 )
 from nexuml_library.evaluation.maintenance.rul_flow_geometry import (
-    healthy_reference_trajectories,
     pearson_flow_progress,
     project_flow_time,
     resolve_latent_flow_checkpoint,
 )
+from nexuml_library.evaluation.maintenance.rul_engine_audit import RULPerEngineAudit
 from nexuml_library.layers.model.rul_flow_calibration import PatchFormerFlowRULHead
 from nexuml_library.scenarios.maintenance.rul_flow_calibration import (
     patchformer_flow_rul_calibration,
@@ -108,7 +106,9 @@ def test_calibration_registered_with_native_audited_split_contract(
     assert scenario.evaluation.algorithms[0].label_key == "rul"
     assert scenario.evaluation.algorithms[1].label_key == "rul_raw"
     assert scenario.evaluation.algorithms[2].name == "engine_audit"
-    assert scenario.evaluation.algorithms[2].algorithm.output_file.endswith(
+    audit = scenario.evaluation.algorithms[2].algorithm
+    assert isinstance(audit, RULPerEngineAudit)
+    assert audit.output_file.endswith(
         f"rul-{subset}-patchformer-flow-{mode.replace('_', '-')}-seed{seed}.csv"
     )
     head = scenario.pipeline.stages["RULModel"][0].component
