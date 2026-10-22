@@ -139,23 +139,29 @@ def _save_fake_patchformer_checkpoint(path: Path, channels: int) -> None:
 
 
 def test_frozen_patchformer_endpoints_exclude_official_test_labels(
-    tmp_path: Path,
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Test observations cannot change learned endpoint scaling or validation."""
+    monkeypatch.chdir(tmp_path)
     _fake_cmapss(tmp_path, "FD001")
-    checkpoint = (
-        tmp_path / "rul-FD001-controlled-patchformer-seed42" / "best.ckpt"
-    )
+    run = "rul-FD001-controlled-patchformer-seed42"
+    checkpoint = tmp_path / run / "best.ckpt"
     _save_fake_patchformer_checkpoint(checkpoint, 14)
+    manifest = tmp_path / ".experiments/rul/audits" / f"{run}.checkpoint.json"
+    manifest.parent.mkdir(parents=True, exist_ok=True)
+    manifest.write_text(
+        json.dumps({"best_model_path": str(checkpoint)}) + "\n",
+        encoding="utf-8",
+    )
     source = AutoPatchFormerFlowEndpoints(
         root=str(tmp_path),
-        checkpoint_path=str(checkpoint),
         prepared_rul_path=str(tmp_path / "rul.pt"),
         output_file=str(tmp_path / "endpoints.pt"),
         train_pairs=6,
         val_pairs=4,
         embedding_batch_size=4,
     )
+    assert source.checkpoint_path is None
     dataset = source.build()
     assert len(dataset.get_split("train")) == 6
     assert len(dataset.get_split("val")) == 4
