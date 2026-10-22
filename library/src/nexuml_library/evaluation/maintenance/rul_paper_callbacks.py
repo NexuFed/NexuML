@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from typing import Any
 
 import lightning as L
@@ -69,6 +71,10 @@ class Goel2026RestoreBestWeights(Callback):
     because no additional fitting follows this operation.
     """
 
+    def __init__(self, output_file: str | None = None) -> None:
+        super().__init__()
+        self.output_file = output_file
+
     def on_fit_end(self, trainer: L.Trainer, pl_module: L.LightningModule) -> None:
         """Load weights from the lowest-validation-loss Lightning checkpoint.
 
@@ -94,3 +100,18 @@ class Goel2026RestoreBestWeights(Callback):
         if not isinstance(checkpoint, dict) or "state_dict" not in checkpoint:
             raise RuntimeError("Goel2026 best checkpoint has no model state_dict")
         pl_module.load_state_dict(checkpoint["state_dict"], strict=True)
+        if self.output_file is not None:
+            destination = Path(self.output_file).expanduser().resolve()
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            score = monitors[0].best_model_score
+            details = {
+                "selection": "best minimum val/loss",
+                "best_model_path": path,
+                "best_model_score": float(score) if score is not None else None,
+                "checkpoint_epoch": checkpoint.get("epoch"),
+                "checkpoint_global_step": checkpoint.get("global_step"),
+                "loaded_strict_model_state": True,
+            }
+            destination.write_text(
+                json.dumps(details, indent=2) + "\n", encoding="utf-8"
+            )
