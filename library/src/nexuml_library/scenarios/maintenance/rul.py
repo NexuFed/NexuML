@@ -61,6 +61,7 @@ def maintenance_rul_benchmark(
     *,
     download: bool = True,
     dataset_root: str | Path | None = None,
+    cmapss_subset: Literal["FD001", "FD002", "FD003", "FD004"] = "FD001",
     cmapss_window: int = 30,
     cmapss_stride: int = 1,
     cmapss_sensor_ids: list[int] | None = None,
@@ -95,9 +96,10 @@ def maintenance_rul_benchmark(
 
     Args:
         prepared_file: Immutable artifact from rul_prepare. If omitted, use
-            NEXUML_RUL_PREPARED_FILE or automatically retrieve official FD001.
+            NEXUML_RUL_PREPARED_FILE or automatically retrieve official C-MAPSS.
         download: Auto-download missing official C-MAPSS source data.
         dataset_root: Local raw-data cache; defaults to NEXUML_CMAPSS_ROOT.
+        cmapss_subset: Official C-MAPSS subset; FD001 unless overridden.
         cmapss_window: Number of past cycles for automatic data preparation.
         cmapss_stride: Stride for training windows.
         cmapss_sensor_ids: Optional selected sensor IDs, excluding settings.
@@ -149,9 +151,9 @@ def maintenance_rul_benchmark(
         raise ValueError("Invalid paper-profile C-MAPSS preparation settings")
     default_seed = 42 if seed is None else seed
     default_artifact = (
-        f".experiments/rul/prepared/cmapss-FD001-seed{default_seed}-{cmapss_profile}.pt"
+        f".experiments/rul/prepared/cmapss-{cmapss_subset}-seed{default_seed}-{cmapss_profile}.pt"
         if cmapss_profile is not None
-        else f".experiments/rul/prepared/cmapss-FD001-seed{default_seed}.pt"
+        else f".experiments/rul/prepared/cmapss-{cmapss_subset}-seed{default_seed}.pt"
     )
     selected_file = (
         prepared_file
@@ -166,11 +168,11 @@ def maintenance_rul_benchmark(
         settings = payload["settings"]
         _, length, channels = payload["features"].shape
     elif prepared_file is None and configured_file is None:
-        # Known FD001 defaults make the registered scenario resolvable without
+        # Known C-MAPSS defaults make the scenario resolvable without
         # the raw dataset. The normal datasource still requires real data to train.
         settings = {
             "dataset": "cmapss",
-            "subset": "FD001",
+            "subset": cmapss_subset,
             "seed": default_seed,
             "target_scale": float(
                 cmapss_rul_cap if cmapss_normalize_targets else 1.0
@@ -216,6 +218,7 @@ def maintenance_rul_benchmark(
         source_definition = AutoCMapSSRULWindows(
             root=str(selected_root),
             artifact_path=str(file_path),
+            subset=cmapss_subset,
             seed=resolved_seed,
             window=cmapss_window,
             stride=cmapss_stride,
