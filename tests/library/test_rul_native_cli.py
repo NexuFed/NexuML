@@ -11,6 +11,7 @@ import pytest
 
 from nexuml.core.config import ResolvedConfig
 from nexuml_library.data.maintenance.rul import AutoCMapSSRULWindows
+from nexuml_library.evaluation.maintenance.rul_engine_audit import RULPerEngineAudit
 
 
 @pytest.mark.parametrize("scenario_name", ("maintenance-rul-feature-mlp", "maintenance-rul-all"))
@@ -135,3 +136,17 @@ def test_native_goel2026_paper_scenarios_fit_without_custom_loop(
     assert source.rul_cap == 130
     assert source.normalize_targets is False
     assert source.train_full_windows_only is True
+    audit = restored.evaluation.algorithms[2].algorithm
+    assert isinstance(audit, RULPerEngineAudit)
+    csv_path = Path(audit.output_file)
+    assert csv_path.is_file()
+    assert csv_path.with_suffix(".json").is_file()
+    assert len(csv_path.read_text().splitlines()) == 3
+    checkpoint_callbacks = [
+        entry for entry in restored.callbacks
+        if "Goel2026RestoreBestWeights" in entry.factory
+    ]
+    assert len(checkpoint_callbacks) == 1
+    checkpoint_audit = Path(checkpoint_callbacks[0].kwargs["output_file"])
+    assert checkpoint_audit.is_file()
+
