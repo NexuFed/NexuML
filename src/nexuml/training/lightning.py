@@ -575,6 +575,7 @@ class TrainResult:
     test_results: list[dict[str, float]] = field(default_factory=list)
     load_report: dict[str, list[str]] | None = None
     eval_algorithm_results: dict[str, float] = field(default_factory=dict)
+    artifacts: list[dict[str, str]] = field(default_factory=list)
 
 
 @dataclass
@@ -600,6 +601,7 @@ class NexuSession:
         enable_loggers: bool = True,
         trainer_checkpoint: str | Path | None = None,
         run_name: str | None = None,
+        num_nodes: int = 1,
     ) -> None:
         if scenario is None and trainer_checkpoint is None:
             raise ValueError("Either 'scenario' or 'trainer_checkpoint' must be provided.")
@@ -613,6 +615,9 @@ class NexuSession:
             Path(trainer_checkpoint) if trainer_checkpoint is not None else None
         )
         self.run_name = run_name
+        if num_nodes < 1:
+            raise ValueError("num_nodes must be positive.")
+        self.num_nodes = num_nodes
         self.scenario = self._resolve_scenario(scenario)
 
         self._runtime: RuntimeArtifacts | None = None
@@ -754,6 +759,7 @@ class NexuSession:
             max_epochs=tr.max_epochs,
             accelerator=resolved_accelerator,
             devices=resolved_devices,
+            num_nodes=self.num_nodes,
             strategy=resolved_strategy,
             precision=resolved_precision,  # ty: ignore[invalid-argument-type]
             default_root_dir=str(self.log_dir),
@@ -954,7 +960,7 @@ class NexuSession:
         if scenario is None:
             self._run_metadata_logged = True
             return
-        scenario_dump = scenario.model_dump(mode="json")
+        scenario_dump = lower_model(scenario)
         log_text_artifact(
             self.trainer_loggers,
             yaml.safe_dump(scenario_dump, sort_keys=False),

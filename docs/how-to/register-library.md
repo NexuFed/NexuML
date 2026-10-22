@@ -41,14 +41,8 @@ nexuml registry list      # shows all registered elements
 
 ## CLI library management
 
-For libraries not yet installable as packages:
-
-```bash
-nexuml library add /path/to/my_library    # add a path-based library root
-nexuml library list                        # list all known library roots
-```
-
-See [Managing local library roots](library-cli.md).
+For libraries not yet installed as packages, use [Managing local library roots](library-cli.md)
+instead. A local-root registration does not install the library's dependencies.
 
 ## See also
 

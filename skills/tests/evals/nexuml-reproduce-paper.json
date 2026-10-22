@@ -1,0 +1,29 @@
+{
+  "skill_name": "nexuml-reproduce-paper",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Read-only protocol extraction from a synthetic methods note (not a real publication): use dataset release R2 with official device-disjoint train/validation/test IDs; a two-layer MLP with width 32; Adam for 100 epochs; report macro AUC averaged over devices. Initialization, normalization and seeds are not specified. I have an external NexuML library and installed core only. Map data/algorithm/training/evaluation into deliverables and checks. Can you fill the gaps with framework defaults and claim exact reproduction? No files, downloads or runs.",
+      "expected_output": "Maps full protocol to external reusable components/configs and source facts, preserves official device splits/macro scorer, explicitly marks missing choices, does not claim exact reproduction or require base/core checkout.",
+      "files": [],
+      "expectations": [
+        "Preserves dataset R2, official device-disjoint partitions and macro device AUC rather than replacing them with defaults.",
+        "Maps data, algorithm, training and evaluation to user-owned reusable components/recipes and meaningful checks.",
+        "Marks initialization, normalization and seeds as unresolved/assumed rather than verified paper facts.",
+        "Does not claim exact reproduction from defaults or require a base-library/framework checkout."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Read-only fidelity review. In my NexuML recreation, the encoder output matches the reference on 32 inputs. I trained for 3 rather than 100 epochs, used a random split instead of official subject-disjoint splits, and pooled AUC instead of the paper's per-subject macro AUC. My pooled score exceeds the table. Should I mark the paper reproduced and start tuning on its official test results? Give a supported conclusion, corrective checks and baseline/improvement separation. No execution.",
+      "expected_output": "Limits claim to diagnostic feature parity, identifies training/split/scorer deviations, rejects score-based parity and final-test feedback for selection, preserves separate reproduction/improvement identities.",
+      "files": [],
+      "expectations": [
+        "Rejects paper-parity/reproduction claims from feature parity on 32 inputs and a higher pooled score.",
+        "Identifies all three deviations: training duration, subject-disjoint partitions and macro-versus-pooled scoring.",
+        "Rejects official final-test feedback for iterative candidate selection.",
+        "Separates a frozen faithful baseline from improvement identities and identifies protocol-level corrective evidence."
+      ]
+    }
+  ]
+}

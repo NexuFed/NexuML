@@ -107,13 +107,23 @@ class ComponentRegistry:
 
     def scan(self, package_paths: list[str] | None = None) -> None:
         from nexuml.core.discovery import Scanner, discover_library_packages, register_items
+        from nexuml.data.loaders import definitions as loader_definitions
+        from nexuml.execution import definitions
 
         scanner = Scanner()
-        for package_path in package_paths or discover_library_packages():
+        scanner.scan_module(loader_definitions)
+        scanner.scan_module(definitions)
+        for package_path in discover_library_packages() if package_paths is None else package_paths:
             scanner.scan_package(package_path)
 
         self._errors = list(scanner.errors)
-        for kind in ("layer", "data_source", "eval_algorithm", "loader_backend"):
+        for kind in (
+            "layer",
+            "data_source",
+            "eval_algorithm",
+            "loader_backend",
+            "execution_backend",
+        ):
             register_items(scanner.by_kind(kind), self.register, self._errors)
         self._loaded = True
 

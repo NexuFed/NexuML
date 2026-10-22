@@ -18,6 +18,8 @@ from nexuml.core.components import DataSourceDefinition
 class MNISTDataset(DataSourceDefinition):
     """In-memory MNIST dataset backed by ``self.data`` and metadata labels."""
 
+    fixed_label_keys = ("digit",)
+
     root: str | Path = "data/mnist"
     train: bool = True
     download: bool = False
@@ -29,8 +31,6 @@ class MNISTDataset(DataSourceDefinition):
 
 
 class _MNISTDatasetRuntime(NexuDataset):
-    LABEL_NAMES = ["digit"]
-
     def __init__(
         self,
         root: str | Path = "data/mnist",
@@ -68,11 +68,13 @@ class _MNISTDatasetRuntime(NexuDataset):
             target_list = list(dataset_targets)
 
         split_name = split or ("fit" if train else "test")
-        meta = pd.DataFrame({"digit": target_list, "split": [split_name] * len(target_list)})
+        assert MNISTDataset.fixed_label_keys is not None
+        label_names = list(MNISTDataset.fixed_label_keys)
+        meta = pd.DataFrame({label_names[0]: target_list, "split": [split_name] * len(target_list)})
 
         super().__init__(
             meta=meta,
-            label_names=self.LABEL_NAMES,
+            label_names=label_names,
             do_split=False,
             modality="image",
             data=dataset_data,

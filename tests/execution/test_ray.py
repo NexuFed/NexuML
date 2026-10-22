@@ -10,11 +10,11 @@ from nexuml.core.types import (
     EvaluationSpec,
     LayerSpec,
     PipelineSpec,
-    RayExecutionSpec,
     ScenarioSpec,
 )
 from nexuml.core.serialization import lower_model
 from nexuml.execution import ray as ray_execution
+from nexuml.execution.definitions import RayClusterExecution
 from nexuml_library.evaluation.visualizers.class_histogram import ClassHistogramVisualizer
 from nexuml_library.layers.head.decision_rule import DecisionRulePipelineLayer
 
@@ -25,16 +25,19 @@ def test_ray_execution_config_is_placement_only():
             "name": "distributed",
             "training": {"strategy": "fsdp"},
             "execution": {
-                "kind": "ray",
-                "target": {"kind": "cluster", "address": "ray://cluster:10001"},
-                "workers": [2, 4],
-                "resources_per_worker": {"CPU": 4, "GPU": 1},
-                "storage_path": "s3://runs/nexuml",
+                "type": "ray-cluster",
+                "version": "1",
+                "params": {
+                    "target": {"address": "ray://cluster:10001"},
+                    "workers": [2, 4],
+                    "resources_per_worker": {"CPU": 4, "GPU": 1},
+                    "storage_path": "s3://runs/nexuml",
+                },
             },
         }
     )
 
-    assert isinstance(scenario.execution, RayExecutionSpec)
+    assert isinstance(scenario.execution, RayClusterExecution)
     assert scenario.execution.workers == (2, 4)
     assert scenario.training.strategy == "fsdp"
     assert not hasattr(scenario.execution, "strategy")
@@ -188,18 +191,20 @@ def test_connect_uses_working_dir_and_uv(monkeypatch):
         {
             "name": "cluster",
             "execution": {
-                "kind": "ray",
-                "storage_path": "s3://runs/nexuml",
-                "target": {
-                    "kind": "cluster",
-                    "address": "ray://cluster:10001",
-                    "working_dir": ".",
-                    "py_executable": "uv run --locked python",
+                "type": "ray-cluster",
+                "version": "1",
+                "params": {
+                    "storage_path": "s3://runs/nexuml",
+                    "target": {
+                        "address": "ray://cluster:10001",
+                        "working_dir": ".",
+                        "py_executable": "uv run --locked python",
+                    },
                 },
             },
         }
     )
-    assert isinstance(scenario.execution, RayExecutionSpec)
+    assert isinstance(scenario.execution, RayClusterExecution)
 
     runtime_env = ray_execution._connect(scenario.execution)
 
@@ -227,3 +232,37 @@ def test_connect_uses_working_dir_and_uv(monkeypatch):
         scenario, scenario.execution, runtime_env, "cluster-20260902-abcd1234"
     )
     assert named_run_config.name == "cluster-20260902-abcd1234"
+
+
+@pytest.mark.parametrize("address", ["auto", "ray://selected:10001"])
+def test_initialized_ray_cannot_reuse_an_unverified_target(monkeypatch, address):
+    ray = pytest.importorskip("ray")
+    monkeypatch.setattr(ray, "is_initialized", lambda: True)
+    monkeypatch.setattr(
+        ray, "init", lambda **kwargs: pytest.fail("Must not change caller-owned connection")
+    )
+    with pytest.raises(ray_execution.RayExecutionError, match="unverified target"):
+        ray_execution._connect(RayClusterExecution(target={"address": address}))
+
+
+def test_unsupported_typed_strategy_fails_before_connection(monkeypatch):
+    from lightning.pytorch.strategies import DDPStrategy
+
+    value = ScenarioSpec(name="bad-strategy", execution=RayClusterExecution())
+    value.training.strategy = strategy(DDPStrategy)
+    monkeypatch.setattr(
+        ray_execution, "_connect", lambda *_: pytest.fail("Preflight must precede connection")
+    )
+    with pytest.raises(ValueError, match="official Ray"):
+        ray_execution.run_ray(value)
+
+
+def test_fixed_and_elastic_scaling_preserves_named_units():
+    pytest.importorskip("ray.train")
+    for workers in (2, (2, 4)):
+        request = RayClusterExecution(
+            workers=workers, resources_per_worker={"CPU": 2, "GPU": 1, "custom": 0.5}
+        )
+        value = ray_execution._scaling_config(request)
+        assert value.num_workers == workers
+        assert value.use_gpu and value.resources_per_worker == request.resources_per_worker

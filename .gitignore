@@ -175,6 +175,9 @@ configs/*.yaml
 !configs/.gitkeep
 .experiments/
 
+# Local skill-creator evaluation runs; ship skills/tests/evals, not generated outputs.
+/skills/*-workspace/
+
 # PyCharm
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
 #  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
@@ -237,3 +240,14 @@ external/
 graphify-out/
 
 configs/
+
+# Studio build/test dependencies (production assets are included only in npm packs)
+studio/node_modules/
+studio/.next/
+studio/*.tgz
+studio/tsconfig.tsbuildinfo
+studio/playwright-report/
+studio/test-results/
+studio/LICENSE
+
+.nexuml/

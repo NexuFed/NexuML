@@ -3,9 +3,20 @@
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import Any, ClassVar
+from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import BaseModel, ConfigDict
+
+
+@dataclass(frozen=True, slots=True)
+class _KeyRole:
+    domain: Literal["x", "y"]
+
+
+FeatureKey = Annotated[str, _KeyRole("x")]
+"""A feature-tensor key; values and generated schemas remain ordinary strings."""
+LabelKey = Annotated[str, _KeyRole("y")]
+"""A label-tensor key, also usable inside optional and list annotations."""
 
 
 class ComponentDefinition(BaseModel, ABC):
@@ -67,6 +78,46 @@ class EvalBuildContext:
     label_key: str | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class ContextInput:
+    """One consumed context slot; a default replaces missing, null or empty values."""
+
+    required: bool = False
+    default: str | None = None
+
+    def resolve(self, value: str | None, name: str) -> str | None:
+        """Resolve a context key without rejecting historically accepted empty strings.
+
+        Returns:
+            Explicit key or its declared fallback.
+
+        Raises:
+            ValueError: If a required key is absent and has no fallback.
+        """
+        resolved = (value or self.default) if self.default is not None else value
+        if self.required and resolved is None:
+            raise ValueError(f"Evaluation requires explicit {name}.")
+        return resolved
+
+
+@dataclass(frozen=True, slots=True)
+class EvalContextInputs:
+    """Consumed evaluation slots; an omitted slot is unused, not a guessed route."""
+
+    feature_key: ContextInput | None = None
+    label_key: ContextInput | None = None
+
+    def resolve(self, context: EvalBuildContext) -> EvalBuildContext:
+        """Return runtime keys using the same rules exposed to tooling."""
+        return EvalBuildContext(
+            **{
+                name: rule.resolve(getattr(context, name), name)
+                for name in ("feature_key", "label_key")
+                if (rule := getattr(self, name)) is not None
+            }
+        )
+
+
 class LayerDefinition(ComponentDefinition):
     """Semantic configuration that materializes a pipeline layer."""
 
@@ -82,6 +133,8 @@ class DataSourceDefinition(ComponentDefinition):
     """Semantic configuration that materializes a dataset."""
 
     kind = "data_source"
+    # None is unknown; () declares that the source produces no labels.
+    fixed_label_keys: ClassVar[tuple[str, ...] | None] = None
 
     @abstractmethod
     def build(self) -> Any:
@@ -92,6 +145,8 @@ class EvalAlgorithmDefinition(ComponentDefinition):
     """Semantic configuration that materializes an evaluation algorithm."""
 
     kind = "eval_algorithm"
+    # None leaves context consumption unresolved for existing contributed definitions.
+    context_inputs: ClassVar[EvalContextInputs | None] = None
 
     @abstractmethod
     def build(self, context: EvalBuildContext) -> Any:
@@ -106,3 +161,62 @@ class LoaderBackendDefinition(ComponentDefinition):
     @abstractmethod
     def build(self) -> Any:
         """Build the loader backend runtime."""
+
+
+class ExecutionBackendDefinition(ComponentDefinition):
+    """Installation-owned placement settings and execution behavior."""
+
+    kind = "execution_backend"
+    label: ClassVar[str] = ""
+    dependencies: ClassVar[tuple[str, ...]] = ()
+    capabilities: ClassVar[dict[str, bool]] = {}
+    presentation: ClassVar[dict[str, list[str]]] = {}
+
+    def preflight(self, scenario: Any, **kwargs: Any) -> dict[str, Any]:
+        """Validate a request without allocating workers.
+
+        Returns:
+            Backend-specific review information.
+
+        Raises:
+            ValueError: If requested resume or exports are unsupported.
+        """
+        if kwargs.get("trainer_checkpoint") and not self.capabilities.get("resume", False):
+            raise ValueError("Trainer checkpoint resume is local-only; the backend owns recovery.")
+        if scenario.exports and not self.capabilities.get("artifacts", False):
+            raise ValueError("Configured model exports are unsupported by the selected backend.")
+        return {}
+
+    def discover(self, **kwargs: Any) -> Any:
+        """Return an explicit unknown snapshot when a library has no capacity probe."""
+        from nexuml.execution.schemas import ResourceSnapshot
+
+        return ResourceSnapshot(
+            backend=self.component_name,
+            source=self.component_name,
+            diagnostics=["This backend does not expose resource discovery."],
+        )
+
+    def inspect(self, reference: Any) -> dict[str, Any]:
+        """Refuse native observation that the backend has not implemented.
+
+        Raises:
+            NotImplementedError: When no native inspection is available.
+        """
+        raise NotImplementedError("Native reference inspection is unsupported by this backend.")
+
+    def cancel(self, reference: Any) -> dict[str, Any]:
+        """Refuse to confuse submitter termination with native cancellation.
+
+        Raises:
+            NotImplementedError: When native cancellation cannot be confirmed.
+        """
+        raise NotImplementedError("Native cancellation is unsupported by this backend.")
+
+    @abstractmethod
+    def run(self, scenario: Any, **kwargs: Any) -> Any:
+        """Execute the canonical lifecycle and return its native result.
+
+        Shared dispatch supplies ``review`` from preflight and caller-specific keyword
+        options (including an optional observer). Definitions accept these via kwargs.
+        """

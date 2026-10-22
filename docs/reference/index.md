@@ -9,6 +9,6 @@ Reference pages are lookup material. They document the exact public surfaces and
 - [Backends](backends.md) — loader/export/training/tracking backend catalog.
 - [Environment roots](environment.md) — data/log root resolution.
 - [Tuning file](tuning-file.md) — Python-only Optuna search-space contract.
-- [Python API](api/) — exhaustive generated module reference for the public `nexuml` and `nexuml_library` packages.
+- [Python API](api/nexuml/core/types.md) — generated module reference for the public `nexuml` and `nexuml_library` packages; use the navigation to select a module.
 
 If you are trying to learn the framework, use [Tutorials](../tutorials.md) or [Concepts](../explanation/index.md) instead.

@@ -87,6 +87,10 @@ _RUNTIME_EXTERN_PATTERNS = [
     "dvclive.**",
     "typer.**",
     "rich.**",
+    "ray.**",
+    "pyarrow.**",
+    "kubernetes.**",
+    "psutil.**",
 ]
 
 # Top-level names covered by the extern policy.

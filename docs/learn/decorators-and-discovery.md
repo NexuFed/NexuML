@@ -94,12 +94,8 @@ nexuml registry list scenarios
 
 The component commands show the stable name, version, concrete type, and Pydantic fields. Use `--verbose` to inspect discovery failures.
 
-For distribution:
-
-```toml
-[project.entry-points."nexuml.libraries"]
-my-library = "my_library"
-```
+For distribution or uninstalled source, follow [Register a library](../how-to/register-library.md)
+or [Manage local roots](../how-to/library-cli.md).
 
 ## See Also
 

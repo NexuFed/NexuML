@@ -15,7 +15,8 @@ env:
 
 jobs:
   validate:
-    runs-on: ika-runner
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.event.release.tag_name, 'v')
+    runs-on: ubuntu-latest
     outputs:
       ci-run-id: ${{ steps.ci.outputs.run-id }}
       version: ${{ steps.version.outputs.version }}
@@ -153,7 +154,7 @@ jobs:
     needs:
       - validate
       - publish-testpypi-library
-    runs-on: ika-runner
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
 
@@ -244,7 +245,7 @@ jobs:
     needs:
       - validate
       - publish-pypi-library
-    runs-on: ika-runner
+    runs-on: ubuntu-latest
     permissions:
       actions: read
       contents: write
