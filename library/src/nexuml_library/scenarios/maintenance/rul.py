@@ -391,6 +391,7 @@ def maintenance_rul_quantile_tcn() -> ScenarioSpec:
     """
     return maintenance_rul_benchmark(architecture="tcn", objective="quantile")
 
+
 # A single ordinary ScenarioSpec can train several independent model heads
 # on the same prepared data, but NexuML checkpoints and early stopping act
 # on the shared run. This is not six independently tuned training sessions.
@@ -443,10 +444,6 @@ def maintenance_rul_all(
 
     Returns:
         Composite ScenarioSpec for native nexuml resolve and train.
-
-    Raises:
-        ValueError: If the source artifact or requested configuration is invalid.
-        FileNotFoundError: If an explicitly selected prepared artifact does not exist.
     """
     baseline = maintenance_rul_benchmark(
         prepared_file=prepared_file,
@@ -648,6 +645,9 @@ def maintenance_rul_goel2026_lstm_protocol() -> ScenarioSpec:
 
     Returns:
         Native NexuML FD001 scenario with paper-aligned LSTM and optimizer.
+
+    Raises:
+        ValueError: If the resolved data source cannot support the Goel engine audit.
     """
     base = maintenance_rul_benchmark(
         architecture="lstm",
@@ -751,6 +751,9 @@ def maintenance_rul_goel2026_cnn_protocol() -> ScenarioSpec:
 
     Returns:
         Native NexuML scenario with paper-aligned CNN model and data source.
+
+    Raises:
+        ValueError: If the resolved dataset is not an official C-MAPSS source.
     """
     baseline = maintenance_rul_goel2026_lstm_protocol()
     run_name = baseline.name.replace("-lstm-", "-cnn-")
