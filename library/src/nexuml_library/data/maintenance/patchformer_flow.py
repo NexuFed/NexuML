@@ -195,6 +195,7 @@ class AutoPatchFormerFlowEndpoints(DataSourceDefinition):
                     faulty[i] for i in
                     torch.randperm(len(faulty), generator=generator)[:count].tolist()
                 ]
+
                 def encode(indices: list[int]) -> Tensor:
                     """Encode one fixed endpoint collection without gradient.
 
