@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import csv
 import json
 from pathlib import Path
 from typing import Literal, cast
@@ -11,6 +12,7 @@ import pytest
 import torch
 from torch import Tensor
 
+from nexuml.core.base_layer import PipelineLayer
 from nexuml.core.compiler import compile as compile_pipeline
 from nexuml.core.config import ResolvedConfig
 from nexuml_library.data.maintenance.rul import (
@@ -19,6 +21,10 @@ from nexuml_library.data.maintenance.rul import (
 )
 from nexuml_library.data.maintenance.rul_flow_calibration import (
     AutoPatchFormerFlowRULFeatures,
+)
+from nexuml_library.evaluation.maintenance.rul_flow_permutation import permutation_impact
+from nexuml_library.evaluation.maintenance.rul_flow_state_summary import (
+    paired_flow_state_summary,
 )
 from nexuml_library.layers.model.rul_flow_state import PatchFormerFlowStateRULHead
 from nexuml_library.scenarios.maintenance.rul_flow_state import (
@@ -222,3 +228,105 @@ def test_no_patchformer_rul_predictor_is_called_during_feature_preparation(
     diagnostic = json.loads((tmp_path / f"{mode}.json").read_text())
     assert diagnostic["uses_patchformer_regression_head"] is False
     assert diagnostic["test_labels_used_in_feature_fitting"] is False
+
+
+def test_permutations_do_not_change_supervised_patchformer_inputs() -> None:
+    """Only the two flow coordinates change under the post-hoc shuffle."""
+    from nexuml.core.components import LayerBuildContext
+    from nexuml_library.layers.model.rul_flow_calibration import (
+        PatchFormerFlowRULHead,
+    )
+
+    module = PatchFormerFlowRULHead(mode="hybrid", initialization_seed=42).build(
+        LayerBuildContext(
+            input_sizes={"flow_rul_features": (3,)},
+            keys_in=["flow_rul_features"],
+            keys_out=["predicted_rul"],
+        )
+    )
+    assert isinstance(module, PipelineLayer)
+    features = torch.stack(
+        (
+            torch.linspace(0.0, 1.0, 100),
+            torch.linspace(1.0, 0.0, 100),
+            torch.linspace(20.0, 120.0, 100),
+        ),
+        dim=-1,
+    )
+    original = features.clone()
+    targets = {
+        "capped": torch.linspace(20.0, 120.0, 100).unsqueeze(1),
+        "raw": torch.linspace(20.0, 120.0, 100).unsqueeze(1),
+    }
+    report = permutation_impact(module, features, targets, repeats=3, seed=42)
+    assert report["repeats"] == 3
+    assert set(report["results"]) == {"capped", "raw"}
+    assert torch.equal(features, original)
+    assert report["results"]["capped"]["shuffled_mean"]["rmse"] >= 0
+
+
+def _fake_engine_audit(
+    directory: Path, run: str, *, systematic_error: float
+) -> None:
+    """Generate matched official-engine predictions for uncertainty tests."""
+    with (directory / f"{run}.csv").open(
+        "w", newline="", encoding="utf-8"
+    ) as handle:
+        writer = csv.writer(handle)
+        writer.writerow(
+            ["asset_id", "true_rul_capped", "true_rul_raw", "predicted_rul"]
+        )
+        for engine in range(1, 101):
+            truth = float(40 + engine % 30)
+            writer.writerow(
+                [f"test:FD003:{engine}", truth, truth, truth + systematic_error]
+            )
+
+
+def test_per_engine_flow_state_uncertainty_rejects_mismatched_backbone(
+    tmp_path: Path,
+) -> None:
+    """Use paired test engines and verify the frozen flow/encoder provenance."""
+    runs = {
+        "baseline": "rul-FD003-controlled-patchformer-seed42",
+        "encoder_only": "rul-FD003-patchformer-encoder-only-seed42",
+        "flow_state": "rul-FD003-patchformer-flow-state-seed42",
+    }
+    for arm, error in (("baseline", 6.0), ("encoder_only", 5.0), ("flow_state", 4.0)):
+        _fake_engine_audit(tmp_path, runs[arm], systematic_error=error)
+        if arm != "baseline":
+            (tmp_path / f"{runs[arm]}.geometry.json").write_text(
+                json.dumps(
+                    {
+                        "subset": "FD003",
+                        "seed": 42,
+                        "test_labels_used_in_feature_fitting": False,
+                        "uses_patchformer_regression_head": False,
+                        "patchformer_upstream_run": runs["baseline"],
+                        "patchformer_checkpoint_sha256": "fixed-patchformer",
+                        "flow_checkpoint_sha256": (
+                            "fixed-flow" if arm == "flow_state" else None
+                        ),
+                    }
+                )
+            )
+    result = paired_flow_state_summary(
+        tmp_path, "FD003", 42, bootstrap_repeats=50
+    )
+    assert result["official_test_engine_count"] == 100
+    assert len(result["results"]["capped"][
+        "per_engine_delta_squared_error_vs_encoder"
+    ]) == 100
+    comparison = result["results"]["capped"][
+        "flow_state_minus_controls"
+    ]["encoder_only"]["rmse"]
+    assert comparison["observed_delta"] == pytest.approx(-1.0)
+    assert comparison["paired_engine_bootstrap_95"] == pytest.approx([-1.0, -1.0])
+    path = tmp_path / f"{runs['flow_state']}.geometry.json"
+    bad = json.loads(path.read_text())
+    bad["patchformer_checkpoint_sha256"] = "wrong"
+    path.write_text(json.dumps(bad))
+    with pytest.raises(ValueError, match="identical pretrained encoder"):
+        paired_flow_state_summary(
+            tmp_path, "FD003", 42, bootstrap_repeats=10
+        )
