@@ -7,7 +7,6 @@ feature transforms, reference selection or checkpoint selection.
 
 from __future__ import annotations
 
-import hashlib
 import json
 from collections.abc import Sequence
 from pathlib import Path
@@ -161,6 +160,22 @@ class AutoPatchFormerFlowRULFeatures(DataSourceDefinition):
         ]
         # Geometry diagnostics are descriptive and use no official test targets.
         labels = cast(Tensor, source_payload["targets"])
+        val_asset_indices: dict[str, list[int]] = {}
+        for index in val_indices:
+            asset = str(rows[index]["asset_id"])
+            val_asset_indices.setdefault(asset, []).append(index)
+        progression = [
+            pearson_flow_progress(
+                prepared_features[indices, 0],
+                torch.tensor(
+                    [int(rows[index]["step"]) for index in indices],
+                    dtype=torch.float32,
+                ),
+            )
+            for indices in val_asset_indices.values()
+            if len(indices) > 1
+        ]
+        valid_progression = [value for value in progression if value is not None]
         geometry = {
             "subset": self.subset,
             "seed": self.seed,
@@ -175,6 +190,16 @@ class AutoPatchFormerFlowRULFeatures(DataSourceDefinition):
                 prepared_features[training_indices, 0],
                 labels[training_indices],
             ),
+            "val/engine_progression_pearson_mean": (
+                sum(valid_progression) / len(valid_progression)
+                if valid_progression else None
+            ),
+            "val/engine_progression_positive_fraction": (
+                sum(value > 0 for value in valid_progression)
+                / len(valid_progression)
+                if valid_progression else None
+            ),
+            "val/engine_progression_count": len(valid_progression),
             "test_labels_used_in_feature_fitting": False,
         }
         destination = Path(self.diagnostics_file).expanduser().resolve()
