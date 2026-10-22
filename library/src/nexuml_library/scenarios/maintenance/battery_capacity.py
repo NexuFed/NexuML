@@ -62,6 +62,7 @@ def _battery_capacity_scenario(
         train_cells=["B0006", "B0007", "B0018"],
         test_cell="B0005",
         end_of_life_ah=1.4,
+        normalizer_file=f".experiments/rul/prepared/{run_name}.normalizer.json",
     )
     checkpoint_root = (
         (os.environ.get("NEXUML_RUL_CHECKPOINT_ROOT") or "").strip()
