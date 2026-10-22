@@ -36,7 +36,11 @@ class Goel2026PlateauLR(Callback):
             self._pending_state = None
 
     def on_validation_end(self, trainer: L.Trainer, pl_module: L.LightningModule) -> None:
-        """Update scheduler after complete validation metrics are available."""
+        """Update scheduler after complete validation metrics are available.
+
+        Raises:
+            RuntimeError: If the required validation loss is absent.
+        """
         if trainer.sanity_checking or self._scheduler is None:
             return
         metric = trainer.callback_metrics.get("val/loss")
