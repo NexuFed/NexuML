@@ -9,6 +9,7 @@ NexuML has one model/training lifecycle and different places where that lifecycl
 | RayJob | KubeRay RayJob template | RayCluster execution inside the remote driver |
 | Kubernetes Job | one template-owned training pod | the same `NexuSession.run()` |
 | Kubernetes PyTorchJob | Training Operator replicas | the same lifecycle with native distributed launch |
+| Ray Jobs SDK (`ray-jobs-sdk`) | one remotely scheduled normal CLI process | asynchronous submission; returns a job ID |
 
 Local execution is the `ScenarioSpec` default:
 

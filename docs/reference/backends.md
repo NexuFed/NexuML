@@ -36,7 +36,10 @@ See [Dataset export](../how-to/export-dataset.md).
 
 ## Training / execution
 
-The catalog exposes `lightning` and `ray` in the training category. Conceptually, Lightning remains the canonical session/training lifecycle and Ray changes distributed placement/setup around that lifecycle.
+The catalog exposes `lightning`, `ray` and `ray_job` in the training category.
+Lightning remains the canonical session/training lifecycle. `ray` changes
+distributed placement/setup through Ray Train; `ray_job` asynchronously submits
+the whole normal CLI process through Ray Jobs and returns its submission ID.
 
 See [Execution modes](../how-to/training-backends/index.md).
 

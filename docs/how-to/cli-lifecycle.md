@@ -36,6 +36,10 @@ nexuml train my-scenario
 
 Training can also start from resolved YAML or a trusted scenario file; see [Run scenarios](run-scenarios.md).
 
+With `execution.kind="ray_job"`, this command submits the resolved scenario to
+Ray Jobs and returns its ID before local compilation/training. The remote CLI
+runs the same local lifecycle below. See [Ray Jobs](training-backends/ray.md#ray-jobs-ray_job).
+
 The local `NexuSession` lifecycle is:
 
 ```text

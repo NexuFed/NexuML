@@ -38,6 +38,139 @@ These are scenario-local settings. The ordinary PPO defaults and existing
 state/sensor smoke recipes are unchanged. The tiny four-step sensor example is
 not a replacement for this learning reference.
 
+## Run remotely with Ray Jobs
+
+Submit the whole CLI process to an existing GPU worker. With the native Jobs
+CLI below, leave the scenario's `execution.kind="local"`: simulation and learning
+run in that remote process, not as distributed RL. A custom worker image is optional; `uv run --locked`
+installs the uploaded project's dependencies into a remote venv. It does not
+upload or alter the local `.venv`.
+
+Alternatively, set [RayJobExecutionSpec](training-backends/ray.md#ray-jobs-ray_job)
+in your own scenario file and invoke `nexuml train` locally. That backend uses the
+Jobs Python SDK, sends the resolved scenario and resets its remote execution to
+local automatically; you do not need the outer `ray job submit` command.
+
+To select the backend without editing `cartpole.py`, use the following command
+with the Jobs address and CA exports defined below. The whole `execution` JSON
+block is restored as a validated execution spec before dispatch:
+
+```bash
+nexuml train --scenario-file scripts/isaaclab/cartpole.py \
+  -O 'execution={
+    "kind":"ray_job",
+    "py_executable":"uv run --locked --python 3.12 --extra isaac --extra ray python",
+    "runtime_env":{
+      "working_dir":".",
+      "env_vars":{"UV_CACHE_DIR":"/mnt/data/uv-cache","UV_LINK_MODE":"copy"}
+    },
+    "entrypoint_num_gpus":1,
+    "entrypoint_resources":{"pool_gpu_workers":1}
+  }' \
+  -O "execution.verify=$RAY_CA_BUNDLE" \
+  -O interaction.environment.viewer.port=8081
+```
+
+This reads `RAY_API_SERVER_ADDRESS` through the SDK and returns a submission ID
+without waiting or tailing logs. Running it submits a new training job.
+
+The following example uses the IKA cluster's Jobs ingress, CA bundle, worker-pool
+tags and `/mnt/data` mount. Adapt those infrastructure-owned values for another
+cluster. Workers need uv, Git, compatible GPU drivers/system libraries and enough
+real free disk for the large Isaac installation. Keep Python/Ray compatible with
+the cluster; this lockfile selects Python 3.12 and Ray 2.57.0.
+
+From the repository root, with the local Ray CLI available:
+
+```bash
+export RAY_API_SERVER_ADDRESS=https://ray.ika.rub.de
+export RAY_CA_BUNDLE=/workspaces/ika-k8s-cluster/platform/apps/cert-manager/rub-certificate/acme/cacerts.pem
+
+ray job list --verify "$RAY_CA_BUNDLE"
+ray job submit \
+  --verify "$RAY_CA_BUNDLE" \
+  --working-dir=. \
+  --entrypoint-num-gpus=1 \
+  --entrypoint-resources='{"pool_gpu_workers":1}' \
+  --runtime-env-json='{"env_vars":{"UV_CACHE_DIR":"/mnt/data/uv-cache","UV_LINK_MODE":"copy"}}' \
+  --no-wait \
+  -- uv run --locked --python 3.12 --extra isaac --extra ray \
+     nexuml train --scenario-file scripts/isaaclab/cartpole.py \
+     -O interaction.environment.viewer.port=8081
+```
+
+`RAY_API_SERVER_ADDRESS` is Ray's native Jobs setting. `RAY_JOBS_ADDRESS` is not
+needed. Jobs uses HTTPS port 443 here, not the distinct Ray Client port 10001.
+Keep TLS verification enabled with the actual CA bundle. Source upload must fit
+the ingress body limit; this cluster uses `64m`.
+
+The custom resource chooses `gpu-workers`; use `pool_dgx_workers` only with a
+compatible, available GPU in that pool. A pool tag is placement, not CUDA/driver
+compatibility. The job reserves one GPU, not a CPU/RAM hard limit. The shared uv
+cache avoids repeated downloads; it is not one shared mutable venv or result
+storage. `UV_LINK_MODE=copy` permits a cache and venv on different filesystems.
+
+!!! warning "Persist results separately"
+    As written, TensorBoard logs and `rl-runs/cartpole-<id>/policy` are in the
+    worker's temporary working directory and may disappear on worker cleanup.
+    For durable runs, set `NEXUML_LOGS_ROOT` in the job's `env_vars` for relative
+    logs and choose a unique absolute `exports` output under mounted storage.
+    The logs-root setting does not redirect the CLI's policy export.
+
+### Status, logs and progress
+
+`--no-wait` returns after submission rather than opening a WebSocket log stream.
+Save the printed submission ID; for an already-submitted job, inspect that ID
+instead of submitting again:
+
+```bash
+export JOB_ID=raysubmit_REPLACE_WITH_YOUR_SUBMISSION_ID
+ray job status --verify "$RAY_CA_BUNDLE" "$JOB_ID"
+ray job logs --verify "$RAY_CA_BUNDLE" "$JOB_ID"
+```
+
+These are snapshots; omit `--follow`. `PENDING` can mean worker provisioning,
+resource waiting or runtime-environment setup, so an empty log is not a failure.
+`RUNNING` also includes uv installation and native initialization, not just
+optimizer updates. Use Ray's final status and actual training metrics to assess
+the job.
+
+`WebSocket connection closed unexpectedly with close code 1006` after submission
+does not by itself stop the job. The IKA ingress's 60-second read/send timeouts can
+disconnect an idle log stream while provisioning or installing dependencies.
+The snapshots above avoid that stream. For live streaming, the infrastructure
+owner can raise the Ray ingress's `nginx.ingress.kubernetes.io/proxy-read-timeout`
+and `nginx.ingress.kubernetes.io/proxy-send-timeout`, for example to `"3600"`
+seconds, through GitOps. `--no-wait` does not change those timeouts or report the
+job's eventual success/failure.
+
+The CLI enables Lightning progress, but Ray Jobs captures non-interactive output;
+Rich generally does not redraw a live progress bar there. TensorBoard receives
+`train/rl/frames`, `train/rl/reward` and optimizer metrics after rollout updates.
+One batch here is 8,192 frames across 512 environments, not one simulator step.
+
+### Private viewer access
+
+The override selects **8081** because KubeRay uses **8080** for Ray metrics. An
+occupied viewer port fails startup; it does not silently select another port or
+fall back to headless training.
+
+Find the worker hosting **your job**, not the head/dashboard service. List pool
+pods and match the job's Ray driver node to its worker when several are present:
+
+```bash
+kubectl -n ray-cluster get pods -l ray.io/group=gpu-workers -o wide
+export WORKER_POD=REPLACE_WITH_YOUR_JOB_WORKER_POD
+kubectl -n ray-cluster port-forward "pod/$WORKER_POD" \
+  8081:8081 --address=127.0.0.1
+```
+
+Open **http://127.0.0.1:8081** after native viewer startup. Keep the forward running;
+the server remains loopback-only inside the worker. If kubectl runs on a remote
+development host, privately forward that host's port to your browser machine too.
+No public ingress or `0.0.0.0` bind is needed. The viewer closes when the job ends;
+a healthy Ray worker alone does not mean a viewer or training loop is running.
+
 ## Evaluate the exported policy
 
 In a fresh process, replace the placeholder with the path printed by training:

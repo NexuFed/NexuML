@@ -62,11 +62,86 @@ TrainingSpec(strategy=strategy(RayFSDPStrategy, state_dict_type="full"))
 
 The class and its constructor parameters remain navigable and statically checkable. Required third-party strategy packages still have to exist in the worker environment.
 
-## Ray Jobs
+## Ray Jobs: `ray_job`
 
 NexuML's `RayJobExecution` means the **KubeRay RayJob resource**, not Ray Jobs API.
 Its infrastructure-owned template chooses a new job-scoped or an existing Ray cluster.
 For generic Ray Jobs API submissions, use Ray's native CLI:
+
+Select `RayJobExecutionSpec` to submit the **whole normal CLI process** remotely
+through Ray's `JobSubmissionClient`. Unlike `RayExecutionSpec`, this is an
+asynchronous submission backend, not a Ray Train worker group. It supports the
+current single-process RL/Isaac lifecycle without enabling distributed RL.
+
+Attach this execution spec to the scenario returned by your trusted scenario file:
+
+```python
+from nexuml.core.types import RayJobExecutionSpec
+
+spec.execution = RayJobExecutionSpec(
+    address="https://ray.example.org",
+    verify="/path/to/ca-bundle.pem",
+    py_executable="uv run --locked --python 3.12 --extra isaac --extra ray python",
+    runtime_env={
+        "working_dir": ".",
+        "env_vars": {
+            "UV_CACHE_DIR": "/mnt/data/uv-cache",
+            "UV_LINK_MODE": "copy",
+        },
+    },
+    entrypoint_num_gpus=1,
+    entrypoint_resources={"pool_gpu_workers": 1},
+)
+```
+
+Then use the normal CLI from the project root:
+
+```bash
+nexuml train --scenario-file cartpole_job.py \
+  -O interaction.environment.viewer.port=8081
+```
+
+The command returns a **submission ID**, not a training result. It does not compile
+or start a learner/simulator locally, wait for training, tail logs or retry a
+failed submission. Python callers can use `nexuml.execution.submit_ray_job(spec)`
+for the same submission ID. Use Ray's native status/log/stop APIs afterwards.
+`nexuml backend list training` includes `ray_job`.
+
+The backend serializes the fully resolved scenario after CLI overrides, resets
+its remote execution to `LocalExecutionSpec`, and invokes the normal CLI with a
+temporary remote YAML config. It does not rerun the scenario factory, create
+staging files in the local project, or recursively submit another job. Existing
+training/evaluation/export semantics stay with the remote local CLI. Optional
+`--artifact-dir` snapshots remain local and record the submission ID. The
+`--trainer-checkpoint` flag is rejected rather than assuming a submitter-local
+checkpoint exists remotely; selective `scenario.checkpoint.source` still needs
+to be accessible to the remote process.
+
+`runtime_env` is passed to the SDK, including working-directory packaging and its
+native exclusions. The remote Python command defaults to `python` (already
+installed dependencies); choose the explicit uv command above when installation
+from the uploaded project's lockfile is required. Importable components/factories,
+their dependencies, data and checkpoint paths must be available remotely. Relative
+paths retain their meaning under Ray's remote working directory; no path rewriting
+or persistent output storage is inferred.
+
+`address=None` uses Ray's native environment-based endpoint selection. Even an
+explicit address is overridden by `RAY_API_SERVER_ADDRESS`/`RAY_ADDRESS` according
+to the SDK's rules; do not leave an ingress setting active when switching to a
+forwarded localhost endpoint. TLS verification defaults to `True`; supply the CA
+bundle for a private HTTPS endpoint. Connection settings and runtime-env values
+are not embedded in the remote scenario, but that scenario itself is visible in
+the job entrypoint: do not put secrets in model/data configuration.
+
+`entrypoint_num_cpus`, `entrypoint_num_gpus`, `entrypoint_memory` and
+`entrypoint_resources` describe the **entrypoint's logical resource reservations**,
+not CPU/RAM utilization limits or resources for a separate Ray Train worker group.
+The GPU and pool tag are explicit cluster-specific choices. A custom image is not
+required; uv still cannot supply missing host drivers or system libraries.
+
+### Native CLI / SDK alternative
+
+Ray's own CLI and Python SDK remain supported alternatives to this backend:
 
 ```bash
 ray job submit --working-dir . -- \
@@ -74,6 +149,11 @@ ray job submit --working-dir . -- \
 ```
 
 Use Ray's own status/log/stop tooling for the job lifecycle.
+
+For a complete single-GPU robotics example with locked uv dependencies, TLS,
+worker-pool selection, detached submission and private viewer forwarding, see
+[Isaac Cartpole via Ray Jobs](../isaac-cartpole.md#run-remotely-with-ray-jobs).
+That launches one remote local-execution CLI job, not distributed RL.
 
 ## Distributed semantic restrictions
 

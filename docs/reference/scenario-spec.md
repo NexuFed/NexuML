@@ -16,7 +16,7 @@
 | `tuning` | Optuna run defaults or `None` |
 | `checkpoint` | selective/pretrained weight-loading policy or `None` |
 | `exports` | requested model artifacts |
-| `execution` | local or Ray placement |
+| `execution` | local execution, Ray Train placement or Ray Jobs submission |
 
 Use the generated [`nexuml.core.types` API](api/nexuml/core/types.md) for exact field types/defaults. The table above explains ownership rather than duplicating a second hand-maintained schema.
 
@@ -120,6 +120,7 @@ Old `execution.kind` configurations are rejected. To convert, use `type: local` 
 `type: ray-cluster`, `version: "1"`, and move placement fields into `params`.
 Remove the old `kind` fields, including `target.kind`. Historical files are not rewritten.
 Training semantics remain in `TrainingSpec`.
+The SDK `ray-jobs-sdk` backend supports single-process RL through the normal remote CLI.
 
 ## Persistence
 

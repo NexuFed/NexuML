@@ -690,6 +690,29 @@ class ReinforcementLearningSpec(SpecModel):
     precision: str | int = "32-true"
 
 
+class RayJobExecutionSpec(SpecModel):
+    """Submit the normal local CLI asynchronously through Ray Jobs."""
+
+    kind: Literal["ray_job"] = "ray_job"
+    address: str | None = None
+    verify: Annotated[str, Field(min_length=1)] | bool = True
+    py_executable: str = Field(default="python", min_length=1)
+    runtime_env: dict[str, Any] = Field(default_factory=lambda: {"working_dir": "."})
+    entrypoint_num_cpus: float = Field(default=0, ge=0, allow_inf_nan=False)
+    entrypoint_num_gpus: float = Field(default=0, ge=0, allow_inf_nan=False)
+    entrypoint_memory: int | None = Field(default=None, ge=0)
+    entrypoint_resources: dict[str, Annotated[float, Field(gt=0, allow_inf_nan=False)]] = Field(
+        default_factory=dict
+    )
+
+    @field_validator("entrypoint_resources")
+    @classmethod
+    def validate_resource_names(cls, value: dict[str, float]) -> dict[str, float]:
+        if any(not name.strip() for name in value):
+            raise ValueError("Ray Job resource names must not be empty")
+        return value
+
+
 class TargetSpec(SpecModel):
     """Specification for a synthetic target."""
 
