@@ -186,6 +186,18 @@ artifact. It is deserialized in a non-weights-only mode because
 Lightning callback/optimizer metadata may include non-tensor values.
 Never load untrusted checkpoints.
 
+### Full-sequence Transformer, Conformer and CfC alternatives
+
+The original latent-flow experiment mean-pooled the DPAN embedding
+to 128 values. A new registered experiment family preserves the complete
+`[30,128]` DPAN sequence and trains Transformer, Conformer, or CfC
+sequence-aware vector fields with the same native Euler integrator and
+validation-SWD protocol.
+
+See [full-sequence PatchFormer Flow Matching](rul-patchformer-sequence-flow.md)
+for all 18 registered FD001/FD003 experiments and CLI commands. The
+previous 128-dimensional experiment is retained unchanged as a baseline.
+
 ### Flow-time RUL follow-up
 
 Native RUL calibration is now available as a separate experimental stage:

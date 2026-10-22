@@ -39,8 +39,12 @@ def score_distributional_transport(
     Raises:
         ValueError: If feature sets or transport predictions are invalid.
     """
-    if healthy.ndim != 2 or healthy.shape != faulty.shape or healthy.shape[0] == 0:
-        raise ValueError("Validation requires nonempty equal-shaped endpoint distributions")
+    if (
+        healthy.ndim not in (2, 3)
+        or healthy.shape != faulty.shape
+        or healthy.shape[0] == 0
+    ):
+        raise ValueError("Validation requires matching vector or sequence endpoints")
     if batch_size <= 0 or projections <= 0:
         raise ValueError("Validation batch size and projection count must be positive")
 
@@ -52,9 +56,14 @@ def score_distributional_transport(
         transported_parts.append(transported)
 
     transported_all = torch.cat(transported_parts)
-    initial_swd = sliced_wasserstein(healthy, faulty, projections=projections, seed=seed)
+    original_vectors = healthy.flatten(start_dim=1)
+    target_vectors = faulty.flatten(start_dim=1)
+    transported_vectors = transported_all.flatten(start_dim=1)
+    initial_swd = sliced_wasserstein(
+        original_vectors, target_vectors, projections=projections, seed=seed
+    )
     final_swd = sliced_wasserstein(
-        transported_all, faulty, projections=projections, seed=seed
+        transported_vectors, target_vectors, projections=projections, seed=seed
     )
     if not initial_swd > 0:
         raise ValueError("Cannot compute relative SWD improvement with zero endpoint distance")
