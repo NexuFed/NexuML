@@ -105,9 +105,10 @@ The newly registered dataset source
 
 1. Reuses the same C-MAPSS prepared data for the subset/seed;
    downloads data if missing.
-2. Validates a trusted local best-validation PatchFormer checkpoint
-   with the matching subset and training seed (and checks every
-   backbone tensor shape).
+2. Finds the best-validation checkpoint in native NexuML audit manifests
+   for the matching subset and seed; requires no environment variable
+   or manually selected checkpoint file. It validates every
+   backbone tensor shape.
 3. Samples training and validation endpoints separately:
    **healthy RUL ≥ 100 cycles** and **degraded RUL ≤ 30 cycles**.
    Pairing is deterministic and independent within each split.
@@ -130,9 +131,33 @@ the earlier MIMII/FISHER feature-ablation measurement, using a
 different frozen frontend and endpoint definition. Flow time is a
 transport parameter, **not physical RUL**.
 
-### Run FD001 seed 42
+### Run FD001 seed 42 — no environment variables or manual checkpoint selection
 
-Train the controlled PatchFormer first:
+The flow source resolves its upstream checkpoint automatically from
+NexuML's own best-checkpoint audit manifests at training time:
+
+1. Prefer `.experiments/rul/audits/rul-FD001-controlled-patchformer-seed42.checkpoint.json`.
+2. If that model has not been trained, reuse the original already-trained
+   FD001 seed-42 PatchFormer from
+   `.experiments/rul/audits/rul-cmapss-FD001-patchformer-direct-rul-adaptation-seed42.checkpoint.json`.
+
+Both model variants have compatible FD001 sensor preprocessing and
+128-dimensional DPAN embeddings. The selected checkpoint must exist,
+match the subset/seed run directory and contain all required backbone
+weights. No checkpoint is needed for `nexuml resolve`; the data
+source discovers and validates it during the ordinary `nexuml train`
+preparation.
+
+For an existing PatchFormer run, use only:
+
+```bash
+nexuml resolve maintenance-rul-patchformer-flow-fd001-s42 \
+  --output .experiments/rul/controlled/patch-flow-fd001-s42.yaml &&
+nexuml train --config .experiments/rul/controlled/patch-flow-fd001-s42.yaml
+```
+
+If neither best-checkpoint manifest exists, first train the matching
+PatchFormer via NexuML (once), then rerun the flow commands:
 
 ```bash
 nexuml resolve maintenance-rul-controlled-fd001-patchformer-s42 \
@@ -140,25 +165,9 @@ nexuml resolve maintenance-rul-controlled-fd001-patchformer-s42 \
 nexuml train --config .experiments/rul/controlled/patch-fd001-s42.yaml
 ```
 
-Use its logged best-validation checkpoint path, available in
-`.experiments/rul/audits/rul-FD001-controlled-patchformer-seed42.checkpoint.json`:
-
-```bash
-export NEXUML_PATCHFORMER_CHECKPOINT="$(
-  python -c 'import json; print(json.load(open(
-  ".experiments/rul/audits/rul-FD001-controlled-patchformer-seed42.checkpoint.json"
-  ))["best_model_path"])'
-)"
-
-nexuml resolve maintenance-rul-patchformer-flow-fd001-s42 \
-  --output .experiments/rul/controlled/patch-flow-fd001-s42.yaml &&
-nexuml train --config .experiments/rul/controlled/patch-flow-fd001-s42.yaml
-```
-
-The existing `rul-cmapss-FD001-patchformer-direct-rul-adaptation-seed42`
-checkpoint may also be used for FD001 seed 42. For other subset/seed
-combinations, pass the matching **controlled PatchFormer** checkpoint
-before resolving and training the scenario:
+For other subsets and seeds, the corresponding
+`maintenance-rul-controlled-<subset>-patchformer-s<seed>` run is
+required. No shell-exported checkpoint path is necessary:
 
 ```text
 maintenance-rul-patchformer-flow-fd001-s43
@@ -167,6 +176,9 @@ maintenance-rul-patchformer-flow-fd003-s42
 maintenance-rul-patchformer-flow-fd003-s43
 maintenance-rul-patchformer-flow-fd003-s44
 ```
+
+The data artifact records the automatically selected upstream run,
+checkpoint path and SHA-256 digest for auditability.
 
 **Trust boundary:** A selected checkpoint is a trusted local Lightning
 artifact. It is deserialized in a non-weights-only mode because
