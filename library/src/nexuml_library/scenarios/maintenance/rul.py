@@ -31,6 +31,7 @@ from nexuml_library.data.maintenance.rul import (
     PreparedRULWindows,
     read_rul_artifact,
 )
+from nexuml_library.evaluation.maintenance.rul_engine_audit import RULPerEngineAudit
 from nexuml_library.evaluation.maintenance.rul_evaluator import RULBenchmarkEvaluator
 from nexuml_library.evaluation.maintenance.rul_paper_callbacks import Goel2026PlateauLR
 from nexuml_library.evaluation.maintenance.rul_seed import RULSeedOnFitStart
@@ -692,10 +693,26 @@ def maintenance_rul_goel2026_lstm_protocol() -> ScenarioSpec:
         feature_key="predicted_rul",
         label_key="rul_raw",
     )
+    source = base.data.datasets[0].source
+    if isinstance(source, AutoCMapSSRULWindows):
+        artifact_path = source.artifact_path
+    elif isinstance(source, PreparedRULWindows):
+        artifact_path = source.path
+    else:
+        raise ValueError("Goel engine audit requires a prepared RUL data source")
+    audit = EvalAlgorithmSpec(
+        name="engine_audit",
+        algorithm=RULPerEngineAudit(
+            artifact_path=artifact_path,
+            output_file=f".experiments/rul/audits/{base.name}.csv",
+        ),
+        feature_key="predicted_rul",
+        label_key="rul",
+    )
     return base.model_copy(
         update={
             "evaluation": base.evaluation.model_copy(
-                update={"algorithms": [paper_evaluator, raw_evaluator]}
+                update={"algorithms": [paper_evaluator, raw_evaluator, audit]}
             ),
             "pipeline": PipelineSpec(
                 stages={
@@ -735,6 +752,18 @@ def maintenance_rul_goel2026_cnn_protocol() -> ScenarioSpec:
         or ".experiments/rul/checkpoints"
     )
     checkpoint_dir = Path(checkpoint_root).expanduser().resolve() / run_name
+    source = baseline.data.datasets[0].source
+    if not isinstance(source, AutoCMapSSRULWindows):
+        raise ValueError("Goel CNN audit requires official C-MAPSS source")
+    cnn_audit = EvalAlgorithmSpec(
+        name="engine_audit",
+        algorithm=RULPerEngineAudit(
+            artifact_path=source.artifact_path,
+            output_file=f".experiments/rul/audits/{run_name}.csv",
+        ),
+        feature_key="predicted_rul",
+        label_key="rul",
+    )
     cnn_layer = LayerSpec(
         component=Goel2026CNNForecaster(dropout=0.3, initialization_seed=42),
         keys_in=["rul_history"],
@@ -743,6 +772,14 @@ def maintenance_rul_goel2026_cnn_protocol() -> ScenarioSpec:
     return baseline.model_copy(
         update={
             "name": run_name,
+            "evaluation": baseline.evaluation.model_copy(
+                update={
+                    "algorithms": [
+                        *baseline.evaluation.algorithms[:2],
+                        cnn_audit,
+                    ]
+                }
+            ),
             "logging": (
                 baseline.logging.model_copy(update={"run_name": run_name})
                 if baseline.logging is not None
