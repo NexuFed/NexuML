@@ -84,5 +84,6 @@ class _PatchFormerFlowRULRuntime(PipelineLayer):
             raise ValueError("Flow calibration expects [batch,3] features")
         if self.mode == "flow_time":
             return 130.0 * torch.sigmoid(self.regressor(x[:, :1]))
-        residual = 30.0 * torch.tanh(self.regressor(x))
+        normalized = torch.cat((x[:, :2], x[:, 2:3] / 130.0), dim=1)
+        residual = 30.0 * torch.tanh(self.regressor(normalized))
         return x[:, 2:3] + residual
