@@ -20,6 +20,15 @@ from nexuml.evaluation.algorithm import EvalAlgorithm
 from nexuml_library.data.maintenance.rul import read_rul_artifact
 
 
+_SENSOR_STAGES = (
+    (0.0, 30.0, "0-30"),
+    (30.0, 60.0, "30-60"),
+    (60.0, 90.0, "60-90"),
+    (90.0, 120.0, "90-120"),
+    (120.0, float("inf"), "120+"),
+)
+
+
 def _score(error: float) -> float:
     """Compute one engine's published asymmetric NASA penalty.
 
@@ -41,6 +50,7 @@ class RULPerEngineAudit(EvalAlgorithmDefinition):
     artifact_path: str = Field(min_length=1)
     output_file: str = Field(min_length=1)
     target_scale: float = Field(default=1.0, gt=0)
+    sensor_stage_alignment: bool = False
 
     def build(self, context: EvalBuildContext) -> EvalAlgorithm:
         """Create the original-test-engine evaluation audit collector.
@@ -53,6 +63,7 @@ class RULPerEngineAudit(EvalAlgorithmDefinition):
             output_file=self.output_file,
             prediction_key=context.feature_key or "predicted_rul",
             target_scale=self.target_scale,
+            sensor_stage_alignment=self.sensor_stage_alignment,
         )
 
 
@@ -66,11 +77,15 @@ class _RULPerEngineAuditRuntime(EvalAlgorithm):
         output_file: str,
         prediction_key: str,
         target_scale: float = 1.0,
+        sensor_stage_alignment: bool = False,
     ) -> None:
         self.artifact_path = artifact_path
         self.output_file = Path(output_file).expanduser().resolve()
         self.prediction_key = prediction_key
         self.target_scale = target_scale
+        self.sensor_stage_alignment = sensor_stage_alignment
+        self._train_stage_levels: dict[str, Tensor] = {}
+        self._train_stage_slopes: dict[str, Tensor] = {}
         self._test_rows: list[dict[str, Any]] | None = None
         self._payload: dict[str, Any] | None = None
         self._records: dict[int, dict[str, Any]] = {}
@@ -88,6 +103,24 @@ class _RULPerEngineAuditRuntime(EvalAlgorithm):
         ]
         if not rows or len({row["asset_id"] for row in rows}) != len(rows):
             raise ValueError("RUL per-engine audit requires one final window per test asset")
+        if self.sensor_stage_alignment:
+            samples = payload["features"]
+            rul = payload["targets"][:, 0] * float(payload["settings"]["target_scale"])
+            train_mask = torch.tensor(
+                [row["split"] == "train" for row in payload["rows"]],
+                dtype=torch.bool,
+            )
+            final_levels = samples[:, -1, :]
+            slopes = (samples[:, -1, :] - samples[:, 0, :]) / max(
+                samples.shape[1] - 1, 1
+            )
+            for low, high, label in _SENSOR_STAGES:
+                stage = train_mask & (rul >= low) & (rul < high)
+                if bool(stage.any()):
+                    self._train_stage_levels[label] = final_levels[stage].mean(dim=0)
+                    self._train_stage_slopes[label] = slopes[stage].mean(dim=0)
+            if not self._train_stage_levels:
+                raise ValueError("RUL sensor-stage audit requires training windows")
         self._payload = payload
         self._test_rows = rows
 
@@ -137,6 +170,33 @@ class _RULPerEngineAuditRuntime(EvalAlgorithm):
             capped_cycles = observed_capped * self.target_scale
             error_capped = estimate - capped_cycles
             error_raw = estimate - observed_raw
+            sensor_alignment: dict[str, str | float] = {}
+            if self.sensor_stage_alignment:
+                features = self._payload["features"][artifact_index]
+                endpoint = features[-1]
+                slope = (features[-1] - features[0]) / max(len(features) - 1, 1)
+                nearest_level = min(
+                    self._train_stage_levels,
+                    key=lambda stage: float(
+                        (endpoint - self._train_stage_levels[stage]).norm()
+                    ),
+                )
+                nearest_slope = min(
+                    self._train_stage_slopes,
+                    key=lambda stage: float(
+                        (slope - self._train_stage_slopes[stage]).norm()
+                    ),
+                )
+                sensor_alignment = {
+                    "nearest_train_stage_endpoint": nearest_level,
+                    "nearest_train_stage_slope": nearest_slope,
+                    "distance_train_stage_endpoint": float(
+                        (endpoint - self._train_stage_levels[nearest_level]).norm()
+                    ),
+                    "distance_train_stage_slope": float(
+                        (slope - self._train_stage_slopes[nearest_slope]).norm()
+                    ),
+                }
             self._records[local_index] = {
                 "asset_id": row["asset_id"],
                 "step": row["step"],
@@ -148,6 +208,7 @@ class _RULPerEngineAuditRuntime(EvalAlgorithm):
                 "nasa_capped": _score(error_capped),
                 "nasa_raw": _score(error_raw),
                 "target_was_capped": int(observed_raw > capped_cycles),
+                **sensor_alignment,
             }
 
     def eval_end(self) -> None:
@@ -174,6 +235,13 @@ class _RULPerEngineAuditRuntime(EvalAlgorithm):
             "nasa_raw",
             "target_was_capped",
         )
+        if self.sensor_stage_alignment:
+            fields += (
+                "nearest_train_stage_endpoint",
+                "nearest_train_stage_slope",
+                "distance_train_stage_endpoint",
+                "distance_train_stage_slope",
+            )
         destination = self.output_file
         destination.parent.mkdir(parents=True, exist_ok=True)
         partial = destination.with_suffix(".csv.part")
@@ -217,6 +285,10 @@ class _RULPerEngineAuditRuntime(EvalAlgorithm):
             ),
             "best_checkpoint_selection": "minimum validation loss",
             "csv": str(destination),
+            "sensor_stage_alignment": (
+                "training_engine_prototypes_only"
+                if self.sensor_stage_alignment else "not_requested"
+            ),
         }
         manifest_path = destination.with_suffix(".json")
         manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
