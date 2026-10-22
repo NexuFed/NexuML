@@ -16,7 +16,12 @@ from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint
 
 from nexuml import callback, optimizer
 from nexuml.core.discovery import scenario
-from nexuml.core.types import (\n    EvalAlgorithmSpec,\n    LayerSpec,\n    PipelineSpec,\n    ScenarioSpec,\n)
+from nexuml.core.types import (
+    EvalAlgorithmSpec,
+    LayerSpec,
+    PipelineSpec,
+    ScenarioSpec,
+)
 from nexuml_library.data.maintenance.rul import AutoCMapSSRULWindows
 from nexuml_library.evaluation.maintenance.rul_engine_audit import RULPerEngineAudit
 from nexuml_library.evaluation.maintenance.rul_evaluator import RULBenchmarkEvaluator
