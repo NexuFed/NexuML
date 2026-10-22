@@ -1,0 +1,160 @@
+---
+title: Create and run scenarios
+description: Define a recipe, resolve explicit YAML, build a pipeline, and run the Lightning lifecycle.
+---
+
+**Goal:** compose and run one experiment without a custom training script.
+**Prerequisites:** [installed NexuML](/start/install/), required component libraries in that
+same environment, and a writable project directory. For a ready-to-run example, begin with
+the [synthetic CPU run](/start/first-run/).
+
+## Choose a source
+
+| Command | Registered recipe | Resolved YAML | Trusted Python file |
+| --- | --- | --- | --- |
+| `resolve` | yes | — | — |
+| `build` | — | yes | — |
+| `train` | yes | yes | yes |
+| `export-dataset` | yes | yes | — |
+| `tune` | yes | — | yes |
+| `export` | yes | — | — |
+| `smoke` | yes | — | — |
+
+Supply only one source. Recipe lookup is useful for reusable experiments; YAML preserves
+an inspectable configuration instead of re-evaluating Python; trusted files are for local
+exploration. Full-state `train --trainer-checkpoint PATH` can also recover the scenario
+from a compatible checkpoint; see [checkpoints](/how-to/checkpoints/).
+
+## Define a recipe
+
+Save this as `my_library/src/my_library/scenarios/autoencoder.py`, with `__init__.py`
+files in the package directories. The [library guide](/how-to/custom-library/) explains
+installed entry points and local source roots.
+
+```python
+from nexuml.core.discovery import scenario
+from nexuml.core.types import (
+    DataSpec, LayerSpec, LoaderSpec, PipelineSpec, ScenarioSpec, TrainingSpec,
+)
+from nexuml.data.loaders.definitions import TorchLoader
+from nexuml_library.data.synthetic import SyntheticDataset
+from nexuml_library.layers.loss.reconstruction_loss import ReconstructionLoss
+from nexuml_library.layers.model.linear_encoder import LinearEncoder
+
+
+@scenario("my-autoencoder")
+def my_autoencoder() -> ScenarioSpec:
+    return ScenarioSpec(
+        name="my-autoencoder",
+        data=DataSpec(
+            source=SyntheticDataset(feature_shape=(64,), num_samples=1000),
+            input_shapes={"features": [64]},
+            loader=LoaderSpec(backend=TorchLoader()),
+        ),
+        pipeline=PipelineSpec(stages={
+            "Encoder": [LayerSpec(
+                component=LinearEncoder(hidden_dims=[32], output_dim=8),
+                keys_in=["features"], keys_out=["latent"],
+            )],
+            "Decoder": [LayerSpec(
+                component=LinearEncoder(hidden_dims=[32], output_dim=64),
+                keys_in=["latent"], keys_out=["reconstructed"],
+            )],
+            "Loss": [LayerSpec(
+                component=ReconstructionLoss(),
+                keys_in=["features", "reconstructed"], keys_out=["reconstruction_loss"],
+            )],
+        }),
+        training=TrainingSpec(
+            max_epochs=5,
+            loss_keys={"reconstruction_loss": 1.0},
+        ),
+    )
+```
+
+Component definitions own semantic parameters; `LayerSpec` owns graph routing.
+The explicit `TorchLoader()` is also the core default. DALI must be selected explicitly.
+`ScenarioSpec` can additionally compose evaluation, logging, callbacks, tuning,
+checkpoint policy, exports, and execution; use [reference](/reference/scenario-spec/)
+instead of duplicating its schema here.
+
+Make the source discoverable and verify:
+
+```bash
+nexuml library add my_library
+nexuml registry list scenarios
+nexuml registry list layers
+nexuml backend list
+```
+
+Expect `my-autoencoder` in the recipe list. Adding a source root does not install dependencies.
+
+## Resolve and build
+
+```bash
+nexuml resolve my-autoencoder --output configs/my-autoencoder.yaml
+nexuml build configs/my-autoencoder.yaml
+```
+
+Resolution compiles the Python recipe and writes the explicit YAML path. Persisted definitions
+use stable `type`/`version`/`params` identities. Build restores them, materializes runtimes,
+propagates shapes, and reports stages, loss keys, and input sizes. With
+[diagram output enabled](/explanation/diagrams/), build also reports the Mermaid file;
+there is no automatic diagram when logging is absent.
+
+## Train
+
+```bash
+nexuml train --config configs/my-autoencoder.yaml --max-epochs 1 \
+  -O training.accelerator=cpu -O training.devices=1
+```
+
+Or re-evaluate the registered recipe directly:
+
+```bash
+nexuml train my-autoencoder --max-epochs 20
+nexuml train my-autoencoder -O training.lr=0.0001 -O training.precision=bf16-mixed
+```
+
+Select precision supported by your hardware. Overrides affect that invocation, not the
+recipe or saved YAML. For reusable changes, edit Python and resolve a new configuration.
+
+The session runs **fit → validate → fit post-train pipeline layers → test**. Expect
+`Execution finished: succeeded` and actual test results/metrics. Evaluation is part of this
+lifecycle, not a separate CLI command. See [evaluation](/how-to/evaluate/).
+
+## Trusted local files
+
+```bash
+nexuml train --scenario-file experiment.py --artifact-dir artifacts/exp-001
+```
+
+The file must export `scenario() -> ScenarioSpec`; it does not require `@scenario`.
+[Trusted-file guidance](/how-to/scenario-file/) gives a complete example, provenance paths,
+and tuning metadata.
+
+:::warning[Trusted execution]
+Libraries, scenario files, restored factory targets, and checkpoints can execute Python.
+Only use sources you trust. Validation and separate processes do not sandbox them.
+:::
+
+## Outputs and next tasks
+
+There is no universal output directory tree. Callback settings determine checkpoints;
+`LoggingSpec` controls scalar/diagram outputs; configured exports package the live model;
+`--artifact-dir` captures trusted-file provenance. Read reported paths and
+[root resolution](/reference/environment/). A plain scenario does not implicitly enable
+all of these outputs.
+
+- [Checkpoints](/how-to/checkpoints/): create, resume full trainer state, or reuse weights.
+- [Dataset export](/how-to/export-dataset/): `export-dataset` writes raw/processed data, not a model.
+- [Model export](/how-to/export/): export an actual checkpoint or request a live trained package.
+- [Tuning](/how-to/tune/): `tune` runs registered or trusted-file search, not YAML.
+- `nexuml smoke my-autoencoder --max-epochs 1` exercises registered recipe resolution,
+  build, training, export, reload, and inference. Expect `Smoke test PASSED!`, configuration
+  under `configs/`, and the reported export path under the logs root. It has its own
+  command options; do not assume `train` overrides apply to `smoke`.
+- [Execution modes](/how-to/training-backends/): placement changes through `ScenarioSpec.execution`,
+  while the command and lifecycle remain the same.
+
+For exact supported options/defaults, use the [generated CLI reference](/reference/cli/).

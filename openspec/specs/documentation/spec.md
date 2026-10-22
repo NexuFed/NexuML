@@ -2,38 +2,63 @@
 
 ## Purpose
 
-TBD — requirements for the NexuModular documentation site, including build tooling, API reference generation, CLI reference, docstring conventions, diagram rendering, versioning, and GitHub Pages deployment.
+Requirements for NexuML's branded Astro Starlight documentation, MDX content, static Python and authentic CLI reference extraction, diagrams, validated editorial updates, immutable version archives, and portable GitHub Pages publication.
 
 ## Requirements
 
 ### Requirement: Documentation site build
-The system SHALL provide a Material for MkDocs documentation site that builds with `mkdocs build --strict` using dependencies from the `docs` optional-dependency group.
+The system SHALL provide a reproducible Astro Starlight documentation project with MDX editorial content, locked JavaScript and Python extraction tooling, documented clean-checkout commands, and validation that fails on invalid content or broken critical links. Documentation builds SHALL NOT require GPU setup or optional ML runtime installations.
 
 #### Scenario: Strict build succeeds
-- **WHEN** a contributor runs `uv sync --extra docs` and then `mkdocs build --strict`
-- **THEN** the site builds with no warnings or errors and produces a `site/` directory
+- **WHEN** a contributor follows the frozen dependency setup and runs `npm --prefix docs run check`
+- **THEN** content validation, extraction, lint/type checks, compilation, and rendered-link/asset checks succeed and produce previewable static output without installing either public package's ML runtime dependencies
 
 #### Scenario: Local preview
-- **WHEN** a contributor runs `mkdocs serve`
-- **THEN** the site is served locally with working navigation, search, and theme toggle
+- **WHEN** a contributor runs the documented build and preview commands
+- **THEN** navigation, search, theme controls, and assets work at the documented URL
+- **AND** the contributor guide distinguishes live authoring from built-preview search
+
+#### Scenario: Invalid documentation is rejected
+- **WHEN** MDX syntax/frontmatter or a critical internal link/local asset is invalid
+- **THEN** validation fails and identifies the offending source page or rendered route
 
 ### Requirement: Automatic API reference
-The system SHALL generate API reference pages from source for both the `nexuml` and `nexuml_library` packages using mkdocstrings with the Griffe backend, without hand-maintained stub pages.
+The system SHALL generate navigable public API trees for `nexuml` and `nexuml_library` from source, Google docstrings, signatures, and annotations using the Griffe-to-Starlight integration. New public modules/symbols SHALL appear without handwritten API stubs or navigation edits. Extraction SHALL remain static and independent of heavy runtime imports.
 
 #### Scenario: Both packages documented
 - **WHEN** the site is built
-- **THEN** the Reference section contains generated API pages for public modules under `src/nexuml` and `library/src/nexuml_library`
+- **THEN** Reference contains source-derived public module/class/function/method documentation from only `src/nexuml` and `library/src/nexuml_library`, with annotations and available docstrings
 
 #### Scenario: New module appears automatically
 - **WHEN** a new public module is added to either package and the site is rebuilt
-- **THEN** a corresponding API reference page is generated without manual nav edits
+- **THEN** its API page/navigation and new public symbols appear without manual stub or navigation edits
+
+#### Scenario: Public exports and private implementations are distinguished
+- **WHEN** packages contain explicit exports, public aliases, and private implementations
+- **THEN** reference honors public exports and supported re-exports, excludes private implementations, and displays representative typed fields/defaults
+
+#### Scenario: Source links match the documented revision
+- **WHEN** a reader follows an API source link
+- **THEN** it identifies implementation lines at the built revision, not moving main for a release
+
+#### Scenario: Editorial content embeds an API symbol
+- **WHEN** MDX uses a supported Autodoc embed
+- **THEN** it renders the source-derived object, anchors, and source links without heavy runtime imports
 
 ### Requirement: CLI reference
-The system SHALL document the `nexuml` Typer command-line interface as a reference page generated from the command definitions.
+The system SHALL generate CLI reference from the actual Typer/Click command tree and verify actual root and recursively discovered subcommand help, without duplicate command/option/default definitions or training/optional backend imports during extraction.
 
 #### Scenario: CLI commands listed
 - **WHEN** the site is built
-- **THEN** the CLI reference page lists `nexuml` commands and their options
+- **THEN** public root/nested commands, arguments, options, defaults, and help text reflect the implementation
+
+#### Scenario: CLI implementation changes
+- **WHEN** a public command or option changes and the site rebuilds
+- **THEN** reference updates without handwritten flags-table changes
+
+#### Scenario: Generated reference matches real help
+- **WHEN** lightweight validation invokes root and discovered subcommand help
+- **THEN** command/option contracts agree with real help without substitute definitions or mocked ML modules
 
 ### Requirement: Google-style docstrings
 The system SHALL standardize on Google-style docstrings for public API and enforce the convention with ruff pydocstyle rules.
@@ -43,40 +68,66 @@ The system SHALL standardize on Google-style docstrings for public API and enfor
 - **THEN** pydocstyle (`D`) rules using the Google convention are applied and pass on public API
 
 ### Requirement: Mermaid diagram rendering
-The system SHALL render Mermaid diagrams embedded in documentation pages so that pipeline diagrams produced by `nexuml build` display as graphics.
+The system SHALL render embedded Mermaid architecture and generated pipeline diagrams as readable graphics in supported themes and on mobile, preserving the runtime diagram-export contract.
 
 #### Scenario: Mermaid fenced block renders
 - **WHEN** a docs page contains a mermaid fenced code block and the site is built
-- **THEN** the block renders as a diagram rather than literal code
+- **THEN** the block renders as a readable diagram rather than only literal code
+
+#### Scenario: Generated pipeline diagram is displayed
+- **WHEN** a page includes representative output from the pipeline diagram exporter
+- **THEN** its supported Mermaid syntax renders without changing the exporter contract
 
 ### Requirement: Versioned documentation
-The system SHALL publish versioned documentation using mike, maintaining a `latest` alias for the most recent release.
+The system SHALL publish whole-site `dev` builds from main, immutable stable-tag snapshots, and `latest` for the newest stable release, preserving existing release archives and accessible version selection without historical rebuilds.
 
 #### Scenario: Release publishes a version
-- **WHEN** a `vX.Y.Z` tag is pushed
-- **THEN** CI deploys version `X.Y.Z`, updates the `latest` alias, and sets it as the default
+- **WHEN** a validated stable `vX.Y.Z` tag publishes
+- **THEN** its revision creates a new immutable version directory and latest/default select the newest stable release without rolling back for older tags
 
 #### Scenario: Main publishes dev
 - **WHEN** a commit is pushed to `main`
-- **THEN** CI deploys or updates the `dev` documentation version
+- **THEN** CI updates dev without overwriting releases or the stable latest target
+
+#### Scenario: Existing archives survive migration
+- **WHEN** Starlight first replaces the publication process
+- **THEN** existing release trees remain byte-for-byte unchanged, including rendering technology, and latest retains its existing release until a newer stable tag
+
+#### Scenario: Existing version is published again
+- **WHEN** publication encounters an archived version
+- **THEN** it confirms a proven idempotent retry or rejects a conflicting revision without overwriting that snapshot
+
+#### Scenario: Reader selects another version
+- **WHEN** a reader uses the keyboard-operable selector
+- **THEN** it lists dev and all retained releases and selects the corresponding page or clearly offers the selected version's home as fallback
 
 ### Requirement: GitHub Pages deployment
-The system SHALL deploy the documentation to GitHub Pages from the `gh-pages` branch via a GitHub Actions workflow.
+The system SHALL keep GitHub Pages at `https://nexufed.github.io/NexuML/` through validated Actions publication. The existing `gh-pages` tree SHALL remain the archive source for complete deployments; directories missing from the current build SHALL NOT be discarded.
 
 #### Scenario: Automated deploy
-- **WHEN** the docs workflow runs on `main` or a release tag
-- **THEN** it builds the site and pushes the result to the `gh-pages` branch, updating the live site
+- **WHEN** main or stable-tag publication runs
+- **THEN** it validates the exact source revision, merges only permitted output into the archive, and deploys the complete static tree without changing URL/provider
+
+#### Scenario: Concurrent publication events occur
+- **WHEN** main and release events overlap
+- **THEN** archive updates retain all valid outputs, latest never regresses, and older main output cannot replace newer dev/global changelog content
+
+#### Scenario: Validation or composition fails
+- **WHEN** content, preservation, or composition checks fail
+- **THEN** the candidate is not deployed and live/historical output remains available
 
 ### Requirement: Complete core mental model documentation
-The documentation site SHALL include a core mental model page that explains how a `ScenarioSpec` compiles into a `PipelineSpec` of `LayerSpec` stages, how each layer uses TensorDict `keys_in` and `keys_out`, how Lightning training executes the compiled pipeline, and how trained pipelines are exported as portable packages.
+The documentation SHALL provide one canonical architecture explanation covering scenario composition, persisted configuration, typed materialization, TensorDict data flow, Lightning execution/evaluation, and portable export. It SHALL explain purpose/scope and distinguish implemented behavior from future direction without overlapping concept detours.
 
 #### Scenario: User learns the end-to-end architecture
-- **WHEN** a user opens the core mental model page
-- **THEN** the page explains `ScenarioSpec`, `PipelineSpec`, `LayerSpec`, `keys_in`, `keys_out`, TensorDict data flow, Lightning training, and package export in one coherent flow
+- **WHEN** a user opens the architecture explanation
+- **THEN** it explains `ScenarioSpec`, `PipelineSpec`, `LayerSpec`, `keys_in`, `keys_out`, TensorDict data flow, Lightning training, and package export in one coherent flow
+- **AND** it uses a consistent example and a readable diagram
 
 #### Scenario: Page is grounded in implementation
 - **WHEN** a contributor reviews the page
 - **THEN** it maps the explanation to the relevant implementation modules, including `src/nexuml/core/types.py`, compiler/runtime modules, `src/nexuml/training/lightning.py`, and `src/nexuml/core/export.py`
+- **AND** it distinguishes implemented behavior from future direction rather than presenting planned features as available
 
 ### Requirement: Library element development documentation
 The documentation site SHALL include a highest-priority developer guide for creating NexuML library elements and scenarios using the implemented discovery decorators and library layout.
@@ -185,11 +236,11 @@ The documentation site SHALL include automatic batch-size documentation that des
 - **THEN** it states that the spec default safety is `previous_power_of_two` with `min=1`, while library `DEFAULT_AUTO_BATCH_SIZE` uses `min=8`, `safety="margin"`, and `margin=0.8`
 
 ### Requirement: CLI lifecycle documentation
-The documentation site SHALL include a CLI lifecycle guide covering all implemented top-level CLI commands and their role in normal NexuML workflows.
+The documentation SHALL explain the actual CLI lifecycle in canonical task guides, including supported scenario sources, runnable commands, real outputs, and generated contracts rather than a duplicate learning path.
 
 #### Scenario: User follows normal lifecycle
-- **WHEN** a user opens the CLI lifecycle page
-- **THEN** it explains `resolve` to YAML, `build` compile/validate plus Mermaid diagram export, `train`, `export-dataset`, `export`, `smoke`, and `tune`
+- **WHEN** a user opens the create/run workflow
+- **THEN** it explains resolve, build/validation with optional diagrams, and train, linking canonical export-dataset/export/smoke/tune procedures without duplicating them
 
 #### Scenario: User uses trusted Python scenario files
 - **WHEN** a user reads the agent-authored scenario section
@@ -198,6 +249,7 @@ The documentation site SHALL include a CLI lifecycle guide covering all implemen
 #### Scenario: User manages libraries from CLI
 - **WHEN** a user reads the library CLI section
 - **THEN** it documents `nexuml library add`, `nexuml library delete`, and `nexuml library list`
+- **AND** it distinguishes source-root registration from dependency installation
 
 ### Requirement: Diagrams, roots, logging, checkpoints, and evaluation documentation
 The documentation site SHALL document remaining implemented features that affect training outputs, reproducibility, and evaluation behavior.
@@ -215,16 +267,65 @@ The documentation site SHALL document remaining implemented features that affect
 - **THEN** it documents evaluation algorithms, eval storage names `memory` and `memmap`, `evaluation.test_result_metrics`, Lightning checkpoints, selective checkpoint/package loading, tracking backends `tensorboard`, `dvclive`, and `mlflow`, and related logging fields
 
 ### Requirement: Documentation examples and validation
-Every new how-to or tutorial page introduced by this change SHALL contain a copy-pasteable runnable example or explicitly state why the page is reference-only, and the documentation site SHALL continue to pass strict build validation.
+Each task guide/tutorial SHALL provide a copy-pasteable working example or explicitly identify itself as reference-only. Validation SHALL cover content, rendered links/assets, representative interactions, and first-run commands before publication, without inventing checkpoint paths or a standalone evaluation command.
 
 #### Scenario: Examples are runnable
-- **WHEN** a contributor reviews a new tutorial or how-to page
-- **THEN** the page includes setup assumptions, commands or Python code, expected output, and cleanup notes where generated artifacts are created
+- **WHEN** a contributor reviews a new or consolidated task guide
+- **THEN** the page includes setup assumptions, commands or code, expected output, actual artifact locations or how to discover them, and cleanup where relevant
+- **AND** it does not invent checkpoint paths or a separate evaluation command
 
 #### Scenario: Documentation build remains valid
-- **WHEN** a contributor runs `uv run mkdocs build --strict`
-- **THEN** the documentation builds without warnings or errors
+- **WHEN** a contributor runs `npm --prefix docs run check`
+- **THEN** content, extraction, lint/type, compilation, and critical link/asset checks pass
 
 #### Scenario: OpenSpec validates
-- **WHEN** a contributor runs `openspec validate expand-nexuml-feature-docs --strict`
+- **WHEN** a contributor runs `openspec validate migrate-starlight-docs --strict`
 - **THEN** the change validates successfully
+
+#### Scenario: Browser smoke checks run
+- **WHEN** built-preview validation runs at the production mount
+- **THEN** search, prose/API/CLI, diagrams, tabs, changelog order, version selection, and assets work, with desktop/mobile screenshots and keyboard/accessibility evidence
+
+### Requirement: NexuFed documentation identity
+The site SHALL follow the actual current NexuFed identity across prose/API/CLI/changelog pages through restrained typography, logo, surfaces, and accents while preserving responsive navigation, readable code, accessible contrast, visible focus, and coherent dark/light behavior.
+
+#### Scenario: Reviewer compares the site with the corporate source
+- **WHEN** representative desktop/mobile pages are reviewed
+- **THEN** their visual system matches the corporate source without decorative dashboards, glowing network imagery, or unnecessary promotion
+
+#### Scenario: Reader changes theme or input method
+- **WHEN** readers select light mode, use a keyboard, or open narrow viewports
+- **THEN** text, code, diagrams, controls, and navigation remain legible and operable without losing features
+
+### Requirement: Prefix-safe routes and hosting portability
+Origin and mount configuration SHALL drive links, assets, canonical URLs, redirects, search, and sitemaps. Editorial content SHALL NOT encode the hosting hostname or repository prefix. A future provider/domain change SHALL require configuration/deployment changes rather than editorial rewrites.
+
+#### Scenario: Site builds under the GitHub Pages project prefix
+- **WHEN** output is served under `/NexuML/`
+- **THEN** versioned docs, latest, global changelog, search, templates, media, and sitemaps resolve under that mount
+
+#### Scenario: Future host uses a root path
+- **WHEN** the same sources build with another origin and root mount
+- **THEN** new output works without editorial rewrites and migration instructions cover DNS, CNAME/Pages settings, redirects/canonicals, and frozen-archive compatibility paths
+
+### Requirement: Legacy documentation URL continuity
+The migration SHALL inventory existing authored/generated API URLs, preserving or explicitly mapping important entry points with usable static compatibility redirects where feasible, without rewriting historical versions.
+
+#### Scenario: Reader follows a previously published link
+- **WHEN** an important unversioned/current legacy or consolidated-page URL is opened
+- **THEN** it resolves or redirects to its canonical destination with an accessible fallback, retaining mapped sections where feasible
+
+#### Scenario: Maintainer reviews links outside the site
+- **WHEN** README, package metadata, tutorials, and release links are reviewed
+- **THEN** supported entry links resolve and unavoidable route/fragment changes are recorded in the migration mapping
+
+### Requirement: Lightweight trusted documentation gates
+Exact-revision documentation validation SHALL remain independent of GPU/optional ML setup. Untrusted PR checks SHALL use no institute self-hosted runners or publication credentials; credentials SHALL be confined to trusted publication.
+
+#### Scenario: Pull request changes documentation
+- **WHEN** a PR is checked
+- **THEN** deterministic content, extraction, lint/type, build, and link checks run without optional ML stacks and preserve the runner trust boundary
+
+#### Scenario: Publisher considers a candidate revision
+- **WHEN** main or a stable tag is eligible for publication
+- **THEN** required documentation checks have passed for that exact revision before live deployment

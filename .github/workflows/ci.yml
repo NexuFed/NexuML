@@ -15,6 +15,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  docs-checks:
+    uses: ./.github/workflows/docs-checks.yml
+
   static:
     runs-on: ika-runner
     steps:
@@ -56,11 +59,6 @@ jobs:
         id: type
         continue-on-error: true
         run: ty check
-
-      - name: Build documentation
-        env:
-          DISABLE_MKDOCS_2_WARNING: "true"
-        run: mkdocs build --strict
 
       - name: Verify static checks
         if: ${{ always() && (steps.lint.outcome != 'success' || steps.format.outcome != 'success' || steps.type.outcome != 'success') }}
@@ -159,7 +157,7 @@ jobs:
         run: |
           uv venv --no-config --python 3.12 .venv-library
           uv pip install --no-config --python .venv-library/bin/python --default-index https://pypi.org/simple pytest dist/nexuml/*.whl dist/nexuml-library/*.whl
-          env -u PYTHONPATH NEXUML_INSTALLED_DIST_TEST=1 .venv-library/bin/python -I -m pytest -c /dev/null --rootdir=tests/packaging --confcutdir=tests/packaging -q tests/packaging/test_installed_distributions.py -k library
+          env -u PYTHONPATH NEXUML_INSTALLED_DIST_TEST=1 .venv-library/bin/python -I -m pytest -c /dev/null --rootdir=tests/packaging --confcutdir=tests/packaging -q tests/packaging/test_installed_distributions.py tests/packaging/test_documented_first_run.py -k "library or documented_synthetic"
 
       - name: Smoke test rebuilt wheels
         env:
@@ -351,6 +349,7 @@ jobs:
   required-ci:
     name: CI
     needs:
+      - docs-checks
       - static
       - test
       - package
@@ -363,6 +362,7 @@ jobs:
     steps:
       - name: Verify required jobs
         env:
+          DOCS_RESULT: ${{ needs.docs-checks.result }}
           STATIC_RESULT: ${{ needs.static.result }}
           TEST_RESULT: ${{ needs.test.result }}
           PACKAGE_RESULT: ${{ needs.package.result }}
@@ -370,6 +370,7 @@ jobs:
           STUDIO_BUILD_RESULT: ${{ needs.studio-build.result }}
           STUDIO_PACKAGE_RESULT: ${{ needs.studio-package.result }}
         run: |
+          echo "docs: $DOCS_RESULT"
           echo "static: $STATIC_RESULT"
           echo "test:   $TEST_RESULT"
           echo "package: $PACKAGE_RESULT"
@@ -381,6 +382,7 @@ jobs:
             echo "## CI results"
             echo "| Check | Result |"
             echo "| --- | --- |"
+            echo "| Documentation | $DOCS_RESULT |"
             echo "| Python static | $STATIC_RESULT |"
             echo "| Python tests | $TEST_RESULT |"
             echo "| Python packages | $PACKAGE_RESULT |"
@@ -391,7 +393,8 @@ jobs:
             echo "Linux project/tool verified here; macOS and Windows are disabled, not verified."
           } >> "$GITHUB_STEP_SUMMARY"
 
-          if [ "$STATIC_RESULT" != "success" ] || \
+          if [ "$DOCS_RESULT" != "success" ] || \
+             [ "$STATIC_RESULT" != "success" ] || \
              [ "$TEST_RESULT" != "success" ] || \
              [ "$PACKAGE_RESULT" != "success" ] || \
              [ "$STUDIO_STATIC_RESULT" != "success" ] || \

@@ -1,0 +1,100 @@
+---
+title: Add a custom evaluation algorithm
+description: Separate immutable reporting configuration from mutable test-output accumulation.
+---
+
+**Goal:** report a custom scalar from test pipeline outputs. **Prerequisites:** a local
+NexuML scenario emitting `features` and `reconstructed`, and a
+[discoverable library](/how-to/custom-library/). Save as `my_library/evaluation/l2_error.py`:
+
+```python
+from typing import cast
+import torch
+from tensordict import TensorDict
+from nexuml.core.components import (
+    ContextInput, EvalAlgorithmDefinition, EvalBuildContext, EvalContextInputs, FeatureKey,
+)
+from nexuml.core.discovery import eval_algorithm
+from nexuml.evaluation.algorithm import EvalAlgorithm
+
+
+@eval_algorithm("l2_error")
+class L2Error(EvalAlgorithmDefinition):
+    context_inputs = EvalContextInputs(feature_key=ContextInput(default="features"))
+    prediction_key: FeatureKey = "reconstructed"
+
+    def build(self, context: EvalBuildContext) -> EvalAlgorithm:
+        assert self.context_inputs is not None
+        context = self.context_inputs.resolve(context)
+        return _L2ErrorRuntime(
+            feature_key=cast(str, context.feature_key),
+            prediction_key=self.prediction_key,
+        )
+
+
+class _L2ErrorRuntime(EvalAlgorithm):
+    def __init__(self, feature_key: str, prediction_key: str):
+        self.feature_key = feature_key
+        self.prediction_key = prediction_key
+        self.total = 0.0
+        self.count = 0
+
+    def eval_batch(self, x: TensorDict, y: TensorDict | None) -> None:
+        difference = (x[self.prediction_key] - x[self.feature_key]).flatten(start_dim=1)
+        self.total += torch.norm(difference, dim=1).sum().item()
+        self.count += difference.shape[0]
+
+    def results(self) -> dict[str, float]:
+        return {"l2_error": self.total / max(1, self.count)}
+```
+
+The runtime implements `results()` and owns mutable accumulators. The definition only
+stores semantic configuration. This is a reporting consumer, not a hidden model stage.
+
+## Route and expose the result
+
+```python
+from nexuml.core.types import EvalAlgorithmSpec, EvaluationSpec
+from my_library.evaluation.l2_error import L2Error
+
+evaluation = EvaluationSpec(
+    algorithms=[EvalAlgorithmSpec(
+        algorithm=L2Error(prediction_key="reconstructed"),
+        feature_key="features",
+    )],
+    test_result_metrics=["l2_error"],
+)
+```
+
+`enabled`, `name`, axis keys, feature keys, and label keys belong to the surrounding
+`EvalAlgorithmSpec` because they describe placement. Algorithm-specific values stay on
+the definition. Annotate intrinsic key parameters with `FeatureKey`/`LabelKey`, including
+optional/list forms (`FeatureKey | None`, `list[LabelKey] | None`). Serialized values stay
+ordinary strings, nulls, and lists. Native `Literal["tsne", "umap"]` expresses a closed
+choice without schema extras.
+
+## Context contract
+
+Declare only consumed slots in `EvalContextInputs` and resolve them in every `build()`,
+including direct builds. `ContextInput(default="features")` uses its fallback for omitted,
+null, or empty values; explicit nonempty values win. `ContextInput(required=True)` rejects
+missing/null without rejecting an empty string. Inherited `context_inputs=None` means
+unknown consumption; `EvalContextInputs()` means known no context inputs. Tooling reads
+these declarations without constructing runtimes.
+
+## Verify and run
+
+```bash
+nexuml registry list eval --verbose
+```
+
+Expect stable `l2_error@1` plus its schema. Add the `evaluation` value to a reconstruction
+recipe, [resolve/build/train](/how-to/run-scenarios/), and inspect the reported test scalar
+`l2_error`. This scalar alone creates no file; configure [tracking](/how-to/tracking/)
+for durable output. Python imports `L2Error` directly; YAML stores its identity/params.
+
+Next read [evaluation lifecycle](/how-to/evaluate/) or the generated
+[decorator](/reference/api/nexuml/core/discovery/) and
+[evaluation API](/reference/api/nexuml/evaluation/algorithm/). Stateful algorithms currently
+require local execution; [distributed limits](/how-to/training-backends/ray/#distributed-semantic-restrictions)
+are explicit rather than silently using rank-local results.

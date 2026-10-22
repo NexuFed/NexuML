@@ -1,0 +1,114 @@
+---
+title: Install NexuML
+description: Set up an installed NexuML environment with the base library and optional integrations.
+---
+
+**Goal:** get a working CLI and the built-in examples. You need Python and
+`uv` or another Python package installer. You do **not** need to clone NexuML.
+
+## Recommended installation
+
+```bash
+uv venv
+source .venv/bin/activate
+uv pip install "nexuml[library]"
+```
+
+On Windows, activate `.venv\Scripts\activate` using your shell's activation script.
+
+This installs two distributions:
+
+- `nexuml`: framework, CLI, compiler, data/runtime infrastructure, evaluation, and integrations.
+- `nexuml-library`: reusable datasets, model/loss/metric components, evaluation definitions,
+  and scenarios discovered through the `nexuml.libraries` entry point.
+
+Verify in the activated environment:
+
+```bash
+nexuml --help
+nexuml registry list scenarios
+nexuml backend list
+```
+
+The scenario list should include `synthetic-linear-ae-reconstruction`.
+Continue with the [one-epoch CPU first run](/start/first-run/).
+
+## Core-only installation
+
+If your project provides all components itself:
+
+```bash
+uv pip install nexuml
+```
+
+A core-only environment intentionally has no built-in `nexuml_library` scenarios.
+
+## Optional integrations
+
+Install only the integrations you use:
+
+```bash
+uv pip install "nexuml[tracking]"
+uv pip install "nexuml[tuning]"
+uv pip install "nexuml[export]"
+uv pip install "nexuml[ray]"
+uv pip install "nexuml[kubernetes]"
+uv pip install "nexuml[s3]"
+```
+
+`nexuml[all]` includes normal user-facing core integrations and the base library,
+but excludes development tooling and DALI. Library features can require extras such as
+`nexuml-library[audio]`, `[data]`, `[pretrained]`, or `[eval]`.
+
+## Container image
+
+The GHCR image provides a complete development/training environment. Select an explicit
+tag from the [registry](https://github.com/NexuFed/NexuML/pkgs/container/nexuml):
+
+```bash
+read -r -p "Registry tag: " NEXUML_IMAGE_TAG
+docker pull "ghcr.io/nexufed/nexuml:${NEXUML_IMAGE_TAG:?Select a registry tag}"
+docker run --rm -it --gpus all "ghcr.io/nexufed/nexuml:${NEXUML_IMAGE_TAG:?Select a registry tag}"
+```
+
+This Linux AMD64 image contains Python, Ubuntu, CUDA development tools, both Python
+packages, and every optional extra from both workspace packages. It is much larger than
+the normal install. GPU execution requires a compatible NVIDIA host driver and the
+[NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html).
+Building/starting without GPU access is possible; CUDA workloads require `--gpus all`
+or a narrower Docker GPU selection. Mount your own data/output directories when you
+need artifacts to survive `--rm`.
+
+Release tags use `<nexuml-version>-cuda<cuda-version>`. `edge-cuda` tags track main;
+`sha-<short-sha>-cuda<cuda-version>` identifies a source revision. There is no unqualified
+`latest` image. GHCR is supported; Docker Hub mirroring is not enabled.
+
+## CUDA and PyTorch
+
+The default install resolves PyTorch from the public package index. Install matching
+PyTorch packages first if you need a particular CUDA build. Published NexuML metadata
+does not encode a project-specific CUDA wheel index.
+
+## NVIDIA DALI
+
+Install this separate, platform-specific integration only on a compatible environment:
+
+```bash
+uv pip install "nexuml[dali]" --index https://pypi.nvidia.com
+python -c "import nvidia.dali"
+```
+
+`nexuml backend list data-loader` is a catalog, **not** an import/driver health check.
+A DALI scenario validates the optional dependency when its loader runtime is built.
+See [data loading](/how-to/data-loading/).
+
+## Environment roots
+
+```bash
+export NEXUML_DATA_ROOT=/path/to/datasets
+export NEXUML_LOGS_ROOT=/path/to/logs
+```
+
+These are optional prefixes, not a universal output layout. See
+[exact root resolution](/reference/environment/). To modify NexuML itself, use the
+[contributor installation](/development/install/) instead.

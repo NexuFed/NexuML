@@ -1,0 +1,39 @@
+---
+title: Use NexuML
+description: Find the canonical task for scenarios, training, data, experimentation, export, execution, or extensions.
+---
+
+Choose a task; these guides are not a prerequisite reading sequence. New users should
+finish the [first CPU run](/start/first-run/) or use the [external tutorials](/tutorials/).
+
+## Create and run
+
+- [Create/run scenarios](/how-to/run-scenarios/): one canonical recipe → YAML → build → train procedure.
+- [Trusted Python files](/how-to/scenario-file/): local experiments and provenance snapshots.
+- [Evaluation](/how-to/evaluate/): pipeline metrics, fitted layers, and test reporting.
+- [Checkpoints](/how-to/checkpoints/): saving, full trainer resume, and selective weight reuse.
+
+## Data and experimentation
+
+- [Data loading](/how-to/data-loading/): Torch, DALI, and tensor shards.
+- [Automatic batch size](/how-to/auto-batch-size/): bounded CUDA probing.
+- [Dataset export](/how-to/export-dataset/): raw/processed views and storage formats.
+- [Tracking](/how-to/tracking/) and [diagrams](/explanation/diagrams/): real metrics/artifacts.
+- [Optuna tuning](/how-to/tune/) and [autoresearch](/how-to/autoresearch/): bounded experiment selection.
+
+## Export and advanced execution
+
+- [Model export/reload/inference](/how-to/export/): actual trained weights and portable packages.
+- [Execution modes](/how-to/training-backends/), [Ray](/how-to/training-backends/ray/),
+  and [native jobs/capacity](/how-to/training-backends/jobs/).
+- [Deployment boundary](/how-to/deploy/), [hosted Studio](/how-to/studio-hosting/),
+  and [manual local API](/how-to/local-api/).
+
+## Extend a library
+
+- [Library/discovery/registration](/how-to/custom-library/): installed packages and local roots.
+- [Layer](/how-to/custom-layer/), [data source](/how-to/custom-data-source/),
+  or [evaluation algorithm](/how-to/custom-eval-algorithm/): focused implementation examples.
+
+Exact flags/types/defaults live in [reference](/reference/). To modify the framework
+itself, follow [contributor setup](/development/install/).

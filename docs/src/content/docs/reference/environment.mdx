@@ -1,0 +1,46 @@
+---
+title: Environment roots
+description: Exact relative-path prefix rules for data and log roots without assuming a universal artifact tree.
+---
+
+Reference-only: environment roots are optional prefixes, not replacements for scenario
+path fields or a promise that every component uses them.
+
+## Data root
+
+```bash
+export NEXUML_DATA_ROOT=/mnt/datasets
+```
+
+The base-library scenario data-root helper resolves relative dataset paths beneath this
+variable: a request for `cifar10` becomes `/mnt/datasets/cifar10`. Absolute paths remain
+unchanged. Custom definitions decide whether/how to use a global root; core does not
+rewrite every arbitrary `root` field.
+
+## Logs root
+
+```bash
+export NEXUML_LOGS_ROOT=/mnt/experiments
+```
+
+Core helpers prefix **relative** log/artifact paths. Configured `.experiments/diagrams`
+therefore becomes `/mnt/experiments/.experiments/diagrams`, not
+`/mnt/experiments/diagrams`. Absolute paths remain unchanged. Relative `file:` URIs handled
+by logging helpers follow the same prefixing; remote/non-file URIs are preserved.
+
+Each logger/callback/export has its own path policy. Do not assume one hard-coded tree
+or that a path avoiding the relevant helper will be rewritten. Read reported destinations
+and the owning spec/backend contract.
+
+## Typical setup
+
+```bash
+export NEXUML_DATA_ROOT=/data/nexuml
+export NEXUML_LOGS_ROOT=/experiments/nexuml
+```
+
+Keep scenario paths relative when they should move with those roots. Implementation:
+[core log paths](/reference/api/nexuml/core/log_paths/) and
+[base-library data roots](/reference/api/nexuml_library/scenarios/data/roots/).
+See [tracking](/how-to/tracking/) and [first-run output discovery](/start/first-run/#inspect-what-was-produced)
+for concrete inspection steps.

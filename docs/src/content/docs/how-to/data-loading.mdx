@@ -1,0 +1,92 @@
+---
+title: Choose a data loader
+description: Select portable Torch, native DALI, or windowed tensor-shard loading in a scenario.
+---
+
+**Goal:** select loading policy for a working dataset/scenario. **Prerequisites:** installed
+NexuML and a typed data source. `DataSpec` describes the dataset view; `LoaderSpec`
+describes batch size, workers, prefetching, and shuffling. Its backend is a typed
+`LoaderBackendDefinition`.
+
+## Start with Torch
+
+`LoaderSpec()` defaults to the portable Torch backend. To make the choice explicit:
+
+```python
+from nexuml.core.types import DataSpec, LoaderSpec
+from nexuml.data.loaders.definitions import TorchLoader
+from nexuml_library.data.synthetic import SyntheticDataset
+
+data = DataSpec(
+    source=SyntheticDataset(feature_shape=(64,), num_samples=1000),
+    input_shapes={"features": [64]},
+    loader=LoaderSpec(backend=TorchLoader(), num_workers=4),
+)
+```
+
+Attach `data` to your recipe, then [resolve/build/train](/how-to/run-scenarios/).
+Successful batches should contain `features` with the declared shape; the loader itself
+does not create a dataset export artifact. When loader batch size is `None`, training
+batch size flows through. An explicit loader batch size takes precedence and disables
+automatic probing.
+
+Inspect available definitions:
+
+```bash
+nexuml backend list data-loader
+```
+
+This catalog includes Torch, DALI, and tensor shards. It is not an import/driver health
+test for optional runtimes.
+
+## NVIDIA DALI
+
+On a compatible Linux/CUDA environment, install and verify separately:
+
+```bash
+uv pip install "nexuml[dali]" --index https://pypi.nvidia.com
+python -c "import nvidia.dali"
+```
+
+```python
+from nexuml.core.types import LoaderSpec
+from nexuml.data.loaders.definitions import DaliLoader
+
+loader = LoaderSpec(backend=DaliLoader(), num_workers=4)
+```
+
+Set `data.loader=loader` in your scenario. File-backed datasets with metadata can use
+native readers/decoders for supported audio, image, video, text, NumPy, and WebDataset
+routes. Unsupported native dataset routes may fall back to Torch **after** the DALI
+backend initializes; this does not make DALI optional for a DALI-selected scenario.
+
+A file-backed `NexuDataset` can expose a `file` metadata column and DALI contract hints
+such as `dali_x_keys`, layout, or sequence length. The [audio tutorial](/tutorials/)
+teaches that path. Verify optional runtime/file support on the actual target environment.
+
+## Tensor shards
+
+For pre-materialized fixed-shape tensors:
+
+```python
+from nexuml.core.types import LoaderSpec
+from nexuml.data.loaders.definitions import TensorShardsLoader
+
+loader = LoaderSpec(
+    backend=TensorShardsLoader(
+        shards_per_window=6, prefetch_windows=2, prefetch_workers=2,
+    ),
+    batch_size=64,
+    num_workers=0,
+)
+```
+
+Use it with a tensor-shard [dataset export](/how-to/export-dataset/), or materialize
+the view using `DataSpec.preprocessing` with the tensor-shard writer. Storage shards
+are not fixed training batches: the runtime windows/prefetches shards and batches samples
+independently. The export's `config.yaml` describes the materialized format.
+
+Next, [export a reusable data view](/how-to/export-dataset/) or configure
+[automatic CUDA batch sizing](/how-to/auto-batch-size/). Exact typed writer/loader
+contracts are in [scenario reference](/reference/scenario-spec/) and the
+[loader API](/reference/api/nexuml/data/loaders/definitions/).

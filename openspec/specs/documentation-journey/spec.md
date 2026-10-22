@@ -2,64 +2,74 @@
 
 ## Purpose
 
-The overall documentation navigation and structural design, ensuring a beginner-friendly journey with clear diataxis roles and a progressive learning path.
+The simplified NexuML reading journey: four primary sections, one canonical procedure per task, clear architecture and feature scope, and a verified CPU-first starting path.
 
 ## Requirements
 
 ### Requirement: Beginner Journey Navigation
 
-The documentation SHALL expose a beginner-friendly top-level navigation that guides readers through Home, Start here, Learn NexuML, How-to guides, Concepts, Reference, and Development.
+The documentation SHALL expose four primary sections: Start here, Use NexuML, Understand NexuML, and Reference. Tutorials SHALL be reachable from Start here. Changelog, Contributing, and version selection SHALL remain readily accessible without competing with the beginner workflow.
 
 #### Scenario: New reader opens the docs
 
 - **WHEN** a new reader opens the NexuML documentation
-- **THEN** the primary navigation presents a clear path from installation and first training through learning concepts, task guides, and reference material.
+- **THEN** the landing page explains what NexuML is and presents a recommended installation and first-run path
+- **AND** the reader does not need to choose between overlapping Learn, Concepts, and lifecycle entry paths
 
 #### Scenario: Existing feature docs remain discoverable
 
-- **WHEN** a reader needs an advanced feature such as tuning, tracking, dataset export, model export, backends, deployment, or autoresearch
-- **THEN** the feature remains discoverable under grouped how-to, concept, or reference sections.
+- **WHEN** a reader needs tuning, tracking, dataset export, model export/inference, backends, distributed execution, deployment boundaries, autoresearch, or extension guidance
+- **THEN** the feature remains discoverable through meaningful task groups, contextual links, and search
+- **AND** advanced details are not removed merely to reduce sidebar length
+
+#### Scenario: Reader opens the generated API tree
+- **WHEN** a reader opens Reference
+- **THEN** generated CLI, configuration/integration details, and both public Python packages are easy to find
+- **AND** large generated module trees do not overwhelm the initial navigation view
 
 ### Requirement: Diataxis Roles Preserved
 
-The documentation SHALL keep page purposes distinct according to tutorial, how-to, explanation, and reference roles.
+The documentation SHALL distinguish first-run tutorials, task guides, conceptual explanations, and exact reference without requiring separate competing navigation sections for every role.
 
 #### Scenario: Reader follows a tutorial
 
 - **WHEN** a reader opens a tutorial page
-- **THEN** the page guides the reader through a complete learning experience with a specific outcome and minimal decision-making.
+- **THEN** the page guides the reader through a complete learning experience with a specific outcome and minimal decision-making
+- **AND** complete external hands-on tutorials are linked rather than copied into a drifting second tutorial set
 
 #### Scenario: Reader opens a how-to guide
 
-- **WHEN** a reader opens a how-to guide
-- **THEN** the page focuses on completing a specific task and links to concepts/reference instead of mixing exhaustive explanation inline.
+- **WHEN** a reader opens a task guide
+- **THEN** it focuses on completing that task and links to relevant concepts/reference instead of mixing exhaustive explanation inline
+- **AND** it starts with the recommended working default before introducing optional alternatives
 
 #### Scenario: Reader opens a reference page
 
 - **WHEN** a reader opens a reference page
-- **THEN** the page provides compact facts, generated API information, CLI information, registry information, or configuration details without becoming a tutorial.
+- **THEN** it provides compact configuration/integration facts or generated API/CLI information without becoming another tutorial
 
 ### Requirement: Lightning-Inspired Learning Progression
 
-The documentation SHALL provide a progressive "Learn NexuML" path for ML researchers familiar with PyTorch or PyTorch Lightning.
+The documentation SHALL explain NexuML to PyTorch and PyTorch Lightning users within the canonical architecture path rather than requiring a separate Learn NexuML progression before useful work.
 
 #### Scenario: Lightning user evaluates NexuML
 
-- **WHEN** a user familiar with PyTorch Lightning reads the learning path
-- **THEN** the docs explain how NexuML relates to Lightning and what NexuML adds on top of Lightning training.
+- **WHEN** a user familiar with PyTorch Lightning reads the architecture path
+- **THEN** it explains how NexuML relates to Lightning and what typed scenarios, reusable components, explicit data flow, persistence, and execution placement add
 
 #### Scenario: Beginner learns the lifecycle
 
-- **WHEN** a beginner reads the mental model page
-- **THEN** the docs explain the lifecycle from `ScenarioSpec` to resolved config, compiled pipeline, Lightning training, evaluation, and export.
+- **WHEN** a beginner reads the architecture explanation
+- **THEN** it explains `ScenarioSpec`, resolved config, compiled pipeline, Lightning training, evaluation, and export in a consistent example
+- **AND** evaluation is described as part of the implemented lifecycle rather than an invented standalone CLI command
 
 ### Requirement: Single authoritative procedure per task
 
-Human-facing documentation SHALL keep each complete procedure in one canonical location. Entry pages SHALL provide a short working path and links, not duplicate advanced instructions, implementation inventories, or verification histories.
+Human-facing documentation SHALL keep each complete procedure in one canonical location. Consolidation SHALL remove duplicated explanations and redirect-only placeholder articles from the reading path while retaining unique feature instructions and safety constraints. Entry pages SHALL contain a short working path rather than advanced inventories or verification histories.
 
 #### Scenario: User starts Studio
 
-- **WHEN** a user opens the Studio README
+- **WHEN** a user opens the Studio README or starting guide
 - **THEN** they can find installation, launch, one first-run example, and links to further help without reading hosting, API internals, or release engineering instructions
 
 #### Scenario: User needs advanced details
@@ -74,13 +84,18 @@ Human-facing documentation SHALL keep each complete procedure in one canonical l
 - **THEN** the guide points to the existing authenticated generated contract
 - **AND** the handwritten reference retains necessary WebSocket, conflict, and lifecycle rules without repeating the UI manual
 
+#### Scenario: Contributor consolidates overlapping articles
+- **WHEN** scenario, train/run, architecture, or library-registration articles are merged
+- **THEN** their unique supported commands, requirements, limitations, and security notes survive in canonical destinations
+- **AND** old important URLs map to those destinations without leaving duplicate authoritative copies
+
 ### Requirement: Documentation without hard-coded version numbers
 
-Human-facing documentation SHALL omit explicit product, runtime, dependency, operating-system, and protocol compatibility numbers from prose, badges, and installation examples. Machine-readable metadata, executable contract values, and generated references SHALL remain authoritative and unchanged by this editorial rule.
+Evergreen documentation SHALL omit hard-coded product, runtime, dependency, operating-system, and protocol compatibility numbers from prose, badges, and installation examples. Machine-readable metadata, executable contracts, generated references, version selectors, and dated changelog release facts SHALL remain authoritative exceptions.
 
 #### Scenario: Maintainer reviews documentation
 
-- **WHEN** root/package READMEs, authored site pages, and skill bodies/references are reviewed
+- **WHEN** root/package READMEs, evergreen site pages, and skill bodies/references are reviewed
 - **THEN** they contain no hard-coded release numbers, minimum-version ranges, numbered compatibility blocks, pinned image tags, or wheel/tarball release filenames
 - **AND** technical metadata in skill frontmatter and example package manifests is not removed
 
@@ -94,3 +109,24 @@ Human-facing documentation SHALL omit explicit product, runtime, dependency, ope
 
 - **WHEN** the container instructions require an explicit image tag
 - **THEN** they show how to select and supply a tag from the registry without hard-coding a release or inventing an unsupported default tag
+
+#### Scenario: Reader opens historical release information
+- **WHEN** a dated changelog entry describes a release or a version selector lists published documentation
+- **THEN** exact release identifiers and matching tag/release links are retained as historical or generated facts
+- **AND** evergreen installation instructions do not duplicate those identifiers as manually maintained compatibility claims
+
+### Requirement: Task guides have observable outcomes
+Each task guide SHALL identify its goal and prerequisites, provide copyable commands or code, state expected output and artifact location or discovery method, and offer a clear next action. Optional complexity SHALL follow the recommended working path rather than precede it.
+
+#### Scenario: User follows a task guide
+- **WHEN** a user follows a create/run, training, data, tuning, export, or extension guide
+- **THEN** they can identify what to run and how to confirm success without reading implementation inventories first
+- **AND** complete flag/default tables are linked to their generated reference rather than copied across guides
+
+### Requirement: Vision and feature coverage remain clear
+The documentation SHALL explain why NexuML separates reusable implementations from experiment composition, summarize supported capabilities, and distinguish current functionality from future direction. Simplification SHALL reduce duplicate reading, not erase specialized features or imply unsupported capabilities.
+
+#### Scenario: User evaluates NexuML
+- **WHEN** a user reads the overview and architecture path
+- **THEN** they can understand the reusable-component/scenario model, explicit TensorDict routing, Lightning lifecycle, portable artifacts, and execution boundaries
+- **AND** feature summaries lead to the relevant task or reference without requiring marketing pages or an exhaustive API tour

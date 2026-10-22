@@ -27,6 +27,6 @@ Keep the terminal running. Ctrl-C stops owned local processes; closing the brows
 4. Open **Runs → Metrics / Logs / Artifacts / Configuration**. Reload and select the
    retained operation to inspect it without relaunching.
 
-[Tutorial, runtime selection, troubleshooting and hosting](https://nexufed.github.io/NexuML/studio/)
-· [Manual API](https://nexufed.github.io/NexuML/how-to/local-api/)
-· [Contributor setup and checks](https://nexufed.github.io/NexuML/how-to/development/)
+[Tutorial, runtime selection, troubleshooting and hosting](https://nexufed.github.io/NexuML/dev/studio/)
+· [Manual API](https://nexufed.github.io/NexuML/dev/how-to/local-api/)
+· [Contributor setup and checks](https://nexufed.github.io/NexuML/dev/development/install/)

@@ -1,0 +1,149 @@
+---
+title: NexuML Studio
+description: Install the local workbench and complete the same synthetic CPU experiment in your browser.
+---
+
+Studio is a local, single-user workbench over your installed NexuML. YAML remains the
+execution configuration; training runs in the selected Python environment, not the browser.
+Libraries/configurations execute trusted Python, **not sandboxed code**.
+
+## Install and launch
+
+You need Python, Node.js/npm, a modern browser, and a writable existing working directory.
+Create/activate your project's Python environment, then:
+
+```sh
+pip install "nexuml[api,library]"
+npm install -g @nexufed/nexuml-studio
+nexuml-studio .
+```
+
+Studio opens a browser and reports the connected runtime. **Runtime details** shows its
+Python executable and working directory. If the environment is not on PATH:
+
+```sh
+nexuml-studio --python /path/to/project/.venv/bin/python .
+```
+
+Startup does not install, upgrade, sync dependencies, or access the internet. Once
+installed, the local interface and synthetic example work offline. Keep the terminal
+running: **Ctrl-C stops Studio and its owned local processes**. Closing the browser does
+not stop training.
+
+## First training run
+
+1. Click **Try an example**. Installed `synthetic-linear-ae-reconstruction` becomes an
+   editable **one-epoch CPU** draft with locally generated data and no downloads.
+   Resolution calls trusted installed Python; it does not train or change recipe defaults.
+2. Inspect **Pipeline** and **Training**. **Save** asks for a YAML destination. You may
+   instead use **Choose a recipe** or **Open YAML** in the working directory.
+3. Use **Check → Check fields**, then **Check → Build model**. Field validation does not
+   compile; Build executes constructors/dummy forwards. Semantic edits make prior builds stale.
+4. Click **Run…**, review Local execution, then **Review selection → Run on Local**.
+   Review captures exact settings; changing them requires a new review.
+5. In **Runs**, inspect **Metrics**, **Logs**, **Artifacts**, and frozen **Configuration**.
+   Tabs never relaunch work. Reload/select the retained operation to inspect it again.
+
+Expect the completed local training/test lifecycle, not a model-quality target. This is the
+same example as the [CLI first run](/start/first-run/); CLI use is not required first.
+If missing, install the base library into the selected environment and restart—Studio
+never installs it for you. Run outputs/records live under `.experiments/`, including
+`.experiments/.studio/operations/`, unless relocated with `NEXUML_LOGS_ROOT`. **Artifacts**
+shows actual paths; saved YAML stays where you choose it. No particular checkpoint,
+diagram, or external tracking service is implied by the example.
+
+Next, edit a copied draft or follow [create/run scenarios](/how-to/run-scenarios/).
+For remote access, use the separate [trusted-operator hosting guide](/how-to/studio-hosting/),
+not a public API bind.
+
+## Edit and inspect safely
+
+- Add installed definitions from **Components**, then edit settings/routing in Properties.
+  **Structure**/**Execution order** schedule stages/layers; canvas positions do not.
+  Move buttons/connection selects provide non-drag alternatives.
+- Connections use the most recent preceding producer of a key. Missing required routes
+  block launch; dynamic metadata remains runtime-only. Display names/positions live in a
+  separate `*.studio.json` sidecar, not executable YAML. External semantic edits invalidate
+  old layout metadata. Undo/Redo covers completed semantic/layout edits.
+- Invalid/unapplied YAML blocks semantic edits, Save, and Run until Apply or deliberate
+  Discard. Comments/formatting are not preserved. Save conflicts never overwrite external
+  changes: reload or choose a new destination.
+- **Problems** links field-addressable errors to controls. Runtime errors remain tied to
+  frozen settings. **Open frozen settings as draft** requires confirmation before replacing
+  unsaved work; it does not change the run.
+- Metrics are observed values, not progress-bar estimates. `training.loss_keys` selects
+  weighted losses; `metric_keys` selects values actually emitted by layers. Total loss
+  keys use `<phase>/loss`; validation/test values appear after finalization. Display history
+  is bounded with a truncation notice; raw logs/observations remain on disk.
+
+## Execution limits
+
+One build/train/export operation may consume resources at a time; there is no queue.
+Local Stop confirms process-tree exit, not a new checkpoint. Resume needs an actual
+trusted Trainer checkpoint; Studio export needs completed local training and its checkpoint.
+Checkpoint loading can execute Python.
+
+Contributed backends use the selected installation's schemas. Capacity is read-only,
+advisory, never reserved. Ray exposes driver logs/results, not invented worker telemetry
+or cancellation. Native jobs expose actual status/available log tails; only Job/PyTorchJob
+support UID-verified Stop. External artifact URIs are references, not authorized downloads.
+After API restart, unverified remote work is `ownership_unknown`; inspecting a native
+reference never resubmits it. Read [native-job limits](/how-to/training-backends/jobs/)
+before an operator-authorized launch. Studio provisions no clusters and does not
+automatically recover/resume runs.
+
+## Choose a runtime
+
+```sh
+nexuml-studio .
+nexuml-studio --nexuml '/path to/nexuml' .
+nexuml-studio --python '/project/.venv/bin/python' '/working directory'
+```
+
+On Windows select `.venv\Scripts\python.exe`. Paths with spaces are spawned as arguments,
+not shell commands. Install `api` and component libraries into **that installation**.
+Do not select an unrelated shell Python for a uv tool. For an isolated tool:
+
+```sh
+uv tool install "nexuml[api,library]"
+nexuml-studio --nexuml /path/to/nexuml .
+```
+
+For a packaged custom library, add `--with my-nexuml-library` to the tool installation,
+or use `uv pip install --python /project/.venv/bin/python my-nexuml-library`.
+For trusted source use **Libraries → Add root**; [root registration](/how-to/custom-library/#local-library-roots)
+does not install dependencies. Change installations by stopping/relaunching Studio;
+updates are explicit. Unsupported runtimes are rejected before opening: read the launcher
+diagnostic instead of assuming frontend/backend releases advance together.
+
+## Ports and attached APIs
+
+Both services bind loopback and choose unused ports by default. `--port 3000 --api-port 8000`
+selects ports; `--no-open` suppresses browser opening. The directory must exist and is
+filesystem context, not a Studio project.
+
+To attach to a [manually started API](/how-to/local-api/):
+
+```sh
+nexuml-studio --port 3000 --api http://127.0.0.1:8000 --api-token-file /private/token .
+```
+
+The API must use the same directory and allow exactly `http://127.0.0.1:3000`.
+An attached API is never stopped by the launcher. Keep tokens outside the working directory,
+private (mode 600 on POSIX, restricted ACL on Windows), and out of arguments, URLs, logs,
+and `.env` files. Browser credentials stay in memory. Local users/processes are trusted;
+Host/Origin/Fetch-Metadata checks do not authenticate arbitrary HTTP clients.
+
+## Troubleshooting
+
+- **Executable/API/library missing:** inspect terminal diagnostics/Runtime details, install
+  into the selected interpreter, and restart. For uv tools, `uv tool update-shell` can fix PATH.
+- **Connection lost:** draft remains, status may be stale. Check the terminal and **Retry connection**;
+  reload after launcher restart to get the new session.
+- **Attach rejected:** match directory, token, UI port, and exact API origin.
+  `localhost` and `127.0.0.1` are different origins.
+- **Crash leftovers:** remove `nexuml-studio-*` temporary directories only after confirming
+  services stopped. Run records remain in the logs root.
+
+For hosted bootstrap/WebSocket problems, see [hosting](/how-to/studio-hosting/).
+Contributor/package/browser checks live in [development setup](/development/install/).

@@ -2,51 +2,120 @@ name: Deploy docs
 
 on:
   push:
-    branches:
-      - main
-    tags:
-      - "v*"
+    branches: [main]
+    tags: ["v*"]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  deploy:
-    runs-on: ika-runner
+  validate:
+    uses: ./.github/workflows/docs-checks.yml
+    with:
+      version: ${{ github.ref_type == 'tag' && github.ref_name || 'dev' }}
+
+  stage:
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ github.ref_type == 'tag' && github.ref_name || 'dev' }}
+      SOURCE_SHA: ${{ github.sha }}
     steps:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-
-      - name: Fetch gh-pages branch
-        run: git fetch origin gh-pages --depth=1 || true
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v5
+          persist-credentials: false
+      - uses: actions/setup-python@v6
         with:
-          version: "latest"
-
-      - name: Install docs dependencies
-        run: uv sync --extra dev
-
-      - name: Configure git user
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-      - name: Deploy dev (main push)
-        if: github.ref == 'refs/heads/main'
+          python-version: "3.12"
+      - uses: actions/download-artifact@v7
+        with:
+          name: docs-build-${{ github.sha }}-${{ github.ref_type == 'tag' && github.ref_name || 'dev' }}
+          path: candidate
+      - name: Verify exact validated build identity
+        run: python docs/scripts/verify_candidate.py --directory candidate --revision "$SOURCE_SHA" --version "$VERSION"
+      - name: Configure ephemeral Git transport authentication
         env:
-          DISABLE_MKDOCS_2_WARNING: "true"
+          TOKEN: ${{ github.token }}
         run: |
-          uv run mike deploy --push --update-aliases dev
-          uv run mike list latest || uv run mike set-default --push dev
-
-      - name: Deploy release (tag push)
-        if: startsWith(github.ref, 'refs/tags/v')
+          auth=$(printf 'x-access-token:%s' "$TOKEN" | base64 -w0)
+          echo "::add-mask::$auth"
+          echo "GIT_CONFIG_COUNT=1" >> "$GITHUB_ENV"
+          echo "GIT_CONFIG_KEY_0=http.https://github.com/.extraheader" >> "$GITHUB_ENV"
+          echo "GIT_CONFIG_VALUE_0=AUTHORIZATION: basic $auth" >> "$GITHUB_ENV"
+      - name: Durably stage the event before entering the deployment queue
         env:
-          VERSION: ${{ github.ref_name }}
-          DISABLE_MKDOCS_2_WARNING: "true"
+          TMPDIR: ${{ runner.temp }}
         run: |
-          uv run mike deploy --push --update-aliases "${VERSION}" latest
-          uv run mike set-default --push latest
+          git fetch --no-tags origin refs/heads/main:refs/remotes/origin/main
+          python - <<'PY'
+          import json
+          import os
+          import subprocess
+          from pathlib import Path
+          identity = json.loads(Path('candidate/versioned/build.json').read_text())
+          version = os.environ['VERSION']
+          args = ['python', 'docs/scripts/publication.py', '--stage', '--remote', 'origin',
+                  '--repository', str(Path.cwd()), '--candidate', str(Path('candidate/versioned').resolve()),
+                  '--version', version, '--revision', os.environ['SOURCE_SHA'],
+                  '--site', identity['site'], '--mount', identity['mount']]
+          if version == 'dev':
+              args += ['--source-ref', 'refs/remotes/origin/main', '--changelog', str(Path('candidate/changelog').resolve())]
+          subprocess.run(args, check=True)
+          PY
+
+  deploy:
+    needs: stage
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: documentation-pages-deployment
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          path: source
+          persist-credentials: false
+      # This fetch happens after this job acquires its serialized deployment slot.
+      - uses: actions/checkout@v5
+        with:
+          ref: gh-pages
+          path: archive
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Extract and verify the newest complete staged archive
+        id: assembled
+        env:
+          OUTPUT: ${{ runner.temp }}/assembled-pages-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          python - <<'PY'
+          import os
+          import runpy
+          from pathlib import Path
+          publication = runpy.run_path('source/docs/scripts/publication.py')
+          output = Path(os.environ['OUTPUT'])
+          publication['extract_archive'](Path('archive'), 'HEAD', output)
+          publication['validate_tree'](output)
+          publication['load_archive'](output)
+          assert all(not p.is_file() or p.stat().st_nlink == 1 for p in output.rglob('*'))
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as stream:
+              stream.write(f'path={output}\n')
+          PY
+      - uses: actions/upload-pages-artifact@v5.0.0
+        with:
+          path: ${{ steps.assembled.outputs.path }}
+      - name: Deploy assembled static archive
+        id: deployment
+        uses: actions/deploy-pages@v5.0.1
