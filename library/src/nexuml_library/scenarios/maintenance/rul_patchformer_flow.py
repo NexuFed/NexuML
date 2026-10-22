@@ -8,7 +8,6 @@ Validation uses pairing-invariant SWD, not official test-engine RUL labels.
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from typing import Literal
 
@@ -34,15 +33,14 @@ from nexuml_library.scenarios.training.defaults import default_logging
 def patchformer_embedding_flow(
     subset: Literal["FD001", "FD003"] = "FD001",
     seed: int = 42,
-    *,
-    checkpoint: str | Path | None = None,
 ) -> ScenarioSpec:
     """Train the existing NexuML flow on frozen PatchFormer DPAN embeddings.
 
     Args:
         subset: Official engine-disjoint NASA C-MAPSS FD001 or FD003.
         seed: Paired study split/feature sampling/training seed.
-        checkpoint: Trusted, trained PatchFormer best validation checkpoint.
+            The corresponding trained PatchFormer checkpoint is discovered
+            by the data source from the native best-checkpoint audit manifest.
 
     Returns:
         Typed Flow Matching pipeline with independent SWD-selected checkpoints.
@@ -60,20 +58,10 @@ def patchformer_embedding_flow(
     endpoint_file = Path(
         f".experiments/rul/prepared/{run}-endpoints.pt"
     ).resolve()
-    root = (
-        (os.environ.get("NEXUML_CMAPSS_ROOT") or "").strip()
-        or "data/cmapss"
-    )
-    selected_checkpoint = str(
-        checkpoint
-        if checkpoint is not None
-        else (os.environ.get("NEXUML_PATCHFORMER_CHECKPOINT") or "").strip()
-    )
     source = AutoPatchFormerFlowEndpoints(
         subset=subset,
         seed=seed,
-        root=root,
-        checkpoint_path=selected_checkpoint,
+        root="data/cmapss",
         prepared_rul_path=str(prepared),
         output_file=str(endpoint_file),
         healthy_min_rul=100.0,
@@ -122,11 +110,7 @@ def patchformer_embedding_flow(
             },
         }
     )
-    checkpoint_root = (
-        (os.environ.get("NEXUML_RUL_CHECKPOINT_ROOT") or "").strip()
-        or ".experiments/rul/checkpoints"
-    )
-    checkpoints = Path(checkpoint_root).expanduser().resolve() / run
+    checkpoints = Path(".experiments/rul/checkpoints").resolve() / run
     return base.model_copy(
         update={
             "name": run,
