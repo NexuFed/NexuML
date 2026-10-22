@@ -14,9 +14,6 @@ from tensordict import TensorDict
 
 from nexuml.core.compiler import compile as compile_pipeline
 from nexuml.core.config import ResolvedConfig
-from nexuml_library.evaluation.maintenance.rul_controlled_summary import (
-    summarize_controlled_study,
-)
 from nexuml_library.data.maintenance.patchformer_flow import (
     AutoPatchFormerFlowEndpoints,
     _trusted_patchformer_weights,
@@ -25,6 +22,9 @@ from nexuml_library.data.maintenance.prepared_endpoints import read_prepared_art
 from nexuml_library.data.maintenance.rul import (
     AutoCMapSSRULWindows,
     read_rul_artifact,
+)
+from nexuml_library.evaluation.maintenance.rul_controlled_summary import (
+    summarize_controlled_study,
 )
 from nexuml_library.layers.model.rul_advanced import (
     AdvancedRULForecaster,
