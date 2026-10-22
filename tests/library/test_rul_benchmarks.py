@@ -501,7 +501,7 @@ def test_goel2026_lstm_architecture_and_training_protocol(
     evaluator = scenario.evaluation.algorithms[0].algorithm
     assert isinstance(evaluator, RULBenchmarkEvaluator)
     assert evaluator.include_nasa_score is True
-    assert len(scenario.evaluation.algorithms) == 2
+    assert len(scenario.evaluation.algorithms) == 3
     assert scenario.evaluation.algorithms[1].label_key == "rul_raw"
     assert isinstance(scenario.evaluation.algorithms[2].algorithm, RULPerEngineAudit)
     assert any("Goel2026PlateauLR" in item.factory for item in scenario.callbacks)
