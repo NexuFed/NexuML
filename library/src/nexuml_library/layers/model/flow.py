@@ -24,11 +24,15 @@ class Flow(LayerDefinition):
     hidden_dims: list[int] = Field(default_factory=lambda: [128, 128])
     num_steps: int = Field(default=100, gt=0)
     record_trajectory: bool = False
+    initialization_seed: int | None = None
 
     def build(self, context: LayerBuildContext) -> PipelineLayer:
-        vector_field = TimeConditionedVectorField(hidden_dims=self.hidden_dims).build(
-            replace(context, delay_epochs=0, update_every_n_epochs=1)
-        )
+        with torch.random.fork_rng(devices=[]):
+            if self.initialization_seed is not None:
+                torch.manual_seed(self.initialization_seed)
+            vector_field = TimeConditionedVectorField(
+                hidden_dims=self.hidden_dims
+            ).build(replace(context, delay_epochs=0, update_every_n_epochs=1))
         state_key = context.keys_in[0]
         integrator = EulerIntegrator(
             velocity=getattr(vector_field, "velocity"),
