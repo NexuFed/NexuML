@@ -193,7 +193,11 @@ def test_no_patchformer_rul_predictor_is_called_during_feature_preparation(
             """Small frozen flow substitute to test the feature isolation contract."""
 
             def sample(self, embeddings: Tensor) -> Tensor:
-                """Apply a nonzero but deterministic latent flow displacement."""
+                """Apply a nonzero but deterministic latent flow displacement.
+
+                Returns:
+                    Frozen transported embeddings.
+                """
                 return embeddings + 0.2
 
         monkeypatch.setattr(
