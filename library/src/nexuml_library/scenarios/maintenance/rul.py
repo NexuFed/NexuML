@@ -870,6 +870,7 @@ def _maintenance_rul_safety(
         algorithm=RULPerEngineAudit(
             artifact_path=source.artifact_path,
             output_file=f".experiments/rul/audits/{run_name}.csv",
+            sensor_stage_alignment=True,
         ),
         feature_key="predicted_rul",
         label_key="rul",
