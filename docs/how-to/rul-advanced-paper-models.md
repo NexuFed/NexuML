@@ -69,7 +69,46 @@ groups for the dynamic fusion layer. These groups are NOT the ETDataset
 oil-temperature and electrical-load modalities, so these C-MAPSS
 scores cannot reproduce DMM-JA's published ETDataset numbers.
 
-## 2. Native NASA battery capacity forecasting
+## 2. Genuine temperature/load DMM-JA inputs
+
+The alternative `maintenance-rul-dmm-ja-bimodal` scenario takes the
+**two input modalities specified by DMM-JA**, rather than arbitrary
+halves of turbine sensor channels. It requires **real RUL annotations**.
+
+Supply a CSV with one measurement per row and the following named
+columns:
+
+| Column | Meaning |
+|---|---|
+| `asset_id` | Equipment identity |
+| `cycle` | Strictly increasing observed time/cycle identifier |
+| `temperature` | Raw measured temperature |
+| `load` | Raw measured electrical/mechanical load |
+| `rul` | Actual observed remaining life, in consistent physical units |
+| `split` | `train`, `val` or `test` assigned consistently per asset |
+
+Train, validation and test assets must be **disjoint**, nonempty and
+individually ordered; RUL labels are never inferred from unlabeled
+ETDataset data. Input channels are standardized with **training
+assets only**; the normalizer and split provenance are stored under
+`.experiments/rul/prepared/`.
+
+```bash
+export NEXUML_RUL_BIMODAL_CSV=/path/to/labeled_temperature_load_rul.csv
+
+nexuml resolve maintenance-rul-dmm-ja-bimodal \
+  --output .experiments/dmm-ja-bimodal.yaml
+nexuml train --config .experiments/dmm-ja-bimodal.yaml
+```
+
+The model uses a 24-step history, 64-dimensional representation, two
+BiLSTM layers, Adam 2e-4, dropout 0.15, batch size 64 and up to
+700 epochs. The jump threshold and plateau scheduler are explicit
+implementation choices where source details are incomplete. These
+results remain a DMM-JA **method adaptation** until the exact ETDataset
+data/label protocol and optimized Mamba implementation are reproduced.
+
+## 3. Native NASA battery capacity forecasting
 
 The PatchFormer and RUL-Mamba models additionally support their
 original **capacity prediction task** in two native NexuML recipes:
@@ -125,7 +164,7 @@ and repeated experiments/hyperparameter tuning. The common CSV adapter
 and single-step objective do not claim to have reproduced those
 complete evaluation protocols.
 
-## 3. Technical implementation
+## 4. Technical implementation
 
 - `layers/model/rul_selective_ssm.py`: causal depthwise convolutions,
   input-dependent time-step/B/C projections, diagonal stable A,
@@ -134,17 +173,20 @@ complete evaluation protocols.
 - `layers/model/rul_advanced.py`: DMM-JA, PatchFormer DPAN/FAN and
   RUL-Mamba FAN/SSM/GRN backbones, wrapped in a typed NexuML
   `PipelineLayer` with `LayerDefinition`.
+- `data/maintenance/bimodal_rul.py`: real dual-modality measurements
+  with explicit RUL labels and asset-disjoint splits.
 - `data/maintenance/battery_capacity.py`: real capacity CSV ingestion,
   chronological split and persistent train-only normalization.
 - `evaluation/maintenance/battery_capacity.py`: native SMAPE layer
   and held-out capacity evaluator.
 - `evaluation/maintenance/battery_eol_rollout.py`: inference-only,
   finite-horizon, censored EOL time calculation.
-- `scenarios/maintenance/rul_advanced.py` and
+- `scenarios/maintenance/rul_advanced.py`,
+  `scenarios/maintenance/rul_dmm_ja_bimodal.py` and
   `scenarios/maintenance/battery_capacity.py`: named native
   `nexuml resolve` / `nexuml train` scenarios.
 
-## 4. Validation
+## 5. Validation
 
 ```bash
 ruff check .
@@ -152,6 +194,7 @@ ruff format --check .
 ty check
 
 pytest tests/library/test_rul_advanced.py \
+       tests/library/test_rul_bimodal.py \
        tests/library/test_battery_capacity.py \
        tests/library/test_rul_benchmarks.py \
        tests/_registry -v
