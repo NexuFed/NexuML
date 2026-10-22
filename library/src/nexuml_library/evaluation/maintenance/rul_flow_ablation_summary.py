@@ -269,8 +269,16 @@ def main() -> None:
         default=Path(".experiments/rul/controlled/flow-ablation-summary.json"),
     )
     parser.add_argument("--seeds", nargs="+", type=int, default=[42, 43, 44])
+    parser.add_argument(
+        "--subsets", nargs="+", choices=["FD001", "FD003"],
+        default=["FD001", "FD003"],
+    )
     args = parser.parse_args()
-    report = summarize_flow_ablation(args.audit_root, seeds=tuple(args.seeds))
+    report = summarize_flow_ablation(
+        args.audit_root,
+        subsets=tuple(args.subsets),
+        seeds=tuple(args.seeds),
+    )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(
         json.dumps(report, indent=2, allow_nan=False) + "\n",
