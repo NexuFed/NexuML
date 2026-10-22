@@ -33,7 +33,10 @@ from nexuml_library.data.maintenance.rul import (
 )
 from nexuml_library.evaluation.maintenance.rul_engine_audit import RULPerEngineAudit
 from nexuml_library.evaluation.maintenance.rul_evaluator import RULBenchmarkEvaluator
-from nexuml_library.evaluation.maintenance.rul_paper_callbacks import Goel2026PlateauLR
+from nexuml_library.evaluation.maintenance.rul_paper_callbacks import (
+    Goel2026PlateauLR,
+    Goel2026RestoreBestWeights,
+)
 from nexuml_library.evaluation.maintenance.rul_seed import RULSeedOnFitStart
 from nexuml_library.layers.model.rul_forecaster import (
     RULRegressionObjective,
@@ -730,6 +733,7 @@ def maintenance_rul_goel2026_lstm_protocol() -> ScenarioSpec:
             "callbacks": [
                 *base.callbacks,
                 callback(Goel2026PlateauLR, factor=0.5, patience=5),
+                callback(Goel2026RestoreBestWeights),
             ],
         }
     )
@@ -803,6 +807,7 @@ def maintenance_rul_goel2026_cnn_protocol() -> ScenarioSpec:
                 ),
                 callback(EarlyStopping, monitor="val/loss", patience=20, mode="min"),
                 callback(Goel2026PlateauLR, factor=0.5, patience=5),
+                callback(Goel2026RestoreBestWeights),
             ],
         }
     )
