@@ -157,8 +157,10 @@ a deterministic CSV and JSON manifest, separately for the LSTM and CNN:
 .experiments/rul/audits/
   rul-cmapss-FD001-lstm-mse-seed42-goel2026-lstm-protocol-raw.csv
   rul-cmapss-FD001-lstm-mse-seed42-goel2026-lstm-protocol-raw.json
+  rul-cmapss-FD001-lstm-mse-seed42-goel2026-lstm-protocol-raw.checkpoint.json
   rul-cmapss-FD001-cnn-mse-seed42-goel2026-cnn-protocol-raw.csv
   rul-cmapss-FD001-cnn-mse-seed42-goel2026-cnn-protocol-raw.json
+  rul-cmapss-FD001-cnn-mse-seed42-goel2026-cnn-protocol-raw.checkpoint.json
 ```
 
 Each CSV includes the test-engine ID, final-window index, model prediction,
@@ -166,7 +168,9 @@ capped and official raw targets, signed residuals under both targets,
 individual asymmetric NASA penalties, and whether the official target
 exceeded 130 cycles. The JSON records the split engine IDs, random seed,
 normalization method, digest of fitted normalization parameters, train-only
-normalization scope, and the versioned source artifact.
+normalization scope, and the versioned source artifact. The additional
+`*.checkpoint.json` file records the best validation checkpoint location,
+checkpoint epoch, saved step and monitored validation-loss value.
 
 The native scalar metrics for the Goel scenarios continue to include
 `rul_test_*` (capped) and `rul_official_raw/rul_test_*` (uncapped).
