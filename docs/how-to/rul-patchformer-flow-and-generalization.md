@@ -152,8 +152,8 @@ For an existing PatchFormer run, use only:
 
 ```bash
 nexuml resolve maintenance-rul-patchformer-flow-fd001-s42 \
-  --output .experiments/rul/controlled/patch-flow-fd001-s42.yaml &&
-nexuml train --config .experiments/rul/controlled/patch-flow-fd001-s42.yaml
+  --output .experiments/patch-flow-fd001-s42.yaml &&
+nexuml train --config .experiments/patch-flow-fd001-s42.yaml
 ```
 
 If neither best-checkpoint manifest exists, first train the matching
@@ -161,8 +161,8 @@ PatchFormer via NexuML (once), then rerun the flow commands:
 
 ```bash
 nexuml resolve maintenance-rul-controlled-fd001-patchformer-s42 \
-  --output .experiments/rul/controlled/patch-fd001-s42.yaml &&
-nexuml train --config .experiments/rul/controlled/patch-fd001-s42.yaml
+  --output .experiments/patch-fd001-s42.yaml &&
+nexuml train --config .experiments/patch-fd001-s42.yaml
 ```
 
 For other subsets and seeds, the corresponding
