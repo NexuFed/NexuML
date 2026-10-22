@@ -72,7 +72,6 @@ def _restore_legacy_upstream_provenance(
 
     Raises:
         ValueError: If old provenance contradicts the immutable flow artifact.
-        FileNotFoundError: If the matching source artifact is unavailable.
     """
     if all(report.get("patchformer_upstream_run") for report in reports.values()):
         return
