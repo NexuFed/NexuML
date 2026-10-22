@@ -109,6 +109,104 @@ maintenance-rul-patchformer-hybrid-fd003-s42/s43/s44
 
 Run matching controlled PatchFormer and pretrained flow scenarios first.
 
+## Controlled ablations: what does Flow actually contribute?
+
+The original flow-time and hybrid experiments now have **two matched
+calibration controls**, registered for every FD001/FD003 subset and
+seed 42–44:
+
+| Model | Trainable MLP inputs | Trained frozen dependencies |
+|---|---|---|
+| Uncalibrated PatchFormer | None | Supervised PatchFormer |
+| **Baseline-only** | Normalized PatchFormer prediction alone | Supervised PatchFormer only |
+| **Flow-time** | Projected time `t_hat` | PatchFormer + Flow |
+| **Flow-geometry** | `[t_hat,d_hat]` | PatchFormer + Flow |
+| **Hybrid** | `[t_hat,d_hat,p(x)/130]` | PatchFormer + Flow |
+
+Baseline-only and hybrid are **identical residual-correction MLPs** in
+hidden width (32), depth, dropout (0.1), bounded output (±30 cycles),
+optimizer, training data/split, seed, epoch limits and validation
+selection. The single deliberate change is the **additional two flow
+coordinates** provided to the hybrid.
+
+Flow-geometry and flow-time use the same bounded `130 * sigmoid(MLP)`
+RUL output; only the second flow-distance input differs.
+
+Baseline-only does not load a Flow model, integrate a trajectory,
+construct flow endpoints, or require a flow checkpoint. When an endpoint
+artifact already exists, it reads **only its frozen PatchFormer
+checkpoint provenance** and verifies the checksum. This guarantees a
+like-for-like backbone comparison with the hybrid even if more than one
+supervised PatchFormer has been trained.
+
+### Run the missing FD001 seed-42 controls
+
+```bash
+nexuml resolve maintenance-rul-patchformer-baseline-only-fd001-s42 \
+  --output .experiments/rul-baseline-only-fd001-s42.yaml &&
+nexuml train --config .experiments/rul-baseline-only-fd001-s42.yaml
+
+nexuml resolve maintenance-rul-patchformer-flow-geometry-fd001-s42 \
+  --output .experiments/rul-flow-geometry-fd001-s42.yaml &&
+nexuml train --config .experiments/rul-flow-geometry-fd001-s42.yaml
+```
+
+These can be compared against the previously completed flow-time
+and hybrid FD001 seed-42 experiments without retraining them. The
+baseline-only scenario only requires the existing PatchFormer model.
+
+### FD003 and multi-seed execution
+
+For a fully paired generalization study, train the corresponding
+controlled PatchFormer and PatchFormer latent-flow scenarios for
+each subset and seed first. Then run all four calibration methods:
+
+```bash
+set -euo pipefail
+mkdir -p .experiments/rul/ablation
+
+for subset in fd001 fd003; do
+  for seed in 42 43 44; do
+    for method in baseline-only flow-time flow-geometry hybrid; do
+      name="maintenance-rul-patchformer-$method-$subset-s$seed"
+      config=".experiments/rul/ablation/$name.yaml"
+      nexuml resolve "$name" --output "$config"
+      nexuml train --config "$config"
+    done
+  done
+done
+```
+
+Each calibration writes its own per-engine audit CSV and
+`<run>.geometry.json` provenance alongside existing records in
+`.experiments/rul/audits/`.
+
+**Do not tune** these configurations on FD003 official test metrics
+and then reuse the same FD003 test as independent confirmation.
+
+### Paired evidence report
+
+After all five arms (including the unmodified PatchFormer) exist
+for each subset and seed:
+
+```bash
+python -m nexuml_library.evaluation.maintenance.rul_flow_ablation_summary \
+  --audit-root .experiments/rul/audits \
+  --output .experiments/rul/ablation/paired-summary.json
+```
+
+This reporter requires all **100** engines per run and identical raw
+and capped labels. It also rejects inconsistent frozen PatchFormer
+checkpoint hashes or inconsistent Flow checkpoint hashes.
+It reports per-seed RMSE, MAE, NASA score, positive-error bias and
+descriptive paired changes. The key comparison is
+**hybrid minus baseline-only**, not hybrid minus uncalibrated PatchFormer.
+
+A lower RMSE and NASA score for hybrid than baseline-only across
+paired seeds **and** FD003 would support incremental predictive
+information from the Flow coordinates. A difference in FD001 alone
+remains exploratory; seeds share the same held-out population.
+
 ## Interpretation
 
 Compare the corresponding frozen PatchFormer baseline against both
@@ -143,6 +241,7 @@ ruff check .
 ruff format --check .
 ty check
 pytest tests/library/test_rul_flow_calibration.py \
+       tests/library/test_rul_flow_ablation.py \
        tests/library/test_rul_patchformer_study.py \
        tests/library/test_rul_advanced_native_cli.py \
        tests/_registry -v
