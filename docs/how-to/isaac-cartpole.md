@@ -42,9 +42,9 @@ not a replacement for this learning reference.
 
 Submit the whole CLI process to an existing GPU worker. With the native Jobs
 CLI below, leave the scenario's `execution.kind="local"`: simulation and learning
-run in that remote process, not as distributed RL. A custom worker image is optional; `uv run --locked`
-installs the uploaded project's dependencies into a remote venv. It does not
-upload or alter the local `.venv`.
+run in that remote process, not as distributed RL. A custom worker image is
+optional. Run locked dependency setup first, then execute the worker venv's
+Python directly. This does not upload or alter the submitter's local `.venv`.
 
 Alternatively, set [RayJobExecutionSpec](training-backends/ray.md#ray-jobs-ray_job)
 in your own scenario file and invoke `nexuml train` locally. That backend uses the
@@ -59,7 +59,8 @@ block is restored as a validated execution spec before dispatch:
 nexuml train --scenario-file scripts/isaaclab/cartpole.py \
   -O 'execution={
     "kind":"ray_job",
-    "py_executable":"uv run --locked --python 3.12 --extra isaac --extra ray python",
+    "setup_command":["uv","sync","--locked","--python","3.12","--extra","isaac","--extra","ray"],
+    "py_executable":".venv/bin/python -u -X faulthandler",
     "runtime_env":{
       "working_dir":".",
       "env_vars":{"UV_CACHE_DIR":"/mnt/data/uv-cache","UV_LINK_MODE":"copy"}
@@ -87,17 +88,46 @@ export RAY_API_SERVER_ADDRESS=https://ray.ika.rub.de
 export RAY_CA_BUNDLE=/workspaces/ika-k8s-cluster/platform/apps/cert-manager/rub-certificate/acme/cacerts.pem
 
 ray job list --verify "$RAY_CA_BUNDLE"
+RUN_ID="cartpole-$(date -u +%Y%m%dT%H%M%SZ)"
+RUN_ROOT="/mnt/data/nexuml-runs/$RUN_ID"
 ray job submit \
   --verify "$RAY_CA_BUNDLE" \
+  --submission-id "$RUN_ID" \
   --working-dir=. \
   --entrypoint-num-gpus=1 \
   --entrypoint-resources='{"pool_gpu_workers":1}' \
-  --runtime-env-json='{"env_vars":{"UV_CACHE_DIR":"/mnt/data/uv-cache","UV_LINK_MODE":"copy"}}' \
+  --runtime-env-json="{\"env_vars\":{\"UV_CACHE_DIR\":\"/mnt/data/uv-cache\",\"UV_LINK_MODE\":\"copy\",\"NEXUML_LOGS_ROOT\":\"$RUN_ROOT\"}}" \
   --no-wait \
-  -- uv run --locked --python 3.12 --extra isaac --extra ray \
-     nexuml train --scenario-file scripts/isaaclab/cartpole.py \
-     -O interaction.environment.viewer.port=8081
+  -- bash -c '
+set -euo pipefail
+source_dir="$PWD"
+mkdir -p "$NEXUML_LOGS_ROOT"
+{
+  cd "$NEXUML_LOGS_ROOT" &&
+  UV_PROJECT_ENVIRONMENT="$source_dir/.venv" uv sync \
+    --project "$source_dir" --locked --python 3.12 --extra isaac --extra ray &&
+  exec "$source_dir/.venv/bin/python" -u -X faulthandler -m nexuml.cli.main train \
+    --scenario-file "$source_dir/scripts/isaaclab/cartpole.py" \
+    -O interaction.environment.viewer.port=8081
+} 2>&1 | tee "$NEXUML_LOGS_ROOT/driver.log"
+'
 ```
+
+Both the Python backend's `setup_command` and the native CLI example deliberately
+separate installation from execution. The stock
+worker's uv 0.12.1 forwards SIGPIPE to its child; the upstream
+[uv #21935](https://github.com/astral-sh/uv/issues/21935) reports a network-signal
+race that can kill Python before its first output, returning **141** immediately
+after installation. Executing Python only after `uv sync` exits avoids that
+handoff without masking signals, changing the lockfile or rebuilding an image.
+The existing `run.sh` remains installer-free for already-prepared environments;
+no Isaac-specific Ray launcher is required.
+
+For a four-batch startup/training/export smoke rather than the full learning
+budget, append `-O training.total_frames=32768` and
+`-O training.algorithm.update_epochs=1` to the remote `train` command above.
+This is not a convergence or held-out-quality test. A short smoke may finish
+before you connect a browser.
 
 `RAY_API_SERVER_ADDRESS` is Ray's native Jobs setting. `RAY_JOBS_ADDRESS` is not
 needed. Jobs uses HTTPS port 443 here, not the distinct Ray Client port 10001.
@@ -110,12 +140,17 @@ compatibility. The job reserves one GPU, not a CPU/RAM hard limit. The shared uv
 cache avoids repeated downloads; it is not one shared mutable venv or result
 storage. `UV_LINK_MODE=copy` permits a cache and venv on different filesystems.
 
-!!! warning "Persist results separately"
-    As written, TensorBoard logs and `rl-runs/cartpole-<id>/policy` are in the
-    worker's temporary working directory and may disappear on worker cleanup.
-    For durable runs, set `NEXUML_LOGS_ROOT` in the job's `env_vars` for relative
-    logs and choose a unique absolute `exports` output under mounted storage.
-    The logs-root setting does not redirect the CLI's policy export.
+The native CLI command runs from the unique mounted `RUN_ROOT`: its
+`driver.log`, TensorBoard logs and `rl-runs/cartpole-<id>/policy` survive worker
+cleanup. `tee` mirrors installer/training output into Ray logs while retaining
+the full file, and `pipefail` preserves installation/training failures. Redirecting
+only to `driver.log` and running `tail` afterwards would hide live output.
+
+!!! warning "SDK submission does not infer persistent outputs"
+    The `RayJobExecutionSpec` example above still runs in Ray's temporary working
+    directory. For durable SDK runs, set `NEXUML_LOGS_ROOT` in `env_vars` for
+    relative logs and choose a unique absolute `ExportSpec.output` under mounted
+    storage. The logs-root setting alone does not redirect policy exports.
 
 ### Status, logs and progress
 

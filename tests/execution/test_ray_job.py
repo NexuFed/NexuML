@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import builtins
+import json
 import os
 import shlex
 import subprocess
@@ -41,7 +42,8 @@ def test_ray_job_config_roundtrip_allows_rl_without_enabling_ray_train():
     scenario.execution = RayJobExecutionSpec(
         address="https://jobs.example.test",
         verify="/certs/ca.pem",
-        py_executable="uv run --locked --extra isaac --extra ray python",
+        setup_command=["uv", "sync", "--locked", "--extra", "isaac", "--extra", "ray"],
+        py_executable=".venv/bin/python",
         runtime_env={"working_dir": ".", "env_vars": {"UV_CACHE_DIR": "/mnt/data/uv-cache"}},
         entrypoint_num_gpus=1,
         entrypoint_resources={"pool_gpu_workers": 1},
@@ -72,6 +74,11 @@ def test_ray_job_config_roundtrip_allows_rl_without_enabling_ray_train():
         {"entrypoint_resources": {" ": 1}},
         {"py_executable": ""},
         {"verify": ""},
+        {"setup_command": []},
+        {"setup_command": [""]},
+        {"setup_command": [" "]},
+        {"setup_command": ["python", "bad\x00argument"]},
+        {"setup_command": "uv sync --locked"},
     ],
 )
 def test_ray_job_rejects_invalid_configuration(kwargs):
@@ -192,7 +199,10 @@ def test_submission_rejects_another_execution_kind():
         submit_ray_job(ScenarioSpec(name="local"))
 
 
-def test_generated_entrypoint_trains_and_exports_in_fresh_process(jobs_client, tmp_path):
+@pytest.mark.parametrize("with_setup", [False, True])
+def test_generated_entrypoint_trains_and_exports_in_fresh_process(
+    jobs_client, tmp_path, with_setup
+):
     from nexuml_library.scenarios.asd.synthetic_linear_ae import synthetic_linear_ae_reconstruction
 
     scenario = synthetic_linear_ae_reconstruction(
@@ -208,11 +218,21 @@ def test_generated_entrypoint_trains_and_exports_in_fresh_process(jobs_client, t
     scenario.evaluation.algorithms = []
     output = tmp_path / "package"
     scenario.exports = [ExportSpec(output=str(output))]
-    scenario.execution = RayJobExecutionSpec(py_executable=shlex.quote(sys.executable))
+    setup_marker = tmp_path / "setup-finished"
+    scenario.execution = RayJobExecutionSpec(
+        setup_command=[
+            sys.executable,
+            "-c",
+            f"from pathlib import Path; Path({str(setup_marker)!r}).touch()",
+        ]
+        if with_setup
+        else None,
+        py_executable=shlex.quote(sys.executable),
+    )
     submit_ray_job(scenario)
 
     result = subprocess.run(
-        shlex.split(jobs_client.submission["entrypoint"]),
+        ["/bin/sh", "-c", jobs_client.submission["entrypoint"]],
         cwd=tmp_path,
         env={
             **os.environ,
@@ -232,3 +252,66 @@ def test_generated_entrypoint_trains_and_exports_in_fresh_process(jobs_client, t
     restored = ResolvedConfig.load(output / "resolved_config.yaml")
     assert restored.execution.kind == "local"
     assert restored.training.max_epochs == 1
+    assert setup_marker.exists() == with_setup
+
+
+@pytest.mark.parametrize("setup_exit,python_exit", [(0, 0), (0, 7), (23, 0), (141, 0)])
+def test_setup_finishes_before_python_exec_and_preserves_arguments_and_exit_codes(
+    jobs_client, tmp_path, setup_exit, python_exit
+):
+    setup_marker = tmp_path / "setup.json"
+    python_marker = tmp_path / "python.json"
+    target = tmp_path / "environment with spaces" / "python"
+    target_program = (
+        f"#!{sys.executable}\n"
+        "import json, os, sys\nfrom pathlib import Path\n"
+        f"Path({str(python_marker)!r}).write_text(json.dumps("
+        '{"pid":os.getpid(),"argv":sys.argv[1:]}))\n'
+        f"raise SystemExit({python_exit})\n"
+    )
+    setup_program = (
+        "import json,sys\nfrom pathlib import Path\n"
+        f"Path({str(setup_marker)!r}).write_text(json.dumps(sys.argv[1:]))\n"
+        f"if {setup_exit}: raise SystemExit({setup_exit})\n"
+        f"target=Path({str(target)!r})\ntarget.parent.mkdir()\n"
+        f"target.write_text({target_program!r})\ntarget.chmod(0o755)\n"
+    )
+    arguments = ["argument with spaces", "quoted 'value'", "", "$(touch INJECTED); echo bad\n"]
+    scenario = ScenarioSpec(
+        name="setup-order",
+        execution=RayJobExecutionSpec(
+            setup_command=[sys.executable, "-c", setup_program, *arguments],
+            py_executable=shlex.quote(str(target)),
+        ),
+    )
+    before = lower_model(scenario)
+    submit_ray_job(scenario)
+    assert lower_model(scenario) == before
+
+    with subprocess.Popen(
+        ["/bin/sh", "-c", jobs_client.submission["entrypoint"]],
+        cwd=tmp_path,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    ) as process:
+        stdout, stderr = process.communicate(timeout=15)
+    assert process.returncode == (setup_exit or python_exit), stdout + stderr
+    assert json.loads(setup_marker.read_text()) == arguments
+    assert not (tmp_path / "INJECTED").exists()
+    assert python_marker.exists() == (setup_exit == 0)
+    if setup_exit == 0:
+        launched = json.loads(python_marker.read_text())
+        assert launched["pid"] == process.pid  # The waiting shell execs Python directly.
+        assert launched["argv"][0] == "-c"
+        assert "setup-order" in launched["argv"][1]
+        assert "setup_command" not in launched["argv"][1]
+
+
+def test_mutated_setup_command_is_revalidated_before_connecting(jobs_client):
+    execution = RayJobExecutionSpec()
+    scenario = ScenarioSpec(name="invalid-setup", execution=execution)
+    execution.setup_command = []
+    with pytest.raises(ValueError):
+        submit_ray_job(scenario)
+    assert jobs_client.connection is None
