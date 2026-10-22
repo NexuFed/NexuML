@@ -334,6 +334,7 @@ def test_invalid_method_fails_before_runtime_construction(monkeypatch, method, v
             if via_config
             else LatentVisualizer.model_validate({"method": method})
         )
+        assert isinstance(definition, EvalAlgorithmDefinition)
         create_algorithm(EvalAlgorithmSpec(algorithm=definition))
     assert error.value.errors()[0]["loc"] == ("method",)
     assert error.value.errors()[0]["type"] == "literal_error"
@@ -357,6 +358,7 @@ def test_unknown_external_context_is_not_resolved_or_guessed(build):
         context_inputs = EvalContextInputs()
 
         def build(self, context):
+            assert self.context_inputs is not None
             return Runtime(self.context_inputs.resolve(context))
 
     assert External.context_inputs is None
@@ -391,8 +393,8 @@ def test_materialization_preserves_surrounding_axis_provenance_and_config():
 
     runtime = create_algorithm(restored)
 
-    assert runtime.feature_key == "original"
-    assert runtime.reconstructed_key == "prediction"
+    assert getattr(runtime, "feature_key") == "original"
+    assert getattr(runtime, "reconstructed_key") == "prediction"
     assert lower_model(restored) == serialized
     assert restored.contract_summary() == summary
     assert summary["axis_keys"] == [

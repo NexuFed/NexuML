@@ -47,6 +47,7 @@ class LatentVisualizer(EvalAlgorithmDefinition):
     storage_path: str | None = None
 
     def build(self, context: EvalBuildContext) -> EvalAlgorithm:
+        assert self.context_inputs is not None
         context = self.context_inputs.resolve(context)
         return _LatentVisualizerRuntime(
             feature_key=cast(str, context.feature_key),

@@ -3,8 +3,6 @@
 The public data source is an immutable `DataSourceDefinition`. It builds a private mutable `NexuDataset` runtime.
 
 ```python
-from typing import ClassVar
-
 import torch
 from tensordict import TensorDict
 
@@ -15,7 +13,7 @@ from nexuml.data.dataset import NexuDataset
 
 @data_source("my_dataset")
 class MyDataset(DataSourceDefinition):
-    fixed_label_keys: ClassVar[tuple[str, ...]] = ("label",)
+    fixed_label_keys = ("label",)
 
     num_samples: int = 1000
     feature_dim: int = 64
@@ -27,6 +25,7 @@ class MyDataset(DataSourceDefinition):
 
 class _MyDatasetRuntime(NexuDataset):
     def __init__(self, num_samples: int, feature_dim: int, seed: int):
+        assert MyDataset.fixed_label_keys is not None
         super().__init__(label_names=list(MyDataset.fixed_label_keys))
         generator = torch.Generator().manual_seed(seed)
         self.features = torch.randn(num_samples, feature_dim, generator=generator)

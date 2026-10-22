@@ -14,6 +14,8 @@ from nexuml.core.components import LayerBuildContext, LayerDefinition
 
 logger = logging.getLogger(__name__)
 
+ResNetType = Literal["resnet18", "resnet34", "resnet50", "resnet101", "resnet152"]
+
 
 @layer("ResNet")
 class ResNet(LayerDefinition):
@@ -30,7 +32,7 @@ class ResNet(LayerDefinition):
             Defaults to ``False`` when pretrained, ``True`` otherwise.
     """
 
-    resnet_type: Literal["resnet18", "resnet34", "resnet50", "resnet101", "resnet152"] = "resnet18"
+    resnet_type: ResNetType = "resnet18"
     pretrained: bool = False
     cifar_stem: bool | None = None
 
@@ -44,7 +46,7 @@ class _ResNetRuntime(PipelineLayer):
         input_sizes: dict[str, tuple],
         keys_in: list[str],
         keys_out: list[str],
-        resnet_type: str = "resnet18",
+        resnet_type: ResNetType = "resnet18",
         pretrained: bool = False,
         cifar_stem: bool | None = None,
         **kwargs: Any,

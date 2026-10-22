@@ -4,7 +4,7 @@ from __future__ import annotations
 from nexuml.core.discovery import data_source
 
 from pathlib import Path
-from typing import ClassVar, Sequence
+from typing import Sequence
 
 import pandas as pd
 import torch
@@ -18,7 +18,7 @@ from nexuml.core.components import DataSourceDefinition
 class FashionMNISTDataset(DataSourceDefinition):
     """In-memory FashionMNIST dataset backed by ``self.data`` and metadata labels."""
 
-    fixed_label_keys: ClassVar[tuple[str, ...]] = ("category",)
+    fixed_label_keys = ("category",)
 
     root: str | Path = "data/fashionmnist"
     train: bool = True
@@ -65,6 +65,7 @@ class _FashionMNISTDatasetRuntime(NexuDataset):
             target_list = list(dataset_targets)
 
         split_name = split or ("fit" if train else "test")
+        assert FashionMNISTDataset.fixed_label_keys is not None
         label_names = list(FashionMNISTDataset.fixed_label_keys)
         meta = pd.DataFrame({label_names[0]: target_list, "split": [split_name] * len(target_list)})
 

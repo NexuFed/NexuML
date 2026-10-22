@@ -110,7 +110,7 @@ def test_context_resolver_preserves_empty_and_default_semantics(value):
     else:
         assert required.resolve(EvalBuildContext(feature_key=value)).feature_key == value
     with pytest.raises(FrozenInstanceError):
-        inputs.feature_key = None
+        setattr(inputs, "feature_key", None)
 
 
 def test_catalog_uses_external_native_contracts_without_instances_or_runtime_io(

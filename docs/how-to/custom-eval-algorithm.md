@@ -25,6 +25,7 @@ class L2Error(EvalAlgorithmDefinition):
     prediction_key: FeatureKey = "reconstructed"
 
     def build(self, context: EvalBuildContext) -> EvalAlgorithm:
+        assert self.context_inputs is not None
         context = self.context_inputs.resolve(context)
         return _L2ErrorRuntime(
             feature_key=cast(str, context.feature_key),

@@ -4,7 +4,7 @@ from __future__ import annotations
 from nexuml.core.discovery import data_source
 
 from pathlib import Path
-from typing import ClassVar, Sequence
+from typing import Sequence
 
 import pandas as pd
 import torch
@@ -18,7 +18,7 @@ from nexuml.core.components import DataSourceDefinition
 class CIFAR10Dataset(DataSourceDefinition):
     """CIFAR-10 dataset backed by ``self.data`` and metadata labels."""
 
-    fixed_label_keys: ClassVar[tuple[str, ...]] = ("class_labels",)
+    fixed_label_keys = ("class_labels",)
 
     root: str | Path = "data/cifar10"
     train: bool = True
@@ -67,6 +67,7 @@ class _CIFAR10DatasetRuntime(NexuDataset):
             target_list = list(dataset_targets)
 
         split_name = split or ("fit" if train else "test")
+        assert CIFAR10Dataset.fixed_label_keys is not None
         label_names = list(CIFAR10Dataset.fixed_label_keys)
         meta = pd.DataFrame({label_names[0]: target_list, "split": [split_name] * len(target_list)})
 
@@ -106,7 +107,7 @@ class _CIFAR10DatasetRuntime(NexuDataset):
 class CIFAR100Dataset(DataSourceDefinition):
     """CIFAR-100 dataset backed by ``self.data`` and metadata labels."""
 
-    fixed_label_keys: ClassVar[tuple[str, ...]] = ("class_labels",)
+    fixed_label_keys = ("class_labels",)
 
     root: str | Path = "data/cifar100"
     train: bool = True
@@ -155,6 +156,7 @@ class _CIFAR100DatasetRuntime(_CIFAR10DatasetRuntime):
             target_list = list(dataset_targets)
 
         split_name = split or ("fit" if train else "test")
+        assert CIFAR100Dataset.fixed_label_keys is not None
         label_names = list(CIFAR100Dataset.fixed_label_keys)
         meta = pd.DataFrame({label_names[0]: target_list, "split": [split_name] * len(target_list)})
 

@@ -35,6 +35,7 @@ class ClassHistogramVisualizer(EvalAlgorithmDefinition):
     title: str | None = None
 
     def build(self, context: EvalBuildContext) -> EvalAlgorithm:
+        assert self.context_inputs is not None
         context = self.context_inputs.resolve(context)
         return _ClassHistogramVisualizerRuntime(
             label_key=cast(str, context.label_key),

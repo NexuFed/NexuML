@@ -87,6 +87,7 @@ class AnomalyEvaluator(EvalAlgorithmDefinition):
     max_fpr: float = 0.1
 
     def build(self, context: EvalBuildContext) -> EvalAlgorithm:
+        assert self.context_inputs is not None
         context = self.context_inputs.resolve(context)
         return _AnomalyEvaluatorRuntime(
             label_key=cast(str, context.label_key),
@@ -199,6 +200,7 @@ class AnomalyVisualizer(EvalAlgorithmDefinition):
     max_plot_samples: int = 2000
 
     def build(self, context: EvalBuildContext) -> EvalAlgorithm:
+        assert self.context_inputs is not None
         context = self.context_inputs.resolve(context)
         return _AnomalyVisualizerRuntime(
             feature_key=cast(str, context.feature_key),
