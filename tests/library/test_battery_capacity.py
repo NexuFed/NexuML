@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 from typing import cast
 
@@ -13,6 +14,7 @@ from tensordict import TensorDict
 
 from nexuml.core.compiler import compile as compile_pipeline
 from nexuml.core.config import ResolvedConfig
+from nexuml.core.types import ScenarioSpec
 from nexuml_library.data.maintenance.battery_capacity import BatteryCapacityWindows
 from nexuml_library.evaluation.maintenance.battery_capacity import (
     _BatteryCapacityEval,
@@ -101,12 +103,11 @@ def test_battery_smape_matches_paper_formula_and_has_gradients() -> None:
 def test_battery_paper_models_compile_with_native_capacity_target(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
-    scenario_fn: object,
+    scenario_fn: Callable[[], ScenarioSpec],
     window: int,
     arch: str,
 ) -> None:
     """Paper-derived model compiles with real capacity targets and SMAPE."""
-    assert callable(scenario_fn)
     _capacity_csvs(tmp_path)
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("NEXUML_BATTERY_CAPACITY_ROOT", str(tmp_path))
