@@ -47,7 +47,8 @@ class LabeledBimodalRULWindows(DataSourceDefinition):
         table = pd.read_csv(path)
         required = {"asset_id", "cycle", "split", "temperature", "load", "rul"}
         if not required.issubset(table.columns):
-            raise ValueError(f"Missing bimodal RUL columns: {sorted(required - set(table.columns))}")
+            missing = sorted(required - set(table.columns))
+            raise ValueError(f"Missing bimodal RUL columns: {missing}")
         numeric = ["cycle", "temperature", "load", "rul"]
         table[numeric] = table[numeric].apply(pd.to_numeric, errors="raise")
         if (
