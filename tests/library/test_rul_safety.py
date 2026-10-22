@@ -94,6 +94,7 @@ def test_train_val_sensor_stage_audit_does_not_consult_test_data(
     assert report["splits"]["train"]["60-90"]["count"] > 0
     assert report["splits"]["val"]["0-30"]["count"] > 0
     assert len(report["train_midlife_late_sensor_contrast"]) == 14
+    assert len(report["train_midlife_late_slope_contrast"]) == 14
     assert report["splits"]["train"]["0-30"]["mean"] != (
         report["splits"]["train"]["60-90"]["mean"]
     )
