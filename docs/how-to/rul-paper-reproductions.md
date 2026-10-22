@@ -100,9 +100,9 @@ Two held-out evaluators report MAE, RMSE and NASA score against both
 the 130-cycle capped labels and the **original uncapped NASA test RUL
 offsets**, with explicit metric names `rul_test_*` and
 `rul_official_raw/rul_test_*`. Training always uses capped labels and
-never trains against the raw test offset. The published evaluation's
-label convention requires verification before selecting which set of
-metrics to compare. Published results (FD001 RMSE 14.93, MAE 11.73,
+never trains against the raw test offset. The exact published evaluation
+label convention remains unresolved; report both sets rather than selecting
+one solely because it matches the paper's RMSE. Published results (FD001 RMSE 14.93, MAE 11.73,
 NASA score 410.97) are **reference numbers, not reproduced measurements**.
 
 The paper's 1D CNN is also implemented with convolution channels
@@ -120,6 +120,70 @@ nexuml resolve maintenance-rul-goel2026-cnn-protocol \
   --output .experiments/rul-goel2026-cnn.yaml
 nexuml train --config .experiments/rul-goel2026-cnn.yaml
 ```
+
+## Goel FD001 methodology audit (October 2026)
+
+The [published v1 PDF](https://arxiv.org/pdf/2604.27234) confirms:
+
+- Training RUL uses a piecewise constant cap of **130 cycles**.
+- FD001 removes sensors 1, 5, 6, 10, 16, 18, and 19, retaining 14.
+- Z-score feature normalization fits on training data only.
+- An 80/20 split is performed **by engine ID**; seed 42 is specified.
+- Each model uses 30-cycle windows (stride 1). Short test histories are zero-padded.
+- Model selection uses minimum validation loss and restores the best checkpoint.
+- RMSprop, learning rate 0.001, weight decay 1e-5, batch 64,
+  ReduceLROnPlateau(factor=0.5, patience=5), and early stopping
+  (patience=20, maximum 200 epochs) are explicitly specified.
+
+The published text does **not** define the exact engine-selection RNG
+implementation, whether the feature scaler is fitted using just the 80
+training engines or all 100 official training engines, or whether the
+official held-out NASA RUL offsets are capped before reporting metrics.
+Figure 3/4 visually suggests a capped target range but cannot prove it.
+We do not silently substitute assumptions for these facts.
+
+### Native evaluation and per-engine diagnostics
+
+The Goel CNN and LSTM scenarios now restore the best `val/loss`
+checkpoint weights after native NexuML fitting. The normal
+`nexuml train --config` command then evaluates the restored weights.
+This behavior differs from the earlier runs, where NexuML's session tested
+the live final-epoch model.
+
+On completion of the test stage, the `RULPerEngineAudit` evaluator writes
+a deterministic CSV and JSON manifest, separately for the LSTM and CNN:
+
+```text
+.experiments/rul/audits/
+  rul-cmapss-FD001-lstm-mse-seed42-goel2026-lstm-protocol-raw.csv
+  rul-cmapss-FD001-lstm-mse-seed42-goel2026-lstm-protocol-raw.json
+  rul-cmapss-FD001-cnn-mse-seed42-goel2026-cnn-protocol-raw.csv
+  rul-cmapss-FD001-cnn-mse-seed42-goel2026-cnn-protocol-raw.json
+```
+
+Each CSV includes the test-engine ID, final-window index, model prediction,
+capped and official raw targets, signed residuals under both targets,
+individual asymmetric NASA penalties, and whether the official target
+exceeded 130 cycles. The JSON records the split engine IDs, random seed,
+normalization method, digest of fitted normalization parameters, train-only
+normalization scope, and the versioned source artifact.
+
+The native scalar metrics for the Goel scenarios continue to include
+`rul_test_*` (capped) and `rul_official_raw/rul_test_*` (uncapped).
+The per-engine audit makes it possible to determine which few engines
+cause the scores to diverge.
+
+**Re-resolve both scenarios before running them.** Existing resolved YAML
+configurations do not automatically pick up newly added callbacks or
+evaluation algorithms. Model weights from earlier runs cannot be reconstructed
+from aggregate test logs; to generate the new CSVs, run native NexuML
+evaluation on a trained checkpoint or retrain through the updated scenarios.
+
+The audit cannot independently verify the unpublished per-engine
+predictions, split assignments, or normalizer parameters of the paper.
+Consequently, the published reference numbers remain targets for
+methodological comparison rather than guaranteed bit-for-bit reproducible
+outputs.
 
 ## Paper benchmarks not represented as exact NexuML scenarios
 
