@@ -13,6 +13,7 @@ import pytest
 from nexuml.core.config import ResolvedConfig
 from nexuml_library.data.maintenance.battery_capacity import BatteryCapacityWindows
 from nexuml_library.data.maintenance.bimodal_rul import LabeledBimodalRULWindows
+from nexuml_library.data.maintenance.patchformer_flow import AutoPatchFormerFlowEndpoints
 from nexuml_library.data.maintenance.rul import AutoCMapSSRULWindows
 
 
@@ -102,6 +103,10 @@ def _synthetic_cmapss(root: Path) -> None:
         ("maintenance-rul-dmm-ja-adapted", "cmapss"),
         ("maintenance-rul-patchformer-adapted", "cmapss"),
         ("maintenance-rul-mamba-adapted", "cmapss"),
+        ("maintenance-rul-controlled-fd003-patchformer-s42", "cmapss"),
+        ("maintenance-rul-controlled-fd001-safety-lstm-s43", "cmapss"),
+        ("maintenance-rul-controlled-fd003-dmm-ja-s44", "cmapss"),
+        ("maintenance-rul-patchformer-flow-fd001-s42", "flow"),
         ("maintenance-rul-dmm-ja-bimodal", "bimodal"),
         ("maintenance-battery-patchformer-nasa", "battery"),
         ("maintenance-battery-rul-mamba-nasa", "battery"),
@@ -129,6 +134,8 @@ def test_advanced_registry_cli_can_resolve_without_preloaded_data(
         assert isinstance(source, AutoCMapSSRULWindows)
     elif kind == "bimodal":
         assert isinstance(source, LabeledBimodalRULWindows)
+    elif kind == "flow":
+        assert isinstance(source, AutoPatchFormerFlowEndpoints)
     else:
         assert isinstance(source, BatteryCapacityWindows)
 
