@@ -61,7 +61,7 @@ def _advanced_scenario(
         objective="mse",
         cmapss_window=window,
         cmapss_sensor_ids=_LU2025_SENSORS,
-        cmapss_profile=f"advanced-{kind}-fd001",
+        cmapss_profile=f"advanced-{kind.replace('_', '-')}-fd001",
         cmapss_rul_cap=130.0,
         cmapss_padding_mode="zero",
         cmapss_train_full_windows_only=True,
