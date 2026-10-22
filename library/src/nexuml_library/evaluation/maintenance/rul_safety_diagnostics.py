@@ -8,13 +8,17 @@ from typing import Any
 
 import lightning as L
 import torch
-from tensordict import TensorDict
 from torch import Tensor
 
 from nexuml_library.data.maintenance.rul import read_rul_artifact
 
-_STAGE_BOUNDS = ((0.0, 30.0), (30.0, 60.0), (60.0, 90.0),
-                 (90.0, 120.0), (120.0, float("inf")))
+_STAGE_BOUNDS = (
+    (0.0, 30.0),
+    (30.0, 60.0),
+    (60.0, 90.0),
+    (90.0, 120.0),
+    (120.0, float("inf")),
+)
 
 
 def summarize_rul_sensor_stages(payload: dict[str, Any]) -> dict[str, Any]:
@@ -53,8 +57,10 @@ def summarize_rul_sensor_stages(payload: dict[str, Any]) -> dict[str, Any]:
         "source": "C-MAPSS prepared windows",
         "purpose": "Train/validation-only sensor-stage comparison; not test-tuned",
         "feature_names": settings["feature_names"],
-        "stage_bounds_cycles": [[low, high if high != float("inf") else None]
-                                for low, high in _STAGE_BOUNDS],
+        "stage_bounds_cycles": [
+            [low, high if high != float("inf") else None]
+            for low, high in _STAGE_BOUNDS
+        ],
         "splits": {},
     }
     for split in ("train", "val"):
