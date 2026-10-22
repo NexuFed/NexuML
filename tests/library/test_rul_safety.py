@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import csv
 import json
 from collections.abc import Callable
 from pathlib import Path
@@ -16,8 +17,14 @@ from tensordict import TensorDict
 from nexuml.core.compiler import compile as compile_pipeline
 from nexuml.core.config import ResolvedConfig
 from nexuml.core.types import ScenarioSpec
-from nexuml_library.evaluation.maintenance.rul_prepare import prepare_cmapss
-from nexuml_library.evaluation.maintenance.rul_engine_audit import RULPerEngineAudit
+from nexuml_library.evaluation.maintenance.rul_prepare import (
+    prepare_cmapss,
+    save_rul_artifact,
+)
+from nexuml_library.evaluation.maintenance.rul_engine_audit import (
+    RULPerEngineAudit,
+    _RULPerEngineAuditRuntime,
+)
 from nexuml_library.evaluation.maintenance.rul_safety_diagnostics import (
     summarize_rul_sensor_stages,
 )
@@ -142,6 +149,8 @@ def test_safety_scenario_isolated_from_paper_reproduction(
     assert isinstance(safety_audit, RULPerEngineAudit)
     assert isinstance(paper_audit, RULPerEngineAudit)
     assert safety_audit.output_file != paper_audit.output_file
+    assert safety_audit.sensor_stage_alignment is True
+    assert paper_audit.sensor_stage_alignment is False
     compiled = compile_pipeline(safety)
     dims = safety.data.input_shapes["rul_history"]
     batch = TensorDict({"rul_history": torch.randn(2, *dims)}, batch_size=[2])
@@ -154,3 +163,61 @@ def test_safety_scenario_isolated_from_paper_reproduction(
     restored = ResolvedConfig.load(yaml_path).to_scenario()
     assert any("RULSensorStageAudit" in item.factory for item in restored.callbacks)
     compile_pipeline(restored)
+
+
+def test_test_engine_stage_matches_training_prototypes_without_fitting_test(
+    tmp_path: Path,
+) -> None:
+    """Compare all held-out engines to fixed training-only sensor stage prototypes."""
+    _synthetic_fd001(tmp_path)
+    payload = prepare_cmapss(
+        tmp_path,
+        window=30,
+        rul_cap=130.0,
+        sensor_ids=[2, 3, 4, 7, 8, 9, 11, 12, 13, 14, 15, 17, 20, 21],
+        train_full_windows_only=True,
+        normalize_targets=False,
+    )
+    artifact = tmp_path / "prepared.pt"
+    save_rul_artifact(payload, artifact)
+    report = tmp_path / "aligned.csv"
+    runtime = _RULPerEngineAuditRuntime(
+        artifact_path=str(artifact),
+        output_file=str(report),
+        prediction_key="predicted_rul",
+        sensor_stage_alignment=True,
+    )
+    indices = [
+        i for i, row in enumerate(payload["rows"]) if row["split"] == "test"
+    ]
+    predictions = payload["targets"][indices]
+    x = TensorDict(
+        {
+            "sample_index": torch.arange(len(indices)),
+            "predicted_rul": predictions.clone(),
+        },
+        batch_size=[len(indices)],
+    )
+    y = TensorDict(
+        {
+            "rul": payload["targets"][indices],
+            "rul_raw": payload["raw_targets"][indices],
+        },
+        batch_size=[len(indices)],
+    )
+    runtime.eval_batch(x, y)
+    runtime.eval_end()
+    with report.open(newline="", encoding="utf-8") as file:
+        rows = list(csv.DictReader(file))
+    assert len(rows) == 2
+    for row in rows:
+        assert row["nearest_train_stage_endpoint"] in (
+            "0-30", "30-60", "60-90", "90-120", "120+"
+        )
+        assert row["nearest_train_stage_slope"] in (
+            "0-30", "30-60", "60-90", "90-120", "120+"
+        )
+        assert float(row["distance_train_stage_endpoint"]) >= 0
+        assert float(row["distance_train_stage_slope"]) >= 0
+    manifest = json.loads(report.with_suffix(".json").read_text())
+    assert manifest["sensor_stage_alignment"] == "training_engine_prototypes_only"
