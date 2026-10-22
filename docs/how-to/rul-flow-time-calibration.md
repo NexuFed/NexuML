@@ -218,6 +218,18 @@ paired seeds **and** FD003 would support incremental predictive
 information from the Flow coordinates. A difference in FD001 alone
 remains exploratory; seeds share the same held-out population.
 
+## Independent flow-state RUL predictor
+
+A new experiment now tests direct RUL regression from the **frozen
+PatchFormer embeddings and Flow field**, without ever evaluating the
+former PatchFormer RUL head. A matched encoder-only control tests
+whether the learned flow adds information beyond its pretrained
+encoder, alongside shuffled-flow hybrid and engine-level uncertainty
+diagnostics.
+
+See [Standalone flow-state RUL without the original predictor](rul-flow-state-without-predictor.md)
+for the native CLI runs, provenance requirements and interpretation.
+
 ## Interpretation
 
 Compare the corresponding frozen PatchFormer baseline against both
