@@ -72,7 +72,7 @@ class _RULAsymmetricRuntime(PipelineLayer):
         """
         if not isinstance(x, TensorDict):
             raise TypeError("RUL safety loss expects a NexuML TensorDict")
-        predicted = cast(Tensor, x[self.keys_in[0]])
+        predicted = cast(Tensor, x[cast(list[str], self.keys_in)[0]])
         target = self.get_label(x, y)
         if target is None:
             loss = predicted.square().mean() * 0.0
