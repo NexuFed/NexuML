@@ -52,6 +52,8 @@ def rollout_capacity_to_eol(
     result = torch.full(
         (len(history),), -1, dtype=torch.long, device=history.device
     )
+    last_capacity = history[:, -1, 0] * capacity_scale_ah + capacity_offset_ah
+    result[last_capacity <= end_of_life_ah] = 0
     with torch.no_grad():
         for step in range(1, max_cycles + 1):
             capacity = predict_next(history)
