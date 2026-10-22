@@ -760,10 +760,16 @@ def test_goel2026_padded_test_and_cycle_targets(tmp_path: Path) -> None:
     artifact = tmp_path / "goel-cycle-targets.pt"
     save_rul_artifact(payload, artifact)
     dataset = PreparedRULWindows(path=str(artifact)).build().get_split("test")
-    reported = sorted(
-        (float(dataset[i][1]["rul"][0]), float(dataset[i][1]["rul_raw"][0]))
-        for i in range(len(dataset))
-    )
+    reported: list[tuple[float, float]] = []
+    for i in range(len(dataset)):
+        _, labels = dataset[i]
+        assert labels is not None
+        capped = labels.get("rul")
+        raw = labels.get("rul_raw")
+        assert isinstance(capped, torch.Tensor)
+        assert isinstance(raw, torch.Tensor)
+        reported.append((float(capped.item()), float(raw.item())))
+    reported.sort()
     assert reported == [(7.0, 7.0), (130.0, 160.0)]
     for i, row in enumerate(payload["rows"]):
         if row["split"] != "test":
