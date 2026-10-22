@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from contextlib import nullcontext
 from dataclasses import replace
 from typing import cast
 
@@ -27,7 +28,12 @@ class Flow(LayerDefinition):
     initialization_seed: int | None = None
 
     def build(self, context: LayerBuildContext) -> PipelineLayer:
-        with torch.random.fork_rng(devices=[]):
+        rng_context = (
+            torch.random.fork_rng(devices=[])
+            if self.initialization_seed is not None
+            else nullcontext()
+        )
+        with rng_context:
             if self.initialization_seed is not None:
                 torch.manual_seed(self.initialization_seed)
             vector_field = TimeConditionedVectorField(
