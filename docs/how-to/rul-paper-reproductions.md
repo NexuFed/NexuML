@@ -121,6 +121,10 @@ nexuml resolve maintenance-rul-goel2026-cnn-protocol \
 nexuml train --config .experiments/rul-goel2026-cnn.yaml
 ```
 
+For three more recent paper-structured RUL architectures and battery forecasting
+protocols, see [advanced DMM-JA / PatchFormer / RUL-Mamba models](rul-advanced-paper-models.md).
+These transfer benchmarks are not Goel or original battery paper reproductions.
+
 For a separate, **non-publication**, cost-sensitive RUL research track,
 see [safety-aware RUL experiments](rul-safety-experiments.md).
 These experiments do not replace the reference-paper scenarios.
