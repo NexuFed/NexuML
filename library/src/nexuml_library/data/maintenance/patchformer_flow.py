@@ -131,9 +131,9 @@ def _trusted_patchformer_weights(
     """
     if not checkpoint_path.is_file():
         raise FileNotFoundError(
-            f"Train PatchFormer first and set its best checkpoint: {checkpoint_path}"
+            f"Missing trained PatchFormer best checkpoint: {checkpoint_path}"
         )
-    # The user explicitly selects this trusted local Lightning checkpoint.
+    # The trusted local checkpoint is discovered from NexuML's audit manifest.
     # Lightning callback/optimizer metadata is not necessarily weights-only safe.
     payload = torch.load(
         checkpoint_path, map_location="cpu", weights_only=False
@@ -191,7 +191,6 @@ class AutoPatchFormerFlowEndpoints(DataSourceDefinition):
 
         Raises:
             ValueError: If endpoint thresholds, checkpoint or dataset are invalid.
-            FileNotFoundError: If the frozen PatchFormer checkpoint is absent.
         """
         if self.healthy_min_rul <= self.faulty_max_rul:
             raise ValueError("Healthy RUL threshold must exceed faulty RUL threshold")
