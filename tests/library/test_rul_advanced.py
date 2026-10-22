@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 from typing import cast
 
@@ -11,6 +12,7 @@ from tensordict import TensorDict
 
 from nexuml.core.compiler import compile as compile_pipeline
 from nexuml.core.config import ResolvedConfig
+from nexuml.core.types import ScenarioSpec
 from nexuml_library.data.maintenance.rul import AutoCMapSSRULWindows
 from nexuml_library.evaluation.maintenance.rul_engine_audit import RULPerEngineAudit
 from nexuml_library.layers.model.rul_advanced import (
@@ -81,13 +83,12 @@ def test_jump_aware_bimodal_fusion_and_mamba_decoder_gradients() -> None:
 def test_advanced_paper_architectures_compile_in_native_nexuml(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
-    scenario_fn: object,
+    scenario_fn: Callable[[], ScenarioSpec],
     architecture: str,
     window: int,
     width: int,
 ) -> None:
     """All architectures compile with FD001 provenance and independent audits."""
-    assert callable(scenario_fn)
     monkeypatch.chdir(tmp_path)
     monkeypatch.delenv("NEXUML_RUL_PREPARED_FILE", raising=False)
     selected = scenario_fn()
