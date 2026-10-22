@@ -38,14 +38,16 @@ def read_prepared_artifact(path: str | Path) -> dict[str, Any]:
     rows = payload.get("rows")
     if (
         not isinstance(features, torch.Tensor)
-        or features.ndim != 3
+        or features.ndim not in (3, 4)
         or features.shape[1] != 2
         or not features.is_floating_point()
-        or not torch.isfinite(features).all()
+        or not bool(torch.isfinite(features).all())
         or not isinstance(rows, list)
         or len(rows) != features.shape[0]
     ):
-        raise ValueError("Prepared endpoints must be finite [N,2,D] tensors with aligned rows")
+        raise ValueError("Prepared endpoints must be finite [N,2,D] or [N,2,L,D]")
+    if features.ndim == 4 and min(features.shape[2:]) < 1:
+        raise ValueError("Prepared sequence endpoints require positive L and D")
     if not rows or not all(
         isinstance(row, dict)
         and isinstance(row.get("split"), str)
@@ -61,6 +63,14 @@ def read_prepared_artifact(path: str | Path) -> dict[str, Any]:
     settings = payload.get("settings")
     if not isinstance(settings, dict):
         raise ValueError("Prepared features require experiment provenance settings")
+    if features.ndim == 4 and (
+        settings.get("feature_layout") != "sequence"
+        or settings.get("sequence_length") != features.shape[2]
+        or settings.get("embedding_dim") != features.shape[3]
+    ):
+        raise ValueError("Sequence endpoint shape does not match feature provenance")
+    if features.ndim == 3 and settings.get("feature_layout") == "sequence":
+        raise ValueError("Vector endpoints cannot declare sequence feature layout")
     if settings.get("split_protocol") == "within_machine_recording_holdout":
         groups = {row["group_id"] for row in rows}
         if len(groups) != 1 or "test" in splits:
