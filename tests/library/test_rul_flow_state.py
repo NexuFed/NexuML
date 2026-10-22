@@ -13,7 +13,6 @@ from torch import Tensor
 
 from nexuml.core.compiler import compile as compile_pipeline
 from nexuml.core.config import ResolvedConfig
-from nexuml_library.data.maintenance.prepared_endpoints import read_prepared_artifact
 from nexuml_library.data.maintenance.rul import (
     AutoCMapSSRULWindows,
     read_rul_artifact,
@@ -142,7 +141,7 @@ def test_no_patchformer_rul_predictor_is_called_during_feature_preparation(
             """Never invoke the original supervised PatchFormer RUL predictor."""
             raise AssertionError("PatchFormer RUL predictor must not be called")
 
-        model.fan.forward = forbid_predictor
+        monkeypatch.setattr(model.fan, "forward", forbid_predictor)
         return model
 
     monkeypatch.setattr(data_module, "_PatchFormerModel", construct_encoder)
@@ -153,11 +152,6 @@ def test_no_patchformer_rul_predictor_is_called_during_feature_preparation(
 
     endpoint_file = tmp_path / ".experiments/rul/prepared/endpoint.pt"
     if mode == "flow_only":
-        from nexuml_library.data.maintenance.patchformer_flow import (
-            resolve_patchformer_checkpoint,
-        )
-
-        assert callable(resolve_patchformer_checkpoint)
         endpoint_file.parent.mkdir(parents=True, exist_ok=True)
         torch.save(
             {
