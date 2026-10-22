@@ -13,6 +13,7 @@ import statistics
 from pathlib import Path
 from typing import Any
 
+from nexuml_library.data.maintenance.prepared_endpoints import read_prepared_artifact
 from nexuml_library.evaluation.maintenance.rul_repro_summary import (
     _metrics,
     _read_engine_audit,
@@ -50,6 +51,53 @@ def _geometry_report(root: Path, run: str) -> dict[str, Any]:
     return payload
 
 
+def _restore_legacy_upstream_provenance(
+    reports: dict[str, dict[str, Any]],
+    subset: str,
+    seed: int,
+    *,
+    audit_root: Path,
+) -> None:
+    """Validate upstream identity for pre-existing calibration diagnostics.
+
+    Older flow-time/hybrid geometry reports included the PatchFormer SHA but
+    not the run name. Recover the run from the actual frozen endpoint artifact,
+    never by guessing from seed or by loading test labels.
+
+    Args:
+        reports: Native per-arm geometry records to validate and augment.
+        subset: C-MAPSS subset for the matching frozen flow.
+        seed: Train/validation and initialization seed.
+        audit_root: Local audit root alongside the prepared feature directory.
+
+    Raises:
+        ValueError: If old provenance contradicts the immutable flow artifact.
+        FileNotFoundError: If the matching source artifact is unavailable.
+    """
+    if all(report.get("patchformer_upstream_run") for report in reports.values()):
+        return
+    base = audit_root.parent
+    flow_run = f"rul-{subset}-patchformer-latent-flow-seed{seed}"
+    endpoint_file = base / "prepared" / f"{flow_run}-endpoints.pt"
+    endpoint = read_prepared_artifact(endpoint_file)
+    settings = endpoint["settings"]
+    if (
+        settings.get("subset") != subset
+        or settings.get("seed") != seed
+        or settings.get("held_out_test_engine_labels_used") is not False
+    ):
+        raise ValueError("Historical flow endpoints do not match requested study")
+    upstream = settings.get("frozen_patchformer_upstream_run")
+    fingerprint = settings.get("frozen_patchformer_checkpoint_sha256")
+    if not isinstance(upstream, str) or not isinstance(fingerprint, str):
+        raise ValueError("Historical flow endpoints lack model provenance")
+    for report in reports.values():
+        if report.get("patchformer_checkpoint_sha256") != fingerprint:
+            raise ValueError("Historical flow checkpoint PatchFormer identity mismatch")
+        if not report.get("patchformer_upstream_run"):
+            report["patchformer_upstream_run"] = upstream
+
+
 def summarize_flow_ablation(
     audit_root: Path,
     *,
@@ -82,6 +130,9 @@ def summarize_flow_ablation(
                 arm: _geometry_report(audit_root, _run_name(subset, seed, arm))
                 for arm in _CALIBRATIONS
             }
+            _restore_legacy_upstream_provenance(
+                reports, subset, seed, audit_root=audit_root
+            )
             backbone_runs = {
                 str(row.get("patchformer_upstream_run"))
                 for row in reports.values()
