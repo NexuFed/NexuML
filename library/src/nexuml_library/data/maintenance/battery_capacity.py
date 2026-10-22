@@ -8,6 +8,7 @@ Battery life requires separate extrapolation to the documented EOL threshold.
 from __future__ import annotations
 
 from collections.abc import Sequence
+import json
 from pathlib import Path
 from typing import Self, cast
 
@@ -35,6 +36,7 @@ class BatteryCapacityWindows(DataSourceDefinition):
     )
     test_cell: str = "B0005"
     end_of_life_ah: float = Field(default=1.4, gt=0)
+    normalizer_file: str | None = None
 
     def build(self) -> NexuDataset:
         """Read real CSV curves and fit capacity scaler to training cycles only.
@@ -87,6 +89,18 @@ class BatteryCapacityWindows(DataSourceDefinition):
         )
         minimum = float(train_values.min())
         spread = max(float(train_values.max()) - minimum, 1e-6)
+        if self.normalizer_file is not None:
+            path = Path(self.normalizer_file).expanduser().resolve()
+            path.parent.mkdir(parents=True, exist_ok=True)
+            metadata = {
+                "fit_scope": "training_cycles_only",
+                "train_cells": self.train_cells,
+                "held_out_cell": self.test_cell,
+                "capacity_offset_ah": minimum,
+                "capacity_scale_ah": spread,
+                "end_of_life_ah": self.end_of_life_ah,
+            }
+            path.write_text(json.dumps(metadata, indent=2) + "\\n", encoding="utf-8")
         features: list[Tensor] = []
         labels: list[float] = []
         meta: list[dict[str, int | str]] = []
