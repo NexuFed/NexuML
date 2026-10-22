@@ -100,7 +100,7 @@ class BatteryCapacityWindows(DataSourceDefinition):
                 "capacity_scale_ah": spread,
                 "end_of_life_ah": self.end_of_life_ah,
             }
-            path.write_text(json.dumps(metadata, indent=2) + "\\n", encoding="utf-8")
+            path.write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
         features: list[Tensor] = []
         labels: list[float] = []
         meta: list[dict[str, int | str]] = []
