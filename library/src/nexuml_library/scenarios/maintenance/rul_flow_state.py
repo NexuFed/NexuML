@@ -43,6 +43,9 @@ def patchformer_flow_state_rul(
 
     Returns:
         Native NexuML regression recipe preserving official per-engine audits.
+
+    Raises:
+        TypeError: If native flow feature source invariants are violated.
     """
     baseline = patchformer_flow_rul_calibration(subset, seed, "hybrid")
     run = f"rul-{subset}-patchformer-{kind.replace('_', '-')}-seed{seed}"
