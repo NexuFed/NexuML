@@ -975,3 +975,207 @@ def maintenance_rul_safety_cnn() -> ScenarioSpec:
         Independent, validation-selected NexuML risk-aware CNN scenario.
     """
     return _maintenance_rul_safety("cnn")
+
+
+# Named native scenarios for paired Goel-versus-safety generalization checks.
+# FD001 seed42 uses the existing public Goel and safety scenario names.
+
+
+@scenario("maintenance-rul-repro-fd001-lstm-goel-s43")
+def maintenance_rul_repro_fd001_lstm_goel_s43() -> ScenarioSpec:
+    """Run paired FD001 LSTM goel experiment with seed 43.
+
+    Returns:
+        Isolated NexuML scenario with seed-specific source and checkpoint.
+    """
+    return maintenance_rul_goel2026_lstm_protocol(subset="FD001", seed=43)
+
+
+@scenario("maintenance-rul-repro-fd001-lstm-safety-s43")
+def maintenance_rul_repro_fd001_lstm_safety_s43() -> ScenarioSpec:
+    """Run paired FD001 LSTM safety experiment with seed 43.
+
+    Returns:
+        Isolated NexuML scenario with seed-specific source and checkpoint.
+    """
+    return _maintenance_rul_safety("lstm", subset="FD001", seed=43)
+
+
+@scenario("maintenance-rul-repro-fd001-cnn-goel-s43")
+def maintenance_rul_repro_fd001_cnn_goel_s43() -> ScenarioSpec:
+    """Run paired FD001 CNN goel experiment with seed 43.
+
+    Returns:
+        Isolated NexuML scenario with seed-specific source and checkpoint.
+    """
+    return maintenance_rul_goel2026_cnn_protocol(subset="FD001", seed=43)
+
+
+@scenario("maintenance-rul-repro-fd001-cnn-safety-s43")
+def maintenance_rul_repro_fd001_cnn_safety_s43() -> ScenarioSpec:
+    """Run paired FD001 CNN safety experiment with seed 43.
+
+    Returns:
+        Isolated NexuML scenario with seed-specific source and checkpoint.
+    """
+    return _maintenance_rul_safety("cnn", subset="FD001", seed=43)
+
+
+@scenario("maintenance-rul-repro-fd001-lstm-goel-s44")
+def maintenance_rul_repro_fd001_lstm_goel_s44() -> ScenarioSpec:
+    """Run paired FD001 LSTM goel experiment with seed 44.
+
+    Returns:
+        Isolated NexuML scenario with seed-specific source and checkpoint.
+    """
+    return maintenance_rul_goel2026_lstm_protocol(subset="FD001", seed=44)
+
+
+@scenario("maintenance-rul-repro-fd001-lstm-safety-s44")
+def maintenance_rul_repro_fd001_lstm_safety_s44() -> ScenarioSpec:
+    """Run paired FD001 LSTM safety experiment with seed 44.
+
+    Returns:
+        Isolated NexuML scenario with seed-specific source and checkpoint.
+    """
+    return _maintenance_rul_safety("lstm", subset="FD001", seed=44)
+
+
+@scenario("maintenance-rul-repro-fd001-cnn-goel-s44")
+def maintenance_rul_repro_fd001_cnn_goel_s44() -> ScenarioSpec:
+    """Run paired FD001 CNN goel experiment with seed 44.
+
+    Returns:
+        Isolated NexuML scenario with seed-specific source and checkpoint.
+    """
+    return maintenance_rul_goel2026_cnn_protocol(subset="FD001", seed=44)
+
+
+@scenario("maintenance-rul-repro-fd001-cnn-safety-s44")
+def maintenance_rul_repro_fd001_cnn_safety_s44() -> ScenarioSpec:
+    """Run paired FD001 CNN safety experiment with seed 44.
+
+    Returns:
+        Isolated NexuML scenario with seed-specific source and checkpoint.
+    """
+    return _maintenance_rul_safety("cnn", subset="FD001", seed=44)
+
+
+@scenario("maintenance-rul-repro-fd003-lstm-goel-s42")
+def maintenance_rul_repro_fd003_lstm_goel_s42() -> ScenarioSpec:
+    """Run paired FD003 LSTM goel experiment with seed 42.
+
+    Returns:
+        Isolated NexuML scenario with seed-specific source and checkpoint.
+    """
+    return maintenance_rul_goel2026_lstm_protocol(subset="FD003", seed=42)
+
+
+@scenario("maintenance-rul-repro-fd003-lstm-safety-s42")
+def maintenance_rul_repro_fd003_lstm_safety_s42() -> ScenarioSpec:
+    """Run paired FD003 LSTM safety experiment with seed 42.
+
+    Returns:
+        Isolated NexuML scenario with seed-specific source and checkpoint.
+    """
+    return _maintenance_rul_safety("lstm", subset="FD003", seed=42)
+
+
+@scenario("maintenance-rul-repro-fd003-cnn-goel-s42")
+def maintenance_rul_repro_fd003_cnn_goel_s42() -> ScenarioSpec:
+    """Run paired FD003 CNN goel experiment with seed 42.
+
+    Returns:
+        Isolated NexuML scenario with seed-specific source and checkpoint.
+    """
+    return maintenance_rul_goel2026_cnn_protocol(subset="FD003", seed=42)
+
+
+@scenario("maintenance-rul-repro-fd003-cnn-safety-s42")
+def maintenance_rul_repro_fd003_cnn_safety_s42() -> ScenarioSpec:
+    """Run paired FD003 CNN safety experiment with seed 42.
+
+    Returns:
+        Isolated NexuML scenario with seed-specific source and checkpoint.
+    """
+    return _maintenance_rul_safety("cnn", subset="FD003", seed=42)
+
+
+@scenario("maintenance-rul-repro-fd003-lstm-goel-s43")
+def maintenance_rul_repro_fd003_lstm_goel_s43() -> ScenarioSpec:
+    """Run paired FD003 LSTM goel experiment with seed 43.
+
+    Returns:
+        Isolated NexuML scenario with seed-specific source and checkpoint.
+    """
+    return maintenance_rul_goel2026_lstm_protocol(subset="FD003", seed=43)
+
+
+@scenario("maintenance-rul-repro-fd003-lstm-safety-s43")
+def maintenance_rul_repro_fd003_lstm_safety_s43() -> ScenarioSpec:
+    """Run paired FD003 LSTM safety experiment with seed 43.
+
+    Returns:
+        Isolated NexuML scenario with seed-specific source and checkpoint.
+    """
+    return _maintenance_rul_safety("lstm", subset="FD003", seed=43)
+
+
+@scenario("maintenance-rul-repro-fd003-cnn-goel-s43")
+def maintenance_rul_repro_fd003_cnn_goel_s43() -> ScenarioSpec:
+    """Run paired FD003 CNN goel experiment with seed 43.
+
+    Returns:
+        Isolated NexuML scenario with seed-specific source and checkpoint.
+    """
+    return maintenance_rul_goel2026_cnn_protocol(subset="FD003", seed=43)
+
+
+@scenario("maintenance-rul-repro-fd003-cnn-safety-s43")
+def maintenance_rul_repro_fd003_cnn_safety_s43() -> ScenarioSpec:
+    """Run paired FD003 CNN safety experiment with seed 43.
+
+    Returns:
+        Isolated NexuML scenario with seed-specific source and checkpoint.
+    """
+    return _maintenance_rul_safety("cnn", subset="FD003", seed=43)
+
+
+@scenario("maintenance-rul-repro-fd003-lstm-goel-s44")
+def maintenance_rul_repro_fd003_lstm_goel_s44() -> ScenarioSpec:
+    """Run paired FD003 LSTM goel experiment with seed 44.
+
+    Returns:
+        Isolated NexuML scenario with seed-specific source and checkpoint.
+    """
+    return maintenance_rul_goel2026_lstm_protocol(subset="FD003", seed=44)
+
+
+@scenario("maintenance-rul-repro-fd003-lstm-safety-s44")
+def maintenance_rul_repro_fd003_lstm_safety_s44() -> ScenarioSpec:
+    """Run paired FD003 LSTM safety experiment with seed 44.
+
+    Returns:
+        Isolated NexuML scenario with seed-specific source and checkpoint.
+    """
+    return _maintenance_rul_safety("lstm", subset="FD003", seed=44)
+
+
+@scenario("maintenance-rul-repro-fd003-cnn-goel-s44")
+def maintenance_rul_repro_fd003_cnn_goel_s44() -> ScenarioSpec:
+    """Run paired FD003 CNN goel experiment with seed 44.
+
+    Returns:
+        Isolated NexuML scenario with seed-specific source and checkpoint.
+    """
+    return maintenance_rul_goel2026_cnn_protocol(subset="FD003", seed=44)
+
+
+@scenario("maintenance-rul-repro-fd003-cnn-safety-s44")
+def maintenance_rul_repro_fd003_cnn_safety_s44() -> ScenarioSpec:
+    """Run paired FD003 CNN safety experiment with seed 44.
+
+    Returns:
+        Isolated NexuML scenario with seed-specific source and checkpoint.
+    """
+    return _maintenance_rul_safety("cnn", subset="FD003", seed=44)
