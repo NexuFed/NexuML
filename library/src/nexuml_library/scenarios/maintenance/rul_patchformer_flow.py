@@ -23,6 +23,8 @@ from nexuml_library.data.maintenance.patchformer_flow import (
 from nexuml_library.evaluation.maintenance.ablation_validation import (
     DistributionalTransportValidation,
 )
+from nexuml_library.evaluation.maintenance.rul_seed import RULSeedOnFitStart
+from nexuml_library.layers.model.flow import Flow
 from nexuml_library.scenarios.flow.audio_health_to_fault import (
     audio_health_to_fault_flow,
 )
@@ -96,6 +98,19 @@ def patchformer_embedding_flow(
         for name, layers in base.pipeline.stages.items()
         if name != "AudioFeatures"
     }
+    flow_layer = stages["Flow"][0]
+    flow_model = flow_layer.component
+    if not isinstance(flow_model, Flow):
+        raise ValueError("Latent flow scenario requires the native NexuML Flow layer")
+    stages["Flow"] = [
+        flow_layer.model_copy(
+            update={
+                "component": flow_model.model_copy(
+                    update={"initialization_seed": seed}
+                )
+            }
+        )
+    ]
     data = base.data.model_copy(
         update={
             "datasets": [
@@ -123,6 +138,7 @@ def patchformer_embedding_flow(
                 use_mlflow=False,
             ),
             "callbacks": [
+                callback(RULSeedOnFitStart, seed=seed),
                 callback(
                     DistributionalTransportValidation,
                     prepared_file=str(endpoint_file),
