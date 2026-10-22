@@ -185,7 +185,6 @@ def test_frozen_patchformer_endpoints_exclude_official_test_labels(
     assert changed["settings"]["feature_mean"] == before
 
 
-
 def _write_best_manifest(root: Path, run: str) -> Path:
     """Write the native callback's minimal checkpoint manifest for a run.
 
@@ -212,9 +211,7 @@ def test_flow_finds_existing_original_patchformer_without_env(
     monkeypatch.setenv(
         "NEXUML_PATCHFORMER_CHECKPOINT", "/unused/obsolete/configuration.ckpt"
     )
-    original = (
-        "rul-cmapss-FD001-patchformer-direct-rul-adaptation-seed42"
-    )
+    original = "rul-cmapss-FD001-patchformer-direct-rul-adaptation-seed42"
     expected = _write_best_manifest(tmp_path, original)
     assert resolve_patchformer_checkpoint("FD001", 42) == expected
     flow = patchformer_embedding_flow("FD001", 42)
