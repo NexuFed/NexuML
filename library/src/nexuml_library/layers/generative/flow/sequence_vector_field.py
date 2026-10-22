@@ -168,7 +168,9 @@ class SequenceTimeConditionedVectorField(LayerDefinition):
             ValueError: If the state or selected backbone parameters are invalid.
         """
         if len(context.keys_in) != 2 or len(context.keys_out) != 1:
-            raise ValueError("Sequence vector field requires state/time and velocity keys")
+            raise ValueError(
+                "Sequence vector field requires state/time and velocity keys"
+            )
         state_shape = context.input_sizes[context.keys_in[0]]
         if len(state_shape) != 2 or min(state_shape) < 1:
             raise ValueError("Sequence flow requires [length,channels] inputs")
