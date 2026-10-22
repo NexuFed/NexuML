@@ -55,3 +55,42 @@ class Goel2026PlateauLR(Callback):
     def load_state_dict(self, state_dict: dict[str, Any]) -> None:
         """Restore plateau state on native Lightning checkpoint resume."""
         self._pending_state = dict(state_dict)
+
+
+class Goel2026RestoreBestWeights(Callback):
+    """Restore the monitored best validation weights after native NexuML fit.
+
+    NexuML's default session validates and tests the supplied live module.
+    This callback makes the paper's best-epoch inference rule explicit
+    without changing the core NexuML training or testing framework.
+
+    Checkpoints are created locally by the current run. The callback loads
+    only the model state_dict and never restores optimizer/scheduler state,
+    because no additional fitting follows this operation.
+    """
+
+    def on_fit_end(self, trainer: L.Trainer, pl_module: L.LightningModule) -> None:
+        """Load weights from the lowest-validation-loss Lightning checkpoint.
+
+        Raises:
+            RuntimeError: If there is no valid saved best model.
+        """
+        from lightning.pytorch.callbacks import ModelCheckpoint
+
+        monitors = [
+            item
+            for item in trainer.callbacks
+            if isinstance(item, ModelCheckpoint)
+            and item.monitor == "val/loss"
+            and item.mode == "min"
+        ]
+        if len(monitors) != 1 or not monitors[0].best_model_path:
+            raise RuntimeError(
+                "Goel2026 reproduction requires exactly one monitored best checkpoint"
+            )
+        path = monitors[0].best_model_path
+        # Trust boundary: load a checkpoint written by this local training run.
+        checkpoint = torch.load(path, map_location="cpu", weights_only=False)
+        if not isinstance(checkpoint, dict) or "state_dict" not in checkpoint:
+            raise RuntimeError("Goel2026 best checkpoint has no model state_dict")
+        pl_module.load_state_dict(checkpoint["state_dict"], strict=True)
