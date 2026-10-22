@@ -5,7 +5,7 @@ from __future__ import annotations
 import csv
 import json
 from pathlib import Path
-from typing import Literal
+from typing import Literal, cast
 
 import numpy as np
 import pytest
@@ -158,8 +158,9 @@ def test_baseline_only_builds_without_flow_or_endpoints(
     assert not (tmp_path / "absent-flow.pt").exists()
     first, y = dataset.get_split("test")[0]
     assert y is not None
-    assert torch.count_nonzero(first["flow_rul_features"][:2]) == 0
-    assert torch.isfinite(first["flow_rul_features"]).all()
+    frozen = cast(torch.Tensor, first["flow_rul_features"])
+    assert torch.count_nonzero(frozen[:2]).item() == 0
+    assert bool(torch.isfinite(frozen).all())
     saved = json.loads((tmp_path / "baseline.json").read_text())
     assert saved["flow_checkpoint_sha256"] is None
     assert saved["patchformer_upstream_run"] == run
