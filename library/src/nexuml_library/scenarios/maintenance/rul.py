@@ -587,6 +587,9 @@ _LU2025_SENSORS: list[int] = [
     2, 3, 4, 7, 8, 9, 11, 12, 13, 14, 15, 17, 20, 21
 ]
 
+# Goel et al. retain sensor s6 on FD003, giving 15 selected channels.
+_GOEL2026_FD003_SENSORS: list[int] = sorted([*_LU2025_SENSORS, 6])
+
 
 @scenario("maintenance-rul-lu2025-tcn-protocol")
 def maintenance_rul_lu2025_tcn_protocol() -> ScenarioSpec:
@@ -642,26 +645,35 @@ def maintenance_rul_cen2024_tsmixer_proxy() -> ScenarioSpec:
 
 
 @scenario("maintenance-rul-goel2026-lstm-protocol")
-def maintenance_rul_goel2026_lstm_protocol() -> ScenarioSpec:
-    """Apply the Goel et al. (2026) FD001 LSTM architecture and training recipe.
+def maintenance_rul_goel2026_lstm_protocol(
+    subset: Literal["FD001", "FD003"] = "FD001",
+    seed: int = 42,
+) -> ScenarioSpec:
+    """Apply the Goel et al. (2026) LSTM architecture and training recipe.
 
     Implements their one-layer 32-unit LSTM, Dropout(0.5), 32-8-8-1
     regressor, RMSprop and validation plateau schedule. The published
     evaluation can be compared against capped and official raw RUL labels;
     unknown publication details still preclude an exact-reproduction claim.
 
+    Args:
+        subset: Official FD001 or FD003 benchmark subset.
+        seed: Engine split, network initialization and training seed.
+
     Returns:
-        Native NexuML FD001 scenario with paper-aligned LSTM and optimizer.
+        Native NexuML scenario with paper-aligned LSTM and optimizer.
 
     Raises:
         ValueError: If the resolved data source cannot support the Goel engine audit.
     """
+    sensor_ids = _LU2025_SENSORS if subset == "FD001" else _GOEL2026_FD003_SENSORS
     base = maintenance_rul_benchmark(
         architecture="lstm",
         objective="mse",
+        cmapss_subset=subset,
         cmapss_window=30,
         cmapss_stride=1,
-        cmapss_sensor_ids=_LU2025_SENSORS,
+        cmapss_sensor_ids=sensor_ids,
         cmapss_normalization="zscore",
         cmapss_rul_cap=130.0,
         cmapss_profile="goel2026-lstm-protocol-raw",
@@ -675,13 +687,13 @@ def maintenance_rul_goel2026_lstm_protocol() -> ScenarioSpec:
         lr=1e-3,
         max_epochs=200,
         patience=20,
-        seed=42,
+        seed=seed,
     )
     paper_layer = LayerSpec(
         component=Goel2026LSTMForecaster(
             hidden_dim=32,
             dropout=0.5,
-            initialization_seed=42,
+            initialization_seed=seed,
         ),
         keys_in=["rul_history"],
         keys_out=["predicted_rul"],
@@ -750,11 +762,18 @@ def maintenance_rul_goel2026_lstm_protocol() -> ScenarioSpec:
 
 
 @scenario("maintenance-rul-goel2026-cnn-protocol")
-def maintenance_rul_goel2026_cnn_protocol() -> ScenarioSpec:
-    """Apply Goel et al. (2026) FD001 CNN architecture and training protocol.
+def maintenance_rul_goel2026_cnn_protocol(
+    subset: Literal["FD001", "FD003"] = "FD001",
+    seed: int = 42,
+) -> ScenarioSpec:
+    """Apply Goel et al. (2026) CNN architecture and training protocol.
 
     Matches their three 3x1 convolution blocks, dropout, 128-unit regression
     head, and the same native RMSprop and plateau schedule as their LSTM.
+
+    Args:
+        subset: Official FD001 or FD003 benchmark subset.
+        seed: Engine split, network initialization and training seed.
 
     Returns:
         Native NexuML scenario with paper-aligned CNN model and data source.
@@ -762,7 +781,7 @@ def maintenance_rul_goel2026_cnn_protocol() -> ScenarioSpec:
     Raises:
         ValueError: If the resolved dataset is not an official C-MAPSS source.
     """
-    baseline = maintenance_rul_goel2026_lstm_protocol()
+    baseline = maintenance_rul_goel2026_lstm_protocol(subset=subset, seed=seed)
     run_name = baseline.name.replace("-lstm-", "-cnn-")
     checkpoint_root = (
         (os.environ.get("NEXUML_RUL_CHECKPOINT_ROOT") or "").strip()
@@ -782,7 +801,7 @@ def maintenance_rul_goel2026_cnn_protocol() -> ScenarioSpec:
         label_key="rul",
     )
     cnn_layer = LayerSpec(
-        component=Goel2026CNNForecaster(dropout=0.3, initialization_seed=42),
+        component=Goel2026CNNForecaster(dropout=0.3, initialization_seed=seed),
         keys_in=["rul_history"],
         keys_out=["predicted_rul"],
     )
@@ -809,7 +828,7 @@ def maintenance_rul_goel2026_cnn_protocol() -> ScenarioSpec:
                 }
             ),
             "callbacks": [
-                callback(RULSeedOnFitStart, seed=42),
+                callback(RULSeedOnFitStart, seed=seed),
                 callback(
                     ModelCheckpoint,
                     dirpath=str(checkpoint_dir),
@@ -832,11 +851,20 @@ def maintenance_rul_goel2026_cnn_protocol() -> ScenarioSpec:
 def _maintenance_rul_safety(
     architecture: Literal["lstm", "cnn"],
     overestimate_weight: float = 2.0,
+    *,
+    subset: Literal["FD001", "FD003"] = "FD001",
+    seed: int = 42,
 ) -> ScenarioSpec:
     """Build a cost-sensitive RUL experiment with an untouched Goel control.
 
     RUL overestimation has a larger training/validation loss. Original NASA
     test metrics and engine audits remain descriptive held-out evaluation.
+
+    Args:
+        architecture: Original Goel LSTM or CNN architecture.
+        overestimate_weight: Cost multiplier for positive RUL errors.
+        subset: Official FD001 or FD003 benchmark subset.
+        seed: Engine split, network initialization and training seed.
 
     Returns:
         Independent checkpointed and logged native NexuML safety scenario.
@@ -845,9 +873,9 @@ def _maintenance_rul_safety(
         ValueError: If the data source is not the official cached FD001 artifact.
     """
     baseline = (
-        maintenance_rul_goel2026_lstm_protocol()
+        maintenance_rul_goel2026_lstm_protocol(subset=subset, seed=seed)
         if architecture == "lstm"
-        else maintenance_rul_goel2026_cnn_protocol()
+        else maintenance_rul_goel2026_cnn_protocol(subset=subset, seed=seed)
     )
     source = baseline.data.datasets[0].source
     if not isinstance(source, AutoCMapSSRULWindows):
@@ -904,7 +932,7 @@ def _maintenance_rul_safety(
                 else None
             ),
             "callbacks": [
-                callback(RULSeedOnFitStart, seed=42),
+                callback(RULSeedOnFitStart, seed=seed),
                 callback(
                     ModelCheckpoint,
                     dirpath=str(checkpoint_dir),
