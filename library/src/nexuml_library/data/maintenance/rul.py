@@ -202,9 +202,7 @@ class AutoCMapSSRULWindows(DataSourceDefinition):
             Labeled causal sensor windows with asset-disjoint splits.
 
         Raises:
-            FileNotFoundError: If raw input data are absent and download is disabled.
-            ValueError: If the official source or prepared artifact is invalid.
-            RuntimeError: If NASA download fails.
+            ValueError: If the prepared artifact disagrees with the scenario.
         """
         from nexuml_library.data.maintenance.rul_download import (
             CMAPSS_ARCHIVE_URL,
