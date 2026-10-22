@@ -138,8 +138,7 @@ def ensure_cmapss(root: str | Path, subset: str, *, download: bool = True) -> Pa
 
     Raises:
         FileNotFoundError: If source files are missing and download is disabled.
-        RuntimeError: If the official download fails.
-        ValueError: If the downloaded source archive is unsafe or incomplete.
+        ValueError: If the downloaded source archive is invalid.
     """
     _required_files(subset)
     root = Path(root).expanduser().resolve()
