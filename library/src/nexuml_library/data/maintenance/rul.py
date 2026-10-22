@@ -171,10 +171,15 @@ class _PreparedRULRuntime(NexuDataset):
         Returns:
             Label TensorDict with rul [1].
         """
-        labels = {"rul": self._rul_targets[idx]}
         if self._rul_raw_targets is not None:
-            labels["rul_raw"] = self._rul_raw_targets[idx]
-        return TensorDict(labels, batch_size=[])
+            return TensorDict(
+                {
+                    "rul": self._rul_targets[idx],
+                    "rul_raw": self._rul_raw_targets[idx],
+                },
+                batch_size=[],
+            )
+        return TensorDict({"rul": self._rul_targets[idx]}, batch_size=[])
 
 
 @data_source("AutoCMapSSRULWindows")
