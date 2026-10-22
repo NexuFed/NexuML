@@ -8,6 +8,7 @@ to prepare endpoints, estimate feature normalization or select checkpoints.
 from __future__ import annotations
 
 import hashlib
+import json
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, Literal, Self, cast
@@ -29,6 +30,86 @@ from nexuml_library.data.maintenance.rul import (
 from nexuml_library.layers.model.rul_advanced import _PatchFormerModel
 
 _FD001_SENSORS = [2, 3, 4, 7, 8, 9, 11, 12, 13, 14, 15, 17, 20, 21]
+
+
+def _patchformer_checkpoint_candidates(
+    subset: Literal["FD001", "FD003"], seed: int
+) -> tuple[str, ...]:
+    """List deterministic upstream run names in preferred selection order.
+
+    Returns:
+        Controlled model followed by the compatible original FD001 seed-42 run.
+    """
+    names = [f"rul-{subset}-controlled-patchformer-seed{seed}"]
+    if subset == "FD001" and seed == 42:
+        names.append(
+            "rul-cmapss-FD001-patchformer-direct-rul-adaptation-seed42"
+        )
+    return tuple(names)
+
+
+def resolve_patchformer_checkpoint(
+    subset: Literal["FD001", "FD003"],
+    seed: int,
+    *,
+    checkpoint_path: str | None = None,
+) -> Path:
+    """Discover the best upstream checkpoint from native NexuML audit manifests.
+
+    The default is a self-contained convention based on the selected subset
+    and seed. Explicit overrides are reserved for programmatic use/tests,
+    never required by the public registered scenario.
+
+    Args:
+        subset: NASA FD001 or FD003.
+        seed: Corresponding supervised PatchFormer training/split seed.
+        checkpoint_path: Optional trusted, explicit local .ckpt file.
+
+    Returns:
+        Existing checkpoint from the exact upstream run for these settings.
+
+    Raises:
+        FileNotFoundError: If no trained upstream PatchFormer is available.
+        ValueError: If a checkpoint or manifest is inconsistent with the run.
+    """
+    expected_runs = _patchformer_checkpoint_candidates(subset, seed)
+    if checkpoint_path:
+        checkpoint = Path(checkpoint_path).expanduser().resolve()
+        if checkpoint.parent.name not in expected_runs:
+            raise ValueError(
+                f"PatchFormer checkpoint must belong to {expected_runs}"
+            )
+        if not checkpoint.is_file():
+            raise FileNotFoundError(f"PatchFormer checkpoint does not exist: {checkpoint}")
+        return checkpoint
+
+    audit_dir = Path(".experiments/rul/audits")
+    for run in expected_runs:
+        manifest = audit_dir / f"{run}.checkpoint.json"
+        if not manifest.is_file():
+            continue
+        try:
+            data = json.loads(manifest.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise ValueError(f"Invalid NexuML checkpoint manifest: {manifest}") from exc
+        if not isinstance(data, dict):
+            raise ValueError(f"Invalid NexuML checkpoint manifest: {manifest}")
+        path = data.get("best_model_path")
+        if not isinstance(path, str) or not path:
+            raise ValueError(f"No best_model_path in NexuML manifest: {manifest}")
+        checkpoint = Path(path).expanduser().resolve()
+        if checkpoint.parent.name != run or not checkpoint.is_file():
+            raise ValueError(
+                f"Stale or mismatched best checkpoint in {manifest}: {checkpoint}"
+            )
+        return checkpoint
+    upstream = f"maintenance-rul-controlled-{subset.lower()}-patchformer-s{seed}"
+    raise FileNotFoundError(
+        f"No trained PatchFormer checkpoint found for {subset} seed {seed}. "
+        f"Run 'nexuml resolve {upstream} --output .experiments/{upstream}.yaml' "
+        f"and 'nexuml train --config .experiments/{upstream}.yaml' first. "
+        f"The flow scenario will then discover its best checkpoint automatically."
+    )
 
 
 def _trusted_patchformer_weights(
@@ -93,7 +174,7 @@ class AutoPatchFormerFlowEndpoints(DataSourceDefinition):
     subset: Literal["FD001", "FD003"] = "FD001"
     seed: int = Field(default=42, ge=0)
     root: str = "data/cmapss"
-    checkpoint_path: str = ""
+    checkpoint_path: str | None = None
     prepared_rul_path: str = ".experiments/rul/prepared/cmapss-FD001-seed42.pt"
     output_file: str = ".experiments/rul/prepared/patchformer-flow.pt"
     healthy_min_rul: float = Field(default=100.0, ge=0)
@@ -114,21 +195,9 @@ class AutoPatchFormerFlowEndpoints(DataSourceDefinition):
         """
         if self.healthy_min_rul <= self.faulty_max_rul:
             raise ValueError("Healthy RUL threshold must exceed faulty RUL threshold")
-        if not self.checkpoint_path:
-            raise FileNotFoundError(
-                "Set NEXUML_PATCHFORMER_CHECKPOINT to a trained PatchFormer .ckpt"
-            )
-        checkpoint = Path(self.checkpoint_path).expanduser().resolve()
-        allowed_runs = {f"rul-{self.subset}-controlled-patchformer-seed{self.seed}"}
-        if self.subset == "FD001" and self.seed == 42:
-            allowed_runs.add(
-                "rul-cmapss-FD001-patchformer-direct-rul-adaptation-seed42"
-            )
-        if checkpoint.parent.name not in allowed_runs:
-            raise ValueError(
-                "PatchFormer checkpoint must belong to the corresponding "
-                f"subset/seed experiment: {sorted(allowed_runs)}"
-            )
+        checkpoint = resolve_patchformer_checkpoint(
+            self.subset, self.seed, checkpoint_path=self.checkpoint_path
+        )
         sensor_ids = (
             sorted([*_FD001_SENSORS, 6])
             if self.subset == "FD003"
@@ -260,6 +329,7 @@ class AutoPatchFormerFlowEndpoints(DataSourceDefinition):
                     ),
                     "frozen_patchformer_checkpoint_sha256": digest,
                     "frozen_patchformer_upstream_run": checkpoint.parent.name,
+                    "frozen_patchformer_checkpoint_path": str(checkpoint),
                     "held_out_test_engine_labels_used": False,
                 },
             },
