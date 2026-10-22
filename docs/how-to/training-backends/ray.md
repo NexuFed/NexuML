@@ -81,24 +81,20 @@ from nexuml.core.types import RayJobExecutionSpec
 spec.execution = RayJobExecutionSpec(
     address="https://ray.example.org",
     verify="/path/to/ca-bundle.pem",
-    py_executable="uv run --locked --python 3.12 --extra isaac --extra ray python",
-    runtime_env={
-        "working_dir": ".",
-        "env_vars": {
-            "UV_CACHE_DIR": "/mnt/data/uv-cache",
-            "UV_LINK_MODE": "copy",
-        },
-    },
-    entrypoint_num_gpus=1,
-    entrypoint_resources={"pool_gpu_workers": 1},
+    setup_command=["uv", "sync", "--locked"],
+    py_executable=".venv/bin/python",
+    runtime_env={"working_dir": "."},
 )
 ```
+
+Choose setup flags/extras in the consuming project; for example, this checkout's
+Isaac profile adds `--python 3.12 --extra isaac --extra ray` to `setup_command`.
+The backend does not hardcode a package manager, Python version or optional extra.
 
 Then use the normal CLI from the project root:
 
 ```bash
-nexuml train --scenario-file cartpole_job.py \
-  -O interaction.environment.viewer.port=8081
+nexuml train --scenario-file scenario_job.py
 ```
 
 The command returns a **submission ID**, not a training result. It does not compile
@@ -117,21 +113,45 @@ training/evaluation/export semantics stay with the remote local CLI. Optional
 checkpoint exists remotely; selective `scenario.checkpoint.source` still needs
 to be accessible to the remote process.
 
-`runtime_env` is passed to the SDK, including working-directory packaging and its
-native exclusions. The remote Python command defaults to `python` (already
-installed dependencies); choose the explicit uv command above when installation
-from the uploaded project's lockfile is required. Importable components/factories,
-their dependencies, data and checkpoint paths must be available remotely. Relative
-paths retain their meaning under Ray's remote working directory; no path rewriting
-or persistent output storage is inferred.
+### Remote dependency setup
+
+`setup_command` is an optional, nonempty **argv list**. It runs once in the remote
+job's working directory, with its `runtime_env` environment, before Python starts.
+Arguments are shell-quoted, not interpreted as shell operators. If setup exits
+nonzero, Python does not start and Ray records the failure without a NexuML retry.
+After successful setup, the waiting shell `exec`s `py_executable`; the installer
+is no longer Python's parent. Output remains in Ray's normal job logs.
+
+By default, `setup_command=None` and `py_executable="python"` keep prepared
+environments unchanged: no installation or interpreter selection is inferred.
+When setup creates a venv, explicitly select its Python, as above. The backend
+does not infer working-directory paths or rewrite an arbitrary `uv run` command.
+Use a project-specific environment, not an installer that changes the base worker
+environment shared by other Ray processes. Concurrent jobs with different
+dependency profiles must use distinct venv paths and matching `py_executable`
+values; only the package download/build cache should be shared.
+
+Separating locked `uv sync` from direct Python execution avoids the cold
+`uv run` SIGPIPE handoff reported in
+[uv #21935](https://github.com/astral-sh/uv/issues/21935), without changing signal
+handling or requiring a custom image. The same setup mechanism works for other
+project-owned installation commands and for non-Isaac jobs. It requires a POSIX
+worker shell, like the existing Ray Jobs entrypoint quoting.
+
+`runtime_env` is passed unchanged to the SDK, including working-directory packaging
+and native exclusions. Importable components/factories, their dependencies, data
+and checkpoint paths must be available remotely. Relative paths retain their
+meaning under Ray's remote working directory; no persistent output storage is
+inferred.
 
 `address=None` uses Ray's native environment-based endpoint selection. Even an
 explicit address is overridden by `RAY_API_SERVER_ADDRESS`/`RAY_ADDRESS` according
 to the SDK's rules; do not leave an ingress setting active when switching to a
 forwarded localhost endpoint. TLS verification defaults to `True`; supply the CA
 bundle for a private HTTPS endpoint. Connection settings and runtime-env values
-are not embedded in the remote scenario, but that scenario itself is visible in
-the job entrypoint: do not put secrets in model/data configuration.
+are not embedded in the remote scenario, but setup/Python commands and the
+scenario itself are visible in the job entrypoint: do not put secrets in those
+commands or model/data configuration.
 
 `entrypoint_num_cpus`, `entrypoint_num_gpus`, `entrypoint_memory` and
 `entrypoint_resources` describe the **entrypoint's logical resource reservations**,
@@ -144,8 +164,8 @@ required; uv still cannot supply missing host drivers or system libraries.
 Ray's own CLI and Python SDK remain supported alternatives to this backend:
 
 ```bash
-ray job submit --working-dir . -- \
-  uv run --locked nexuml train -c configs/my-scenario.yaml
+ray job submit --working-dir . -- bash -c \
+  'uv sync --locked && exec .venv/bin/python -m nexuml.cli.main train -c configs/my-scenario.yaml'
 ```
 
 Use Ray's own status/log/stop tooling for the job lifecycle.
