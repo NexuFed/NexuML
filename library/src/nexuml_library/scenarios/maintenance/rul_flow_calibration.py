@@ -1,7 +1,7 @@
 """Native PatchFormer/Flow Matching time-to-RUL calibration experiments.
 
-Prerequisites are ordinary supervised PatchFormer and latent flow training
-runs for the same subset/seed. This recipe trains a small independent MLP
+Prerequisite: a trained supervised PatchFormer for the same subset/seed.
+Flow-derived variants additionally require the trained latent flow. A small MLP
 calibration on original C-MAPSS training engines and selects val/loss only.
 """
 
@@ -38,14 +38,14 @@ from nexuml_library.scenarios.maintenance.rul_controlled import controlled_rul_s
 def patchformer_flow_rul_calibration(
     subset: Literal["FD001", "FD003"],
     seed: int,
-    mode: Literal["flow_time", "hybrid"],
+    mode: Literal["flow_time", "flow_geometry", "baseline_only", "hybrid"],
 ) -> ScenarioSpec:
     """Calibrate a held-out RUL forecast using frozen flow-path positions.
 
     Args:
         subset: FD001 or FD003 with its own supervised frozen model.
         seed: Match data split, frozen checkpoints and calibration RNG.
-        mode: Flow time alone or additive correction to PatchFormer RUL.
+        mode: Baseline-only correction, flow-only RUL, or flow hybrid.
 
     Returns:
         Native split-safe NexuML regression/evaluation/checkpoint scenario.
@@ -57,7 +57,12 @@ def patchformer_flow_rul_calibration(
     original = base.data.datasets[0].source
     if not isinstance(original, AutoCMapSSRULWindows):
         raise ValueError("Flow-time calibration requires native C-MAPSS source")
-    name = f"rul-{subset}-patchformer-flow-{mode.replace('_', '-')}-seed{seed}"
+    suffix = (
+        "calibration-baseline-only"
+        if mode == "baseline_only"
+        else f"flow-{mode.replace('_', '-')}"
+    )
+    name = f"rul-{subset}-patchformer-{suffix}-seed{seed}"
     latent_run = f"rul-{subset}-patchformer-latent-flow-seed{seed}"
     source = AutoPatchFormerFlowRULFeatures(
         subset=subset,
@@ -68,6 +73,7 @@ def patchformer_flow_rul_calibration(
             Path(f".experiments/rul/prepared/{latent_run}-endpoints.pt").resolve()
         ),
         diagnostics_file=f".experiments/rul/audits/{name}.geometry.json",
+        feature_mode="baseline_only" if mode == "baseline_only" else "with_flow",
     )
     data = base.data.model_copy(
         update={
@@ -265,3 +271,123 @@ def patchformer_hybrid_fd003_s44() -> ScenarioSpec:
         Pretrained-encoder/flow NexuML RUL calibration scenario.
     """
     return patchformer_flow_rul_calibration("FD003", 44, "hybrid")
+
+
+@scenario("maintenance-rul-patchformer-baseline-only-fd001-s42")
+def patchformer_baseline_only_fd001_s42() -> ScenarioSpec:
+    """Run baseline-only PatchFormer calibration on FD001, seed 42.
+
+    Returns:
+        Native independent, checkpointed RUL ablation.
+    """
+    return patchformer_flow_rul_calibration("FD001", 42, "baseline_only")
+
+
+@scenario("maintenance-rul-patchformer-flow-geometry-fd001-s42")
+def patchformer_flow_geometry_fd001_s42() -> ScenarioSpec:
+    """Run flow-geometry PatchFormer calibration on FD001, seed 42.
+
+    Returns:
+        Native independent, checkpointed RUL ablation.
+    """
+    return patchformer_flow_rul_calibration("FD001", 42, "flow_geometry")
+
+
+@scenario("maintenance-rul-patchformer-baseline-only-fd001-s43")
+def patchformer_baseline_only_fd001_s43() -> ScenarioSpec:
+    """Run baseline-only PatchFormer calibration on FD001, seed 43.
+
+    Returns:
+        Native independent, checkpointed RUL ablation.
+    """
+    return patchformer_flow_rul_calibration("FD001", 43, "baseline_only")
+
+
+@scenario("maintenance-rul-patchformer-flow-geometry-fd001-s43")
+def patchformer_flow_geometry_fd001_s43() -> ScenarioSpec:
+    """Run flow-geometry PatchFormer calibration on FD001, seed 43.
+
+    Returns:
+        Native independent, checkpointed RUL ablation.
+    """
+    return patchformer_flow_rul_calibration("FD001", 43, "flow_geometry")
+
+
+@scenario("maintenance-rul-patchformer-baseline-only-fd001-s44")
+def patchformer_baseline_only_fd001_s44() -> ScenarioSpec:
+    """Run baseline-only PatchFormer calibration on FD001, seed 44.
+
+    Returns:
+        Native independent, checkpointed RUL ablation.
+    """
+    return patchformer_flow_rul_calibration("FD001", 44, "baseline_only")
+
+
+@scenario("maintenance-rul-patchformer-flow-geometry-fd001-s44")
+def patchformer_flow_geometry_fd001_s44() -> ScenarioSpec:
+    """Run flow-geometry PatchFormer calibration on FD001, seed 44.
+
+    Returns:
+        Native independent, checkpointed RUL ablation.
+    """
+    return patchformer_flow_rul_calibration("FD001", 44, "flow_geometry")
+
+
+@scenario("maintenance-rul-patchformer-baseline-only-fd003-s42")
+def patchformer_baseline_only_fd003_s42() -> ScenarioSpec:
+    """Run baseline-only PatchFormer calibration on FD003, seed 42.
+
+    Returns:
+        Native independent, checkpointed RUL ablation.
+    """
+    return patchformer_flow_rul_calibration("FD003", 42, "baseline_only")
+
+
+@scenario("maintenance-rul-patchformer-flow-geometry-fd003-s42")
+def patchformer_flow_geometry_fd003_s42() -> ScenarioSpec:
+    """Run flow-geometry PatchFormer calibration on FD003, seed 42.
+
+    Returns:
+        Native independent, checkpointed RUL ablation.
+    """
+    return patchformer_flow_rul_calibration("FD003", 42, "flow_geometry")
+
+
+@scenario("maintenance-rul-patchformer-baseline-only-fd003-s43")
+def patchformer_baseline_only_fd003_s43() -> ScenarioSpec:
+    """Run baseline-only PatchFormer calibration on FD003, seed 43.
+
+    Returns:
+        Native independent, checkpointed RUL ablation.
+    """
+    return patchformer_flow_rul_calibration("FD003", 43, "baseline_only")
+
+
+@scenario("maintenance-rul-patchformer-flow-geometry-fd003-s43")
+def patchformer_flow_geometry_fd003_s43() -> ScenarioSpec:
+    """Run flow-geometry PatchFormer calibration on FD003, seed 43.
+
+    Returns:
+        Native independent, checkpointed RUL ablation.
+    """
+    return patchformer_flow_rul_calibration("FD003", 43, "flow_geometry")
+
+
+@scenario("maintenance-rul-patchformer-baseline-only-fd003-s44")
+def patchformer_baseline_only_fd003_s44() -> ScenarioSpec:
+    """Run baseline-only PatchFormer calibration on FD003, seed 44.
+
+    Returns:
+        Native independent, checkpointed RUL ablation.
+    """
+    return patchformer_flow_rul_calibration("FD003", 44, "baseline_only")
+
+
+@scenario("maintenance-rul-patchformer-flow-geometry-fd003-s44")
+def patchformer_flow_geometry_fd003_s44() -> ScenarioSpec:
+    """Run flow-geometry PatchFormer calibration on FD003, seed 44.
+
+    Returns:
+        Native independent, checkpointed RUL ablation.
+    """
+    return patchformer_flow_rul_calibration("FD003", 44, "flow_geometry")
