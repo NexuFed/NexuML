@@ -565,6 +565,39 @@ def test_asymmetric_nasa_score_for_paper_protocol() -> None:
     assert evaluator.results()["rul_test_nasa_score"] == pytest.approx(expected)
 
 
+def test_goel_restores_best_val_weights_before_native_testing(tmp_path: Path) -> None:
+    """Paper callback must replace final-epoch weights with the saved best."""
+    import lightning as L
+    from lightning.pytorch.callbacks import ModelCheckpoint
+
+    from nexuml_library.evaluation.maintenance.rul_paper_callbacks import (
+        Goel2026RestoreBestWeights,
+    )
+
+    model = L.LightningModule()
+    model.linear = torch.nn.Linear(2, 1)
+    best_weights = {name: tensor.clone() for name, tensor in model.state_dict().items()}
+    checkpoint = tmp_path / "best.ckpt"
+    torch.save({"state_dict": best_weights}, checkpoint)
+    with torch.no_grad():
+        model.linear.weight.fill_(3.0)
+        model.linear.bias.fill_(-5.0)
+    callback_model = ModelCheckpoint(monitor="val/loss", mode="min")
+    callback_model.best_model_path = str(checkpoint)
+    trainer = L.Trainer(
+        callbacks=[callback_model],
+        logger=False,
+        enable_checkpointing=False,
+        enable_progress_bar=False,
+        enable_model_summary=False,
+    )
+    Goel2026RestoreBestWeights().on_fit_end(trainer, model)
+    assert all(
+        torch.equal(model.state_dict()[name], original)
+        for name, original in best_weights.items()
+    )
+
+
 def test_goel_native_per_engine_audit_exports_provenance(
     tmp_path: Path,
 ) -> None:
