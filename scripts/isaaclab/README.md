@@ -4,6 +4,8 @@ For declarative state-only Cartpole training, use
 `nexuml train --scenario-file scripts/isaaclab/cartpole.py` in the prepared venv.
 The [Cartpole guide](../../docs/how-to/isaac-cartpole.md) covers the learning
 settings, private viewer, complete-policy export and held-out evaluation.
+For remote submission without a custom image, see
+[Ray Jobs setup, log snapshots and private forwarding](../../docs/how-to/isaac-cartpole.md#run-remotely-with-ray-jobs).
 
 ## Current worktree profile: Lab 3 / CUDA 13
 

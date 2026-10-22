@@ -228,12 +228,47 @@ def train_cmd(
 
         try:
             apply_overrides(scenario, override)
+            if isinstance(scenario.execution, dict):
+                from nexuml.core.config import ResolvedConfig
+
+                scenario.execution = ResolvedConfig.from_scenario(scenario).execution
         except (KeyError, ValueError) as exc:
             console.print(f"[red]Override error: {exc}[/red]")
             raise typer.Exit(1) from exc
 
     scenario_label = scenario.name if scenario is not None else str(trainer_checkpoint)
     console.print(f"[blue]Training scenario: {scenario_label}[/blue]")
+
+    if scenario is not None:
+        from nexuml.core.types import RayJobExecutionSpec
+
+        if isinstance(scenario.execution, RayJobExecutionSpec):
+            if trainer_checkpoint is not None:
+                console.print(
+                    "[red]ray_job does not transport --trainer-checkpoint. "
+                    "Use the local CLI with a checkpoint accessible to its remote process.[/red]"
+                )
+                raise typer.Exit(1)
+            from nexuml.execution import submit_ray_job
+
+            job_id = submit_ray_job(scenario)
+            if loaded_file is not None and artifact_dir is not None:
+                from nexuml.core.provenance import snapshot_scenario_file_run
+
+                snapshot_scenario_file_run(
+                    loaded_file,
+                    artifact_dir,
+                    command="train",
+                    command_args={
+                        "scenario_file": str(scenario_file),
+                        "max_epochs": max_epochs,
+                        "execution": "ray_job",
+                        "submission_id": job_id,
+                    },
+                )
+            console.print(f"[green]Ray job submitted: {job_id}[/green]")
+            console.print("Submission only; use Ray Jobs status/logs to monitor remote training.")
+            return
 
     if (
         scenario is not None
