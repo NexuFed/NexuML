@@ -114,6 +114,8 @@ def _synthetic_cmapss(root: Path) -> None:
         ("maintenance-rul-patchformer-hybrid-fd003-s44", "flow_calibration"),
         ("maintenance-rul-patchformer-baseline-only-fd001-s42", "flow_calibration"),
         ("maintenance-rul-patchformer-flow-geometry-fd003-s43", "flow_calibration"),
+        ("maintenance-rul-patchformer-flow-state-fd001-s42", "flow_calibration"),
+        ("maintenance-rul-patchformer-encoder-only-fd003-s44", "flow_calibration"),
         ("maintenance-rul-dmm-ja-bimodal", "bimodal"),
         ("maintenance-battery-patchformer-nasa", "battery"),
         ("maintenance-battery-rul-mamba-nasa", "battery"),
