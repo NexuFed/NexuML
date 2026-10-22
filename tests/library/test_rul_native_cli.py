@@ -90,6 +90,8 @@ def test_native_resolve_with_empty_prepared_override(tmp_path: Path) -> None:
     (
         "maintenance-rul-goel2026-lstm-protocol",
         "maintenance-rul-goel2026-cnn-protocol",
+        "maintenance-rul-safety-lstm",
+        "maintenance-rul-safety-cnn",
     ),
 )
 def test_native_goel2026_paper_scenarios_fit_without_custom_loop(
@@ -151,3 +153,12 @@ def test_native_goel2026_paper_scenarios_fit_without_custom_loop(
     assert isinstance(checkpoint_output, str)
     checkpoint_audit = tmp_path / checkpoint_output
     assert checkpoint_audit.is_file()
+    if "safety" in scenario_name:
+        stage_callbacks = [
+            entry for entry in restored.callbacks
+            if "RULSensorStageAudit" in entry.factory
+        ]
+        assert len(stage_callbacks) == 1
+        stage_path = stage_callbacks[0].kwargs["output_file"]
+        assert isinstance(stage_path, str)
+        assert (tmp_path / stage_path).is_file()
