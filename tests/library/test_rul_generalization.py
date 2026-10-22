@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import csv
 import os
 import subprocess
 from pathlib import Path
@@ -14,6 +15,10 @@ from nexuml.core.compiler import compile as compile_pipeline
 from nexuml.core.config import ResolvedConfig
 from nexuml.core.types import ScenarioSpec
 from nexuml_library.data.maintenance.rul import AutoCMapSSRULWindows
+from nexuml_library.evaluation.maintenance.rul_repro_summary import (
+    _audit_filename,
+    summarize_reproducibility,
+)
 from nexuml_library.evaluation.maintenance.rul_engine_audit import RULPerEngineAudit
 from nexuml_library.layers.model.rul_safety import RULAsymmetricSquaredLoss
 from nexuml_library.scenarios.maintenance import rul as rul_scenarios
@@ -174,3 +179,58 @@ def test_native_fd003_resolve_build_train(
     assert source.subset == "FD003"
     assert len(source.sensor_ids or []) == 15
     assert Path(source.artifact_path).is_file()
+
+
+def _write_repro_audit(
+    root: Path,
+    *,
+    seed: int,
+    kind: str,
+    target_shift: float = 0.0,
+) -> None:
+    """Write 100 synthetic held-out engines for paired reporting tests."""
+    path = root / _audit_filename("FD003", "lstm", kind, seed)
+    with path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(["asset_id", "predicted_rul", "true_rul_capped", "true_rul_raw"])
+        for engine in range(1, 101):
+            target = 50 + (engine % 20)
+            error = 10.0 if kind == "goel" else 5.0
+            writer.writerow(
+                [
+                    f"test:FD003:{engine}",
+                    target + error,
+                    target + target_shift,
+                    target + target_shift,
+                ]
+            )
+
+
+def test_paired_repro_report_uses_per_seed_identical_test_engines(
+    tmp_path: Path,
+) -> None:
+    """Summary reports paired improvements and rejects test-label changes."""
+    for seed in (42, 43, 44):
+        for kind in ("goel", "safety"):
+            _write_repro_audit(tmp_path, seed=seed, kind=kind)
+    report = summarize_reproducibility(
+        tmp_path,
+        seeds=(42, 43, 44),
+        subsets=("FD003",),
+        architectures=("lstm",),
+    )
+    results = report["comparisons"]
+    assert isinstance(results, list)
+    assert len(results) == 2
+    for entry in results:
+        assert entry["paired_delta_summary"]["nasa"]["improved_seeds"] == 3
+        assert entry["paired_delta_summary"]["rmse"]["mean"] == pytest.approx(-5.0)
+        assert len(entry["per_seed"]) == 3
+    _write_repro_audit(tmp_path, seed=44, kind="safety", target_shift=1.0)
+    with pytest.raises(ValueError, match="labels disagree"):
+        summarize_reproducibility(
+            tmp_path,
+            seeds=(42, 43, 44),
+            subsets=("FD003",),
+            architectures=("lstm",),
+        )
