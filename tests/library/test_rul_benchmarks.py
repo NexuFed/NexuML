@@ -591,11 +591,15 @@ def test_goel_restores_best_val_weights_before_native_testing(tmp_path: Path) ->
         enable_progress_bar=False,
         enable_model_summary=False,
     )
-    Goel2026RestoreBestWeights().on_fit_end(trainer, model)
+    audit_path = tmp_path / "best-checkpoint.json"
+    Goel2026RestoreBestWeights(output_file=str(audit_path)).on_fit_end(trainer, model)
     assert all(
         torch.equal(model.state_dict()[name], original)
         for name, original in best_weights.items()
     )
+    metadata = json.loads(audit_path.read_text())
+    assert metadata["best_model_path"] == str(checkpoint)
+    assert metadata["loaded_strict_model_state"] is True
 
 
 def test_goel_native_per_engine_audit_exports_provenance(
