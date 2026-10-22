@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from contextlib import nullcontext
 from dataclasses import replace
-from typing import cast
+from typing import Literal, cast
 
 import torch
 from pydantic import Field
@@ -14,6 +14,9 @@ from nexuml.core.base_layer import LightningMode, PipelineLayer
 from nexuml.core.components import LayerBuildContext, LayerDefinition
 from nexuml.core.discovery import layer
 from nexuml_library.layers.generative.flow.euler import EulerIntegrator
+from nexuml_library.layers.generative.flow.sequence_vector_field import (
+    SequenceTimeConditionedVectorField,
+)
 from nexuml_library.layers.generative.flow.vector_field import TimeConditionedVectorField
 from nexuml_library.layers.model.unet import TimeConditionedUNet
 
@@ -38,6 +41,58 @@ class Flow(LayerDefinition):
                 torch.manual_seed(self.initialization_seed)
             vector_field = TimeConditionedVectorField(
                 hidden_dims=self.hidden_dims
+            ).build(replace(context, delay_epochs=0, update_every_n_epochs=1))
+        state_key = context.keys_in[0]
+        integrator = EulerIntegrator(
+            velocity=getattr(vector_field, "velocity"),
+            num_steps=self.num_steps,
+            record_trajectory=self.record_trajectory,
+            input_sizes={state_key: tuple(context.input_sizes[state_key])},
+            keys_in=[state_key],
+            keys_out=["flow_sample"],
+        )
+        return _FlowRuntime(
+            vector_field=vector_field,
+            integrator=integrator,
+            **context.runtime_kwargs(),
+        )
+
+
+@layer("SequenceFlow")
+class SequenceFlow(LayerDefinition):
+    """Integrable [batch,length,channels] Transformer/Conformer/CfC flow."""
+
+    architecture: Literal["transformer", "conformer", "cfc"] = "transformer"
+    model_dim: int = Field(default=128, gt=0)
+    depth: int = Field(default=2, gt=0)
+    attention_heads: int = Field(default=4, gt=0)
+    conv_kernel: int = Field(default=7, gt=0)
+    dropout: float = Field(default=0.0, ge=0.0, lt=1.0)
+    num_steps: int = Field(default=50, gt=0)
+    record_trajectory: bool = False
+    initialization_seed: int | None = None
+
+    def build(self, context: LayerBuildContext) -> PipelineLayer:
+        """Build a sequence-aware Flow with the existing Euler sampling API.
+
+        Returns:
+            Native Flow runtime preserving the full sequence during integration.
+        """
+        rng_context = (
+            torch.random.fork_rng(devices=[])
+            if self.initialization_seed is not None
+            else nullcontext()
+        )
+        with rng_context:
+            if self.initialization_seed is not None:
+                torch.manual_seed(self.initialization_seed)
+            vector_field = SequenceTimeConditionedVectorField(
+                architecture=self.architecture,
+                model_dim=self.model_dim,
+                depth=self.depth,
+                attention_heads=self.attention_heads,
+                conv_kernel=self.conv_kernel,
+                dropout=self.dropout,
             ).build(replace(context, delay_epochs=0, update_every_n_epochs=1))
         state_key = context.keys_in[0]
         integrator = EulerIntegrator(
