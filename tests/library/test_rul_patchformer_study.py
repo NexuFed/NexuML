@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import csv
 from pathlib import Path
 from typing import cast
 
@@ -13,6 +14,9 @@ from tensordict import TensorDict
 
 from nexuml.core.compiler import compile as compile_pipeline
 from nexuml.core.config import ResolvedConfig
+from nexuml_library.evaluation.maintenance.rul_controlled_summary import (
+    summarize_controlled_study,
+)
 from nexuml_library.data.maintenance.patchformer_flow import (
     AutoPatchFormerFlowEndpoints,
     _trusted_patchformer_weights,
@@ -220,3 +224,51 @@ def test_patchformer_embedding_flow_reuses_nexuml_fm_and_swd(
     output = tmp_path / "flow.yaml"
     compiled.resolved_config.save(output)
     assert ResolvedConfig.load(output).to_scenario().name == scenario.name
+
+
+def test_controlled_summary_rejects_mismatched_engine_labels(
+    tmp_path: Path,
+) -> None:
+    """Never summarize pairs trained against different official test engines."""
+    for seed in (42, 43, 44):
+        for model in ("patchformer", "dmm_ja", "safety_lstm", "rul_mamba"):
+            filename = (
+                f"rul-FD001-controlled-{model.replace('_', '-')}-seed{seed}.csv"
+            )
+            with (tmp_path / filename).open(
+                "w", newline="", encoding="utf-8"
+            ) as handle:
+                writer = csv.writer(handle)
+                writer.writerow(
+                    ["asset_id", "predicted_rul", "true_rul_capped", "true_rul_raw"]
+                )
+                for engine in range(1, 101):
+                    truth = float(40 + engine % 20)
+                    writer.writerow(
+                        [f"test:FD001:{engine}", truth + 1, truth, truth]
+                    )
+    report = summarize_controlled_study(
+        tmp_path, subsets=("FD001",), seeds=(42, 43, 44)
+    )
+    comparisons = report["comparisons"]
+    assert len(comparisons) == 2
+    assert all(row["per_seed"][0]["seed"] == 42 for row in comparisons)
+    assert all(
+        row["aggregates"]["patchformer"]["rmse"][
+            "mean_difference_vs_safety_lstm"
+        ] == pytest.approx(0.0)
+        for row in comparisons
+    )
+    wrong = tmp_path / "rul-FD001-controlled-dmm-ja-seed44.csv"
+    with wrong.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(
+            ["asset_id", "predicted_rul", "true_rul_capped", "true_rul_raw"]
+        )
+        for engine in range(1, 101):
+            truth = float(41 + engine % 20)
+            writer.writerow([f"test:FD001:{engine}", truth + 1, truth, truth])
+    with pytest.raises(ValueError, match="different test targets"):
+        summarize_controlled_study(
+            tmp_path, subsets=("FD001",), seeds=(42, 43, 44)
+        )
