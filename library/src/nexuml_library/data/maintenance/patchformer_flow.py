@@ -196,7 +196,11 @@ class AutoPatchFormerFlowEndpoints(DataSourceDefinition):
                     torch.randperm(len(faulty), generator=generator)[:count].tolist()
                 ]
                 def encode(indices: list[int]) -> Tensor:
-                    """Encode one fixed endpoint collection without gradient."""
+                    """Encode one fixed endpoint collection without gradient.
+
+                    Returns:
+                        Mean-pooled, pre-regression PatchFormer DPAN embeddings.
+                    """
                     parts = [
                         model.forward_features(windows[batch]).mean(dim=1)
                         for batch in (
