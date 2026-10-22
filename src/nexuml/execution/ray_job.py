@@ -45,9 +45,12 @@ def submit_ray_job(scenario: ScenarioSpec) -> str:
             "    app(['train', '--config', str(config)])",
         ]
     )
+    entrypoint = shlex.join([*command, "-c", bootstrap])
+    if execution.setup_command is not None:
+        entrypoint = f"{shlex.join(execution.setup_command)} && exec {entrypoint}"
     client = JobSubmissionClient(execution.address, verify=execution.verify)
     return client.submit_job(
-        entrypoint=shlex.join([*command, "-c", bootstrap]),
+        entrypoint=entrypoint,
         runtime_env=execution.runtime_env,
         entrypoint_num_cpus=execution.entrypoint_num_cpus,
         entrypoint_num_gpus=execution.entrypoint_num_gpus,

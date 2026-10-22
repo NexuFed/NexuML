@@ -696,6 +696,7 @@ class RayJobExecutionSpec(SpecModel):
     kind: Literal["ray_job"] = "ray_job"
     address: str | None = None
     verify: Annotated[str, Field(min_length=1)] | bool = True
+    setup_command: list[str] | None = Field(default=None, min_length=1)
     py_executable: str = Field(default="python", min_length=1)
     runtime_env: dict[str, Any] = Field(default_factory=lambda: {"working_dir": "."})
     entrypoint_num_cpus: float = Field(default=0, ge=0, allow_inf_nan=False)
@@ -704,6 +705,15 @@ class RayJobExecutionSpec(SpecModel):
     entrypoint_resources: dict[str, Annotated[float, Field(gt=0, allow_inf_nan=False)]] = Field(
         default_factory=dict
     )
+
+    @field_validator("setup_command")
+    @classmethod
+    def validate_setup_command(cls, value: list[str] | None) -> list[str] | None:
+        if value is not None and (
+            not value[0].strip() or any("\x00" in argument for argument in value)
+        ):
+            raise ValueError("setup_command requires an executable and arguments without NUL bytes")
+        return value
 
     @field_validator("entrypoint_resources")
     @classmethod

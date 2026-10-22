@@ -126,7 +126,8 @@ def test_cli_selects_ray_job_without_changing_the_local_scenario(submit_only):
             "--scenario-file",
             "scripts/isaaclab/cartpole.py",
             "-O",
-            'execution={"kind":"ray_job","entrypoint_num_gpus":1}',
+            'execution={"kind":"ray_job","entrypoint_num_gpus":1,'
+            '"setup_command":["uv","sync","--locked"],"py_executable":".venv/bin/python"}',
             "-O",
             "execution.verify=/certs/ca.pem",
             "-O",
@@ -140,6 +141,8 @@ def test_cli_selects_ray_job_without_changing_the_local_scenario(submit_only):
     assert isinstance(scenario.execution, RayJobExecutionSpec)
     assert scenario.execution.entrypoint_num_gpus == 1
     assert scenario.execution.verify == "/certs/ca.pem"
+    assert scenario.execution.setup_command == ["uv", "sync", "--locked"]
+    assert scenario.execution.py_executable == ".venv/bin/python"
     assert scenario.interaction.environment.viewer.port == 8081
 
 
@@ -147,6 +150,7 @@ def test_cli_selects_ray_job_without_changing_the_local_scenario(submit_only):
     "execution",
     [
         {"kind": "ray_job", "entrypoint_num_gpus": -1},
+        {"kind": "ray_job", "setup_command": []},
         {"kind": "ray"},
     ],
 )
