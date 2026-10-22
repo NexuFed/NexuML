@@ -13,6 +13,7 @@ import json
 import math
 import statistics
 from pathlib import Path
+from typing import TypedDict
 
 _PUBLISHED: dict[tuple[str, str], dict[str, float]] = {
     ("FD001", "lstm"): {"rmse": 14.931, "nasa": 410.97},
@@ -21,6 +22,46 @@ _PUBLISHED: dict[tuple[str, str], dict[str, float]] = {
     ("FD003", "cnn"): {"rmse": 15.678, "nasa": 647.6},
 }
 _FIELDS = ("predicted_rul", "true_rul_capped", "true_rul_raw")
+
+
+class _SeedComparison(TypedDict):
+    """Per-seed paired results with a distinct numeric seed identifier."""
+
+    seed: int
+    goel: dict[str, float]
+    safety: dict[str, float]
+    delta_safety_minus_goel: dict[str, float]
+
+
+class _MetricAggregate(TypedDict):
+    """Descriptive paired metric changes over independent training seeds."""
+
+    mean: float
+    stdev: float | None
+    improved_seeds: int
+    seed_count: int
+
+
+class _ReproComparison(TypedDict):
+    """Complete architecture/subset/target comparison with paired seeds."""
+
+    subset: str
+    architecture: str
+    test_label_convention: str
+    paper_reference_unverified_target_convention: dict[str, float]
+    per_seed: list[_SeedComparison]
+    paired_delta_summary: dict[str, _MetricAggregate]
+
+
+class _ReproSummary(TypedDict):
+    """Top-level machine-readable RUL study report."""
+
+    study: str
+    paper: str
+    source: str
+    warning: str
+    seeds: list[int]
+    comparisons: list[_ReproComparison]
 
 
 def _audit_filename(subset: str, architecture: str, kind: str, seed: int) -> str:
@@ -95,7 +136,7 @@ def summarize_reproducibility(
     seeds: tuple[int, ...] = (42, 43, 44),
     subsets: tuple[str, ...] = ("FD001", "FD003"),
     architectures: tuple[str, ...] = ("lstm", "cnn"),
-) -> dict[str, object]:
+) -> _ReproSummary:
     """Aggregate paired test residuals without tuning on official test sets.
 
     Returns:
@@ -110,7 +151,7 @@ def summarize_reproducibility(
         raise ValueError("Only FD001/FD003 have paper-matched Goel protocols")
     if any(arch not in ("lstm", "cnn") for arch in architectures):
         raise ValueError("Expected Goel LSTM or CNN architecture")
-    comparisons: list[dict[str, object]] = []
+    comparisons: list[_ReproComparison] = []
     for subset in subsets:
         for architecture in architectures:
             pairs: dict[int, dict[str, dict[str, dict[str, float]]]] = {}
@@ -156,7 +197,7 @@ def summarize_reproducibility(
                     for label in ("capped", "raw")
                 }
             for label in ("capped", "raw"):
-                per_seed = []
+                per_seed: list[_SeedComparison] = []
                 for seed in seeds:
                     models = pairs[seed][label]
                     changes = {
@@ -171,7 +212,7 @@ def summarize_reproducibility(
                             "delta_safety_minus_goel": changes,
                         }
                     )
-                aggregates = {}
+                aggregates: dict[str, _MetricAggregate] = {}
                 for metric in ("rmse", "mae", "late_bias", "nasa"):
                     values = [
                         entry["delta_safety_minus_goel"][metric] for entry in per_seed
