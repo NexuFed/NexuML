@@ -204,23 +204,30 @@ class _PatchFormerModel(nn.Module):
         self.dpan = _DualPatchAttention(length, width, patch_size)
         self.fan = _FeatureAttention(length, 2 * width, heads, dropout)
 
-    def forward(self, x: Tensor) -> Tensor:
-        """Regress RUL from dual patch-wise/feature-wise attention.
+    def forward_features(self, x: Tensor) -> Tensor:
+        """Expose the differentiable pre-FAN embeddings for reuse by flow models.
 
         Returns:
-            Predictions with shape [batch, 1].
+            Sequence embeddings [batch, length, 2*width] from frozen DPAN.
         """
         batch, length, channels = x.shape
         variables = torch.stack(
-            [layer(x[..., i:i + 1]) for i, layer in enumerate(self.embedding)],
+            [layer(x[..., i : i + 1]) for i, layer in enumerate(self.embedding)],
             dim=1,
         )
         variable_streams = variables.reshape(
             batch * channels, length, variables.shape[-1]
         )
         patched = self.dpan(variable_streams)
-        fused = patched.reshape(batch, channels, length, -1).sum(dim=1)
-        return self.fan(fused)
+        return patched.reshape(batch, channels, length, -1).sum(dim=1)
+
+    def forward(self, x: Tensor) -> Tensor:
+        """Regress RUL from dual patch-wise/feature-wise attention.
+
+        Returns:
+            Predictions with shape [batch, 1].
+        """
+        return self.fan(self.forward_features(x))
 
 
 class _FeatureSE(nn.Module):
