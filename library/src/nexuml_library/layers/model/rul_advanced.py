@@ -130,7 +130,8 @@ class _DualPatchAttention(nn.Module):
         self.local_cse = _PatchCSE(patch_size + 1)
         self.global_cse = _PatchCSE(self.patches)
         self.context = nn.Parameter(torch.zeros(1, 1, 1, width))
-        self.fusion = nn.Sequential(nn.Linear(2 * width, 2 * width), nn.GELU())
+        self.expand_local = nn.Linear(self.patches, self.patches * self.size)
+        self.fusion_cse = _PatchCSE(2 * self.patches * self.size)
 
     def forward(self, x: Tensor) -> Tensor:
         """Fuse short-range details and global patch correlations.
@@ -146,11 +147,17 @@ class _DualPatchAttention(nn.Module):
         augmented = torch.cat((context, patches), dim=2)
         local_weights = self.local_cse(augmented.mean(dim=-1))
         local = (augmented * local_weights.unsqueeze(-1)).sum(dim=2)
-        local = local.unsqueeze(2).expand(-1, -1, self.size, -1)
+        local = self.expand_local(local.transpose(1, 2)).transpose(1, 2)
+        local = local + x
         inter_weights = self.global_cse(patches.mean(dim=(2, 3)))
         global_features = patches * inter_weights[:, :, None, None]
-        fused = self.fusion(torch.cat((local, global_features), dim=-1))
-        return fused.reshape(batch, length, 2 * width)[:, :length - self.padding]
+        global_features = global_features.reshape(batch, length, width) + x
+        both = torch.cat((local, global_features), dim=1)
+        fusion_weights = self.fusion_cse(both.mean(dim=-1))
+        both = both * (1.0 + fusion_weights.unsqueeze(-1))
+        local, global_features = both.split(length, dim=1)
+        fused = torch.cat((local, global_features), dim=-1)
+        return fused[:, :length - self.padding]
 
 
 class _FeatureAttention(nn.Module):
@@ -191,7 +198,9 @@ class _PatchFormerModel(nn.Module):
         heads: int, dropout: float,
     ) -> None:
         super().__init__()
-        self.embedding = nn.Linear(channels, width)
+        self.embedding = nn.ModuleList(
+            nn.Linear(1, width) for _ in range(channels)
+        )
         self.dpan = _DualPatchAttention(length, width, patch_size)
         self.fan = _FeatureAttention(length, 2 * width, heads, dropout)
 
@@ -201,7 +210,17 @@ class _PatchFormerModel(nn.Module):
         Returns:
             Predictions with shape [batch, 1].
         """
-        return self.fan(self.dpan(self.embedding(x)))
+        batch, length, channels = x.shape
+        variables = torch.stack(
+            [layer(x[..., i:i + 1]) for i, layer in enumerate(self.embedding)],
+            dim=1,
+        )
+        variable_streams = variables.reshape(
+            batch * channels, length, variables.shape[-1]
+        )
+        patched = self.dpan(variable_streams)
+        fused = patched.reshape(batch, channels, length, -1).sum(dim=1)
+        return self.fan(fused)
 
 
 class _FeatureSE(nn.Module):
