@@ -37,6 +37,9 @@ from nexuml_library.evaluation.maintenance.rul_paper_callbacks import (
     Goel2026PlateauLR,
     Goel2026RestoreBestWeights,
 )
+from nexuml_library.evaluation.maintenance.rul_safety_diagnostics import (
+    RULSensorStageAudit,
+)
 from nexuml_library.evaluation.maintenance.rul_seed import RULSeedOnFitStart
 from nexuml_library.layers.model.rul_forecaster import (
     RULRegressionObjective,
@@ -44,6 +47,7 @@ from nexuml_library.layers.model.rul_forecaster import (
 )
 from nexuml_library.layers.model.rul_paper_cnn import Goel2026CNNForecaster
 from nexuml_library.layers.model.rul_paper_lstm import Goel2026LSTMForecaster
+from nexuml_library.layers.model.rul_safety import RULAsymmetricSquaredLoss
 from nexuml_library.layers.model.rul_metrics import RULRegressionMetrics
 from nexuml_library.scenarios.training.defaults import (
     default_logging,
@@ -820,3 +824,122 @@ def maintenance_rul_goel2026_cnn_protocol() -> ScenarioSpec:
             ],
         }
     )
+
+
+def _maintenance_rul_safety(
+    architecture: Literal["lstm", "cnn"],
+    overestimate_weight: float = 2.0,
+) -> ScenarioSpec:
+    """Build a cost-sensitive RUL experiment with an untouched Goel control.
+
+    RUL overestimation has a larger training/validation loss. Original NASA
+    test metrics and engine audits remain descriptive held-out evaluation.
+
+    Returns:
+        Independent checkpointed and logged native NexuML safety scenario.
+
+    Raises:
+        ValueError: If the data source is not the official cached FD001 artifact.
+    """
+    baseline = (
+        maintenance_rul_goel2026_lstm_protocol()
+        if architecture == "lstm"
+        else maintenance_rul_goel2026_cnn_protocol()
+    )
+    source = baseline.data.datasets[0].source
+    if not isinstance(source, AutoCMapSSRULWindows):
+        raise ValueError("Safety RUL scenario requires the original FD001 data source")
+
+    run_name = baseline.name.replace(
+        f"goel2026-{architecture}-protocol-raw",
+        f"safety-{architecture}-asymmetric-w{overestimate_weight:g}",
+    )
+    checkpoint_root = (
+        (os.environ.get("NEXUML_RUL_CHECKPOINT_ROOT") or "").strip()
+        or ".experiments/rul/checkpoints"
+    )
+    checkpoint_dir = Path(checkpoint_root).expanduser().resolve() / run_name
+    safety_loss = LayerSpec(
+        component=RULAsymmetricSquaredLoss(overestimate_weight=overestimate_weight),
+        keys_in=["predicted_rul"],
+        keys_out=["rul_loss"],
+        label_key="rul",
+    )
+    audit = EvalAlgorithmSpec(
+        name="engine_audit",
+        algorithm=RULPerEngineAudit(
+            artifact_path=source.artifact_path,
+            output_file=f".experiments/rul/audits/{run_name}.csv",
+        ),
+        feature_key="predicted_rul",
+        label_key="rul",
+    )
+    return baseline.model_copy(
+        update={
+            "name": run_name,
+            "pipeline": PipelineSpec(
+                stages={
+                    "RULModel": baseline.pipeline.stages["RULModel"],
+                    "RULLoss": [
+                        safety_loss,
+                        *baseline.pipeline.stages["RULLoss"][1:],
+                    ],
+                }
+            ),
+            "evaluation": baseline.evaluation.model_copy(
+                update={
+                    "algorithms": [
+                        *baseline.evaluation.algorithms[:2],
+                        audit,
+                    ],
+                }
+            ),
+            "logging": (
+                baseline.logging.model_copy(update={"run_name": run_name})
+                if baseline.logging is not None
+                else None
+            ),
+            "callbacks": [
+                callback(RULSeedOnFitStart, seed=42),
+                callback(
+                    ModelCheckpoint,
+                    dirpath=str(checkpoint_dir),
+                    monitor="val/loss",
+                    mode="min",
+                    save_top_k=1,
+                    save_last=True,
+                ),
+                callback(EarlyStopping, monitor="val/loss", patience=20, mode="min"),
+                callback(Goel2026PlateauLR, factor=0.5, patience=5),
+                callback(
+                    Goel2026RestoreBestWeights,
+                    output_file=f".experiments/rul/audits/{run_name}.checkpoint.json",
+                ),
+                callback(
+                    RULSensorStageAudit,
+                    artifact_path=source.artifact_path,
+                    output_file=f".experiments/rul/audits/{run_name}.sensors.json",
+                ),
+            ],
+        }
+    )
+
+
+@scenario("maintenance-rul-safety-lstm")
+def maintenance_rul_safety_lstm() -> ScenarioSpec:
+    """Train an asymmetric squared-loss LSTM without changing Goel protocol.
+
+    Returns:
+        Independent, validation-selected NexuML risk-aware LSTM scenario.
+    """
+    return _maintenance_rul_safety("lstm")
+
+
+@scenario("maintenance-rul-safety-cnn")
+def maintenance_rul_safety_cnn() -> ScenarioSpec:
+    """Train an asymmetric squared-loss CNN without changing Goel protocol.
+
+    Returns:
+        Independent, validation-selected NexuML risk-aware CNN scenario.
+    """
+    return _maintenance_rul_safety("cnn")
