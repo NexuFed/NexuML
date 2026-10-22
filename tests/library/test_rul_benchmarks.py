@@ -24,6 +24,10 @@ from nexuml_library.data.maintenance.rul import (
     validate_rul_payload,
 )
 from nexuml_library.evaluation.maintenance.rul_configs import resolve_rul_configs
+from nexuml_library.evaluation.maintenance.rul_engine_audit import (
+    RULPerEngineAudit,
+    _RULPerEngineAuditRuntime,
+)
 from nexuml_library.evaluation.maintenance.rul_evaluator import (
     RULBenchmarkEvaluator,
     _RULBenchmarkRuntime,
@@ -499,6 +503,7 @@ def test_goel2026_lstm_architecture_and_training_protocol(
     assert evaluator.include_nasa_score is True
     assert len(scenario.evaluation.algorithms) == 2
     assert scenario.evaluation.algorithms[1].label_key == "rul_raw"
+    assert isinstance(scenario.evaluation.algorithms[2].algorithm, RULPerEngineAudit)
     assert any("Goel2026PlateauLR" in item.factory for item in scenario.callbacks)
     assert scenario.data.input_shapes["rul_history"] == [30, 14]
 
@@ -558,6 +563,93 @@ def test_asymmetric_nasa_score_for_paper_protocol() -> None:
     evaluator.eval_batch(x, y)
     expected = math.expm1(10.0 / 10.0) + math.expm1(10.0 / 13.0)
     assert evaluator.results()["rul_test_nasa_score"] == pytest.approx(expected)
+
+
+def test_goel_native_per_engine_audit_exports_provenance(
+    tmp_path: Path,
+) -> None:
+    """Test indices resolve to distinct engines even for shuffled test batches."""
+    _cmapss_files(tmp_path)
+    np.savetxt(tmp_path / "RUL_FD001.txt", [160.0, 7.0])
+    payload = prepare_cmapss(tmp_path, window=3, rul_cap=130, normalize_targets=False)
+    artifact = tmp_path / "prepared.pt"
+    save_rul_artifact(payload, artifact)
+    report = tmp_path / "audit" / "engines.csv"
+    runtime = _RULPerEngineAuditRuntime(
+        artifact_path=str(artifact),
+        output_file=str(report),
+        prediction_key="predicted_rul",
+        target_scale=1.0,
+    )
+    x = TensorDict(
+        {
+            "sample_index": torch.tensor([1, 0]),
+            "predicted_rul": torch.tensor([[7.0], [130.0]]),
+        },
+        batch_size=[2],
+    )
+    y = TensorDict(
+        {
+            "rul": torch.tensor([[7.0], [130.0]]),
+            "rul_raw": torch.tensor([[7.0], [160.0]]),
+        },
+        batch_size=[2],
+    )
+    runtime.eval_batch(x, y)
+    runtime.eval_end()
+    records = pd.read_csv(report)
+    assert records["asset_id"].tolist() == ["test:FD001:1", "test:FD001:2"]
+    assert records["error_capped"].tolist() == pytest.approx([0.0, 0.0])
+    assert records["error_raw"].tolist() == pytest.approx([-30.0, 0.0])
+    assert records["target_was_capped"].tolist() == [1, 0]
+    manifest = json.loads(report.with_suffix(".json").read_text())
+    assert manifest["test_engines"] == 2
+    assert manifest["test_engines_above_cap"] == 1
+    assert not set(manifest["split_assets"]["train"]) & set(
+        manifest["split_assets"]["val"]
+    )
+    assert runtime.results()["rul_audit_test_count"] == 2.0
+    assert runtime.results()["rul_audit_capped_engine_count"] == 1.0
+
+
+def test_goel_native_per_engine_audit_rejects_duplicate_observation(
+    tmp_path: Path,
+) -> None:
+    """Engine identity must be unique, not silently deduplicated."""
+    _cmapss_files(tmp_path)
+    payload = prepare_cmapss(tmp_path, window=3)
+    artifact = tmp_path / "prepared.pt"
+    save_rul_artifact(payload, artifact)
+    runtime = _RULPerEngineAuditRuntime(
+        artifact_path=str(artifact),
+        output_file=str(tmp_path / "residuals.csv"),
+        prediction_key="predicted_rul",
+        target_scale=125.0,
+    )
+    index = next(i for i, row in enumerate(payload["rows"]) if row["split"] == "test")
+    record = payload["rows"][index]
+    local_index = next(
+        i for i, row in enumerate(
+            row for row in payload["rows"] if row["split"] == "test"
+        ) if row["asset_id"] == record["asset_id"]
+    )
+    x = TensorDict(
+        {
+            "sample_index": torch.tensor([local_index]),
+            "predicted_rul": payload["targets"][index:index + 1],
+        },
+        batch_size=[1],
+    )
+    y = TensorDict(
+        {
+            "rul": payload["targets"][index:index + 1],
+            "rul_raw": payload["raw_targets"][index:index + 1],
+        },
+        batch_size=[1],
+    )
+    runtime.eval_batch(x, y)
+    with pytest.raises(ValueError, match="Duplicate engine"):
+        runtime.eval_batch(x, y)
 
 
 def test_official_raw_and_capped_nasa_evaluators_disagree() -> None:
