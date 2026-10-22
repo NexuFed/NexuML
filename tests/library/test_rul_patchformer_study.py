@@ -206,7 +206,10 @@ def test_patchformer_embedding_flow_reuses_nexuml_fm_and_swd(
         "DistributionalTransportValidation" in callback_spec.factory
         for callback_spec in scenario.callbacks
     )
-    assert scenario.callbacks[1].kwargs["monitor"] == "val/transport_swd"
+    assert scenario.callbacks[0].kwargs["seed"] == seed
+    assert scenario.callbacks[2].kwargs["monitor"] == "val/transport_swd"
+    flow_component = scenario.pipeline.stages["Flow"][0].component
+    assert flow_component.initialization_seed == seed
     compiled = compile_pipeline(scenario)
     x = TensorDict(
         {
