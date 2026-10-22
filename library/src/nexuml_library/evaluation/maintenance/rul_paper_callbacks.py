@@ -89,7 +89,7 @@ class Goel2026RestoreBestWeights(Callback):
 
         monitors = [
             item
-            for item in trainer.callbacks
+            for item in getattr(trainer, "callbacks", ())
             if isinstance(item, ModelCheckpoint)
             and item.monitor == "val/loss"
             and item.mode == "min"
