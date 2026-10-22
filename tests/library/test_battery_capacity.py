@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+import json
 from pathlib import Path
 from typing import cast
 
@@ -19,6 +20,9 @@ from nexuml_library.data.maintenance.battery_capacity import BatteryCapacityWind
 from nexuml_library.evaluation.maintenance.battery_capacity import (
     _BatteryCapacityEval,
     _BatterySMAPERuntime,
+)
+from nexuml_library.evaluation.maintenance.battery_eol_rollout import (
+    rollout_capacity_to_eol,
 )
 from nexuml_library.scenarios.maintenance.battery_capacity import (
     maintenance_battery_patchformer_nasa,
@@ -41,8 +45,15 @@ def test_battery_capacity_windows_use_real_next_cycle_ah_and_chronological_split
 ) -> None:
     """No made-up RUL: all labels are observed following-cycle capacity."""
     _capacity_csvs(tmp_path)
-    definition = BatteryCapacityWindows(root=str(tmp_path), lookback=16)
+    normalizer = tmp_path / "scaler.json"
+    definition = BatteryCapacityWindows(
+        root=str(tmp_path), lookback=16, normalizer_file=str(normalizer)
+    )
     source = definition.build()
+    saved = json.loads(normalizer.read_text())
+    assert saved["fit_scope"] == "training_cycles_only"
+    assert saved["held_out_cell"] == "B0005"
+    assert saved["capacity_scale_ah"] > 0
     train = source.get_split("train")
     val = source.get_split("val")
     test = source.get_split("test")
@@ -136,3 +147,31 @@ def test_battery_paper_models_compile_with_native_capacity_target(
     restored = ResolvedConfig.load(yaml_path).to_scenario()
     assert restored.name == scenario.name
     compile_pipeline(restored)
+
+
+def test_autoregressive_battery_eol_rollout_and_censoring() -> None:
+    """Predict EOL only from the fitted forecaster, never the true future."""
+    history = torch.tensor([[[0.7], [0.6]], [[0.9], [0.8]]])
+
+    def decay(x: torch.Tensor) -> torch.Tensor:
+        """Return a decreasing physical Ah estimate for each sequence."""
+        return x[:, -1] - 0.1
+
+    result = rollout_capacity_to_eol(
+        decay,
+        history,
+        capacity_offset_ah=0.0,
+        capacity_scale_ah=1.0,
+        end_of_life_ah=0.35,
+        max_cycles=4,
+    )
+    assert result.tolist() == [3, -1]
+    with pytest.raises(ValueError):
+        rollout_capacity_to_eol(
+            decay,
+            history,
+            capacity_offset_ah=0.0,
+            capacity_scale_ah=0.0,
+            end_of_life_ah=0.35,
+            max_cycles=4,
+        )
