@@ -26,11 +26,11 @@ from nexuml_library.data.maintenance.rul import (
 from nexuml_library.evaluation.maintenance.rul_controlled_summary import (
     summarize_controlled_study,
 )
+from nexuml_library.layers.model.flow import Flow
 from nexuml_library.layers.model.rul_advanced import (
     AdvancedRULForecaster,
     _PatchFormerModel,
 )
-from nexuml_library.layers.model.flow import Flow
 from nexuml_library.layers.model.rul_safety import RULAsymmetricSquaredLoss
 from nexuml_library.scenarios.maintenance.rul_controlled import (
     controlled_rul_study,
