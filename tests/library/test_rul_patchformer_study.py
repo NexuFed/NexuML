@@ -33,6 +33,7 @@ from nexuml_library.layers.model.rul_advanced import (
 )
 from nexuml_library.layers.model.rul_safety import RULAsymmetricSquaredLoss
 from nexuml_library.scenarios.maintenance.rul_controlled import (
+    _StudyKind,
     controlled_rul_study,
 )
 from nexuml_library.scenarios.maintenance.rul_patchformer_flow import (
@@ -44,14 +45,16 @@ from nexuml_library.scenarios.maintenance.rul_patchformer_flow import (
 @pytest.mark.parametrize("seed", [42, 43, 44])
 def test_controlled_study_preserves_pairing_and_protocol(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
-    subset: str, seed: int,
+    subset: Literal["FD001", "FD003"], seed: int,
 ) -> None:
     """All architectures share an identical source and optimization schedule."""
     monkeypatch.chdir(tmp_path)
     monkeypatch.delenv("NEXUML_RUL_PREPARED_FILE", raising=False)
+    kinds: tuple[_StudyKind, ...] = (
+        "patchformer", "dmm_ja", "safety_lstm", "rul_mamba"
+    )
     variants = {
-        kind: controlled_rul_study(kind, subset, seed)
-        for kind in ("patchformer", "dmm_ja", "safety_lstm", "rul_mamba")
+        kind: controlled_rul_study(kind, subset, seed) for kind in kinds
     }
     sources = [variant.data.datasets[0].source for variant in variants.values()]
     assert all(isinstance(source, AutoCMapSSRULWindows) for source in sources)
