@@ -5,7 +5,7 @@ from __future__ import annotations
 import copy
 import csv
 from pathlib import Path
-from typing import cast
+from typing import Literal, cast
 
 import numpy as np
 import pytest
@@ -186,7 +186,7 @@ def test_checkpoint_embedding_weights_match_upstream_model(tmp_path: Path) -> No
 @pytest.mark.parametrize("subset,seed", [("FD001", 42), ("FD003", 43)])
 def test_patchformer_embedding_flow_reuses_nexuml_fm_and_swd(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
-    subset: str, seed: int,
+    subset: Literal["FD001", "FD003"], seed: int,
 ) -> None:
     """Flow stages and callbacks match the existing feature-ablation contract."""
     monkeypatch.chdir(tmp_path)
