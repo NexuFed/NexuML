@@ -173,6 +173,29 @@ def test_full_sequence_flow_registered_and_compiles(
     assert ResolvedConfig.load(config).to_scenario().name == study.name
 
 
+def test_sequence_conformer_requires_odd_kernel() -> None:
+    """Conformer depthwise convolution must preserve sequence length."""
+    definition = SequenceTimeConditionedVectorField(
+        architecture="conformer",
+        model_dim=16,
+        attention_heads=4,
+        conv_kernel=4,
+    )
+    with pytest.raises(ValueError, match="odd"):
+        definition.build(_sequence_context())
+
+
+def test_sequence_transformer_attention_heads_must_divide_width() -> None:
+    """Invalid attention geometry fails at build, not during Euler sampling."""
+    definition = SequenceTimeConditionedVectorField(
+        architecture="transformer",
+        model_dim=15,
+        attention_heads=4,
+    )
+    with pytest.raises(ValueError, match="divide"):
+        definition.build(_sequence_context())
+
+
 @pytest.mark.parametrize("architecture", ["transformer", "conformer", "cfc"])
 def test_invalid_sequence_model_parameters_are_rejected(
     architecture: Literal["transformer", "conformer", "cfc"],
@@ -263,3 +286,10 @@ def test_full_patchformer_endpoint_artifact_preserves_tokens_without_fan(
     assert payload["settings"]["held_out_test_engine_labels_used"] is False
     assert len(dataset.get_split("train")) == 4
     assert len(dataset.get_split("val")) == 2
+    invalid = dict(payload)
+    invalid["settings"] = {
+        **payload["settings"], "sequence_length": 29
+    }
+    torch.save(invalid, prepared)
+    with pytest.raises(ValueError, match="Sequence endpoint shape"):
+        read_prepared_artifact(prepared)
