@@ -236,3 +236,54 @@ def test_paired_five_arm_report_checks_flow_identity(
     geom.write_text(json.dumps(payload))
     with pytest.raises(ValueError, match="different frozen Flow"):
         summarize_flow_ablation(tmp_path, subsets=("FD003",), seeds=(42,))
+
+
+def test_existing_calibrations_recover_upstream_from_immutable_endpoints(
+    tmp_path: Path,
+) -> None:
+    """Seed-42 prior runs need no retraining just to add a provenance field."""
+    audit = tmp_path / "audits"
+    audit.mkdir()
+    flow_run = "rul-FD003-patchformer-latent-flow-seed42"
+    prepared = tmp_path / "prepared" / f"{flow_run}-endpoints.pt"
+    prepared.parent.mkdir()
+    torch.save(
+        {
+            "format": "nex233-features-v1",
+            "features": torch.ones(2, 2, 128),
+            "rows": [
+                {"split": "train", "group_id": "train-1"},
+                {"split": "val", "group_id": "val-1"},
+            ],
+            "settings": {
+                "subset": "FD003",
+                "seed": 42,
+                "held_out_test_engine_labels_used": False,
+                "frozen_patchformer_upstream_run":
+                    "rul-FD003-controlled-patchformer-seed42",
+                "frozen_patchformer_checkpoint_sha256": "same-backbone",
+            },
+        },
+        prepared,
+    )
+    _write_audit(
+        audit, "rul-FD003-controlled-patchformer-seed42", 8.0
+    )
+    for arm in ("baseline_only", "flow_time", "flow_geometry", "hybrid"):
+        name = _run_name("FD003", 42, arm)
+        _write_audit(audit, name, 4.0)
+        _write_geometry(audit, name, arm=arm)
+        if arm != "baseline_only":
+            path = audit / f"{name}.geometry.json"
+            data = json.loads(path.read_text())
+            del data["patchformer_upstream_run"]
+            path.write_text(json.dumps(data))
+    report = summarize_flow_ablation(
+        audit, subsets=("FD003",), seeds=(42,)
+    )
+    assert len(report["comparisons"]) == 2
+    endpoint = torch.load(prepared, weights_only=True)
+    endpoint["settings"]["frozen_patchformer_checkpoint_sha256"] = "wrong"
+    torch.save(endpoint, prepared)
+    with pytest.raises(ValueError, match="identity mismatch"):
+        summarize_flow_ablation(audit, subsets=("FD003",), seeds=(42,))
