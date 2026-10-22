@@ -133,7 +133,9 @@ def test_frozen_patchformer_endpoints_exclude_official_test_labels(
 ) -> None:
     """Test observations cannot change learned endpoint scaling or validation."""
     _fake_cmapss(tmp_path, "FD001")
-    checkpoint = tmp_path / "patchformer.ckpt"
+    checkpoint = (
+        tmp_path / "rul-FD001-controlled-patchformer-seed42" / "best.ckpt"
+    )
     _save_fake_patchformer_checkpoint(checkpoint, 14)
     source = AutoPatchFormerFlowEndpoints(
         root=str(tmp_path),
