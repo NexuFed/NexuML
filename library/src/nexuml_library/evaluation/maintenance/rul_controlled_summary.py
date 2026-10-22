@@ -39,7 +39,6 @@ def summarize_controlled_study(
 
     Raises:
         ValueError: If experiment identifiers or test targets are inconsistent.
-        FileNotFoundError: If any required model run is missing.
     """
     if not seeds or len(set(seeds)) != len(seeds):
         raise ValueError("Specify distinct, nonempty training seeds")
