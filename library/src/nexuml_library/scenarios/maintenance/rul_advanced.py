@@ -34,7 +34,6 @@ from nexuml_library.scenarios.maintenance.rul import (
     _LU2025_SENSORS,
     maintenance_rul_benchmark,
 )
-from nexuml.core.types import LayerSpec
 
 
 def _advanced_scenario(
