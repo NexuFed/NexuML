@@ -30,6 +30,7 @@ from nexuml_library.layers.model.rul_advanced import (
     AdvancedRULForecaster,
     _PatchFormerModel,
 )
+from nexuml_library.layers.model.flow import Flow
 from nexuml_library.layers.model.rul_safety import RULAsymmetricSquaredLoss
 from nexuml_library.scenarios.maintenance.rul_controlled import (
     controlled_rul_study,
@@ -209,6 +210,7 @@ def test_patchformer_embedding_flow_reuses_nexuml_fm_and_swd(
     assert scenario.callbacks[0].kwargs["seed"] == seed
     assert scenario.callbacks[2].kwargs["monitor"] == "val/transport_swd"
     flow_component = scenario.pipeline.stages["Flow"][0].component
+    assert isinstance(flow_component, Flow)
     assert flow_component.initialization_seed == seed
     compiled = compile_pipeline(scenario)
     x = TensorDict(
