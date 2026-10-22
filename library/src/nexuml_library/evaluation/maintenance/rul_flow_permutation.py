@@ -123,7 +123,7 @@ def permutation_impact(
     if any(values.shape != (100, 1) for values in targets.values()):
         raise ValueError("Permutation labels must align with 100 test engines")
     with torch.no_grad():
-        baseline = cast(Tensor, model.forward_tensor(features)).detach().float()
+        baseline = model.forward_tensor(features).detach().float()
         original = {
             kind: _metrics(baseline, target) for kind, target in targets.items()
         }
@@ -135,7 +135,7 @@ def permutation_impact(
             shuffled = features.clone()
             shuffle = torch.randperm(len(features), generator=gen)
             shuffled[:, :2] = features[shuffle, :2]
-            predictions = cast(Tensor, model.forward_tensor(shuffled))
+            predictions = model.forward_tensor(shuffled)
             for name, target in targets.items():
                 samples[name].append(_metrics(predictions, target))
     return {
@@ -196,7 +196,7 @@ def analyze_trained_hybrid(
     model = _reconstruct_hybrid(checkpoint, seed)
     audit = _read_engine_audit(Path(".experiments/rul/audits") / f"{run}.csv")
     with torch.no_grad():
-        original_predictions = cast(Tensor, model.forward_tensor(features)).flatten()
+        original_predictions = model.forward_tensor(features).flatten()
     for i, index in enumerate(test_ids):
         engine = str(rows[index]["asset_id"])
         if engine not in audit:
