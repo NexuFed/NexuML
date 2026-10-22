@@ -211,11 +211,7 @@ def summarize_reproducibility(
 
 
 def main() -> None:
-    """Create a post-training paired comparison report.
-
-    Raises:
-        ValueError: If any requested CSV fails provenance or pair validation.
-    """
+    """Create a post-training paired comparison report."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--audit-root", type=Path, default=Path(".experiments/rul/audits")
