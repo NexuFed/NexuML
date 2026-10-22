@@ -23,6 +23,7 @@ from nexuml_library.evaluation.maintenance.ablation_validation import (
 )
 from nexuml_library.layers.generative.flow.sequence_vector_field import (
     SequenceTimeConditionedVectorField,
+    _SequenceVectorFieldRuntime,
 )
 from nexuml_library.layers.model.flow import SequenceFlow, _FlowRuntime
 from nexuml_library.layers.model.rul_advanced import _PatchFormerModel
@@ -58,6 +59,7 @@ def test_sequence_field_preserves_time_positions_and_learns_gradients(
         dropout=0.0,
     )
     runtime = definition.build(_sequence_context())
+    assert isinstance(runtime, _SequenceVectorFieldRuntime)
     state = torch.randn(3, 6, 8)
     x = TensorDict(
         {"flow_state": state, "flow_time": torch.full((3, 1), 0.25)},
@@ -176,14 +178,13 @@ def test_invalid_sequence_model_parameters_are_rejected(
     architecture: Literal["transformer", "conformer", "cfc"],
 ) -> None:
     """Invalid input shapes cannot silently trigger flat-MLP behavior."""
-    params = {
-        "architecture": architecture,
-        "model_dim": 16,
-        "depth": 1,
-        "attention_heads": 4,
-        "conv_kernel": 5,
-    }
-    definition = SequenceTimeConditionedVectorField(**params)
+    definition = SequenceTimeConditionedVectorField(
+        architecture=architecture,
+        model_dim=16,
+        depth=1,
+        attention_heads=4,
+        conv_kernel=5,
+    )
     with pytest.raises(ValueError, match="requires"):
         definition.build(
             LayerBuildContext(
