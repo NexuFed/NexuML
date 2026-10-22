@@ -289,6 +289,8 @@ def prepare_cmapss(
             "window": window,
             "stride": stride,
             "seed": seed,
+            "split_method": "numpy.default_rng.permutation",
+            "scaler_fit_scope": "training_assets_only",
             "target_unit": "cycles",
             "target_scale": scale,
             "rul_cap": rul_cap,
