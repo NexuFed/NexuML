@@ -251,6 +251,7 @@ class AutoPatchFormerFlowRULFeatures(DataSourceDefinition):
         """
         checkpoint_hint: str | None = None
         expected_digest: str | None = None
+        flow_normalization: dict[str, Any] | None = None
         endpoint_file = Path(self.endpoint_artifact).expanduser()
         if endpoint_file.is_file():
             from nexuml_library.data.maintenance.prepared_endpoints import (
@@ -269,6 +270,8 @@ class AutoPatchFormerFlowRULFeatures(DataSourceDefinition):
                 raise ValueError("Baseline-only endpoint provenance mismatch")
             checkpoint_hint = str(settings["frozen_patchformer_checkpoint_path"])
             expected_digest = str(settings["frozen_patchformer_checkpoint_sha256"])
+            if self.feature_mode == "encoder_only":
+                flow_normalization = settings
         checkpoint = resolve_patchformer_checkpoint(
             self.subset, self.seed, checkpoint_path=checkpoint_hint
         )
@@ -288,8 +291,35 @@ class AutoPatchFormerFlowRULFeatures(DataSourceDefinition):
                     predictions.append(model(batch).detach().float())
         baseline = torch.cat(predictions, dim=0)
         if self.feature_mode == "encoder_only":
+            if flow_normalization is not None:
+                mean = torch.as_tensor(
+                    flow_normalization["feature_mean"], dtype=baseline.dtype
+                )
+                std = torch.as_tensor(
+                    flow_normalization["feature_std"], dtype=baseline.dtype
+                )
+                normalizer_source = "matching_flow_training_endpoints"
+            else:
+                train_positions = [
+                    i for i, row in enumerate(rows) if row["split"] == "train"
+                ]
+                if not train_positions:
+                    raise ValueError("Encoder-only scaling requires training engines")
+                trained = baseline[train_positions]
+                mean = trained.mean(dim=0)
+                std = trained.std(dim=0, unbiased=False).clamp_min(1e-6)
+                normalizer_source = "training_engines_only"
+            if (
+                mean.shape != (128,)
+                or std.shape != (128,)
+                or not bool(torch.isfinite(mean).all())
+                or not bool(torch.isfinite(std).all())
+                or not bool((std > 0).all())
+            ):
+                raise ValueError("Invalid train-only encoder feature standardization")
+            standardized = (baseline - mean) / std
             features = torch.cat(
-                (baseline, torch.zeros((len(windows), 130))), dim=1
+                (standardized, torch.zeros((len(windows), 130))), dim=1
             )
         else:
             features = torch.cat(
@@ -314,6 +344,11 @@ class AutoPatchFormerFlowRULFeatures(DataSourceDefinition):
                     "patchformer_checkpoint_sha256": digest,
                     "flow_checkpoint_sha256": None,
                     "reference_count": 0,
+                    "embedding_normalization": (
+                        normalizer_source
+                        if self.feature_mode == "encoder_only"
+                        else None
+                    ),
                     "test_labels_used_in_feature_fitting": False,
                 },
                 indent=2,
