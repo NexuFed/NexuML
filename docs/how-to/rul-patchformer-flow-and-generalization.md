@@ -186,11 +186,19 @@ artifact. It is deserialized in a non-weights-only mode because
 Lightning callback/optimizer metadata may include non-tensor values.
 Never load untrusted checkpoints.
 
+### Flow-time RUL follow-up
+
+Native RUL calibration is now available as a separate experimental stage:
+[flow-time-to-RUL calibration](rul-flow-time-calibration.md).
+It trains a train/validation-only MLP on projected flow time or learns
+a bounded correction to the frozen PatchFormer forecast. This flow
+transport scenario itself still reports only distributional validation SWD.
+
 ### Limitations
 
-These flow runs do **not yet** attach an RUL head to flow time or
-show improvements to the supervised PatchFormer RUL score. The
-primary endpoint metric is validation transport SWD. The checkpoint
+The primary endpoint metric of these flow-only runs is validation transport
+SWD, not RUL regression. A flow-time calibration result must be evaluated
+separately on official held-out C-MAPSS engines. The checkpoint
 matching and fitted embedding statistics are recorded to make
 upstream-model provenance reproducible. Endpoint stages are based
 on training/validation RUL labels, so the resulting flow is
