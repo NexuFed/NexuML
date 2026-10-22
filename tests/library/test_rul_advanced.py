@@ -99,6 +99,8 @@ def test_advanced_paper_architectures_compile_in_native_nexuml(
     assert source.download is True
     assert source.rul_cap == 130
     assert source.train_full_windows_only is True
+    profile = f"advanced-{architecture.replace('_', '-')}-fd001"
+    assert source.artifact_path.endswith(f"-{profile}.pt")
     model = selected.pipeline.stages["RULModel"][0].component
     assert isinstance(model, AdvancedRULForecaster)
     assert model.architecture == architecture
