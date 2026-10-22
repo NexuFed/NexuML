@@ -39,8 +39,9 @@ def test_flow_progress_projection_uses_nearest_training_trajectory() -> None:
         coordinates[:, 0], torch.tensor([0.0, 0.6, 1.0])
     )
     assert torch.equal(coordinates[:, 1], torch.zeros(3))
+    # Perfect anticorrelation requires RUL = 100 - 80 * flow_time.
     assert pearson_flow_progress(
-        coordinates[:, 0], torch.tensor([100.0, 60.0, 20.0])
+        coordinates[:, 0], torch.tensor([100.0, 52.0, 20.0])
     ) == pytest.approx(-1.0)
 
 
