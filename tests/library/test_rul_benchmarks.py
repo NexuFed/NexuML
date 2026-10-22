@@ -587,7 +587,7 @@ def test_goel_restores_best_val_weights_before_native_testing(tmp_path: Path) ->
     trainer = L.Trainer(
         callbacks=[callback_model],
         logger=False,
-        enable_checkpointing=False,
+        enable_checkpointing=True,
         enable_progress_bar=False,
         enable_model_summary=False,
     )
