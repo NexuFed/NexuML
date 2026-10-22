@@ -154,6 +154,17 @@ nexuml train --config .experiments/rul-flow-geometry-fd001-s42.yaml
 These can be compared against the previously completed flow-time
 and hybrid FD001 seed-42 experiments without retraining them. The
 baseline-only scenario only requires the existing PatchFormer model.
+The paired report can recover earlier flow-time/hybrid checkpoint
+provenance from the original, validated frozen endpoint artifact.
+
+Once these two missing seed-42 controls have finished, inspect just
+that completed FD001 comparison without waiting for FD003:
+
+```bash
+python -m nexuml_library.evaluation.maintenance.rul_flow_ablation_summary \
+  --subsets FD001 --seeds 42 \
+  --output .experiments/rul/ablation-fd001-s42.json
+```
 
 ### FD003 and multi-seed execution
 
