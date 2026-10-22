@@ -149,4 +149,3 @@ def test_native_goel2026_paper_scenarios_fit_without_custom_loop(
     assert len(checkpoint_callbacks) == 1
     checkpoint_audit = Path(checkpoint_callbacks[0].kwargs["output_file"])
     assert checkpoint_audit.is_file()
-
