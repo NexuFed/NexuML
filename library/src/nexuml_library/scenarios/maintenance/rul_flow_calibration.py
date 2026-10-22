@@ -15,11 +15,18 @@ from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint
 
 from nexuml import callback, optimizer
 from nexuml.core.discovery import scenario
-from nexuml.core.types import DatasetSpec, LayerSpec, PipelineSpec, ScenarioSpec
+from nexuml.core.types import (
+    DatasetSpec,
+    EvalAlgorithmSpec,
+    LayerSpec,
+    PipelineSpec,
+    ScenarioSpec,
+)
 from nexuml_library.data.maintenance.rul import AutoCMapSSRULWindows
 from nexuml_library.data.maintenance.rul_flow_calibration import (
     AutoPatchFormerFlowRULFeatures,
 )
+from nexuml_library.evaluation.maintenance.rul_engine_audit import RULPerEngineAudit
 from nexuml_library.evaluation.maintenance.rul_paper_callbacks import (
     Goel2026RestoreBestWeights,
 )
@@ -100,20 +107,16 @@ def patchformer_flow_rul_calibration(
             "evaluation": base.evaluation.model_copy(
                 update={
                     "algorithms": [
-                        entry.model_copy(
-                            update={
-                                "algorithm": entry.algorithm.model_copy(
-                                    update={
-                                        "output_file": (
-                                            f".experiments/rul/audits/{name}.csv"
-                                        )
-                                    }
-                                )
-                            }
-                        )
-                        if entry.name == "engine_audit"
-                        else entry
-                        for entry in base.evaluation.algorithms
+                        *base.evaluation.algorithms[:2],
+                        EvalAlgorithmSpec(
+                            name="engine_audit",
+                            algorithm=RULPerEngineAudit(
+                                artifact_path=original.artifact_path,
+                                output_file=f".experiments/rul/audits/{name}.csv",
+                            ),
+                            feature_key="predicted_rul",
+                            label_key="rul",
+                        ),
                     ]
                 }
             ),
