@@ -126,7 +126,7 @@ def _trusted_patchformer_weights(
         SHA-256 checksum to bind feature artifacts to the upstream model.
 
     Raises:
-        FileNotFoundError: If the user has not supplied a trained checkpoint.
+        FileNotFoundError: If the discovered trained checkpoint is missing.
         ValueError: If the checkpoint has incomplete or incorrect weights.
     """
     if not checkpoint_path.is_file():
