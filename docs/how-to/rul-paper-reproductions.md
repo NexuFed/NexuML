@@ -121,6 +121,10 @@ nexuml resolve maintenance-rul-goel2026-cnn-protocol \
 nexuml train --config .experiments/rul-goel2026-cnn.yaml
 ```
 
+For a separate, **non-publication**, cost-sensitive RUL research track,
+see [safety-aware RUL experiments](rul-safety-experiments.md).
+These experiments do not replace the reference-paper scenarios.
+
 ## Goel FD001 methodology audit (October 2026)
 
 The [published v1 PDF](https://arxiv.org/pdf/2604.27234) confirms:
