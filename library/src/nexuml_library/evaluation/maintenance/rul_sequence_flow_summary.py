@@ -70,7 +70,9 @@ def summarize_sequence_flow_rul(
             if upstream_sha is None:
                 upstream_sha, original_run = sha, upstream
             if upstream_sha != sha or upstream != original_run:
-                raise ValueError("Sequence RUL models use different PatchFormer encoders")
+                raise ValueError(
+                    "Sequence RUL models use different PatchFormer encoders"
+                )
             if use_flow and not isinstance(
                 report.get("flow_checkpoint_sha256"), str
             ):
