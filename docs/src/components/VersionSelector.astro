@@ -3,9 +3,11 @@ import { mount, version, target, base } from '../../config.mjs';
 const page = target === 'versioned' ? Astro.url.pathname.slice(base.length) : '';
 ---
 <docs-version-picker data-mount={mount} data-page={page} data-version={version}>
+  {target === 'versioned' && ['main', 'dev'].includes(version) && <span>Unreleased documentation · {version} branch</span>}
   <label>Documentation version
     <select aria-label="Documentation version">
       <option value="dev" selected={version === 'dev'}>dev</option>
+      <option value="main" selected={version === 'main'}>main</option>
       <option value="latest">latest stable</option>
     </select>
   </label>
@@ -26,7 +28,7 @@ const page = target === 'versioned' ? Astro.url.pathname.slice(base.length) : ''
           fetch(`${mount}versions.json`).then(r => { if (!r.ok) throw Error(); return r.json(); }),
           fetch(`${mount}publication.json`).then(r => { if (!r.ok) throw Error(); return r.json(); }),
         ]);
-        const versions: Version[] = manifest.filter((v: Version) => /^(dev|v\d+\.\d+\.\d+)$/.test(v.version));
+        const versions: Version[] = manifest.filter((v: Version) => /^(main|dev|v\d+\.\d+\.\d+)$/.test(v.version));
         const latest = versions.find(v => v.aliases.includes('latest'))?.version;
         select.replaceChildren(...[
           ...(latest ? [{ version: 'latest', title: `latest (${latest})` }] : []), ...versions,

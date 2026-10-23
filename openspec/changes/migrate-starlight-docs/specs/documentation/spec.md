@@ -77,17 +77,23 @@ The system SHALL render Mermaid diagrams embedded in documentation pages so that
 - **THEN** its supported Mermaid syntax renders successfully without changing the runtime diagram-export contract
 
 ### Requirement: Versioned documentation
-The system SHALL publish whole-site `dev` builds from main, immutable `vX.Y.Z` release snapshots from stable tags, and a `latest` alias for the newest stable release. Publication SHALL preserve existing release archives and provide accessible version selection without rebuilding historical releases.
+The system SHALL publish separate whole-site `main` and `dev` snapshots from their matching branches, immutable `vX.Y.Z` release snapshots from stable tags, and a `latest` alias for the newest stable release. Branch snapshots SHALL be labeled unreleased. Publication SHALL preserve existing release archives without rebuilding historical releases.
 
 #### Scenario: Release publishes a version
 - **WHEN** a validated stable `vX.Y.Z` tag is published
 - **THEN** its source revision produces a new immutable version directory
 - **AND** `latest` and the default documentation entry point identify the newest stable release without moving backward on an older-tag publication
 
-#### Scenario: Main publishes dev
+#### Scenario: Main publishes main
 - **WHEN** a validated commit is published from main
-- **THEN** the mutable `dev` documentation is updated
-- **AND** neither release snapshots nor the stable `latest` target are overwritten
+- **THEN** the mutable `main` documentation and global changelog are updated
+- **AND** dev, release snapshots, and stable latest remain unchanged
+
+#### Scenario: Dev publishes dev
+- **WHEN** a validated commit is published from dev
+- **THEN** only the dev snapshot and shared version metadata are updated
+- **AND** main, the global changelog/support, release snapshots, and stable latest remain unchanged
+- **AND** stale-build checks compare only that branch's own publication history
 
 #### Scenario: Existing archives survive migration
 - **WHEN** the first Starlight publication replaces the existing publication process
@@ -101,21 +107,22 @@ The system SHALL publish whole-site `dev` builds from main, immutable `vX.Y.Z` r
 
 #### Scenario: Reader selects another version
 - **WHEN** a reader uses the keyboard-operable version selector
-- **THEN** it lists dev and published releases, including retained historical versions
+- **THEN** it lists main, dev, and published releases, including retained historical versions
 - **AND** it opens the corresponding page when available or provides a clear fallback to the selected version's home when unavailable
 
 ### Requirement: GitHub Pages deployment
 The system SHALL continue serving the static site at `https://nexufed.github.io/NexuML/` through validated GitHub Actions publication. The existing `gh-pages` tree SHALL remain the archive source for complete deployments, and publication SHALL not discard directories absent from the current build.
 
 #### Scenario: Automated deploy
-- **WHEN** documentation publication runs for main or a stable release tag
+- **WHEN** documentation publication runs for main, dev, or a stable release tag
 - **THEN** it validates the exact source revision, merges only the permitted output into the existing archive, and publishes the assembled static site to GitHub Pages
 - **AND** the project URL and hosting provider remain unchanged
 
 #### Scenario: Concurrent publication events occur
-- **WHEN** main and release publication events overlap
+- **WHEN** main, dev, and release publication events overlap
 - **THEN** serialized archive updates preserve both valid outputs and the newest stable alias
-- **AND** an older main build cannot replace a newer published dev site or global changelog
+- **AND** an older build cannot replace newer output from the same branch
+- **AND** only main can replace the global changelog and its support assets
 
 #### Scenario: Validation or composition fails
 - **WHEN** content checks, archive-preservation checks, or deployment preparation fail

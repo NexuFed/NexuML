@@ -2,7 +2,7 @@ name: Deploy docs
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
     tags: ["v*"]
 
 permissions:
@@ -12,7 +12,7 @@ jobs:
   validate:
     uses: ./.github/workflows/docs-checks.yml
     with:
-      version: ${{ github.ref_type == 'tag' && github.ref_name || 'dev' }}
+      version: ${{ github.ref_name }}
 
   stage:
     needs: validate
@@ -21,7 +21,7 @@ jobs:
     permissions:
       contents: write
     env:
-      VERSION: ${{ github.ref_type == 'tag' && github.ref_name || 'dev' }}
+      VERSION: ${{ github.ref_name }}
       SOURCE_SHA: ${{ github.sha }}
     steps:
       - uses: actions/checkout@v5
@@ -33,7 +33,7 @@ jobs:
           python-version: "3.12"
       - uses: actions/download-artifact@v7
         with:
-          name: docs-build-${{ github.sha }}-${{ github.ref_type == 'tag' && github.ref_name || 'dev' }}
+          name: docs-build-${{ github.sha }}-${{ github.ref_name }}
           path: candidate
       - name: Verify exact validated build identity
         run: python docs/scripts/verify_candidate.py --directory candidate --revision "$SOURCE_SHA" --version "$VERSION"
@@ -50,7 +50,9 @@ jobs:
         env:
           TMPDIR: ${{ runner.temp }}
         run: |
-          git fetch --no-tags origin refs/heads/main:refs/remotes/origin/main
+          if [ "$VERSION" = main ] || [ "$VERSION" = dev ]; then
+            git fetch --no-tags origin "refs/heads/$VERSION:refs/remotes/origin/$VERSION"
+          fi
           python - <<'PY'
           import json
           import os
@@ -62,8 +64,10 @@ jobs:
                   '--repository', str(Path.cwd()), '--candidate', str(Path('candidate/versioned').resolve()),
                   '--version', version, '--revision', os.environ['SOURCE_SHA'],
                   '--site', identity['site'], '--mount', identity['mount']]
-          if version == 'dev':
-              args += ['--source-ref', 'refs/remotes/origin/main', '--changelog', str(Path('candidate/changelog').resolve())]
+          if version in {'main', 'dev'}:
+              args += ['--source-ref', f'refs/remotes/origin/{version}']
+          if version == 'main':
+              args += ['--changelog', str(Path('candidate/changelog').resolve())]
           subprocess.run(args, check=True)
           PY
 

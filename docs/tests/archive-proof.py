@@ -23,8 +23,14 @@ def git(repository, *args):
 
 
 def prove(archive_ref, report):
+    subprocess.run(
+        ["node", "docs/scripts/build.mjs", "all"],
+        cwd=ROOT,
+        env={**os.environ, "DOCS_VERSION": "main"},
+        check=True,
+    )
     identity = json.loads((ROOT / "docs/.output/versioned/build.json").read_text())
-    verify(ROOT / "docs/.output", identity["revision"], "dev")
+    verify(ROOT / "docs/.output", identity["revision"], "main")
     Path("/tmp/opencode").mkdir(exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="docs-real-archive-", dir="/tmp/opencode") as temporary:
         temporary = Path(temporary)
@@ -32,7 +38,7 @@ def prove(archive_ref, report):
         subprocess.run(
             ["git", "clone", "--quiet", "--shared", "--bare", str(ROOT), str(source)], check=True
         )
-        git(source, "branch", "docs-proof", identity["revision"])
+        git(source, "branch", "-f", "main", identity["revision"])
         archive = temporary / "archive"
         publication["extract_archive"](ROOT, archive_ref, archive)
         original = publication["manifest"](archive)
@@ -52,8 +58,8 @@ def prove(archive_ref, report):
             candidate=dev,
             changelog=global_build,
             output=main,
-            version="dev",
-            source_ref="refs/heads/docs-proof",
+            version="main",
+            source_ref="refs/heads/main",
             **common,
         )
         historical = [
@@ -86,7 +92,7 @@ def prove(archive_ref, report):
             version=version,
             **common,
         )
-        for name in historical + ["dev"]:
+        for name in historical + ["main", "dev"]:
             assert publication["tree_digest"](main / name) == publication["tree_digest"](
                 tagged / name
             ), name

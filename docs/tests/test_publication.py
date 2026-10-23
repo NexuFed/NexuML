@@ -59,7 +59,7 @@ class PublicationTests(unittest.TestCase):
             self.revisions.append(run(self.repo, "rev-parse", "HEAD"))
         self.archive = self.root / "archive"
         self.archive.mkdir()
-        for version in ["dev", "v0.1.0", "v0.2.1"]:
+        for version in ["main", "v0.1.0", "v0.2.1"]:
             write(self.archive, f"{version}/index.html", version)
             write(self.archive, f"{version}/start/install/index.html", f"install {version}")
             write(self.archive, f"{version}/assets/site.css", "old css")
@@ -71,7 +71,7 @@ class PublicationTests(unittest.TestCase):
             "versions.json",
             json.dumps(
                 [
-                    {"version": "dev", "title": "Development", "aliases": []},
+                    {"version": "main", "title": "Main", "aliases": []},
                     {"version": "v0.2.1", "title": "Stable", "aliases": ["latest", "stable"]},
                     {"version": "v0.1.0", "title": "v0.1.0", "aliases": []},
                 ]
@@ -102,11 +102,11 @@ class PublicationTests(unittest.TestCase):
         write(self.global_build, "build.json", "global build identity")
         self.counter = 0
 
-    def compose(self, version="dev", revision=None, archive=None, changelog=True, **kwargs):
+    def compose(self, version="main", revision=None, archive=None, changelog=True, **kwargs):
         self.counter += 1
         output = self.root / f"output-{self.counter}"
         revision = revision or self.revisions[-1]
-        if version != "dev":
+        if version not in publication.BRANCHES:
             if not run(self.repo, "tag", "--list", version):
                 run(self.repo, "tag", version, revision)
             changelog = False
@@ -146,13 +146,13 @@ class PublicationTests(unittest.TestCase):
         self.assertEqual(global_before, publication.manifest(self.global_build))
         state = json.loads((output / "publication.json").read_text())
         self.assertEqual(state["schemaVersion"], 1)
-        self.assertEqual(state["versions"]["dev"]["revision"], self.revisions[-1])
+        self.assertEqual(state["versions"]["main"]["revision"], self.revisions[-1])
         self.assertIsNone(state["versions"]["v0.9.0"]["revision"])
         self.assertEqual(state["global"]["revision"], self.revisions[-1])
-        self.assertEqual(state["versions"]["dev"]["routes"], publication.routes(output / "dev"))
-        self.assertIn("reference/api/nexuml/core/discovery/", state["versions"]["dev"]["routes"])
+        self.assertEqual(state["versions"]["main"]["routes"], publication.routes(output / "main"))
+        self.assertIn("reference/api/nexuml/core/discovery/", state["versions"]["main"]["routes"])
         versions = json.loads((output / "versions.json").read_text())
-        self.assertEqual(versions[0]["version"], "dev")
+        self.assertEqual(versions[0]["version"], "main")
         self.assertEqual(next(v for v in versions if "latest" in v["aliases"])["version"], "v0.2.1")
         self.assertIn("stable", next(v for v in versions if v["version"] == "v0.2.1")["aliases"])
 
@@ -171,13 +171,55 @@ class PublicationTests(unittest.TestCase):
                 self.assertEqual(path.stat().st_nlink, 1)
         self.assertEqual((self.candidate / "_astro/site.js").stat().st_nlink, 2)
 
+    def test_branch_snapshots_have_independent_history_and_global_ownership(self):
+        main, _ = self.compose()
+        run(self.repo, "switch", "-c", "dev", self.revisions[0])
+        write(self.repo, "dev.txt", "unreleased work")
+        run(self.repo, "add", ".")
+        run(self.repo, "commit", "-m", "Divergent dev work")
+        dev_revision = run(self.repo, "rev-parse", "HEAD")
+        write(self.candidate, "index.html", "dev branch docs")
+        dev, _ = self.compose("dev", archive=main, revision=dev_revision, changelog=False)
+        for name in publication.GLOBAL | {"main", "latest", "v0.1.0", "v0.2.1"}:
+            self.assertEqual(publication.manifest(main / name), publication.manifest(dev / name))
+        self.assertEqual((dev / "dev/index.html").read_text(), "dev branch docs")
+        stale, report = self.compose(
+            "dev", archive=dev, revision=self.revisions[0], changelog=False
+        )
+        self.assertEqual(report["status"], "stale")
+        self.assertEqual(publication.manifest(dev), publication.manifest(stale))
+        with self.assertRaisesRegex(ValueError, "Only main"):
+            self.compose("dev", archive=dev, revision=dev_revision)
+        with self.assertRaisesRegex(ValueError, "must match"):
+            self.compose(
+                "dev", revision=dev_revision, changelog=False, source_ref="refs/heads/main"
+            )
+        tagged, _ = self.compose("v1.0.0", archive=dev)
+        for name in publication.GLOBAL | {"main", "dev", "v0.1.0", "v0.2.1"}:
+            self.assertEqual(publication.manifest(dev / name), publication.manifest(tagged / name))
+        self.assertEqual(
+            [v["version"] for v in json.loads((tagged / "versions.json").read_text())],
+            ["main", "dev", "v1.0.0", "v0.2.1", "v0.1.0"],
+        )
+        run(self.repo, "switch", "main")
+        write(self.repo, "main.txt", "new main work")
+        run(self.repo, "add", ".")
+        run(self.repo, "commit", "-m", "Advance main independently")
+        main_revision = run(self.repo, "rev-parse", "HEAD")
+        write(self.global_build, "changelog/index.html", "new main announcement")
+        updated, _ = self.compose(archive=tagged, revision=main_revision)
+        self.assertEqual(
+            publication.manifest(tagged / "dev"), publication.manifest(updated / "dev")
+        )
+        self.assertEqual((updated / "changelog/index.html").read_text(), "new main announcement")
+
     def test_newer_main_advances_dev_global_without_changing_latest(self):
         old, _ = self.compose(revision=self.revisions[0])
         write(self.candidate, "index.html", "newer main docs")
         write(self.global_build, "changelog/index.html", "newer main editorial content")
         output, report = self.compose(archive=old)
         self.assertEqual(report["status"], "composed")
-        self.assertEqual((output / "dev/index.html").read_text(), "newer main docs")
+        self.assertEqual((output / "main/index.html").read_text(), "newer main docs")
         self.assertEqual(
             (output / "changelog/index.html").read_text(), "newer main editorial content"
         )
@@ -192,16 +234,16 @@ class PublicationTests(unittest.TestCase):
         self.assertEqual(
             publication.manifest(old / "latest"), publication.manifest(newer / "v0.10.0")
         )
-        for name in publication.GLOBAL | {"dev", "v0.1.0", "v0.2.1", "v0.10.0"}:
+        for name in publication.GLOBAL | {"main", "v0.1.0", "v0.2.1", "v0.10.0"}:
             self.assertEqual(
                 publication.manifest(main / name)
-                if name in publication.GLOBAL | {"dev", "v0.1.0", "v0.2.1"}
+                if name in publication.GLOBAL | {"main", "v0.1.0", "v0.2.1"}
                 else publication.manifest(newer / name),
                 publication.manifest(old / name),
             )
         versions = json.loads((old / "versions.json").read_text())
         self.assertEqual(
-            [v["version"] for v in versions], ["dev", "v0.10.0", "v0.3.0", "v0.2.1", "v0.1.0"]
+            [v["version"] for v in versions], ["main", "v0.10.0", "v0.3.0", "v0.2.1", "v0.1.0"]
         )
         state = json.loads((old / "publication.json").read_text())
         self.assertEqual(state["global"]["revision"], self.revisions[-1])
@@ -244,16 +286,17 @@ class PublicationTests(unittest.TestCase):
         run(self.repo, "add", ".")
         run(self.repo, "commit", "-m", "Divergent main fixture")
         divergent = run(self.repo, "rev-parse", "HEAD")
-        with self.assertRaisesRegex(ValueError, "Divergent main"):
-            self.compose(archive=output, revision=divergent, source_ref="refs/heads/diverged")
+        run(self.repo, "branch", "-f", "main", divergent)
+        with self.assertRaisesRegex(ValueError, "Divergent branch"):
+            self.compose(archive=output, revision=divergent)
 
     def test_redirects_choose_actual_stable_then_mapped_sections_and_keep_query_hash(self):
         main, _ = self.compose()
         legacy = (main / "start/install/index.html").read_text()
         self.assertIn('href="/NexuML/v0.2.1/start/install/"', legacy)
         self.assertNotIn("/dev/", legacy)
-        merged = (main / "dev/learn/decorators-and-discovery/index.html").read_text()
-        self.assertIn("/NexuML/dev/how-to/custom-library/#discovery", merged)
+        merged = (main / "main/learn/decorators-and-discovery/index.html").read_text()
+        self.assertIn("/NexuML/main/how-to/custom-library/#discovery", merged)
         self.assertIn('rel="canonical" href="https://nexufed.github.io/', merged)
         self.assertIn('http-equiv="refresh"', merged)
         self.assertIn("Continue to documentation</a>", merged)
@@ -347,7 +390,7 @@ class PublicationTests(unittest.TestCase):
             archive=self.archive,
             candidate=self.candidate,
             output=self.root / "unsafe-output",
-            version="dev",
+            version="main",
             revision=self.revisions[-1],
             mount="/NexuML/",
             site="https://nexufed.github.io",
@@ -421,15 +464,15 @@ class PublicationTests(unittest.TestCase):
         run(seed, "push", str(remote), "HEAD:refs/heads/gh-pages")
         return remote
 
-    def stage(self, remote, version="dev", revision=None, **kwargs):
+    def stage(self, remote, version="main", revision=None, **kwargs):
         revision = revision or self.revisions[-1]
-        if version != "dev" and not run(self.repo, "tag", "--list", version):
+        if version not in publication.BRANCHES and not run(self.repo, "tag", "--list", version):
             run(self.repo, "tag", version, revision)
         return publication.stage(
             repository=self.repo,
             remote=str(remote),
             candidate=self.candidate,
-            changelog=self.global_build if version == "dev" else None,
+            changelog=self.global_build if version == "main" else None,
             version=version,
             revision=revision,
             mount="/NexuML/",
@@ -469,7 +512,7 @@ class PublicationTests(unittest.TestCase):
         self.assertEqual(
             publication.manifest(tree / "latest"), publication.manifest(tree / "v1.2.0")
         )
-        self.assertEqual((tree / "dev/index.html").read_text(), "dev")
+        self.assertEqual((tree / "main/index.html").read_text(), "main")
         self.assertEqual((tree / "unknown/subdir/keep.dat").read_text(), "do not delete")
         self.assertTrue(publication.is_ancestor(remote, original, report["archiveCommit"]))
         retry = self.stage(remote, "v1.2.0")
@@ -495,7 +538,7 @@ class PublicationTests(unittest.TestCase):
         self.assertEqual(report["archiveCommit"], competing[1]["archiveCommit"])
         tree = self.extracted(remote)
         state = json.loads((tree / "publication.json").read_text())
-        self.assertEqual(state["versions"]["dev"]["revision"], self.revisions[-1])
+        self.assertEqual(state["versions"]["main"]["revision"], self.revisions[-1])
         self.assertEqual(state["global"]["revision"], self.revisions[-1])
         self.assertEqual((tree / "changelog/index.html").read_text(), "new updates")
 
@@ -516,10 +559,31 @@ class PublicationTests(unittest.TestCase):
         tree = self.extracted(remote)
         self.assertEqual((tree / "changelog/index.html").read_text(), "new updates")
         self.assertEqual((tree / "v1.0.0/index.html").read_text(), "new home")
-        self.assertEqual((tree / "dev/index.html").read_text(), "new home")
+        self.assertEqual((tree / "main/index.html").read_text(), "new home")
         self.assertEqual(
             publication.manifest(tree / "latest"), publication.manifest(tree / "v1.0.0")
         )
+
+    def test_competing_main_and_dev_preserve_both_snapshots(self):
+        run(self.repo, "branch", "dev", self.revisions[0])
+        remote = self.stage_fixture()
+        actual_git = publication.git
+        competing = []
+
+        def interleave(repository, *args, **kwargs):
+            if args[0] == "push" and not competing:
+                competing.append(True)
+                competing.append(self.stage(remote, "dev", revision=self.revisions[0]))
+            return actual_git(repository, *args, **kwargs)
+
+        with patch.object(publication, "git", side_effect=interleave):
+            report = self.stage(remote)
+        self.assertEqual(report["attempts"], 2)
+        tree = self.extracted(remote)
+        state = json.loads((tree / "publication.json").read_text())
+        self.assertEqual(state["versions"]["main"]["revision"], self.revisions[-1])
+        self.assertEqual(state["versions"]["dev"]["revision"], self.revisions[0])
+        self.assertEqual(state["global"]["revision"], self.revisions[-1])
 
     def test_staging_refuses_missing_archive_and_push_denial_without_force(self):
         remote = self.root / "empty.git"
@@ -569,7 +633,7 @@ class PublicationTests(unittest.TestCase):
                 "--output",
                 str(output),
                 "--version",
-                "dev",
+                "main",
                 "--revision",
                 self.revisions[-1],
                 "--mount",

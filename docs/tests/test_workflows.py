@@ -28,7 +28,15 @@ def test_untrusted_checks_are_read_only_and_hosted():
 def test_durable_staging_precedes_only_the_deploy_queue():
     workflow = load("docs.yml")
     assert "concurrency" not in workflow
+    assert workflow["on"]["push"]["branches"] == ["main", "dev"]
     jobs = workflow["jobs"]
+    assert jobs["validate"]["with"]["version"] == "${{ github.ref_name }}"
+    assert jobs["stage"]["env"]["VERSION"] == "${{ github.ref_name }}"
+    stage_script = next(
+        step["run"] for step in jobs["stage"]["steps"] if "Durably" in step.get("name", "")
+    )
+    assert "if version == 'main':" in stage_script
+    assert "f'refs/remotes/origin/{version}'" in stage_script
     assert jobs["stage"]["needs"] == "validate"
     assert "concurrency" not in jobs["stage"]
     assert jobs["stage"]["permissions"] == {"contents": "write"}

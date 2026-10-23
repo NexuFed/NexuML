@@ -7,7 +7,7 @@ if (!['https:', 'http:'].includes(new URL(site).protocol) || new URL(site).origi
 export const mount = `/${(process.env.DOCS_MOUNT ?? 'NexuML').replace(/^\/+|\/+$/g, '')}/`.replace('//', '/');
 if (!/^\/(?:[a-zA-Z0-9_-]+\/)*$/.test(mount)) throw new Error('DOCS_MOUNT must be a plain deployment path');
 export const version = process.env.DOCS_VERSION || 'dev';
-if (!/^(dev|v\d+\.\d+\.\d+)$/.test(version)) throw new Error(`Invalid DOCS_VERSION: ${version}`);
+if (!/^(main|dev|v\d+\.\d+\.\d+)$/.test(version)) throw new Error(`Invalid DOCS_VERSION: ${version}`);
 export const revision = process.env.DOCS_REVISION || execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
 if (!/^[a-f0-9]{40}$/.test(revision)) throw new Error('DOCS_REVISION must be a full commit SHA');
 export const base = target === 'versioned' ? `${mount}${version}/` : mount;

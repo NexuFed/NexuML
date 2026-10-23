@@ -16,8 +16,9 @@ Local preview/bootstrap fixtures are not eligible publication artifacts.
 
 | Event | Owned output | Retained output |
 | --- | --- | --- |
-| Main (`--version dev`) | `dev/`; optionally global changelog/support; shared metadata and root compatibility redirects | Every release; the existing stable latest selection; unrelated archive files |
-| Stable tag (`--version vX.Y.Z`) | One new immutable snapshot; latest if newest; shared metadata and root redirects | Existing snapshots, dev, global changelog and all its support |
+| Main (`--version main`) | `main/`; optionally global changelog/support; shared metadata and root redirects | Dev, every release, stable latest, unrelated files |
+| Dev (`--version dev`) | `dev/`; shared metadata and root redirects | Main, global changelog/support, every release, stable latest |
+| Stable tag (`--version vX.Y.Z`) | One new immutable snapshot; latest if newest; shared metadata and root redirects | Main, dev, existing snapshots, global changelog/support |
 | Retry | Confirm exact revision **and** prepared snapshot digest | Never replace a conflicting or unknown-provenance release |
 
 Global support is exactly `changelog/`, `_astro/`, `pagefind/`, `404.html`,
@@ -27,12 +28,17 @@ root entries and must include `changelog/index.html`. Supplying `--changelog` on
 tag fails. Main should supply both builds; omitting it deliberately retains global
 content. Versioned builds must contain `index.html`.
 
+Dev publication also rejects `--changelog`: use `--version dev` with
+`--source-ref refs/remotes/origin/dev` and omit the global candidate. Main and dev
+may have diverged histories; each publication compares only its own recorded SHA.
+
 All archive directories are retained, including stable snapshots not listed in
 the original `versions.json`. That file keeps mike's array, title and alias fields.
-Stable releases sort numerically, not lexically or by arrival. Main preserves the
+Stable releases sort numerically, not lexically or by arrival. Branch publication preserves the
 original stable selection (`v0.2.1` at migration); only a normal stable tag advances
 it. Backfilling an older tag never rolls latest backward. Without any stable
-snapshot, root entry redirects use dev as a bootstrap fallback.
+snapshot, root entry redirects prefer main, falling back to dev when main is absent.
+Branch snapshots are labeled unreleased and track their matching Git branches.
 
 `latest/` is an ordinary full copy of the chosen release, including assets,
 downloads and permissions, not a rebuild or symlink. Canonical links may leave
@@ -47,6 +53,7 @@ Other archive/candidate symlinks and special files fail. Copies break hardlinks.
   "schemaVersion": 1,
   "versions": {
     "v0.2.1": {"revision": null, "digest": "<sha256>", "routes": ["", "start/install/"]},
+    "main": {"revision": "<full-main-source-commit-sha>", "digest": "<sha256>", "routes": [""]},
     "dev": {"revision": "<full-source-commit-sha>", "digest": "<sha256>", "routes": [""]}
   },
   "global": {"revision": "<full-source-commit-sha-or-null>", "digest": "<sha256>"}
@@ -65,9 +72,10 @@ compositions verify recorded digests/routes against the archive before merging.
 
 Fetch the existing archive; a missing/unreadable archive or missing `versions.json`
 is an error, never an instruction to start empty. Fetch full source history and a
-fresh trusted main/tag ref too. Default source refs are `refs/heads/main` for dev
+fresh trusted branch/tag ref too. Default source refs are `refs/heads/main` for main,
+`refs/heads/dev` for dev,
 and `refs/tags/<version>` for a release. For detached Actions checkouts, pass an
-explicit fetched ref such as `refs/remotes/origin/main`. Main's revision must be
+explicit fetched ref such as `refs/remotes/origin/main`. Each branch's revision must be
 an ancestor of its trusted ref; a release must equal its peeled tag commit.
 
 Example, from the repository root, after exact-revision checks/builds:
@@ -90,7 +98,7 @@ python3 docs/scripts/publication.py \
   --candidate /absolute/path/to/validated-versioned-build \
   --changelog /absolute/path/to/validated-global-build \
   --output "$work/assembled" \
-  --version dev --revision "$VALIDATED_SOURCE_SHA" \
+  --version main --revision "$VALIDATED_SOURCE_SHA" \
   --mount /NexuML/ --site https://nexufed.github.io \
   --repository "$PWD" --source-ref refs/remotes/origin/main
 ```
@@ -107,7 +115,7 @@ release to move latest.
 Before cutover, compare all historical tree digests/modes to the fetched archive
 and [recorded migration baseline](migration/baseline.json), not just two familiar
 releases. Serve/crawl the assembled tree under `/NexuML/`; test home, install,
-API, templates, old release URLs, latest assets/downloads, dev, global changelog,
+API, templates, old release URLs, latest assets/downloads, main, dev, global changelog,
 search, sitemap/canonical links and corresponding-page version switching. Retain
 the report and source/archive SHAs. Repeat new builds/composition at an alternate
 origin with `--mount /` for portability proof; frozen old HTML remains unchanged.
@@ -136,13 +144,13 @@ Starlight, crawl a real archive or deploy Pages; those remain integrated gates.
 
 ## Durable staging, then queued deployment
 
-Only a trusted main/tag publisher may run this mode with archive-write credentials:
+Only a trusted main/dev/tag publisher may run this mode with archive-write credentials:
 
 ```sh
 python3 docs/scripts/publication.py --stage --remote origin --branch gh-pages \
   --candidate /absolute/path/to/validated-versioned-build \
   --changelog /absolute/path/to/validated-global-build \
-  --version dev --revision "$VALIDATED_SOURCE_SHA" \
+  --version main --revision "$VALIDATED_SOURCE_SHA" \
   --mount /NexuML/ --site https://nexufed.github.io \
   --repository "$PWD" --source-ref refs/remotes/origin/main --attempts 4
 ```
@@ -163,8 +171,10 @@ Exhaustion fails safely: rerun the already validated candidate; do not overwrite
 the branch. Git-inexpressible permission modes, empty directories or attributes/
 filters that change staged bytes/modes are rejected rather than silently lost.
 
-Main provenance uses `git merge-base --is-ancestor`. A candidate older than already
-published dev/global returns `status: "stale"` without replacing newer output.
+Branch provenance uses `git merge-base --is-ancestor` against the matching branch.
+A candidate older than its own published snapshot returns `status: "stale"`.
+Main also checks global provenance when supplying the changelog. Main and dev
+histories are never compared to one another; dev cannot supply `--changelog`.
 Divergent history or missing required commit history fails for investigation.
 An immutable retry needs both identical source SHA and identical prepared bytes/
 modes. Rebuilding the same tag differently is not permission to mutate it.
@@ -192,14 +202,19 @@ nor institute/self-hosted runners.
 
 1. Merge the replacement publisher only after preservation dry runs and parity
    checks pass. Retain the previous validated assembled artifact and archive SHA.
+   Roll the new workflow out to both main and dev before enabling their deployments;
+   do not leave a legacy main publisher competing with the branch-aware publisher.
+   Publish main first to initialize the global changelog, then enable dev publication.
 2. Ensure the legacy branch publisher will not compete with the new publisher.
    In repository **Settings → Pages → Build and deployment → Source**, switch
    **Deploy from a branch** to **GitHub Actions**. Keep the existing project URL,
    provider and archive branch. Do not add a CNAME or change DNS/custom-domain
-   settings during this migration.
+    settings during this migration.
+   Ensure the protected `github-pages` environment permits main, dev, and the
+   supported stable tags under the repository's trusted-branch policy.
 3. Run the trusted, validated main publisher (rerun the merged main commit's
    **Deploy docs** Actions run if it started before the Source setting changed).
-   It stages dev/global only; old
+   It stages main/global only; the dev branch separately updates dev. Old
    `v0.1.0`, `v0.2.1` and stable latest stay on their old technology/bytes. A bot-token
    push to gh-pages is not relied on to trigger a legacy Pages build.
 4. After the queued latest-archive deployment succeeds, smoke-test the live URLs

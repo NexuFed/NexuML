@@ -42,8 +42,15 @@ media fixtures are removed and clean outputs rebuilt before publication. See
 [archive-safe deployment and future hosting migration](publication.md).
 
 Configuration inputs: `DOCS_SITE` (origin), `DOCS_MOUNT` (deployment path), `DOCS_VERSION`
-(`dev` or a stable tag), `DOCS_REVISION` (full checked-out commit), and `DOCS_TARGET`
+(`main`, `dev`, or a stable tag), `DOCS_REVISION` (full checked-out commit), and `DOCS_TARGET`
 (`versioned` or `changelog`). Defaults keep the existing GitHub Pages project URL.
+
+After the workflow reaches each branch and Pages is configured for Actions, pushes
+to `main` update `/main/` and the global changelog; pushes to `dev` update only `/dev/`.
+Both branch snapshots are labeled unreleased. Stable tags keep immutable `/vX.Y.Z/`
+snapshots and advance `/latest/` only when newer. The site root stays on latest stable.
+Local builds default to `dev`; use `DOCS_VERSION=main` to preview the main namespace
+from your current checkout, without fetching the remote main branch.
 
 ## Migration evidence
 

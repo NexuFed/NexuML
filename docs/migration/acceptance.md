@@ -63,6 +63,23 @@ and traces live under ignored `docs/.output/`, `docs/test-results/`, and
 
 ## Limits and maintainer follow-up
 
+### Branch publication follow-up
+
+Main and dev now publish separate unreleased snapshots from matching branches;
+only main owns the global changelog/support. Stable releases and latest retain
+their previous contracts. This supersedes the original main-to-dev naming.
+
+Follow-up verification: 23 publication/workflow tests (including divergent branch
+histories and competing main/dev pushes), complete documentation gates in both
+namespaces (34 passed, two runtime-only skips), eight browser tests per namespace,
+API proofs at project/root mounts, and the updated real-archive main/tag dry-run
+all pass. Historical release hashes and initial stable latest remain unchanged.
+The preview was rebuilt and `/NexuML/dev/` returns HTTP 200. Independent review
+found no material defects. Hosted deployment was not performed; see the rollout
+and protected-environment requirements in `docs/publication.md`.
+
+### Remaining environment and owner checks
+
 - Full institute/GPU/optional-stack CI and hosted Actions artifact transfer/Pages
   deployment have not run here. Root frozen dependency resolution was checked
   without installing the full ML environment. Representative examples were checked;

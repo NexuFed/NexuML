@@ -24,6 +24,7 @@ from urllib.parse import urlsplit
 ROOT = Path(__file__).resolve().parents[2]
 STABLE = re.compile(r"v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\Z")
 SHA = re.compile(r"[a-f0-9]{40}\Z")
+BRANCHES = {"main", "dev"}
 GLOBAL = {
     "changelog",
     "_astro",
@@ -34,7 +35,7 @@ GLOBAL = {
     "favicon.png",
     "build.json",
 }
-RESERVED = GLOBAL | {"api", "dev", "latest", "versions.json", "publication.json", ".git"}
+RESERVED = GLOBAL | BRANCHES | {"api", "latest", "versions.json", "publication.json", ".git"}
 
 
 def git(repository, *args, check=True, input=None, env=None):
@@ -173,13 +174,20 @@ def hosting(mount, site):
 
 
 def verify_source(repository, version, revision, source_ref=None):
-    """Verify the exact commit is on main, or is the peeled stable tag commit."""
-    if version != "dev" and not STABLE.fullmatch(version):
-        raise ValueError("Version must be dev or a stable vX.Y.Z (no prerelease/leading zeros)")
+    """Verify branch ancestry, or the exact peeled stable tag commit."""
+    if version not in BRANCHES and not STABLE.fullmatch(version):
+        raise ValueError(
+            "Version must be main, dev or a stable vX.Y.Z (no prerelease/leading zeros)"
+        )
     if not SHA.fullmatch(revision):
         raise ValueError("Revision must be a full lowercase 40-character commit SHA")
-    ref = source_ref or ("refs/heads/main" if version == "dev" else f"refs/tags/{version}")
-    if version != "dev" and ref != f"refs/tags/{version}":
+    ref = source_ref or (f"refs/heads/{version}" if version in BRANCHES else f"refs/tags/{version}")
+    if version in BRANCHES and ref not in {
+        f"refs/heads/{version}",
+        f"refs/remotes/origin/{version}",
+    }:
+        raise ValueError("Branch source ref must match its publication version")
+    if version not in BRANCHES and ref != f"refs/tags/{version}":
         raise ValueError("A release source ref must be its exact refs/tags/vX.Y.Z")
     if (
         not ref.startswith("refs/")
@@ -192,9 +200,11 @@ def verify_source(repository, version, revision, source_ref=None):
     tip = git(repository, "rev-parse", "--verify", f"{ref}^{{commit}}").stdout.decode().strip()
     if actual != revision:
         raise ValueError("Revision must identify a commit, not a tag object")
-    if version == "dev":
+    if version in BRANCHES:
         if not is_ancestor(repository, revision, tip):
-            raise ValueError("Main candidate revision is not an ancestor of the trusted source ref")
+            raise ValueError(
+                "Branch candidate revision is not an ancestor of the trusted source ref"
+            )
     elif revision != tip:
         raise ValueError("Release revision does not match the trusted tag ref")
 
@@ -215,7 +225,7 @@ def source_order(repository, incoming, recorded):
         return "newer"
     if is_ancestor(repository, incoming, recorded):
         return "stale"
-    raise ValueError("Divergent main history; publication requires maintainer investigation")
+    raise ValueError("Divergent branch history; publication requires maintainer investigation")
 
 
 def load_archive(archive):
@@ -232,7 +242,7 @@ def load_archive(archive):
         if (
             not isinstance(name, str)
             or not re.fullmatch(r"[A-Za-z0-9_.-]+", name)
-            or name in RESERVED - {"dev"}
+            or name in RESERVED - BRANCHES
             or name in {".", ".."}
             or name in seen
             or not (archive / name).is_dir()
@@ -252,7 +262,7 @@ def load_archive(archive):
         selected = target
     for path in sorted(archive.iterdir()):
         if (
-            (STABLE.fullmatch(path.name) or path.name == "dev")
+            (STABLE.fullmatch(path.name) or path.name in BRANCHES)
             and path.is_dir()
             and path.name not in seen
         ):
@@ -426,8 +436,8 @@ def compose(
     if not (candidate / "index.html").is_file():
         raise ValueError("Versioned candidate must contain index.html")
     if changelog is not None:
-        if version != "dev":
-            raise ValueError("Only main/dev publication may supply --changelog")
+        if version != "main":
+            raise ValueError("Only main publication may supply --changelog")
         validate_tree(changelog)
         if {p.name for p in changelog.iterdir()} - GLOBAL:
             raise ValueError(
@@ -437,9 +447,12 @@ def compose(
             raise ValueError("Global candidate must contain changelog/index.html")
     versions, state, selected = load_archive(archive)
     before = manifest(archive)
-    stale = version == "dev" and any(
+    records = [state["versions"].get(version, {})]
+    if changelog is not None:
+        records.append(state["global"])
+    stale = version in BRANCHES and any(
         source_order(repository, revision, record["revision"]) == "stale"
-        for record in [state["versions"].get("dev", {}), state["global"]]
+        for record in records
         if record.get("revision") is not None
     )
     # Copying breaks hardlinks; the one allowed legacy symlink is materialized separately.
@@ -477,7 +490,7 @@ def compose(
                 digest = tree_digest(prepared)
                 record = state["versions"].get(version)
                 if (archive / version).exists() and (
-                    version != "dev" or (record and record["revision"] == revision)
+                    version not in BRANCHES or (record and record["revision"] == revision)
                 ):
                     if not record or record["revision"] != revision or record["digest"] != digest:
                         raise ValueError(f"Immutable/conflicting retry for {version}")
@@ -509,15 +522,19 @@ def compose(
                     state["global"] = {"revision": revision, "digest": digest}
             if version not in {entry["version"] for entry in versions}:
                 versions.append({"version": version, "title": version, "aliases": []})
-            if version != "dev":
+            if version not in BRANCHES:
                 selected = max((v for v in state["versions"] if STABLE.fullmatch(v)), key=semver)
             for entry in versions:
+                if entry["version"] in BRANCHES:
+                    entry["title"] = f"{entry['version']} (unreleased)"
                 entry["aliases"] = [alias for alias in entry["aliases"] if alias != "latest"]
                 if entry["version"] == selected:
                     entry["aliases"].append("latest")
             versions.sort(
                 key=lambda entry: (
-                    2
+                    3
+                    if entry["version"] == "main"
+                    else 2
                     if entry["version"] == "dev"
                     else 1
                     if STABLE.fullmatch(entry["version"])
@@ -529,7 +546,7 @@ def compose(
             )
             write_json(output / "versions.json", versions)
             write_json(output / "publication.json", state)
-            target_version = selected or "dev"
+            target_version = selected or ("main" if "main" in state["versions"] else "dev")
             available = set(routes(output / target_version))
             for old in sorted(set(mappings()) | available):
                 if not reserved(old):
@@ -564,7 +581,7 @@ def compose(
             raise ValueError(f"Publication changed an unowned archive path: {path}")
         for entry in versions:
             name = entry["version"]
-            if name != "dev" and (archive / name).is_dir():
+            if name != version and (archive / name).is_dir():
                 if tree_digest(archive / name) != tree_digest(output / name):
                     raise ValueError(f"Publication modified an immutable snapshot: {name}")
     except Exception:
@@ -710,7 +727,7 @@ def main(argv=None):
     parser.add_argument("--mount", required=True)
     parser.add_argument("--site", required=True)
     parser.add_argument("--repository", type=Path, required=True)
-    parser.add_argument("--source-ref", help="Trusted, locally fetched full main/tag ref")
+    parser.add_argument("--source-ref", help="Trusted, locally fetched matching branch/tag ref")
     parser.add_argument("--stage", action="store_true", help="Opt in to fast-forward archive push")
     parser.add_argument("--remote", default="origin")
     parser.add_argument("--branch", default="gh-pages")

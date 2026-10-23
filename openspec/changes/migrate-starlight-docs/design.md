@@ -1,5 +1,18 @@
 # Design
 
+## Branch publication follow-up
+
+The approved follow-up separates `main` and `dev` snapshots by their actual source
+branches, superseding the original convention where main published `/dev/`.
+Both branch sites are unreleased and appear alongside immutable releases in the
+version selector. Main alone owns the global changelog/support; dev and tag events
+must preserve it. Each branch's stale-build checks use only its own history, not
+the other branch's potentially divergent commits. Stable latest and the root
+entry remain tied to the newest release. Durable staging and preservation checks
+remain unchanged. Roll out the branch-aware workflow to both branches and disable
+the competing legacy publisher before the maintainer-controlled Pages cutover;
+initialize global content from main before enabling dev deployments.
+
 ## Context
 
 See `proposal.md` for motivation and `specs/` for the behavior contracts. Repository exploration established these constraints:

@@ -108,6 +108,9 @@ test('global ordering, rich media and version fallback', async ({ page }, info) 
   await page.keyboard.press('Escape');
   await page.goto(`${base}start/first-run/`);
   if (info.project.name === 'mobile') await page.getByRole('button', { name: 'Menu' }).click();
+  const otherBranch = version === 'main' ? 'dev' : 'main';
+  await page.getByRole('combobox', { name: 'Documentation version' }).selectOption(otherBranch);
+  await expect(page.getByRole('link', { name: `Open ${otherBranch} home` })).toHaveAttribute('href', `${mount}${otherBranch}/`);
   await page.getByRole('combobox', { name: 'Documentation version' }).selectOption(fallbackVersion);
   await expect(page.getByRole('status')).toContainText('unavailable');
   const fallback = page.getByRole('link', { name: `Open ${fallbackVersion} home` });

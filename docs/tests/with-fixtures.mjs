@@ -34,12 +34,17 @@ try {
     const versions = JSON.parse(readFileSync(`${preview}versions.json`, 'utf8'));
     const fallbackVersion = process.env.DOCS_VERSION === 'v0.0.0' ? 'v0.0.1' : 'v0.0.0';
     versions.push({ version: fallbackVersion, title: `${fallbackVersion} (fallback test fixture)`, aliases: [] });
+    const otherBranch = process.env.DOCS_VERSION === 'main' ? 'dev' : 'main';
+    versions.push({ version: otherBranch, title: `${otherBranch} (unreleased)`, aliases: [] });
     writeFileSync(`${preview}versions.json`, JSON.stringify(versions));
     const publication = JSON.parse(readFileSync(`${preview}publication.json`, 'utf8'));
     publication.versions[fallbackVersion] = { revision: null, routes: [''] };
+    publication.versions[otherBranch] = { revision: null, routes: [''] };
     writeFileSync(`${preview}publication.json`, JSON.stringify(publication));
     mkdirSync(`${preview}${fallbackVersion}`, { recursive: true });
     writeFileSync(`${preview}${fallbackVersion}/index.html`, '<!doctype html><title>Excluded fallback fixture</title><h1>Version fallback acceptance fixture</h1>');
+    mkdirSync(`${preview}${otherBranch}`, { recursive: true });
+    writeFileSync(`${preview}${otherBranch}/index.html`, '<!doctype html><title>Excluded branch fixture</title><h1>Other branch acceptance fixture</h1>');
   }
   if (status === 0) status = run(['node_modules/@playwright/test/cli.js', 'test']);
 } finally {
