@@ -72,10 +72,18 @@ def test_engine_weight_labels_stay_aligned_after_asset_split() -> None:
     split = data.take([5, 3, 6])
     assert len(split) == 3
     assert isinstance(split.meta, pd.DataFrame)
-    assert split.load_labels(0, split.meta.iloc[0])["rul_weight"].item() == 1.5
-    assert split.load_labels(1, split.meta.iloc[1])["rul_weight"].item() == 0.75
-    assert split.load_labels(2, split.meta.iloc[2])["rul_weight"].item() == 1.0
-    assert split.load_labels(0, split.meta.iloc[0])["rul"].item() == 5.0
+    for index, expected_weight, expected_rul in (
+        (0, 1.5, 5.0),
+        (1, 0.75, 3.0),
+        (2, 1.0, 6.0),
+    ):
+        labels = split.load_labels(index, split.meta.iloc[index])
+        weight = labels["rul_weight"]
+        rul = labels["rul"]
+        assert isinstance(weight, torch.Tensor)
+        assert isinstance(rul, torch.Tensor)
+        assert weight.item() == pytest.approx(expected_weight)
+        assert rul.item() == pytest.approx(expected_rul)
 
 
 def test_engine_frequency_rul_loss_is_differentiable() -> None:
