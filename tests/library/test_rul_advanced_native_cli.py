@@ -130,6 +130,14 @@ def _synthetic_cmapss(root: Path) -> None:
         ),
         ("maintenance-rul-patchformer-sequence-cfc-encoder-fd001-s44", "sequence_rul"),
         (
+            "maintenance-rul-cfc-gen2-flow-d010-adamw_3e4-engine-head-s42",
+            "sequence_rul",
+        ),
+        (
+            "maintenance-rul-cfc-gen2-encoder-d030-adam_1e3-window-head-s44",
+            "sequence_rul",
+        ),
+        (
             "maintenance-rul-cfc-generalization-flow-w064_d030-head-s42",
             "sequence_rul",
         ),
