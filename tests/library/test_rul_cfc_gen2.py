@@ -71,6 +71,7 @@ def test_engine_weight_labels_stay_aligned_after_asset_split() -> None:
     )
     split = data.take([5, 3, 6])
     assert len(split) == 3
+    assert isinstance(split.meta, pd.DataFrame)
     assert split.load_labels(0, split.meta.iloc[0])["rul_weight"].item() == 1.5
     assert split.load_labels(1, split.meta.iloc[1])["rul_weight"].item() == 0.75
     assert split.load_labels(2, split.meta.iloc[2])["rul_weight"].item() == 1.0
