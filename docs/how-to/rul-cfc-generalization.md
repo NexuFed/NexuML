@@ -149,6 +149,24 @@ Choose width/dropout by validation only; then replicate the chosen setting
 on FD003 (with its own upstream flow) for less development-contaminated
 confirmation.
 
+## Next study: optimization and engine-equal supervision
+
+The follow-up study freezes the same seed-42 DPAN and CfC Flow and tests
+AdamW learning rates 3e-4 / 1e-4 against Adam 1e-3. It also compares
+ordinary sliding-window MSE against equal-total-weight-per-training-engine
+supervision, with four deterministic held-out validation stress groups.
+
+Run the native paired 24-scenario seed-42 grid:
+
+```bash
+git pull
+bash scripts/launch_cfc_gen2_fd001.sh
+```
+
+Read [CfC optimization and engine-balanced RUL](rul-cfc-optimization-engine-balanced.md)
+for the exact loss, optimizer, checkpoint protocol, independent head-seed
+repeats and the validation-only comparison report.
+
 ## Checks
 
 ```bash
