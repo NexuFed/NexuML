@@ -47,6 +47,7 @@ class AutoPatchFormerSequenceFlowRULFeatures(DataSourceDefinition):
     seed: int = Field(default=42, ge=0)
     architecture: SequenceArchitecture = "transformer"
     use_flow: bool = True
+    engine_balanced: bool = False
     root: str = "data/cmapss"
     prepared_rul_path: str = ".experiments/rul/prepared/cmapss-FD001-seed42.pt"
     endpoint_artifact: str = ".experiments/rul/prepared/sequence-endpoints.pt"
@@ -156,6 +157,22 @@ class AutoPatchFormerSequenceFlowRULFeatures(DataSourceDefinition):
         features = torch.cat(batches)
         if features.shape != (len(rows), 30, 256):
             raise ValueError("Sequence flow RUL inputs must be [N,30,256]")
+        train_counts: dict[str, int] = {}
+        for row in rows:
+            if row["split"] == "train":
+                asset = str(row["asset_id"])
+                train_counts[asset] = train_counts.get(asset, 0) + 1
+        if not train_counts:
+            raise ValueError("Engine balancing requires training assets")
+        train_total = sum(train_counts.values())
+        engine_weights = torch.ones(len(rows), dtype=torch.float32)
+        if self.engine_balanced:
+            for index, row in enumerate(rows):
+                if row["split"] == "train":
+                    asset = str(row["asset_id"])
+                    engine_weights[index] = (
+                        train_total / (len(train_counts) * train_counts[asset])
+                    )
         report_file = Path(self.diagnostics_file).expanduser().resolve()
         report_file.parent.mkdir(parents=True, exist_ok=True)
         report_file.write_text(
@@ -166,6 +183,10 @@ class AutoPatchFormerSequenceFlowRULFeatures(DataSourceDefinition):
                     "architecture": self.architecture,
                     "use_flow": self.use_flow,
                     "feature_shape": [30, 256],
+                    "engine_balanced": self.engine_balanced,
+                    "train_engine_count": len(train_counts),
+                    "train_window_count": train_total,
+                    "loss_weight_scope": "train_only_inverse_engine_windows",
                     "frozen_flow_run": (
                         sequence_flow_run(self.subset, self.seed, self.architecture)
                         if self.use_flow else None
@@ -186,6 +207,7 @@ class AutoPatchFormerSequenceFlowRULFeatures(DataSourceDefinition):
             features=features,
             targets=cast(Tensor, original["targets"]),
             raw_targets=cast(Tensor, original["raw_targets"]),
+            weights=engine_weights if self.engine_balanced else None,
             meta=pd.DataFrame.from_records(rows),
         )
 
@@ -196,9 +218,11 @@ class _SequenceFlowRULRuntime(NexuDataset):
     def __init__(
         self, *, features: Tensor, targets: Tensor,
         raw_targets: Tensor, meta: pd.DataFrame,
+        weights: Tensor | None = None,
     ) -> None:
         self._rul_targets = targets
         self._rul_raw_targets = raw_targets
+        self._rul_weights = weights
         super().__init__(
             meta=meta,
             data=features,
@@ -217,6 +241,9 @@ class _SequenceFlowRULRuntime(NexuDataset):
         subset = super().take(selected)
         subset._rul_targets = self._rul_targets[selected]
         subset._rul_raw_targets = self._rul_raw_targets[selected]
+        subset._rul_weights = (
+            self._rul_weights[selected] if self._rul_weights is not None else None
+        )
         return subset
 
     def load_item(self, idx: int, row: pd.Series) -> TensorDict:
@@ -236,7 +263,10 @@ class _SequenceFlowRULRuntime(NexuDataset):
         Returns:
             TensorDict containing capped and raw RUL in cycles.
         """
-        return TensorDict(
-            {"rul": self._rul_targets[idx], "rul_raw": self._rul_raw_targets[idx]},
-            batch_size=[],
-        )
+        labels = {
+            "rul": self._rul_targets[idx],
+            "rul_raw": self._rul_raw_targets[idx],
+        }
+        if self._rul_weights is not None:
+            labels["rul_weight"] = self._rul_weights[idx].reshape(1)
+        return TensorDict(labels, batch_size=[])
