@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shlex
 from types import SimpleNamespace
 
 import numpy as np
@@ -229,3 +230,32 @@ def test_log_image_file_fallback_writes_png(tmp_path):
 
     destination = tmp_path / "artifacts" / "val" / "val_reconstruction.png"
     assert destination.exists()
+
+
+def test_service_commands_are_private_quoted_and_avoid_viser_port(tmp_path, caplog, monkeypatch):
+    monkeypatch.setattr(logger_module, "_USE_COLOR", False)
+    log_path = tmp_path / "logs with spaces" / "experiment" / "run"
+    uri = f"sqlite:///{tmp_path / 'tracking with spaces.db'}"
+    tensorboard = type("TensorBoardLogger", (), {"log_dir": str(log_path)})()
+    mlflow = type("MLFlowLogger", (), {"_tracking_uri": uri, "run_id": "actual-run"})()
+    logger_module.print_service_info([tensorboard, mlflow], "test")
+    commands = [
+        shlex.split(line.strip())
+        for line in caplog.messages[-1].splitlines()
+        if line.strip().startswith(("tensorboard ", "mlflow ui "))
+    ]
+    assert len(commands) == 2
+    assert commands[0][commands[0].index("--logdir") + 1] == str(log_path.parent)
+    assert commands[1][commands[1].index("--backend-store-uri") + 1] == uri
+    assert [cmd[cmd.index("--host") + 1] for cmd in commands] == ["127.0.0.1"] * 2
+    assert [cmd[cmd.index("--port") + 1] for cmd in commands] == ["6007", "5000"]
+    assert "actual-run" in caplog.text and "worker" in caplog.text.lower()
+
+
+def test_remote_tracking_banner_does_not_suggest_starting_another_server(caplog):
+    mlflow = type(
+        "MLFlowLogger", (), {"_tracking_uri": "https://tracking.example", "run_id": "remote-run"}
+    )()
+    logger_module.print_service_info([mlflow], "test")
+    assert "https://tracking.example" in caplog.text and "remote-run" in caplog.text
+    assert "mlflow ui" not in caplog.text
