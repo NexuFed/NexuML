@@ -59,8 +59,9 @@ not model convergence.
   overrides alongside results.
 - Metrics appear in the terminal. This recipe does not configure MLflow,
   TensorBoard, model export, or a Mermaid diagram.
-- Session files, if created, live under `.experiments/` or `NEXUML_LOGS_ROOT`.
-  Check reported paths; do not assume a checkpoint name or output layout.
+- Session files, if created, live under `.experiments/` (or
+  `$NEXUML_LOGS_ROOT/.experiments/` when set). Check reported paths; do not assume
+  a checkpoint name or output layout.
 
 Persist curves with [tracking](/how-to/tracking/) or set a repeatable
 [checkpoint policy](/how-to/checkpoints/) when needed.
