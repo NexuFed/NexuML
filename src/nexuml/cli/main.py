@@ -164,6 +164,11 @@ def train_cmd(
         "--artifact-dir",
         help="Optional directory for scenario-file provenance snapshots",
     ),
+    execution_profile: Optional[Path] = typer.Option(
+        None,
+        "--execution-profile",
+        help="Trusted Ray Jobs YAML profile; replaces scenario execution before -O overrides.",
+    ),
     max_epochs: Optional[int] = typer.Option(None, "--max-epochs", help="Override max epochs"),
     trainer_checkpoint: Optional[Path] = typer.Option(
         None,
@@ -204,6 +209,20 @@ def train_cmd(
     elif trainer_checkpoint is None:
         console.print("[red]Provide a scenario/config/scenario-file or --trainer-checkpoint[/red]")
         raise typer.Exit(1)
+
+    if execution_profile is not None:
+        if scenario is None:
+            console.print("[red]--execution-profile requires a scenario/config/scenario-file[/red]")
+            raise typer.Exit(1)
+        from ruamel.yaml.error import YAMLError
+
+        from nexuml.execution import load_ray_job_profile
+
+        try:
+            scenario.execution = load_ray_job_profile(execution_profile)
+        except (OSError, ValueError, YAMLError) as exc:
+            console.print(f"[red]Execution profile error: {exc}[/red]")
+            raise typer.Exit(1) from exc
 
     if scenario is not None and max_epochs is not None:
         from nexuml.core.types import TrainingSpec

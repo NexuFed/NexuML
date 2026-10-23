@@ -51,29 +51,25 @@ in your own scenario file and invoke `nexuml train` locally. That backend uses t
 Jobs Python SDK, sends the resolved scenario and resets its remote execution to
 local automatically; you do not need the outer `ray job submit` command.
 
-To select the backend without editing `cartpole.py`, use the following command
-with the Jobs address and CA exports defined below. The whole `execution` JSON
-block is restored as a validated execution spec before dispatch:
+To select the backend without editing `cartpole.py`, reuse the
+[project execution profile](training-backends/ray.md#reuse-a-project-execution-profile)
+with the Jobs address and CA exports defined below. Only the Isaac dependency
+extras and per-run paths need overriding:
 
 ```bash
 nexuml train --scenario-file scripts/isaaclab/cartpole.py \
-  -O 'execution={
-    "kind":"ray_job",
-    "setup_command":["uv","sync","--locked","--python","3.12","--extra","isaac","--extra","ray"],
-    "py_executable":".venv/bin/python -u -X faulthandler",
-    "runtime_env":{
-      "working_dir":".",
-      "env_vars":{"UV_CACHE_DIR":"/mnt/data/uv-cache","UV_LINK_MODE":"copy"}
-    },
-    "entrypoint_num_gpus":1,
-    "entrypoint_resources":{"pool_gpu_workers":1}
-  }' \
+  --execution-profile configs/execution/ray.yaml \
+  -O 'execution.setup_command=["uv","sync","--locked","--python","3.12","--extra","isaac","--extra","ray"]' \
   -O "execution.verify=$RAY_CA_BUNDLE" \
+  -O "execution.runtime_env.env_vars.NEXUML_LOGS_ROOT=$RUN_ROOT" \
+  -O "exports=[{\"output\":\"$RUN_ROOT/policy\"}]" \
   -O interaction.environment.viewer.port=8081
 ```
 
 This reads `RAY_API_SERVER_ADDRESS` through the SDK and returns a submission ID
-without waiting or tailing logs. Running it submits a new training job.
+without waiting or tailing logs. Set a unique `RUN_ROOT` as below before running
+it. Running it submits a new training job. For repeated Isaac runs, copy the
+profile and add the Isaac extra there once instead of repeating the setup override.
 
 The following example uses the IKA cluster's Jobs ingress, CA bundle, worker-pool
 tags and `/mnt/data` mount. Adapt those infrastructure-owned values for another
@@ -96,7 +92,7 @@ ray job submit \
   --working-dir=. \
   --entrypoint-num-gpus=1 \
   --entrypoint-resources='{"pool_gpu_workers":1}' \
-  --runtime-env-json="{\"env_vars\":{\"UV_CACHE_DIR\":\"/mnt/data/uv-cache\",\"UV_LINK_MODE\":\"copy\",\"NEXUML_LOGS_ROOT\":\"$RUN_ROOT\"}}" \
+  --runtime-env-json="{\"env_vars\":{\"UV_CACHE_DIR\":\"/tmp/ray/uv-cache\",\"UV_LINK_MODE\":\"hardlink\",\"UV_HTTP_TIMEOUT\":\"600\",\"UV_CONCURRENT_DOWNLOADS\":\"4\",\"NEXUML_LOGS_ROOT\":\"$RUN_ROOT\"}}" \
   --no-wait \
   -- bash -c '
 set -euo pipefail
@@ -136,9 +132,30 @@ the ingress body limit; this cluster uses `64m`.
 
 The custom resource chooses `gpu-workers`; use `pool_dgx_workers` only with a
 compatible, available GPU in that pool. A pool tag is placement, not CUDA/driver
-compatibility. The job reserves one GPU, not a CPU/RAM hard limit. The shared uv
-cache avoids repeated downloads; it is not one shared mutable venv or result
-storage. `UV_LINK_MODE=copy` permits a cache and venv on different filesystems.
+compatibility. The job reserves one GPU, not a CPU/RAM hard limit. Keep the uv
+cache and private venv on the worker's local `/tmp/ray` filesystem. Cached packages
+can be hardlinked into separate environments without copying their large payloads;
+the cache can be reused by jobs on that worker, but disappears on worker cleanup.
+This trades cross-worker download reuse for predictable installation I/O.
+
+Do not put this profile's unpacked uv cache on the shared `/mnt/data` JuiceFS
+mount. Its many small-file metadata operations can stall installation even when
+the packages are cached and free disk is ample. `UV_LINK_MODE=copy` only handles
+cross-filesystem installation; it does not fix a slow shared cache. Putting a
+hardlinked venv on that same shared mount still pays its metadata cost. Keep
+mounted storage for durable logs and exports, not this installation cache.
+
+Cold setup also downloads multi-GiB native wheels. The examples allow a 600-second
+uv HTTP timeout and four concurrent downloads: the stock 30-second HTTP timeout
+can abort the 5.1-GiB Isaac extension-cache wheel. These settings affect package
+downloads, not Ray's supervisor startup timeout or GPU availability.
+
+The [uv HTTP timeout](https://docs.astral.sh/uv/reference/environment/#uv_http_timeout)
+limits stalled reads, not total download duration. At a worker transfer rate of
+6 MB/s, the two large Isaac extension-cache wheels alone need about 20 minutes;
+the remaining dependencies add to that. Size any overall setup deadline using
+worker throughput, not the submitter's network speed. Quiet installer output is
+not proof of a hang: inspect network/disk progress and the eventual exit status.
 
 The native CLI command runs from the unique mounted `RUN_ROOT`: its
 `driver.log`, TensorBoard logs and `rl-runs/cartpole-<id>/policy` survive worker

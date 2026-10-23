@@ -73,6 +73,117 @@ through Ray's `JobSubmissionClient`. Unlike `RayExecutionSpec`, this is an
 asynchronous submission backend, not a Ray Train worker group. It supports the
 current single-process RL/Isaac lifecycle without enabling distributed RL.
 
+### Python defaults: no profile file required
+
+```python
+from nexuml.core.types import RayJobExecutionSpec
+
+spec.execution = RayJobExecutionSpec()
+```
+
+This defaults to `uv sync --locked`, a fresh worker-local venv **per submission**,
+direct venv Python execution, one GPU, and these environment settings:
+
+```text
+UV_PROJECT_ENVIRONMENT=/tmp/ray/nexuml-envs/{run_id}
+UV_CACHE_DIR=/tmp/ray/uv-cache
+UV_LINK_MODE=hardlink
+UV_HTTP_TIMEOUT=600
+UV_CONCURRENT_DOWNLOADS=4
+```
+
+The backend substitutes one fresh `{run_id}` in `py_executable` and environment
+variable values for every submission, even when reusing the same spec. It does
+not mutate the caller's spec. Source uploads still default to `working_dir="."`.
+No cluster address, private CA or pool tag is hardcoded. Configure those normally;
+`address=None` uses Ray's native environment-based address selection.
+
+The project's lockfile owns dependencies and Python compatibility. To enable
+extras, replace `setup_command`; for this checkout's ordinary library scenarios:
+
+```python
+spec.execution = RayJobExecutionSpec(
+    setup_command=["uv", "sync", "--locked", "--python", "3.12",
+                   "--extra", "library", "--extra", "ray"],
+    entrypoint_resources={"pool_gpu_workers": 1},
+)
+```
+
+These defaults intentionally replace the former no-install/zero-GPU behavior.
+For an already-prepared environment use
+`RayJobExecutionSpec(setup_command=None, py_executable="/prepared/bin/python")`;
+no uv environment settings are added in that mode. For CPU jobs set
+`entrypoint_num_gpus=0` and choose CPU training settings in the scenario.
+Explicit interpreter and environment values take precedence over generated
+defaults. If you override the venv path, keep setup and Python paths aligned.
+Local execution remains the default for scenarios that do not select `ray_job`.
+
+### Reuse a project execution profile
+
+Keep remote setup and placement in one YAML file instead of repeating them in
+every scenario. From this checkout's root:
+
+```bash
+export RAY_API_SERVER_ADDRESS=https://ray.example.org
+nexuml train --scenario-file my_scenario.py \
+  --execution-profile configs/execution/ray.yaml
+```
+
+The optional `configs/execution/ray.yaml` only adds project-specific Python 3.12,
+`library`/`ray` extras and the IKA `pool_gpu_workers` tag to the class defaults.
+Change that tag for another cluster. Cache, venv and GPU defaults live in Python,
+not in the YAML file.
+The worker still needs uv, Git, compatible system libraries/drivers and disk;
+Python/Ray must match the cluster. No worker image is built or changed.
+
+The file is a plain `RayJobExecutionSpec` YAML mapping with `kind: ray_job`.
+`{run_id}` in the Python command and environment values is resolved at submission,
+keeping the venv path and Python command aligned without sharing mutable
+environments. Cache is shared only within a worker. Relative
+paths, including `working_dir`, are relative to the **submission directory**,
+not the YAML file's directory. Profile setup commands execute remotely; use only
+trusted profiles. The loader does not expand shell variables or environment
+variables in YAML. Keep secrets out of profiles and uploaded project files.
+
+Precedence is **scenario → profile replaces execution → CLI `-O` overrides**.
+Other scenario settings are unchanged. For example, select another pool, a private
+CA and durable logs without duplicating the setup configuration:
+
+```bash
+nexuml train --scenario-file my_scenario.py \
+  --execution-profile configs/execution/ray.yaml \
+  -O 'execution.entrypoint_resources={"pool_dgx_workers":1}' \
+  -O execution.verify=/path/to/ca-bundle.pem \
+  -O execution.runtime_env.env_vars.NEXUML_LOGS_ROOT=/mnt/data/my-unique-run
+```
+
+For a CPU job, override both `execution.entrypoint_num_gpus=0` and
+`execution.entrypoint_resources={}`. Resource selection does not rewrite the
+scenario's training accelerator or device settings.
+
+Copy the profile once per dependency profile and edit its `setup_command` extras
+(for example, add `--extra isaac`, `--extra mujoco` or `--extra tracking`). The
+framework cannot infer arbitrary component dependencies. For a one-off run,
+`-O 'execution.setup_command=["uv","sync","--locked","--python","3.12","--extra","isaac","--extra","ray"]'`
+replaces that argv list. Do not change the venv environment path without also
+updating `py_executable`.
+
+Python callers can set
+`spec.execution = nexuml.execution.load_ray_job_profile(Path("configs/execution/ray.yaml"))`
+before `submit_ray_job(spec)`. The profile
+is not selected automatically and is not reloaded by the remote CLI, preventing
+recursive submission. A profile is optional: selecting `RayJobExecutionSpec`
+directly already enables the setup/cache/GPU defaults above.
+
+Datasets/checkpoints still need worker-accessible paths. Set absolute durable
+`exports[].output` paths explicitly: `NEXUML_LOGS_ROOT` redirects logs, **not policy
+exports**. Unique venvs live until worker cleanup and consume disk; the profile
+does not enforce a wall-time/free-disk guard or guarantee available GPU capacity.
+Submission returns a job ID, not training success. This profile mechanism is
+tested without launching a cluster job; it does not qualify arbitrary workloads.
+
+### Configure execution directly
+
 Attach this execution spec to the scenario returned by your trusted scenario file:
 
 ```python
@@ -82,14 +193,14 @@ spec.execution = RayJobExecutionSpec(
     address="https://ray.example.org",
     verify="/path/to/ca-bundle.pem",
     setup_command=["uv", "sync", "--locked"],
-    py_executable=".venv/bin/python",
     runtime_env={"working_dir": "."},
 )
 ```
 
 Choose setup flags/extras in the consuming project; for example, this checkout's
 Isaac profile adds `--python 3.12 --extra isaac --extra ray` to `setup_command`.
-The backend does not hardcode a package manager, Python version or optional extra.
+uv is the default installer, but a custom argv command remains supported. Python
+versions and dependency extras are project-owned, not inferred from components.
 
 Then use the normal CLI from the project root:
 
@@ -122,14 +233,30 @@ nonzero, Python does not start and Ray records the failure without a NexuML retr
 After successful setup, the waiting shell `exec`s `py_executable`; the installer
 is no longer Python's parent. Output remains in Ray's normal job logs.
 
-By default, `setup_command=None` and `py_executable="python"` keep prepared
-environments unchanged: no installation or interpreter selection is inferred.
-When setup creates a venv, explicitly select its Python, as above. The backend
-does not infer working-directory paths or rewrite an arbitrary `uv run` command.
+By default, setup installs the locked project into the private local venv above.
+Use `setup_command=None` to preserve prepared environments; the implicit Python
+then stays `python`. A custom setup command must create the selected environment,
+or specify its own matching `py_executable`. The backend does not rewrite an
+arbitrary `uv run` command.
 Use a project-specific environment, not an installer that changes the base worker
 environment shared by other Ray processes. Concurrent jobs with different
 dependency profiles must use distinct venv paths and matching `py_executable`
 values; only the package download/build cache should be shared.
+
+For large uv profiles on stock KubeRay workers, keep the cache and private venv
+on the worker-local filesystem. For example, add these project-owned values to
+`runtime_env["env_vars"]`:
+
+```python
+{"UV_CACHE_DIR": "/tmp/ray/uv-cache", "UV_LINK_MODE": "hardlink"}
+```
+
+This reuses cached packages across jobs on the same worker without sharing their
+mutable environments. Cache and venv must be on the same filesystem for hardlinks;
+worker cleanup removes that cache, so other workers download independently.
+An unpacked cache on shared FUSE storage can instead stall on per-file metadata
+and copying, even when downloads are already cached. Use mounted persistent
+storage for results; explicit cache paths are never relocated by the backend.
 
 Separating locked `uv sync` from direct Python execution avoids the cold
 `uv run` SIGPIPE handoff reported in
@@ -138,8 +265,10 @@ handling or requiring a custom image. The same setup mechanism works for other
 project-owned installation commands and for non-Isaac jobs. It requires a POSIX
 worker shell, like the existing Ray Jobs entrypoint quoting.
 
-`runtime_env` is passed unchanged to the SDK, including working-directory packaging
-and native exclusions. Importable components/factories, their dependencies, data
+`runtime_env` retains working-directory packaging, native exclusions and explicit
+environment values; missing uv settings are filled when setup is enabled and
+`{run_id}` is resolved in environment values before submission. Importable
+components/factories, their dependencies, data
 and checkpoint paths must be available remotely. Relative paths retain their
 meaning under Ray's remote working directory; no persistent output storage is
 inferred.
@@ -156,7 +285,8 @@ commands or model/data configuration.
 `entrypoint_num_cpus`, `entrypoint_num_gpus`, `entrypoint_memory` and
 `entrypoint_resources` describe the **entrypoint's logical resource reservations**,
 not CPU/RAM utilization limits or resources for a separate Ray Train worker group.
-The GPU and pool tag are explicit cluster-specific choices. A custom image is not
+The GPU count defaults to one; the pool tag remains an explicit cluster-specific
+choice. A custom image is not
 required; uv still cannot supply missing host drivers or system libraries.
 
 ### Native CLI / SDK alternative
