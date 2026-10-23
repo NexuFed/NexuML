@@ -110,7 +110,7 @@ class SequenceRULGeneralizationDiagnostics(L.Callback):
             return
         if not isinstance(pl_module, NexuLightningModule):
             raise TypeError("Sequence RUL diagnostics expect NexuLightningModule")
-        data = trainer.datamodule
+        data = getattr(trainer, "datamodule", None)
         if not isinstance(data, NexuDataModule):
             raise TypeError("Sequence RUL diagnostics expect NexuDataModule")
         if trainer.world_size != 1:
