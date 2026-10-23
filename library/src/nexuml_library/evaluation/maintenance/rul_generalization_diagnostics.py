@@ -75,7 +75,9 @@ def _evaluate_split(
                     raise ValueError("Validation sample index outside engine metadata")
                 row = metadata.iloc[local_index]
                 if row["split"] != "val":
-                    raise ValueError("Validation diagnostics encountered a non-val asset")
+                    raise ValueError(
+                        "Validation diagnostics encountered a non-val asset"
+                    )
                 engine = str(row["asset_id"])
                 group_error[engine] += float(squared)
                 group_count[engine] += 1
