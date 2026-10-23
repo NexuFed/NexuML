@@ -11,7 +11,7 @@ from typing import Literal
 
 from nexuml import callback
 from nexuml.core.discovery import scenario
-from nexuml.core.types import LayerSpec, PipelineSpec, ScenarioSpec
+from nexuml.core.types import PipelineSpec, ScenarioSpec
 from nexuml_library.evaluation.maintenance.rul_generalization_diagnostics import (
     SequenceRULGeneralizationDiagnostics,
 )
