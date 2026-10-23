@@ -131,4 +131,17 @@ metadata or standalone step zero, never optimizer steps. See [recording and nati
 for GIF/MP4/both, MLflow-only and optional rendering dependencies. Packages and checkpoints
 can execute Python: load only artifacts you trust.
 
+New policy exports obtain `training_frames` from the supplied RL module's actual
+`frames` buffer (or its trainer), not the requested budget, agent count or optimizer
+step. An explicit `checkpoint_path` instead uses that checkpoint's saved `frames`
+counter and records its SHA-256 identity. Missing counters, including older
+checkpoints and offline policies, remain `null`; numeric presentation step zero
+does not imply an untrained policy. A policy exported without its module, trainer
+or checkpoint has no known frame count.
+
+Policy metadata also contains `policy_files_sha256` for the saved pipeline and
+action-adapter state files. These hashes identify the exported bytes; they do not
+prove learning quality. The same provenance is embedded in the inference package
+and `metadata.json`, without adding critic/optimizer state or a resumable sidecar.
+
 The [Coming from Lightning](../learn/from-lightning.md) page shows the same distinction in Lightning terms.
