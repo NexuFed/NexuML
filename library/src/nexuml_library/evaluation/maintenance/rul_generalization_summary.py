@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import math
 import statistics
 from pathlib import Path
 from typing import Any
@@ -17,11 +18,15 @@ _VARIANTS = ("w128_d010", "w128_d030", "w064_d010", "w064_d030")
 _ARMS = ("encoder", "flow")
 
 
-def _read_history(path: Path) -> list[dict[str, float]]:
-    """Read the full-epoch evaluation-mode training/validation history.
+def _read_history(path: Path) -> tuple[list[dict[str, float]], bool]:
+    """Read full-epoch history, excluding a legacy post-fit validation.
+
+    The old callback also recorded a standalone validation after restoring
+    best weights. Its last row repeats the best-epoch train and val losses,
+    hiding deterioration at the final *training* epoch.
 
     Returns:
-        Strictly increasing epoch-indexed, finite MSE records.
+        Strict fitting-epoch records and whether a restored-best row was removed.
 
     Raises:
         ValueError: If the history is absent, duplicated or malformed.
@@ -44,7 +49,32 @@ def _read_history(path: Path) -> list[dict[str, float]]:
         int(row["epoch"]) != idx for idx, row in enumerate(rows)
     ):
         raise ValueError(f"Nonconsecutive RUL diagnostic epochs: {path}")
-    return rows
+    legacy_postfit_removed = False
+    if len(rows) >= 3:
+        best_prior = min(rows[:-1], key=lambda row: row["val_eval_mse"])
+        tail = rows[-1]
+        predecessor = rows[-2]
+        scores = ("train_eval_mse", "val_eval_mse")
+
+        def same_scores(left: dict[str, float], right: dict[str, float]) -> bool:
+            """Compare train and validation results to identify restored weights.
+
+            Returns:
+                True if both MSE scores are numerically equal.
+            """
+            return all(
+                math.isclose(left[key], right[key], rel_tol=1e-12, abs_tol=1e-8)
+                for key in scores
+            )
+
+        if (
+            tail["epoch"] > best_prior["epoch"] + 1
+            and same_scores(tail, best_prior)
+            and not same_scores(predecessor, best_prior)
+        ):
+            rows = rows[:-1]
+            legacy_postfit_removed = True
+    return rows, legacy_postfit_removed
 
 
 def summarize_cfc_generalization(
@@ -75,7 +105,7 @@ def summarize_cfc_generalization(
                     f"rul-FD001-cfc-generalization-{arm}-{variant}"
                     f"-head-s{head_seed}"
                 )
-                rows = _read_history(root / f"{name}.curves.csv")
+                rows, trimmed = _read_history(root / f"{name}.curves.csv")
                 best = min(rows, key=lambda row: row["val_eval_mse"])
                 last = rows[-1]
                 engines = json.loads(
@@ -117,6 +147,7 @@ def summarize_cfc_generalization(
                 runs[key] = {
                     "best_epoch": int(best["epoch"]),
                     "stopped_after_epoch": int(last["epoch"]),
+                    "legacy_postfit_validation_excluded": trimmed,
                     "best_train_eval_mse": best["train_eval_mse"],
                     "best_val_eval_mse": best["val_eval_mse"],
                     "best_mse_gap": best["mse_gap"],
