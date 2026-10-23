@@ -191,14 +191,21 @@ def _write_run(
         "w", newline="", encoding="utf-8"
     ) as handle:
         writer = csv.DictWriter(
-            handle, fieldnames=("epoch", "train_eval_mse", "val_eval_mse")
+            handle,
+            fieldnames=("epoch", "train_eval_mse", "val_eval_mse", "mse_gap"),
         )
         writer.writeheader()
         writer.writerow({
-            "epoch": 0, "train_eval_mse": 60.0, "val_eval_mse": score
+            "epoch": 0,
+            "train_eval_mse": 60.0,
+            "val_eval_mse": score,
+            "mse_gap": score - 60.0,
         })
         writer.writerow({
-            "epoch": 1, "train_eval_mse": 20.0, "val_eval_mse": score + 30
+            "epoch": 1,
+            "train_eval_mse": 20.0,
+            "val_eval_mse": score + 30,
+            "mse_gap": score + 10.0,
         })
     (root / f"{name}.curves.validation_engines.json").write_text(
         json.dumps({
@@ -257,6 +264,9 @@ def test_gen2_summary_is_validation_only_and_checks_provenance(
     )
     assert len(summary["ranking"]) == 12
     assert summary["ranking"][0]["paired_flow_minus_encoder_mean"] == -20.0
+    best_run = summary["per_run"]["flow_d010_adamw_3e4_engine_s42"]
+    assert best_run["best_mse_gap"] == pytest.approx(40.0)
+    assert best_run["val_increase_after_best"] == pytest.approx(30.0)
     broken = audits / (
         "rul-FD001-cfc-gen2-flow-d010-adamw_3e4-engine-head-s42.geometry.json"
     )
