@@ -16,8 +16,8 @@ from pathlib import Path
 from typing import Any, cast
 
 import lightning as L
-from lightning.pytorch.trainer.states import TrainerFn
 import torch
+from lightning.pytorch.trainer.states import TrainerFn
 from tensordict import TensorDict
 from torch import Tensor
 
