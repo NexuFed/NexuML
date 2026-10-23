@@ -40,23 +40,20 @@ not a replacement for this learning reference.
 
 ## Run remotely with Ray Jobs
 
-Submit the whole CLI process to an existing GPU worker. With the native Jobs
-CLI below, leave the scenario's `execution.kind="local"`: simulation and learning
-run in that remote process, not as distributed RL. A custom worker image is
-optional. Run locked dependency setup first, then execute the worker venv's
-Python directly. This does not upload or alter the submitter's local `.venv`.
+Submit the normal CLI through [Ray Jobs](training-backends/ray.md#ray-jobs-ray_job),
+not distributed RL. The backend installs locked dependencies into a private
+worker-local venv, then runs training; no custom image or submitter-venv change
+is needed. The [optional IKA profile](training-backends/ray.md#reuse-a-project-execution-profile)
+selects `gpu-workers`. Override its extras for Isaac and set durable per-run paths.
 
-Alternatively, set [RayJobExecutionSpec](training-backends/ray.md#ray-jobs-ray_job)
-in your own scenario file and invoke `nexuml train` locally. That backend uses the
-Jobs Python SDK, sends the resolved scenario and resets its remote execution to
-local automatically; you do not need the outer `ray job submit` command.
-
-To select the backend without editing `cartpole.py`, reuse the
-[project execution profile](training-backends/ray.md#reuse-a-project-execution-profile)
-with the Jobs address and CA exports defined below. Only the Isaac dependency
-extras and per-run paths need overriding:
+From the repository root, with the local Ray CLI and `nexuml[ray]` installed:
 
 ```bash
+export RAY_API_SERVER_ADDRESS=https://ray.ika.rub.de
+export RAY_CA_BUNDLE=/workspaces/ika-k8s-cluster/platform/apps/cert-manager/rub-certificate/acme/cacerts.pem
+RUN_ID="cartpole-$(python -c 'from uuid import uuid4; print(uuid4().hex)')"
+RUN_ROOT="/mnt/data/nexuml-runs/$RUN_ID"
+
 nexuml train --scenario-file scripts/isaaclab/cartpole.py \
   --execution-profile configs/execution/ray.yaml \
   -O 'execution.setup_command=["uv","sync","--locked","--python","3.12","--extra","isaac","--extra","ray"]' \
@@ -66,122 +63,57 @@ nexuml train --scenario-file scripts/isaaclab/cartpole.py \
   -O interaction.environment.viewer.port=8081
 ```
 
-This reads `RAY_API_SERVER_ADDRESS` through the SDK and returns a submission ID
-without waiting or tailing logs. Set a unique `RUN_ROOT` as below before running
-it. Running it submits a new training job. For repeated Isaac runs, copy the
-profile and add the Isaac extra there once instead of repeating the setup override.
+This returns a **submission ID**, not training success, without waiting or tailing
+logs. It resets the remote scenario to local execution and does not need an outer
+`ray job submit`. For repeated Isaac runs, copy the profile and add the Isaac extra
+once instead of repeating the setup override. You can also configure
+`RayJobExecutionSpec` directly in a scenario; YAML is not required.
 
-The following example uses the IKA cluster's Jobs ingress, CA bundle, worker-pool
-tags and `/mnt/data` mount. Adapt those infrastructure-owned values for another
-cluster. Workers need uv, Git, compatible GPU drivers/system libraries and enough
-real free disk for the large Isaac installation. Keep Python/Ray compatible with
-the cluster; this lockfile selects Python 3.12 and Ray 2.57.0.
-
-From the repository root, with the local Ray CLI available:
-
-```bash
-export RAY_API_SERVER_ADDRESS=https://ray.ika.rub.de
-export RAY_CA_BUNDLE=/workspaces/ika-k8s-cluster/platform/apps/cert-manager/rub-certificate/acme/cacerts.pem
-
-ray job list --verify "$RAY_CA_BUNDLE"
-RUN_ID="cartpole-$(date -u +%Y%m%dT%H%M%SZ)"
-RUN_ROOT="/mnt/data/nexuml-runs/$RUN_ID"
-ray job submit \
-  --verify "$RAY_CA_BUNDLE" \
-  --submission-id "$RUN_ID" \
-  --working-dir=. \
-  --entrypoint-num-gpus=1 \
-  --entrypoint-resources='{"pool_gpu_workers":1}' \
-  --runtime-env-json="{\"env_vars\":{\"UV_CACHE_DIR\":\"/tmp/ray/uv-cache\",\"UV_LINK_MODE\":\"hardlink\",\"UV_HTTP_TIMEOUT\":\"600\",\"UV_CONCURRENT_DOWNLOADS\":\"4\",\"NEXUML_LOGS_ROOT\":\"$RUN_ROOT\"}}" \
-  --no-wait \
-  -- bash -c '
-set -euo pipefail
-source_dir="$PWD"
-mkdir -p "$NEXUML_LOGS_ROOT"
-{
-  cd "$NEXUML_LOGS_ROOT" &&
-  UV_PROJECT_ENVIRONMENT="$source_dir/.venv" uv sync \
-    --project "$source_dir" --locked --python 3.12 --extra isaac --extra ray &&
-  exec "$source_dir/.venv/bin/python" -u -X faulthandler -m nexuml.cli.main train \
-    --scenario-file "$source_dir/scripts/isaaclab/cartpole.py" \
-    -O interaction.environment.viewer.port=8081
-} 2>&1 | tee "$NEXUML_LOGS_ROOT/driver.log"
-'
-```
-
-Both the Python backend's `setup_command` and the native CLI example deliberately
-separate installation from execution. The stock
-worker's uv 0.12.1 forwards SIGPIPE to its child; the upstream
-[uv #21935](https://github.com/astral-sh/uv/issues/21935) reports a network-signal
-race that can kill Python before its first output, returning **141** immediately
-after installation. Executing Python only after `uv sync` exits avoids that
-handoff without masking signals, changing the lockfile or rebuilding an image.
-The existing `run.sh` remains installer-free for already-prepared environments;
-no Isaac-specific Ray launcher is required.
+Adapt the Jobs address, local CA path, pool and mounted storage for another
+cluster. Workers need uv, Git, compatible drivers/system libraries and physical
+free disk; this lock selects Python 3.12 and Ray 2.57.0. Pool selection does not
+prove GPU readiness. Use `pool_dgx_workers` only with a compatible available GPU.
+The one-GPU reservation is not a CPU/RAM hard limit. Jobs uses HTTPS port 443 here,
+not Ray Client port 10001; keep TLS verification enabled. `RAY_JOBS_ADDRESS` is
+unnecessary. Source uploads must fit this ingress's `64m` body limit.
 
 For a four-batch startup/training/export smoke rather than the full learning
 budget, append `-O training.total_frames=32768` and
-`-O training.algorithm.update_epochs=1` to the remote `train` command above.
+`-O training.algorithm.update_epochs=1` to the `nexuml train` command above.
 This is not a convergence or held-out-quality test. A short smoke may finish
 before you connect a browser.
 
-`RAY_API_SERVER_ADDRESS` is Ray's native Jobs setting. `RAY_JOBS_ADDRESS` is not
-needed. Jobs uses HTTPS port 443 here, not the distinct Ray Client port 10001.
-Keep TLS verification enabled with the actual CA bundle. Source upload must fit
-the ingress body limit; this cluster uses `64m`.
+The [class defaults](training-backends/ray.md#python-defaults-no-profile-file-required)
+keep the unpacked cache and venv local, avoiding JuiceFS metadata stalls. Only
+logs/exports belong on mounted storage. Setup followed by direct Python execution
+also avoids the `uv run` SIGPIPE handoff; `run.sh` stays installer-free.
 
-The custom resource chooses `gpu-workers`; use `pool_dgx_workers` only with a
-compatible, available GPU in that pool. A pool tag is placement, not CUDA/driver
-compatibility. The job reserves one GPU, not a CPU/RAM hard limit. Keep the uv
-cache and private venv on the worker's local `/tmp/ray` filesystem. Cached packages
-can be hardlinked into separate environments without copying their large payloads;
-the cache can be reused by jobs on that worker, but disappears on worker cleanup.
-This trades cross-worker download reuse for predictable installation I/O.
+Cold setup downloads multi-GiB wheels. The default 600-second
+[uv HTTP timeout](https://docs.astral.sh/uv/reference/environment/#uv_http_timeout)
+limits stalled reads, not total transfer time or Ray supervisor startup. At
+6 MB/s the two large extension-cache wheels alone take about 20 minutes, before
+other dependencies. Budget overall setup using worker throughput, not the
+submitter's network speed; quiet logs are not proof of a hang.
 
-Do not put this profile's unpacked uv cache on the shared `/mnt/data` JuiceFS
-mount. Its many small-file metadata operations can stall installation even when
-the packages are cached and free disk is ample. `UV_LINK_MODE=copy` only handles
-cross-filesystem installation; it does not fix a slow shared cache. Putting a
-hardlinked venv on that same shared mount still pays its metadata cost. Keep
-mounted storage for durable logs and exports, not this installation cache.
-
-Cold setup also downloads multi-GiB native wheels. The examples allow a 600-second
-uv HTTP timeout and four concurrent downloads: the stock 30-second HTTP timeout
-can abort the 5.1-GiB Isaac extension-cache wheel. These settings affect package
-downloads, not Ray's supervisor startup timeout or GPU availability.
-
-The [uv HTTP timeout](https://docs.astral.sh/uv/reference/environment/#uv_http_timeout)
-limits stalled reads, not total download duration. At a worker transfer rate of
-6 MB/s, the two large Isaac extension-cache wheels alone need about 20 minutes;
-the remaining dependencies add to that. Size any overall setup deadline using
-worker throughput, not the submitter's network speed. Quiet installer output is
-not proof of a hang: inspect network/disk progress and the eventual exit status.
-
-The native CLI command runs from the unique mounted `RUN_ROOT`: its
-`driver.log`, TensorBoard logs and `rl-runs/cartpole-<id>/policy` survive worker
-cleanup. `tee` mirrors installer/training output into Ray logs while retaining
-the full file, and `pipefail` preserves installation/training failures. Redirecting
-only to `driver.log` and running `tail` afterwards would hide live output.
-
-!!! warning "SDK submission does not infer persistent outputs"
-    The `RayJobExecutionSpec` example above still runs in Ray's temporary working
-    directory. For durable SDK runs, set `NEXUML_LOGS_ROOT` in `env_vars` for
-    relative logs and choose a unique absolute `ExportSpec.output` under mounted
-    storage. The logs-root setting alone does not redirect policy exports.
+!!! warning "Keep both logs and exports durable"
+    The command explicitly sets `NEXUML_LOGS_ROOT` for relative logs and a unique
+    absolute `exports[].output` for the policy. The logs-root setting alone does
+    not redirect exports. Driver output stays in Ray Jobs logs; retain it with the
+    log snapshots below before cluster cleanup.
 
 ### Status, logs and progress
 
-`--no-wait` returns after submission rather than opening a WebSocket log stream.
-Save the printed submission ID; for an already-submitted job, inspect that ID
-instead of submitting again:
+Save the printed submission ID; inspect that ID instead of submitting again:
 
 ```bash
 export JOB_ID=raysubmit_REPLACE_WITH_YOUR_SUBMISSION_ID
 ray job status --verify "$RAY_CA_BUNDLE" "$JOB_ID"
 ray job logs --verify "$RAY_CA_BUNDLE" "$JOB_ID"
+ray job logs --verify "$RAY_CA_BUNDLE" "$JOB_ID" > "$JOB_ID.log"
 ```
 
-These are snapshots; omit `--follow`. `PENDING` can mean worker provisioning,
+These are snapshots; omit `--follow`. The last command saves driver output on the
+submitter. `PENDING` can mean worker provisioning,
 resource waiting or runtime-environment setup, so an empty log is not a failure.
 `RUNNING` also includes uv installation and native initialization, not just
 optimizer updates. Use Ray's final status and actual training metrics to assess
@@ -190,11 +122,9 @@ the job.
 `WebSocket connection closed unexpectedly with close code 1006` after submission
 does not by itself stop the job. The IKA ingress's 60-second read/send timeouts can
 disconnect an idle log stream while provisioning or installing dependencies.
-The snapshots above avoid that stream. For live streaming, the infrastructure
-owner can raise the Ray ingress's `nginx.ingress.kubernetes.io/proxy-read-timeout`
-and `nginx.ingress.kubernetes.io/proxy-send-timeout`, for example to `"3600"`
-seconds, through GitOps. `--no-wait` does not change those timeouts or report the
-job's eventual success/failure.
+The snapshots above avoid that stream. Persistent streaming requires the
+infrastructure owner to adjust ingress read/send timeouts through GitOps;
+submission options do not change them or report eventual training success.
 
 The CLI enables Lightning progress, but Ray Jobs captures non-interactive output;
 Rich generally does not redraw a live progress bar there. TensorBoard receives
