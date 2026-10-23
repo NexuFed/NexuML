@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any, cast
 
 import lightning as L
+from lightning.pytorch.trainer.states import TrainerFn
 import torch
 from tensordict import TensorDict
 from torch import Tensor
@@ -100,13 +101,15 @@ class SequenceRULGeneralizationDiagnostics(L.Callback):
     def on_validation_epoch_end(
         self, trainer: L.Trainer, pl_module: L.LightningModule
     ) -> None:
-        """Re-evaluate full train/val splits identically after each epoch.
+        """Re-evaluate full train/val splits after each fitting epoch only.
 
         Raises:
             TypeError: If NexuML's expected Lightning/data contracts differ.
             ValueError: If train/val engine metadata or predictions are invalid.
         """
-        if trainer.sanity_checking:
+        # NexuML calls validate() again after fit, with best weights restored.
+        # That standalone pass is not a training epoch and must not enter curves.
+        if trainer.sanity_checking or trainer.state.fn != TrainerFn.FITTING:
             return
         if not isinstance(pl_module, NexuLightningModule):
             raise TypeError("Sequence RUL diagnostics expect NexuLightningModule")

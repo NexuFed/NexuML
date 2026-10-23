@@ -5,10 +5,12 @@ from __future__ import annotations
 import csv
 import json
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Literal, cast
 
 import lightning as L
 import pandas as pd
+from lightning.pytorch.trainer.states import TrainerFn
 import pytest
 import torch
 from tensordict import TensorDict
@@ -183,6 +185,7 @@ def test_only_validation_chooses_cfc_regularization(
                     for epoch, train, validation in (
                         (0, 40.0, val),
                         (1, 30.0, val + 15),
+                        (2, 40.0, val),  # legacy best-weight standalone validate
                     ):
                         writer.writerow({
                             "epoch": epoch,
@@ -213,9 +216,11 @@ def test_only_validation_chooses_cfc_regularization(
     results = summarize_cfc_generalization(root, audits, (42, 43))
     assert results["test_predictions_read"] is False
     assert results["preferred_on_validation"] == "w064_d030"
-    assert results["per_seed"]["42"]["flow_w064_d030"][
-        "val_mse_increase_after_best"
-    ] == 15.0
+    study = results["per_seed"]["42"]["flow_w064_d030"]
+    assert study["legacy_postfit_validation_excluded"] is True
+    assert study["stopped_after_epoch"] == 1
+    assert study["final_train_eval_mse"] == 30.0
+    assert study["val_mse_increase_after_best"] == 15.0
     corrupted = audits / (
         "rul-FD001-cfc-generalization-flow-w064_d030-head-s42.geometry.json"
     )
@@ -300,6 +305,7 @@ def test_epoch_callback_writes_full_splits_and_best_validation_engines(
         world_size = 1
         current_epoch = 0
         datamodule = ToyData()
+        state = SimpleNamespace(fn=TrainerFn.FITTING)
 
     monkeypatch.setattr(diag, "NexuLightningModule", ToyModel)
     monkeypatch.setattr(diag, "NexuDataModule", ToyData)
@@ -333,3 +339,15 @@ def test_epoch_callback_writes_full_splits_and_best_validation_engines(
     assert {entry["asset_id"] for entry in engines["validation_engines"]} == {
         "val:1", "val:2"
     }
+
+    # Native NexuML performs a standalone validate() after restoring
+    # the selected checkpoint; it must not masquerade as a fitting epoch.
+    trainer.state.fn = TrainerFn.VALIDATING
+    trainer.current_epoch = 1
+    callback.on_validation_epoch_end(
+        cast(L.Trainer, trainer), cast(L.LightningModule, model)
+    )
+    with (tmp_path / "run.curves.csv").open(
+        newline="", encoding="utf-8"
+    ) as handle:
+        assert len(list(csv.DictReader(handle))) == 1

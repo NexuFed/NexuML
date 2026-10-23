@@ -105,6 +105,31 @@ MSE**; regular NexuML checkpoint restoration continues to use
 `val/loss`, which may weight batches differently. These epochs can
 therefore differ slightly.
 
+### Correction for post-fit validation
+
+NexuML performs `fit()` followed by a separate `validate()` after
+restoring best-checkpoint weights. Earlier versions of the diagnostics
+callback included that restored-best validation as the *final training
+epoch*, erroneously reporting `val_mse_increase_after_best = 0`.
+The callback now records curves only during `TrainerFn.FITTING`.
+
+Existing CSV histories can be re-summarized **without retraining**.
+The summary recognizes a last-row restored-best duplicate (identical
+full-train and validation MSE to an earlier best, after an intervening
+different epoch), excludes it, and reports
+`legacy_postfit_validation_excluded: true`. It then uses the real
+last-fitting-epoch losses to measure post-best deterioration:
+
+```bash
+python -m nexuml_library.evaluation.maintenance.rul_generalization_summary \
+  --head-seeds 42 \
+  --output .experiments/rul/generalization/summary.json
+```
+
+This legacy detection depends on both losses closely matching an
+earlier best. If your run has an unusual loss trajectory, inspect the
+last lines of the individual `*.curves.csv` files.
+
 **Important:** NexuML's normal train command currently runs its official
 test lifecycle automatically at the end. The generalization *summary*
 deliberately does not read those test results, and model selection must
