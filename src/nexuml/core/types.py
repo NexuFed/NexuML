@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shlex
 from collections.abc import Callable, Mapping
 from keyword import iskeyword
 from math import isclose, prod
@@ -691,20 +692,57 @@ class ReinforcementLearningSpec(SpecModel):
 
 
 class RayJobExecutionSpec(SpecModel):
-    """Submit the normal local CLI asynchronously through Ray Jobs."""
+    """Submit the normal CLI with locked uv setup and one GPU by default.
+
+    Set ``setup_command=None`` for a prepared environment. Environment/Python
+    ``{run_id}`` placeholders are resolved separately for every submission.
+    """
 
     kind: Literal["ray_job"] = "ray_job"
     address: str | None = None
     verify: Annotated[str, Field(min_length=1)] | bool = True
-    setup_command: list[str] | None = Field(default=None, min_length=1)
+    setup_command: list[str] | None = Field(
+        default_factory=lambda: ["uv", "sync", "--locked"], min_length=1
+    )
     py_executable: str = Field(default="python", min_length=1)
     runtime_env: dict[str, Any] = Field(default_factory=lambda: {"working_dir": "."})
     entrypoint_num_cpus: float = Field(default=0, ge=0, allow_inf_nan=False)
-    entrypoint_num_gpus: float = Field(default=0, ge=0, allow_inf_nan=False)
+    entrypoint_num_gpus: float = Field(default=1, ge=0, allow_inf_nan=False)
     entrypoint_memory: int | None = Field(default=None, ge=0)
     entrypoint_resources: dict[str, Annotated[float, Field(gt=0, allow_inf_nan=False)]] = Field(
         default_factory=dict
     )
+
+    @model_validator(mode="after")
+    def default_setup_environment(self) -> Self:
+        """Fill uv settings without replacing explicit interpreter or environment values.
+
+        Returns:
+            Execution settings with matching setup and Python environment paths.
+
+        Raises:
+            ValueError: If environment settings cannot select a valid interpreter.
+        """
+        env = self.runtime_env.get("env_vars", {})
+        if not isinstance(env, dict):
+            raise ValueError("ray_job runtime_env.env_vars must be a mapping")
+        if self.setup_command is None:
+            return self
+        env = {
+            "UV_PROJECT_ENVIRONMENT": "/tmp/ray/nexuml-envs/{run_id}",
+            "UV_CACHE_DIR": "/tmp/ray/uv-cache",
+            "UV_LINK_MODE": "hardlink",
+            "UV_HTTP_TIMEOUT": "600",
+            "UV_CONCURRENT_DOWNLOADS": "4",
+            **env,
+        }
+        if "py_executable" not in self.model_fields_set:
+            venv = env["UV_PROJECT_ENVIRONMENT"]
+            if not isinstance(venv, str) or not venv.strip():
+                raise ValueError("ray_job UV_PROJECT_ENVIRONMENT must be a nonempty path")
+            self.py_executable = shlex.join([f"{venv}/bin/python", "-u", "-X", "faulthandler"])
+        self.runtime_env = {**self.runtime_env, "env_vars": env}
+        return self
 
     @field_validator("setup_command")
     @classmethod

@@ -79,6 +79,8 @@ def test_ray_job_config_roundtrip_allows_rl_without_enabling_ray_train():
         {"setup_command": [" "]},
         {"setup_command": ["python", "bad\x00argument"]},
         {"setup_command": "uv sync --locked"},
+        {"runtime_env": {"env_vars": []}},
+        {"runtime_env": {"env_vars": {"UV_PROJECT_ENVIRONMENT": ""}}},
     ],
 )
 def test_ray_job_rejects_invalid_configuration(kwargs):
@@ -91,6 +93,7 @@ def test_submission_preserves_native_sdk_options_and_caller(jobs_client, monkeyp
     execution = RayJobExecutionSpec(
         address="https://jobs.example.test",
         verify="/certs/ca.pem",
+        setup_command=None,
         py_executable="uv run --locked --python 3.12 --extra isaac --extra ray python",
         runtime_env={
             "working_dir": ".",
@@ -154,7 +157,37 @@ def test_remote_bootstrap_uses_local_cli_and_cleans_config(jobs_client, monkeypa
 def test_job_submission_uses_sdk_environment_defaults(jobs_client):
     submit_ray_job(ScenarioSpec(name="defaults", execution=RayJobExecutionSpec()))
     assert jobs_client.connection == {"address": None, "verify": True}
+    assert jobs_client.submission["entrypoint_num_gpus"] == 1
+    assert jobs_client.submission["entrypoint_resources"] == {}
+    env = jobs_client.submission["runtime_env"]["env_vars"]
+    assert env["UV_CACHE_DIR"] == "/tmp/ray/uv-cache"
+    assert "{run_id}" not in env["UV_PROJECT_ENVIRONMENT"]
+    assert jobs_client.submission["entrypoint"].startswith("uv sync --locked && exec ")
+
+
+def test_reusing_default_spec_creates_a_private_environment_for_each_job(jobs_client):
+    scenario = ScenarioSpec(name="defaults", execution=RayJobExecutionSpec())
+    before = lower_model(scenario)
+    paths = []
+    for _ in range(2):
+        submit_ray_job(scenario)
+        submission = jobs_client.submission
+        env = submission["runtime_env"]["env_vars"]
+        paths.append(env["UV_PROJECT_ENVIRONMENT"])
+        assert Path(paths[-1]).parent == Path("/tmp/ray/nexuml-envs")
+        assert len(Path(paths[-1]).name) == 32
+        command = shlex.split(submission["entrypoint"])
+        assert command[command.index("exec") + 1] == paths[-1] + "/bin/python"
+        assert env["UV_LINK_MODE"] == "hardlink"
+    assert paths[0] != paths[1]
+    assert lower_model(scenario) == before
+
+
+def test_prepared_environment_opt_out_reaches_sdk_without_uv_setup(jobs_client):
+    scenario = ScenarioSpec(name="prepared", execution=RayJobExecutionSpec(setup_command=None))
+    submit_ray_job(scenario)
     assert jobs_client.submission["runtime_env"] == {"working_dir": "."}
+    assert shlex.split(jobs_client.submission["entrypoint"])[:2] == ["python", "-c"]
 
 
 def test_job_submission_failure_propagates_without_retry(jobs_client):

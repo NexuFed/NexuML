@@ -122,6 +122,17 @@ Remove the old `kind` fields, including `target.kind`. Historical files are not 
 Training semantics remain in `TrainingSpec`.
 The SDK `ray-jobs-sdk` backend supports single-process RL through the normal remote CLI.
 
+The registered SDK backend defaults to locked uv setup (`uv sync --locked`), one GPU,
+worker-local cache and a private venv resolved separately for each submission.
+The venv's Python starts only after setup succeeds. No YAML profile is required.
+Set `setup_command=None` for a prepared environment (implicit interpreter:
+`python`), or provide a custom setup argv list and matching `py_executable`.
+Dependency versions/extras, cluster address/TLS and pool selection remain
+project-owned; the framework does not infer arbitrary component dependencies.
+
+See [Ray execution](../how-to/training-backends/ray.md) for SDK Jobs and distinct
+Ray Train/KubeRay semantics.
+
 ## Persistence
 
 `ResolvedConfig.from_scenario(...).to_yaml()` lowers registered definitions to stable component identity + validated parameter data. Restoration discovers the definition and validates it again.

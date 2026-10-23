@@ -6,6 +6,7 @@ if TYPE_CHECKING:
     from nexuml.execution.ray import RayExecutionError, run_ray
     from nexuml.execution.service import catalog, discover, preflight, run, inspect, cancel
     from nexuml.execution.ray_job import submit_ray_job
+    from nexuml.execution.profiles import load_ray_job_profile
 
 __all__ = [
     "RayExecutionError",
@@ -17,6 +18,7 @@ __all__ = [
     "inspect",
     "cancel",
     "submit_ray_job",
+    "load_ray_job_profile",
 ]
 
 
@@ -33,4 +35,8 @@ def __getattr__(name: str) -> Any:
         from nexuml.execution.ray_job import submit_ray_job
 
         return submit_ray_job
+    if name == "load_ray_job_profile":
+        from nexuml.execution.profiles import load_ray_job_profile
+
+        return load_ray_job_profile
     raise AttributeError(name)
