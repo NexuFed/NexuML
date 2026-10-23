@@ -116,9 +116,18 @@ def _synthetic_cmapss(root: Path) -> None:
         ("maintenance-rul-patchformer-sequence-transformer-fd001-s42", "flow"),
         ("maintenance-rul-patchformer-sequence-conformer-fd003-s43", "flow"),
         ("maintenance-rul-patchformer-sequence-cfc-fd001-s44", "flow"),
-        ("maintenance-rul-patchformer-sequence-transformer-flow-fd001-s42", "sequence_rul"),
-        ("maintenance-rul-patchformer-sequence-transformer-encoder-fd001-s42", "sequence_rul"),
-        ("maintenance-rul-patchformer-sequence-conformer-flow-fd003-s43", "sequence_rul"),
+        (
+            "maintenance-rul-patchformer-sequence-transformer-flow-fd001-s42",
+            "sequence_rul",
+        ),
+        (
+            "maintenance-rul-patchformer-sequence-transformer-encoder-fd001-s42",
+            "sequence_rul",
+        ),
+        (
+            "maintenance-rul-patchformer-sequence-conformer-flow-fd003-s43",
+            "sequence_rul",
+        ),
         ("maintenance-rul-patchformer-sequence-cfc-encoder-fd001-s44", "sequence_rul"),
         ("maintenance-rul-patchformer-flow-time-fd001-s42", "flow_calibration"),
         ("maintenance-rul-patchformer-hybrid-fd003-s44", "flow_calibration"),
