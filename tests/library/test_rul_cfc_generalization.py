@@ -214,3 +214,108 @@ def test_only_validation_chooses_cfc_regularization(
     corrupted.write_text(json.dumps(info), encoding="utf-8")
     with pytest.raises(ValueError, match="inconsistent frozen input"):
         summarize_cfc_generalization(root, audits, (42, 43))
+
+
+def test_epoch_callback_writes_full_splits_and_best_validation_engines(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Callback restores eval state, preserves RNG and excludes test engines."""
+    import nexuml_library.evaluation.maintenance.rul_generalization_diagnostics as diag
+
+    class ToyModel(_ToyModel):
+        training = False
+
+        def eval(self) -> ToyModel:
+            """Switch to dropout-free inference.
+
+            Returns:
+                The same model.
+            """
+            self.training = False
+            return self
+
+        def train(self, mode: bool = True) -> ToyModel:
+            """Restore initial model mode after measuring metrics.
+
+            Returns:
+                The same model.
+            """
+            self.training = mode
+            return self
+
+        def log(self, name: str, value: float, **kwargs: object) -> None:
+            """Record a scalar without a Lightning trainer."""
+            assert name.startswith("val/generalization_")
+            assert value >= 0 or name.endswith("_gap")
+
+    class ToyData:
+        def __init__(self) -> None:
+            self._train_ds = type(
+                "TrainSplit", (),
+                {"meta": pd.DataFrame({
+                    "asset_id": ["train:1", "train:1"],
+                    "split": ["train", "train"],
+                })},
+            )()
+            self._val_ds = type(
+                "ValSplit", (),
+                {"meta": pd.DataFrame({
+                    "asset_id": ["val:1", "val:2"],
+                    "split": ["val", "val"],
+                })},
+            )()
+
+        def _loader(
+            self, dataset: object, split: str, shuffle: bool = False
+        ) -> list[tuple[TensorDict, TensorDict]]:
+            """Return two unshuffled training examples.
+
+            Returns:
+                One deterministic training batch.
+            """
+            assert not shuffle
+            return [_batch([1.0, 2.0], [1.0, 2.0], [0, 1])]
+
+        def val_dataloader(self) -> list[tuple[TensorDict, TensorDict]]:
+            """Return two validation examples.
+
+            Returns:
+                One deterministic validation batch.
+            """
+            return [_batch([1.0, 4.0], [2.0, 1.0], [0, 1])]
+
+    class ToyTrainer:
+        sanity_checking = False
+        world_size = 1
+        current_epoch = 0
+        datamodule = ToyData()
+
+    monkeypatch.setattr(diag, "NexuLightningModule", ToyModel)
+    monkeypatch.setattr(diag, "NexuDataModule", ToyData)
+    model = ToyModel()
+    model.train(True)
+    callback = diag.SequenceRULGeneralizationDiagnostics(
+        str(tmp_path / "run.curves.csv")
+    )
+    trainer = ToyTrainer()
+    state_before = torch.random.get_rng_state().clone()
+    callback.on_fit_start(trainer, model)
+    callback.on_validation_epoch_end(trainer, model)
+    assert model.training is True
+    assert torch.equal(torch.random.get_rng_state(), state_before)
+    with (tmp_path / "run.curves.csv").open(
+        newline="", encoding="utf-8"
+    ) as handle:
+        rows = list(csv.DictReader(handle))
+    assert len(rows) == 1
+    assert float(rows[0]["train_eval_mse"]) == pytest.approx(0.0)
+    assert float(rows[0]["val_eval_mse"]) == pytest.approx(5.0)
+    engines = json.loads(
+        (tmp_path / "run.curves.validation_engines.json").read_text()
+    )
+    assert engines["test_labels_used"] is False
+    assert len(engines["validation_engines"]) == 2
+    assert {entry["asset_id"] for entry in engines["validation_engines"]} == {
+        "val:1", "val:2"
+    }
