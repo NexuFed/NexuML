@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+import re
 import shlex
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -315,3 +317,49 @@ def test_class_defaults_roundtrip_without_allocating_a_shared_environment():
     restored = ResolvedConfig.from_yaml(ResolvedConfig.from_scenario(original).to_yaml())
     assert restored.execution == original.execution
     assert "{run_id}" in restored.execution.runtime_env["env_vars"]["UV_PROJECT_ENVIRONMENT"]
+
+
+def test_documented_cartpole_submission_keeps_setup_and_outputs_explicit(monkeypatch):
+    import nexuml.execution as execution
+    import nexuml.core.compiler as compiler
+    import nexuml.training.lightning as lightning
+
+    guide = Path("docs/how-to/isaac-cartpole.md").read_text()
+    remote = guide.split("## Run remotely with Ray Jobs\n", 1)[1].split(
+        "## Evaluate the exported policy\n", 1
+    )[0]
+    blocks = re.findall(r"```bash\n(.*?)```", remote, re.S)
+    for block in blocks:
+        subprocess.run(["bash", "-n"], input=block, text=True, check=True)
+    block = next(block for block in blocks if "nexuml train" in block)
+    assert block.index("RUN_ROOT=") < block.index("nexuml train")
+    command = block[block.index("nexuml train") :]
+    command = command.replace("$RAY_CA_BUNDLE", "/certs/ca.pem").replace(
+        "$RUN_ROOT", "/mnt/data/doc-test"
+    )
+    submitted = []
+    monkeypatch.setattr(
+        execution, "submit_ray_job", lambda spec: submitted.append(spec) or "doc_job"
+    )
+    monkeypatch.setattr(compiler, "compile", lambda *_: pytest.fail("compiled locally"))
+    monkeypatch.setattr(lightning, "NexuSession", lambda **_: pytest.fail("trained locally"))
+    result = runner.invoke(main.app, shlex.split(command.replace("\\\n", ""))[1:])
+    assert result.exit_code == 0, result.output
+    scenario = ResolvedConfig.from_scenario(submitted[0])
+    assert scenario.execution.setup_command == [
+        "uv",
+        "sync",
+        "--locked",
+        "--python",
+        "3.12",
+        "--extra",
+        "isaac",
+        "--extra",
+        "ray",
+    ]
+    assert scenario.execution.verify == "/certs/ca.pem"
+    assert scenario.execution.entrypoint_num_gpus == 1
+    assert scenario.execution.entrypoint_resources == {"pool_gpu_workers": 1}
+    assert scenario.execution.runtime_env["env_vars"]["NEXUML_LOGS_ROOT"] == "/mnt/data/doc-test"
+    assert scenario.exports[0].output == "/mnt/data/doc-test/policy"
+    assert scenario.interaction.environment.viewer.port == 8081
