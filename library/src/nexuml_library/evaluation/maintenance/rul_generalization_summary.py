@@ -94,7 +94,9 @@ def summarize_cfc_generalization(
                 if observed_engines is None:
                     observed_engines = engine_set
                 if observed_engines != engine_set:
-                    raise ValueError("Generalization runs use different validation engines")
+                    raise ValueError(
+                        "Generalization runs use different validation engines"
+                    )
                 provenance_path = audit_root / f"{name}.geometry.json"
                 info = json.loads(provenance_path.read_text(encoding="utf-8"))
                 if (
@@ -104,7 +106,9 @@ def summarize_cfc_generalization(
                     or info.get("use_flow") != (arm == "flow")
                     or info.get("test_labels_used_in_feature_fitting") is not False
                 ):
-                    raise ValueError(f"Invalid frozen generalization provenance: {name}")
+                    raise ValueError(
+                        f"Invalid frozen generalization provenance: {name}"
+                    )
                 provenance.add((
                     str(info["patchformer_checkpoint_sha256"]),
                     str(info["endpoint_artifact_sha256"]),
