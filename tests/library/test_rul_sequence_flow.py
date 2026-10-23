@@ -26,6 +26,7 @@ from nexuml_library.evaluation.maintenance.rul_sequence_flow_checkpoint import (
 from nexuml_library.layers.model.flow import SequenceFlow, _FlowRuntime
 from nexuml_library.layers.model.rul_sequence_flow import (
     PatchFormerSequenceFlowRULHead,
+    _SequenceFlowRULHeadRuntime,
 )
 from nexuml_library.scenarios.maintenance.rul_sequence_flow import (
     patchformer_sequence_flow_rul,
@@ -84,6 +85,7 @@ def test_temporal_readout_consumes_full_sequence_and_preserves_gradients() -> No
             keys_out=["predicted_rul"],
         )
     )
+    assert isinstance(runtime, _SequenceFlowRULHeadRuntime)
     x = torch.randn(3, 30, 256, requires_grad=True)
     predictions = runtime.forward_tensor(x)
     assert predictions.shape == (3, 1)
@@ -92,6 +94,7 @@ def test_temporal_readout_consumes_full_sequence_and_preserves_gradients() -> No
     assert x.grad is not None
     assert torch.count_nonzero(x.grad[:, :, :128]).item() > 0
     assert torch.count_nonzero(x.grad[:, :, 128:]).item() > 0
+    assert runtime.token_scores.weight.grad is not None
     assert len(runtime.token_scores.weight.grad.shape) == 2
     with pytest.raises(ValueError, match="30,256"):
         runtime.forward_tensor(torch.randn(3, 256))
