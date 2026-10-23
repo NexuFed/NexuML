@@ -126,14 +126,17 @@ class SequenceRULGeneralizationDiagnostics(L.Callback):
         was_training = pl_module.training
         pl_module.eval()
         try:
-            # Use the same native torch collator/batch size without train shuffle.
-            train_loader = data._loader(
-                train_dataset, split="val", shuffle=False
-            )
-            train_sse, train_count, _ = _evaluate_split(pl_module, train_loader)
-            val_sse, val_count, engines = _evaluate_split(
-                pl_module, data.val_dataloader(), metadata=val_meta
-            )
+            # Loader initialization must not perturb training RNG streams.
+            with torch.random.fork_rng(devices=[]):
+                train_loader = data._loader(
+                    train_dataset, split="val", shuffle=False
+                )
+                train_sse, train_count, _ = _evaluate_split(
+                    pl_module, train_loader
+                )
+                val_sse, val_count, engines = _evaluate_split(
+                    pl_module, data.val_dataloader(), metadata=val_meta
+                )
         finally:
             pl_module.train(was_training)
         if not engines:
