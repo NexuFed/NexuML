@@ -494,6 +494,26 @@ def test_failed_upload_visible_and_staging_cleaned(capture, monkeypatch, excepti
     assert list(staging.iterdir()) == []
 
 
+@pytest.mark.parametrize("stage", ["add_summary", "flush"])
+def test_failed_preview_retains_delivered_artifacts(capture, tmp_path, monkeypatch, stage):
+    frames, metadata, staging = capture
+    tensorboard = NativeTensorBoardLogger(tmp_path / "tensorboard")
+    mlflow = NativeMLFlowLogger()
+
+    def fail(*args):
+        raise OSError("preview unavailable")
+
+    monkeypatch.setattr(tensorboard.experiment.file_writer, stage, fail)
+    with pytest.raises(OSError, match="preview unavailable") as caught:
+        media.log_evaluation_media(
+            [mlflow, tensorboard], frames, metadata, RLVideoSpec(enabled=True), step=16
+        )
+    assert len(mlflow.uploads) == 2
+    assert (tmp_path / "tensorboard/artifacts/evaluation/frame_000000000016.gif").is_file()
+    assert "TensorBoard preview delivery failed" in " ".join(caught.value.__notes__)
+    assert list(staging.iterdir()) == []
+
+
 @pytest.mark.parametrize("fps", [0, -1, float("nan"), float("inf")])
 def test_invalid_fps_never_uploads(capture, fps):
     frames, metadata, _ = capture
