@@ -8,6 +8,7 @@ participate in checkpoint discovery.
 from __future__ import annotations
 
 import hashlib
+import math
 from pathlib import Path
 from typing import Literal
 
@@ -80,7 +81,7 @@ def resolve_sequence_flow_checkpoint(
                 score = value.get("best_model_score")
                 if isinstance(score, (float, int, Tensor)):
                     scalar = float(score)
-                    if not torch.isfinite(torch.tensor(scalar)):
+                    if not math.isfinite(scalar):
                         raise ValueError("Nonfinite checkpoint validation SWD")
                     selected.append(scalar)
             if len(selected) != 1:
