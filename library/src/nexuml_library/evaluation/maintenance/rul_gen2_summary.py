@@ -67,16 +67,22 @@ def summarize_cfc_gen2(
                             for item in engines
                         }
                         if not identities or len(identities) != len(engines):
-                            raise ValueError(f"Invalid held-out validation engines: {name}")
+                            raise ValueError(
+                                f"Invalid held-out validation engines: {name}"
+                            )
                         if validation_engines is None:
                             validation_engines = identities
                         if identities != validation_engines:
-                            raise ValueError("Validation engine partitions differ across runs")
+                            raise ValueError(
+                                "Validation engine partitions differ across runs"
+                            )
                         groups = report["validation_engine_groups"]
                         if len(groups) != 4 or sum(
                             int(group["engines"]) for group in groups
                         ) != len(engines):
-                            raise ValueError(f"Incomplete validation stress groups: {name}")
+                            raise ValueError(
+                                f"Incomplete validation stress groups: {name}"
+                            )
                         info = json.loads(
                             (audit_root / f"{name}.geometry.json").read_text(
                                 encoding="utf-8"
@@ -87,8 +93,10 @@ def summarize_cfc_gen2(
                             or info.get("seed") != 42
                             or info.get("architecture") != "cfc"
                             or info.get("use_flow") is not (arm == "flow")
-                            or info.get("engine_balanced") is not (weighting == "engine")
-                            or info.get("test_labels_used_in_feature_fitting") is not False
+                            or info.get("engine_balanced")
+                            is not (weighting == "engine")
+                            or info.get("test_labels_used_in_feature_fitting")
+                            is not False
                         ):
                             raise ValueError(f"Invalid frozen-input provenance: {name}")
                         frozen_encoders.add(
