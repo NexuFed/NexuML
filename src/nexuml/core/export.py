@@ -546,6 +546,7 @@ def export_package(
 
     Raises:
         ValueError: If RL export supplies only a neural pipeline, not its complete policy.
+            Also raised if a policy's source physical-frame counter is invalid.
     """
     policy = pipeline if isinstance(pipeline, CompiledPolicy) else None
     pipeline = policy.pipeline if policy is not None else cast(CompiledPipeline, pipeline)
@@ -613,6 +614,31 @@ def export_package(
         if policy is None:
             shutil.copy2(checkpoint_path, path / CHECKPOINT_SIDECAR)
 
+    if policy is not None:
+        frames = None
+        if isinstance(config.training, ReinforcementLearningSpec):
+            if checkpoint_path is not None:
+                if isinstance(checkpoint_raw, dict):
+                    frames = checkpoint_raw.get("state_dict", {}).get("frames")
+            else:
+                owner = lightning_module
+                if owner is None and trainer is not None:
+                    owner = getattr(trainer, "lightning_module", None)
+                if getattr(owner, "policy", None) is policy:
+                    frames = getattr(owner, "frames", None)
+            if isinstance(frames, torch.Tensor):
+                if frames.ndim != 0:
+                    raise ValueError("Source physical training frames must be a scalar counter")
+                frames = frames.item()
+            if frames is not None and (type(frames) is not int or frames < 0):
+                raise ValueError("Source physical training frames must be a nonnegative integer")
+        metadata["training_frames"] = frames
+        if checkpoint_path is not None:
+            with checkpoint_path.open("rb") as source:
+                metadata.setdefault("checkpoint", {"source": str(checkpoint_path)})["sha256"] = (
+                    hashlib.file_digest(source, "sha256").hexdigest()
+                )
+
     meta = _artifact_metadata(pipeline, metadata=metadata, training_state=training_state)
 
     torch.save(
@@ -621,6 +647,12 @@ def export_package(
     pipeline.resolved_config.save(path / "resolved_config.yaml")
     if policy is not None:
         torch.save(policy.action_adapter.state_dict(), path / "action_adapter_state.pt")
+        meta["policy_files_sha256"] = {}
+        for filename in ("state_dict.pt", "action_adapter_state.pt"):
+            with (path / filename).open("rb") as source:
+                meta["policy_files_sha256"][filename] = hashlib.file_digest(
+                    source, "sha256"
+                ).hexdigest()
     if training_state:
         torch.save(training_state, path / "training_state.pt")
 
