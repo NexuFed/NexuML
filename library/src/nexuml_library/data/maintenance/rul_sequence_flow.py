@@ -279,10 +279,13 @@ class _SequenceFlowRULRuntime(NexuDataset):
         Returns:
             TensorDict containing capped and raw RUL in cycles.
         """
-        labels = {
-            "rul": self._rul_targets[idx],
-            "rul_raw": self._rul_raw_targets[idx],
-        }
+        labels = TensorDict(
+            {
+                "rul": self._rul_targets[idx],
+                "rul_raw": self._rul_raw_targets[idx],
+            },
+            batch_size=[],
+        )
         if self._rul_weights is not None:
             labels["rul_weight"] = self._rul_weights[idx].reshape(1)
-        return TensorDict(labels, batch_size=[])
+        return labels
