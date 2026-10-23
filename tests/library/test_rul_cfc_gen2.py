@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 from typing import Literal
 
+import pandas as pd
 import pytest
 import torch
 from tensordict import TensorDict
@@ -15,6 +16,7 @@ from nexuml.core.compiler import compile as compile_pipeline
 from nexuml.core.components import LayerBuildContext
 from nexuml_library.data.maintenance.rul_sequence_flow import (
     AutoPatchFormerSequenceFlowRULFeatures,
+    _SequenceFlowRULRuntime,
     _inverse_engine_weights,
 )
 from nexuml_library.evaluation.maintenance.rul_generalization_diagnostics import (
@@ -49,6 +51,30 @@ def test_engine_frequency_weights_are_train_only() -> None:
     assert float(weights[4:6].sum()) == pytest.approx(3)
     with pytest.raises(ValueError, match="training assets"):
         _inverse_engine_weights([{"split": "val", "asset_id": "v"}])
+
+
+def test_engine_weight_labels_stay_aligned_after_asset_split() -> None:
+    """NexuML take() must retain inverse-engine weights for each row."""
+    rows = [
+        *[{"split": "train", "asset_id": "a"} for _ in range(4)],
+        *[{"split": "train", "asset_id": "b"} for _ in range(2)],
+        {"split": "val", "asset_id": "v"},
+        {"split": "test", "asset_id": "t"},
+    ]
+    weights, _ = _inverse_engine_weights(rows)
+    data = _SequenceFlowRULRuntime(
+        features=torch.zeros(8, 30, 256),
+        targets=torch.arange(8, dtype=torch.float32).view(-1, 1),
+        raw_targets=torch.arange(8, dtype=torch.float32).view(-1, 1),
+        meta=pd.DataFrame.from_records(rows),
+        weights=weights,
+    )
+    split = data.take([5, 3, 6])
+    assert len(split) == 3
+    assert split.load_labels(0, split.meta.iloc[0])["rul_weight"].item() == 1.5
+    assert split.load_labels(1, split.meta.iloc[1])["rul_weight"].item() == 0.75
+    assert split.load_labels(2, split.meta.iloc[2])["rul_weight"].item() == 1.0
+    assert split.load_labels(0, split.meta.iloc[0])["rul"].item() == 5.0
 
 
 def test_engine_frequency_rul_loss_is_differentiable() -> None:
