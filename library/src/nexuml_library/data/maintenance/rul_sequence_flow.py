@@ -98,7 +98,9 @@ class AutoPatchFormerSequenceFlowRULFeatures(DataSourceDefinition):
             or Path(str(info.get("source_rul_artifact"))).resolve()
             != Path(self.prepared_rul_path).resolve()
         ):
-            raise ValueError("Sequence endpoints do not match the official RUL protocol")
+            raise ValueError(
+                "Sequence endpoints do not match the official RUL protocol"
+            )
         checkpoint = resolve_patchformer_checkpoint(
             self.subset,
             self.seed,
@@ -107,7 +109,9 @@ class AutoPatchFormerSequenceFlowRULFeatures(DataSourceDefinition):
         encoder = _PatchFormerModel(30, len(sensors), 64, 5, 2, 0.1)
         encoder_hash = _trusted_patchformer_weights(encoder, checkpoint)
         if encoder_hash != info["frozen_patchformer_checkpoint_sha256"]:
-            raise ValueError("PatchFormer weights differ from the sequence flow encoder")
+            raise ValueError(
+                "PatchFormer weights differ from the sequence flow encoder"
+            )
         mean = torch.as_tensor(info["feature_mean"], dtype=torch.float32)
         std = torch.as_tensor(info["feature_std"], dtype=torch.float32)
         if (
