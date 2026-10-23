@@ -13,7 +13,6 @@ from torch import Tensor, nn
 
 from nexuml.core.compiler import compile as compile_pipeline
 from nexuml.core.components import LayerBuildContext
-from nexuml.core.config import ResolvedConfig
 from nexuml_library.data.maintenance.prepared_endpoints import read_prepared_artifact
 from nexuml_library.data.maintenance.rul_sequence_flow import (
     AutoPatchFormerSequenceFlowRULFeatures,
