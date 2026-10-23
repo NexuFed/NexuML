@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 from typing import Literal, cast
 
+import lightning as L
 import pandas as pd
 import pytest
 import torch
@@ -14,6 +15,10 @@ from tensordict import TensorDict
 
 from nexuml.core.compiler import compile as compile_pipeline
 from nexuml.training.lightning import NexuLightningModule
+from nexuml_library.data.maintenance.rul_sequence_flow import (
+    AutoPatchFormerSequenceFlowRULFeatures,
+)
+from nexuml_library.evaluation.maintenance.rul_engine_audit import RULPerEngineAudit
 from nexuml_library.evaluation.maintenance.rul_generalization_diagnostics import (
     _evaluate_split,
 )
@@ -52,6 +57,7 @@ def test_cfc_generalization_scenarios_compile(
     monkeypatch.chdir(tmp_path)
     spec = cfc_generalization_study(arm, variant, head_seed)
     source = spec.data.datasets[0].source
+    assert isinstance(source, AutoPatchFormerSequenceFlowRULFeatures)
     assert source.seed == 42 and source.architecture == "cfc"
     assert source.use_flow is (arm == "flow")
     head = spec.pipeline.stages["RULModel"][0].component
@@ -61,11 +67,15 @@ def test_cfc_generalization_scenarios_compile(
     )
     assert spec.training.max_epochs == 150
     assert spec.callbacks[0].kwargs["seed"] == head_seed
-    assert spec.callbacks[1].kwargs["output_file"].endswith(
+    output_file = spec.callbacks[1].kwargs["output_file"]
+    assert isinstance(output_file, str)
+    assert output_file.endswith(
         f"{arm}-{variant}-head-s{head_seed}.curves.csv"
     )
     assert spec.callbacks[2].kwargs["monitor"] == "val/loss"
-    assert spec.evaluation.algorithms[2].algorithm.output_file.endswith(
+    audit = spec.evaluation.algorithms[2].algorithm
+    assert isinstance(audit, RULPerEngineAudit)
+    assert audit.output_file.endswith(
         f"{arm}-{variant}-head-s{head_seed}.csv"
     )
     assert compile_pipeline(spec).resolved_config.to_scenario().name == spec.name
@@ -300,8 +310,12 @@ def test_epoch_callback_writes_full_splits_and_best_validation_engines(
     )
     trainer = ToyTrainer()
     state_before = torch.random.get_rng_state().clone()
-    callback.on_fit_start(trainer, model)
-    callback.on_validation_epoch_end(trainer, model)
+    callback.on_fit_start(
+        cast(L.Trainer, trainer), cast(L.LightningModule, model)
+    )
+    callback.on_validation_epoch_end(
+        cast(L.Trainer, trainer), cast(L.LightningModule, model)
+    )
     assert model.training is True
     assert torch.equal(torch.random.get_rng_state(), state_before)
     with (tmp_path / "run.curves.csv").open(
