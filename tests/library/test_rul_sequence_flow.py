@@ -137,8 +137,20 @@ def test_sequence_checkpoint_is_strict_and_frozen(
         assert torch.equal(value, runtime.state_dict()[key])
     second = directory / "epoch=5-step=110.ckpt"
     torch.save({"state_dict": state}, second)
-    with pytest.raises(ValueError, match="Multiple best candidates"):
+    with pytest.raises(ValueError, match="without validation selection"):
         resolve_sequence_flow_checkpoint("FD001", 42, architecture)
+    callback_id = "ModelCheckpoint{'monitor': 'val/transport_swd', 'mode': 'min'}"
+    torch.save(
+        {"state_dict": state,
+         "callbacks": {callback_id: {"best_model_score": torch.tensor(0.30)}}},
+        selected,
+    )
+    torch.save(
+        {"state_dict": state,
+         "callbacks": {callback_id: {"best_model_score": torch.tensor(0.20)}}},
+        second,
+    )
+    assert resolve_sequence_flow_checkpoint("FD001", 42, architecture) == second
     second.unlink()
     state.pop(next(iter(state)))
     torch.save({"state_dict": state}, selected)
