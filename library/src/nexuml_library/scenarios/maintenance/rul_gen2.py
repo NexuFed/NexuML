@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Literal
 
 import torch
+
 from nexuml import callback, optimizer
 from nexuml.core.discovery import scenario
 from nexuml.core.types import LayerSpec, PipelineSpec, ScenarioSpec
