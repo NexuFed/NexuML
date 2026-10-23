@@ -18,6 +18,9 @@ from nexuml_library.data.maintenance.rul import AutoCMapSSRULWindows
 from nexuml_library.data.maintenance.rul_flow_calibration import (
     AutoPatchFormerFlowRULFeatures,
 )
+from nexuml_library.data.maintenance.rul_sequence_flow import (
+    AutoPatchFormerSequenceFlowRULFeatures,
+)
 
 
 def _run_nexuml(
@@ -113,6 +116,19 @@ def _synthetic_cmapss(root: Path) -> None:
         ("maintenance-rul-patchformer-sequence-transformer-fd001-s42", "flow"),
         ("maintenance-rul-patchformer-sequence-conformer-fd003-s43", "flow"),
         ("maintenance-rul-patchformer-sequence-cfc-fd001-s44", "flow"),
+        (
+            "maintenance-rul-patchformer-sequence-transformer-flow-fd001-s42",
+            "sequence_rul",
+        ),
+        (
+            "maintenance-rul-patchformer-sequence-transformer-encoder-fd001-s42",
+            "sequence_rul",
+        ),
+        (
+            "maintenance-rul-patchformer-sequence-conformer-flow-fd003-s43",
+            "sequence_rul",
+        ),
+        ("maintenance-rul-patchformer-sequence-cfc-encoder-fd001-s44", "sequence_rul"),
         ("maintenance-rul-patchformer-flow-time-fd001-s42", "flow_calibration"),
         ("maintenance-rul-patchformer-hybrid-fd003-s44", "flow_calibration"),
         ("maintenance-rul-patchformer-baseline-only-fd001-s42", "flow_calibration"),
@@ -150,6 +166,8 @@ def test_advanced_registry_cli_can_resolve_without_preloaded_data(
         assert isinstance(source, AutoPatchFormerFlowEndpoints)
     elif kind == "flow_calibration":
         assert isinstance(source, AutoPatchFormerFlowRULFeatures)
+    elif kind == "sequence_rul":
+        assert isinstance(source, AutoPatchFormerSequenceFlowRULFeatures)
     else:
         assert isinstance(source, BatteryCapacityWindows)
 

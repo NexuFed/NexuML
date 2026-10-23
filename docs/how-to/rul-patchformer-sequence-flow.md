@@ -111,6 +111,25 @@ Downstream RUL prediction using sequential flow states requires its
 own readout experiment; the previous scalar 128-D flow checkpoint
 loader and RUL heads are intentionally unchanged.
 
+## Downstream full-sequence RUL evaluation
+
+The matched **Transformer, Conformer and CfC flow-only RUL predictors**
+and their encoder-only controls are now implemented. They freeze the
+upstream DPAN and Flow, preserve all 30 temporal tokens, and train the
+same attention-weighted RUL head with and without flow displacement.
+
+Run all six FD001 seed-42 RUL experiments and generate a paired
+100-engine evaluation report with:
+
+```bash
+git pull
+bash scripts/launch_patchformer_sequence_rul_fd001_s42.sh
+```
+
+See [full-sequence Flow RUL evaluation](rul-sequence-flow-rul.md) for
+the model contracts, the 36 registered scenarios, and the held-out
+comparison procedure.
+
 ## FD003 and multiple seeds
 
 Scenarios are registered for FD001 and FD003, each with seeds 42, 43,
