@@ -39,6 +39,36 @@ from nexuml_library.layers.model.rul_advanced import _PatchFormerModel
 _SENSOR_IDS = [2, 3, 4, 7, 8, 9, 11, 12, 13, 14, 15, 17, 20, 21]
 
 
+def _inverse_engine_weights(
+    rows: list[dict[str, Any]],
+) -> tuple[Tensor, dict[str, int]]:
+    """Give every training engine equal expected squared-loss contribution.
+
+    Validation and official test weights remain one; no held-out target is
+    accessed. Training weights sum to the number of training windows.
+
+    Returns:
+        Aligned sample weights and per-training-engine window counts.
+
+    Raises:
+        ValueError: If training asset metadata is missing or invalid.
+    """
+    counts: dict[str, int] = {}
+    for row in rows:
+        if row["split"] == "train":
+            asset = str(row["asset_id"])
+            counts[asset] = counts.get(asset, 0) + 1
+    if not counts:
+        raise ValueError("Engine balancing requires training assets")
+    total = sum(counts.values())
+    weights = torch.ones(len(rows), dtype=torch.float32)
+    for index, row in enumerate(rows):
+        if row["split"] == "train":
+            asset = str(row["asset_id"])
+            weights[index] = total / (len(counts) * counts[asset])
+    return weights, counts
+
+
 @data_source("AutoPatchFormerSequenceFlowRULFeatures")
 class AutoPatchFormerSequenceFlowRULFeatures(DataSourceDefinition):
     """Frozen full-sequence embeddings and optional transported displacement."""
@@ -157,22 +187,8 @@ class AutoPatchFormerSequenceFlowRULFeatures(DataSourceDefinition):
         features = torch.cat(batches)
         if features.shape != (len(rows), 30, 256):
             raise ValueError("Sequence flow RUL inputs must be [N,30,256]")
-        train_counts: dict[str, int] = {}
-        for row in rows:
-            if row["split"] == "train":
-                asset = str(row["asset_id"])
-                train_counts[asset] = train_counts.get(asset, 0) + 1
-        if not train_counts:
-            raise ValueError("Engine balancing requires training assets")
+        engine_weights, train_counts = _inverse_engine_weights(rows)
         train_total = sum(train_counts.values())
-        engine_weights = torch.ones(len(rows), dtype=torch.float32)
-        if self.engine_balanced:
-            for index, row in enumerate(rows):
-                if row["split"] == "train":
-                    asset = str(row["asset_id"])
-                    engine_weights[index] = (
-                        train_total / (len(train_counts) * train_counts[asset])
-                    )
         report_file = Path(self.diagnostics_file).expanduser().resolve()
         report_file.parent.mkdir(parents=True, exist_ok=True)
         report_file.write_text(
