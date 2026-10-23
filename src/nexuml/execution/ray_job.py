@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import shlex
+from uuid import uuid4
 
 from nexuml.core.config import ResolvedConfig
 from nexuml.core.types import LocalExecutionSpec, RayJobExecutionSpec, ScenarioSpec
@@ -22,6 +23,16 @@ def submit_ray_job(scenario: ScenarioSpec) -> str:
     if not isinstance(execution, RayJobExecutionSpec):
         raise ValueError("submit_ray_job requires scenario.execution.kind='ray_job'")
     execution = RayJobExecutionSpec.model_validate(execution.model_dump())
+    run_id = uuid4().hex
+    execution.py_executable = execution.py_executable.replace("{run_id}", run_id)
+    if "env_vars" in execution.runtime_env:
+        execution.runtime_env = {
+            **execution.runtime_env,
+            "env_vars": {
+                key: value.replace("{run_id}", run_id) if isinstance(value, str) else value
+                for key, value in execution.runtime_env["env_vars"].items()
+            },
+        }
     command = shlex.split(execution.py_executable)
     if not command:
         raise ValueError("ray_job py_executable must contain a Python command")

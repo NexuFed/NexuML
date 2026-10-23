@@ -248,7 +248,10 @@ external/
 # Graphify
 graphify-out/
 
-configs/
+configs/*
+!configs/execution/
+configs/execution/*
+!configs/execution/ray.yaml
 
 # Studio build/test dependencies (production assets are included only in npm packs)
 studio/node_modules/
