@@ -52,7 +52,31 @@ export default defineConfig({
           { slug: 'start/first-run' }, { slug: 'studio' }, { slug: 'tutorials' },
           { label: 'Optional CIFAR example', slug: 'start/cifar-resnet' },
         ] },
-        { label: 'Use NexuML', collapsed: true, items: [{ autogenerate: { directory: 'how-to' } }] },
+        { label: 'Use NexuML', collapsed: true, items: [
+          { label: 'Overview', slug: 'how-to' },
+          { label: 'Run experiments', items: [
+            { slug: 'how-to/run-scenarios' }, { slug: 'how-to/data-loading' },
+            { slug: 'how-to/tracking' }, { slug: 'how-to/checkpoints' },
+            { slug: 'how-to/evaluate' }, { slug: 'how-to/tune' },
+          ] },
+          { label: 'Export and reuse', collapsed: true, items: [
+            { slug: 'how-to/export-dataset' }, { slug: 'how-to/export' },
+          ] },
+          { label: 'Extend NexuML', collapsed: true, items: [
+            { slug: 'how-to/custom-library' }, { slug: 'how-to/custom-layer' },
+            { slug: 'how-to/custom-data-source' }, { slug: 'how-to/custom-eval-algorithm' },
+            { slug: 'how-to/scenario-file' },
+          ] },
+          { label: 'Execution and scaling', collapsed: true, items: [
+            { slug: 'how-to/training-backends' }, { slug: 'how-to/auto-batch-size' },
+            { slug: 'how-to/training-backends/jobs' }, { slug: 'how-to/training-backends/ray' },
+            { slug: 'how-to/deploy' },
+          ] },
+          { label: 'Studio hosting and API', collapsed: true, items: [
+            { slug: 'how-to/local-api' }, { slug: 'how-to/studio-hosting' },
+          ] },
+          { label: 'Automate research', collapsed: true, items: [{ slug: 'how-to/autoresearch' }] },
+        ] },
         { label: 'Understand NexuML', collapsed: true, items: [
           { slug: 'explanation/why-nexuml' }, { slug: 'explanation/architecture' },
           { slug: 'explanation/diagrams' },

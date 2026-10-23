@@ -6,6 +6,31 @@ const version = process.env.DOCS_VERSION || 'dev';
 const base = `${mount}${version}/`;
 const fallbackVersion = version === 'v0.0.0' ? 'v0.0.1' : 'v0.0.0';
 
+test('task navigation follows the workflow without changing routes', async ({ page }, info) => {
+  await page.goto(base);
+  if (info.project.name === 'mobile') await page.getByRole('button', { name: 'Menu' }).click();
+  const use = page.locator('details').filter({ has: page.locator('summary').getByText('Use NexuML', { exact: true }) });
+  await use.locator(':scope > summary').click();
+  await expect(use.locator(':scope > ul > li > a')).toHaveText(['Overview']);
+  const groups = use.locator(':scope > ul > li > details');
+  await expect(groups.locator(':scope > summary')).toHaveText([
+    'Run experiments', 'Export and reuse', 'Extend NexuML', 'Execution and scaling',
+    'Studio hosting and API', 'Automate research',
+  ]);
+  for (let index = 1; index < 6; index++) await expect(groups.nth(index)).not.toHaveAttribute('open');
+  const routes = await use.locator('a').evaluateAll(links => links.map(link => link.getAttribute('href')));
+  expect(routes).toEqual([
+    '', 'run-scenarios/', 'data-loading/', 'tracking/', 'checkpoints/', 'evaluate/', 'tune/',
+    'export-dataset/', 'export/', 'custom-library/', 'custom-layer/', 'custom-data-source/',
+    'custom-eval-algorithm/', 'scenario-file/', 'training-backends/', 'auto-batch-size/',
+    'training-backends/jobs/', 'training-backends/ray/', 'deploy/', 'local-api/',
+    'studio-hosting/', 'autoresearch/',
+  ].map(route => `${base}how-to/${route}`));
+  await groups.nth(3).locator(':scope > summary').click();
+  await use.getByRole('link', { name: 'Choose an execution mode', exact: true }).click();
+  await expect(page.locator('h1')).toHaveText('Choose an execution mode');
+});
+
 test('prose, API, CLI, diagrams, search, controls and accessible layout', async ({ page }, info) => {
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
