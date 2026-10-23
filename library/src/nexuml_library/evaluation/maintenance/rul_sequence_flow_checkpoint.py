@@ -67,7 +67,8 @@ def resolve_sequence_flow_checkpoint(
             callbacks = saved.get("callbacks")
             if not isinstance(callbacks, dict):
                 raise ValueError(
-                    f"Ambiguous Flow checkpoints without validation selection: {directory}"
+                    "Ambiguous Flow checkpoints without validation selection: "
+                    f"{directory}"
                 )
             selected: list[float] = []
             for key, value in callbacks.items():
