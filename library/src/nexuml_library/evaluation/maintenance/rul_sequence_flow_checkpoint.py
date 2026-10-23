@@ -39,14 +39,14 @@ def resolve_sequence_flow_checkpoint(
     seed: int,
     architecture: SequenceArchitecture,
 ) -> Path:
-    """Select a unique native best-SWD checkpoint, never last.ckpt.
+    """Choose native SWD-best Flow checkpoint, excluding last.ckpt.
 
     Returns:
-        Path to one non-last checkpoint selected by validation transport SWD.
+        Path to the checkpoint with best validated transport SWD.
 
     Raises:
         FileNotFoundError: If this exact sequential flow has not been trained.
-        ValueError: If multiple non-last checkpoints make selection ambiguous.
+        ValueError: If multiple checkpoints have no trustworthy SWD metadata.
     """
     run = sequence_flow_run(subset, seed, architecture)
     directory = Path(".experiments/rul/checkpoints") / run
@@ -57,10 +57,38 @@ def resolve_sequence_flow_checkpoint(
     if len(candidates) == 1:
         return candidates[0]
     if len(candidates) > 1:
-        raise ValueError(
-            f"Multiple best candidates in {directory}; remove stale checkpoints "
-            "or provide an unambiguous validation-selected checkpoint"
-        )
+        scored: list[tuple[float, Path]] = []
+        for candidate in candidates:
+            # Trusted local Lightning files contain ModelCheckpoint callback state.
+            saved = torch.load(candidate, map_location="cpu", weights_only=False)
+            if not isinstance(saved, dict):
+                raise ValueError(f"Invalid Flow checkpoint: {candidate}")
+            callbacks = saved.get("callbacks")
+            if not isinstance(callbacks, dict):
+                raise ValueError(
+                    f"Ambiguous Flow checkpoints without validation selection: {directory}"
+                )
+            selected: list[float] = []
+            for key, value in callbacks.items():
+                if (
+                    not isinstance(key, str)
+                    or "ModelCheckpoint" not in key
+                    or "val/transport_swd" not in key
+                    or not isinstance(value, dict)
+                ):
+                    continue
+                score = value.get("best_model_score")
+                if isinstance(score, (float, int, Tensor)):
+                    scalar = float(score)
+                    if not torch.isfinite(torch.tensor(scalar)):
+                        raise ValueError("Nonfinite checkpoint validation SWD")
+                    selected.append(scalar)
+            if len(selected) != 1:
+                raise ValueError(
+                    f"Cannot identify one validation-selected Flow score: {candidate}"
+                )
+            scored.append((selected[0], candidate))
+        return min(scored, key=lambda item: (item[0], str(item[1])))[1]
     raise FileNotFoundError(
         "Missing validation-selected sequential Flow checkpoint; first train "
         f"maintenance-rul-patchformer-sequence-{architecture}-"
