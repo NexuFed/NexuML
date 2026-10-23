@@ -8,7 +8,9 @@ train/validation data are inspected. Test data remain sealed.
 from __future__ import annotations
 
 import csv
+import hashlib
 import json
+import statistics
 from collections import defaultdict
 from pathlib import Path
 from typing import Any, cast
@@ -25,7 +27,7 @@ from nexuml.training.lightning import NexuLightningModule
 _FIELDS = (
     "epoch", "train_eval_mse", "val_eval_mse", "train_eval_rmse",
     "val_eval_rmse", "mse_gap", "train_windows", "val_windows",
-    "val_engine_count",
+    "val_engine_count", "val_group_max_mse", "val_group_std_mse",
 )
 
 
@@ -89,6 +91,45 @@ def _evaluate_split(
     return squared_sum, count, engines
 
 
+def _validation_engine_groups(
+    engines: dict[str, tuple[float, int]], groups: int = 4
+) -> list[dict[str, float | int]]:
+    """Create reproducible, disjoint validation-engine stress groups.
+
+    These groups partition *existing* upstream-held-out validation engines.
+    They are not independent training folds or new encoder/flow validation
+    splits, and are never used as training samples.
+
+    Returns:
+        Per-group engine count and window-weighted/engine-mean RUL MSE.
+
+    Raises:
+        ValueError: If too few distinct validation assets are present.
+    """
+    if groups < 2 or len(engines) < groups:
+        raise ValueError("Need at least two nonempty validation engine groups")
+    assets = sorted(
+        engines, key=lambda name: (hashlib.sha256(name.encode()).digest(), name)
+    )
+    results: list[dict[str, float | int]] = []
+    for index in range(groups):
+        members = [name for i, name in enumerate(assets) if i % groups == index]
+        total_sse = sum(engines[name][0] for name in members)
+        windows = sum(engines[name][1] for name in members)
+        if windows <= 0:
+            raise ValueError("Validation group cannot be empty")
+        results.append({
+            "group": index,
+            "engines": len(members),
+            "windows": windows,
+            "window_mse": total_sse / windows,
+            "engine_mean_mse": statistics.mean(
+                engines[name][0] / engines[name][1] for name in members
+            ),
+        })
+    return results
+
+
 class SequenceRULGeneralizationDiagnostics(L.Callback):
     """Export full epoch curves and validation per-engine losses for RUL."""
 
@@ -148,6 +189,7 @@ class SequenceRULGeneralizationDiagnostics(L.Callback):
             raise ValueError("Validation engine diagnostics found no groups")
         train_mse = train_sse / train_count
         val_mse = val_sse / val_count
+        groups = _validation_engine_groups(engines)
         epoch = trainer.current_epoch
         result = {
             "epoch": epoch,
@@ -159,6 +201,10 @@ class SequenceRULGeneralizationDiagnostics(L.Callback):
             "train_windows": train_count,
             "val_windows": val_count,
             "val_engine_count": len(engines),
+            "val_group_max_mse": max(group["window_mse"] for group in groups),
+            "val_group_std_mse": statistics.stdev(
+                float(group["window_mse"]) for group in groups
+            ),
         }
         self.output_file.parent.mkdir(parents=True, exist_ok=True)
         with self.output_file.open("a", newline="", encoding="utf-8") as file:
@@ -195,6 +241,7 @@ class SequenceRULGeneralizationDiagnostics(L.Callback):
                 "train_eval_mse": train_mse,
                 "val_eval_mse": val_mse,
                 "validation_engines": per_engine,
+                "validation_engine_groups": groups,
                 "test_labels_used": False,
             }
             destination = self.output_file.with_suffix(".validation_engines.json")
