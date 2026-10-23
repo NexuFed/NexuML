@@ -170,7 +170,7 @@ def patchformer_sequence_transformer_flow_fd001_s42() -> ScenarioSpec:
         Official-label held-out RUL benchmark with matched full-sequence readout.
     """
     return patchformer_sequence_flow_rul(
-        "FD001", 42, "transformer", true
+        "FD001", 42, "transformer", True
     )
 
 
@@ -182,7 +182,7 @@ def patchformer_sequence_transformer_encoder_fd001_s42() -> ScenarioSpec:
         Official-label held-out RUL benchmark with matched full-sequence readout.
     """
     return patchformer_sequence_flow_rul(
-        "FD001", 42, "transformer", false
+        "FD001", 42, "transformer", False
     )
 
 
@@ -194,7 +194,7 @@ def patchformer_sequence_conformer_flow_fd001_s42() -> ScenarioSpec:
         Official-label held-out RUL benchmark with matched full-sequence readout.
     """
     return patchformer_sequence_flow_rul(
-        "FD001", 42, "conformer", true
+        "FD001", 42, "conformer", True
     )
 
 
@@ -206,7 +206,7 @@ def patchformer_sequence_conformer_encoder_fd001_s42() -> ScenarioSpec:
         Official-label held-out RUL benchmark with matched full-sequence readout.
     """
     return patchformer_sequence_flow_rul(
-        "FD001", 42, "conformer", false
+        "FD001", 42, "conformer", False
     )
 
 
@@ -218,7 +218,7 @@ def patchformer_sequence_cfc_flow_fd001_s42() -> ScenarioSpec:
         Official-label held-out RUL benchmark with matched full-sequence readout.
     """
     return patchformer_sequence_flow_rul(
-        "FD001", 42, "cfc", true
+        "FD001", 42, "cfc", True
     )
 
 
@@ -230,7 +230,7 @@ def patchformer_sequence_cfc_encoder_fd001_s42() -> ScenarioSpec:
         Official-label held-out RUL benchmark with matched full-sequence readout.
     """
     return patchformer_sequence_flow_rul(
-        "FD001", 42, "cfc", false
+        "FD001", 42, "cfc", False
     )
 
 
@@ -242,7 +242,7 @@ def patchformer_sequence_transformer_flow_fd001_s43() -> ScenarioSpec:
         Official-label held-out RUL benchmark with matched full-sequence readout.
     """
     return patchformer_sequence_flow_rul(
-        "FD001", 43, "transformer", true
+        "FD001", 43, "transformer", True
     )
 
 
@@ -254,7 +254,7 @@ def patchformer_sequence_transformer_encoder_fd001_s43() -> ScenarioSpec:
         Official-label held-out RUL benchmark with matched full-sequence readout.
     """
     return patchformer_sequence_flow_rul(
-        "FD001", 43, "transformer", false
+        "FD001", 43, "transformer", False
     )
 
 
@@ -266,7 +266,7 @@ def patchformer_sequence_conformer_flow_fd001_s43() -> ScenarioSpec:
         Official-label held-out RUL benchmark with matched full-sequence readout.
     """
     return patchformer_sequence_flow_rul(
-        "FD001", 43, "conformer", true
+        "FD001", 43, "conformer", True
     )
 
 
@@ -278,7 +278,7 @@ def patchformer_sequence_conformer_encoder_fd001_s43() -> ScenarioSpec:
         Official-label held-out RUL benchmark with matched full-sequence readout.
     """
     return patchformer_sequence_flow_rul(
-        "FD001", 43, "conformer", false
+        "FD001", 43, "conformer", False
     )
 
 
@@ -290,7 +290,7 @@ def patchformer_sequence_cfc_flow_fd001_s43() -> ScenarioSpec:
         Official-label held-out RUL benchmark with matched full-sequence readout.
     """
     return patchformer_sequence_flow_rul(
-        "FD001", 43, "cfc", true
+        "FD001", 43, "cfc", True
     )
 
 
@@ -302,7 +302,7 @@ def patchformer_sequence_cfc_encoder_fd001_s43() -> ScenarioSpec:
         Official-label held-out RUL benchmark with matched full-sequence readout.
     """
     return patchformer_sequence_flow_rul(
-        "FD001", 43, "cfc", false
+        "FD001", 43, "cfc", False
     )
 
 
@@ -314,7 +314,7 @@ def patchformer_sequence_transformer_flow_fd001_s44() -> ScenarioSpec:
         Official-label held-out RUL benchmark with matched full-sequence readout.
     """
     return patchformer_sequence_flow_rul(
-        "FD001", 44, "transformer", true
+        "FD001", 44, "transformer", True
     )
 
 
@@ -326,7 +326,7 @@ def patchformer_sequence_transformer_encoder_fd001_s44() -> ScenarioSpec:
         Official-label held-out RUL benchmark with matched full-sequence readout.
     """
     return patchformer_sequence_flow_rul(
-        "FD001", 44, "transformer", false
+        "FD001", 44, "transformer", False
     )
 
 
@@ -338,7 +338,7 @@ def patchformer_sequence_conformer_flow_fd001_s44() -> ScenarioSpec:
         Official-label held-out RUL benchmark with matched full-sequence readout.
     """
     return patchformer_sequence_flow_rul(
-        "FD001", 44, "conformer", true
+        "FD001", 44, "conformer", True
     )
 
 
@@ -350,7 +350,7 @@ def patchformer_sequence_conformer_encoder_fd001_s44() -> ScenarioSpec:
         Official-label held-out RUL benchmark with matched full-sequence readout.
     """
     return patchformer_sequence_flow_rul(
-        "FD001", 44, "conformer", false
+        "FD001", 44, "conformer", False
     )
 
 
@@ -362,7 +362,7 @@ def patchformer_sequence_cfc_flow_fd001_s44() -> ScenarioSpec:
         Official-label held-out RUL benchmark with matched full-sequence readout.
     """
     return patchformer_sequence_flow_rul(
-        "FD001", 44, "cfc", true
+        "FD001", 44, "cfc", True
     )
 
 
@@ -374,7 +374,7 @@ def patchformer_sequence_cfc_encoder_fd001_s44() -> ScenarioSpec:
         Official-label held-out RUL benchmark with matched full-sequence readout.
     """
     return patchformer_sequence_flow_rul(
-        "FD001", 44, "cfc", false
+        "FD001", 44, "cfc", False
     )
 
 
@@ -386,7 +386,7 @@ def patchformer_sequence_transformer_flow_fd003_s42() -> ScenarioSpec:
         Official-label held-out RUL benchmark with matched full-sequence readout.
     """
     return patchformer_sequence_flow_rul(
-        "FD003", 42, "transformer", true
+        "FD003", 42, "transformer", True
     )
 
 
@@ -398,7 +398,7 @@ def patchformer_sequence_transformer_encoder_fd003_s42() -> ScenarioSpec:
         Official-label held-out RUL benchmark with matched full-sequence readout.
     """
     return patchformer_sequence_flow_rul(
-        "FD003", 42, "transformer", false
+        "FD003", 42, "transformer", False
     )
 
 
@@ -410,7 +410,7 @@ def patchformer_sequence_conformer_flow_fd003_s42() -> ScenarioSpec:
         Official-label held-out RUL benchmark with matched full-sequence readout.
     """
     return patchformer_sequence_flow_rul(
-        "FD003", 42, "conformer", true
+        "FD003", 42, "conformer", True
     )
 
 
@@ -422,7 +422,7 @@ def patchformer_sequence_conformer_encoder_fd003_s42() -> ScenarioSpec:
         Official-label held-out RUL benchmark with matched full-sequence readout.
     """
     return patchformer_sequence_flow_rul(
-        "FD003", 42, "conformer", false
+        "FD003", 42, "conformer", False
     )
 
 
@@ -434,7 +434,7 @@ def patchformer_sequence_cfc_flow_fd003_s42() -> ScenarioSpec:
         Official-label held-out RUL benchmark with matched full-sequence readout.
     """
     return patchformer_sequence_flow_rul(
-        "FD003", 42, "cfc", true
+        "FD003", 42, "cfc", True
     )
 
 
@@ -446,7 +446,7 @@ def patchformer_sequence_cfc_encoder_fd003_s42() -> ScenarioSpec:
         Official-label held-out RUL benchmark with matched full-sequence readout.
     """
     return patchformer_sequence_flow_rul(
-        "FD003", 42, "cfc", false
+        "FD003", 42, "cfc", False
     )
 
 
@@ -458,7 +458,7 @@ def patchformer_sequence_transformer_flow_fd003_s43() -> ScenarioSpec:
         Official-label held-out RUL benchmark with matched full-sequence readout.
     """
     return patchformer_sequence_flow_rul(
-        "FD003", 43, "transformer", true
+        "FD003", 43, "transformer", True
     )
 
 
@@ -470,7 +470,7 @@ def patchformer_sequence_transformer_encoder_fd003_s43() -> ScenarioSpec:
         Official-label held-out RUL benchmark with matched full-sequence readout.
     """
     return patchformer_sequence_flow_rul(
-        "FD003", 43, "transformer", false
+        "FD003", 43, "transformer", False
     )
 
 
@@ -482,7 +482,7 @@ def patchformer_sequence_conformer_flow_fd003_s43() -> ScenarioSpec:
         Official-label held-out RUL benchmark with matched full-sequence readout.
     """
     return patchformer_sequence_flow_rul(
-        "FD003", 43, "conformer", true
+        "FD003", 43, "conformer", True
     )
 
 
@@ -494,7 +494,7 @@ def patchformer_sequence_conformer_encoder_fd003_s43() -> ScenarioSpec:
         Official-label held-out RUL benchmark with matched full-sequence readout.
     """
     return patchformer_sequence_flow_rul(
-        "FD003", 43, "conformer", false
+        "FD003", 43, "conformer", False
     )
 
 
@@ -506,7 +506,7 @@ def patchformer_sequence_cfc_flow_fd003_s43() -> ScenarioSpec:
         Official-label held-out RUL benchmark with matched full-sequence readout.
     """
     return patchformer_sequence_flow_rul(
-        "FD003", 43, "cfc", true
+        "FD003", 43, "cfc", True
     )
 
 
@@ -518,7 +518,7 @@ def patchformer_sequence_cfc_encoder_fd003_s43() -> ScenarioSpec:
         Official-label held-out RUL benchmark with matched full-sequence readout.
     """
     return patchformer_sequence_flow_rul(
-        "FD003", 43, "cfc", false
+        "FD003", 43, "cfc", False
     )
 
 
@@ -530,7 +530,7 @@ def patchformer_sequence_transformer_flow_fd003_s44() -> ScenarioSpec:
         Official-label held-out RUL benchmark with matched full-sequence readout.
     """
     return patchformer_sequence_flow_rul(
-        "FD003", 44, "transformer", true
+        "FD003", 44, "transformer", True
     )
 
 
@@ -542,7 +542,7 @@ def patchformer_sequence_transformer_encoder_fd003_s44() -> ScenarioSpec:
         Official-label held-out RUL benchmark with matched full-sequence readout.
     """
     return patchformer_sequence_flow_rul(
-        "FD003", 44, "transformer", false
+        "FD003", 44, "transformer", False
     )
 
 
@@ -554,7 +554,7 @@ def patchformer_sequence_conformer_flow_fd003_s44() -> ScenarioSpec:
         Official-label held-out RUL benchmark with matched full-sequence readout.
     """
     return patchformer_sequence_flow_rul(
-        "FD003", 44, "conformer", true
+        "FD003", 44, "conformer", True
     )
 
 
@@ -566,7 +566,7 @@ def patchformer_sequence_conformer_encoder_fd003_s44() -> ScenarioSpec:
         Official-label held-out RUL benchmark with matched full-sequence readout.
     """
     return patchformer_sequence_flow_rul(
-        "FD003", 44, "conformer", false
+        "FD003", 44, "conformer", False
     )
 
 
@@ -578,7 +578,7 @@ def patchformer_sequence_cfc_flow_fd003_s44() -> ScenarioSpec:
         Official-label held-out RUL benchmark with matched full-sequence readout.
     """
     return patchformer_sequence_flow_rul(
-        "FD003", 44, "cfc", true
+        "FD003", 44, "cfc", True
     )
 
 
@@ -590,5 +590,5 @@ def patchformer_sequence_cfc_encoder_fd003_s44() -> ScenarioSpec:
         Official-label held-out RUL benchmark with matched full-sequence readout.
     """
     return patchformer_sequence_flow_rul(
-        "FD003", 44, "cfc", false
+        "FD003", 44, "cfc", False
     )
