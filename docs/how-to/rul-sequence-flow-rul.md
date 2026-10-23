@@ -107,6 +107,22 @@ without a trustworthy score, does not pick `last.ckpt`, and never consults
 RUL test labels. Do not manually mix checkpoints trained from different
 encoder or endpoint preparation settings.
 
+## Overfitting and generalization diagnostics
+
+An additional controlled CfC study measures **dropout-disabled full-epoch**
+training/validation MSE and per-engine validation errors. It compares
+width 64/128 and dropout 0.1/0.3 in matched encoder-only/flow-aware arms
+and optionally repeats with readout seeds 42, 43, and 44.
+
+```bash
+git pull
+bash scripts/launch_cfc_generalization_fd001.sh
+```
+
+See [CfC generalization study](rul-cfc-generalization.md) for setup and
+the validation-only model-selection report. The pretrained CfC/DPAN
+weights remain frozen and unchanged throughout these readout ablations.
+
 ## FD003 and seeds 43/44
 
 The repository registers 36 scenarios: three architectures × two
