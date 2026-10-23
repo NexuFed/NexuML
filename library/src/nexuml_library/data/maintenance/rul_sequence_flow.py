@@ -61,7 +61,6 @@ class AutoPatchFormerSequenceFlowRULFeatures(DataSourceDefinition):
             Engine-disjoint original train/val/test RUL labels and [L,2D] inputs.
 
         Raises:
-            FileNotFoundError: If upstream frozen embeddings or Flow are missing.
             ValueError: If upstream provenance or dimensionality differs.
         """
         sensors = (
