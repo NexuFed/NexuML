@@ -48,16 +48,17 @@ export default defineConfig({
       editLink: { baseUrl: `https://github.com/NexuFed/NexuML/edit/${revision}/docs/` },
       sidebar: target === 'versioned' ? [
         { label: 'Start here', items: [
-          { label: 'Overview', slug: '' }, { slug: 'start' }, { slug: 'start/install' },
+          { label: 'Overview', slug: '' }, { slug: 'start/install' },
           { slug: 'start/first-run' }, { slug: 'studio' }, { slug: 'tutorials' },
           { label: 'Optional CIFAR example', slug: 'start/cifar-resnet' },
         ] },
         { label: 'Use NexuML', collapsed: true, items: [
-          { label: 'Overview', slug: 'how-to' },
-          { label: 'Run experiments', items: [
+          { label: 'Experiments', items: [
             { slug: 'how-to/run-scenarios' }, { slug: 'how-to/data-loading' },
-            { slug: 'how-to/tracking' }, { slug: 'how-to/checkpoints' },
+            { slug: 'how-to/auto-batch-size' }, { slug: 'how-to/tracking' },
+            { slug: 'explanation/diagrams' }, { slug: 'how-to/checkpoints' },
             { slug: 'how-to/evaluate' }, { slug: 'how-to/tune' },
+            { slug: 'how-to/autoresearch' },
           ] },
           { label: 'Export and reuse', collapsed: true, items: [
             { slug: 'how-to/export-dataset' }, { slug: 'how-to/export' },
@@ -67,22 +68,17 @@ export default defineConfig({
             { slug: 'how-to/custom-data-source' }, { slug: 'how-to/custom-eval-algorithm' },
             { slug: 'how-to/scenario-file' },
           ] },
-          { label: 'Execution and scaling', collapsed: true, items: [
-            { slug: 'how-to/training-backends' }, { slug: 'how-to/auto-batch-size' },
-            { slug: 'how-to/training-backends/jobs' }, { slug: 'how-to/training-backends/ray' },
-            { slug: 'how-to/deploy' },
-          ] },
-          { label: 'Studio hosting and API', collapsed: true, items: [
+          { label: 'Execution and Studio', collapsed: true, items: [
+            { slug: 'how-to/training-backends' }, { slug: 'how-to/training-backends/jobs' },
+            { slug: 'how-to/training-backends/ray' }, { slug: 'how-to/deploy' },
             { slug: 'how-to/local-api' }, { slug: 'how-to/studio-hosting' },
           ] },
-          { label: 'Automate research', collapsed: true, items: [{ slug: 'how-to/autoresearch' }] },
         ] },
         { label: 'Understand NexuML', collapsed: true, items: [
           { slug: 'explanation/why-nexuml' }, { slug: 'explanation/architecture' },
-          { slug: 'explanation/diagrams' },
         ] },
         { label: 'Reference', collapsed: true, items: [
-          { slug: 'reference' }, { slug: 'reference/cli' }, { slug: 'reference/scenario-spec' },
+          { slug: 'reference/cli' }, { slug: 'reference/scenario-spec' },
           { slug: 'reference/registry' }, { slug: 'reference/backends' },
           { slug: 'reference/environment' }, { slug: 'reference/tuning-file' }, pydocsSidebarGroup,
         ] },

@@ -140,21 +140,18 @@ Only use sources you trust. Validation and separate processes do not sandbox the
 
 ## Outputs and next tasks
 
-There is no universal output directory tree. Callback settings determine checkpoints;
-`LoggingSpec` controls scalar/diagram outputs; configured exports package the live model;
-`--artifact-dir` captures trusted-file provenance. Read reported paths and
-[root resolution](/reference/environment/). A plain scenario does not implicitly enable
-all of these outputs.
+A run has no universal output tree: callback settings control checkpoints,
+`LoggingSpec` controls metrics/diagrams, and exports require explicit configuration.
+Read reported paths and [environment-root rules](/reference/environment/).
 
-- [Checkpoints](/how-to/checkpoints/): create, resume full trainer state, or reuse weights.
-- [Dataset export](/how-to/export-dataset/): `export-dataset` writes raw/processed data, not a model.
-- [Model export](/how-to/export/): export an actual checkpoint or request a live trained package.
-- [Tuning](/how-to/tune/): `tune` runs registered or trusted-file search, not YAML.
-- `nexuml smoke my-autoencoder --max-epochs 1` exercises registered recipe resolution,
-  build, training, export, reload, and inference. Expect `Smoke test PASSED!`, configuration
-  under `configs/`, and the reported export path under the logs root. It has its own
-  command options; do not assume `train` overrides apply to `smoke`.
-- [Execution modes](/how-to/training-backends/): placement changes through `ScenarioSpec.execution`,
-  while the command and lifecycle remain the same.
+- [Checkpoints](/how-to/checkpoints/) save/resume or selectively reuse weights;
+  [tracking](/how-to/tracking/) persists curves.
+- [Dataset export](/how-to/export-dataset/) writes data, not a model.
+  [Model export](/how-to/export/) packages an actual checkpoint or live trained pipeline.
+- [Tuning](/how-to/tune/) and [execution modes](/how-to/training-backends/)
+  reuse the scenario with their own supported options.
+- `nexuml smoke my-autoencoder --max-epochs 1` runs registered recipe resolution,
+  build, training, export, reload, and inference. Expect `Smoke test PASSED!`;
+  smoke flags are not train flags.
 
-For exact supported options/defaults, use the [generated CLI reference](/reference/cli/).
+See [generated CLI options](/reference/cli/) for exact defaults.

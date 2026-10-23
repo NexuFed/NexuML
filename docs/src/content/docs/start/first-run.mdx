@@ -3,11 +3,11 @@ title: Your first CPU run
 description: Discover, resolve, build, and train the synthetic autoencoder for one epoch on CPU.
 ---
 
-**Goal:** complete a small reconstruction experiment and inspect real results.
-**Prerequisites:** [NexuML with the base library installed](/start/install/), an activated
-environment, and a writable working directory. No GPU, dataset download, checkout,
-or optional training/data backend is needed. [Studio](/studio/#first-training-run)
-offers the same example without CLI use.
+**Goal:** complete a small reconstruction experiment and inspect its results.
+**Prerequisites:** [NexuML with the base library installed](/start/install/),
+an activated environment, and a writable directory. No GPU, dataset download,
+or repository checkout is needed. [Studio](/studio/#first-training-run) runs
+the same example through a browser.
 
 ## 1. Discover the recipe
 
@@ -15,9 +15,9 @@ offers the same example without CLI use.
 nexuml registry list scenarios
 ```
 
-Find `synthetic-linear-ae-reconstruction`. This is the **registered recipe key**,
-not a file path. Its Python recipe composes synthetic vectors, a linear encoder/decoder,
-reconstruction loss, and evaluation. Data is generated locally.
+Find `synthetic-linear-ae-reconstruction`. This is a **registered recipe key**,
+not a file path. It generates 128-feature vectors locally and composes
+an encoder, decoder, reconstruction loss, and evaluation.
 
 ## 2. Resolve an explicit configuration
 
@@ -25,14 +25,10 @@ reconstruction loss, and evaluation. Data is generated locally.
 nexuml resolve synthetic-linear-ae-reconstruction --output configs/first-run.yaml
 ```
 
-Expect `Resolved config saved to configs/first-run.yaml`. Open that file: it contains
-validated parameters and stable component identities, not live modules. Resolution
-also compiles the graph; it does not train it.
-
-The configuration's scenario name is `synthetic_linear_ae_reconstruction`.
-The recipe key, scenario name, and chosen filename need not be identical.
-The recipe's normal epoch/device defaults remain in the resolved file; the next
-training command explicitly overrides them for this run only.
+Inspect the generated YAML. It contains validated parameters and stable component
+identities, not runtime objects. The scenario name is
+`synthetic_linear_ae_reconstruction`; recipe key, name, and filename may differ.
+Resolution compiles the graph but does not train it.
 
 ## 3. Build the saved pipeline
 
@@ -40,16 +36,10 @@ training command explicitly overrides them for this run only.
 nexuml build configs/first-run.yaml
 ```
 
-Expect `Pipeline compiled successfully!`, stages `Encoder`, `Decoder`, `Loss`,
-the loss key `reconstruction_loss`, and reported input sizes. The compiler restores
-typed definitions and checks their TensorDict routing with shape propagation.
-The vectors have 128 features; the encoder produces an 8-value latent representation,
-and the decoder reconstructs 128 features.
-
-`build` reports the summary above, not a guaranteed per-layer parameter table.
-Shapes/parameters can also be inspected through the compiled pipeline and configured
-[diagram export](/explanation/diagrams/). This recipe has **no configured diagram**,
-so this command does not create one.
+Expect `Pipeline compiled successfully!`, stages `Encoder`, `Decoder`, and `Loss`,
+and the `reconstruction_loss` key. Shape propagation checks a 128-feature input,
+8-value latent representation, and 128-feature reconstruction. This recipe does
+not enable diagram output; see [pipeline diagrams](/explanation/diagrams/).
 
 ## 4. Train for one CPU epoch
 
@@ -58,34 +48,25 @@ nexuml train --config configs/first-run.yaml --max-epochs 1 \
   -O training.accelerator=cpu -O training.devices=1
 ```
 
-The override table should show `cpu` and `1`. Lightning runs fit, validation,
-post-train fitting where needed, and test. Expect the one-epoch stopping message,
-validation/test loss output, then `Execution finished: succeeded` and test results.
-A one-epoch run proves the workflow, not model convergence or useful reconstruction quality.
+The overrides apply to this invocation, not the saved YAML. Lightning runs
+fit, validation, post-train fitting if needed, and test. Expect
+`Execution finished: succeeded` and test results. One epoch verifies the workflow,
+not model convergence.
 
 ## Inspect what was produced
 
-- `configs/first-run.yaml` is the explicit, durable configuration artifact. CLI overrides
-  do not rewrite it; preserve the command with your results.
-- Metrics are printed in the terminal. The synthetic recipe does not configure
-  TensorBoard, MLflow, a model-package export, or a Mermaid diagram.
-- The session's default root is `.experiments/`, honoring `NEXUML_LOGS_ROOT`.
-  Lightning can create its default checkpoint there, but do not assume a filename,
-  a best/last policy, or an artifact layout across installations. To find files that
-  actually exist in the default location:
+- `configs/first-run.yaml` is your saved, reproducible configuration; keep the CLI
+  overrides alongside results.
+- Metrics appear in the terminal. This recipe does not configure MLflow,
+  TensorBoard, model export, or a Mermaid diagram.
+- Session files, if created, live under `.experiments/` or `NEXUML_LOGS_ROOT`.
+  Check reported paths; do not assume a checkpoint name or output layout.
 
-  ```bash
-  python -c "import os; from pathlib import Path; root = Path(os.environ.get('NEXUML_LOGS_ROOT', '.')) / '.experiments'; print(root.resolve()); print('\n'.join(str(p) for p in root.rglob('*') if p.is_file()))"
-  ```
-
-For repeatable checkpoint selection, configure [checkpoints](/how-to/checkpoints/);
-for persisted curves, configure [tracking](/how-to/tracking/). Neither is required
-for this first successful run.
+Persist curves with [tracking](/how-to/tracking/) or set a repeatable
+[checkpoint policy](/how-to/checkpoints/) when needed.
 
 ## Next
 
-[Create your own scenario](/how-to/run-scenarios/#define-a-recipe) or follow the
-[external tutorials](/tutorials/). Try [CIFAR ResNet](/start/cifar-resnet/) when ready
-for downloads and optional integrations. To distribute a **trained** model, follow
-[export and reload](/how-to/export/): use an actual checkpoint or a configured live
-train-package export, never silently package freshly initialized weights.
+[Build a scenario](/how-to/run-scenarios/#define-a-recipe), follow the
+[external tutorials](/tutorials/), or try the [optional CIFAR example](/start/cifar-resnet/).
+To distribute a **trained** model, [export an actual checkpoint or live trained package](/how-to/export/).
