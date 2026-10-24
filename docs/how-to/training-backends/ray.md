@@ -75,9 +75,10 @@ see [native jobs](jobs.md). Ray Train remains `RayClusterExecution` (`ray-cluste
 Select `RayJobsSDKExecution` to submit the **whole normal CLI process** remotely
 through Ray's `JobSubmissionClient`. Unlike `RayClusterExecution`, this is an
 asynchronous submission backend, not a Ray Train worker group. It supports the
-single-process RL/Isaac lifecycle without enabling distributed RL. The registered
-routes are implemented; remote lifecycle qualification remains pending. These
-recipes alone are not runtime evidence.
+single-process RL/Isaac lifecycle without enabling distributed RL. Vector-only
+CartPole has exercised top-level remote train, partial checkpoint continuation,
+checkpoint export and fresh evaluation. This bounded CPU control does not qualify
+native simulators, graphics, viewers, convergence or every worker profile.
 
 ### Python defaults: no profile file required
 
@@ -186,8 +187,8 @@ transported. Set unique
 absolute `exports[].output` paths on durable storage. `NEXUML_LOGS_ROOT` redirects
 relative logs, **not policy exports**. Nothing infers persistent output storage.
 
-Public lifecycle routes (**remote qualification pending**) use
-trusted submitter configs selecting `ray-jobs-sdk` and worker-accessible paths:
+Public lifecycle routes use trusted submitter configs selecting `ray-jobs-sdk`
+and worker-accessible paths:
 
 ```bash
 nexuml train --config CASE_JOB.yaml
@@ -212,6 +213,65 @@ evaluation semantics against the checkpoint on the worker before native allocati
 Changed semantics fail rather than silently replacing the saved run. Saved scenario
 metadata remains authoritative, including its output paths: choose isolated durable
 paths before the original training run. A resume does not implicitly relocate them.
+
+### Non-graphics lifecycle control
+
+For a vector-only CPU control, keep `training.accelerator=cpu`, CPU collector
+devices and recording disabled. The qualification campaign still reserves **one
+whole GPU on `pool_gpu_workers`**, including CPU controls; the generic zero-GPU
+examples above are not permitted for that campaign. Run dependent stages serially.
+The locked worker setup needs `library`, `ray` and `reinforcement`; the exercised
+test profiles also included `dev` and `api`. No display or graphics extras are
+required by the vector-only task.
+
+Use separate trusted execution configs for each job's private guard/log root while
+keeping the saved training, policy and evaluation semantics identical for resume.
+The continuation still writes to the original checkpoint destinations. An export
+gets its own new durable output directory, not a reused policy directory:
+
+```bash
+export RAY_API_SERVER_ADDRESS=https://ray.example.org
+nexuml train --config TRAIN_JOB.yaml
+# After an intentional partial stop and confirmed terminal status:
+nexuml train --config RESUME_JOB.yaml --trainer-checkpoint "$WORKER_PARTIAL_CHECKPOINT"
+# Wait for continuation to succeed before exporting its final checkpoint.
+nexuml export --config EXPORT_JOB.yaml --checkpoint "$WORKER_FINAL_CHECKPOINT" --output "$WORKER_POLICY"
+# EVALUATE_JOB.yaml sets policy_evaluation.episodes=2 and disables video.
+nexuml evaluate "$WORKER_POLICY" --config EVALUATE_JOB.yaml --device cpu
+```
+
+These are separate asynchronous submissions. For each returned ID, use the same
+approved endpoint and CA to observe terminal status and retain its logs before
+starting the dependent command:
+
+```python
+from ray.job_submission import JobSubmissionClient
+
+client = JobSubmissionClient("https://ray.example.org", verify="/path/to/ca.pem")
+status = client.get_job_status(job_id)
+logs = client.get_job_logs(job_id)
+# Only cancel an ID owned by this attempt:
+# client.stop_job(job_id)
+```
+
+`STOPPED` after an intentional interruption is not training success. Confirm that
+the partial checkpoint is readable on the worker; preserve its bytes across resume.
+After export, match the metadata's checkpoint hash and source physical frames to
+the actual final checkpoint, then verify fresh evaluation reports that frame count
+and the full episode denominator. A successful submission alone proves none of
+these checks. Worker paths need not exist on the submitting machine; they are not
+automatically uploaded or redirected to local files. Omitting remote selection
+continues to use the existing local commands.
+
+The exercised control used the existing stock-Python acceptance guard around both
+locked setup and CLI execution through a trusted `py_executable` override. Its
+`setup_command=None` deliberately prevented an additional unguarded setup command;
+the same locked sync ran inside the guard with explicit private uv settings. It
+retained the 4 GiB physical-disk stop and a wall-time deadline. The SDK backend
+itself still does not add those limits to ordinary submissions.
+
+Graphics-dependent qualification is deferred pending the operator's container
+rebuild, not passed or removed. Do not switch renderers to turn a deferred gate green.
 
 ### Remote dependency setup
 
