@@ -164,7 +164,7 @@ application/native/browser/learning/distribution gates remain unverified before
 the first remote preflight. Old production smoke evidence retains its original
 revision and is not reused as proof of this migration.
 
-## Frozen candidate and first remote blocker
+## Frozen candidate and first remote blocker (superseded diagnosis)
 
 The integrated migration/guard is committed locally as
 `2f51aa4f8ba7bed75b0b353dcacbf53a80372286`, without publication. Its clean source
@@ -200,3 +200,41 @@ this session. Control-plane receipts/logs remain at
 Post-worker-removal retrieval could not be verified from the control host, which
 does not mount that path; no persistence pass is claimed. No retry or subsequent
 acceptance job was submitted. Progress remains **6/36**.
+
+## Plasma-accounting correction and passing base preflight
+
+The user asked to resolve the blocker. Investigation showed that the preflight
+incorrectly charged the entire object-store cap to shared memory even when plasma
+was confirmed on ext4. The previous request for an operator cap reduction is
+superseded; no cluster change or larger memory allowance was necessary.
+
+Fix `65b9d01b8e823a2d6ef71eb0292cc311d4fb1bb2` records plasma's actual filesystem
+from the raylet's mount table, requiring matching mount namespaces before resolving
+paths. Only confirmed disk backing is excluded from the shared-memory reservation;
+missing, ambiguous, overlay or otherwise unknown backing remains blocked. The 8 GiB
+worker shared-memory envelope, aggregate 10 GB limit and monitored 4 GiB disk floor
+are unchanged. Review confirmed the namespace/overlay protections. The integrated
+hermetic suite passed with 365 tests and 91 subtests, with the same two real-training
+cases reserved for remote execution. Ruff passed. Thirteen previously present
+fixture type diagnostics are unchanged, not suppressed or reported as passing.
+
+Fresh serial GPU-worker preflight `fd56ce6a4fda4e3d9fadac41d2b188c4` succeeded
+on this clean candidate, source identity
+`12f5060793ffa9321cc8fcda2f2fbe10d6f72c4a8ed31a0b3acb7cb4d09136f5`.
+It confirmed locked private setup, matching uploaded source origins, private writable
+durable output, disk-backed plasma and a real job-visible CUDA allocation on an
+RTX 4090 with driver 580.126.20. Worker shared-memory use and shared-memory-backed
+plasma reservations were both zero; the separate disk-backed plasma cap remains
+10,000,000,000 bytes. The unchanged head plasma cap is 1,329,312,153 bytes.
+
+Both `case.json` and `guard.json` were retrieved and verified after the producing
+process exited. Guard exit was zero with no cleanup errors. Evidence is retained
+outside Git at `/tmp/opencode/nexuml-plasma-backed-preflight-20261024/`; the durable
+attempt is
+`/mnt/data/nexuml-qualification/a002a600c94f4619987cd3660d478140/preflight-1c7c2f7ebd084cf9802fadb7919f401f`.
+Post-worker-removal persistence, full regression, installed distributions, native,
+browser, learning and complete recovery gates remain unverified. SO-101 data and
+prepared ROS/Gazebo/display/browser prerequisites remain unresolved. Keep actual
+concurrency one; this preflight is not parallel-capacity qualification. No push,
+infrastructure/image/driver or local-environment change occurred. Progress remains
+**6/36**; only the base resource preflight blocker is resolved.
