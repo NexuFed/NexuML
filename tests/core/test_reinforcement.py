@@ -470,6 +470,7 @@ def test_process_collection_updates_and_closes_workers(tmp_path):
 @pytest.mark.requires_optional("gymnasium")
 @pytest.mark.parametrize("name", ["pendulum-ppo", "cartpole-ppo"])
 def test_cli_discovery_config_train_and_export_checkpoint(name, tmp_path, monkeypatch):
+    monkeypatch.delenv("NEXUML_LOGS_ROOT", raising=False)
     from typer.testing import CliRunner
     from nexuml.cli.main import app
     from nexuml.core.scenario_registry import get_scenario_registry

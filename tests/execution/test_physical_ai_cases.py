@@ -31,7 +31,7 @@ class PhysicalAICasesTest(unittest.TestCase):
         self.source_admission = self.g["_require_current_source"]
         self.module_inventory = self.g["_module_inventory"]
         self.source_identity = self.g["_source_identity"]
-        scratch = tempfile.TemporaryDirectory(prefix="physical-ai-cases-", dir="/tmp/opencode")
+        scratch = tempfile.TemporaryDirectory(prefix="physical-ai-cases-")
         self.addCleanup(scratch.cleanup)
         self.base = Path(scratch.name)
         self.root = self.base / "attempt with spaces; $(not-a-command)"
@@ -58,7 +58,7 @@ class PhysicalAICasesTest(unittest.TestCase):
             os.environ,
             {
                 "CUDA_VISIBLE_DEVICES": "",
-                "TMPDIR": "/tmp/opencode",
+                "TMPDIR": str(self.base),
                 "RAY_JOB_ID": "mock-worker",
             },
         )
@@ -262,10 +262,14 @@ class PhysicalAICasesTest(unittest.TestCase):
 
     def test_current_source_origins_admit_all_source_cases_without_changing_pythonpath(self):
         source, origins = self.source_fixture()
-        stages = {name: mock.Mock() for name in ("_preflight", "_regression", "_recipe")}
+        stages = {
+            name: mock.Mock() for name in ("_preflight", "_regression", "_recipe", "_package")
+        }
         self.patch_globals(**stages)
         with contextlib.chdir(source), mock.patch.dict(os.environ, PYTHONPATH="/prepared/profile"):
-            for case, stage in zip(("preflight", "regression", "recipe"), stages.values()):
+            for case, stage in zip(
+                ("preflight", "regression", "recipe", "package"), stages.values()
+            ):
                 with self.subTest(case=case):
                     self.root = self.base / case
                     self.guarded_root()
@@ -277,10 +281,6 @@ class PhysicalAICasesTest(unittest.TestCase):
                         self.assertTrue(receipt["imports"][module]["source_origin_match"])
                     stage.assert_called_once()
                     self.assertEqual(stage.call_args.args[-1]["PYTHONPATH"], "/prepared/profile")
-            self.root = self.base / "package"
-            self.guarded_root()
-            code, receipt = self.run_case("package")
-            self.assertEqual((code, receipt["gates"]["D"]), (2, "BLOCKED"))
 
     def test_source_admission_rejects_foreign_symlink_files_and_package_roots(self):
         source, origins = self.source_fixture()
@@ -353,7 +353,7 @@ class PhysicalAICasesTest(unittest.TestCase):
         self.g["_gpu_inventory"].assert_not_called()
 
     def test_unprepared_profiles_never_pass(self):
-        for case, gate in (("package", "D"), ("so101", "L"), ("browser", "V"), ("recovery", "R")):
+        for case, gate in (("so101", "L"), ("browser", "V")):
             self.root = self.base / case
             code, receipt = self.run_case(case)
             self.assertEqual(
@@ -375,7 +375,7 @@ class PhysicalAICasesTest(unittest.TestCase):
         with self.assertRaises(FileExistsError):
             self.case("package", self.root, self.config, {})
         (self.root / "policy").rmdir()
-        self.run_case("package")
+        self.run_case("browser")
         original = (self.root / "case.json").read_bytes()
         with self.assertRaises(FileExistsError):
             self.case("package", self.root, self.config, {})
@@ -473,6 +473,27 @@ class PhysicalAICasesTest(unittest.TestCase):
             code, receipt = self.run_case("regression")
         self.assertEqual((code, receipt["regression"]["full_suite_gate"]), (1, "FAIL"))
 
+    def test_static_suite_is_fixed_and_does_not_claim_application_acceptance(self):
+        self.guarded_root()
+        calls = self.fake_launch()
+        with mock.patch.object(
+            self.g["tempfile"], "mkdtemp", return_value=str(self.base / "scratch")
+        ):
+            code, receipt = self.run_case("regression", {"suite": "static"})
+        self.assertEqual(code, 0)
+        self.assertEqual(
+            [stage["name"] for stage in receipt["stages"]],
+            ["lint", "format", "types", "docs", "lock"],
+        )
+        self.assertEqual(calls[0][0], [sys.executable, "-m", "ruff", "check", "."])
+        self.assertEqual(calls[-1][0], ["uv", "lock", "--check"])
+        self.assertEqual(
+            calls[2][0], [sys.executable, "-m", "ty", "check", "--python", sys.executable]
+        )
+        self.assertEqual(receipt["checks"]["static"], "PASS")
+        self.assertEqual(receipt["regression"]["full_suite_gate"], "UNVERIFIED")
+        self.assertTrue(all(value == "UNVERIFIED" for value in receipt["gates"].values()))
+
     def test_stage_refuses_resume_when_descendants_survive(self):
         self.guarded_root()
         self.fake_launch()
@@ -555,7 +576,14 @@ class PhysicalAICasesTest(unittest.TestCase):
         self.g["_recipe"](record, self.root, self.config, {}, {})
         self.assertEqual(
             [stage[0] for stage in stages],
-            ["untrained-export", "partial-train", "resume", "checkpoint-export", "fresh-evaluate"],
+            [
+                "untrained-export",
+                "partial-train",
+                "resume",
+                "checkpoint-export",
+                "fresh-evaluate",
+                "exhausted-resume",
+            ],
         )
         self.assertEqual(stages[1][2], {"interrupt_total": 64})
         self.assertEqual(
@@ -887,7 +915,18 @@ class PhysicalAICasesTest(unittest.TestCase):
         config.model_copy = lambda **kwargs: copy.deepcopy(config)
         config.save = lambda path: path.write_text("mocked yaml")
 
+        class ReinforcementLearning(SimpleNamespace):
+            pass
+
+        training = ReinforcementLearning()
+        training.__dict__.update(vars(config.training))
+        config.training = training
+
         class PolicyEvaluation:
+            @classmethod
+            def model_validate(cls, values):
+                return cls(**values)
+
             def __init__(self, **values):
                 self.__dict__.update(values)
 
@@ -905,6 +944,7 @@ class PhysicalAICasesTest(unittest.TestCase):
                 CallbackSpec=lambda **kw: SimpleNamespace(**kw),
                 ExportSpec=lambda **kw: SimpleNamespace(**kw),
                 PolicyEvaluationSpec=PolicyEvaluation,
+                ReinforcementLearningSpec=ReinforcementLearning,
             ),
             "nexuml.execution.definitions": SimpleNamespace(LocalExecution=LocalExecution),
         }
@@ -960,6 +1000,10 @@ class PhysicalAICasesTest(unittest.TestCase):
         self.assertEqual(config.training.evaluation.episodes, 0)
         config.name = "unapproved-factory"
         with self.assertRaisesRegex(self.g["Blocked"], "21 matrix"):
+            self.g["_prepare_recipe"](self.config, self.root, {})
+        config.name = "cartpole-ppo"
+        config.training = SimpleNamespace()
+        with self.assertRaisesRegex(self.g["Blocked"], "reinforcement learning"):
             self.g["_prepare_recipe"](self.config, self.root, {})
 
     def test_partial_copy_is_readable_nonfinal_immutable_and_has_real_counters(self):

@@ -6,12 +6,16 @@ from nexuml.core.discovery import eval_algorithm
 import logging
 import math
 from pathlib import Path
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
 import torch
 import torch.nn.functional as F
 from tensordict import TensorDict
+
+if TYPE_CHECKING:
+    from tensordict.base import CompatibleType
+    from tensordict.utils import NestedKey
 
 from nexuml.evaluation.algorithm import EvalAlgorithm
 from nexuml.core.components import (
@@ -88,7 +92,7 @@ class _ReconstructionVisualizerRuntime(EvalAlgorithm):
 
         original = cast(torch.Tensor, x[self.feature_key]).detach().cpu()
         reconstructed = cast(torch.Tensor, x[self.reconstructed_key]).detach().cpu()
-        payload: dict[str, torch.Tensor] = {
+        payload: dict[NestedKey, CompatibleType] = {
             "feature": original,
             "reconstructed": reconstructed,
         }

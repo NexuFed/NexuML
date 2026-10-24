@@ -20,6 +20,19 @@ PROFILE = Path("configs/execution/ray.yaml")
 runner = CliRunner()
 
 
+def test_profile_survives_ray_upload_ignore_matching():
+    pytest.importorskip("ray")
+    from ray._private.thirdparty.pathspec import PathSpec
+
+    patterns = Path(".gitignore").read_text().splitlines()
+    spec = PathSpec.from_lines("gitwildmatch", patterns)
+    # Ray walks directory paths without trailing slashes, unlike git's traversal.
+    for path in ("configs", "configs/execution", str(PROFILE)):
+        assert not spec.match_file(path)
+    assert spec.match_file("configs/private.yaml")
+    assert spec.match_file("configs/execution/private.yaml")
+
+
 @pytest.fixture(autouse=True)
 def forbid_unmocked_training_and_submission(monkeypatch):
     import nexuml.core.compiler as compiler
@@ -303,6 +316,7 @@ def test_profile_reaches_sdk_without_reentering_profile_selection(monkeypatch):
 
     monkeypatch.setattr(main, "app", assert_remote_config)
     scenario = ScenarioSpec(name="test", execution=load_ray_job_profile(PROFILE))
+    assert isinstance(scenario.execution, RayJobsSDKExecution)
     for _ in range(2):
         assert submit_ray_job(scenario) == "ray_profile"
         submitted = calls[-1]
@@ -393,6 +407,7 @@ def test_documented_cartpole_submission_keeps_setup_and_outputs_explicit(monkeyp
     result = runner.invoke(main.app, shlex.split(command.replace("\\\n", ""))[1:])
     assert result.exit_code == 0, result.output
     scenario = ResolvedConfig.from_scenario(submitted[0])
+    assert isinstance(scenario.execution, RayJobsSDKExecution)
     assert scenario.execution.setup_command == [
         "uv",
         "sync",
@@ -409,4 +424,9 @@ def test_documented_cartpole_submission_keeps_setup_and_outputs_explicit(monkeyp
     assert scenario.execution.entrypoint_resources == {"pool_gpu_workers": 1}
     assert scenario.execution.runtime_env["env_vars"]["NEXUML_LOGS_ROOT"] == "/mnt/data/doc-test"
     assert scenario.exports[0].output == "/mnt/data/doc-test/policy"
+    from nexuml_library.environments.isaaclab import IsaacLabEnvironment
+
+    assert scenario.interaction is not None
+    assert isinstance(scenario.interaction.environment, IsaacLabEnvironment)
+    assert scenario.interaction.environment.viewer is not None
     assert scenario.interaction.environment.viewer.port == 8081

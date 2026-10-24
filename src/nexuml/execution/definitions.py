@@ -46,7 +46,9 @@ class LocalExecution(ExecutionBackendDefinition):
             checkpoint = kwargs.get("checkpoint")
             return _export_local(
                 scenario,
-                output=Path(kwargs["output"]),
+                output=Path(
+                    kwargs["output"] if kwargs.get("output") is not None else "exported_model"
+                ),
                 checkpoint=Path(checkpoint) if checkpoint is not None else None,
                 export_kind=kwargs.get("export_kind", "train_package"),
             )

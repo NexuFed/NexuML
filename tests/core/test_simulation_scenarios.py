@@ -71,6 +71,33 @@ def test_missing_mujoco_reports_the_simulator_extra(factory, monkeypatch):
 
 
 @pytest.mark.requires_simulator
+def test_visual_policy_uses_real_nonuniform_rgb_inputs():
+    spec = visual_cartpole_ppo()
+    definition = spec.interaction.environment
+    runtime = definition.build(EnvironmentBuildContext(purpose="eval", device="cpu", num_envs=1))
+    try:
+        observation = runtime.reset(seed=0)
+        assert set(observation.keys()) == {"image"}
+        image = observation["image"]
+        assert image.shape == (3, 32, 32) and image.dtype == torch.uint8
+        assert image.unique().numel() > 1  # Nonuniform; downsampled CartPole may be binary.
+        policy = CompiledPolicy.from_pipeline(compile(spec), definition.describe())
+        received = []
+        hook = policy.pipeline.register_forward_pre_hook(
+            lambda module, args: received.append(args[0]["image"].clone())
+        )
+        try:
+            with torch.no_grad():
+                action = policy(observation)
+            assert action["action"].numel() == 1
+            assert len(received) == 1 and torch.equal(received[0], image.unsqueeze(0))
+        finally:
+            hook.remove()
+    finally:
+        runtime.close()
+
+
+@pytest.mark.requires_simulator
 @pytest.mark.requires_optional("torchrl")
 @pytest.mark.requires_optional("pygame")
 def test_visual_policy_smoke(tmp_path, monkeypatch):

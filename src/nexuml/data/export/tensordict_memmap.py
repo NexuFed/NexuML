@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 import torch
@@ -109,5 +109,5 @@ class TensorDictMemmapBackend(ExportBackend):
     @staticmethod
     def load_sample(export_dir: Path, index: int) -> dict[str, torch.Tensor]:
         storage = TensorDict.load_memmap(export_dir / "data")
-        sample: TensorDict = storage[index]
+        sample = cast(TensorDict, storage[index])
         return {str(key): torch.as_tensor(value) for key, value in sample.items()}

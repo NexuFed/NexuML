@@ -1,6 +1,7 @@
 """Run with the selected environment: python -m agent_demo.checks."""
 
 import math
+from typing import cast
 
 import torch
 from pydantic import ValidationError
@@ -35,7 +36,7 @@ def main():
     assert len(dataset) == 8 and x.batch_size == torch.Size([])
     assert y is not None
     assert x["features"].shape == (4,) and y["target"].shape == (4,)
-    torch.testing.assert_close(y["target"], 2 * x["features"])
+    torch.testing.assert_close(y["target"], 2 * cast(torch.Tensor, x["features"]))
     torch.testing.assert_close(
         dataset[0][0]["features"], PairedVectors(samples=8).build()[0][0]["features"]
     )

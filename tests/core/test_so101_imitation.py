@@ -20,6 +20,7 @@ from tensordict import TensorDict
 from nexuml.core.config import ResolvedConfig
 from nexuml.core.types import TrainingSpec
 from nexuml.interaction.runtime import InteractionStep
+from nexuml_library.action_adapters.adapters import DirectActionAdapter
 from nexuml_library.data.lerobot import LeRobotDataSource
 from nexuml_library.environments._isaaclab_so101 import GOALS, HOME, TARGET_SCALE
 from nexuml_library.environments.isaaclab import IsaacLabEnvironment
@@ -127,6 +128,7 @@ def test_scenario_reuses_supervised_layers_and_explicit_actor_contract(receipt_r
     assert scenario.training.lr == 0.01 and scenario.training.max_epochs == 100
     assert scenario.training.seed == 20 and scenario.training.deterministic
     assert scenario.data.input_shapes == {"observation": [15]}
+    assert scenario.interaction is not None
     assert scenario.data.input_contracts == scenario.interaction.environment.describe().observations
     dataset = scenario.data.datasets[0]
     assert dataset.split_type == "keep"
@@ -134,10 +136,14 @@ def test_scenario_reuses_supervised_layers_and_explicit_actor_contract(receipt_r
     assert tuple(map(len, dataset.source.split_episodes.values())) == (48, 12, 12)
     assert dataset.source.input_keys == ("observation",)
     actor = scenario.pipeline.stages["Actor"][0]
+    assert isinstance(actor.component, LatentRegressionHead)
     assert actor.component.num_outputs == 5 and actor.component.hidden_dims == []
     assert actor.keys_in == ["observation"] and actor.keys_out == ["predicted_action"]
     assert scenario.pipeline.stages["Loss"][0].label_key == "action"
+    assert scenario.policy is not None
+    assert isinstance(scenario.policy.action_adapter, DirectActionAdapter)
     assert scenario.policy.action_adapter.source_key == "predicted_action"
+    assert scenario.policy_evaluation is not None
     assert scenario.policy_evaluation.episodes == 60
     assert scenario.policy_evaluation.seed == 10000
     assert ResolvedConfig.from_scenario(scenario).to_scenario() == scenario
@@ -157,8 +163,11 @@ def test_authored_handoff_fixture_matches_the_compiled_reference(receipt_root):
     )
     recipe = so101_behavior_cloning(str(receipt_root))
     manifest = local_fit_manifest(recipe, compile(recipe).state_dict())
+    assert recipe.interaction is not None
+    assert isinstance(recipe.interaction.environment, IsaacLabEnvironment)
     contract = recipe.interaction.environment.describe()
     assert fixture["trainable_tensors"] == manifest["tensors"]
+    assert contract.actions["action"].physical is not None
     assert fixture["action"]["joints"] == list(contract.actions["action"].physical.joints)
     assert fixture["action"]["control_period_s"] == contract.control_period_s
     assert fixture["action"]["scale_rad"] == TARGET_SCALE
@@ -835,6 +844,7 @@ def test_synthetic_recipe_materializes_without_native_allocation(synthetic_lerob
     monkeypatch.setattr(IsaacLabEnvironment, "build", forbidden)
     scenario = so101_behavior_cloning(str(synthetic_lerobot))
     runtime = create_runtime_artifacts(scenario)
+    assert runtime.data_module is not None
     runtime.data_module.setup("fit")
     x, y = next(iter(runtime.data_module.train_dataloader()))
     output, _ = runtime.pipeline(x, y)
@@ -842,6 +852,7 @@ def test_synthetic_recipe_materializes_without_native_allocation(synthetic_lerob
     assert torch.isfinite(output["imitation_loss"]).all()
     output["imitation_loss"].mean().backward()
     assert all(parameter.grad is not None for parameter in runtime.pipeline.parameters())
+    assert runtime.policy is not None
     assert runtime.policy.pipeline is runtime.pipeline
 
 
@@ -927,6 +938,7 @@ def test_clean_package_replay_plumbing_with_synthetic_runtime(
     from nexuml.training.lightning import create_runtime_artifacts
 
     runtime = create_runtime_artifacts(so101_behavior_cloning(str(synthetic_lerobot)))
+    assert runtime.policy is not None
     package = export_package(runtime.policy, tmp_path / "policy")
     calls = []
     count = 0
@@ -967,6 +979,7 @@ def test_complete_episode_policy_inference_needs_no_data_or_training_imports(
     from nexuml.training.lightning import create_runtime_artifacts
 
     runtime = create_runtime_artifacts(so101_behavior_cloning(str(synthetic_lerobot)))
+    assert runtime.policy is not None
     package = export_package(runtime.policy, tmp_path / "portable")
     code = """
 import importlib.abc, sys, torch

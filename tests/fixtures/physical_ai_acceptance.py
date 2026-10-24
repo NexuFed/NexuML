@@ -7,6 +7,7 @@ Importing this file is stdlib-only; native runtimes are never imported here.
 from __future__ import annotations
 
 import ast
+from contextlib import ExitStack, contextmanager
 import hashlib
 import importlib.metadata
 import importlib.util
@@ -557,10 +558,112 @@ def _preflight(record, root, options, env):
     record["gpu"]["nvidia_smi_rows"] = (root / "gpu-driver.log").read_text().splitlines()
 
 
+def _package(record, root, options, env):
+    import runpy
+
+    profile = runpy.run_path(str(Path(__file__).with_name("physical_ai_distribution.py")))
+    profile["run_package"](record, root, env, _stage)
+
+
+@contextmanager
+def _open_recovery_file(source_fd, relative):
+    if relative.is_absolute() or not relative.parts or any(part == ".." for part in relative.parts):
+        raise AssertionError("recovery file must stay under its source attempt")
+    with ExitStack() as owned:
+        directory = source_fd
+        for part in relative.parts[:-1]:
+            directory = os.open(
+                part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=directory
+            )
+            owned.callback(os.close, directory)
+        descriptor = os.open(
+            relative.name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=directory
+        )
+        owned.callback(os.close, descriptor)
+        if not stat.S_ISREG(os.fstat(descriptor).st_mode):
+            raise AssertionError("recovery accepts regular artifact files only")
+        stream = owned.enter_context(os.fdopen(descriptor, "rb", closefd=False))
+        yield stream
+
+
+def _recovery(record, root, options, env):
+    source = Path(options.get("source_attempt", ""))
+    if (
+        not source.is_absolute()
+        or source.parent.parent != ATTEMPT_BASE
+        or not re.fullmatch(r"[0-9a-f]{32}", source.parent.name)
+        or not re.fullmatch(r"(?:recipe|package|preflight|regression)-[0-9a-f]{32}", source.name)
+        or source == root
+    ):
+        raise Blocked("recovery requires a distinct previous qualification attempt")
+    for name in ("source_case_sha256", "source_guard_sha256"):
+        if not re.fullmatch(r"[0-9a-f]{64}", options.get(name, "")):
+            raise Blocked("recovery requires previously retained case and guard hashes")
+    if source.resolve(strict=True) != source:
+        raise Blocked("recovery source must not contain symlinks")
+    with ExitStack() as owned:
+        source_fd = os.open(ATTEMPT_BASE, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        owned.callback(os.close, source_fd)
+        for part in source.relative_to(ATTEMPT_BASE).parts:
+            source_fd = os.open(
+                part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=source_fd
+            )
+            owned.callback(os.close, source_fd)
+        receipts = []
+        for name, key in (
+            ("case.json", "source_case_sha256"),
+            ("guard.json", "source_guard_sha256"),
+        ):
+            with _open_recovery_file(source_fd, Path(name)) as stream:
+                data = stream.read()
+            if hashlib.sha256(data).hexdigest() != options[key]:
+                raise AssertionError("retained source receipt identity differs")
+            receipts.append(json.loads(data))
+        previous, guard = receipts
+        if (
+            previous.get("attempt_root") != str(source)
+            or previous.get("status") != "PASS"
+            or previous.get("exit_code") != 0
+            or guard.get("exit_code") != 0
+            or guard.get("child_returncode") != 0
+            or guard.get("errors") != []
+        ):
+            raise AssertionError("source attempt did not finish successfully with owned cleanup")
+        artifacts = previous.get("artifacts", [])
+        if not artifacts:
+            raise AssertionError("source attempt retained no artifact inventory")
+        for artifact in artifacts:
+            path = Path(artifact["path"])
+            if not path.is_relative_to(source) or path.resolve(strict=True) != path:
+                raise AssertionError("retained artifact path escaped its source attempt")
+            with _open_recovery_file(source_fd, path.relative_to(source)) as stream:
+                if (
+                    os.fstat(stream.fileno()).st_size != artifact["bytes"]
+                    or hashlib.file_digest(stream, "sha256").hexdigest() != artifact["sha256"]
+                ):
+                    raise AssertionError(
+                        "retained artifact identity differs from the producing attempt"
+                    )
+    record["checks"]["durable_retrieval"] = "PASS"
+    record["recovery"] = {
+        "source_attempt": str(source),
+        "source_case_sha256": options["source_case_sha256"],
+        "source_guard_sha256": options["source_guard_sha256"],
+        "source_tree_sha256": previous.get("source_tree_sha256"),
+        "source_worker": previous["allocation"]["hostname"],
+        "reader_worker": record["allocation"]["hostname"],
+        "verified_artifacts": len(artifacts),
+    }
+    record["gate_scope"]["R"] = (
+        "durable receipts/artifacts verified; worker removal needs control-plane evidence; "
+        "other recovery paths UNVERIFIED"
+    )
+
+
 def _regression(record, root, options, env):
     suite = options.get("suite", "full")
-    if suite not in {"full", "focused"}:
-        raise Blocked("suite must be the fixed full or focused inventory")
+    if suite not in {"full", "focused", "static"}:
+        raise Blocked("suite must be the fixed full, focused or static inventory")
     for tier in ("SIMULATOR", "SYSTEM", "HARDWARE", "DATA"):
         env[f"NEXUML_RUN_{tier}_TESTS"] = "0"
     env.update(CUDA_VISIBLE_DEVICES="", TMPDIR="/tmp/ray")
@@ -591,6 +694,28 @@ def _regression(record, root, options, env):
             | {f"NEXUML_RUN_{tier}_TESTS" for tier in ("SIMULATOR", "SYSTEM", "HARDWARE", "DATA")}
         },
     }
+    if suite == "static":
+        for name, command in (
+            ("lint", [sys.executable, "-m", "ruff", "check", "."]),
+            ("format", [sys.executable, "-m", "ruff", "format", "--check", "."]),
+            ("types", [sys.executable, "-m", "ty", "check", "--python", sys.executable]),
+            (
+                "docs",
+                [
+                    sys.executable,
+                    "-m",
+                    "mkdocs",
+                    "build",
+                    "--strict",
+                    "--site-dir",
+                    str(root / "site"),
+                ],
+            ),
+            ("lock", ["uv", "lock", "--check"]),
+        ):
+            _stage(record, name, command, env)
+        record["checks"]["static"] = "PASS"
+        return
     _stage(record, "pytest", argv, env)
     record["regression"]["full_suite_gate"] = "PASS" if suite == "full" else "UNVERIFIED"
     # Raw pytest failure output stays in the private log, never in control-plane stdout.
@@ -598,7 +723,12 @@ def _regression(record, root, options, env):
 
 def _prepare_recipe(config_path, root, options):
     from nexuml.core.config import ResolvedConfig
-    from nexuml.core.types import CallbackSpec, ExportSpec, PolicyEvaluationSpec
+    from nexuml.core.types import (
+        CallbackSpec,
+        ExportSpec,
+        PolicyEvaluationSpec,
+        ReinforcementLearningSpec,
+    )
     from nexuml.execution.definitions import LocalExecution
 
     if not config_path.is_file():
@@ -606,6 +736,8 @@ def _prepare_recipe(config_path, root, options):
     config = ResolvedConfig.load(config_path)
     if config.name not in RECIPES or options.get("recipe", config.name) != config.name:
         raise Blocked("recipe must match one of the fixed 21 matrix recipe names")
+    if not isinstance(config.training, ReinforcementLearningSpec):
+        raise Blocked("recipe requires reinforcement learning training settings")
     if not isinstance(config.execution, LocalExecution):
         raise Blocked("worker configuration must use registered LocalExecution")
     if config.checkpoint is not None or config.tuning is not None:
@@ -651,8 +783,8 @@ def _prepare_recipe(config_path, root, options):
     config.save(root / "case.yaml")
     evaluation = config.model_copy(deep=True)
     existing = config.policy_evaluation or config.training.evaluation
-    evaluation.policy_evaluation = PolicyEvaluationSpec(
-        **{
+    evaluation.policy_evaluation = PolicyEvaluationSpec.model_validate(
+        {
             **existing.model_dump(),
             "episodes": 2,
             "seed": 10000,
@@ -743,6 +875,26 @@ def _recipe(record, root, config_path, options, env):
     total = config.training.total_frames
     record["recipe"] = config.name
     record["config_sha256"] = _sha256(root / "case.yaml")
+    if config.name == "visual-cartpole-ppo":
+        _stage(
+            record,
+            "image-input-contract",
+            [
+                sys.executable,
+                "-m",
+                "pytest",
+                "-q",
+                "-p",
+                "no:cacheprovider",
+                "tests/core/test_simulation_scenarios.py::test_visual_policy_uses_real_nonuniform_rgb_inputs",
+                "--basetemp",
+                str(root / "image-input-check"),
+            ],
+            {**env, "NEXUML_RUN_SIMULATOR_TESTS": "1"},
+        )
+        if "1 passed" not in (root / "image-input-contract.log").read_text():
+            raise AssertionError("image input contract test did not execute")
+        record["checks"]["image_policy_inputs"] = "PASS"
     argv = [
         *_CLI,
         "export",
@@ -799,6 +951,11 @@ def _recipe(record, root, config_path, options, env):
         env,
     )
     record["metrics"] = _evaluation_metrics(root / "fresh-evaluate.log", expected_frames=total)
+    checkpoints = {path.name: _sha256(path) for path in (root / "checkpoints").glob("*.ckpt")}
+    _stage(record, "exhausted-resume", [*train, "--trainer-checkpoint", str(final)], env)
+    if checkpoints != {path.name: _sha256(path) for path in (root / "checkpoints").glob("*.ckpt")}:
+        raise AssertionError("exhausted resume changed checkpoints or performed more updates")
+    record["checks"]["exhausted_resume"] = "PASS"
     record["gates"]["C"] = "PASS"
     record["checks"]["partial_resume"] = "PASS"
     record["gate_scope"]["R"] = (
@@ -813,7 +970,7 @@ def run_case(case: str, attempt_root: Path, config_path: Path, options: dict) ->
     case inputs/profiles produce BLOCKED receipts; failed executed stages fail.
     """
     root, lock = _claim_root(attempt_root)
-    record = {
+    record: dict = {
         "case": case,
         "attempt_root": str(root),
         "status": "BLOCKED",
@@ -839,6 +996,7 @@ def run_case(case: str, attempt_root: Path, config_path: Path, options: dict) ->
             "preflight": {"data_root"},
             "regression": {"suite"},
             "recipe": {"recipe"},
+            "recovery": {"source_attempt", "source_case_sha256", "source_guard_sha256"},
         }
         if case not in CASES:
             raise Blocked("unsupported case; only the fixed case inventory is executable")
@@ -846,8 +1004,8 @@ def run_case(case: str, attempt_root: Path, config_path: Path, options: dict) ->
             raise Blocked("unknown options; arbitrary commands/scripts/modules are forbidden")
         if any(not isinstance(value, str) or "\0" in value for value in options.values()):
             raise Blocked("case option values must be literal strings without NUL")
-        if case in {"package", "so101", "browser", "recovery"}:
-            gate = {"package": "D", "so101": "L", "browser": "V", "recovery": "R"}[case]
+        if case in {"so101", "browser"}:
+            gate = {"so101": "L", "browser": "V"}[case]
             record["gates"][gate] = "BLOCKED"
             raise Blocked(
                 f"{case}: missing qualified fixed profile; not implemented acceptance proof"
@@ -859,6 +1017,10 @@ def run_case(case: str, attempt_root: Path, config_path: Path, options: dict) ->
             _preflight(record, root, options, env)
         elif case == "regression":
             _regression(record, root, options, env)
+        elif case == "package":
+            _package(record, root, options, env)
+        elif case == "recovery":
+            _recovery(record, root, options, env)
         else:
             _recipe(record, root, Path(config_path), options, env)
         record["status"], code = "PASS", 0
