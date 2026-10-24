@@ -1,6 +1,7 @@
 """Installed-wheel SDK proof with server and simulator imports unavailable."""
 
 import importlib.abc
+import importlib.util
 import os
 from pathlib import Path
 import runpy

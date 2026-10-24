@@ -158,6 +158,7 @@ def run_campaign(
                     "preflight": {"data_root"},
                     "regression": {"suite"},
                     "recipe": {"recipe"},
+                    "recovery": {"source_attempt", "source_case_sha256", "source_guard_sha256"},
                 }.get(attempt["case"], set())
                 worker_options = {
                     key: value
@@ -306,7 +307,10 @@ def main() -> None:
     parser.add_argument("--batch", type=int, default=128)
     parser.add_argument("--envs", type=int, default=2)
     parser.add_argument("--data-root", type=str)
-    parser.add_argument("--suite", choices=("full", "focused"), default="full")
+    parser.add_argument("--source-attempt", type=str)
+    parser.add_argument("--source-case-sha256", type=str)
+    parser.add_argument("--source-guard-sha256", type=str)
+    parser.add_argument("--suite", choices=("full", "focused", "static"), default="full")
     parser.add_argument("--submit", action="store_true")
     args = parser.parse_args()
     os.environ["CUDA_VISIBLE_DEVICES"] = ""
@@ -390,6 +394,9 @@ def main() -> None:
                     "data_root": args.data_root,
                     "suite": args.suite,
                     "recipe": args.recipe,
+                    "source_attempt": args.source_attempt,
+                    "source_case_sha256": args.source_case_sha256,
+                    "source_guard_sha256": args.source_guard_sha256,
                     "budgets": {
                         "cpu_threads": 1,
                         "gpus": 1,

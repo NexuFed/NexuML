@@ -24,7 +24,7 @@ class DecisionRule(nn.Module):
         """Fit the decision threshold from train-only scores."""
         raise NotImplementedError
 
-    def forward(self, scores: torch.Tensor) -> torch.Tensor:  # ty: ignore[invalid-mutable-override]
+    def forward(self, scores: torch.Tensor) -> torch.Tensor:
         """Return 1 (anomalous) / 0 (normal) binary decisions."""
         raise NotImplementedError
 

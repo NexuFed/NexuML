@@ -610,6 +610,42 @@ def _evaluate_local(
             else "Model evaluation (test split)"
         )
         console.print(f"  {label}: {metrics}")
+        if is_policy:
+            _print_policy_evaluation_summary(metrics, evaluation, source_frames)
+
+
+def _print_policy_evaluation_summary(metrics: dict, evaluation: Any, source_frames: int | None):
+    episodes = metrics.get("eval/rl/episodes", 0)
+    console.print(
+        f"  Episodes: {episodes:g}/{evaluation.episodes}; source physical frames: "
+        f"{source_frames if source_frames is not None else 'unavailable'}"
+    )
+    console.print(
+        f"  Evaluation episode return (not training reward): "
+        f"{metrics.get('eval/rl/return_mean', 'unavailable')}"
+    )
+    console.print(
+        f"  Measured task successes: {metrics.get('eval/rl/task_successes', 'unavailable')}"
+        f"/{episodes:g}; rate: {metrics.get('eval/rl/task_success_rate', 'unavailable')}"
+    )
+    console.print(
+        f"  Native truncations (not necessarily timeouts): "
+        f"{metrics.get('eval/rl/native_truncated', 'unavailable')}; evaluator horizon limits: "
+        f"{metrics.get('eval/rl/evaluation_horizon_limits', 'unavailable')}"
+    )
+    console.print(
+        f"  Action violations: {metrics.get('eval/rl/action_violations', 'unavailable')}; "
+        "action rejections: unavailable (not inferred from violations)"
+    )
+    for key, value in metrics.items():
+        if key.startswith("eval/rl/") and key.count("/") == 4 and key.endswith("/return_mean"):
+            group_agent = key.removeprefix("eval/rl/").removesuffix("/return_mean")
+            console.print(f"  Group/agent {group_agent}: {value}")
+    if evaluation.video.enabled:
+        console.print(
+            f"  Recording: first episode only; capture cap {evaluation.video.max_frames} "
+            "frames does not limit the metric episode budget"
+        )
 
 
 @app.command(name="export-dataset", help="Export a dataset view from a scenario or config")
@@ -738,7 +774,7 @@ def export_cmd(
     scenario_file: Optional[Path] = typer.Option(
         None, "--scenario-file", help="Trusted scenario() file"
     ),
-    output: Path = typer.Option(Path("exported_model"), "--output", "-o", help="Export directory"),
+    output: Optional[Path] = typer.Option(None, "--output", "-o", help="Export directory"),
     checkpoint: Optional[Path] = typer.Option(
         None, "--checkpoint", help="Optional checkpoint to export"
     ),

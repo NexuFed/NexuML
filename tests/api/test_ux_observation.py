@@ -102,7 +102,7 @@ def test_training_metrics_stream_before_epoch_end_without_stale_validation(tmp_p
 
 
 def test_native_classification_observes_finalized_accuracy_and_f1(tmp_path, monkeypatch):
-    from nexuml.training.lightning import NexuSession
+    from nexuml.training.lightning import NexuLightningModule, NexuSession
     from nexuml_library.scenarios.asd.synthetic_linear_ae import synthetic_linear_ae_multiclass
 
     monkeypatch.chdir(tmp_path)
@@ -123,6 +123,7 @@ def test_native_classification_observes_finalized_accuracy_and_f1(tmp_path, monk
     session = NexuSession(scenario, enable_progress_bar=False)
     getattr(session.trainer, "callbacks").append(Observation(path))
     session.run()
+    assert isinstance(session.lightning_module, NexuLightningModule)
     events = [json.loads(line) for line in path.read_text().splitlines()]
     samples = [event["payload"] for event in events if event["kind"] == "metrics"]
     for stage in ("val", "test"):

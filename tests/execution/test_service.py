@@ -84,7 +84,9 @@ def test_local_uses_one_session_observer_and_configured_exports(monkeypatch, reg
             calls.append("exports") or [{"path": "actual", "kind": "train_package"}]
         ),
     )
-    value = ScenarioSpec(name="local", exports=[{"kind": "train_package", "output": "actual"}])
+    value = ScenarioSpec.model_validate(
+        {"name": "local", "exports": [{"kind": "train_package", "output": "actual"}]}
+    )
     assert run(value, observer=observer, trainer_checkpoint="native.ckpt") is result
     assert calls[0]["trainer_checkpoint"] == "native.ckpt"
     assert calls[1:] == ["canonical lifecycle", "exports"]
