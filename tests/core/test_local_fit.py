@@ -3,6 +3,7 @@
 from dataclasses import asdict
 import importlib
 import json
+from typing import Any
 
 import pandas as pd
 import pytest
@@ -26,6 +27,7 @@ from nexuml.core.types import (
 )
 from nexuml.data.dataset import NexuDataset
 from nexuml.training import local_fit, local_fit_manifest
+from nexuml.training.local_fit import _check_recipe
 from nexuml_library.action_adapters.adapters import DirectActionAdapter
 from nexuml_library.environments.isaaclab import IsaacLabEnvironment
 from nexuml_library.layers.head.regression_head import LatentRegressionHead
@@ -74,6 +76,7 @@ class UnitDataset(NexuDataset):
         super().__init__(meta=meta, label_names=[])
 
     def __getitem__(self, index):
+        assert self.meta is not None
         row = self.meta.iloc[index]
         value = torch.tensor([float(row.episode_index) / 10, float(row.frame_index) / 10])
         if self.robot:
@@ -84,6 +87,16 @@ class UnitDataset(NexuDataset):
         if self.broken == "nan":
             target[0] = float("nan")
         return TensorDict({"observation": value}, []), TensorDict({"action": target}, [])
+
+
+def test_local_fit_requires_registered_local_execution(tmp_path):
+    from nexuml.execution.definitions import RayJobsSDKExecution
+
+    scenario = recipe(tmp_path)
+    _check_recipe(scenario)
+    scenario.execution = RayJobsSDKExecution()
+    with pytest.raises(ValueError, match="fresh local session"):
+        _check_recipe(scenario)
 
 
 def recipe(root, *, robot=False, broken=""):
@@ -127,7 +140,7 @@ def recipe(root, *, robot=False, broken=""):
     )
 
 
-def request(root, **kwargs):
+def request(root, **kwargs) -> dict[str, Any]:
     scenario = recipe(root, **kwargs)
     state = {name: value.detach().clone() for name, value in compile(scenario).state_dict().items()}
     return dict(
@@ -160,7 +173,10 @@ def test_two_external_initial_states_are_used_repeatably_and_inputs_remain_priva
     original = {name: value.clone() for name, value in first["initial_tensors"].items()}
     a = local_fit(**first)
     a_again = local_fit(**first)
-    second = {**first, "initial_tensors": {name: value + 0.25 for name, value in original.items()}}
+    second: dict[str, Any] = {
+        **first,
+        "initial_tensors": {name: value + 0.25 for name, value in original.items()},
+    }
     second["model_manifest"] = local_fit_manifest(
         second["trusted_recipe"], second["initial_tensors"]
     )
@@ -194,7 +210,9 @@ def test_two_external_initial_states_are_used_repeatably_and_inputs_remain_priva
 
 
 def test_epoch_budget_uses_existing_session(tmp_path):
-    result = local_fit(**{**request(tmp_path), "budget": {"epochs": 2}})
+    args = request(tmp_path)
+    args["budget"] = {"epochs": 2}
+    result = local_fit(**args)
     assert result.metrics["optimizer_steps"] == 4
     assert result.metrics["consumed_windows"] == 16
 
@@ -217,8 +235,9 @@ def test_reject_invalid_tensor_state_before_dataset_build(tmp_path, monkeypatch,
     else:
         state[name] = b"not a tensor or pickle update"
     monkeypatch.setattr(UnitEpisodes, "build", lambda *_: pytest.fail("unauthorized build"))
+    args["initial_tensors"] = state
     with pytest.raises(ValueError, match="tensor|state"):
-        local_fit(**{**args, "initial_tensors": state})
+        local_fit(**args)
 
 
 @pytest.mark.parametrize("change", ["manifest", "data", "optimizer", "remote_recipe", "seed"])

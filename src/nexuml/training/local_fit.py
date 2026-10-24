@@ -55,11 +55,17 @@ def _validate_tensors(tensors, expected) -> None:
 
 
 def _check_recipe(recipe) -> None:
+    from nexuml.execution.definitions import LocalExecution
+
     if not isinstance(recipe, ScenarioSpec) or not isinstance(recipe.training, TrainingSpec):
         raise ValueError(
             "trusted_recipe must be an operator-installed dataset-training ScenarioSpec"
         )
-    if recipe.checkpoint is not None or recipe.callbacks or recipe.execution.kind != "local":
+    if (
+        recipe.checkpoint is not None
+        or recipe.callbacks
+        or not isinstance(recipe.execution, LocalExecution)
+    ):
         raise ValueError(
             "Local fit requires a fresh local session without checkpoints or callbacks"
         )

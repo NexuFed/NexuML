@@ -149,11 +149,14 @@ def test_local_artifact_root_unknown():
     assert _local_artifact_root(object()) is None
 
 
-def test_augment_mlflow_tags_adds_git():
+def test_augment_mlflow_tags_adds_git(monkeypatch):
+    monkeypatch.setattr(
+        "nexuml.tracking.logger._collect_git_metadata", lambda: {"git.commit": "fixture-commit"}
+    )
     tags = {"custom": "value"}
     augmented = _augment_mlflow_tags(tags)
     assert augmented["custom"] == "value"
-    assert "git.commit" in augmented
+    assert augmented["git.commit"] == "fixture-commit"
 
 
 def test_log_artifact_calls_mlflow_style_experiment(tmp_path):

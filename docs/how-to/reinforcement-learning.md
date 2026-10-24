@@ -268,6 +268,14 @@ The same `training.evaluation.video.*` overrides work with `train`, including in
 episode is captured. Other episodes, and steps after capture stops, still contribute full
 metrics. This does not set `image_shape` or convert a state policy into a visual policy.
 
+Evaluation summaries identify the full episode denominator, measured successes
+(when the task supplies them), per-group/agent returns and source physical frames.
+`native_truncated` reports the environment's truncation flag, **not a proven timeout**;
+`evaluation_horizon_limits` counts episodes stopped only by the evaluator's horizon.
+The existing `truncated` metric retains its combined meaning. Action violations are
+not relabelled as rejected actions; absent rejection measurements remain unavailable.
+Recording is labelled first-episode-only, never aggregate evidence of success.
+
 | Setting under `training.evaluation.video` | Default | Meaning |
 | --- | --- | --- |
 | `enabled` | `false` | Explicit capture/encoding opt-in |

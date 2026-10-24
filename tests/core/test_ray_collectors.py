@@ -197,7 +197,9 @@ def test_ray_lightning_fit_and_failure_close_workers(
             signal.signal(signal.SIGINT, handler)
     else:
         result = session.run()
-        assert int(session.lightning_module.frames) == 32
+        frames = session.lightning_module.frames
+        assert isinstance(frames, torch.Tensor)
+        assert int(frames) == 32
         assert result.trainer.global_step > 0
         assert synchronized == [1, 2]
     assert session.lightning_module._collector is None

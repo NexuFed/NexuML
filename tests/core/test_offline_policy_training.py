@@ -178,6 +178,7 @@ def test_offline_policy_checkpoint_export_reload_and_resume(tmp_path):
         enable_progress_bar=False,
         enable_loggers=False,
     )
+    assert restored.runtime.policy is not None
     assert (
         restored.runtime.policy.pipeline is restored.pipeline is restored.lightning_module.pipeline
     )
@@ -192,6 +193,7 @@ def test_offline_policy_checkpoint_export_reload_and_resume(tmp_path):
     assert not (export_dir / "lightning.ckpt").exists()
     assert "algorithm" not in metadata and "training_mode" not in metadata
     reloaded = load_package_for_training(export_dir)
+    assert reloaded.policy is not None
     assert isinstance(reloaded.lightning_module, NexuLightningModule)
     assert reloaded.policy.pipeline is reloaded.pipeline is reloaded.lightning_module.pipeline
     assert torch.equal(reloaded.policy(observation)["action"], expected)
@@ -236,6 +238,7 @@ for source in (root / 'policy', root / 'policy/pipeline.package'):
         enable_loggers=False,
     )
     resumed.fit()
+    assert resumed.runtime.policy is not None
     assert resumed.trainer.global_step == 5
     assert not torch.equal(resumed.runtime.policy(observation)["action"], expected)
     assert all(int(value["step"]) == 5 for value in resumed.trainer.optimizers[0].state.values())
@@ -258,6 +261,7 @@ def test_legacy_checkpoint_missing_budget_seed_and_deterministic_restores_defaul
     restored = NexuSession.from_trainer_checkpoint(
         checkpoint, log_dir=tmp_path / "restored", enable_progress_bar=False, enable_loggers=False
     )
+    assert isinstance(restored.scenario.training, TrainingSpec)
     assert restored.scenario.training.max_steps is None
     assert restored.scenario.training.seed is None and not restored.scenario.training.deterministic
     assert restored.trainer.max_steps == -1
@@ -302,7 +306,9 @@ def test_undeclared_shapes_hydrate_from_actual_offline_inputs():
     scenario = _scenario()
     scenario.data.input_contracts = {}
     runtime = create_runtime_artifacts(scenario)
+    assert runtime.policy is not None
     assert runtime.policy.pipeline is runtime.pipeline
+    assert runtime.lightning_module.scenario is not None
     assert runtime.lightning_module.scenario.data.input_shapes == {"observation": [3]}
 
 
@@ -320,6 +326,7 @@ def test_stateful_offline_adapters_are_rejected_before_fit(monkeypatch, state_ki
 
 def test_training_reload_rejects_incompatible_dataset_contract(tmp_path):
     runtime = create_runtime_artifacts(_scenario())
+    assert runtime.policy is not None
     export_dir = export_package(runtime.policy, tmp_path / "policy")
     scenario = _scenario()
     scenario.data.input_contracts = {}

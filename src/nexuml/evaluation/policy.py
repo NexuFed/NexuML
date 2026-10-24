@@ -191,6 +191,7 @@ def _evaluate_episodes(
     outcome_signature = None
     reward_signature = None
     terminated = truncated = 0
+    native_truncated = horizon_limits = 0
     frames = []
     source_size = None
     capped = False
@@ -392,6 +393,8 @@ def _evaluate_episodes(
                     if term or trunc or limit:
                         terminated += int(term)
                         truncated += int(trunc or (limit and not term))
+                        native_truncated += int(trunc)
+                        horizon_limits += int(limit and not term and not trunc)
                         break
                     observation = transition.observation
                 if reward_signature:
@@ -419,15 +422,19 @@ def _evaluate_episodes(
                         raise
                     primary.add_note(f"Evaluation cleanup also failed: {error}")
     metrics = {
+        "eval/rl/episodes": float(len(lengths)),
         "eval/rl/length_mean": sum(lengths) / len(lengths),
         "eval/rl/terminated": float(terminated),
         "eval/rl/truncated": float(truncated),
+        "eval/rl/native_truncated": float(native_truncated),
+        "eval/rl/evaluation_horizon_limits": float(horizon_limits),
     }
     if returns:
         values = torch.tensor(returns, dtype=torch.float64)
         metrics["eval/rl/return_mean"] = float(values.mean())
         metrics["eval/rl/return_std"] = float(values.std(unbiased=False))
     if successes:
+        metrics["eval/rl/task_successes"] = float(sum(successes))
         metrics["eval/rl/task_success_rate"] = sum(successes) / len(successes)
     for (group, agent), values in grouped_returns.items():
         metrics[f"eval/rl/{group}/{agent}/return_mean"] = sum(values) / len(values)

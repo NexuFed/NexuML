@@ -251,6 +251,9 @@ def test_manually_assembled_offline_policy_runs_real_cpu_gym_without_a_learner(m
         "eval/rl/length_mean",
         "eval/rl/terminated",
         "eval/rl/truncated",
+        "eval/rl/episodes",
+        "eval/rl/native_truncated",
+        "eval/rl/evaluation_horizon_limits",
     }
     assert set(metrics) == legacy_keys | {
         key.replace("eval/rl/", "eval/policy/") for key in legacy_keys
@@ -260,6 +263,7 @@ def test_manually_assembled_offline_policy_runs_real_cpu_gym_without_a_learner(m
     )
     assert metrics["eval/rl/length_mean"] == metrics["eval/rl/return_mean"] == 3
     assert metrics["eval/rl/terminated"] + metrics["eval/rl/truncated"] == 2
+    assert metrics["eval/rl/episodes"] == 2
     assert all(np.isfinite(value) for value in metrics.values())
     assert len(allocations) == 1
     runtime, context = allocations[0]

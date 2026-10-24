@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
 from typer.testing import CliRunner
 
 from nexuml.cli import main
 from nexuml.core.config import ResolvedConfig
-from nexuml.core.types import ScenarioSpec
+from nexuml.core.types import ScenarioSpec, TrainingSpec
 from nexuml.execution.definitions import RayJobsSDKExecution
 
 runner = CliRunner()
@@ -79,6 +80,7 @@ def test_train_submits_all_scenario_sources_with_overrides(
     if source == "file":
         receipt = tmp_path / "receipt"
         saved = ResolvedConfig.load(receipt / "resolved_scenario.yaml")
+        assert isinstance(saved.training, TrainingSpec)
         assert saved.training.max_epochs == 2
         metadata = json.loads((receipt / "command.json").read_text())["args"]
         assert metadata["execution"] == "ray-jobs-sdk"
@@ -216,7 +218,15 @@ def test_remote_lifecycle_selects_execution_before_worker_inputs(
     )
     worker_input = "/worker only/input ; 'data"
     args = (
-        ["evaluate", worker_input, *selector, "--device", "cuda:0", "-O", "evaluation.episodes=2"]
+        [
+            "evaluate",
+            worker_input,
+            *selector,
+            "--device",
+            "cuda:0",
+            "-O",
+            "policy_evaluation.episodes=2",
+        ]
         if operation == "evaluate"
         else ["export", *selector, "--checkpoint", worker_input, "--output", "/worker/policy"]
     )
@@ -229,7 +239,7 @@ def test_remote_lifecycle_selects_execution_before_worker_inputs(
     key = "model_package" if operation == "evaluate" else "checkpoint"
     assert str(kwargs[key]) == worker_input
     if operation == "evaluate":
-        assert kwargs["overrides"] == ("evaluation.episodes=2",)
+        assert kwargs["overrides"] == ("policy_evaluation.episodes=2",)
         assert kwargs["device"] == "cuda:0"
     assert "Ray job submitted: lifecycle_id" in result.output
     assert "Training complete" not in result.output
@@ -242,3 +252,27 @@ def test_lifecycle_rejects_competing_selectors_before_dispatch(operation, submit
     assert result.exit_code == 1
     assert "Provide only one" in result.output
     assert not submit_only
+
+
+def test_remote_export_requires_explicit_output(submit_only, tmp_path, monkeypatch):
+    from nexuml.execution.service import run
+
+    monkeypatch.setattr("nexuml.execution.run", run)
+    scenario = ScenarioSpec(name="export", execution=RayJobsSDKExecution())
+    path = tmp_path / "job.yaml"
+    ResolvedConfig.from_scenario(scenario).save(path)
+    result = runner.invoke(
+        main.app, ["export", "--config", str(path), "--checkpoint", "/worker/model.ckpt"]
+    )
+    assert result.exit_code != 0
+    assert "output" in str(result.exception).lower()
+    assert not submit_only
+
+
+def test_local_export_preserves_default_output(monkeypatch):
+    from nexuml.execution.definitions import LocalExecution
+
+    calls = []
+    monkeypatch.setattr(main, "_export_local", lambda spec, **kw: calls.append(kw))
+    LocalExecution().run(ScenarioSpec(name="local"), operation="export", output=None)
+    assert calls[0]["output"] == Path("exported_model")

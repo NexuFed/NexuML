@@ -19,6 +19,7 @@ from unittest import mock
 
 SCRIPT = Path(__file__).resolve().parents[1] / "fixtures" / "physical_ai_guard.py"
 SPEC = importlib.util.spec_from_file_location("physical_ai_guard", SCRIPT)
+assert SPEC is not None and SPEC.loader is not None
 guard = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(guard)
 
@@ -37,11 +38,11 @@ def running(pid):
 
 class PhysicalAIGuardTest(unittest.TestCase):
     def setUp(self):
-        self.scratch = tempfile.TemporaryDirectory(prefix="guard-test-", dir="/tmp/opencode")
+        self.scratch = tempfile.TemporaryDirectory(prefix="guard-test-")
         self.addCleanup(self.scratch.cleanup)
         self.root = Path(self.scratch.name)
         self.receipt = self.root / "attempt" / "receipt.json"
-        self.env = mock.patch.dict(os.environ, CUDA_VISIBLE_DEVICES="", TMPDIR="/tmp/opencode")
+        self.env = mock.patch.dict(os.environ, CUDA_VISIBLE_DEVICES="", TMPDIR=self.scratch.name)
         self.env.start()
         self.addCleanup(self.env.stop)
         _, filesystem = guard._disk_sample(self.root)

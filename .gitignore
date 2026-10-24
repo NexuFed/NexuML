@@ -249,7 +249,7 @@ external/
 graphify-out/
 
 configs/*
-!configs/execution/
+!configs/execution
 configs/execution/*
 !configs/execution/ray.yaml
 

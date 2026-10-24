@@ -392,7 +392,10 @@ def test_packaged_fitted_state_and_evaluation_algorithms_are_reused(tmp_path, mo
     assert fitted._rule.threshold == threshold and fitted._fitted
 
 
-def test_model_scenario_file_selects_test_data_not_the_model(model_package, monkeypatch, tmp_path):
+@pytest.mark.parametrize("selector", ["--scenario-file", "--config"])
+def test_model_scenario_file_selects_test_data_not_the_model(
+    model_package, monkeypatch, tmp_path, selector
+):
     source = tmp_path / "test_data.py"
     source.write_text(
         "from nexuml.core.types import ScenarioSpec\n"
@@ -402,6 +405,13 @@ def test_model_scenario_file_selects_test_data_not_the_model(model_package, monk
         "    data.train_split, data.val_split, data.test_split = 0.0, 0.0, 1.0\n"
         "    return ScenarioSpec(name='data_only', data=data)\n"
     )
+    if selector == "--config":
+        import runpy
+        from nexuml.core.config import ResolvedConfig
+
+        selected = runpy.run_path(str(source))["scenario"]()
+        source = tmp_path / "test_data.yaml"
+        ResolvedConfig.from_scenario(selected).save(source)
     loaded, config, metadata = load_inference_package(model_package)
     model = cast(CompiledPipeline, loaded)
     original = model.forward
@@ -416,12 +426,13 @@ def test_model_scenario_file_selects_test_data_not_the_model(model_package, monk
         "nexuml.core.export.load_inference_package", lambda _: (model, config, metadata)
     )
     forbid_training(monkeypatch)
-    result = runner.invoke(app, ["evaluate", str(model_package), "--scenario-file", str(source)])
+    result = runner.invoke(app, ["evaluate", str(model_package), selector, str(source)])
     assert result.exit_code == 0, (result.output, result.exception)
     assert sum(counts) == 8 and "test/reconstruction_loss" in result.output
 
 
-def test_policy_scenario_file_selects_environment_not_the_policy(tmp_path, monkeypatch):
+@pytest.mark.parametrize("selector", ["--scenario-file", "--config"])
+def test_policy_scenario_file_selects_environment_not_the_policy(tmp_path, monkeypatch, selector):
     pytest.importorskip("gymnasium")
     from nexuml.core.compiler import compile
     from nexuml.core.policy import CompiledPolicy
@@ -444,8 +455,15 @@ def test_policy_scenario_file_selects_environment_not_the_policy(tmp_path, monke
         "    s.logging = None\n"
         "    return s\n"
     )
+    if selector == "--config":
+        import runpy
+        from nexuml.core.config import ResolvedConfig
+
+        selected = runpy.run_path(str(source))["scenario"]()
+        source = tmp_path / "replay.yaml"
+        ResolvedConfig.from_scenario(selected).save(source)
     forbid_training(monkeypatch)
-    result = runner.invoke(app, ["evaluate", str(package), "--scenario-file", str(source)])
+    result = runner.invoke(app, ["evaluate", str(package), selector, str(source)])
     assert result.exit_code == 0, (result.output, result.exception)
     assert "eval/rl/length_mean" in result.output and "2.0" in result.output
 

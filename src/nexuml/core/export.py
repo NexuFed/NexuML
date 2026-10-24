@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import copy
 import fnmatch
 import hashlib
@@ -103,6 +104,15 @@ _RUNTIME_EXTERN_PATTERNS = [
     "pyarrow.**",
     "kubernetes.**",
     "psutil.**",
+    # Source scanning follows lazy execution/CLI imports, not only inference calls.
+    "lightning_utilities.**",
+    "tensorboard.**",
+    "uvicorn.**",
+    "websockets.**",
+    "fastapi.**",
+    "starlette.**",
+    "imageio.**",
+    "imageio_ffmpeg.**",
 ]
 
 # Top-level names covered by the extern policy.
@@ -413,13 +423,21 @@ def _resolve_distribution(module_name: str) -> tuple[str, str | None]:
 
 def _collect_external_dependencies(
     exporter: PackageExporter,
+    *,
+    inference_only: bool = False,
 ) -> tuple[list[dict[str, Any]], list[str]]:
-    """Collect actual external dependencies referenced by the packaged payload.
+    """Collect external source dependencies, or inferred actor installation needs.
+
+    Policy inference excludes dormant settings dispatch and type-only imports;
+    archive externs and supervised requirements retain the full source contract.
 
     Returns:
         Tuple of (structured dependency entries, requirements.txt lines).
     """
     externed = sorted(set(exporter.externed_modules()))
+    if inference_only:
+        required = _policy_requirement_modules(exporter)
+        externed = [module for module in externed if module in required]
     entries: list[dict[str, Any]] = []
     lines: list[str] = []
     seen: set[str] = set()
@@ -446,6 +464,73 @@ def _collect_external_dependencies(
         lines.append(f"{dist}=={version}" if version else dist)
 
     return entries, lines
+
+
+def _policy_requirement_modules(exporter: PackageExporter) -> set[str]:
+    """Find policy requirements without dormant settings-dispatch dependencies.
+
+    The archive still contains complete source and its declared externs. Only
+    installation requirements omit dispatch methods that actor inference never
+    calls; other source imports, including custom actor imports, remain intact.
+
+    Returns:
+        Modules reachable through the policy's inference dependency boundary.
+    """
+
+    class SettingsImports(ast.NodeTransformer):
+        """Keep imports executed when portable settings are loaded."""
+
+        def __init__(self, deferred_dispatch: bool):
+            self.deferred_dispatch = deferred_dispatch
+
+        def visit_FunctionDef(self, node):
+            return ast.Pass() if self.deferred_dispatch else self.generic_visit(node)
+
+        visit_AsyncFunctionDef = visit_FunctionDef
+
+        def visit_If(self, node):
+            if (isinstance(node.test, ast.Name) and node.test.id == "TYPE_CHECKING") or (
+                isinstance(node.test, ast.Attribute)
+                and isinstance(node.test.value, ast.Name)
+                and node.test.value.id == "typing"
+                and node.test.attr == "TYPE_CHECKING"
+            ):
+                return node.orelse or ast.Pass()
+            return self.generic_visit(node)
+
+    graph = exporter.dependency_graph
+    settings_modules = {
+        "nexuml.execution",
+        "nexuml.execution.definitions",
+        "nexuml.data.loaders.definitions",
+    }
+    # Custom imports may invoke settings' lazy exports eagerly while loading an actor.
+    custom_dispatch = any(
+        not attrs.get("is_pickle")
+        and module.split(".")[0] not in {"nexuml", "nexuml_library"}
+        and any(dependency in settings_modules for dependency in graph.successors(module))
+        for module, attrs in graph.nodes.items()
+    )
+    pending = [
+        module
+        for module, attrs in graph.nodes.items()
+        if attrs.get("is_pickle") or not list(graph.predecessors(module))
+    ]
+    required: set[str] = set()
+    while pending:
+        module = pending.pop()
+        if module in required:
+            continue
+        required.add(module)
+        dependencies = list(graph.successors(module))
+        settings = module in settings_modules and not custom_dispatch
+        if settings or module == "nexuml.core.factory":
+            attrs = graph.nodes[module]
+            source = ast.unparse(SettingsImports(settings).visit(ast.parse(attrs["source"])))
+            # Use Torch's resolver so relative imports and imported submodules agree.
+            dependencies = exporter._get_dependencies(source, module, attrs["is_package"])
+        pending.extend(dependencies)
+    return required
 
 
 def _load_checkpoint_metadata(checkpoint_path: Path) -> dict[str, Any]:
@@ -676,6 +761,9 @@ def export_package(
 
         external_deps, requirements_lines = _collect_external_dependencies(exporter)
         meta["external_dependencies"] = external_deps
+        if policy is not None:
+            # Preserve the archive's complete source manifest, not its dormant install needs.
+            _, requirements_lines = _collect_external_dependencies(exporter, inference_only=True)
 
         payload = _package_payload(pipeline, meta, training_state=training_state, policy=policy)
         exporter.save_pickle(PACKAGE_PICKLE_PACKAGE, PACKAGE_PICKLE_NAME, payload)
@@ -1106,7 +1194,7 @@ class _OnnxWrapper(torch.nn.Module):
         self.input_key = input_key
         self.output_key = output_key
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:  # ty: ignore[invalid-mutable-override]
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         td = TensorDict({self.input_key: x}, batch_size=[x.shape[0]])
         x_out, _ = self.pipeline(td, None)
         return x_out[self.output_key]

@@ -179,6 +179,8 @@ def test_task_outcomes_are_separate_from_returns_and_reset_per_episode(
     metrics = evaluate_policy(policy, scenario, media_sink=lambda f, m: recordings.append((f, m)))
     assert metrics["eval/rl/return_mean"] == 3
     assert metrics["eval/rl/task_success_rate"] == 0.5
+    assert metrics["eval/rl/task_successes"] == 1
+    assert metrics["eval/rl/episodes"] == 2
     if with_error:
         assert metrics["eval/rl/final_joint_error_rad_mean"] == pytest.approx(0.45)
     else:
@@ -486,6 +488,24 @@ def test_terminal_frame_capture_and_horizon_statistics(fake, monkeypatch):
     scenario.training.evaluation.max_steps_per_episode = 2
     metrics = evaluate_policy(policy, scenario, media_sink=lambda f, m: None)
     assert metrics["eval/rl/length_mean"] == 2 and metrics["eval/rl/truncated"] == 2
+    assert metrics["eval/rl/native_truncated"] == 0
+    assert metrics["eval/rl/evaluation_horizon_limits"] == 2
+
+
+def test_native_truncation_is_not_an_evaluator_horizon_or_measured_timeout(fake, monkeypatch):
+    scenario, policy = fake
+    original = FakeRuntime.__init__
+
+    def initialize(runtime):
+        original(runtime)
+        runtime.terminal = False
+
+    monkeypatch.setattr(FakeRuntime, "__init__", initialize)
+    metrics = evaluate_policy(policy, scenario)
+    assert metrics["eval/rl/episodes"] == 2
+    assert metrics["eval/rl/native_truncated"] == 2
+    assert metrics["eval/rl/evaluation_horizon_limits"] == 0
+    assert "eval/rl/timeouts" not in metrics
 
 
 @pytest.mark.parametrize("error", ["fps", "empty", "dtype", "render"])

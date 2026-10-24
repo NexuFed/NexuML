@@ -16,6 +16,7 @@ import subprocess
 import sys
 import tempfile
 import time
+from typing import Any, BinaryIO, cast
 
 LOG_CAP_BYTES = 32 * 1024**2
 ATTEMPT_BASE = Path("/mnt/data/nexuml-qualification")
@@ -279,7 +280,7 @@ def run_guarded(
             os.close(root_fd)
         raise
     lock_identity = os.fstat(lock_fd)
-    record = {
+    record: dict[str, Any] = {
         "argv": list(command),
         "pid": None,
         "pgid": None,
@@ -328,6 +329,7 @@ def run_guarded(
             stop = {"role": role, "path": str(path)}
             try:
                 if role == "output":
+                    assert root_fd is not None
                     current, owned = path.lstat(), os.fstat(root_fd)
                     if path.resolve(strict=True) != path or (current.st_dev, current.st_ino) != (
                         owned.st_dev,
@@ -378,6 +380,7 @@ def run_guarded(
     def flush_live():
         nonlocal pending
         if pending:
+            assert output_fd is not None
             try:
                 pending = pending[os.write(output_fd, pending) :]
             except BlockingIOError:
@@ -396,6 +399,7 @@ def run_guarded(
             raise FileExistsError(f"receipt already exists: {receipt}")
         if log_path is not None:
             if root_fd is not None:
+                assert attempt_root is not None
                 log = _open_campaign_log(root_fd, log_path.relative_to(attempt_root))
             else:
                 log_path.parent.mkdir(parents=True, exist_ok=True)
@@ -429,6 +433,7 @@ def run_guarded(
                     bufsize=0,
                 )
                 record["pid"] = record["pgid"] = process.pid
+                assert process.stdout is not None
                 os.set_blocking(process.stdout.fileno(), False)
                 selector = selectors.DefaultSelector()
                 selector.register(process.stdout, selectors.EVENT_READ)
@@ -461,6 +466,7 @@ def run_guarded(
                         next_sample = now + poll_seconds
                     wait = max(0, min(next_sample - now, deadline_seconds - (now - started)))
                     if pending:
+                        assert output_fd is not None
                         # Backpressure must not stall the deadline or disk monitor.
                         select.select([], [output_fd], [], wait)
                         flush_live()
@@ -480,6 +486,7 @@ def run_guarded(
             record["reason"] = "signal" if returned < 0 else "nonzero"
     finally:
         if process is not None:
+            stdout = cast(BinaryIO, process.stdout)  # Popen above always requests PIPE.
             try:
                 _stop_group(process)
             except Exception as exc:
@@ -490,12 +497,13 @@ def run_guarded(
                 until = time.monotonic() + 0.2
                 while time.monotonic() < until:
                     if pending:
+                        assert output_fd is not None
                         select.select([], [output_fd], [], max(0, until - time.monotonic()))
                         flush_live()
                         if pending:
                             record["output_incomplete"] = True
                             pending = b""
-                    chunk = os.read(process.stdout.fileno(), 65536)
+                    chunk = os.read(stdout.fileno(), 65536)
                     if not chunk:
                         break
                     emit(chunk)
@@ -507,7 +515,7 @@ def run_guarded(
             if pending:
                 record["output_incomplete"] = True
             try:
-                process.stdout.close()
+                stdout.close()
             except OSError as exc:
                 secondary_error("cleanup", exc)
         if selector is not None:
@@ -522,6 +530,7 @@ def run_guarded(
                 secondary_error("log", exc, 74)
         if output_blocking is not None:
             try:
+                assert output_fd is not None
                 os.set_blocking(output_fd, output_blocking)
             except OSError as exc:
                 secondary_error("output", exc, 74)

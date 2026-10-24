@@ -13,12 +13,15 @@ from importlib.metadata import distribution
 import json
 from pathlib import Path
 import platform
+from typing import cast
 
 import numpy as np
 import torch
 from tensordict import TensorDict
 
 from nexuml.core.components import EnvironmentBuildContext
+from nexuml.core.policy import CompiledPolicy
+from nexuml_library.data.lerobot import LeRobotDataSource
 from nexuml_library.environments._isaaclab_so101 import JOINT_NAMES, TARGET_SCALE
 from nexuml_library.environments.isaaclab import IsaacLabEnvironment
 from nexuml_library.scenarios.imitation.so101 import (
@@ -99,7 +102,7 @@ def _episode(runtime, *, seed: int, policy="expert", capture=False):
                 except ValueError:
                     outcome.update(failure="policy_contract_violation", action_violations=1)
                     return frames, outcome
-            values = action["action"]
+            values = cast(torch.Tensor, action["action"])
             if values.shape != (5,) or not torch.isfinite(values).all() or (values.abs() > 1).any():
                 outcome.update(failure="invalid_action", action_violations=1)
                 return frames, outcome
@@ -230,7 +233,9 @@ def collect(root: Path, *, episodes: int, seed: int) -> dict:
     info["provenance"] = receipt
     path.write_text(json.dumps(info, indent=2, allow_nan=False) + "\n")
     scenario = so101_behavior_cloning(str(root))
-    counts = validate_so101_demonstrations(scenario.data.datasets[0].source)
+    counts = validate_so101_demonstrations(
+        cast(LeRobotDataSource, scenario.data.datasets[0].source)
+    )
     result = {
         "schema_version": 1,
         "kind": "native-expert-collection",
@@ -260,6 +265,7 @@ def evaluate(package: Path, *, episodes: int, seed: int, reference: str) -> dict
         getattr(policy, name, None) is None for name in ("pipeline", "action_adapter", "contract")
     ):
         raise ValueError("Evaluation requires a complete policy package, not a pipeline")
+    policy = cast(CompiledPolicy, policy)
     # Match the ordinary evaluation CLI: torch.package can isolate Pydantic/policy classes.
     policy.contract = InteractionContract.model_validate(metadata["interaction_contract"])
     scenario = config.to_scenario()

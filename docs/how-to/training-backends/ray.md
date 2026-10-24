@@ -201,6 +201,12 @@ unchanged. Evaluation `--config` supplies only allowed evaluation/data/logging/e
 settings, never replacement packaged weights. Dependent native stages run sequentially
 in fresh processes; submission alone does not establish completion or qualification.
 
+Remote export requires an explicit `--output` worker path; omitted output remains
+`exported_model` only for local execution. Use an absolute durable destination.
+For policy evaluation, configure top-level `policy_evaluation` and override, for example,
+`-O policy_evaluation.episodes=2`. Older configurations without that top-level setting
+use `-O training.evaluation.episodes=2`. `evaluation.episodes` is not a valid namespace.
+
 Remote continuation checks the requested pipeline, learner, task, policy and
 evaluation semantics against the checkpoint on the worker before native allocation.
 Changed semantics fail rather than silently replacing the saved run. Saved scenario

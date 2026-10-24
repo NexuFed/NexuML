@@ -10,6 +10,7 @@ from pathlib import Path
 from pydantic import ValidationError
 from ruamel.yaml.error import YAMLError
 
+from nexuml.api.errors import validation_fields
 from nexuml.core.config import ResolvedConfig
 from nexuml.core.serialization import lower_model, restore_model_data
 
@@ -59,6 +60,19 @@ def document(config: ResolvedConfig) -> dict:
         "yaml": text,
         "semantic_revision": hashlib.sha256(text.encode()).hexdigest(),
     }
+
+
+def _authorize_execution_paths(execution, root: Path) -> None:
+    """Reject selected transport paths before dependency checks or discovery probes."""
+    from nexuml.execution.definitions import KubernetesExecution
+
+    if isinstance(execution, KubernetesExecution):
+        from nexuml.execution.templates import authorized_path
+
+        if execution.template:
+            authorized_path(execution.template, root)
+        if execution.handoff and not execution.handoff.destination.startswith("s3://"):
+            authorized_path(execution.handoff.destination, root)
 
 
 def catalog() -> dict:
@@ -191,6 +205,7 @@ def dispatch(action: str, payload: dict) -> dict:
         from nexuml.execution import discover
 
         config = configuration(payload)
+        _authorize_execution_paths(config.execution, Path.cwd())
         return discover(
             config.execution,
             timeout=payload.get("timeout", 10),
@@ -298,16 +313,12 @@ def main() -> None:
     try:
         result = dispatch(action, json.loads(Path(request).read_text(encoding="utf-8")))
     except ValidationError as exc:
-        fields = [
-            {"loc": list(e["loc"]), "message": e["msg"], "type": e["type"]}
-            for e in exc.errors(include_input=False, include_context=False)
-        ]
         result = {
             "error": {
                 "status": 422,
                 "code": "validation",
                 "message": "NexuML rejected the configuration.",
-                "fields": fields,
+                "fields": validation_fields(exc),
             }
         }
     except (ValueError, TypeError, KeyError, YAMLError) as exc:

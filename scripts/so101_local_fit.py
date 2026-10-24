@@ -5,12 +5,14 @@ from dataclasses import asdict
 import importlib.metadata
 import json
 from pathlib import Path
+from typing import cast
 
 from safetensors.torch import save_file
 import torch
 
 from nexuml.core.export import export_package
 from nexuml.training import NexuSession, local_fit, local_fit_manifest
+from nexuml_library.data.lerobot import LeRobotDataSource
 from nexuml_library.scenarios.imitation.so101 import (
     so101_behavior_cloning,
     validate_so101_demonstrations,
@@ -28,7 +30,7 @@ def main():
     if args.output.exists():
         parser.error("output must be a new directory; existing evidence is never overwritten")
     recipe = so101_behavior_cloning(str(args.data.resolve()))
-    validate_so101_demonstrations(recipe.data.datasets[0].source)
+    validate_so101_demonstrations(cast(LeRobotDataSource, recipe.data.datasets[0].source))
     recipe.training = recipe.training.model_copy(update={"seed": args.seed})
     torch.manual_seed(args.seed)
     session = NexuSession(recipe, enable_progress_bar=False, enable_loggers=False)

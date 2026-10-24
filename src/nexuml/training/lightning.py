@@ -548,7 +548,7 @@ class LightningFeatureExtractor(torch.nn.Module):
         self.x_keys = list(x_keys or [])
         self.y_keys = list(y_keys or [])
 
-    def forward(  # ty: ignore[invalid-mutable-override]
+    def forward(
         self,
         x: TensorDict,
         y: TensorDict | None = None,
@@ -803,7 +803,12 @@ class NexuSession:
 
         Returns:
             The same ``NexuSession`` instance (for chaining).
+
+        Raises:
+            SIGTERMException: Preserve cancellation with a nonzero signal exit code.
         """
+        from lightning.pytorch.utilities.exceptions import SIGTERMException
+
         module = self.lightning_module
         try:
             self.trainer.fit(
@@ -813,6 +818,10 @@ class NexuSession:
                 if self.trainer_checkpoint is not None
                 else None,
             )
+        except SIGTERMException as error:
+            if error.code is None:
+                error.code = 143
+            raise
         finally:
             if isinstance(module, NexuRLLightningModule):
                 module.close_collection()
