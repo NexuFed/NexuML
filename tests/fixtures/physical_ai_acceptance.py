@@ -382,6 +382,73 @@ def _gpu_inventory():
     return result
 
 
+def _object_store_observations(proc=Path("/proc")):
+    observations = []
+    disk_filesystems = {
+        "ext2",
+        "ext3",
+        "ext4",
+        "xfs",
+        "btrfs",
+        "zfs",
+        "f2fs",
+        "bcachefs",
+        "jfs",
+        "reiserfs",
+        "ufs",
+    }
+    for path in proc.glob("[0-9]*/cmdline"):
+        try:
+            arguments = path.read_bytes().split(b"\0")
+        except OSError:
+            continue
+        if not arguments or Path(os.fsdecode(arguments[0])).name != "raylet":
+            continue
+        settings = dict(
+            os.fsdecode(argument).split("=", 1)
+            for argument in arguments
+            if argument.startswith((b"--object_store_memory=", b"--plasma_directory="))
+        )
+        value = settings.get("--object_store_memory", "")
+        observation = {
+            "pid": int(path.parent.name),
+            "bytes": int(value) if value.isdigit() and int(value) > 0 else None,
+            "plasma_directory": settings.get("--plasma_directory"),
+            "filesystem": None,
+            "backing": "unknown",
+        }
+        try:
+            directory = observation["plasma_directory"]
+            if directory is not None and Path(directory).is_absolute():
+                if os.readlink(proc / "self/ns/mnt") != os.readlink(path.parent / "ns/mnt"):
+                    raise ValueError("raylet mount namespace differs; plasma backing unknown")
+                directory = Path(directory).resolve(strict=True)
+                mounts = []
+                # Use the raylet's mount namespace, not a path-name assumption about /tmp.
+                for line in (path.parent / "mountinfo").read_text().splitlines():
+                    left, right = line.split(" - ", 1)
+                    mount = Path(
+                        re.sub(
+                            r"\\([0-7]{3})", lambda match: chr(int(match[1], 8)), left.split()[4]
+                        )
+                    )
+                    if directory.is_relative_to(mount):
+                        mounts.append((len(mount.parts), right.split()[0]))
+                if mounts:
+                    depth = max(depth for depth, _ in mounts)
+                    filesystems = {kind for level, kind in mounts if level == depth}
+                    filesystem = next(iter(filesystems)) if len(filesystems) == 1 else None
+                    observation["filesystem"] = filesystem
+                    if filesystem in disk_filesystems:
+                        observation["backing"] = "disk"
+                    elif filesystem in {"tmpfs", "ramfs", "hugetlbfs"}:
+                        observation["backing"] = "shared_memory"
+        except (OSError, RuntimeError, ValueError, IndexError):
+            pass  # Unknown reservations/backing must block, never count as free headroom.
+        observations.append(observation)
+    return observations
+
+
 def _preflight(record, root, options, env):
     record["licenses"] = {
         name: os.environ.get(name) in {"Y", "YES", "1"}
@@ -407,24 +474,8 @@ def _preflight(record, root, options, env):
         "available_bytes": shm.f_bavail * shm.f_frsize,
         "object_store_limit_bytes": None,
         "campaign_cap_bytes": 8 * 1024**3,
-        "existing_object_store_observations": [],
+        "existing_object_store_observations": _object_store_observations(),
     }
-    for path in Path("/proc").glob("[0-9]*/cmdline"):
-        try:
-            arguments = path.read_bytes().split(b"\0")
-        except OSError:
-            continue
-        if arguments and Path(os.fsdecode(arguments[0])).name == "raylet":
-            for argument in arguments:
-                if argument.startswith(b"--object_store_memory="):
-                    value = argument.split(b"=", 1)[1]
-                    if value.isdigit():
-                        record["shared_memory"]["existing_object_store_observations"].append(
-                            {
-                                "pid": int(path.parent.name),
-                                "bytes": int(value),
-                            }
-                        )
     data = options.get("data_root")
     present = data is not None and Path(data).is_dir()
     record["family_prerequisites"] = {
@@ -464,8 +515,22 @@ def _preflight(record, root, options, env):
     used = (shm.f_blocks - shm.f_bfree) * shm.f_frsize
     record["shared_memory"]["used_bytes"] = used
     observed = record["shared_memory"]["existing_object_store_observations"]
-    if max(used, sum(item["bytes"] for item in observed)) > 8 * 1024**3:
-        raise Blocked("observed shared-memory/object-store use exceeds the 8 GiB campaign cap")
+    if not observed or any(
+        item["bytes"] is None or item["backing"] == "unknown" for item in observed
+    ):
+        raise Blocked(
+            "Ray object-store reservation/backing unobservable; shared-memory budget unknown"
+        )
+    shared = sum(item["bytes"] for item in observed if item["backing"] == "shared_memory")
+    record["shared_memory"].update(
+        object_store_limit_bytes=sum(item["bytes"] for item in observed),
+        shared_object_store_limit_bytes=shared,
+        disk_object_store_limit_bytes=sum(
+            item["bytes"] for item in observed if item["backing"] == "disk"
+        ),
+    )
+    if max(used, shared) > 8 * 1024**3:
+        raise Blocked("observed shared-memory use/reservation exceeds the 8 GiB campaign cap")
     probe = root / "durable-write-check"
     payload = os.urandom(32)
     with probe.open("xb") as output:
