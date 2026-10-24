@@ -13,6 +13,7 @@ import subprocess
 import sys
 import time
 from uuid import uuid4
+from urllib.parse import urlsplit
 
 
 CASES = ("preflight", "regression", "package", "recipe", "so101", "browser", "recovery")
@@ -316,6 +317,9 @@ def main() -> None:
     os.environ["CUDA_VISIBLE_DEVICES"] = ""
     if not args.ca.is_file():
         parser.error("The approved CA file must exist on the submitter")
+    address = urlsplit(args.address)
+    if address.username or address.password or address.query or address.fragment:
+        parser.error("The endpoint must not contain credentials, query parameters or fragments")
     if not args.durable_root.is_absolute() or ".." in args.durable_root.parts:
         parser.error("Durable root must be an absolute worker-owned path")
     if not args.durable_root.is_relative_to("/mnt/data/nexuml-qualification"):
@@ -419,6 +423,31 @@ def main() -> None:
                 "source_tree_sha256": identity,
                 "pool": "pool_gpu_workers",
                 "concurrency": args.concurrency,
+                "deployment_inputs": {
+                    "address": args.address,
+                    "ca_path": str(args.ca),
+                    "durable_root": str(args.durable_root),
+                    "gpu_reservation_per_job": 1,
+                    "maximum_in_flight": 4,
+                    "initial_qualification_concurrency": 1,
+                    "parallel_capacity": "UNVERIFIED; ceiling is not capacity approval",
+                    "worker_prerequisites": {
+                        "native_assets_licences": "UNVERIFIED; prepared worker profile required",
+                        "graphics": "UNVERIFIED; submitter graphics do not qualify workers",
+                        "display_private_route": "UNVERIFIED; prepared display/access required",
+                        "browser_private_route": "UNVERIFIED; remote browser/access required",
+                        "ros_world_controllers_reset_clock": "UNVERIFIED; ROS profile required",
+                        "private_data": (
+                            "SUPPLIED_UNVERIFIED; approval and worker admission still required"
+                            if args.data_root
+                            else "MISSING; no approved remote data root supplied"
+                        ),
+                    },
+                    "boundaries": (
+                        "No provisioning, image/driver/shared-environment changes, "
+                        "DGX, separate CPU pools or local application/GPU fallback"
+                    ),
+                },
                 "attempts": [
                     {key: value for key, value in item.items() if key != "scenario"}
                     for item in attempts
