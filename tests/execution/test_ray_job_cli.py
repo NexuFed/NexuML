@@ -75,6 +75,13 @@ def test_train_submits_all_scenario_sources_with_overrides(
     assert submit_only[0].training.max_epochs == 2
     assert submit_only[0].execution.entrypoint_num_gpus == 1
     assert "Ray job submitted: raysubmit_cli" in result.output
+    text = " ".join(result.output.split())
+    assert "backend: ray-jobs-sdk; operation: train" in text
+    execution = submit_only[0].execution
+    assert f"GPUs={execution.entrypoint_num_gpus}; CPUs={execution.entrypoint_num_cpus}" in text
+    assert "RAM bytes=unspecified" in text
+    assert "Configured epoch budget: 2" in text
+    assert "phase: unknown until observed in job logs" in text
     assert "Training complete" not in result.output
     assert "Ray training complete" not in result.output
     if source == "file":
@@ -108,6 +115,8 @@ def test_ray_job_checkpoint_path_is_not_read_before_submission(submit_only, monk
     assert len(calls) == 1
     assert str(calls[0][1]["trainer_checkpoint"]) == path
     assert "remote_resume" in result.output
+    assert "saved semantics and output paths" in result.output
+    assert "Worker train input:" in result.output
 
 
 def test_ray_job_cli_does_not_fall_back_to_local_training_on_failure(submit_only, monkeypatch):
@@ -132,6 +141,56 @@ def test_ray_job_appears_in_backend_catalog():
     result = runner.invoke(main.app, ["backend", "list", "execution"])
     assert result.exit_code == 0, result.output
     assert "ray-jobs-sdk" in result.output
+
+
+def test_submission_summary_reports_rl_budget_without_dumping_execution_secrets(
+    submit_only, monkeypatch
+):
+    from nexuml_library.scenarios.reinforcement.gymnasium import cartpole_ppo
+
+    scenario = cartpole_ppo(total_frames=64, frames_per_batch=16)
+    scenario.name = "literal [bold]scenario[/bold]"
+    scenario.execution = RayJobsSDKExecution(
+        entrypoint_num_cpus=2,
+        entrypoint_memory=123456,
+        entrypoint_resources={"pool_gpu_workers": 1},
+        runtime_env={"env_vars": {"PRIVATE_TOKEN": "do-not-print-this"}},
+    )
+    monkeypatch.setattr(main, "_get_scenario_fn", lambda _: lambda: scenario)
+    result = runner.invoke(main.app, ["train", "summary"])
+    assert result.exit_code == 0, (result.output, result.exception)
+    text = " ".join(result.output.split())
+    assert "literal [bold]scenario[/bold]" in text
+    assert "Configured physical frame budget: 64" in text
+    assert "Requested training device: cpu" in text
+    assert "RAM bytes=123456" in text and "pool_gpu_workers" in text
+    assert "Configured epoch budget" not in text
+    assert "do-not-print-this" not in text and "PRIVATE_TOKEN" not in text
+    assert "Actual training device" not in text
+
+
+@pytest.mark.parametrize("training_device", ["cpu", "gpu"])
+def test_worker_completion_does_not_relabel_post_teardown_cpu_as_training_device(
+    monkeypatch, training_device
+):
+    from types import SimpleNamespace
+    import nexuml.execution as execution
+
+    scenario = ScenarioSpec(name="finished", logging=None)
+    scenario.training.accelerator = training_device
+    monkeypatch.setattr(main, "_get_scenario_fn", lambda _: lambda: scenario)
+    session = SimpleNamespace(
+        lightning_module=SimpleNamespace(frames=0, device="cpu"),
+        trainer=SimpleNamespace(global_step=0),
+    )
+    monkeypatch.setattr(execution, "run", lambda *_args, **_kwargs: session)
+    result = runner.invoke(main.app, ["train", "finished"])
+    assert result.exit_code == 0, (result.output, result.exception)
+    assert "Module device after completion: cpu" in result.output
+    assert "Actual training device:" not in result.output
+    assert "Physical training frames: 0" in result.output
+    assert "Optimizer steps: 0" in result.output
+    assert "Ray job submitted" not in result.output
 
 
 def test_cli_selects_ray_job_without_changing_the_local_scenario(submit_only):
@@ -242,6 +301,13 @@ def test_remote_lifecycle_selects_execution_before_worker_inputs(
         assert kwargs["overrides"] == ("policy_evaluation.episodes=2",)
         assert kwargs["device"] == "cuda:0"
     assert "Ray job submitted: lifecycle_id" in result.output
+    text = " ".join(result.output.split())
+    assert f"operation: {operation}" in text
+    assert f"Worker {operation} input:" in text
+    assert "Configured epoch budget" not in text
+    assert "setup/learning phase: unknown" in text
+    if operation == "export":
+        assert "Requested worker export output (not yet produced): /worker/policy" in text
     assert "Training complete" not in result.output
 
 
