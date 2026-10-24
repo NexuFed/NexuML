@@ -112,10 +112,12 @@ def test_required_ci_checks_every_job_and_fails_closed(tmp_path):
     assert set(gate["needs"]) == set(jobs) - {"required-ci"}
     assert gate["if"] == "${{ always() }}"
     step = gate["steps"][0]
-    assert set(step["env"].values()) == {
-        f"${{{{ needs.{name}.result }}}}" for name in gate["needs"]
-    }
-    results = dict.fromkeys(step["env"], "success")
+    result_env = {key: value for key, value in step["env"].items() if key.endswith("_RESULT")}
+    assert set(result_env.values()) == {f"${{{{ needs.{name}.result }}}}" for name in gate["needs"]}
+    optional = {"RL_SIMULATORS_REQUESTED": "rl-simulators", "ISAACLAB_REQUESTED": "isaaclab"}
+    for key, job in optional.items():
+        assert step["env"][key] == jobs[job]["if"]
+    results = {**dict.fromkeys(result_env, "success"), **dict.fromkeys(optional, "true")}
     env = {**os.environ, "GITHUB_STEP_SUMMARY": str(tmp_path / "summary.md")}
 
     def run(values):
@@ -128,6 +130,12 @@ def test_required_ci_checks_every_job_and_fails_closed(tmp_path):
         ).returncode
 
     assert run(results) == 0
-    for name in results:
+    for name in result_env:
         for outcome in ("failure", "skipped", "cancelled"):
             assert run({**results, name: outcome}) == 1, (name, outcome)
+    for requested in optional:
+        result_key = requested.removesuffix("_REQUESTED") + "_RESULT"
+        assert run({**results, requested: "false", result_key: "skipped"}) == 0
+        for outcome in ("failure", "cancelled", "unknown"):
+            assert run({**results, requested: "false", result_key: outcome}) == 1
+        assert run({**results, requested: "unknown"}) == 1

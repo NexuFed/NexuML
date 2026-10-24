@@ -6,8 +6,13 @@ The [Cartpole guide](../../docs/how-to/isaac-cartpole.md) covers the learning
 settings, private viewer, complete-policy export and held-out evaluation.
 For remote submission without a custom image, see
 [Ray Jobs setup, log snapshots and private forwarding](../../docs/how-to/isaac-cartpole.md#run-remotely-with-ray-jobs).
-Use `RayJobExecutionSpec.setup_command` for explicit remote dependency setup,
+Use `RayJobsSDKExecution.setup_command` (`nexuml.execution.definitions`,
+registered `ray-jobs-sdk`, not KubeRay `ray-job`) for explicit remote dependency setup,
 followed by the project's venv Python. Ordinary `run.sh` never installs anything.
+SDK migration and remote lifecycle qualification remain pending; the guide is not
+new runtime evidence. Its accepted remote campaign uses only `pool_gpu_workers`,
+one GPU/job, at most four in flight subject to qualified capacity, durable logs
+and absolute policy outputs, and a monitored physical **4 GiB** free-disk stop.
 
 ## Current worktree profile: Lab 3 / CUDA 13
 

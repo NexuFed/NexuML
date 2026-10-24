@@ -425,6 +425,8 @@ jobs:
       - studio-static
       - studio-build
       - studio-package
+      - rl-simulators
+      - isaaclab
     if: ${{ always() }}
     runs-on: ika-runner
 
@@ -437,6 +439,10 @@ jobs:
           STUDIO_STATIC_RESULT: ${{ needs.studio-static.result }}
           STUDIO_BUILD_RESULT: ${{ needs.studio-build.result }}
           STUDIO_PACKAGE_RESULT: ${{ needs.studio-package.result }}
+          RL_SIMULATORS_RESULT: ${{ needs.rl-simulators.result }}
+          ISAACLAB_RESULT: ${{ needs.isaaclab.result }}
+          RL_SIMULATORS_REQUESTED: ${{ github.event_name == 'workflow_dispatch' && inputs.rl-simulators }}
+          ISAACLAB_REQUESTED: ${{ github.event_name == 'workflow_dispatch' && inputs.isaaclab }}
         run: |
           echo "static: $STATIC_RESULT"
           echo "test:   $TEST_RESULT"
@@ -455,6 +461,8 @@ jobs:
             echo "| Studio static | $STUDIO_STATIC_RESULT |"
             echo "| Studio build | $STUDIO_BUILD_RESULT |"
             echo "| Studio packages | $STUDIO_PACKAGE_RESULT |"
+            echo "| Optional RL simulators (requested: $RL_SIMULATORS_REQUESTED) | $RL_SIMULATORS_RESULT |"
+            echo "| Optional Isaac Lab (requested: $ISAACLAB_REQUESTED) | $ISAACLAB_RESULT |"
             echo ""
             echo "Linux project/tool verified here; macOS and Windows are disabled, not verified."
           } >> "$GITHUB_STEP_SUMMARY"
@@ -468,3 +476,11 @@ jobs:
             echo "One or more required CI jobs failed."
             exit 1
           fi
+          case "$RL_SIMULATORS_REQUESTED:$RL_SIMULATORS_RESULT" in
+            true:success|false:success|false:skipped) ;;
+            *) echo "RL simulator checks failed or requested checks were skipped"; exit 1 ;;
+          esac
+          case "$ISAACLAB_REQUESTED:$ISAACLAB_RESULT" in
+            true:success|false:success|false:skipped) ;;
+            *) echo "Isaac Lab checks failed or requested checks were skipped"; exit 1 ;;
+          esac
