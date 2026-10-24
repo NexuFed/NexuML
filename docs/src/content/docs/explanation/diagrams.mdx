@@ -1,0 +1,52 @@
+---
+title: Pipeline diagrams
+description: Enable configured Mermaid pipeline output during build or training and inspect the actual file.
+---
+
+**Goal:** inspect the compiled pipeline as a Mermaid graph. **Prerequisites:** a working
+registered recipe and writable diagram destination. This diagnostic task does not train
+a model or create a model package.
+
+## Configure output
+
+Set this on the scenario:
+
+```python
+from nexuml.core.types import DiagramSpec, LoggingSpec
+
+logging = LoggingSpec(diagram=DiagramSpec(
+    enabled=True,
+    depth=2,
+    direction="TB",
+    show_params=True,
+    show_shapes=True,
+    show_metrics=True,
+    output_dir=".experiments/diagrams",
+))
+```
+
+## Generate and inspect
+
+```bash
+nexuml resolve my-scenario --output configs/my-scenario.yaml
+nexuml build configs/my-scenario.yaml
+```
+
+Build reports the summary and writes `<output_dir>/<scenario-name>.md`, using the scenario's
+internal `name`, not necessarily its registry key. It reports the actual destination;
+[log-root rules](/reference/environment/) apply. Open that Markdown in a Mermaid-compatible
+renderer. The CLI does not need to print the full Mermaid source.
+
+Training exports the same configured diagram before its session, so a separate build
+is unnecessary if you only want the training-time diagram. Diagram failures are warnings,
+not failures of an otherwise valid compile. No diagram is promised when logging/diagram
+output is absent.
+
+The documentation renders Mermaid fences; for example, the
+[architecture diagram](/explanation/architecture/) shows the lifecycle. A pipeline graph
+uses ordered stage/layer nodes and named edges; inspect the generated file for your
+actual component labels, shapes, and parameters rather than treating a conceptual graph
+as runtime evidence.
+
+Next, inspect [TensorDict routing](/explanation/architecture/#tensor-data-flow) or the
+[diagram exporter API](/reference/api/nexuml/core/diagram/).

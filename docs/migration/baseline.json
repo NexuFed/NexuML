@@ -1,0 +1,751 @@
+{
+  "sourceCommit": "fbc074595f2d993edf879661b7b70d851aced9cd",
+  "archiveCommit": "f553f5ab04862cd59951b6422473b0a526fe29fb",
+  "archiveRootEntries": [
+    "100644 blob e69de29bb2d1d6434b8b29ae775ad8c2e48c5391\t.nojekyll",
+    "040000 tree e3664521cff0a46834d66fa48b210064047221da\tdev",
+    "100644 blob 41a13bb738d7512aac4e11d254daa01460701bad\tindex.html",
+    "120000 blob eac0a1441d577d84cbcdb084b14c22d0f5ae8562\tlatest",
+    "040000 tree 03a4cb7c39a087b5bc15c2ae36a697984c2acc4b\tv0.1.0",
+    "040000 tree 9ec0df8e8c6db036df3101138e78a1f962830d5f\tv0.2.1",
+    "100644 blob eacaad09c1eaa17fdc530cd0a6ed5e7c24ef42bc\tversions.json"
+  ],
+  "versions": [
+    {
+      "version": "dev",
+      "title": "dev",
+      "aliases": []
+    },
+    {
+      "version": "v0.2.1",
+      "title": "v0.2.1",
+      "aliases": [
+        "latest"
+      ]
+    },
+    {
+      "version": "v0.1.0",
+      "title": "v0.1.0",
+      "aliases": []
+    }
+  ],
+  "latest": "v0.2.1",
+  "trees": {
+    "dev": {
+      "gitTree": "e3664521cff0a46834d66fa48b210064047221da",
+      "manifestSha256": "e0e32efb6f8f472d8e7b8317bf12e2198eebc7d4cb0e879381b8df498f02a007",
+      "files": 225
+    },
+    "v0.1.0": {
+      "gitTree": "03a4cb7c39a087b5bc15c2ae36a697984c2acc4b",
+      "manifestSha256": "f977ee0cecde77b22956ca6379942340ce85aa1b0e7bc681f49f67d1b4d9f2fb",
+      "files": 203
+    },
+    "v0.2.1": {
+      "gitTree": "9ec0df8e8c6db036df3101138e78a1f962830d5f",
+      "manifestSha256": "0acaea7faed060aa017bb527340f9c801373a58216445c14c28300b2c4d38d8d",
+      "files": 215
+    }
+  },
+  "pages": {
+    "development/index.md": {
+      "target": "development/",
+      "sha256": "74607bcbd8c1482f30ff08acfb95d3901029e0072d12f13db8e6762db39bd888",
+      "headings": [
+        "Development"
+      ]
+    },
+    "development/install.md": {
+      "target": "development/install/",
+      "sha256": "627c5f3674a68bfa6a1fd48f766625f02039eac49ff7d242dcf075158fb77dfd",
+      "headings": [
+        "Development install",
+        "Prerequisites",
+        "Clone and install",
+        "Includes dev/docs tools; excludes DALI",
+        "Install the base library as an editable package",
+        "Verify",
+        "Tests, linting, and type checking",
+        "Run tests",
+        "Type check",
+        "Lint and format",
+        "Serve docs locally",
+        "Dependency management",
+        "OpenChamber worktrees",
+        "Studio development",
+        "Next"
+      ]
+    },
+    "development/release.md": {
+      "target": "development/release/",
+      "sha256": "c159c7564033a7c3be14bf2f339a39426d5e9921e0955bfc9ae47868f4c42b81",
+      "headings": [
+        "Publish a release",
+        "One-time configuration",
+        "TestPyPI candidate",
+        "Production release",
+        "Studio: one-time owner configuration",
+        "Studio release",
+        "Institute runner trust boundary"
+      ]
+    },
+    "explanation/architecture.md": {
+      "target": "explanation/architecture/",
+      "sha256": "2ebf5a8331024c7d80c4be1e2eccdca2ef7e29c9b919051e5cb1b10d754b82a6",
+      "headings": [
+        "Architecture: Define, Persist, Materialize, Run",
+        "Definitions",
+        "Identity Registry",
+        "Persistence",
+        "Materialization",
+        "Compile And Run",
+        "Discovery",
+        "Ownership",
+        "See Also"
+      ]
+    },
+    "explanation/diagrams.md": {
+      "target": "explanation/diagrams/",
+      "sha256": "13a55a977578058fd5d2157e3e408476ecb82d4a1b832363e357dafd077e9db5",
+      "headings": [
+        "Pipeline diagrams",
+        "Configure diagram output",
+        "Generate during build",
+        "Generate during training",
+        "Rendering",
+        "See also"
+      ]
+    },
+    "explanation/index.md": {
+      "target": "explanation/architecture/",
+      "sha256": "9de08707167dcb8bb3026c2d5c1d42380b42f882f1cbfb5a418ee79b2b123967",
+      "headings": [
+        "Concepts",
+        "The core concepts",
+        "A useful shorthand"
+      ]
+    },
+    "explanation/library-discovery.md": {
+      "target": "how-to/custom-library/#discovery",
+      "sha256": "67cd131065bd3c214438c09d3129124061595dd39db7240bbbab06facce2e2f7",
+      "headings": [
+        "Library discovery",
+        "Discovery sources",
+        "Resilient scanning",
+        "Python vs persistence",
+        "See also"
+      ]
+    },
+    "explanation/tensordict.md": {
+      "target": "explanation/architecture/#tensor-data-flow",
+      "sha256": "b56c64628ffb01fe214263ad4f92a3824c14c37fe5559610807bd00aad14cd13",
+      "headings": [
+        "TensorDict data flow",
+        "Named tensors instead of one anonymous tensor",
+        "Layer contracts",
+        "Why this matters",
+        "x and y",
+        "See also"
+      ]
+    },
+    "how-to/auto-batch-size.md": {
+      "target": "how-to/auto-batch-size/",
+      "sha256": "79e30c13dcf382d5b0d9efdc0813aa22616ed5744a93f1504b39c44261179720",
+      "headings": [
+        "Automatic batch size",
+        "Configure it",
+        "CUDA is required",
+        "How probing works",
+        "Safety policies",
+        "Defaults",
+        "See also"
+      ]
+    },
+    "how-to/autoresearch.md": {
+      "target": "how-to/autoresearch/",
+      "sha256": "bc675f8ade236bddebc03a578d3294e644cb91aa25c2f236fb8197ecaad1b09c",
+      "headings": [
+        "Autoresearch",
+        "Agent skills",
+        "Scenario files and execution",
+        "Selection and evidence"
+      ]
+    },
+    "how-to/checkpoints.md": {
+      "target": "how-to/checkpoints/",
+      "sha256": "051d2bb224b67ade23f28a5c6fe542022bd03b9b7524bba7c78b18451538dd3a",
+      "headings": [
+        "Checkpoints and weight reuse",
+        "1. Create Lightning checkpoints",
+        "2. Resume a Lightning training run",
+        "3. Reuse selected model weights",
+        "`CheckpointLoadSpec`",
+        "Which one do I want?"
+      ]
+    },
+    "how-to/cli-lifecycle.md": {
+      "target": "how-to/run-scenarios/",
+      "sha256": "4c453adec4f1929c6d6480cdc8e872055ac1f09ba700f1a013e5e5b4c4109d02",
+      "headings": [
+        "CLI lifecycle",
+        "Inspect the environment",
+        "Resolve: Python \u2192 persisted configuration",
+        "Build: configuration \u2192 runtime pipeline",
+        "Train: run the canonical lifecycle",
+        "Export an existing checkpoint",
+        "Other workflows",
+        "See also"
+      ]
+    },
+    "how-to/custom-data-source.md": {
+      "target": "how-to/custom-data-source/",
+      "sha256": "269594b3665ef6ca7e83a888712bf2b5c51ae666744d3edcdeef30f5a6737c4b",
+      "headings": [
+        "Add A Custom Data Source",
+        "Dataset Contract",
+        "See Also"
+      ]
+    },
+    "how-to/custom-eval-algorithm.md": {
+      "target": "how-to/custom-eval-algorithm/",
+      "sha256": "ec2aab4f5faf1f1a7dbe81c86a216ee93b4b0d9cb528a5b0253df85e85f3f139",
+      "headings": [
+        "Add A Custom Eval Algorithm",
+        "Runtime Contract",
+        "See Also"
+      ]
+    },
+    "how-to/custom-layer.md": {
+      "target": "how-to/custom-layer/",
+      "sha256": "6cda1ad3e11dd3278cdf30f02c7d85aa146396b9d1bf46ab56f8f61c1f52f545",
+      "headings": [
+        "Add A Custom Layer",
+        "Prefer A Direct Module",
+        "Register Richer Behavior",
+        "Define The Component",
+        "Use It In Python",
+        "Register The Library",
+        "Persistence",
+        "See Also"
+      ]
+    },
+    "how-to/custom-library.md": {
+      "target": "how-to/custom-library/",
+      "sha256": "2b085e4851ffda0fe7aa47622d2479fdf1f7c66552da2b35f61cc98f1028cd7b",
+      "headings": [
+        "Build A Custom Library",
+        "Components",
+        "Discovery",
+        "Persistence",
+        "Guides"
+      ]
+    },
+    "how-to/custom-scenario.md": {
+      "target": "how-to/run-scenarios/#define-a-recipe",
+      "sha256": "52fa886bb961107cd03c9641d6e753af97c0437ef831bcdd9a0b1f36b768776c",
+      "headings": [
+        "Custom scenario walkthrough"
+      ]
+    },
+    "how-to/data-loading.md": {
+      "target": "how-to/data-loading/",
+      "sha256": "ddb51132408b741fd7c4d2406715fd7c5216aea0b7ad556447bd79dacfe96060",
+      "headings": [
+        "Choose a data loader",
+        "Default and explicit selection",
+        "NVIDIA DALI",
+        "Tensor shards",
+        "Automatic batch size"
+      ]
+    },
+    "how-to/define-scenario.md": {
+      "target": "how-to/run-scenarios/#define-a-recipe",
+      "sha256": "4219a4883a2b879daa7489a0460efca3e477708f145bdf0f6b3c56770312046f",
+      "headings": [
+        "Define a scenario",
+        "Minimal registered scenario",
+        "Make the scenario discoverable",
+        "Verify the recipe",
+        "What belongs on the scenario?",
+        "See also"
+      ]
+    },
+    "how-to/deploy.md": {
+      "target": "how-to/deploy/",
+      "sha256": "b77bfa9f22ea93f103e7245754602a8921fab223c4d3afd7ad3e4b89a0d5551b",
+      "headings": [
+        "Deployment boundary",
+        "Package the model",
+        "Containers",
+        "Distributed training"
+      ]
+    },
+    "how-to/development.md": {
+      "target": "development/install/",
+      "sha256": "0a38428a8c724752e1661006b28aaa1268543a5a8bc2f3d17506aeccd123d1cb",
+      "headings": [
+        "Development workflow",
+        "Tests",
+        "Type checking",
+        "Linting and formatting",
+        "OpenSpec validation",
+        "CI gates",
+        "Studio and skill checks",
+        "Dependency management",
+        "Pull requests",
+        "Docs"
+      ]
+    },
+    "how-to/evaluate.md": {
+      "target": "how-to/evaluate/",
+      "sha256": "2365766af8c6c6e77e8a10442d466cd9feef30e744d0d62ed47d5125ca6aa771",
+      "headings": [
+        "Evaluate a model",
+        "1. Pipeline losses and metrics",
+        "2. Post-train fitted pipeline layers",
+        "3. Evaluation algorithms",
+        "Route inputs explicitly",
+        "Surface selected results",
+        "Distributed execution",
+        "Custom algorithms"
+      ]
+    },
+    "how-to/export-dataset.md": {
+      "target": "how-to/export-dataset/",
+      "sha256": "cf18945bc9de90b70c05ec35497d089b3fdc1a39a679d289958cfb220347d769",
+      "headings": [
+        "Export a dataset",
+        "Export raw batches",
+        "Export an intermediate pipeline view",
+        "Export backends",
+        "Export metadata",
+        "Reuse an export",
+        "S3 WebDataset",
+        "Tensor shards"
+      ]
+    },
+    "how-to/export.md": {
+      "target": "how-to/export/",
+      "sha256": "5b40e6e689c3810451c29e1330a2776545c9841f9549b3189f7567db5cd2e670",
+      "headings": [
+        "Export and reload a model",
+        "Export the live trained model from a scenario",
+        "Package an explicit checkpoint",
+        "Package layout",
+        "Reload against the current codebase",
+        "Load the packaged pipeline directly",
+        "Reuse weights for training",
+        "SafeTensors and ONNX",
+        "See also"
+      ]
+    },
+    "how-to/github-pages.md": {
+      "target": "development/documentation/",
+      "sha256": "e8f7f58aa7b35f3185e406bb7f0d523aceb72224672bd15f7d35080ec419a1b6",
+      "headings": [
+        "Enable GitHub Pages",
+        "1. Enable GitHub Pages in the repository",
+        "2. Trigger the workflow",
+        "3. Build locally",
+        "4. Build a static site",
+        "5. Manually deploy a version",
+        "Version switcher"
+      ]
+    },
+    "how-to/index.md": {
+      "target": "how-to/",
+      "sha256": "9e23156ea42ce95f4f2d457854663eb09ddf99dce1c020fbde22cf58e72711dd",
+      "headings": [
+        "Guides",
+        "Core workflow",
+        "Scenarios and configuration",
+        "Training and evaluation",
+        "Data",
+        "Experimentation",
+        "Model export",
+        "Execution",
+        "Extending NexuML"
+      ]
+    },
+    "how-to/library-cli.md": {
+      "target": "how-to/custom-library/#local-library-roots",
+      "sha256": "05f19eee529ce8e4c02aa845fce5d6056cf3bbe9505ebdd6514e50b8fae454a1",
+      "headings": [
+        "Managing local library roots",
+        "Prerequisites",
+        "Commands",
+        "Add a local root",
+        "List current roots",
+        "Remove a root",
+        "Discovery behavior",
+        "Verifying after adding",
+        "Example \u2014 developing a custom library",
+        "Scaffold a library",
+        "Register it",
+        "Verify",
+        "Config file location",
+        "Implementation map",
+        "See also"
+      ]
+    },
+    "how-to/local-api.md": {
+      "target": "how-to/local-api/",
+      "sha256": "e6da69b1cd8c1c730d1ba3cfdacf0531a1c91c4ce94acbdfbb935574a09c3c4e",
+      "headings": [
+        "Local Studio API",
+        "Start manually",
+        "Authentication and REST reference",
+        "Configuration and conflicts",
+        "WebSocket observation and replay",
+        "Operation lifecycle and limits"
+      ]
+    },
+    "how-to/register-library.md": {
+      "target": "how-to/custom-library/#installed-libraries",
+      "sha256": "07dd5603671cf156fe33771546ec83e6665ee233d78d368c270030e7b74c1d39",
+      "headings": [
+        "Register a library",
+        "1. Structure your library",
+        "2. Declare the entry-point",
+        "3. Install and verify",
+        "CLI library management",
+        "See also"
+      ]
+    },
+    "how-to/run-scenarios.md": {
+      "target": "how-to/run-scenarios/",
+      "sha256": "2ef21bb6e46946e3e9bc7668bb8a8d39a2afe5141a05b306d5723855a7c22492",
+      "headings": [
+        "Run scenarios",
+        "Supported sources",
+        "Registered scenario",
+        "Resolved YAML",
+        "Trusted Python file",
+        "Checkpoint-only resume",
+        "See also"
+      ]
+    },
+    "how-to/scenario-file.md": {
+      "target": "how-to/scenario-file/",
+      "sha256": "c8521b533867c57dbe014ec3999402bea34d8ffa36226591925ca06fe0afb49c",
+      "headings": [
+        "Trusted Python scenario files",
+        "Contract",
+        "Save provenance",
+        "Tuning metadata",
+        "When to promote it"
+      ]
+    },
+    "how-to/tracking.md": {
+      "target": "how-to/tracking/",
+      "sha256": "c91815e7ad4e8f8872905c8ca1c0095afdbab9991934a66efe3c8f2632d6ed7d",
+      "headings": [
+        "Tracking and logging",
+        "TensorBoard",
+        "MLflow",
+        "DVCLive",
+        "Pipeline diagrams",
+        "No external logger",
+        "Paths",
+        "See also"
+      ]
+    },
+    "how-to/train.md": {
+      "target": "how-to/run-scenarios/#train",
+      "sha256": "c59ebbd341846080ca0c506b30c77881f366e11f1422934af046032cd250df3d",
+      "headings": [
+        "Train a model",
+        "Train a registered scenario",
+        "Train resolved YAML",
+        "Train a trusted local experiment",
+        "Common overrides",
+        "Resume the Lightning trainer",
+        "Execution placement",
+        "Outputs",
+        "Exact options"
+      ]
+    },
+    "how-to/training-backends/index.md": {
+      "target": "how-to/training-backends/",
+      "sha256": "560ddbbfb97df462090324d22bb4b2dfefa24c0dfba3a379df4d0fa8723cc276",
+      "headings": [
+        "Execution modes"
+      ]
+    },
+    "how-to/training-backends/jobs.md": {
+      "target": "how-to/training-backends/jobs/",
+      "sha256": "46868a8f61adc70329364e7213e6ee48edcb34395beb9740104361c5e53677c0",
+      "headings": [
+        "Native jobs and capacity review",
+        "Infrastructure-owned templates",
+        "Discovery and preflight (no launch)",
+        "Explicit operator smoke procedure",
+        "Save the returned native_reference object to reference.json."
+      ]
+    },
+    "how-to/training-backends/ray.md": {
+      "target": "how-to/training-backends/ray/",
+      "sha256": "60403e0b77aa7f3e7ee39b295fd4a267ee3b91d1d88283fa6c7cdbc66c432e60",
+      "headings": [
+        "Ray execution",
+        "Install",
+        "Configure an existing cluster",
+        "Lightning strategies",
+        "Ray Jobs",
+        "Distributed semantic restrictions",
+        "Shared datasets and S3 WebDataset",
+        "Temporary KubeRay clusters",
+        "Troubleshooting"
+      ]
+    },
+    "how-to/tune.md": {
+      "target": "how-to/tune/",
+      "sha256": "b1095a07992036678523403b4294868ce9a6e10d2b72a37457315e44b072b541",
+      "headings": [
+        "Tune with Optuna",
+        "Registered scenario",
+        "Trusted file and custom search space",
+        "Metric selection",
+        "Tracking",
+        "See also"
+      ]
+    },
+    "index.md": {
+      "target": "",
+      "sha256": "c57c6c7bf869bb5c98aab2e641f28a31c226c14d4d255d262148a4a4fc989f86",
+      "headings": [
+        "Choose your path"
+      ]
+    },
+    "learn/cifar-resnet-walkthrough.md": {
+      "target": "start/cifar-resnet/",
+      "sha256": "56612b602006b4d5c5b15b036dee476ef58909aecd3ffedb332d27af97b5bef4",
+      "headings": [
+        "CIFAR ResNet example"
+      ]
+    },
+    "learn/decorators-and-discovery.md": {
+      "target": "how-to/custom-library/#discovery",
+      "sha256": "c1b4c3cf78414dede32b5aebaee333a43840f4526d6dc860a6a314bbd3f1e2c3",
+      "headings": [
+        "Decorators And Discovery",
+        "Component Decorators",
+        "When No Decorator Is Needed",
+        "Scenario Decorator",
+        "Discovery Sources",
+        "Verify Discovery",
+        "See Also"
+      ]
+    },
+    "learn/from-lightning.md": {
+      "target": "explanation/architecture/#coming-from-lightning",
+      "sha256": "b25b0b03e8aa5b00de0656bada0f6be33b9e3fb59f59192447e485d47e0efcc1",
+      "headings": [
+        "Coming from PyTorch Lightning",
+        "Concept mapping",
+        "The key difference",
+        "What stays Lightning-native",
+        "What NexuML adds",
+        "Explicit TensorDict contracts",
+        "Definitions instead of constructor bags",
+        "One scenario across execution environments",
+        "Checkpoints: do not mix these concepts",
+        "Next"
+      ]
+    },
+    "learn/index.md": {
+      "target": "start/",
+      "sha256": "82b47b7ec3657d6102a9f088db3f2721c9440c48639cc3ff72fdca9c2adf64d3",
+      "headings": [
+        "Learning NexuML"
+      ]
+    },
+    "learn/mental-model.md": {
+      "target": "explanation/architecture/",
+      "sha256": "3b10c01a7bc13153282959deef60f338b12649d3b3a69151c1dc1c9a872c70cd",
+      "headings": [
+        "Mental model",
+        "1. Define",
+        "2. Persist",
+        "3. Materialize",
+        "4. Run",
+        "The objects to remember",
+        "Next"
+      ]
+    },
+    "learn/scenarios.md": {
+      "target": "explanation/architecture/#scenarios",
+      "sha256": "3fae0ee06c852e523af8c67ba8e39568ad44979d68f91a3d71de5b5750c547b3",
+      "headings": [
+        "Scenarios",
+        "Example",
+        "Data",
+        "Evaluation And Loading",
+        "Python And YAML",
+        "Running",
+        "See Also"
+      ]
+    },
+    "reference/backends.md": {
+      "target": "reference/backends/",
+      "sha256": "6921af17a4265915e515938dda0e2d99f4aa2a9daade72aac10e4974f6e57c18",
+      "headings": [
+        "Backends",
+        "Data loaders",
+        "Dataset export",
+        "Training / execution",
+        "Tracking",
+        "Pipeline export",
+        "Evaluation storage"
+      ]
+    },
+    "reference/cli.md": {
+      "target": "reference/cli/",
+      "sha256": "2333a513fdbf9d1d3307e60c21e09b35cccb8261fc39ba6add55dfad0ffcbdc8",
+      "headings": [
+        "CLI reference"
+      ]
+    },
+    "reference/decorators.md": {
+      "target": "reference/api/nexuml/core/discovery/",
+      "sha256": "2932c0e7fc94945cd0d8cdd8b43bea62fac71a2a4098659f0e8ec706d7864071",
+      "headings": [
+        "Discovery Decorators",
+        "See Also"
+      ]
+    },
+    "reference/environment.md": {
+      "target": "reference/environment/",
+      "sha256": "2e5fe4527cdb3aa8e225aa57c5877a8705d9093954eefab4d5c2880a52f315e4",
+      "headings": [
+        "Environment roots",
+        "`NEXUML_DATA_ROOT`",
+        "`NEXUML_LOGS_ROOT`",
+        "Typical shell setup",
+        "Implementation references"
+      ]
+    },
+    "reference/index.md": {
+      "target": "reference/",
+      "sha256": "712bef4b50821416dfda7e23cf917ab6dbdff5c0196a0f657ba9e69a2f550ac7",
+      "headings": [
+        "Reference"
+      ]
+    },
+    "reference/registry.md": {
+      "target": "reference/registry/",
+      "sha256": "cac1128d700bb9ae41bd6c9941601b897f7cb36519e58b1003fa4684ebe77a1a",
+      "headings": [
+        "Registry inspection",
+        "List registered components",
+        "Correct extension shape",
+        "Loader and other runtime backends",
+        "Troubleshooting a missing component",
+        "See also"
+      ]
+    },
+    "reference/scenario-spec.md": {
+      "target": "reference/scenario-spec/",
+      "sha256": "479215f92d832aeb6b69a0e3d05b5d7a2eaeb9e7dce5d5f6703a7f8c0447d925",
+      "headings": [
+        "Scenario and configuration reference",
+        "Top-level sections",
+        "Pipeline and components",
+        "Data and loaders",
+        "Evaluation",
+        "External factories",
+        "Checkpoints",
+        "Execution",
+        "Persistence"
+      ]
+    },
+    "reference/tuning-file.md": {
+      "target": "reference/tuning-file/",
+      "sha256": "4c05b24c1d43f405b302ec5db28014daf9f07ab3ffc532063cafc508ec412507",
+      "headings": [
+        "Tuning file reference",
+        "Required contract",
+        "Exports",
+        "`SEARCH_SPACE` format",
+        "Scalar types",
+        "Conditional entries (`when`)",
+        "Derived entries",
+        "Structural / `build(**params)` parameters",
+        "`TUNING_SPEC`",
+        "Python-only constraints",
+        "Implementation map",
+        "See also"
+      ]
+    },
+    "start/index.md": {
+      "target": "start/",
+      "sha256": "94f3454ced3939503c26931eec1f8b39ce0fb2187cfab526f782d6a0e2f82c6c",
+      "headings": [
+        "Get started",
+        "1. Install NexuML",
+        "2. Inspect your first scenario",
+        "3. Learn by building your own library",
+        "Where to go after that"
+      ]
+    },
+    "start/install.md": {
+      "target": "start/install/",
+      "sha256": "bd2b37f300e7b874d1e6d9028e2db2a9409c46eb55338a29d81297fff601509a",
+      "headings": [
+        "Install NexuML",
+        "Prerequisites",
+        "Recommended installation",
+        "Core-only installation",
+        "Optional integrations",
+        "Container image",
+        "CUDA and PyTorch",
+        "NVIDIA DALI",
+        "Environment roots",
+        "Next"
+      ]
+    },
+    "start/train-cifar-resnet.md": {
+      "target": "start/cifar-resnet/",
+      "sha256": "a0876607947b4830ab1c5f12ad81be179e6da6c14dbddc99a5238577327292a2",
+      "headings": [
+        "Your first NexuML scenario",
+        "1. Discover scenarios",
+        "2. Resolve the scenario",
+        "3. Build the pipeline",
+        "4. Train the scenario",
+        "What you learned",
+        "Next"
+      ]
+    },
+    "studio.md": {
+      "target": "studio/",
+      "sha256": "84acfd5be5b5ede972777f7d303194f873b9b84d04b391d04201b18a9a0b8fd0",
+      "headings": [
+        "NexuML Studio",
+        "Install and launch",
+        "First training run",
+        "Edit and inspect safely",
+        "Execution limits",
+        "Choose a runtime",
+        "Ports and attached APIs",
+        "Existing authenticated HTTPS reverse proxy",
+        "Hosted development",
+        "Troubleshooting"
+      ]
+    },
+    "tutorials.md": {
+      "target": "tutorials/",
+      "sha256": "4a82a080b9da29781bfb74bb537d22f40553d9d1c668d4cfd514eadcef986905",
+      "headings": [
+        "Tutorials",
+        "Learning path",
+        "Documentation vs tutorials"
+      ]
+    }
+  },
+  "downloads": [
+    "how-to/training-backends/templates/job.yaml",
+    "how-to/training-backends/templates/pytorch-job.yaml",
+    "how-to/training-backends/templates/ray-job.yaml"
+  ]
+}

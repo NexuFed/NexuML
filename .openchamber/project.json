@@ -1,7 +1,7 @@
 {
   "version": 1,
   "setupWorktree": [
-    "UV_PROJECT_ENVIRONMENT=.venv uv sync --locked --extra all --extra dev && npm --prefix studio ci --include=dev"
+    "UV_PROJECT_ENVIRONMENT=.venv uv sync --locked --extra all --extra dev && npm --prefix studio ci --include=dev && npm --prefix docs ci && npm --prefix docs run setup:python"
   ],
   "setupWorktreeWait": true,
   "projectActions": [
@@ -73,7 +73,7 @@
       "id": "build-docs",
       "name": "Build docs",
       "icon": "build",
-      "command": "DISABLE_MKDOCS_2_WARNING=true .venv/bin/python -m mkdocs build --strict",
+      "command": "npm --prefix docs run check",
       "platforms": ["linux", "macos"]
     }
   ]

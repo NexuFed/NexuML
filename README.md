@@ -52,11 +52,11 @@ Install only the framework and CLI when you want to provide all components yours
 pip install nexuml
 ```
 
-NVIDIA DALI, Ray, tracking, tuning, S3, and export integrations are optional. See the [installation guide](https://nexufed.github.io/NexuML/start/install/) before adding platform-specific extras.
+NVIDIA DALI, Ray, tracking, tuning, S3, and export integrations are optional. See the [installation guide](https://nexufed.github.io/NexuML/latest/start/install/) before adding platform-specific extras.
 
 ## Container image
 
-For the complete Linux AMD64 development and training image, see [container installation](https://nexufed.github.io/NexuML/start/install/#container-image) for tag selection and GPU host requirements.
+For the complete Linux AMD64 development and training image, see [container installation](https://nexufed.github.io/NexuML/latest/start/install/#container-image) for tag selection and GPU host requirements.
 
 ## First look
 
@@ -64,11 +64,11 @@ With the base library installed, inspect a real scenario without starting a trai
 
 ```bash
 nexuml registry list scenarios
-nexuml resolve cifar-resnet
-nexuml build configs/cifar-resnet.yaml
+nexuml resolve synthetic-linear-ae-reconstruction --output configs/first-run.yaml
+nexuml build configs/first-run.yaml
 ```
 
-This shows the central NexuML flow: a Python scenario is resolved to a reproducible configuration and then materialized into a validated TensorDict pipeline. Continue with [Get started](https://nexufed.github.io/NexuML/start/) for training requirements.
+This resolves a Python recipe to reproducible configuration and builds a validated TensorDict pipeline without a dataset download. The [CPU walkthrough in development docs](https://nexufed.github.io/NexuML/dev/start/first-run/) adds one training epoch. The site home continues to select the latest stable release; historical releases keep their original documentation.
 
 ## Learn by building
 
@@ -78,13 +78,17 @@ The learning path starts with MNIST library basics, then adds file-backed Speech
 
 ## Documentation
 
-- **[Get started](https://nexufed.github.io/NexuML/start/)** — install NexuML and inspect your first scenario.
-- **[Studio](https://nexufed.github.io/NexuML/studio/)** — edit scenarios, run a CPU example, and inspect results in a local browser.
-- **[Tutorials](https://nexufed.github.io/NexuML/tutorials/)** — complete hands-on projects.
-- **[Guides](https://nexufed.github.io/NexuML/how-to/)** — accomplish a specific task such as training, tuning, exporting, or adding a component.
-- **[Concepts](https://nexufed.github.io/NexuML/explanation/)** — understand the architecture, TensorDict data flow, definitions, discovery, and scenarios.
-- **[Reference](https://nexufed.github.io/NexuML/reference/)** — exact CLI, configuration, backend, decorator, and Python API information.
+- **[Start here](https://nexufed.github.io/NexuML/latest/start/)** — install NexuML and inspect your first scenario.
+- **[Use NexuML](https://nexufed.github.io/NexuML/latest/how-to/)** — train, tune, export, and extend a pipeline.
+- **[Understand NexuML](https://nexufed.github.io/NexuML/latest/explanation/architecture/)** — architecture, data flow, definitions, and discovery.
+- **[Reference](https://nexufed.github.io/NexuML/latest/reference/)** — CLI, configuration, integrations, and Python API.
+
+[Studio in development docs](https://nexufed.github.io/NexuML/dev/studio/) and
+[tutorials](https://nexufed.github.io/NexuML/latest/tutorials/) remain available.
+The [global changelog](https://nexufed.github.io/NexuML/changelog/) publishes reviewed updates from main independently of release snapshots.
+
+Contributing to the site? Use the isolated [Starlight/MDX setup and checks](docs/README.md).
 
 ## Extending NexuML
 
-External libraries can provide their own typed layers, data sources, evaluation algorithms, loader backends, and scenarios through the `nexuml.libraries` entry-point group or a local library root. See [Build a custom library](https://nexufed.github.io/NexuML/how-to/custom-library/) for the package structure and component contracts.
+External libraries can provide their own typed layers, data sources, evaluation algorithms, loader backends, and scenarios through the `nexuml.libraries` entry-point group or a local library root. See [Build a custom library](https://nexufed.github.io/NexuML/latest/how-to/custom-library/) for the package structure and component contracts.

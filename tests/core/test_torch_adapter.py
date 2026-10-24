@@ -177,15 +177,19 @@ def test_nn_module_restores_in_fresh_core_only_process() -> None:
     env = os.environ.copy()
     env["PYTHONPATH"] = os.pathsep.join([str(workspace / "src"), site_packages])
     script = """
+import sys
 from nexuml.core.serialization import restore_component
-from nexuml.core.torch_adapter import NnModuleLayer
+
+assert "nexuml.core.torch_adapter" not in sys.modules
 
 value = {
     "type": "NnModule",
     "version": "1",
     "params": {"factory": "torch.nn.modules.dropout:Dropout", "args": [], "kwargs": {"p": 0.5}},
 }
-assert isinstance(restore_component(kind="layer", value=value), NnModuleLayer)
+restored = restore_component(kind="layer", value=value)
+from nexuml.core.torch_adapter import NnModuleLayer
+assert isinstance(restored, NnModuleLayer)
 """
 
     result = subprocess.run(

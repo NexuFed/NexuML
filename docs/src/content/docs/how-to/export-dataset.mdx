@@ -1,0 +1,89 @@
+---
+title: Export a dataset
+description: Materialize raw or partially processed data views without confusing them with model packages.
+---
+
+**Goal:** persist a dataset view for reuse, analysis, shared storage, or another loader.
+**Prerequisites:** a registered scenario or resolved YAML, accessible source data, and a
+writable destination. This exports **data**, not trained model weights.
+
+## Export raw batches
+
+The installed synthetic recipe is a download-free example:
+
+```bash
+nexuml export-dataset synthetic-linear-ae-reconstruction \
+  -o exported-data --backend numpy --split train --split val
+```
+
+Use repeated `--x-key`/`--y-key` to select a subset. Expect data under `exported-data`,
+including generated `config.yaml` and dataset metadata. Use a new destination for a new view.
+All options and YAML-source syntax are in the [CLI reference](/reference/cli/).
+
+## Export an intermediate pipeline view
+
+For a scenario that emits `embedding`:
+
+```bash
+nexuml export-dataset my-scenario -o prepared-data --backend tensor_shards \
+  --preprocess --preprocess-until-key embedding
+```
+
+Preprocessing compiles the pipeline and uses `forward_until` semantics until requested
+x keys exist, then writes that view. It does not train the encoder first; explicitly
+provide trained weights in the scenario when your view requires them. The same concept
+can be declared in `DataSpec.preprocessing` for scenario-owned materialization.
+
+## Storage backends
+
+| Backend | Intended use |
+| --- | --- |
+| `numpy` | simple per-sample NumPy files |
+| `numpy_mmap` | contiguous memory-mapped NumPy |
+| `torch` | Torch tensor payloads |
+| `tensordict_memmap` | TensorDict-native memory mapping |
+| `webdataset` | tar shards, including S3 export |
+| `tensor_shards` | fixed-shape storage shards for windowed loading |
+
+Inspect the current runtime:
+
+```bash
+nexuml backend list data-export
+```
+
+Every export's `config.yaml` describes writer/format, sample count, modality, logical
+x/y keys, label prefix, shapes, key-level storage, source datasets, and backend-specific
+`extra` information. Metadata is stored alongside it, normally Parquet with CSV fallback
+where applicable. Treat the schema as a generated contract, not hand-edited configuration.
+
+## Reuse the exported view
+
+For the feature-only synthetic export above:
+
+```python
+from nexuml.core.types import DataSpec, LoaderSpec
+from nexuml.data.loaders.definitions import TorchLoader
+from nexuml_library.data.exported import ExportedDataset
+
+data = DataSpec(
+    source=ExportedDataset(root="./exported-data", feature_keys=["features"], label_keys=[]),
+    input_shapes={"features": [128]},
+    loader=LoaderSpec(backend=TorchLoader()),
+)
+```
+
+Use actual keys/shapes from your export. If early pipeline stages have already run,
+set `data.skip_pipeline_stages` to avoid applying them again. Verify a sample/batch and
+the exported counts before running downstream training.
+
+## S3 WebDataset and tensor shards
+
+The WebDataset exporter supports `s3://` destinations plus endpoint/region/profile options.
+Remote `ExportedDataset` currently supports WebDataset. Credentials use ordinary provider
+chains, not embedded secrets. With DALI, small index files are staged locally while tar
+payloads are intended to stream directly; verify this in the target DALI environment.
+See [Ray/shared storage limits](/how-to/training-backends/ray/#shared-datasets-and-s3-webdataset).
+
+Tensor shards are storage chunks, not fixed training batches. `TensorShardsLoader`
+windows/prefetches them and forms its own runtime batches. Next, select the
+[loader](/how-to/data-loading/) or [export a trained model instead](/how-to/export/).

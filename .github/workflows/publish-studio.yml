@@ -1,19 +1,52 @@
 name: Publish Studio
 
 on:
+  push:
+    tags: ["v*"]
   release:
     types: [published]
+  workflow_dispatch:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: publish-studio
   cancel-in-progress: false
 
 jobs:
+  validate:
+    if: (github.event_name == 'push' && !github.event.deleted) || github.event_name == 'workflow_dispatch' || startsWith(github.event.release.tag_name, 'v')
+    runs-on: ika-runner
+    timeout-minutes: 120
+    outputs:
+      ci-run-id: ${{ steps.candidate.outputs.run-id }}
+      manifest-id: ${{ steps.candidate.outputs.manifest-id }}
+      studio-id: ${{ steps.candidate.outputs.studio-id }}
+      version: ${{ steps.candidate.outputs.version }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Resolve the unique tested tag candidate
+        id: candidate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python scripts/release_candidate.py resolve --manifest candidate.json --dist validated-dist
+      - name: Verify protected npm environment
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test "$(gh api "repos/$GITHUB_REPOSITORY/environments/npm" \
+            --jq '[.protection_rules[] | select(.type == "required_reviewers" and .prevent_self_review == true and (.reviewers | length) > 0)] | length')" -eq 1
+
   publish:
-    if: startsWith(github.event.release.tag_name, 'studio-v')
+    needs: validate
     # npm Trusted Publishing does not support self-hosted runners. Publication only;
     # all builds and tests remain on ika-runner. Never rebuild the release artifact.
     runs-on: ubuntu-latest
@@ -36,88 +69,36 @@ jobs:
           registry-url: https://registry.npmjs.org
           package-manager-cache: false
 
-      - name: Validate tag and protected release revision
+      - uses: ./.github/actions/release-artifact
+        with:
+          manifest-id: ${{ needs.validate.outputs.manifest-id }}
+          artifact-id: ${{ needs.validate.outputs.studio-id }}
+          run-id: ${{ needs.validate.outputs.ci-run-id }}
+          directory: release-dist
+          group: studio
+
+      - name: Install supported npm publishing CLI
+        # OIDC dist-tag operations require npm >=11.21.0 on the 11.x line.
+        run: npm install --global npm@11.21.0
+
+      - name: Publish the tested tarball to next with OIDC and provenance
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        run: npm publish "$TARBALL" --tag next --ignore-scripts --access public --provenance
         env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          TARBALL: release-dist/studio/nexufed-nexuml-studio-${{ needs.validate.outputs.version }}.tgz
+
+      - name: Promote the verified registry package to latest
+        if: github.event_name == 'release'
+        env:
+          RELEASE_VERSION: ${{ needs.validate.outputs.version }}
         run: |
+          package="@nexufed/nexuml-studio@$RELEASE_VERSION"
+          npm view "$package" dist.integrity --json > "$RUNNER_TEMP/studio-registry-integrity.json"
           node --input-type=module - <<'JS'
           import { readFileSync } from 'node:fs';
           import assert from 'node:assert/strict';
-          const pkg = JSON.parse(readFileSync('studio/package.json'));
-          assert.match(process.env.RELEASE_TAG, /^studio-v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/);
-          assert.equal(process.env.RELEASE_TAG, `studio-v${pkg.version}`);
-          assert.equal(pkg.name, '@nexufed/nexuml-studio');
+          const [pack] = JSON.parse(readFileSync('release-dist/studio/pack.json'));
+          const integrity = JSON.parse(readFileSync(`${process.env.RUNNER_TEMP}/studio-registry-integrity.json`));
+          assert.equal(integrity, pack.integrity, 'Publish and test this exact CI tarball on next before promotion.');
           JS
-          git merge-base --is-ancestor HEAD origin/main
-          test "$(gh api "repos/$GITHUB_REPOSITORY/branches/main" --jq .protected)" = true
-          test "$(gh api "repos/$GITHUB_REPOSITORY/environments/npm" \
-            --jq '[.protection_rules[] | select(.type == "required_reviewers" and .prevent_self_review == true and (.reviewers | length) > 0)] | length')" -eq 1
-
-      - name: Resolve successful CI and its immutable artifact
-        id: ci
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          sha=$(git rev-parse HEAD)
-          run_id=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$sha&event=push&status=success&per_page=100" \
-            --jq '.workflow_runs | map(select(.head_branch == "main")) | sort_by(.created_at) | last | .id // empty')
-          test -n "$run_id"
-          test "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id/jobs?per_page=100" \
-            --jq '[.jobs[] | select(.name == "CI" and .conclusion == "success")] | length')" -eq 1
-          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id/artifacts?per_page=100" > "$RUNNER_TEMP/studio-artifacts.json"
-          node --input-type=module - <<'JS'
-          import { readFileSync, appendFileSync } from 'node:fs';
-          import assert from 'node:assert/strict';
-          const artifacts = JSON.parse(readFileSync(`${process.env.RUNNER_TEMP}/studio-artifacts.json`)).artifacts
-            .filter(a => a.name === 'studio-distribution' && !a.expired);
-          assert.equal(artifacts.length, 1, 'Rerun CI for the exact main commit if its artifact expired.');
-          assert.equal(artifacts[0].workflow_run.head_sha, process.env.GITHUB_SHA);
-          appendFileSync(process.env.GITHUB_OUTPUT, `artifact-id=${artifacts[0].id}\n`);
-          JS
-          echo "run-id=$run_id" >> "$GITHUB_OUTPUT"
-
-      - uses: actions/download-artifact@v7
-        with:
-          artifact-ids: ${{ steps.ci.outputs.artifact-id }}
-          path: release-studio
-          merge-multiple: true
-          github-token: ${{ github.token }}
-          run-id: ${{ steps.ci.outputs.run-id }}
-
-      - name: Verify tarball integrity and publication metadata
-        id: package
-        env:
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
-        run: |
-          node --input-type=module - <<'JS'
-          import { readFileSync, appendFileSync } from 'node:fs';
-          import { createHash } from 'node:crypto';
-          import { execFileSync } from 'node:child_process';
-          import assert from 'node:assert/strict';
-          assert.equal(readFileSync('release-studio/commit.txt', 'utf8').trim(), process.env.GITHUB_SHA);
-          const [pack] = JSON.parse(readFileSync('release-studio/pack.json'));
-          const expected = JSON.parse(readFileSync('studio/package.json'));
-          assert.equal(pack.name, expected.name);
-          assert.equal(pack.version, expected.version);
-          assert.equal(pack.filename, `nexufed-nexuml-studio-${expected.version}.tgz`);
-          const tarball = `release-studio/${pack.filename}`;
-          assert.equal(`sha512-${createHash('sha512').update(readFileSync(tarball)).digest('base64')}`, pack.integrity);
-          const pkg = JSON.parse(execFileSync('tar', ['-xOf', tarball, 'package/package.json'], {encoding: 'utf8'}));
-          for (const key of ['name', 'version', 'repository', 'license', 'bin', 'engines', 'publishConfig'])
-            assert.deepEqual(pkg[key], expected[key], `Packed ${key} differs from the release commit.`);
-          assert.equal(pkg.name, '@nexufed/nexuml-studio');
-          assert.equal(pkg.repository.url, 'git+https://github.com/NexuFed/NexuML.git');
-          assert.equal(pkg.publishConfig.access, 'public');
-          assert.equal(pkg.publishConfig.provenance, true);
-          assert.equal(process.env.RELEASE_TAG, `studio-v${pkg.version}`);
-          appendFileSync(process.env.GITHUB_OUTPUT, `tarball=${tarball}\n`);
-          JS
-
-      - name: Install supported npm publishing CLI
-        run: npm install --global npm@11
-
-      - name: Publish the tested tarball with OIDC and provenance
-        run: npm publish "$TARBALL" --ignore-scripts --access public --provenance
-        env:
-          TARBALL: ${{ steps.package.outputs.tarball }}
+          npm dist-tag add "$package" latest

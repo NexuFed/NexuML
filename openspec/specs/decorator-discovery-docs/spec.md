@@ -2,18 +2,19 @@
 
 ## Purpose
 
-Documentation covering NexuML decorators and component discovery, providing a learning page that users encounter before extension how-to guides.
+Documentation covering NexuML decorators, discovery, typed definitions, and runtime boundaries within canonical extension guides, with exact generated API links and retained portability constraints.
 
 ## Requirements
 
 ### Requirement: Decorator Learning Page
 
-The documentation SHALL include a learning page that explains NexuML decorators and discovery before users reach extension how-to guides.
+The documentation SHALL explain decorators and discovery within the canonical component/library extension guide, with a brief architectural explanation where useful. Users SHALL not have to read a separate prerequisite learning article before adding a component.
 
 #### Scenario: User asks how NexuML finds components
 
-- **WHEN** a user opens the decorators and discovery learning page
-- **THEN** the page explains that NexuML discovers decorated components from installed packages, entry-point libraries, and local library roots.
+- **WHEN** a user opens the library or component extension guide
+- **THEN** it explains discovery from the base library, installed entry-point libraries, and configured local roots
+- **AND** it distinguishes direct Python definitions from registry identities used for discovery and persistence
 
 ### Requirement: Scenario Decorator Explained
 
@@ -53,26 +54,29 @@ The documentation SHALL explain that `@eval_algorithm` registers a typed `EvalAl
 
 ### Requirement: Registry Verification Commands
 
-The decorator learning page SHALL show how to verify discovery through registry commands.
+The canonical extension guide SHALL show how to verify discovery through implementation-current registry commands and diagnose discovery errors. Consolidation SHALL preserve commands for all documented component roles.
 
 #### Scenario: User verifies registered components
 
 - **WHEN** a user has installed or added a library
-- **THEN** the docs show verification commands for scenarios, layers, data sources, and evaluation algorithms using `nexuml registry list`.
+- **THEN** the guide shows `nexuml registry list` commands for scenarios, layers, data sources, and evaluation algorithms
+- **AND** it identifies the supported verbose diagnostics option
 
 ### Requirement: Decorator Docs Link To Reference And How-To Pages
 
-The decorator learning page SHALL link to detailed reference and task pages.
+The canonical extension guide SHALL link directly to exact generated decorator/API reference and the relevant component task sections. Its explanation SHALL not repeat complete role-specific implementation procedures.
 
 #### Scenario: User needs exact decorator API
 
-- **WHEN** a user needs exact syntax and compact reference
-- **THEN** the learning page links to `docs/reference/decorators.md`.
+- **WHEN** a user needs exact decorator syntax and signature details
+- **THEN** the guide links to the generated public decorator reference
+- **AND** the former decorator-reference URL remains available or maps to that destination
 
 #### Scenario: User wants to build an extension
 
-- **WHEN** a user wants to add a layer, data source, scenario, or library
-- **THEN** the learning page links to the corresponding how-to guide.
+- **WHEN** a user wants to add a layer, data source, evaluation algorithm, scenario, or library
+- **THEN** the guide links to the corresponding canonical task section
+- **AND** existing typed-definition/runtime, direct PyTorch module, loader configuration, and portability guidance remains covered
 
 ### Requirement: Python and serialized component syntax are distinguished
 The documentation SHALL explicitly explain that typed Python authoring and portable serialized configuration intentionally use different representations.

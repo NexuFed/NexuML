@@ -1,0 +1,177 @@
+---
+title: Development installation and workflow
+description: Set up an editable source environment and run Python, Studio, skills, and pull-request checks.
+---
+
+**Goal:** modify NexuML itself and verify your change. **Prerequisites:** Python,
+[uv](https://docs.astral.sh/uv/), Git, and Node.js/npm for Studio or docs work.
+Normal users should use [package installation](/start/install/).
+
+## Clone and install
+
+```bash
+git clone https://github.com/NexuFed/NexuML.git
+cd NexuML
+uv sync --extra all --extra dev
+source .venv/bin/activate
+uv pip install --link-mode=copy -e "./library"
+nexuml --help
+nexuml registry list scenarios
+```
+
+This editable contributor environment excludes DALI unless separately requested.
+Expect CLI help and base-library scenarios. Documentation has its own isolated dependency
+environment; use [documentation setup](/development/documentation/) rather than installing
+the ML stack for an editorial-only change.
+
+## Tests and coverage
+
+The suite is registry-driven:
+
+```bash
+pytest
+pytest tests/core -v
+pytest tests/_registry -v
+pytest -m "not slow"
+```
+
+The default run has no coverage reporting. For CI-style coverage:
+
+```bash
+pytest --cov=nexuml --cov=nexuml_library \
+  --cov-report=term-missing --cov-report=xml:reports/coverage.xml
+```
+
+Inspect terminal missing-line ranges and `reports/coverage.xml` (Cobertura).
+The failure threshold lives in `[tool.coverage.report]` in `pyproject.toml`.
+For browsable output:
+
+```bash
+pytest --cov=nexuml --cov=nexuml_library --cov-report=html:reports/htmlcov
+python -m http.server 8000 --directory reports/htmlcov
+```
+
+Open [the local report](http://localhost:8000), then Ctrl-C the server when done.
+Gated tests skip automatically when prerequisites are absent:
+
+- `requires_data`: needs `NEXUML_RUN_DATA_TESTS=1` and valid `NEXUML_DATA_ROOT`.
+- `requires_gpu`: skipped without CUDA.
+- `requires_optional(name)`: skipped without that dependency.
+
+A skip is not verification. Full tests need their actual GPU/data/runtime prerequisites.
+
+## Static checks and OpenSpec
+
+```bash
+ty check
+ruff check .
+ruff format --check .
+openspec validate <change> --strict
+```
+
+`ruff format .` writes formatting; `--check` does not. Use the relevant source/test subset
+during iteration, then the required gate set before requesting review.
+
+## Studio and skills
+
+```bash
+npm --prefix studio ci
+python skills/tests/check_skills.py
+python skills/tests/check_runtime.py
+npm --prefix studio run typecheck
+npm --prefix studio run lint
+npm --prefix studio test
+```
+
+Start the [manual API](/how-to/local-api/#start-manually), then in another terminal:
+
+```bash
+NEXUML_STUDIO_TOKEN="$(cat "$HOME/.nexuml-api-token")" \
+NEXUML_STUDIO_API=http://127.0.0.1:8000 \
+NEXUML_STUDIO_ORIGIN=http://127.0.0.1:3000 \
+npm --prefix studio run dev -- --port 3000
+```
+
+Open [local Studio](http://127.0.0.1:3000). Keep credentials out of URLs/source/logs.
+External proxies require [hosted-development restrictions](/how-to/studio-hosting/#hosted-development).
+Stop each caller-owned service explicitly when done.
+
+For installed-package/browser verification, build matching Python core/API and library
+distributions from the same checkout, then from `studio/`:
+
+```bash
+npm pack
+STUDIO_TEST_PYTHON=/path/to/isolated/python npm run test:package -- /path/to/built-studio.tgz
+```
+
+`prepack` builds/prepares the distribution. Use Playwright Chromium and matching wheels;
+CI's `scripts/studio-test-runtime.py --help` explains its runtime preparation. Startup/
+browser assets are checked offline; traces stay off to protect credentials. Never publish
+during local checks. See [release](/development/release/) for authorized publishing.
+
+## OpenChamber worktrees
+
+After trusting [repository setup](https://docs.openchamber.dev/repository-config/),
+OpenChamber waits for an editable worktree-local `.venv` with `all`/`dev` plus base library,
+and Studio's locked Node dependencies. It needs uv/Python/Node/npm, excludes DALI and
+Playwright browser downloads, and does not replace terminal activation.
+
+Project actions appear in Work Status/command palette. **Format Python** writes; checks
+do not. Start **Dev backend**, then **Dev UI** at `http://127.0.0.1:3200`.
+Ports 8000/3200 permit one pair; adjust actions for parallel worktrees.
+
+## Dependency management
+
+```bash
+uv add <package>
+uv add --optional dev <package>
+uv sync --extra all --extra dev
+uv lock
+# Only when an intentional dependency update is part of the change:
+uv lock --upgrade
+```
+
+Runtime/tooling dependency edits belong in their owning environment. Documentation npm/
+Python lockfiles are separate; follow [documentation contribution](/development/documentation/).
+
+## CI and review
+
+Python/Studio static, packaging, CPU/GPU, and installed-workflow gates must pass on the
+exact reviewed commit. Institute-runner execution is restricted to trusted branch pushes/
+manual dispatch; external code needs review before entering that boundary. Documentation's
+read-only checks are separate from institute runtime execution. See
+[runner security](/development/release/#institute-runner-trust-boundary).
+Disabled macOS/Windows jobs remain unverified, not silently certified by Linux.
+
+```bash
+gh workflow run ci.yml --ref <branch>
+gh run list --workflow ci.yml --limit 5
+gh run watch <run-id>
+gh run view <run-id> --log-failed
+```
+
+Local checks do not reproduce the institute runner. Label PRs before merging: labels drive
+GitHub Release notes for `v*` tags.
+
+| Label | Release section |
+| --- | --- |
+| `feature`, `enhancement` | Features |
+| `bug`, `fix` | Bug Fixes |
+| `chore`, `refactor` | Maintenance |
+| `documentation`, `docs` | Documentation |
+| `ignore-for-release` | excluded |
+| other/unmatched | Other Changes |
+
+Use **Squash and merge**, delete the branch afterward, match the commit title to the PR
+title, and replace the default description with concise change bullets. Example shape:
+
+```text
+feat(NEX-123): add export pipeline
+
+- Add export behavior and its regression coverage
+- Document the supported workflow
+```
+
+Next, inspect actual reports/artifacts and request review; a successful local check is not
+permission to publish or launch infrastructure. Use [documentation](/development/documentation/)
+or [release](/development/release/) for those distinct workflows.

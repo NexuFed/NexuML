@@ -64,8 +64,15 @@ test("missing example, incompatible runtime and lost connection explain recovery
   await expect(page.locator(".startup")).toContainText("selected NexuML 0.3.0, interface 3");
   await expect(page.locator(".startup")).toContainText("--python /path/to/project/.venv/bin/python");
   await expect(page.locator(".workbench")).toHaveCount(0);
-  await page.unroute("**/api/v1/runtime");await page.getByRole("button",{name:"Retry connection",exact:true}).click();
+  await page.route("**/api/v1/registry",async route=>{
+    const response=await route.fetch();
+    // Discovery in an isolated installation can exceed the default locator timeout.
+    await new Promise(resolve=>setTimeout(resolve,6000));
+    await route.fulfill({response});
+  });
+  await page.unroute("**/api/v1/runtime");await loadStudio(page,()=>page.getByRole("button",{name:"Retry connection",exact:true}).click());
   await expect(page.locator(".welcome")).toContainText("Connected to NexuML");await openFile(page);
+  await page.unroute("**/api/v1/registry");
   await page.getByRole("button",{name:"Training",exact:true}).click();await page.getByLabel("Scenario name",{exact:true}).fill("Retained while disconnected");
   await page.route("**/api/v1/runtime",route=>route.abort());
   await expect(page.locator('.buffer-notice[role="alert"]')).toContainText("Connection lost to NexuML",{timeout:15000});

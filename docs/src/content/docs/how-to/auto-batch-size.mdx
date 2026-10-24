@@ -1,0 +1,54 @@
+---
+title: Probe an automatic batch size
+description: Probe bounded CUDA batch-size candidates and inspect the selected runtime size.
+---
+
+**Goal:** select a training batch size before the full run. **Prerequisites:** a working
+scenario and CUDA. Automatic probing errors without CUDA; use a fixed integer on CPU.
+
+## Configure the probe
+
+```python
+from nexuml.core.types import AutoBatchSizeSpec, DataSpec, LoaderSpec, TrainingSpec
+from nexuml.data.loaders.definitions import TorchLoader
+from nexuml_library.data.synthetic import SyntheticDataset
+
+training = TrainingSpec(
+    batch_size=AutoBatchSizeSpec(
+        min=8, max=256, candidates="power_of_two",
+        safety="previous_power_of_two", margin=0.8,
+    ),
+    loss_keys={"reconstruction_loss": 1.0},
+)
+data = DataSpec(
+    source=SyntheticDataset(feature_shape=(128,), num_samples=1000),
+    input_shapes={"features": [128]},
+    loader=LoaderSpec(backend=TorchLoader(), batch_size=None),
+)
+```
+
+Attach these sections to a compatible reconstruction recipe. Leave
+`data.loader.batch_size=None`: an explicit loader size wins and disables the auto probe.
+[Run the scenario](/how-to/run-scenarios/#train) on the intended CUDA device.
+
+## What happens
+
+For `power_of_two`, NexuML generates the bounded candidate set, probes in ascending
+order with one forward/backward batch, records success/CUDA OOM/peak memory and
+`over_margin`, chooses a size, then rebuilds the final data module.
+This is **exhaustive candidate probing, not binary search**.
+
+- `largest`: largest successful size.
+- `previous_power_of_two`: next lower successful candidate when one exists.
+- `margin`: exclude candidates above `margin × total GPU memory`, then choose the largest remaining.
+
+The probe result, attempts, device metadata, and final size are included in runtime
+metadata; inspect that metadata rather than assuming `max` was selected. The probe
+itself does not promise a separate file or reserve GPU capacity for the later run.
+
+Core `AutoBatchSizeSpec` defaults are `min=1`, `max=128`,
+`safety="previous_power_of_two"`, `margin=0.8`. The base library's
+`DEFAULT_AUTO_BATCH_SIZE` is a separate convenience policy, not the core model default.
+
+Next, review [data-loader precedence](/how-to/data-loading/) and
+[training/reference](/reference/scenario-spec/) before interpreting performance results.

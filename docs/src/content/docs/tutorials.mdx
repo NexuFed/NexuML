@@ -1,0 +1,29 @@
+---
+title: Tutorials
+description: Learn by building complete external NexuML library projects.
+---
+
+Hands-on learning lives in the [NexuMLTutorial repository](https://github.com/NexuFed/NexuMLTutorial).
+Use its setup instructions in an environment with NexuML installed; no framework checkout
+is required. For a smaller first success, finish the [synthetic CPU run](/start/first-run/).
+
+The tutorial repository is itself an external NexuML library. Its datasets, layers,
+evaluation code, and scenarios are tutorial-owned instead of importing finished
+implementations from `nexuml_library`: the goal is to teach how to build your own models.
+
+| Stage | Topic | What it introduces |
+| --- | --- | --- |
+| 1 | MNIST: custom library basics | local registration, dataset, model/loss/metrics, resolve/build/train |
+| 2 | Speech Commands: native DALI audio | real files, metadata-driven splits, native audio loading |
+| 3 | Swap only the encoder | replace a CNN with a Transformer while reusing the rest |
+| Later tutorial direction | tuning/tracking, preprocessing/export, evaluation, transfer learning, inference, distributed execution | consult the tutorial repository for availability |
+
+:::note[Use the tutorial's environment]
+Tutorials evolve alongside the framework. Their `pyproject.toml` and revision-specific
+setup instructions are authoritative for dependencies and optional requirements.
+Later tutorial topics are direction, not a promise that every project is complete.
+:::
+
+Follow the commands and inspect the outputs described in the selected tutorial.
+Return here for [individual tasks](/how-to/), [architecture](/explanation/architecture/),
+or [exact contracts](/reference/); the complete projects are not duplicated in this site.

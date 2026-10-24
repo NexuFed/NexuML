@@ -1,0 +1,82 @@
+---
+title: Tracking and logging
+description: Configure TensorBoard, MLflow, DVCLive, and pipeline diagrams with explicit output discovery.
+---
+
+**Goal:** persist observations from a working scenario. **Prerequisites:** installed
+NexuML, writable destinations, and any optional logger dependencies/service credentials.
+Assign the examples to `ScenarioSpec.logging`; services remain backend-owned.
+
+## TensorBoard
+
+TensorBoard support is part of core:
+
+```python
+from nexuml.core.types import LoggingSpec, TensorBoardSpec
+
+logging = LoggingSpec(
+    experiment_name="MyProject",
+    tensorboard=TensorBoardSpec(log_dir=".experiments/tensorboard"),
+)
+```
+
+Train the scenario, then inspect the configured directory:
+
+```bash
+nexuml train my-scenario
+tensorboard --logdir .experiments/tensorboard
+```
+
+Use the resolved directory instead if `NEXUML_LOGS_ROOT` is set. Expect event files and
+actual emitted curves, not every possible metric. The terminal service summary identifies
+the selected logger/paths. Stop the TensorBoard server with Ctrl-C when done.
+
+## MLflow
+
+```bash
+uv pip install "nexuml[tracking]"
+```
+
+```python
+from nexuml.core.types import LoggingSpec, MLflowSpec
+
+logging = LoggingSpec(
+    experiment_name="MyProject",
+    run_name="baseline",
+    mlflow=MLflowSpec(
+        tracking_uri="sqlite:///.experiments/mlflow.db",
+        experiment_name="MyProject",
+        log_model=False,
+    ),
+)
+```
+
+After training, inspect the configured store/service for the actual run. HTTP tracking
+URIs are passed through; credentials and service deployment are external to NexuML.
+Do not persist secrets in scenarios. `log_model=False` does not request MLflow model logging;
+use the [NexuML package export](/how-to/export/) when you need a portable artifact.
+
+## DVCLive
+
+Install `dvclive` in the consuming environment, then use:
+
+```python
+from nexuml.core.types import DVCLiveSpec, LoggingSpec
+
+logging = LoggingSpec(dvclive=DVCLiveSpec(dir=".experiments/dvclive"))
+```
+
+Inspect that directory after the run for actual DVCLive outputs.
+
+## Diagrams and no external logger
+
+`LoggingSpec.diagram` controls Mermaid export independently of scalar loggers. See
+[pipeline diagrams](/explanation/diagrams/). `ScenarioSpec.logging=None` disables
+configured NexuML loggers. Plain `LoggingSpec()` has no TensorBoard/MLflow/DVCLive backend,
+though its diagram configuration is enabled by default. The base library's
+`default_logging()` intentionally selects separate convenience defaults.
+
+Relative paths use `NEXUML_LOGS_ROOT` where the relevant NexuML helper applies;
+absolute/remote paths follow their backend rules. See [exact root rules](/reference/environment/)
+instead of assuming one shared output tree. Checkpoint callbacks have their own path
+settings. Next, add [checkpoint policy](/how-to/checkpoints/) or [Optuna tracking](/how-to/tune/).
