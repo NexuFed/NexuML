@@ -17,7 +17,7 @@ env:
 jobs:
   validate:
     if: (github.event_name == 'push' && !github.event.deleted) || github.event_name == 'workflow_dispatch' || startsWith(github.event.release.tag_name, 'v')
-    runs-on: ubuntu-latest
+    runs-on: ika-runner
     timeout-minutes: 120
     outputs:
       ci-run-id: ${{ steps.candidate.outputs.run-id }}

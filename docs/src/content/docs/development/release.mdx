@@ -59,7 +59,7 @@ git push origin v0.2.2
 ```
 
 The push starts stamped **CI**, **Release** for TestPyPI, and **Publish Studio** for
-npm `next`. Before institute-runner execution, the read-only eligibility gate requires
+npm `next`. Before tag builds and tests, the read-only eligibility gate on `ika-runner` requires
 protected-main ancestry and successful main-branch CI for that exact peeled commit.
 The complete tagged source/GPU/documentation/package checks then test the stamped
 wheels, source distributions, and single npm tarball. The aggregate `CI` gate emits
@@ -131,12 +131,12 @@ published version. Separate `studio-v*` release tags are no longer supported.
 Follow [official npm Trusted Publishing requirements](https://docs.npmjs.com/trusted-publishers)
 for supported Node/npm and GitHub-hosted runners; self-hosted publishing is unsupported.
 The protected publish-only job uses OIDC `id-token: write` and provenance without dependency
-installation/build or long-lived credentials. Actual npm, TestPyPI/PyPI, and Pages OIDC
-publishing stays on GitHub-hosted `ubuntu-latest`, as do pre-trust release validation and
-tag eligibility checks. Trusted Linux CPU work uses `ika-runner`, including documentation
-validation/staging, TestPyPI install verification, GitHub release asset attachment, and the
-aggregate CI gate after eligibility succeeds. Mandatory Python GPU suites use separately
-approved `ika-runner-gpu`.
+installation/build or long-lived credentials. Only the npm publisher and four TestPyPI/PyPI
+package publisher jobs use GitHub-hosted `ubuntu-latest`. All other Linux CPU work uses
+`ika-runner`, including tag eligibility, publisher validation, documentation checks/staging,
+Pages deployment, TestPyPI install verification, GitHub release asset attachment, and the
+always-running aggregate CI gate. Pages deployment uses a Node API action, not a hosted-only
+package Trusted Publisher. Mandatory Python GPU suites use separately approved `ika-runner-gpu`.
 
 ## Studio release
 
@@ -181,12 +181,12 @@ Runtime CI uses trusted **repository branch pushes/manual dispatch** and eligibl
 tag pushes, not arbitrary fork
 PR execution. External code must be reviewed, then brought to a trusted branch before
 institute checks. Never approve arbitrary fork workflow execution just to obtain green CI.
-Read-only fork-PR documentation validation stays on GitHub-hosted runners, even if a reusable
-caller supplies the trusted-source flag. Same-repository PR checks use `ika-runner`;
-non-PR documentation checks use it only when a caller passes `trusted-source: true` after
-the release-identity gate. CI and documentation tag eligibility run on `ubuntu-latest`
-before any institute work; branch eligibility runs on `ika-runner`. The always-running
-aggregate CI gate falls back to `ubuntu-latest` and fails closed if eligibility did not succeed.
+Automatic fork-PR documentation checks are skipped at the job condition before institute
+runner scheduling; there is no hosted fallback. Same-repository PR and non-PR documentation
+checks use `ika-runner`, with read-only permissions and no secrets. CI and documentation tag
+eligibility run on `ika-runner` before tag builds and tests, retaining protected-main ancestry
+and exact-commit main-CI requirements. The aggregate CI gate always runs on `ika-runner` and
+fails closed if eligibility or any other required job did not succeed.
 
 Fork workflow approval must cover **all external contributors**, not just first-time ones.
 Owners must restrict institute runner groups to approved repositories/workflows, retain

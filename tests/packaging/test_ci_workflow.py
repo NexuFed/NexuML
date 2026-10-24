@@ -14,6 +14,37 @@ WORKFLOW = YAML(typ="safe").load(
 )
 
 
+def test_only_package_publishers_use_hosted_runners():
+    workflows = Path(__file__).resolve().parents[2] / ".github/workflows"
+    publishers = {
+        ("release.yml", name)
+        for name in (
+            "publish-testpypi-core",
+            "publish-testpypi-library",
+            "publish-pypi-core",
+            "publish-pypi-library",
+        )
+    } | {("publish-studio.yml", "publish")}
+    hosted = set()
+    for path in workflows.glob("*.yml"):
+        workflow = YAML(typ="safe").load(path.read_text())
+        for name, job in workflow["jobs"].items():
+            if "uses" in job:
+                continue
+            identity = (path.name, name)
+            runner = job["runs-on"]
+            if runner == "ubuntu-latest":
+                hosted.add(identity)
+            elif identity == ("ci.yml", "test"):
+                assert runner == "ika-runner-gpu"
+            elif identity == ("ci.yml", "studio-package"):
+                assert runner == "${{ matrix.os }}"
+                assert job["strategy"]["matrix"]["os"] == ["ika-runner"]
+            else:
+                assert runner == "ika-runner", identity
+    assert hosted == publishers
+
+
 def test_studio_ci_builds_once_and_tests_both_trusted_linux_installations(tmp_path):
     assert "pull_request" not in WORKFLOW["on"]
     assert "pull_request_target" not in WORKFLOW["on"]
@@ -89,7 +120,7 @@ def test_shared_release_triggers_and_studio_channels():
     )
     for workflow in (python, studio):
         validation = workflow["jobs"]["validate"]
-        assert validation["runs-on"] == "ubuntu-latest"
+        assert validation["runs-on"] == "ika-runner"
         assert validation["timeout-minutes"] == 120
         assert "environment" not in validation
         assert "id-token" not in validation.get("permissions", {})
@@ -245,9 +276,7 @@ def test_required_ci_checks_every_job_and_fails_closed(tmp_path):
     gate = jobs["required-ci"]
     assert set(gate["needs"]) == set(jobs) - {"required-ci"}
     assert gate["if"] == "${{ always() }}"
-    assert gate["runs-on"] == (
-        "${{ needs.release-identity.result == 'success' && 'ika-runner' || 'ubuntu-latest' }}"
-    )
+    assert gate["runs-on"] == "ika-runner"
     step = gate["steps"][0]
     assert set(step["env"].values()) == {
         f"${{{{ needs.{name}.result }}}}" for name in gate["needs"]
@@ -270,48 +299,16 @@ def test_required_ci_checks_every_job_and_fails_closed(tmp_path):
             assert run({**results, name: outcome}) == 1, (name, outcome)
 
 
-@pytest.mark.parametrize("outcome", ["success", "failure", "skipped", "cancelled"])
-def test_required_ci_uses_institute_only_after_identity_succeeds(outcome):
-    runner = WORKFLOW["jobs"]["required-ci"]["runs-on"]
-    assert runner == (
-        "${{ needs.release-identity.result == 'success' && 'ika-runner' || 'ubuntu-latest' }}"
-    )
-    expression = (
-        runner[3:-2]
-        .replace("needs.release-identity.result", repr(outcome))
-        .replace("&&", "and")
-        .replace("||", "or")
-    )
-    assert eval(expression, {"__builtins__": {}}) == (
-        "ika-runner" if outcome == "success" else "ubuntu-latest"
-    )
-
-
-@pytest.mark.parametrize(
-    "ref", ["refs/tags/v0.2.2", "refs/tags/v-invalid", "refs/heads/main", "refs/heads/dev"]
-)
-def test_ci_identity_checks_tags_before_institute_execution(ref):
+def test_ci_identity_checks_tags_before_builds_and_tests():
     jobs = WORKFLOW["jobs"]
     identity = jobs["release-identity"]
-    runner = identity["runs-on"]
-    assert runner == (
-        "${{ startsWith(github.ref, 'refs/tags/') && 'ubuntu-latest' || 'ika-runner' }}"
-    )
-    expression = (
-        runner[3:-2]
-        .replace("startsWith(github.ref, 'refs/tags/')", str(ref.startswith("refs/tags/")))
-        .replace("&&", "and")
-        .replace("||", "or")
-    )
-    assert eval(expression, {"__builtins__": {}}) == (
-        "ubuntu-latest" if ref.startswith("refs/tags/") else "ika-runner"
-    )
+    assert identity["runs-on"] == "ika-runner"
     assert identity["steps"][-1]["run"] == "python scripts/release_candidate.py eligibility"
     for name in ("static", "package", "studio-static", "studio-build"):
         assert jobs[name]["runs-on"] == "ika-runner"
     for name in ("static", "test", "studio-static", "docs-checks"):
         assert jobs[name]["needs"] == "release-identity"
-    assert jobs["docs-checks"]["with"]["trusted-source"] is True
+    assert set(jobs["docs-checks"]["with"]) == {"version"}
 
 
 def test_python_release_tag_push_tests_before_release_publication():
@@ -322,7 +319,7 @@ def test_python_release_tag_push_tests_before_release_publication():
     assert "workflow_dispatch" in workflow["on"]
     jobs = workflow["jobs"]
     assert workflow["permissions"] == {"actions": "read", "contents": "read"}
-    assert jobs["validate"]["runs-on"] == "ubuntu-latest"
+    assert jobs["validate"]["runs-on"] == "ika-runner"
     for name, environment in (
         ("publish-testpypi-core", "testpypi"),
         ("publish-testpypi-library", "testpypi-library"),
@@ -405,9 +402,7 @@ def test_tag_ci_prepares_every_package_checkout_before_use():
         "${{ startsWith(github.ref, 'refs/tags/') && format('-{0}', github.run_attempt) || '' }}"
     )
     jobs = WORKFLOW["jobs"]
-    assert jobs["release-identity"]["runs-on"] == (
-        "${{ startsWith(github.ref, 'refs/tags/') && 'ubuntu-latest' || 'ika-runner' }}"
-    )
+    assert jobs["release-identity"]["runs-on"] == "ika-runner"
     for name in ("static", "test", "studio-static", "docs-checks"):
         assert jobs[name]["needs"] == "release-identity"
     docs = YAML(typ="safe").load((root / ".github/workflows/docs-checks.yml").read_text())
@@ -438,9 +433,7 @@ def test_tag_ci_prepares_every_package_checkout_before_use():
             if step.get("with", {}).get("cache"):
                 assert "!startsWith(github.ref" in step["with"]["cache"]
     gate = jobs["required-ci"]
-    assert gate["runs-on"] == (
-        "${{ needs.release-identity.result == 'success' && 'ika-runner' || 'ubuntu-latest' }}"
-    )
+    assert gate["runs-on"] == "ika-runner"
     assert gate["steps"][0]["name"] == "Verify required jobs"
     assert any(
         "scripts/release_candidate.py create" in step.get("run", "") for step in gate["steps"]

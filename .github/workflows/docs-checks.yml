@@ -7,17 +7,15 @@ on:
       version:
         type: string
         default: dev
-      trusted-source:
-        type: boolean
-        default: false
 
 permissions:
   contents: read
 
 jobs:
   check:
-    # Fork PRs stay hosted even if a reusable caller supplies trusted-source.
-    runs-on: ${{ ((github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) || (github.event_name != 'pull_request' && inputs.trusted-source)) && 'ika-runner' || 'ubuntu-latest' }}
+    # Skip fork PRs before scheduling institute runners.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ika-runner
     timeout-minutes: 15
     env:
       ASTRO_TELEMETRY_DISABLED: "1"

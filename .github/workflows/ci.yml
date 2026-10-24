@@ -22,7 +22,7 @@ concurrency:
 
 jobs:
   release-identity:
-    runs-on: ${{ startsWith(github.ref, 'refs/tags/') && 'ubuntu-latest' || 'ika-runner' }}
+    runs-on: ika-runner
     steps:
       - uses: actions/checkout@v5
         with:
@@ -31,7 +31,7 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-      - name: Verify tag eligibility before institute execution
+      - name: Verify tag eligibility before builds and tests
         env:
           GH_TOKEN: ${{ github.token }}
         run: python scripts/release_candidate.py eligibility
@@ -41,7 +41,6 @@ jobs:
     uses: ./.github/workflows/docs-checks.yml
     with:
       version: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'dev' }}
-      trusted-source: true
 
   static:
     needs: release-identity
@@ -418,7 +417,7 @@ jobs:
       - studio-build
       - studio-package
     if: ${{ always() }}
-    runs-on: ${{ needs.release-identity.result == 'success' && 'ika-runner' || 'ubuntu-latest' }}
+    runs-on: ika-runner
 
     steps:
       - name: Verify required jobs
