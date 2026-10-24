@@ -131,3 +131,56 @@ def test_required_ci_checks_every_job_and_fails_closed(tmp_path):
     for name in results:
         for outcome in ("failure", "skipped", "cancelled"):
             assert run({**results, name: outcome}) == 1, (name, outcome)
+
+
+def test_python_release_tag_push_tests_before_release_publication():
+    root = Path(__file__).resolve().parents[2]
+    workflow = YAML(typ="safe").load((root / ".github/workflows/release.yml").read_text())
+    assert workflow["on"]["push"] == {"tags": ["v*"]}
+    assert workflow["on"]["release"] == {"types": ["published"]}
+    assert "workflow_dispatch" in workflow["on"]
+    jobs = workflow["jobs"]
+    assert jobs["validate"]["if"].startswith(
+        "(github.event_name == 'push' && !github.event.deleted) ||"
+    )
+    for name in ("publish-testpypi-core", "publish-testpypi-library", "verify-testpypi"):
+        assert jobs[name]["if"] == (
+            "github.event_name == 'push' || github.event_name == 'workflow_dispatch'"
+        )
+    for name in ("publish-pypi-core", "publish-pypi-library", "github-release"):
+        assert jobs[name]["if"] == "github.event_name == 'release'"
+    validation = "\n".join(step.get("run", "") for step in jobs["validate"]["steps"])
+    assert 'git merge-base --is-ancestor "$GITHUB_SHA" origin/main' in validation
+    assert 'select(.name == "CI"' in validation
+    assert "head_sha=$GITHUB_SHA&status=success" in validation
+    assert 'select(.name == "python-distributions" and .expired == false)' in validation
+
+
+@pytest.mark.parametrize("event", ["push", "release", "workflow_dispatch"])
+def test_python_release_version_validation(tmp_path, event):
+    root = Path(__file__).resolve().parents[2]
+    workflow = YAML(typ="safe").load((root / ".github/workflows/release.yml").read_text())
+    source = next(
+        step["run"]
+        for step in workflow["jobs"]["validate"]["steps"]
+        if step.get("name") == "Validate release version"
+    )
+    validator = source.split("<<'PY'\n", 1)[1].split("\nPY", 1)[0]
+    (tmp_path / "library").mkdir()
+    for directory in (tmp_path, tmp_path / "library"):
+        (directory / "pyproject.toml").write_text('[project]\nversion = "0.3.0"\n')
+
+    def run(ref):
+        return subprocess.run(
+            [sys.executable, "-c", validator, event, ref],
+            cwd=tmp_path,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+    for ref in ("v0.3.0", "v0.3.1", "v0.3.0rc1", "v00.3.0", "studio-v0.3.0", "main"):
+        result = run(ref)
+        assert (result.returncode == 0) is (event == "workflow_dispatch" or ref == "v0.3.0")
+    (tmp_path / "library/pyproject.toml").write_text('[project]\nversion = "0.4.0"\n')
+    assert run("v0.3.0").returncode != 0

@@ -11,6 +11,7 @@ from enum import Enum
 from pathlib import Path
 
 import griffe
+import pytest
 import typer
 from rich.text import Text
 from typer.core import TyperGroup
@@ -35,7 +36,7 @@ def _unsafe_default():
 
 
 def _text(value):
-    return re.sub(r"[\s│┃]+", "", value)
+    return re.sub(r"[\s│┃]+", "", Text.from_ansi(value).plain)
 
 
 def _assert_matches_help():
@@ -93,8 +94,13 @@ def _assert_matches_help():
     return by_path
 
 
-def test_cli_matches_recursive_help():
+@pytest.mark.parametrize("force_color", [None, "1"])
+def test_cli_matches_recursive_help(monkeypatch, force_color):
     """Every public path, option form, argument, and description matches real help."""
+    if force_color is None:
+        monkeypatch.delenv("FORCE_COLOR", raising=False)
+    else:
+        monkeypatch.setenv("FORCE_COLOR", force_color)
     commands = _assert_matches_help()
     export = {p["name"]: p for p in commands["nexuml export-dataset"]["parameters"]}
     assert export["preprocess"]["secondary_opts"] == ["--no-preprocess"]

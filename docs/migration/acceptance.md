@@ -78,6 +78,28 @@ The preview was rebuilt and `/NexuML/dev/` returns HTTP 200. Independent review
 found no material defects. Hosted deployment was not performed; see the rollout
 and protected-environment requirements in `docs/publication.md`.
 
+### PR CI and TestPyPI trigger follow-up
+
+At PR head `12eba87`, runs `40040878798` and `40040883943` failed on colored
+CLI-help assertions; all three Python matrix jobs also read templates from their
+pre-migration location. Normalize ANSI help before comparison and read the
+published template sources under `docs/public/versioned/`. Browser acceptance
+then exposed a stale six-group sidebar expectation after the four-group navigation
+change in `69bff11`; update only the test to match the approved navigation.
+
+Local confirmation: 97 focused runtime/workflow tests passed; documentation checks
+under `CI=true FORCE_COLOR=1` passed (35 tests, two runtime-only skips, 17 subtests),
+as did API discovery at both mounts, invalid-content rejection, all eight browser
+tests, lint, formatting, and targeted typing. The release contract tests execute
+the real inline version validator for tag-push, release, and manual events.
+
+Stable tag pushes now request TestPyPI publication only, retaining matching
+versions, main ancestry, successful exact-commit CI, current artifact, protected
+environments, and installation verification. Tag deletions are excluded. GitHub
+Release publication remains the production trigger; ordinary branch pushes do
+not publish packages. Push the tag after exact-commit CI passes. No live registry
+upload or hosted rerun of these changes was performed.
+
 ### Remaining environment and owner checks
 
 - Full institute/GPU/optional-stack CI and hosted Actions artifact transfer/Pages

@@ -465,7 +465,9 @@ def test_documented_template_api_handoff_and_exact_dry_run(tmp_path, monkeypatch
     from ruamel.yaml import YAML
 
     path = (
-        Path(__file__).resolve().parents[2] / "docs/how-to/training-backends/templates" / filename
+        Path(__file__).resolve().parents[2]
+        / "docs/public/versioned/how-to/training-backends/templates"
+        / filename
     )
     value = scenario(tmp_path, mode, YAML(typ="safe").load(path))
     plan = template_plan(value)

@@ -28,10 +28,27 @@ configure publishers:
 Each uses owner `NexuFed`, repository `NexuML`, workflow `release.yml`. Create all four
 matching environments with required maintainer reviewers. Only publishing jobs receive
 `id-token: write`; no long-lived registry credential is stored.
+Permit stable `v*` tags in the TestPyPI environments' deployment rules, alongside
+main if manual dispatch is used.
 
 ## TestPyPI candidate
 
-From the frozen candidate on main, explicitly dispatch the **Release** workflow:
+After the frozen candidate is merged into main and **its exact commit's CI has
+passed**, create and push its matching stable tag (for example, `v0.3.0`):
+
+```bash
+git tag v0.3.0 <validated-main-commit>
+git push origin v0.3.0
+```
+
+The tag push automatically starts **Release** for TestPyPI only. Tags have no
+branch of their own: the workflow rejects commits not contained in main, invalid
+stable tags, and tags that differ from either package version. Ordinary main/dev
+pushes do not publish packages. Do not publish the GitHub Release until TestPyPI
+verification and your release testing pass.
+
+Manual dispatch remains available for a validated candidate or a failed run that
+has not uploaded the version yet:
 
 ```bash
 gh workflow run release.yml --ref main
@@ -52,7 +69,7 @@ versions before retrying a candidate already uploaded.
 ## Production Python release
 
 1. Confirm both projects declare the intended version and TestPyPI passed.
-2. Create/push matching stable `v<project version>`.
+2. Use the same stable `v<project version>` tag already tested through TestPyPI.
 3. Publish its GitHub release to trigger production; approve `pypi`, then `pypi-library`.
 
 The workflow rejects a tag differing from either package version, publishes validated core

@@ -70,6 +70,12 @@ Production publication SHALL use PyPI Trusted Publishing with short-lived OpenID
 ### Requirement: Test publication is available before production
 Maintainers SHALL be able to publish the same validated artifacts from a frozen, integrated candidate commit to TestPyPI and verify installation without triggering a production release. The TestPyPI path SHALL run only after the separate protected `testpypi` and `testpypi-library` environments and trusted-publisher identities are configured.
 
+#### Scenario: Stable candidate tag triggers test publication
+- **WHEN** a matching stable `vX.Y.Z` tag is pushed for a commit contained in main with successful exact-commit CI and an unexpired distribution artifact
+- **THEN** the workflow publishes core then library to TestPyPI and verifies their installation
+- **AND** production PyPI publication remains gated on publishing the GitHub Release, not the tag push
+- **AND** ordinary main/dev branch pushes do not trigger package publication.
+
 #### Scenario: Maintainer runs the TestPyPI path
 - **WHEN** an authorized maintainer requests a test publication for versioned candidate artifacts
 - **THEN** the artifacts are uploaded to TestPyPI

@@ -1,6 +1,8 @@
 name: Release
 
 on:
+  push:
+    tags: ["v*"]
   release:
     types: [published]
   workflow_dispatch:
@@ -15,7 +17,7 @@ env:
 
 jobs:
   validate:
-    if: github.event_name == 'workflow_dispatch' || startsWith(github.event.release.tag_name, 'v')
+    if: (github.event_name == 'push' && !github.event.deleted) || github.event_name == 'workflow_dispatch' || startsWith(github.event.release.tag_name, 'v')
     runs-on: ubuntu-latest
     outputs:
       ci-run-id: ${{ steps.ci.outputs.run-id }}
@@ -89,7 +91,7 @@ jobs:
           ]
           if versions[0] != versions[1]:
               raise SystemExit(f"Project versions do not match: {versions}")
-          if event == "release":
+          if event in {"push", "release"}:
               if re.fullmatch(r"v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)", ref) is None:
                   raise SystemExit(f"Invalid stable release tag: {ref!r}")
               if ref != f"v{versions[0]}":
@@ -100,7 +102,7 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
   publish-testpypi-core:
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     needs: validate
     runs-on: ubuntu-latest
     environment:
@@ -124,7 +126,7 @@ jobs:
           repository-url: https://test.pypi.org/legacy/
 
   publish-testpypi-library:
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     needs:
       - validate
       - publish-testpypi-core
@@ -150,7 +152,7 @@ jobs:
           repository-url: https://test.pypi.org/legacy/
 
   verify-testpypi:
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     needs:
       - validate
       - publish-testpypi-library
