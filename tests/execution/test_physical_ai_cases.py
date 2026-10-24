@@ -41,6 +41,15 @@ class PhysicalAICasesTest(unittest.TestCase):
             ATTEMPT_BASE=self.base,
             _source_identity=lambda: "tree-sha",
             _module_inventory=lambda: {},
+            _object_store_observations=lambda: [
+                {
+                    "pid": 79,
+                    "bytes": 1024**3,
+                    "plasma_directory": "/dev/shm",
+                    "filesystem": "tmpfs",
+                    "backing": "shared_memory",
+                }
+            ],
             _require_current_source=mock.Mock(
                 side_effect=lambda record: record.update(imports=self.g["_module_inventory"]())
             ),
@@ -612,7 +621,8 @@ class PhysicalAICasesTest(unittest.TestCase):
         )
         self.assertEqual(receipt["shared_memory"]["available_bytes"], 90 * 4096)
         self.assertEqual(receipt["shared_memory"]["campaign_cap_bytes"], 8 * 1024**3)
-        self.assertIsNone(receipt["shared_memory"]["object_store_limit_bytes"])
+        self.assertEqual(receipt["shared_memory"]["object_store_limit_bytes"], 1024**3)
+        self.assertEqual(receipt["shared_memory"]["shared_object_store_limit_bytes"], 1024**3)
         self.assertTrue(receipt["durable_output"]["writable"])
         self.assertEqual(receipt["gpu"]["nvidia_smi_rows"], ["GPU-mocked-uuid, mock-driver"])
         self.assertTrue(all(state == "UNVERIFIED" for state in receipt["gates"].values()))
@@ -653,6 +663,127 @@ class PhysicalAICasesTest(unittest.TestCase):
             code, receipt = self.run_case("preflight")
         self.assertEqual((code, receipt["status"]), (2, "BLOCKED"))
         self.assertIn("8 GiB", receipt["reason"])
+        self.g["_gpu_inventory"].assert_not_called()
+
+    def test_object_store_observations_identify_actual_raylet_backing(self):
+        inventory = runpy.run_path(str(SCRIPT))["_object_store_observations"]
+        proc = self.base / "proc"
+        raylet = proc / "79"
+        raylet.mkdir(parents=True)
+        plasma = self.base / "plasma with spaces"
+        plasma.mkdir()
+        escaped = str(plasma).replace(" ", r"\040")
+        (raylet / "cmdline").write_bytes(
+            b"/usr/local/bin/raylet\0--object_store_memory=10000000000\0"
+            + f"--plasma_directory={plasma}".encode()
+            + b"\0"
+        )
+        # The controller's namespace says RAM; the worker's namespace is authoritative.
+        (proc / "self").mkdir()
+        for process in (raylet, proc / "self"):
+            (process / "ns").mkdir()
+            (process / "ns/mnt").symlink_to("mnt:[123]")
+        (proc / "self" / "mountinfo").write_text(f"1 0 0:1 / {escaped} rw - tmpfs shm rw\n")
+        for filesystem, backing in (
+            ("ext4", "disk"),
+            ("overlay", "unknown"),
+            ("tmpfs", "shared_memory"),
+            ("hugetlbfs", "shared_memory"),
+            ("fuse.juicefs", "unknown"),
+        ):
+            with self.subTest(filesystem=filesystem):
+                (raylet / "mountinfo").write_text(
+                    "1 0 0:1 / / rw - tmpfs root rw\n"
+                    f"2 1 259:2 / {escaped} rw - {filesystem} plasma rw\n"
+                )
+                self.assertEqual(
+                    inventory(proc),
+                    [
+                        {
+                            "pid": 79,
+                            "bytes": 10_000_000_000,
+                            "plasma_directory": str(plasma),
+                            "filesystem": filesystem,
+                            "backing": backing,
+                        }
+                    ],
+                )
+        (raylet / "ns/mnt").unlink()
+        (raylet / "ns/mnt").symlink_to("mnt:[456]")
+        (raylet / "mountinfo").write_text(f"1 0 259:2 / {escaped} rw - ext4 plasma rw\n")
+        self.assertEqual(inventory(proc)[0]["backing"], "unknown")
+        (raylet / "ns/mnt").unlink()
+        self.assertEqual(inventory(proc)[0]["backing"], "unknown")
+        (raylet / "ns/mnt").symlink_to("mnt:[123]")
+        (raylet / "mountinfo").write_text(
+            f"1 0 259:2 / {escaped} rw - ext4 plasma rw\n2 0 0:1 / {escaped} rw - tmpfs shm rw\n"
+        )
+        self.assertEqual(inventory(proc)[0]["backing"], "unknown")
+        (raylet / "mountinfo").unlink()
+        self.assertEqual(inventory(proc)[0]["backing"], "unknown")
+        (raylet / "cmdline").write_bytes(b"raylet\0--object_store_memory=invalid\0")
+        observation = inventory(proc)[0]
+        self.assertIsNone(observation["bytes"])
+        self.assertEqual(observation["backing"], "unknown")
+
+    def test_disk_object_store_cap_is_not_a_shared_memory_reservation(self):
+        imports = {name: {"available": True} for name in ("nexuml", "nexuml_library", "torch")}
+        self.fake_launch(log_text="GPU-mocked-uuid, mock-driver\n")
+        self.patch_globals(
+            _module_inventory=lambda: imports,
+            _gpu_inventory=mock.Mock(return_value={"visible_count": 1}),
+        )
+        for index, (backing, capacity, expected) in enumerate(
+            (
+                ("disk", 10_000_000_000, 0),
+                ("shared_memory", 10_000_000_000, 2),
+                ("unknown", 10_000_000_000, 2),
+                ("disk", None, 2),
+            )
+        ):
+            with self.subTest(backing=backing, capacity=capacity):
+                self.root = self.base / f"attempt-{index}"
+                self.guarded_root()
+                self.g["_gpu_inventory"].reset_mock()
+                observed = [{"pid": 79, "bytes": capacity, "backing": backing}]
+                with (
+                    mock.patch.dict(self.g, _object_store_observations=lambda: observed),
+                    mock.patch.object(self.g["shutil"], "which", return_value="/mock/nvidia-smi"),
+                    mock.patch.object(
+                        self.g["os"],
+                        "statvfs",
+                        return_value=SimpleNamespace(
+                            f_blocks=8,
+                            f_bavail=8,
+                            f_bfree=8,
+                            f_frsize=1024**3,
+                        ),
+                    ),
+                ):
+                    code, receipt = self.run_case("preflight")
+                self.assertEqual(code, expected)
+                if code == 0:
+                    self.assertEqual(receipt["shared_memory"]["used_bytes"], 0)
+                    self.assertEqual(receipt["shared_memory"]["shared_object_store_limit_bytes"], 0)
+                    self.assertEqual(
+                        receipt["shared_memory"]["disk_object_store_limit_bytes"], 10_000_000_000
+                    )
+                    self.g["_gpu_inventory"].assert_called_once()
+                else:
+                    self.g["_gpu_inventory"].assert_not_called()
+
+    def test_missing_object_store_observation_blocks_before_gpu_probe(self):
+        self.guarded_root()
+        self.patch_globals(
+            _module_inventory=lambda: {
+                name: {"available": True} for name in ("nexuml", "nexuml_library", "torch")
+            },
+            _gpu_inventory=mock.Mock(),
+            _object_store_observations=lambda: [],
+        )
+        code, receipt = self.run_case("preflight")
+        self.assertEqual(code, 2)
+        self.assertIn("unobservable", receipt["reason"])
         self.g["_gpu_inventory"].assert_not_called()
 
     def test_gpu_inventory_requires_exactly_one_visible_gpu_before_tiny_allocation(self):
