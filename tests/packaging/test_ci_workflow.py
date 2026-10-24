@@ -41,7 +41,10 @@ def test_studio_ci_builds_once_and_tests_both_trusted_linux_installations(tmp_pa
         == 1
     )
     assert not any("npm pack" in step.get("run", "") for step in job["steps"])
-    assert any(step.get("with", {}).get("name") == "studio-distribution" for step in job["steps"])
+    assert any(
+        step.get("with", {}).get("name") == "studio-distribution${{ env.ARTIFACT_SUFFIX }}"
+        for step in job["steps"]
+    )
     smoke = Path(__file__).resolve().parents[2] / "studio/scripts/package-smoke.mjs"
     assert '"prepack"' not in smoke.read_text()
     setup = smoke.parents[2] / "scripts/studio-test-runtime.py"
@@ -72,18 +75,26 @@ def test_shared_release_triggers_and_studio_channels():
     studio = YAML(typ="safe").load((root / ".github/workflows/publish-studio.yml").read_text())
     publish = studio["jobs"]["publish"]
     assert studio["on"] == python["on"]
-    assert publish["if"] == python["jobs"]["validate"]["if"]
+    assert studio["jobs"]["validate"]["if"] == python["jobs"]["validate"]["if"]
+    assert publish["needs"] == "validate"
     assert publish["environment"]["name"] == "npm"
     assert publish["permissions"]["id-token"] == "write"
     assert publish["runs-on"] == "ubuntu-latest"  # npm OIDC rejects self-hosted runners.
     scripts = "\n".join(step.get("run", "") for step in publish["steps"])
     assert "npm publish" in scripts and "--ignore-scripts" in scripts and "--provenance" in scripts
     assert "npm ci" not in scripts and "npm pack" not in scripts and "npm run build" not in scripts
-    assert "python scripts/check-release-versions.py" in scripts
-    assert 'args+=(--tag "$RELEASE_TAG")' in scripts
-    assert "git merge-base --is-ancestor HEAD origin/main" in scripts
-    assert "a.name === 'studio-distribution' && !a.expired" in scripts
-    assert "artifacts[0].workflow_run.head_sha, process.env.GITHUB_SHA" in scripts
+    assert any(
+        step.get("uses") == "./.github/actions/release-artifact" for step in publish["steps"]
+    )
+    for workflow in (python, studio):
+        validation = workflow["jobs"]["validate"]
+        assert validation["timeout-minutes"] == 120
+        assert "environment" not in validation
+        assert "id-token" not in validation.get("permissions", {})
+        assert any(
+            "scripts/release_candidate.py resolve" in step.get("run", "")
+            for step in validation["steps"]
+        )
     assert "npm install --global npm@11.21.0" in scripts
     candidate = next(step for step in publish["steps"] if "npm publish" in step.get("run", ""))
     assert (
@@ -108,11 +119,17 @@ def release_versions(tmp_path):
     (tmp_path / "studio").mkdir()
     script = tmp_path / "scripts/check-release-versions.py"
     shutil.copyfile(root / "scripts/check-release-versions.py", script)
+    shutil.copyfile(root / "scripts/release_versions.py", tmp_path / "scripts/release_versions.py")
     for path in ("pyproject.toml", "library/pyproject.toml"):
         (tmp_path / path).write_text('[project]\nversion = "0.3.0"\n')
     (tmp_path / "studio/package.json").write_text(json.dumps({"version": "0.3.0"}))
     (tmp_path / "studio/package-lock.json").write_text(
         json.dumps({"version": "0.3.0", "packages": {"": {"version": "0.3.0"}}})
+    )
+    (tmp_path / "uv.lock").write_text(
+        '[[package]]\nname = "nexuml"\nversion = "0.3.0"\nsource = { editable = "." }\n'
+        '[[package]]\nname = "nexuml-library"\nversion = "0.3.0"\n'
+        'source = { editable = "library" }\n'
     )
     return script
 
@@ -171,8 +188,10 @@ def test_studio_promotion_requires_the_tested_registry_integrity(tmp_path, regis
         for step in workflow["jobs"]["publish"]["steps"]
         if "npm dist-tag add" in step.get("run", "")
     )
-    (tmp_path / "release-studio").mkdir()
-    (tmp_path / "release-studio/pack.json").write_text(json.dumps([{"integrity": "sha512-tested"}]))
+    (tmp_path / "release-dist/studio").mkdir(parents=True)
+    (tmp_path / "release-dist/studio/pack.json").write_text(
+        json.dumps([{"integrity": "sha512-tested"}])
+    )
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     npm = bin_dir / "npm"
@@ -263,37 +282,91 @@ def test_python_release_tag_push_tests_before_release_publication():
     for name in ("publish-pypi-core", "publish-pypi-library", "github-release"):
         assert jobs[name]["if"] == "github.event_name == 'release'"
     validation = "\n".join(step.get("run", "") for step in jobs["validate"]["steps"])
-    assert 'git merge-base --is-ancestor "$GITHUB_SHA" origin/main' in validation
-    assert 'select(.name == "CI"' in validation
-    assert "head_sha=$GITHUB_SHA&status=success" in validation
-    assert 'select(.name == "python-distributions" and .expired == false)' in validation
-
-
-@pytest.mark.parametrize("event", ["push", "release", "workflow_dispatch"])
-def test_python_release_version_validation(tmp_path, event):
-    root = Path(__file__).resolve().parents[2]
-    workflow = YAML(typ="safe").load((root / ".github/workflows/release.yml").read_text())
-    source = next(
-        step["run"]
-        for step in workflow["jobs"]["validate"]["steps"]
-        if step.get("name") == "Validate release version"
-    )
-    validator = source.split("<<'PY'\n", 1)[1].split("\nPY", 1)[0]
-    (tmp_path / "library").mkdir()
-    for directory in (tmp_path, tmp_path / "library"):
-        (directory / "pyproject.toml").write_text('[project]\nversion = "0.3.0"\n')
-
-    def run(ref):
-        return subprocess.run(
-            [sys.executable, "-c", validator, event, ref],
-            cwd=tmp_path,
-            capture_output=True,
-            text=True,
-            check=False,
+    assert "scripts/release_candidate.py resolve" in validation
+    assert "--require-testpypi" in validation
+    assert jobs["publish-pypi-core"]["needs"] == "validate"
+    assert "publish-pypi-library" in jobs["github-release"]["needs"]
+    assert "publish-pypi-core" in jobs["publish-pypi-library"]["needs"]
+    for name in (
+        "publish-testpypi-core",
+        "publish-testpypi-library",
+        "publish-pypi-core",
+        "publish-pypi-library",
+        "github-release",
+    ):
+        download = next(
+            step
+            for step in jobs[name]["steps"]
+            if step.get("uses") == "./.github/actions/release-artifact"
         )
+        assert download["with"]["manifest-id"] == "${{ needs.validate.outputs.manifest-id }}"
+        assert download["with"]["artifact-id"] == "${{ needs.validate.outputs.python-id }}"
+        assert download["with"]["group"] == "python"
+        assert not any("uv build" in step.get("run", "") for step in jobs[name]["steps"])
+    verification = jobs["verify-testpypi"]
+    assert verification["env"]["NEXUML_EXPECTED_VERSION"] == "${{ needs.validate.outputs.version }}"
+    scripts = "\n".join(step.get("run", "") for step in verification["steps"])
+    assert "--group wheels" in scripts
+    assert "record-testpypi" in scripts
+    assert scripts.index("--group wheels") < scripts.index("uv pip install")
+    assert scripts.index("test_installed_distributions.py -k library") < scripts.index(
+        "record-testpypi"
+    )
+    assert not any(step.get("continue-on-error") for step in verification["steps"])
+    assert any(
+        step.get("with", {}).get("name") == "testpypi-verification-${{ github.run_attempt }}"
+        for step in verification["steps"]
+    )
 
-    for ref in ("v0.3.0", "v0.3.1", "v0.3.0rc1", "v00.3.0", "studio-v0.3.0", "main"):
-        result = run(ref)
-        assert (result.returncode == 0) is (event == "workflow_dispatch" or ref == "v0.3.0")
-    (tmp_path / "library/pyproject.toml").write_text('[project]\nversion = "0.4.0"\n')
-    assert run("v0.3.0").returncode != 0
+
+def test_tag_ci_prepares_every_package_checkout_before_use():
+    root = Path(__file__).resolve().parents[2]
+    assert WORKFLOW["on"]["push"]["tags"] == ["v*"]
+    assert WORKFLOW["env"]["ARTIFACT_SUFFIX"] == (
+        "${{ startsWith(github.ref, 'refs/tags/') && format('-{0}', github.run_attempt) || '' }}"
+    )
+    jobs = WORKFLOW["jobs"]
+    assert jobs["release-identity"]["runs-on"] == "ubuntu-latest"
+    for name in ("static", "test", "studio-static", "docs-checks"):
+        assert jobs[name]["needs"] == "release-identity"
+    docs = YAML(typ="safe").load((root / ".github/workflows/docs-checks.yml").read_text())
+    for job in [
+        jobs[name]
+        for name in ("static", "test", "package", "studio-static", "studio-build", "studio-package")
+    ] + [docs["jobs"]["check"]]:
+        steps = job["steps"]
+        prepared = next(
+            i
+            for i, step in enumerate(steps)
+            if step.get("uses") == "./.github/actions/prepare-release"
+        )
+        assert steps[prepared]["if"] == "startsWith(github.ref, 'refs/tags/')"
+        for i, step in enumerate(steps):
+            command = step.get("run", "")
+            if any(
+                value in command
+                for value in (
+                    "uv pip install",
+                    "uv build",
+                    "npm ci",
+                    "run check",
+                    "studio-test-runtime.py",
+                )
+            ):
+                assert i > prepared
+            if step.get("with", {}).get("cache"):
+                assert "!startsWith(github.ref" in step["with"]["cache"]
+    gate = jobs["required-ci"]
+    assert gate["runs-on"] == "ubuntu-latest"
+    assert gate["steps"][0]["name"] == "Verify required jobs"
+    assert any(
+        "scripts/release_candidate.py create" in step.get("run", "") for step in gate["steps"]
+    )
+    manifest = gate["steps"][-1]
+    assert manifest["with"]["name"] == "release-candidate-${{ github.run_attempt }}"
+    assert manifest["with"]["retention-days"] == 7
+    action = YAML(typ="safe").load(
+        (root / ".github/actions/release-artifact/action.yml").read_text()
+    )
+    assert "--group" in action["runs"]["steps"][-1]["run"]
+    assert "scripts/release_candidate.py verify" in action["runs"]["steps"][-1]["run"]

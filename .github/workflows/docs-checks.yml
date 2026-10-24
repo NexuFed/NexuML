@@ -27,12 +27,16 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version-file: docs/.node-version
-          cache: npm
+          cache: ${{ !startsWith(github.ref, 'refs/tags/') && 'npm' || '' }}
+          package-manager-cache: false
           cache-dependency-path: docs/package-lock.json
       - uses: astral-sh/setup-uv@v10.3.2
         with:
           version: "0.13.0"
           python-version: "3.12"
+          enable-cache: ${{ startsWith(github.ref, 'refs/tags/') && 'false' || 'auto' }}
+      - uses: ./.github/actions/prepare-release
+        if: startsWith(github.ref, 'refs/tags/')
       - name: Install locked documentation tools only
         run: |
           npm --prefix docs ci

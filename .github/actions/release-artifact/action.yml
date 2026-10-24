@@ -1,0 +1,42 @@
+name: Download and revalidate release files
+description: Recheck immutable IDs, source identity and package bytes immediately before publication.
+inputs:
+  manifest-id:
+    required: true
+    description: Immutable candidate manifest artifact ID
+  artifact-id:
+    required: true
+    description: Immutable package artifact ID
+  run-id:
+    required: true
+    description: Original candidate CI run
+  directory:
+    required: true
+    description: Package download directory
+  group:
+    required: true
+    description: python or studio
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v6
+      with:
+        python-version: "3.12"
+    - uses: actions/download-artifact@v7
+      with:
+        artifact-ids: ${{ inputs.manifest-id }}
+        path: release-candidate
+        github-token: ${{ github.token }}
+        run-id: ${{ inputs.run-id }}
+    - uses: actions/download-artifact@v7
+      with:
+        artifact-ids: ${{ inputs.artifact-id }}
+        path: ${{ inputs.directory }}${{ inputs.group == 'studio' && '/studio' || '' }}
+        github-token: ${{ github.token }}
+        run-id: ${{ inputs.run-id }}
+    - shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        DIST: ${{ inputs.directory }}
+        GROUP: ${{ inputs.group }}
+      run: python scripts/release_candidate.py verify --manifest release-candidate/candidate.json --dist "$DIST" --group "$GROUP"
