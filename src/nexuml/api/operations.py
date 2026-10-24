@@ -370,6 +370,9 @@ class Operations:
                 )
                 if native and terminal not in {"succeeded", "failed", "cancelled"}:
                     terminal = "ownership_unknown"
+                if not status.get("process_ownership", True) and not native:
+                    if terminal == "succeeded":
+                        terminal = "ownership_unknown"
                 status["status"] = self.stopping.pop(folder.name, None) or terminal
                 status["result"] = result
                 status["artifacts"] = [

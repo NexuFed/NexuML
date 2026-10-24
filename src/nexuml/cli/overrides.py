@@ -13,6 +13,10 @@ console = Console()
 
 
 def _assign_override(obj, key, value):
+    if isinstance(obj, BaseModel) and isinstance(value, dict):
+        from nexuml.core.serialization import restore_model_data
+
+        value = restore_model_data({key: value}, type(obj))[key]
     if isinstance(obj, dict):
         obj[key] = value
     elif isinstance(obj, BaseModel) and obj.model_config.get("frozen"):

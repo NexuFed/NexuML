@@ -11,6 +11,11 @@ NexuML has one model/training lifecycle and different places where that lifecycl
 | Kubernetes PyTorchJob | Training Operator replicas | the same lifecycle with native distributed launch |
 | Ray Jobs SDK (`ray-jobs-sdk`) | one remotely scheduled normal CLI process | asynchronous submission; returns a job ID |
 
+The SDK backend is `RayJobsSDKExecution` from `nexuml.execution.definitions`;
+it is distinct from KubeRay `RayJobExecution` (`ray-job`) and Ray Train
+`RayClusterExecution` (`ray-cluster`). SDK migration and remote lifecycle
+qualification remain pending; see the [SDK recipe](ray.md#ray-jobs-sdk-ray-jobs-sdk).
+
 Local execution is the `ScenarioSpec` default:
 
 ```python

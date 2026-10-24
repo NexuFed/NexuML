@@ -267,6 +267,11 @@ class ExecutionBackendDefinition(ComponentDefinition):
         Raises:
             ValueError: If requested resume or exports are unsupported.
         """
+        operation = kwargs.get("operation", "train")
+        if operation == "evaluate" and not self.capabilities.get("evaluation", False):
+            raise ValueError("Evaluation is unsupported by the selected execution backend.")
+        if operation == "export" and not self.capabilities.get("artifacts", False):
+            raise ValueError("Checkpoint export is unsupported by the selected execution backend.")
         if kwargs.get("trainer_checkpoint") and not self.capabilities.get("resume", False):
             raise ValueError("Trainer checkpoint resume is local-only; the backend owns recovery.")
         if scenario.exports and not self.capabilities.get("artifacts", False):

@@ -7,21 +7,58 @@ import subprocess
 from pathlib import Path
 
 import pytest
+from ruamel.yaml import YAML
 from typer.testing import CliRunner
 
 from nexuml.cli import main
 from nexuml.core.config import ResolvedConfig
-from nexuml.core.types import RayJobExecutionSpec, ScenarioSpec
+from nexuml.core.types import ScenarioSpec
 from nexuml.execution import load_ray_job_profile, submit_ray_job
+from nexuml.execution.definitions import LocalExecution, RayJobsSDKExecution
 
 PROFILE = Path("configs/execution/ray.yaml")
 runner = CliRunner()
 
 
+@pytest.fixture(autouse=True)
+def forbid_unmocked_training_and_submission(monkeypatch):
+    import nexuml.core.compiler as compiler
+    import nexuml.training.lightning as lightning
+
+    monkeypatch.setattr(compiler, "compile", lambda *_: pytest.fail("compiled locally"))
+    monkeypatch.setattr(lightning, "NexuSession", lambda **_: pytest.fail("trained locally"))
+    try:
+        import ray.job_submission as sdk
+    except ImportError:
+        return
+    monkeypatch.setattr(
+        sdk, "JobSubmissionClient", lambda *_, **__: pytest.fail("unmocked Ray SDK client")
+    )
+
+
 def test_project_profile_supplies_locked_setup_and_private_local_environments():
+    assert YAML(typ="safe").load(PROFILE.read_text()) == {
+        "type": "ray-jobs-sdk",
+        "version": "1",
+        "params": {
+            "setup_command": [
+                "uv",
+                "sync",
+                "--locked",
+                "--python",
+                "3.12",
+                "--extra",
+                "library",
+                "--extra",
+                "ray",
+            ],
+            "entrypoint_resources": {"pool_gpu_workers": 1},
+        },
+    }
     first = load_ray_job_profile(PROFILE)
     second = load_ray_job_profile(PROFILE)
 
+    assert isinstance(first, RayJobsSDKExecution)
     assert first.setup_command == [
         "uv",
         "sync",
@@ -63,11 +100,15 @@ def test_project_profile_supplies_locked_setup_and_private_local_environments():
         "[]",
         "kind: local",
         "kind: ray",
-        "kind: ray_job\nunknown: true",
-        "kind: ray_job\nentrypoint_num_gpus: -1",
-        "kind: ray_job\nsetup_command: []",
-        "kind: ray_job\nkind: ray_job",  # Duplicate YAML keys must not silently win.
-        "kind: ray_job\nsetup_command: [",
+        "kind: ray_job",
+        '{"type":"local","version":"1","params":{}}',
+        '{"type":"ray-cluster","version":"1","params":{}}',
+        '{"type":"ray-job","version":"1","params":{}}',
+        '{"type":"ray-jobs-sdk","version":"1","params":{"unknown":true}}',
+        '{"type":"ray-jobs-sdk","version":"1","params":{"entrypoint_num_gpus":-1}}',
+        '{"type":"ray-jobs-sdk","version":"1","params":{"setup_command":[]}}',
+        "type: ray-jobs-sdk\ntype: ray-jobs-sdk\nversion: '1'\nparams: {}",
+        "type: ray-jobs-sdk\nversion: '1'\nparams: [",
         "!!python/object/apply:builtins.print [must-not-execute]",
     ],
 )
@@ -77,9 +118,7 @@ def test_invalid_profile_fails_before_submission(tmp_path, monkeypatch, content)
     path = tmp_path / "invalid.yaml"
     path.write_text(content)
     monkeypatch.setattr(main, "_get_scenario_fn", lambda _: lambda: ScenarioSpec(name="test"))
-    monkeypatch.setattr(
-        execution, "submit_ray_job", lambda _: pytest.fail("invalid profile submitted")
-    )
+    monkeypatch.setattr(execution, "run", lambda *_, **__: pytest.fail("invalid profile submitted"))
     result = runner.invoke(main.app, ["train", "test", "--execution-profile", str(path)])
     assert result.exit_code == 1
     assert "Execution profile error" in result.output
@@ -118,9 +157,7 @@ def test_cli_profile_replaces_execution_then_applies_overrides(tmp_path, monkeyp
         )
         args += ["--scenario-file", str(path), "--artifact-dir", str(tmp_path / "receipt")]
     submitted = []
-    monkeypatch.setattr(
-        execution, "submit_ray_job", lambda spec: submitted.append(spec) or "ray_profile"
-    )
+    monkeypatch.setattr(execution, "run", lambda spec, **_: submitted.append(spec) or "ray_profile")
     monkeypatch.setattr(compiler, "compile", lambda *_: pytest.fail("compiled locally"))
     monkeypatch.setattr(lightning, "NexuSession", lambda **_: pytest.fail("trained locally"))
     setup = ["uv", "sync", "--locked", "--extra", "isaac", "--extra", "ray"]
@@ -139,7 +176,7 @@ def test_cli_profile_replaces_execution_then_applies_overrides(tmp_path, monkeyp
             "-O",
             "execution.verify=/certs/private-ca.pem",
             "-O",
-            'execution.entrypoint_resources={"pool_dgx_workers":1}',
+            'execution.entrypoint_resources={"pool_gpu_workers":2}',
             "-O",
             "execution.runtime_env.env_vars.NEXUML_LOGS_ROOT=/mnt/data/unique-run",
         ],
@@ -147,11 +184,11 @@ def test_cli_profile_replaces_execution_then_applies_overrides(tmp_path, monkeyp
     assert result.exit_code == 0, result.output
     assert len(submitted) == 1
     remote = submitted[0]
-    assert isinstance(remote.execution, RayJobExecutionSpec)
+    assert isinstance(remote.execution, RayJobsSDKExecution)
     assert remote.training.max_epochs == 2
     assert remote.execution.setup_command == setup
     assert remote.execution.verify == "/certs/private-ca.pem"
-    assert remote.execution.entrypoint_resources == {"pool_dgx_workers": 1}
+    assert remote.execution.entrypoint_resources == {"pool_gpu_workers": 2}
     assert remote.execution.runtime_env["env_vars"]["UV_CACHE_DIR"] == "/tmp/ray/uv-cache"
     assert remote.execution.runtime_env["env_vars"]["NEXUML_LOGS_ROOT"] == "/mnt/data/unique-run"
     assert "Ray job submitted: ray_profile" in result.output
@@ -170,8 +207,14 @@ def test_profile_requires_explicit_scenario_before_checkpoint_loading():
     assert "requires a scenario/config/scenario-file" in result.output
 
 
-def test_profile_still_rejects_submitter_checkpoint(monkeypatch):
+def test_profile_submits_worker_checkpoint_without_local_session(monkeypatch):
+    import nexuml.execution as execution
+    import nexuml.training.lightning as lightning
+
     monkeypatch.setattr(main, "_get_scenario_fn", lambda _: lambda: ScenarioSpec(name="test"))
+    submitted = []
+    monkeypatch.setattr(execution, "run", lambda spec, **_: submitted.append(spec) or "resume_job")
+    monkeypatch.setattr(lightning, "NexuSession", lambda **_: pytest.fail("resumed locally"))
     result = runner.invoke(
         main.app,
         [
@@ -180,11 +223,13 @@ def test_profile_still_rejects_submitter_checkpoint(monkeypatch):
             "--execution-profile",
             str(PROFILE),
             "--trainer-checkpoint",
-            "local.ckpt",
+            "/mnt/data/worker-only.ckpt",
         ],
     )
-    assert result.exit_code == 1
-    assert "does not transport --trainer-checkpoint" in result.output
+    assert result.exit_code == 0, result.output
+    assert len(submitted) == 1
+    assert isinstance(submitted[0].execution, RayJobsSDKExecution)
+    assert "Ray job submitted: resume_job" in result.output
 
 
 def test_profile_cpu_overrides_clear_gpu_and_pool(monkeypatch):
@@ -192,9 +237,7 @@ def test_profile_cpu_overrides_clear_gpu_and_pool(monkeypatch):
 
     monkeypatch.setattr(main, "_get_scenario_fn", lambda _: lambda: ScenarioSpec(name="test"))
     submitted = []
-    monkeypatch.setattr(
-        execution, "submit_ray_job", lambda spec: submitted.append(spec) or "cpu_job"
-    )
+    monkeypatch.setattr(execution, "run", lambda spec, **_: submitted.append(spec) or "cpu_job")
     result = runner.invoke(
         main.app,
         [
@@ -223,10 +266,10 @@ def test_profile_submission_failure_does_not_fall_back(monkeypatch):
 
     monkeypatch.setattr(main, "_get_scenario_fn", lambda _: lambda: ScenarioSpec(name="test"))
 
-    def fail(_):
+    def fail(*_, **__):
         raise RuntimeError("profile upload rejected")
 
-    monkeypatch.setattr(execution, "submit_ray_job", fail)
+    monkeypatch.setattr(execution, "run", fail)
     monkeypatch.setattr(lightning, "NexuSession", lambda **_: pytest.fail("fell back locally"))
     result = runner.invoke(main.app, ["train", "test", "--execution-profile", str(PROFILE)])
     assert result.exit_code == 1
@@ -251,7 +294,12 @@ def test_profile_reaches_sdk_without_reentering_profile_selection(monkeypatch):
     def assert_remote_config(args):
         assert args[:2] == ["train", "--config"]
         remote = ResolvedConfig.load(Path(args[2]))
-        assert remote.execution.kind == "local"
+        assert isinstance(remote.execution, LocalExecution)
+        assert YAML(typ="safe").load(Path(args[2]).read_text())["execution"] == {
+            "type": "local",
+            "version": "1",
+            "params": {},
+        }
 
     monkeypatch.setattr(main, "app", assert_remote_config)
     scenario = ScenarioSpec(name="test", execution=load_ray_job_profile(PROFILE))
@@ -275,24 +323,24 @@ def test_profile_reaches_sdk_without_reentering_profile_selection(monkeypatch):
 
 
 def test_ray_job_defaults_work_without_a_profile_and_local_default_stays_local():
-    execution = RayJobExecutionSpec()
+    execution = RayJobsSDKExecution()
     assert execution.setup_command == ["uv", "sync", "--locked"]
     assert shlex.split(execution.py_executable)[0] == "/tmp/ray/nexuml-envs/{run_id}/bin/python"
     assert execution.entrypoint_num_gpus == 1
     assert execution.entrypoint_resources == {}
     assert execution.runtime_env["env_vars"]["UV_CACHE_DIR"] == "/tmp/ray/uv-cache"
-    assert ScenarioSpec(name="local-default").execution.kind == "local"
+    assert isinstance(ScenarioSpec(name="local-default").execution, LocalExecution)
 
 
 def test_prepared_environment_opt_out_has_no_implicit_setup_or_uv_settings():
-    execution = RayJobExecutionSpec(setup_command=None, entrypoint_num_gpus=0)
+    execution = RayJobsSDKExecution(setup_command=None, entrypoint_num_gpus=0)
     assert execution.setup_command is None
     assert execution.py_executable == "python"
     assert execution.runtime_env == {"working_dir": "."}
 
 
 def test_class_defaults_preserve_explicit_environment_and_interpreter():
-    execution = RayJobExecutionSpec(
+    execution = RayJobsSDKExecution(
         runtime_env={
             "working_dir": ".",
             "env_vars": {
@@ -308,13 +356,14 @@ def test_class_defaults_preserve_explicit_environment_and_interpreter():
     assert execution.runtime_env["env_vars"]["UV_CACHE_DIR"] == "/local/custom-cache"
     assert execution.runtime_env["env_vars"]["UV_LINK_MODE"] == "hardlink"
     assert execution.runtime_env["env_vars"]["TOKEN"] == "secret"
-    explicit = RayJobExecutionSpec(py_executable="/prepared/python")
+    explicit = RayJobsSDKExecution(py_executable="/prepared/python")
     assert explicit.py_executable == "/prepared/python"
 
 
 def test_class_defaults_roundtrip_without_allocating_a_shared_environment():
-    original = ScenarioSpec(name="roundtrip", execution=RayJobExecutionSpec())
+    original = ScenarioSpec(name="roundtrip", execution=RayJobsSDKExecution())
     restored = ResolvedConfig.from_yaml(ResolvedConfig.from_scenario(original).to_yaml())
+    assert isinstance(restored.execution, RayJobsSDKExecution)
     assert restored.execution == original.execution
     assert "{run_id}" in restored.execution.runtime_env["env_vars"]["UV_PROJECT_ENVIRONMENT"]
 
@@ -338,9 +387,7 @@ def test_documented_cartpole_submission_keeps_setup_and_outputs_explicit(monkeyp
         "$RUN_ROOT", "/mnt/data/doc-test"
     )
     submitted = []
-    monkeypatch.setattr(
-        execution, "submit_ray_job", lambda spec: submitted.append(spec) or "doc_job"
-    )
+    monkeypatch.setattr(execution, "run", lambda spec, **_: submitted.append(spec) or "doc_job")
     monkeypatch.setattr(compiler, "compile", lambda *_: pytest.fail("compiled locally"))
     monkeypatch.setattr(lightning, "NexuSession", lambda **_: pytest.fail("trained locally"))
     result = runner.invoke(main.app, shlex.split(command.replace("\\\n", ""))[1:])

@@ -103,4 +103,63 @@ backend migration, environment setup or external issue/PR updates occurred.
   dependencies/stores remotely or explicitly disable that backend; do not add a
   fallback or automatic install to hide a failed selected tracker.
 - Continue using the existing backend; remote lifecycle, isolation, viewer,
-  learning, recovery and final release gates stay unchecked until real proof.
+   learning, recovery and final release gates stay unchecked until real proof.
+
+## Resumed registered-SDK implementation
+
+The user subsequently authorized committing the reviewed changes and continuing
+implementation until complete or genuinely blocked. Local implementation commits
+are authorized; push/force-push, external status updates, PR merge, archive and
+infrastructure changes are not.
+
+- The reviewed tracking/export changes and revised plan were committed separately.
+  The exact pre-rebase history is retained at
+  `backup/nex-248-before-registered-rebase` (`a0140abca3af6717a98839c6c1cebc2f20f0192f`).
+  Original staged/index patches and ref identities were also retained under
+  `/tmp/opencode/nexuml-registered-rebase-x1mtazcp/` before committing.
+- The actual fetched `dev` advanced to
+  `ce31f37f56b44a42c959679f09db4668ce800b02`. The authorized rebase completed with
+  merge topology preserved; that base is an ancestor of the current branch.
+  Published feature history has not been rewritten remotely.
+- `ray-jobs-sdk` now uses registered definitions and shared dispatch, retaining
+  locked setup/private-venv/cache/GPU defaults and distinct KubeRay behavior.
+  Train/resume/evaluate/export select execution before worker artifact reads;
+  unsupported operations fail shared preflight instead of launching training.
+- Checkpoint export now uses canonical full checkpoint restoration, including
+  stateful adapters, and finalizes owned loggers. Observer initialization and
+  provenance/export failures remain inside native job scope and cleanup.
+- Fixed acceptance requests reuse the same SDK transport. A stock-Python guard
+  wraps setup as well as execution; the test-owned driver/worker cases retain
+  attempt ownership, bounded monitoring, explicit phases and revision-bound
+  receipts. Unprepared distribution/SO-101/browser/recovery profiles remain
+  blocked, never passed by a stub.
+- Hermetic submission/lifecycle/guard/inventory regressions, scoped static checks,
+  strict docs, the merged lock and source/wheel builds passed. These are source
+  checks, not remote application, installed-distribution or native qualification.
+  The local prepared environment is unchanged; full local typing still lacks
+  `dev`'s optional Kubernetes dependency and is not claimed green.
+
+Deployment inputs observed read-only: the approved HTTPS endpoint/CA are reachable
+and report Ray 2.57.0. GPU workers use stock
+`rayproject/ray:2.57.0-py312-cu128`, one-GPU scheduling and RTX-only node affinity,
+not DGX. The current head plasma limit is 1,329,312,153 bytes; its shared-memory
+usage was 24,576 bytes before any owned jobs, and no workers were active. Worker
+shared-memory volumes are capped at 8 GiB. Initial qualification is serial, within
+the aggregate 10 GiB safety budget; a four-job scheduler maximum is not proof that
+four concurrent allocations satisfy that budget. Actual worker resource/profile
+qualification precedes parallel claims. Durable attempts use private roots under
+`/mnt/data/nexuml-qualification`, with the monitored physical 4 GiB disk floor.
+
+Progress is **6/36**: 1.1, 2.1, 2.2, 3.1, 3.4 and 4.2. Runner tasks 3.1/3.4 were
+reopened after safety review, then corrected and independently re-reviewed:
+pre-setup root validation, persisted UUID submission ownership with lost-response
+reconciliation, dual scratch/output monitoring and actual imported-source admission
+are covered by targeted regressions. The integrated hermetic suite passed with
+362 tests, two real-training cases deliberately reserved for remote execution and
+82 subtests; scoped Ruff/ty and strict OpenSpec validation passed. An inert preflight
+plan selects one GPU worker, a private durable attempt, locked setup and explicit
+one-hour/4 GiB floor budgets, with unknown data/native/display inputs left unknown.
+These checks establish runner behavior, not a qualified remote profile. All current-candidate
+application/native/browser/learning/distribution gates remain unverified before
+the first remote preflight. Old production smoke evidence retains its original
+revision and is not reused as proof of this migration.

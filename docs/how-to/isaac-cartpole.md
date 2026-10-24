@@ -40,11 +40,15 @@ not a replacement for this learning reference.
 
 ## Run remotely with Ray Jobs
 
-Submit the normal CLI through [Ray Jobs](training-backends/ray.md#ray-jobs-ray_job),
+Submit the normal CLI through [Ray Jobs SDK](training-backends/ray.md#ray-jobs-sdk-ray-jobs-sdk),
 not distributed RL. The backend installs locked dependencies into a private
 worker-local venv, then runs training; no custom image or submitter-venv change
 is needed. The [optional IKA profile](training-backends/ray.md#reuse-a-project-execution-profile)
 selects `gpu-workers`. Override its extras for Isaac and set durable per-run paths.
+This is the migration target, not evidence that the migrated code or remote runtime
+is qualified. Planned remote resume/export/evaluate routes are listed in the
+[SDK lifecycle recipe](training-backends/ray.md#submission-and-paths); implementation
+and qualification remain pending.
 
 From the repository root, with the local Ray CLI and `nexuml[ray]` installed:
 
@@ -67,15 +71,20 @@ This returns a **submission ID**, not training success, without waiting or taili
 logs. It resets the remote scenario to local execution and does not need an outer
 `ray job submit`. For repeated Isaac runs, copy the profile and add the Isaac extra
 once instead of repeating the setup override. You can also configure
-`RayJobExecutionSpec` directly in a scenario; YAML is not required.
+`RayJobsSDKExecution` from `nexuml.execution.definitions` directly in a scenario;
+YAML is not required.
 
 Adapt the Jobs address, local CA path, pool and mounted storage for another
 cluster. Workers need uv, Git, compatible drivers/system libraries and physical
 free disk; this lock selects Python 3.12 and Ray 2.57.0. Pool selection does not
-prove GPU readiness. Use `pool_dgx_workers` only with a compatible available GPU.
+prove GPU readiness. The accepted campaign uses only `pool_gpu_workers`, one whole
+GPU per job and at most four in-flight jobs (including pending/setup), further
+limited by qualified capacity. No DGX, separate CPU pool or local fallback is used.
 The one-GPU reservation is not a CPU/RAM hard limit. Jobs uses HTTPS port 443 here,
 not Ray Client port 10001; keep TLS verification enabled. `RAY_JOBS_ADDRESS` is
 unnecessary. Source uploads must fit this ingress's `64m` body limit.
+Monitor actual physical free disk on the worker throughout setup/native execution;
+stop owned work at the **4 GiB** floor without deleting another run's data.
 
 For a four-batch startup/training/export smoke rather than the full learning
 budget, append `-O training.total_frames=32768` and

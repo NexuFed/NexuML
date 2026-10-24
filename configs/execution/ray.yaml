@@ -1,7 +1,9 @@
-# Optional IKA profile; generic defaults live in RayJobExecutionSpec.
+# Optional IKA profile; generic defaults live in RayJobsSDKExecution.
 # Set the Jobs address through RAY_API_SERVER_ADDRESS; keep TLS enabled.
-kind: ray_job
-setup_command: [uv, sync, --locked, --python, "3.12", --extra, library, --extra, ray]
-# IKA pool selection; replace or clear this for another cluster.
-entrypoint_resources:
-  pool_gpu_workers: 1
+type: ray-jobs-sdk
+version: "1"
+params:
+  setup_command: [uv, sync, --locked, --python, "3.12", --extra, library, --extra, ray]
+  # IKA pool selection; replace or clear this for another cluster.
+  entrypoint_resources:
+    pool_gpu_workers: 1
