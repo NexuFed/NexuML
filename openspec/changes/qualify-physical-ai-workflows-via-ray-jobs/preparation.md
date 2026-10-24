@@ -163,3 +163,40 @@ These checks establish runner behavior, not a qualified remote profile. All curr
 application/native/browser/learning/distribution gates remain unverified before
 the first remote preflight. Old production smoke evidence retains its original
 revision and is not reused as proof of this migration.
+
+## Frozen candidate and first remote blocker
+
+The integrated migration/guard is committed locally as
+`2f51aa4f8ba7bed75b0b353dcacbf53a80372286`, without publication. Its clean source
+identity is `f6233d945885513851ffa4bd5c2789cd5f5795c9767ff1c6fd4ca21eed24a3d2`.
+Matching core/library wheels and sdists, strict documentation and lock checks passed;
+build inputs and hashes are retained outside Git at
+`/tmp/opencode/nexuml-2f51aa4-dist/candidate.json`.
+
+The first serial registered-SDK preflight, job
+`7ac39cb79f24446c8fc478d588205dcb`, terminated **BLOCKED / native FAILED / exit 2**.
+Locked installation into its private environment completed and both actual source
+origins matched the uploaded candidate. The worker advertised an object-store cap
+of **10,000,000,000 bytes**, above the preflight's **8 GiB worker envelope** reserved
+under the aggregate shared-memory budget. The head cap remains 1,329,312,153 bytes.
+The worker's plasma directory was `/tmp/ray`, not `/dev/shm`; observed worker
+shared-memory use was zero. This is a configuration-envelope blocker, not a claim
+that 10 GB of shared memory was consumed. The preflight did not run its CUDA probe,
+training, inference, native simulator or browser stages.
+
+Do not relax that check or change the cluster/image/driver implicitly. An operator
+must supply a prepared worker/profile with object-store reservations fitting the
+recorded aggregate limit before qualification continues. SO-101 approved data,
+prepared ROS/Gazebo world/controllers/reset/clock and private display/browser
+inputs also remain absent or unqualified; required gates stay blocked/unverified.
+
+The guard preserved the exit, private root and monitored disk floor without cleanup
+errors. Physical scratch remained above 320 GB; output JuiceFS statistics were
+explicitly classified as distributed quota, not backing physical storage proof.
+The worker then disappeared through normal autoscaling; no worker was removed by
+this session. Control-plane receipts/logs remain at
+`/tmp/opencode/nexuml-registered-preflight-20261024/`. The durable attempt is
+`/mnt/data/nexuml-qualification/e2c815c1130d483da0f2a50e9c95fdf3/preflight-ea5a70721a3a4ecb856736b91039df9d`.
+Post-worker-removal retrieval could not be verified from the control host, which
+does not mount that path; no persistence pass is claimed. No retry or subsequent
+acceptance job was submitted. Progress remains **6/36**.
