@@ -22,7 +22,7 @@ concurrency:
 
 jobs:
   release-identity:
-    runs-on: ubuntu-latest
+    runs-on: ${{ startsWith(github.ref, 'refs/tags/') && 'ubuntu-latest' || 'ika-runner' }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -41,6 +41,7 @@ jobs:
     uses: ./.github/workflows/docs-checks.yml
     with:
       version: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'dev' }}
+      trusted-source: true
 
   static:
     needs: release-identity
@@ -323,6 +324,9 @@ jobs:
     env:
       NEXT_TELEMETRY_DISABLED: "1"
       CUDA_VISIBLE_DEVICES: ""
+      # Tiny CPU models should not create competing full-machine BLAS pools.
+      OMP_NUM_THREADS: "2"
+      MKL_NUM_THREADS: "2"
     steps:
       - uses: actions/checkout@v5
 
@@ -414,7 +418,7 @@ jobs:
       - studio-build
       - studio-package
     if: ${{ always() }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ needs.release-identity.result == 'success' && 'ika-runner' || 'ubuntu-latest' }}
 
     steps:
       - name: Verify required jobs

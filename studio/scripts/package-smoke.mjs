@@ -1,4 +1,5 @@
 import { spawn, spawnSync } from "node:child_process";
+import { once } from "node:events";
 import { access, chmod, mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { delimiter, dirname, join, resolve } from "node:path";
@@ -130,8 +131,10 @@ class ReportRuntime(EvalAlgorithm):
   if(process.platform==="linux")assert.equal(await readFile(browserOpened,"utf8"),origin,"Default startup did not open the selected Studio URL");
   // Exercise the committed complete CPU browser workflow against the installed package.
   // Keep Playwright's original browser cache; only the launched services isolate HOME.
-  run(process.execPath,[join(root,"node_modules/@playwright/test/cli.js"),"test"],{cwd:root,stdio:"inherit",env:{...process.env,
-    STUDIO_TEST_URL:origin,STUDIO_CONFIG_PATH:"tiny.yaml",STUDIO_LIBRARY_ROOT:libraryRoot}});
+  // Drain the running services' output while the browser suite executes.
+  const [browserExit]=await once(spawn(process.execPath,[join(root,"node_modules/@playwright/test/cli.js"),"test"],{cwd:root,stdio:"inherit",env:{...process.env,
+    STUDIO_TEST_URL:origin,STUDIO_CONFIG_PATH:"tiny.yaml",STUDIO_LIBRARY_ROOT:libraryRoot}}),"close");
+  assert.equal(browserExit,0,"Packaged CPU browser workflow failed");
   assert.equal(await readFile(join(temporary,"package-lock.json"),"utf8"),before,"Startup changed packages");
   assert.equal(run(npm,["ls","--all","--json"]),beforeNpm,"Workflow changed installed npm dependencies");
   assert.equal(run(python,environmentCheck,{cwd:work,env}),beforePython,"Workflow changed the Python installation");

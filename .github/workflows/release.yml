@@ -112,7 +112,7 @@ jobs:
     needs:
       - validate
       - publish-testpypi-library
-    runs-on: ubuntu-latest
+    runs-on: ika-runner
     env:
       NEXUML_EXPECTED_VERSION: ${{ needs.validate.outputs.version }}
     steps:
@@ -239,7 +239,7 @@ jobs:
     needs:
       - validate
       - publish-pypi-library
-    runs-on: ubuntu-latest
+    runs-on: ika-runner
     permissions:
       actions: read
       contents: write

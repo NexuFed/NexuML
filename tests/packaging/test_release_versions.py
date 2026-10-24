@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import sys
 import tomllib
+import zipfile
 
 import pytest
 
@@ -30,6 +31,7 @@ def checkout(tmp_path, monkeypatch):
         if not shutil.which(tool):
             pytest.skip(f"{tool} is required for temporary release-checkout tests")
     monkeypatch.setenv("UV_OFFLINE", "1")
+    monkeypatch.setenv("UV_NO_CACHE", "1")
     monkeypatch.setenv("UV_PYTHON_DOWNLOADS", "never")
     root = tmp_path / "checkout"
     (root / "library").mkdir(parents=True)
@@ -54,6 +56,7 @@ members = ["library"]
 [tool.uv.sources]
 nexuml = { workspace = true }
 nexuml-library = { workspace = true }
+six = { path = "six-1.17.0-py3-none-any.whl" }
 """)
     (root / "library/pyproject.toml").write_text("""[build-system]
 requires = ["hatchling"]
@@ -65,12 +68,17 @@ version = "0.2.1"
 requires-python = ">=3.12"
 dependencies = ["nexuml>=0.2,<0.3"]
 """)
-    # Seed a real third-party resolution so uv never needs registry access.
-    lock = (ROOT / "uv.lock").read_text()
-    six = next(block for block in lock.split("[[package]]") if '\nname = "six"\n' in block)
-    (root / "uv.lock").write_text(
-        'version = 1\nrevision = 3\nrequires-python = ">=3.12"\n[[package]]' + six
-    )
+    # A local wheel exercises dependency pins/hashes without a warm registry cache.
+    with zipfile.ZipFile(root / "six-1.17.0-py3-none-any.whl", "w") as wheel:
+        wheel.writestr(
+            "six-1.17.0.dist-info/METADATA",
+            "Metadata-Version: 2.3\nName: six\nVersion: 1.17.0\n",
+        )
+        wheel.writestr(
+            "six-1.17.0.dist-info/WHEEL",
+            "Wheel-Version: 1.0\nRoot-Is-Purelib: true\nTag: py3-none-any\n",
+        )
+        wheel.writestr("six-1.17.0.dist-info/RECORD", "")
     run(root, "uv", "lock")
     package = {
         "name": "@nexufed/nexuml-studio",
@@ -292,7 +300,7 @@ def test_missing_or_noneditable_workspace_entries_are_rejected(checkout):
 def test_stale_lock_is_rejected_before_stamping(checkout):
     run(checkout, "git", "tag", "v0.2.2")
     path = checkout / "pyproject.toml"
-    path.write_text(path.read_text().replace("six==1.17.0", "six==1.16.0"))
+    path.write_text(path.read_text().replace('dependencies = ["six==1.17.0"]', "dependencies = []"))
     before = {path: (checkout / path).read_bytes() for path in release.TARGETS}
     with pytest.raises(ValueError, match="uv lock --check failed"):
         release.prepare_release(checkout, "refs/tags/v0.2.2")

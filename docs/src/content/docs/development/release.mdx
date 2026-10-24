@@ -131,9 +131,12 @@ published version. Separate `studio-v*` release tags are no longer supported.
 Follow [official npm Trusted Publishing requirements](https://docs.npmjs.com/trusted-publishers)
 for supported Node/npm and GitHub-hosted runners; self-hosted publishing is unsupported.
 The protected publish-only job uses OIDC `id-token: write` and provenance without dependency
-installation/build or long-lived credentials. Release publication uses GitHub-hosted
-`ubuntu-latest`, including Python jobs. Linux CPU tests/builds use `ika-runner`; mandatory
-Python GPU suites use separately approved `ika-runner-gpu`.
+installation/build or long-lived credentials. Actual npm, TestPyPI/PyPI, and Pages OIDC
+publishing stays on GitHub-hosted `ubuntu-latest`, as do pre-trust release validation and
+tag eligibility checks. Trusted Linux CPU work uses `ika-runner`, including documentation
+validation/staging, TestPyPI install verification, GitHub release asset attachment, and the
+aggregate CI gate after eligibility succeeds. Mandatory Python GPU suites use separately
+approved `ika-runner-gpu`.
 
 ## Studio release
 
@@ -178,7 +181,12 @@ Runtime CI uses trusted **repository branch pushes/manual dispatch** and eligibl
 tag pushes, not arbitrary fork
 PR execution. External code must be reviewed, then brought to a trusted branch before
 institute checks. Never approve arbitrary fork workflow execution just to obtain green CI.
-Read-only documentation validation on GitHub-hosted runners is a separate trust boundary.
+Read-only fork-PR documentation validation stays on GitHub-hosted runners, even if a reusable
+caller supplies the trusted-source flag. Same-repository PR checks use `ika-runner`;
+non-PR documentation checks use it only when a caller passes `trusted-source: true` after
+the release-identity gate. CI and documentation tag eligibility run on `ubuntu-latest`
+before any institute work; branch eligibility runs on `ika-runner`. The always-running
+aggregate CI gate falls back to `ubuntu-latest` and fails closed if eligibility did not succeed.
 
 Fork workflow approval must cover **all external contributors**, not just first-time ones.
 Owners must restrict institute runner groups to approved repositories/workflows, retain
