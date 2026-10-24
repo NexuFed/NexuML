@@ -2,6 +2,7 @@
 
 import asyncio
 import builtins
+import json
 from contextlib import contextmanager, nullcontext
 from types import SimpleNamespace
 
@@ -114,6 +115,7 @@ def train_result():
         trainer=object(),
         interaction_results={},
         test_results=[],
+        artifacts=[],
     )
 
 
@@ -249,6 +251,7 @@ def test_train_scopes_effective_resume_and_its_exports(
         assert lifetime.active == "resumed"
         assert path == tmp_path / "effective-export"
         lifetime.events.append("export")
+        return path
 
     monkeypatch.setattr(NexuSession, "run", run)
     monkeypatch.setattr("nexuml.core.provenance.snapshot_scenario_file_run", snapshot)
@@ -368,12 +371,14 @@ def test_train_without_interaction_needs_no_environment_scope(monkeypatch):
 def replay(lifetime, monkeypatch):
     state = SimpleNamespace(scenario=scenario(), error=None, stage="evaluate", finalize_error=None)
     contract = state.scenario.interaction.environment.describe().model_dump(mode="json")
+    state.metadata = {"artifact_kind": "policy", "interaction_contract": contract}
+    state.steps = []
     monkeypatch.setattr(
         "nexuml.core.export.load_inference_package",
         lambda _: (
             ReplayPolicy(),
             ResolvedConfig.from_scenario(state.scenario),
-            {"artifact_kind": "policy", "interaction_contract": contract},
+            state.metadata,
         ),
     )
 
@@ -385,6 +390,7 @@ def replay(lifetime, monkeypatch):
 
     class Logger:
         def log_metrics(self, metrics, step):
+            state.steps.append(step)
             operation("metrics")
 
         def finalize(self, status):
@@ -485,3 +491,26 @@ def test_disabled_evaluation_allocates_no_environment(lifetime, replay, monkeypa
     assert result.exit_code == 0, (result.output, result.exception)
     assert "evaluate" not in lifetime.events
     assert lifetime.events[-3:] == ["finalize:success", "finalize:success", "exit:training"]
+
+
+@pytest.mark.parametrize("frames", [None, 0, 128])
+def test_replay_receipt_retains_source_hashes_and_unknown_frames(
+    frames, lifetime, replay, monkeypatch
+):
+    replay.metadata.update(
+        training_frames=frames,
+        policy_files_sha256={"state_dict.pt": "actor-identity"},
+        checkpoint={"source": "/worker/partial.ckpt", "sha256": "checkpoint-identity"},
+    )
+    artifacts = {}
+    monkeypatch.setattr(
+        "nexuml.tracking.logger.log_text_artifact",
+        lambda loggers, text, name: artifacts.update({name: text}),
+    )
+    result = runner.invoke(app, ["evaluate", "package"])
+    assert result.exit_code == 0, (result.output, result.exception)
+    receipt = json.loads(artifacts["source_package.json"])
+    assert receipt["source_training_frames"] == frames
+    assert receipt["source_policy_files_sha256"] == replay.metadata["policy_files_sha256"]
+    assert receipt["source_checkpoint"] == replay.metadata["checkpoint"]
+    assert replay.steps == [frames or 0, frames or 0]

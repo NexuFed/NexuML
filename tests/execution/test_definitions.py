@@ -35,7 +35,7 @@ assert 'nexuml.execution.ray' not in sys.modules
 import nexuml.core.registry as registry_module
 registry_module._default_registry = registry
 from nexuml.execution import catalog
-assert len(catalog()) == 5
+assert len(catalog()) == 6
 assert not {'ray', 'kubernetes', 'fastapi'} & sys.modules.keys()
 """
     subprocess.run(
@@ -131,3 +131,17 @@ def test_execution_conflict_is_reported_without_replacing_core(monkeypatch):
     registry.scan([module.__name__])
     assert registry.get_type("execution_backend", "local").__name__ == "LocalExecution"
     assert any(error.key == "local" and error.phase == "register" for error in registry.errors)
+
+
+def test_schema_seeded_sdk_defaults_still_use_the_private_setup_interpreter():
+    from nexuml.execution.definitions import RayJobsSDKExecution
+
+    schema = RayJobsSDKExecution.model_json_schema()
+    params = {
+        name: field["default"] for name, field in schema["properties"].items() if "default" in field
+    }
+    assert "py_executable" not in params
+    selected = RayJobsSDKExecution.model_validate(params)
+    assert selected.setup_command == ["uv", "sync", "--locked"]
+    assert selected.runtime_env["env_vars"]["UV_PROJECT_ENVIRONMENT"] in selected.py_executable
+    assert selected.py_executable != "python"

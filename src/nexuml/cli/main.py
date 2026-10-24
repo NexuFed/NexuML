@@ -8,7 +8,7 @@ import sys
 import warnings
 from contextlib import ExitStack
 from pathlib import Path
-from typing import Any, Optional, cast
+from typing import Any, Literal, Optional, cast
 
 import typer
 from rich.console import Console
@@ -247,10 +247,6 @@ def train_cmd(
 
         try:
             apply_overrides(scenario, override)
-            if isinstance(scenario.execution, dict):
-                from nexuml.core.config import ResolvedConfig
-
-                scenario.execution = ResolvedConfig.from_scenario(scenario).execution
         except (KeyError, ValueError) as exc:
             console.print(f"[red]Override error: {exc}[/red]")
             raise typer.Exit(1) from exc
@@ -258,39 +254,9 @@ def train_cmd(
     scenario_label = scenario.name if scenario is not None else str(trainer_checkpoint)
     console.print(f"[blue]Training scenario: {scenario_label}[/blue]")
 
-    if scenario is not None:
-        from nexuml.core.types import RayJobExecutionSpec
-
-        if isinstance(scenario.execution, RayJobExecutionSpec):
-            if trainer_checkpoint is not None:
-                console.print(
-                    "[red]ray_job does not transport --trainer-checkpoint. "
-                    "Use the local CLI with a checkpoint accessible to its remote process.[/red]"
-                )
-                raise typer.Exit(1)
-            from nexuml.execution import submit_ray_job
-
-            job_id = submit_ray_job(scenario)
-            if loaded_file is not None and artifact_dir is not None:
-                from nexuml.core.provenance import snapshot_scenario_file_run
-
-                snapshot_scenario_file_run(
-                    loaded_file,
-                    artifact_dir,
-                    command="train",
-                    command_args={
-                        "scenario_file": str(scenario_file),
-                        "max_epochs": max_epochs,
-                        "execution": "ray_job",
-                        "submission_id": job_id,
-                    },
-                )
-            console.print(f"[green]Ray job submitted: {job_id}[/green]")
-            console.print("Submission only; use Ray Jobs status/logs to monitor remote training.")
-            return
-
     if (
         scenario is not None
+        and scenario.execution.capabilities.get("process_ownership", False)
         and scenario.logging is not None
         and scenario.logging.diagram is not None
         and scenario.logging.diagram.enabled
@@ -316,31 +282,48 @@ def train_cmd(
         except Exception as exc:
             console.print(f"[yellow]Warning: diagram export failed: {exc}[/yellow]")
 
-    from nexuml.execution import preflight, run
+    from nexuml.execution import run
 
-    if trainer_checkpoint is not None:
+    if scenario is None:
         from nexuml.training.lightning import load_scenario_from_trainer_checkpoint
 
-        if scenario is not None:
-            preflight(scenario, trainer_checkpoint=trainer_checkpoint)
-        scenario = load_scenario_from_trainer_checkpoint(trainer_checkpoint, fallback=scenario)
-    result = run(scenario, trainer_checkpoint=trainer_checkpoint)
-    if loaded_file is not None and artifact_dir is not None:
-        from nexuml.core.provenance import snapshot_scenario_file_run
+        assert trainer_checkpoint is not None
+        scenario = load_scenario_from_trainer_checkpoint(trainer_checkpoint)
 
-        snapshot_scenario_file_run(
-            loaded_file,
-            artifact_dir,
-            command="train",
-            command_args={
-                "scenario_file": str(scenario_file),
-                "max_epochs": max_epochs,
-                "trainer_checkpoint": str(trainer_checkpoint) if trainer_checkpoint else None,
-            },
-        )
+    provenance_captured = False
 
+    def capture_provenance(result):
+        nonlocal provenance_captured
+        if loaded_file is not None and artifact_dir is not None:
+            from nexuml.core.provenance import snapshot_scenario_file_run
+
+            snapshot_scenario_file_run(
+                loaded_file,
+                artifact_dir,
+                command="train",
+                command_args={
+                    "scenario_file": str(scenario_file),
+                    "max_epochs": max_epochs,
+                    "trainer_checkpoint": str(trainer_checkpoint) if trainer_checkpoint else None,
+                    "execution": scenario.execution.component_name,
+                    **({"submission_id": result} if isinstance(result, str) else {}),
+                },
+            )
+        provenance_captured = True
+
+    result = run(scenario, trainer_checkpoint=trainer_checkpoint, on_trained=capture_provenance)
+    if not provenance_captured:
+        capture_provenance(result)
+
+    if isinstance(result, str):
+        _print_job_submission(result)
+        return
     status = result.get("status", "unknown") if isinstance(result, dict) else "succeeded"
-    console.print(f"Execution finished: {status}")
+    console.print(
+        f"Execution finished: {status}"
+        if isinstance(result, dict)
+        else "[green]Training complete![/green]"
+    )
     if isinstance(result, dict):
         console.print_json(data=result)
         if status != "succeeded":
@@ -351,12 +334,30 @@ def train_cmd(
         console.print(f"  Metrics: {result.metrics}")
     if getattr(result, "interaction_results", None):
         console.print(f"  RL evaluation: {result.interaction_results}")
+    module = getattr(result, "lightning_module", None)
+    frames = getattr(module, "frames", None)
+    if frames is not None:
+        console.print(f"  Physical training frames: {int(frames)}")
+    trainer = getattr(result, "trainer", None)
+    steps = getattr(trainer, "global_step", None)
+    if steps is not None:
+        console.print(f"  Optimizer steps: {steps}")
+    packages = {
+        Path(artifact["path"]).parent
+        for artifact in getattr(result, "artifacts", [])
+        if artifact["kind"] == "train_package" and Path(artifact["path"]).name == "metadata.json"
+    }
+    for package in sorted(packages):
+        console.print(f"  Complete inference package: {package}")
 
 
 @app.command(name="evaluate", help="Evaluate a trusted exported model or policy without training")
 def evaluate_cmd(
     model_package: Path = typer.Argument(
         help="Trusted model or complete policy package directory or file"
+    ),
+    config_path: Optional[Path] = typer.Option(
+        None, "--config", "-c", help="Execution and evaluation inputs; never replacement weights."
     ),
     scenario_file: Optional[Path] = typer.Option(
         None,
@@ -374,6 +375,42 @@ def evaluate_cmd(
         "-O",
         help="Override data/evaluation/logging or policy replay settings: key.path=value.",
     ),
+):
+    """Select execution before reading any worker-owned package."""
+    from nexuml.core.types import ScenarioSpec
+    from nexuml.execution import run
+
+    supplied = (
+        _load_scenario(None, config_path, scenario_file)
+        if config_path is not None or scenario_file is not None
+        else None
+    )
+    result = run(
+        supplied if supplied is not None else ScenarioSpec(name="package-evaluation"),
+        operation="evaluate",
+        model_package=model_package,
+        device=device,
+        overrides=tuple(override or ()),
+        evaluation_inputs=supplied is not None,
+        evaluation_scenario_file=scenario_file,
+    )
+    if isinstance(result, str):
+        _print_job_submission(result)
+
+
+def _print_job_submission(job_id: str) -> None:
+    """Report asynchronous submission without implying remote completion."""
+    console.print(f"[green]Ray job submitted: {job_id}[/green]")
+    console.print("Submission only; use Ray Jobs status/logs to monitor remote execution.")
+
+
+def _evaluate_local(
+    model_package: Path,
+    *,
+    supplied: Any = None,
+    scenario_file: Optional[Path] = None,
+    device: Optional[str] = None,
+    override: Optional[list[str]] = None,
 ):
     """Evaluate packaged models on test data or policies in fresh environments.
 
@@ -401,10 +438,7 @@ def evaluate_cmd(
             model, config, metadata = load_inference_package(model_package)
             is_policy = metadata.get("artifact_kind") == "policy"
             scenario = config.to_scenario()
-            if scenario_file is not None:
-                from nexuml.core.scenario_loader import load_scenario_file
-
-                supplied = load_scenario_file(scenario_file).scenario
+            if supplied is not None:
                 scenario.logging = supplied.logging
                 if is_policy:
                     if scenario.interaction is None or supplied.interaction is None:
@@ -508,6 +542,8 @@ def evaluate_cmd(
                 "source_package": str(model_package.resolve()),
                 "source_config_hash": metadata.get("config_hash"),
                 "source_training_frames": source_frames,
+                "source_policy_files_sha256": metadata.get("policy_files_sha256"),
+                "source_checkpoint": metadata.get("checkpoint"),
                 "interaction_contract_hash": metadata.get("interaction_contract_hash"),
                 "resolved_config": lower_model(scenario),
             }
@@ -697,7 +733,11 @@ def export_dataset_cmd(
 
 @app.command(name="export", help="Export a trained pipeline")
 def export_cmd(
-    scenario_name: str = typer.Argument(help="Scenario name to train and export"),
+    scenario_name: Optional[str] = typer.Argument(None, help="Scenario name to export"),
+    config_path: Optional[Path] = typer.Option(None, "--config", "-c", help="Config YAML path"),
+    scenario_file: Optional[Path] = typer.Option(
+        None, "--scenario-file", help="Trusted scenario() file"
+    ),
     output: Path = typer.Option(Path("exported_model"), "--output", "-o", help="Export directory"),
     checkpoint: Optional[Path] = typer.Option(
         None, "--checkpoint", help="Optional checkpoint to export"
@@ -705,35 +745,82 @@ def export_cmd(
 ):
     """Export a trained pipeline to a portable model package."""
     _configure_runtime_warnings()
+    from nexuml.execution import run
+
+    scenario = _load_scenario(scenario_name, config_path, scenario_file)
+    result = run(scenario, operation="export", checkpoint=checkpoint, output=output)
+    if isinstance(result, str):
+        _print_job_submission(result)
+
+
+def _export_local(
+    scenario: Any,
+    *,
+    output: Path,
+    checkpoint: Optional[Path] = None,
+    export_kind: Literal["train_package", "onnx", "safetensors"] = "train_package",
+) -> dict[str, Any]:
+    """Use the canonical checkpoint loader and complete inference-package exporter.
+
+    Returns:
+        References to the actual exported files.
+    """
     from nexuml.core.export import export_package
     from nexuml.training.lightning import NexuSession
 
-    scenario_fn = _get_scenario_fn(scenario_name)
-    scenario = scenario_fn()
-    if scenario.checkpoint is None:
-        from nexuml.core.types import CheckpointLoadSpec
-
-        scenario.checkpoint = CheckpointLoadSpec()
-    scenario.checkpoint.source = str(checkpoint) if checkpoint is not None else None
-
     console.print(f"[blue]Creating pipeline with scenario: {scenario.name}[/blue]")
-    session = NexuSession.from_scenario(scenario)
-    session.setup()
-    console.print("[green]Pipeline created successfully![/green]")
-
-    source_metadata: dict[str, Any] = {}
-    if checkpoint is not None:
-        source_metadata["source"] = {"checkpoint": str(checkpoint)}
-
-    export_package(
-        session.runtime.policy if session.runtime.policy is not None else session.pipeline,
-        output,
-        lightning_module=session.lightning_module,
-        trainer=session.trainer,
-        checkpoint_path=checkpoint,
-        source_metadata=source_metadata,
+    session = (
+        NexuSession(scenario=scenario, trainer_checkpoint=checkpoint)
+        if checkpoint is not None
+        else NexuSession.from_scenario(scenario)
     )
-    console.print(f"[green]Exported to {output}[/green]")
+    try:
+        session.setup()
+        console.print("[green]Pipeline created successfully![/green]")
+
+        if export_kind != "train_package":
+            from nexuml.core.types import ExportSpec
+            from nexuml.execution.artifacts import export_requests
+
+            result = {
+                "artifacts": export_requests(
+                    session,
+                    [ExportSpec(kind=export_kind, output=str(output))],
+                    str(checkpoint) if checkpoint is not None else None,
+                )
+            }
+        else:
+            source_metadata: dict[str, Any] = {}
+            if checkpoint is not None:
+                source_metadata["source"] = {"checkpoint": str(checkpoint)}
+
+            export_package(
+                session.runtime.policy if session.runtime.policy is not None else session.pipeline,
+                output,
+                lightning_module=session.lightning_module,
+                trainer=session.trainer,
+                checkpoint_path=checkpoint,
+                source_metadata=source_metadata,
+            )
+            console.print(f"[green]Exported to {output}[/green]")
+            result = {
+                "artifacts": [
+                    {"path": str(path.resolve()), "kind": "train_package"}
+                    for path in output.rglob("*")
+                    if path.is_file()
+                ]
+            }
+    except BaseException as primary:
+        try:
+            session.finalize_loggers("failed")
+        except BaseException as error:
+            primary.add_note(f"Logger finalization also failed: {error!r}")
+            for note in tuple(getattr(error, "__notes__", ())):
+                primary.add_note(note)
+        raise
+    else:
+        session.finalize_loggers("success")
+        return result
 
 
 @app.command(

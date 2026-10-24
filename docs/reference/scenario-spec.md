@@ -104,7 +104,7 @@ See [Checkpoints](../how-to/checkpoints.md).
 
 `ScenarioSpec.execution` is a registered `ExecutionBackendDefinition`. Core definitions
 live in `nexuml.execution.definitions`: `LocalExecution` (default), `RayClusterExecution`,
-`RayJobExecution`, `KubernetesJobExecution`, and `PyTorchJobExecution`.
+`RayJobExecution`, `RayJobsSDKExecution`, `KubernetesJobExecution`, and `PyTorchJobExecution`.
 Installed libraries can contribute definitions with `@execution_backend(...)` through
 the existing library discovery sources. Each definition owns its parameter schema and
 execution behavior; API and Studio do not maintain a separate provider list.
@@ -120,7 +120,16 @@ Old `execution.kind` configurations are rejected. To convert, use `type: local` 
 `type: ray-cluster`, `version: "1"`, and move placement fields into `params`.
 Remove the old `kind` fields, including `target.kind`. Historical files are not rewritten.
 Training semantics remain in `TrainingSpec`.
-The SDK `ray-jobs-sdk` backend supports single-process RL through the normal remote CLI.
+`RayJobsSDKExecution` (`ray-jobs-sdk`) submits the normal single-process CLI;
+`RayJobExecution` (`ray-job`) remains KubeRay and `RayClusterExecution`
+(`ray-cluster`) remains Ray Train. SDK migration/runtime qualification is pending.
+
+```yaml
+execution:
+  type: ray-jobs-sdk
+  version: "1"
+  params: {}
+```
 
 The registered SDK backend defaults to locked uv setup (`uv sync --locked`), one GPU,
 worker-local cache and a private venv resolved separately for each submission.
@@ -129,6 +138,10 @@ Set `setup_command=None` for a prepared environment (implicit interpreter:
 `python`), or provide a custom setup argv list and matching `py_executable`.
 Dependency versions/extras, cluster address/TLS and pool selection remain
 project-owned; the framework does not infer arbitrary component dependencies.
+The optional `train --execution-profile PATH` replaces execution before `-O`.
+Profiles contain the registered mapping above without the outer `execution` key.
+Direct overrides use model fields such as `execution.entrypoint_resources`, not
+`execution.params`; whole-execution overrides require `type`/`version`/`params`.
 
 See [Ray execution](../how-to/training-backends/ray.md) for SDK Jobs and distinct
 Ray Train/KubeRay semantics.
