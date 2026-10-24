@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import subprocess
 from types import SimpleNamespace
 
 from nexuml.core.provenance import (
@@ -14,12 +15,30 @@ from nexuml.core.scenario_loader import LoadedScenarioFile
 from nexuml.core.types import ScenarioSpec
 
 
-def test_git_state_includes_commit_and_branch():
-    state = _git_state(Path.cwd())
+def test_git_state_includes_commit_and_branch(tmp_path):
+    subprocess.run(["git", "init", "-b", "test"], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(
+        [
+            "git",
+            "-c",
+            "user.name=Test",
+            "-c",
+            "user.email=test@example.invalid",
+            "commit",
+            "--allow-empty",
+            "-m",
+            "fixture",
+        ],
+        cwd=tmp_path,
+        check=True,
+        capture_output=True,
+    )
+    state = _git_state(tmp_path)
     assert "commit" in state
     assert "branch" in state
     assert "status" in state
     assert state["commit"] is not None
+    assert state["branch"] == "test"
 
 
 def test_best_trial_returns_none_for_none_study():

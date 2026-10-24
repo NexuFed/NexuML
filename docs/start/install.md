@@ -52,7 +52,24 @@ uv pip install "nexuml[ray]"
 uv pip install "nexuml[s3]"
 ```
 
-`nexuml[all]` installs the normal user-facing core integrations and the base library, but intentionally excludes development tooling and DALI.
+`nexuml[all]` installs the general-purpose optional integrations, including DALI (on Linux), rendering/video, and the base library. It excludes `dev` and the native robotics selections (`isaac`, `lerobot`, `mujoco`, `robots`). This is a large, platform-dependent installation; DALI still requires a compatible environment. It does not enable the base library's own feature extras automatically.
+
+Robotics dependencies are individually selectable through `nexuml[isaac]`,
+`nexuml[lerobot]` and `nexuml[mujoco]`, or the matching `nexuml-library` extras.
+`nexuml[robots]` retains their convenient reference composition; it is not a
+promise that every simulator/model/native version combination works. Installing
+an extra neither downloads model weights nor provisions drivers, ROS or a CARLA
+server. See the [architecture and support boundaries](../explanation/physical-ai-architecture.md)
+before selecting a native environment. Consumers own their Python/CUDA versions,
+indexes and lockfile; published metadata retains actual compatibility minimums.
+
+From a source checkout, install the locked aggregate without development extras:
+
+```bash
+uv sync --locked --extra all
+```
+
+Use `--extra all`, not `--all-extras`: the latter also selects `dev`.
 
 The base library has additional feature extras for optional datasets/models/evaluation tooling when a component needs them, for example `nexuml-library[audio]`, `nexuml-library[data]`, `nexuml-library[pretrained]`, and `nexuml-library[eval]`.
 

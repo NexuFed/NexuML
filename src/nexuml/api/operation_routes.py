@@ -71,7 +71,9 @@ def operation_router(operations: Operations) -> APIRouter:
         # Transport-selected checkpoint reads follow the file boundary too. Scenario
         # dataset/library imports retain the existing trusted local Python boundary.
         if payload.get("trainer_checkpoint"):
-            payload["trainer_checkpoint"] = str(artifact_path(payload["trainer_checkpoint"]))
+            selected = call_worker("validate", payload, settings.directory)
+            if selected["execution_capabilities"].get("process_ownership", False):
+                payload["trainer_checkpoint"] = str(artifact_path(payload["trainer_checkpoint"]))
         return payload
 
     @router.post("/build", status_code=202)

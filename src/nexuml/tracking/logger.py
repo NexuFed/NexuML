@@ -4,17 +4,23 @@ from __future__ import annotations
 
 import logging
 import importlib
+import json
+import math
 import os
 import re
+import shlex
 import shutil
 import subprocess
+import sys
 import tempfile
-from contextlib import contextmanager
+from contextlib import ExitStack, closing, contextmanager
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Generator
+from typing import TYPE_CHECKING, Any, Generator, cast
 
 if TYPE_CHECKING:
-    from nexuml.core.types import LoggingSpec
+    import numpy as np
+
+    from nexuml.core.types import LoggingSpec, RLVideoSpec
 
 from nexuml.core.log_paths import resolve_logs_file_uri, resolve_logs_root, resolve_logs_root_str
 
@@ -250,6 +256,10 @@ def create_loggers(
 
     Returns:
         List of Lightning logger instances ready for Trainer(logger=...).
+
+    Raises:
+        RuntimeError: If a requested backend cannot initialize. Previously created
+            loggers are finalized as failed; their outputs are not deleted.
     """
     if logging_spec is None:
         return []
@@ -259,39 +269,49 @@ def create_loggers(
     experiment_name = logging_spec.experiment_name
     loggers: list[Any] = []
 
-    # TensorBoard
-    if logging_spec.tensorboard is not None:
-        tb = _create_tensorboard_logger(
-            log_dir=logging_spec.tensorboard.log_dir,
-            experiment_name=experiment_name,
-            run_name=run_name,
-        )
-        if tb is not None:
-            loggers.append(tb)
+    backend = "TensorBoard"
+    try:
+        if logging_spec.tensorboard is not None:
+            loggers.append(
+                _create_tensorboard_logger(
+                    log_dir=logging_spec.tensorboard.log_dir,
+                    experiment_name=experiment_name,
+                    run_name=run_name,
+                )
+            )
+            _ = loggers[-1].experiment
 
-    # DVCLive
-    if logging_spec.dvclive is not None:
-        dvc = _create_dvclive_logger(logging_spec.dvclive.dir)
-        if dvc is not None:
-            loggers.append(dvc)
+        backend = "DVCLive"
+        if logging_spec.dvclive is not None:
+            loggers.append(_create_dvclive_logger(logging_spec.dvclive.dir))
+            _ = loggers[-1].experiment
 
-    # MLflow
-    if logging_spec.mlflow is not None:
-        ml = _create_mlflow_logger(
-            tracking_uri=logging_spec.mlflow.tracking_uri,
-            artifact_location=logging_spec.mlflow.artifact_location,
-            experiment_name=logging_spec.mlflow.experiment_name or experiment_name,
-            run_name=run_name,
-            log_model=logging_spec.mlflow.log_model,
-            log_system_metrics=logging_spec.log_system_metrics,
-            run_id=logging_spec.mlflow.run_id,
-            parent_run_id=logging_spec.mlflow.parent_run_id,
-            auto_nested_runs=logging_spec.mlflow.auto_nested_runs,
-            tags=logging_spec.mlflow.tags,
-            synchronous=logging_spec.mlflow.synchronous,
-        )
-        if ml is not None:
-            loggers.append(ml)
+        backend = "MLflow"
+        if logging_spec.mlflow is not None:
+            loggers.append(
+                _create_mlflow_logger(
+                    tracking_uri=logging_spec.mlflow.tracking_uri,
+                    artifact_location=logging_spec.mlflow.artifact_location,
+                    experiment_name=logging_spec.mlflow.experiment_name or experiment_name,
+                    run_name=run_name,
+                    log_model=logging_spec.mlflow.log_model,
+                    log_system_metrics=logging_spec.log_system_metrics,
+                    run_id=logging_spec.mlflow.run_id,
+                    parent_run_id=logging_spec.mlflow.parent_run_id,
+                    auto_nested_runs=logging_spec.mlflow.auto_nested_runs,
+                    tags=logging_spec.mlflow.tags,
+                    synchronous=logging_spec.mlflow.synchronous,
+                )
+            )
+    except BaseException as error:
+        for created in reversed(loggers):
+            try:
+                created.finalize("failed")
+            except BaseException as cleanup_error:
+                error.add_note(f"{type(created).__name__} cleanup also failed: {cleanup_error}")
+        if isinstance(error, Exception):
+            raise RuntimeError(f"{backend} logger initialization failed: {error}") from error
+        raise
 
     return loggers
 
@@ -300,43 +320,33 @@ def _create_tensorboard_logger(
     log_dir: str,
     experiment_name: str,
     run_name: str,
-) -> Any | None:
-    try:
-        import lightning as L
-        import lightning.pytorch.loggers  # noqa: F401
+) -> Any:
+    import lightning as L
+    import lightning.pytorch.loggers  # noqa: F401
 
-        log_dir_path = resolve_logs_root(log_dir)
-        version = _next_version(log_dir_path / experiment_name, run_name)
-        tb_logger = L.pytorch.loggers.TensorBoardLogger(
-            save_dir=str(log_dir_path),
-            name=experiment_name,
-            version=f"{run_name}_v{version}",
-            default_hp_metric=False,
-        )
-        logger.info(
-            f"TensorBoard: {tb_logger.log_dir}\n"
-            f"  Run: tensorboard --logdir {log_dir_path / experiment_name} --port 6007"
-        )
-        return tb_logger
-    except Exception as e:
-        logger.warning(f"Could not create TensorBoard logger: {e}")
-        return None
+    log_dir_path = resolve_logs_root(log_dir)
+    version = _next_version(log_dir_path / experiment_name, run_name)
+    tb_logger = L.pytorch.loggers.TensorBoardLogger(
+        save_dir=str(log_dir_path),
+        name=experiment_name,
+        version=f"{run_name}_v{version}",
+        default_hp_metric=False,
+    )
+    logger.info(
+        f"TensorBoard: {tb_logger.log_dir}\n"
+        f"  Run on worker: tensorboard --logdir {shlex.quote(str(log_dir_path / experiment_name))} "
+        "--port 6007 --host 127.0.0.1"
+    )
+    return tb_logger
 
 
-def _create_dvclive_logger(log_dir: str) -> Any | None:
-    try:
-        DVCLiveLogger = importlib.import_module("dvclive.lightning").DVCLiveLogger
+def _create_dvclive_logger(log_dir: str) -> Any:
+    DVCLiveLogger = importlib.import_module("dvclive.lightning").DVCLiveLogger
 
-        resolved_log_dir = resolve_logs_root_str(log_dir)
-        dvc_logger = DVCLiveLogger(dir=resolved_log_dir)
-        logger.info(f"DVCLive: {resolved_log_dir}")
-        return dvc_logger
-    except ImportError:
-        logger.warning("dvclive not installed. Skipping DVCLive logger.")
-        return None
-    except Exception as e:
-        logger.warning(f"Could not create DVCLive logger: {e}")
-        return None
+    resolved_log_dir = resolve_logs_root_str(log_dir)
+    dvc_logger = DVCLiveLogger(dir=resolved_log_dir)
+    logger.info(f"DVCLive: {resolved_log_dir}")
+    return dvc_logger
 
 
 def _create_mlflow_logger(
@@ -351,33 +361,31 @@ def _create_mlflow_logger(
     auto_nested_runs: bool = True,
     tags: dict[str, Any] | None = None,
     synchronous: bool | None = None,
-) -> Any | None:
+) -> Any:
+    import lightning as L
+    import lightning.pytorch.loggers  # noqa: F401
+    import mlflow
+    from mlflow.tracking import MlflowClient
+
+    tracking_uri = _configure_mlflow_tracking_uri(tracking_uri)
+    artifact_location = _resolve_mlflow_artifact_location(tracking_uri, artifact_location)
+    resolved_tags = _augment_mlflow_tags(tags)
+
+    if log_system_metrics:
+        getattr(mlflow, "enable_system_metrics_logging")()
+
+    resolved_run_id, resolved_run_name = _prepare_mlflow_run(
+        tracking_uri=tracking_uri,
+        artifact_location=artifact_location,
+        experiment_name=experiment_name,
+        run_name=run_name,
+        run_id=run_id,
+        parent_run_id=parent_run_id,
+        auto_nested_runs=auto_nested_runs,
+        tags=resolved_tags,
+    )
+
     try:
-        import lightning as L
-        import lightning.pytorch.loggers  # noqa: F401
-        import mlflow
-
-        tracking_uri = _configure_mlflow_tracking_uri(tracking_uri)
-        artifact_location = _resolve_mlflow_artifact_location(tracking_uri, artifact_location)
-        resolved_tags = _augment_mlflow_tags(tags)
-
-        if log_system_metrics:
-            try:
-                getattr(mlflow, "enable_system_metrics_logging")()
-            except Exception:
-                pass
-
-        resolved_run_id, resolved_run_name = _prepare_mlflow_run(
-            tracking_uri=tracking_uri,
-            artifact_location=artifact_location,
-            experiment_name=experiment_name,
-            run_name=run_name,
-            run_id=run_id,
-            parent_run_id=parent_run_id,
-            auto_nested_runs=auto_nested_runs,
-            tags=resolved_tags,
-        )
-
         ml_logger = L.pytorch.loggers.MLFlowLogger(
             experiment_name=experiment_name,
             run_name=resolved_run_name,
@@ -387,18 +395,20 @@ def _create_mlflow_logger(
             run_id=resolved_run_id,
             synchronous=synchronous,
         )
-        logger.info(
-            f"MLflow: {tracking_uri} | experiment={experiment_name} | run={resolved_run_name}"
-        )
-        return ml_logger
-    except ImportError:
-        logger.warning("mlflow not installed. Skipping MLflow logger.")
-        return None
-    except Exception as e:
-        logger.warning(f"Could not create MLflow logger: {e}")
-        if "mlflow db upgrade" in str(e):
-            logger.warning(f"Upgrade MLflow with: mlflow db upgrade {tracking_uri}")
-        return None
+        _ = ml_logger.experiment
+    except BaseException as error:
+        note = f"MLflow run {resolved_run_id} logger initialization failed."
+        error.add_note(note)
+        logger.error(note)
+        # The run exists before Lightning's lazy logger owns it; clean up only our new run.
+        if run_id is None:
+            try:
+                MlflowClient(tracking_uri=tracking_uri).set_terminated(resolved_run_id, "FAILED")
+            except BaseException as cleanup_error:
+                error.add_note(f"MLflow run {resolved_run_id} cleanup also failed: {cleanup_error}")
+        raise
+    logger.info(f"MLflow: {tracking_uri} | experiment={experiment_name} | run={resolved_run_name}")
+    return ml_logger
 
 
 def _next_version(log_dir: Path, run_name: str) -> int:
@@ -451,30 +461,51 @@ def log_artifact(
     if not source.exists():
         raise FileNotFoundError(f"Artifact source does not exist: {source}")
 
+    delivered = []
     for backend in iter_loggers(logger_obj):
-        experiment = getattr(backend, "experiment", None)
-        run_id = getattr(backend, "run_id", None)
-        if experiment is not None and run_id is not None and hasattr(experiment, "log_artifact"):
-            experiment.log_artifact(run_id, str(source), artifact_path)
-            continue
+        run_id = None
+        try:
+            experiment = getattr(backend, "experiment", None)
+            run_id = getattr(backend, "run_id", None)
+            if (
+                experiment is not None
+                and run_id is not None
+                and hasattr(experiment, "log_artifact")
+            ):
+                experiment.log_artifact(run_id, str(source), artifact_path)
+                delivered.append(type(backend).__name__)
+                continue
 
-        destination_root = _local_artifact_root(backend)
-        if destination_root is not None:
-            destination = destination_root
-            if artifact_path:
-                destination = destination / artifact_path
-            destination.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(source, destination / source.name)
-            continue
-
-        backend_name = type(backend).__name__
-        if backend_name not in _UNSUPPORTED_ARTIFACT_LOGGERS:
-            logger.info(
-                "Skipping artifact logging for unsupported logger backend '%s' (artifact=%s).",
-                backend_name,
-                source.name,
+            destination_root = _local_artifact_root(backend)
+            if destination_root is not None:
+                destination = destination_root
+                if artifact_path:
+                    destination = destination / artifact_path
+                destination.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(source, destination / source.name)
+                delivered.append(type(backend).__name__)
+                continue
+        except BaseException as error:
+            note = (
+                f"Artifact delivery failed: {type(backend).__name__} (run={run_id}), "
+                f"artifact={source.name}; already delivered to {delivered}; no rollback."
             )
-            _UNSUPPORTED_ARTIFACT_LOGGERS.add(backend_name)
+            error.add_note(note)
+            logger.error(note)
+            raise
+
+        _report_unsupported_artifact_logger(backend, source.name)
+
+
+def _report_unsupported_artifact_logger(backend: Any, artifact_name: str) -> None:
+    backend_name = type(backend).__name__
+    if backend_name not in _UNSUPPORTED_ARTIFACT_LOGGERS:
+        logger.info(
+            "Skipping artifact logging for unsupported logger backend '%s' (artifact=%s).",
+            backend_name,
+            artifact_name,
+        )
+        _UNSUPPORTED_ARTIFACT_LOGGERS.add(backend_name)
 
 
 def log_text_artifact(
@@ -618,6 +649,243 @@ def _local_artifact_root(logger_obj: Any) -> Path | None:
     return None
 
 
+def _evaluation_media_writers(logger_obj: Any) -> list[Any]:
+    writers = []
+    has_target = False
+    for backend in iter_loggers(logger_obj):
+        if "TensorBoard" in type(backend).__name__:
+            writer = getattr(getattr(backend, "experiment", None), "file_writer", None)
+            if not callable(getattr(writer, "add_summary", None)) or not callable(
+                getattr(writer, "flush", None)
+            ):
+                raise RuntimeError(
+                    "Evaluation media needs an active TensorBoard experiment.file_writer "
+                    "with add_summary and flush support."
+                )
+            writers.append(writer)
+        local_target = _local_artifact_root(backend)
+        if local_target is not None:
+            has_target = True
+        elif getattr(backend, "run_id", None) is not None and callable(
+            getattr(getattr(backend, "experiment", None), "log_artifact", None)
+        ):
+            has_target = True
+        else:
+            _report_unsupported_artifact_logger(backend, "evaluation")
+    if not has_target:
+        raise ValueError(
+            "Evaluation video recording requires an artifact-capable logger: "
+            "configure native MLflow, TensorBoard, or DVCLive logging."
+        )
+    return writers
+
+
+def _evaluation_pillow() -> Any:
+    try:
+        from PIL import Image
+    except ImportError as exc:
+        raise RuntimeError(
+            "Evaluation recording requires Pillow; install nexuml[rendering]."
+        ) from exc
+    return Image
+
+
+def _evaluation_mp4_info() -> dict[str, Any]:
+    try:
+        import imageio
+        import imageio.v2  # noqa: F401
+        import imageio_ffmpeg
+    except ImportError as exc:
+        raise RuntimeError(
+            "MP4 evaluation recording requires ImageIO and imageio-ffmpeg; install nexuml[video]."
+        ) from exc
+    try:
+        # This resolver uses installed executables only, never ImageIO's download API.
+        executable = imageio_ffmpeg.get_ffmpeg_exe()
+        encoders = subprocess.run(
+            [executable, "-hide_banner", "-encoders"],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=15,
+        ).stdout
+        if not re.search(r"\blibx264\b", encoders):
+            raise RuntimeError("FFmpeg does not provide the required libx264 H.264 encoder.")
+        ffmpeg_version = imageio_ffmpeg.get_ffmpeg_version()
+    except (OSError, subprocess.SubprocessError, RuntimeError) as exc:
+        raise RuntimeError(
+            "MP4 recording requires an installed FFmpeg executable with libx264 support; "
+            "install nexuml[video] or set IMAGEIO_FFMPEG_EXE to a compatible executable."
+        ) from exc
+    return {
+        "library": "imageio",
+        "version": imageio.__version__,
+        "backend": "imageio-ffmpeg",
+        "backend_version": imageio_ffmpeg.__version__,
+        "ffmpeg_version": ffmpeg_version,
+        "codec": "libx264",
+        "pixel_format": "yuv420p",
+    }
+
+
+def preflight_evaluation_media(logger_obj: Any, video: RLVideoSpec) -> None:
+    """Check requested recording targets and installed encoders before evaluation or fit.
+
+    Disabled recording imports no encoders and requires no logger.
+    """
+    if not video.enabled:
+        return
+    _evaluation_media_writers(logger_obj)
+    _evaluation_pillow()
+    if video.format in {"mp4", "both"}:
+        _evaluation_mp4_info()
+
+
+def _encode_evaluation_gif(frames: list[np.ndarray], path: Path, fps: float) -> dict[str, Any]:
+    image = _evaluation_pillow()
+    # GIF stores centiseconds; quantize explicitly, including its minimum nonzero duration.
+    duration_ms = max(10, round(100 / fps) * 10)
+    with image.fromarray(frames[0]) as first:
+        first.save(
+            path,
+            format="GIF",
+            save_all=True,
+            append_images=(image.fromarray(frame) for frame in frames[1:]),
+            duration=duration_ms,
+            loop=0,
+        )
+    return {
+        "library": "Pillow",
+        "version": image.__version__,
+        "codec": "GIF",
+        "encoded_size": [frames[0].shape[1], frames[0].shape[0]],
+        "padding": [0, 0],
+        "frame_duration_ms": duration_ms,
+        "timing_quantization_ms": 10,
+    }
+
+
+def _encode_evaluation_mp4(frames: list[np.ndarray], path: Path, fps: float) -> dict[str, Any]:
+    import imageio.v2 as imageio
+    import numpy as np
+
+    info = _evaluation_mp4_info()
+    height, width = frames[0].shape[:2]
+    pad_w, pad_h = width % 2, height % 2
+    writer = imageio.get_writer(
+        str(path),
+        format=cast(Any, "FFMPEG"),
+        fps=fps,
+        codec="libx264",
+        pixelformat="yuv420p",
+        macro_block_size=None,
+        output_params=["-an"],
+    )
+    try:
+        for frame in frames:
+            writer.append_data(
+                np.pad(frame, ((0, pad_h), (0, pad_w), (0, 0)), mode="edge")
+                if pad_w or pad_h
+                else frame
+            )
+    finally:
+        primary = sys.exception()
+        try:
+            writer.close()
+        except BaseException as error:
+            if primary is None:
+                raise
+            primary.add_note(f"Evaluation encoder cleanup also failed: {error}")
+    # ImageIO's FFmpeg backend can finish without surfacing the subprocess exit code.
+    # Require a decodable finalized video before allowing native artifact publication.
+    with closing(imageio.get_reader(str(path), format=cast(Any, "FFMPEG"))) as reader:
+        if reader.get_data(0).shape[:2] != (height + pad_h, width + pad_w):
+            raise RuntimeError("Finalized evaluation MP4 has unexpected encoded dimensions.")
+        if getattr(reader, "count_frames")() != len(frames):
+            raise RuntimeError("Finalized evaluation MP4 is missing captured frames.")
+    return {**info, "encoded_size": [width + pad_w, height + pad_h], "padding": [pad_w, pad_h]}
+
+
+def log_evaluation_media(
+    logger_obj: Any,
+    frames: list[np.ndarray],
+    metadata: dict[str, Any],
+    video: RLVideoSpec,
+    *,
+    step: int,
+) -> None:
+    """Encode one bounded RGB buffer and dispatch finalized files through native loggers.
+
+    Metadata is copied, never mutated. Only configured TensorBoard loggers receive
+    an animated preview; selected downloadable files and JSON use ``log_artifact``.
+    Encoding finishes before any delivery; failed deliveries cannot be rolled back.
+
+    Raises:
+        ValueError: If recording has no artifact target, frames, or finite positive FPS.
+    """
+    if not video.enabled:
+        return
+    writers = _evaluation_media_writers(logger_obj)
+    _evaluation_pillow()
+    fps = float(metadata["fps"])
+    if not frames or not math.isfinite(fps) or fps <= 0:
+        raise ValueError("Evaluation media requires frames and a finite positive FPS.")
+    formats = ["gif", "mp4"] if video.format == "both" else [video.format]
+    basename = f"frame_{step:012d}"
+    info = {**metadata, "frame_step": step, "formats": formats, "encoders": {}}
+    with ExitStack() as stack:
+        paths = {}
+        preview = None
+        for format_name in (["gif"] if writers and "gif" not in formats else []) + formats:
+            path = stack.enter_context(
+                staged_artifact_path(f"{basename}.{format_name}", prefix="nexuml_eval_")
+            )
+            if format_name == "gif":
+                encoder = _encode_evaluation_gif(frames, path, fps)
+                if writers:
+                    preview = path.read_bytes()
+            else:
+                encoder = _encode_evaluation_mp4(frames, path, fps)
+            info["encoders"][format_name] = encoder
+            if format_name in formats:
+                paths[format_name] = path
+        metadata_path = stack.enter_context(
+            staged_artifact_path(f"{basename}.json", prefix="nexuml_eval_")
+        )
+        metadata_path.write_text(json.dumps(info, separators=(",", ":"), allow_nan=False), "utf-8")
+        for path in [*paths.values(), metadata_path]:
+            log_artifact(logger_obj, path, artifact_path="evaluation")
+        if writers:
+            from tensorboard.compat.proto.summary_pb2 import Summary
+
+            height, width = frames[0].shape[:2]
+            summary = Summary(
+                value=[
+                    {
+                        "tag": "eval/rl/episode",
+                        "image": {
+                            "height": height,
+                            "width": width,
+                            "colorspace": 3,
+                            "encoded_image_string": preview,
+                        },
+                    }
+                ]
+            )
+            for writer in writers:
+                try:
+                    writer.add_summary(summary, step)
+                    writer.flush()
+                except BaseException as error:
+                    note = (
+                        "TensorBoard preview delivery failed; finalized evaluation artifacts "
+                        "were already delivered; no rollback."
+                    )
+                    error.add_note(note)
+                    logger.error(note)
+                    raise
+
+
 def _augment_mlflow_tags(tags: dict[str, Any] | None) -> dict[str, Any]:
     resolved = dict(tags or {})
     for key, value in _collect_git_metadata().items():
@@ -671,7 +939,17 @@ def _find_or_create_auto_parent_run(
     parent_tags["nexuml.auto_parent"] = "true"
     parent_tags[MLFLOW_RUN_NAME] = parent_name
     run = client.create_run(experiment_id=experiment_id, tags=parent_tags)
-    client.set_terminated(run.info.run_id, status="FINISHED")
+    try:
+        client.set_terminated(run.info.run_id, status="FINISHED")
+    except BaseException as error:
+        note = f"MLflow auto-parent run {run.info.run_id} preparation failed."
+        error.add_note(note)
+        logger.error(note)
+        try:
+            client.set_terminated(run.info.run_id, status="FAILED")
+        except BaseException as cleanup_error:
+            error.add_note(f"MLflow run {run.info.run_id} cleanup also failed: {cleanup_error}")
+        raise
     return run.info.run_id
 
 
@@ -750,9 +1028,8 @@ def print_service_info(
             log_path = getattr(lg, "log_dir", None) or str(log_dir)
             parent = str(Path(log_path).parent)
             lines.append(f"  TensorBoard  {_dim(log_path)}")
-            lines.append(
-                f"    {_cyan(f'tensorboard --logdir {parent} --port 6007 --host 0.0.0.0')}"
-            )
+            tb_cmd = f"tensorboard --logdir {shlex.quote(parent)} --port 6007 --host 127.0.0.1"
+            lines.append(f"    {_cyan(tb_cmd)}")
 
     # -- MLflow --
     for lg in trainer_loggers:
@@ -761,8 +1038,17 @@ def print_service_info(
             has_any = True
             tracking_uri = getattr(lg, "_tracking_uri", None) or "mlruns"
             lines.append(f"  MLflow       {_dim(tracking_uri)}")
-            mlflow_cmd = f"mlflow ui --backend-store-uri {tracking_uri} --port 8080 --host 0.0.0.0"
-            lines.append(f"    {_cyan(mlflow_cmd)}")
+            run_id = getattr(lg, "run_id", None)
+            if run_id is not None:
+                lines.append(f"    Run ID: {run_id}")
+            if tracking_uri.startswith(("http://", "https://")):
+                lines.append("    Use the existing tracking service; no second server is needed.")
+            else:
+                mlflow_cmd = (
+                    f"mlflow ui --backend-store-uri {shlex.quote(tracking_uri)} "
+                    "--port 5000 --host 127.0.0.1"
+                )
+                lines.append(f"    {_cyan(mlflow_cmd)}")
 
     # -- DVCLive --
     for lg in trainer_loggers:
@@ -811,6 +1097,10 @@ def print_service_info(
                 "  No logging backends configured. "
                 "Set scenario.logging to enable TensorBoard/MLflow."
             )
+        )
+    else:
+        lines.append(
+            _dim("  Start local-store UIs on the worker; use an approved private tunnel remotely.")
         )
 
     lines.append(sep)

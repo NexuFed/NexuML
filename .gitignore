@@ -174,6 +174,7 @@ audioset_hf/
 configs/*.yaml
 !configs/.gitkeep
 .experiments/
+rl-runs/
 
 # Local skill-creator evaluation runs; ship skills/tests/evals, not generated outputs.
 /skills/*-workspace/
@@ -226,7 +227,15 @@ tmp/
 .artifacts/
 .slim/
 experiments/
-reports/
+reports/*
+!reports/physical-ai/
+reports/physical-ai/*
+!reports/physical-ai/phase-0-audit.md
+!reports/physical-ai/phase-2-isaaclab.md
+!reports/physical-ai/isaac-backend.md
+!reports/physical-ai/isaac-backend/
+reports/physical-ai/isaac-backend/*
+!reports/physical-ai/isaac-backend/*.in
 
 # Resources
 .literature
@@ -239,7 +248,10 @@ external/
 # Graphify
 graphify-out/
 
-configs/
+configs/*
+!configs/execution
+configs/execution/*
+!configs/execution/ray.yaml
 
 # Studio build/test dependencies (production assets are included only in npm packs)
 studio/node_modules/
@@ -251,3 +263,4 @@ studio/test-results/
 studio/LICENSE
 
 .nexuml/
+reports/

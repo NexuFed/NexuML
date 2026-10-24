@@ -29,7 +29,7 @@ dependencies = [
     "typer>=0.9",
     "ruamel.yaml>=0.18",
     "rich>=13.0",
-    "requests>=2.0",
+    "requests>=2.32.4",
     "loguru>=0.7",
     "tensorboard>=2.0",
     "safetensors>=0.4",
@@ -49,9 +49,10 @@ Releases = "https://github.com/NexuFed/NexuML/releases"
 [project.optional-dependencies]
 api = [
     "fastapi>=0.115,<1",
-    "uvicorn>=0.30,<1",
+    "uvicorn>=0.29,<1",
     "websockets>=13,<17",
-    "psutil>=7,<9",
+    # API process ownership uses APIs supported by Isaac Sim's pinned psutil.
+    "psutil>=5.9.8,<9",
 ]
 dev = [
     "pytest>=8.0",
@@ -91,6 +92,18 @@ export = [
 ray = [
     "ray[default,train]>=2.57,<2.59",
 ]
+reinforcement = [
+    "torchrl>=0.14",
+    "gymnasium>=1,<2",
+]
+rendering = [
+    "Pillow>=10,<13",
+]
+video = [
+    "nexuml[rendering]",
+    "imageio[ffmpeg]>=2.37,<3",
+    "imageio-ffmpeg>=0.6,<0.7",
+]
 kubernetes = [
     "kubernetes>=36,<37",
 ]
@@ -100,9 +113,25 @@ s3 = [
 library = [
     "nexuml-library>=0.2,<0.3",
 ]
-all = [
-    "nexuml[api,library,audio,data,tracking,tuning,export,ray,kubernetes,s3]",
+robots = [
+    "nexuml-library[robots]>=0.2,<0.3",
 ]
+isaac = [
+    "nexuml-library[isaac]>=0.2,<0.3",
+]
+lerobot = [
+    "nexuml-library[lerobot]>=0.2,<0.3",
+]
+mujoco = [
+    "nexuml-library[mujoco]>=0.2,<0.3",
+]
+all = [
+    "nexuml[api,library,audio,data,tracking,tuning,dali,export,ray,kubernetes,s3,reinforcement,rendering,video]",
+]
+
+[dependency-groups]
+# Root-only backend/source selection is not inherited by editable consumers.
+native-sources = ["mujoco-usd-converter==0.6.1", "torch", "torchvision", "torchaudio", "torchcodec"]
 
 [project.scripts]
 nexuml = "nexuml.cli.main:app"
@@ -124,6 +153,9 @@ markers = [
     "requires_gpu: needs a CUDA device",
     "requires_data: needs NEXUML_RUN_DATA_TESTS=1 and a valid NEXUML_DATA_ROOT",
     "requires_optional(name): skipped if optional dependency is not installed",
+    "requires_simulator: opt-in simulator tests (NEXUML_RUN_SIMULATOR_TESTS=1)",
+    "requires_system: opt-in middleware/server tests (NEXUML_RUN_SYSTEM_TESTS=1)",
+    "requires_hardware: manual hardware validation (NEXUML_RUN_HARDWARE_TESTS=1)",
     "conformance_skip(reason): escape hatch for unsupported contract elements",
 ]
 
@@ -164,24 +196,54 @@ convention = "google"
 [tool.ty.environment]
 extra-paths = ["src", "library/src", "skills/nexuml-library/assets/minimal-library/src"]
 
+[tool.uv]
+default-groups = ["native-sources"]
+# Standalone repository validation target, not published Python/backend restrictions.
+environments = ["sys_platform == 'linux' and platform_machine == 'x86_64' and python_version == '3.12'"]
+# The pinned Lab/Sim stack publishes prerelease native wheels on NVIDIA's index.
+index-strategy = "first-index"
+prerelease = "if-necessary"
+constraint-dependencies = ["lerobot==0.6.1"]
+override-dependencies = [
+    "packaging==25.0",
+    "transformers==5.10.4",
+    "numpy==2.3.1",
+    "urllib3==2.8.0",
+    "usd-exchange==3.0.1",
+    # Sim's 2.32.3 pin predates the CVE-2024-47081 netrc credential-leak fix.
+    "requests==2.34.2",
+    # Sim and LeRobot must share one cv2 provider, not overwrite each other's files.
+    { package = { name = "lerobot", version = "0.6.1" }, dependencies = ["opencv-python-headless-noffmpeg==4.14.0.94rc3"] },
+]
+exclude-dependencies = [
+    { package = { name = "lerobot", version = "0.6.1" }, dependencies = ["opencv-python-headless"] },
+]
+
 [[tool.uv.index]]
-name = "pytorch-cu128"
-url = "https://download.pytorch.org/whl/cu128"
+name = "pytorch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
 explicit = true
 
 [[tool.uv.index]]
 name = "nvidia-pypi"
 url = "https://pypi.nvidia.com"
-explicit = true
+explicit = false
+
+[[tool.uv.index]]
+name = "pypi"
+url = "https://pypi.org/simple"
+default = true
 
 [tool.uv.workspace]
 members = ["library"]
 
 [tool.uv.sources]
-torch = [{ index = "pytorch-cu128" }]
-torchvision = [{ index = "pytorch-cu128" }]
-torchaudio = [{ index = "pytorch-cu128" }]
-torchcodec = [{ index = "pytorch-cu128" }]
+torch = [{ index = "pytorch-cu130", group = "native-sources" }]
+torchvision = [{ index = "pytorch-cu130", group = "native-sources" }]
+torchaudio = [{ index = "pytorch-cu130", group = "native-sources" }]
+torchcodec = [{ index = "pytorch-cu130", group = "native-sources" }]
+isaaclab = { git = "https://github.com/isaac-sim/IsaacLab.git", rev = "70ab24fec3eabf51222817db0cdb5a4e7133bd7e", subdirectory = "tools/wheel_builder" }
+mujoco-usd-converter = { index = "pypi" }
 nvidia-dali-cuda120 = [{ index = "nvidia-pypi" }]
 nexuml = { workspace = true } 
 nexuml-library = { workspace = true }

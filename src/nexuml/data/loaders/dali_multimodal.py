@@ -7,7 +7,7 @@ import random
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
 import pandas as pd
@@ -16,6 +16,10 @@ from nvidia.dali import types as _dali_types
 from nvidia.dali.pipeline import pipeline_def
 from nvidia.dali.plugin.pytorch import DALIGenericIterator, LastBatchPolicy
 from tensordict import TensorDict
+
+if TYPE_CHECKING:
+    from tensordict.base import CompatibleType
+    from tensordict.utils import NestedKey
 
 import nvidia.dali.fn as fn
 
@@ -120,10 +124,12 @@ class KeyedDaliIterator(DALIGenericIterator):
         )
         x["sample_index"] = out[INDEX_OUTPUT].reshape(-1).long()
 
-        y_dict: dict[str, torch.Tensor] = {key: out[key] for key in self.y_keys if key in out}
+        y_dict: dict[NestedKey, CompatibleType] = {
+            key: out[key] for key in self.y_keys if key in out
+        }
         if self.metadata_labels is not None:
             indices = out[INDEX_OUTPUT].reshape(-1).long().cpu()
-            label_batch = self.metadata_labels[indices]
+            label_batch = cast(TensorDict, self.metadata_labels[indices])
             for key, value in label_batch.items():
                 y_dict[str(key)] = cast(torch.Tensor, value)
 

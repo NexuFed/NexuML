@@ -2,7 +2,7 @@
 
 This page is generated from the current Typer application, so it is the source of truth for command names, arguments, and options. Task guides intentionally do not copy every flag.
 
-The CLI covers scenario resolution/build/training, dataset export, model export, smoke tests, tuning, registry inspection, backend inspection, and local-library management. Evaluation itself currently runs inside the training/test lifecycle rather than through a separate top-level `evaluate` command.
+The CLI covers scenario resolution/build/training, dataset export, model export, smoke tests, tuning, registry inspection, backend inspection, and local-library management. `evaluate <model-or-policy-package>` evaluates a trusted model on its `NexuDataset` test split or a complete policy in its environment, without training. Both `train` and `evaluate` accept trusted Python `--scenario-file` definitions; evaluation retains the exported model's computation and weights. See [Evaluate a model](../how-to/evaluate.md), [Reinforcement learning](../how-to/reinforcement-learning.md) for policy/media settings, and [Checkpoints](../how-to/checkpoints.md) for the separate training-resume path.
 
 Execution commands share `nexuml.execution` and need no API extra:
 

@@ -122,6 +122,9 @@ class ComponentRegistry:
             "data_source",
             "eval_algorithm",
             "loader_backend",
+            "environment",
+            "action_adapter",
+            "rl_algorithm",
             "execution_backend",
         ):
             register_items(scanner.by_kind(kind), self.register, self._errors)

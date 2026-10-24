@@ -32,7 +32,7 @@ def main() -> None:
     root.mkdir(parents=True)
     home = root / "isolated user home"
     home.mkdir(exist_ok=True)
-    env = {
+    env: dict[str, str] = {
         **os.environ,
         "HOME": str(home),
         "USERPROFILE": str(home),
@@ -43,7 +43,7 @@ def main() -> None:
     # Verify packaging, not an editable checkout or its configured GPU index.
     env.pop("PYTHONPATH", None)
     env.pop("PYTHONHOME", None)
-    index = (
+    index: list[str] = (
         []
         if os.name == "posix" and os.uname().sysname == "Darwin"
         else [

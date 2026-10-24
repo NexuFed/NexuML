@@ -24,6 +24,7 @@ from nexuml.api.security import Settings
 from nexuml.api.worker import dispatch
 from nexuml.core.serialization import lower_model
 from nexuml.core.export import load_package
+from nexuml.core.pipeline import CompiledPipeline
 from nexuml.execution.definitions import RayClusterExecution
 from nexuml_library.scenarios.asd.synthetic_linear_ae import synthetic_linear_ae_reconstruction
 
@@ -154,6 +155,7 @@ def test_native_cpu_build_train_replay_and_checkpoint_export(tmp_path):
         assert export_done["status"] == "succeeded", export_done
         assert (tmp_path / "exported-package" / "resolved_config.yaml").is_file()
         pipeline, config, metadata = load_package(tmp_path / "exported-package")
+        assert isinstance(pipeline, CompiledPipeline)
         assert config.name == scenario().name
         assert pipeline.input_sizes["reconstructed"] == (8,)
         assert metadata

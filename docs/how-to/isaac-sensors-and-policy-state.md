@@ -1,0 +1,231 @@
+# Use Isaac sensors and caller-owned policy state
+
+The current camera recipes declare raw sensor meaning separately from the
+processed actor interface. Start with [native task configuration](isaac-native-configuration.md)
+for the prepared stack, trusted task/configuration functions and whole-job ownership.
+
+The camera recipes are qualified on the exact pinned Newton-Warp combination
+below, including real sensor values, bounded NexuML updates, current
+checkpoint/resume, complete actor export/reload and fresh replay for both
+processing owners. Other renderer/backend combinations remain unqualified.
+
+## Bounded recipes and tensor meaning
+
+| CLI recipe | Actor observation keys |
+| --- | --- |
+| `isaac-rgb-cartpole-ppo` | `rgb` |
+| `isaac-depth-cartpole-ppo` | `depth` |
+| `isaac-segmentation-cartpole-ppo` | `segmentation` |
+| `isaac-mixed-cartpole-ppo` | `rgb`, `depth`, `segmentation`, `state` |
+| `isaac-categorical-cartpole-ppo` | `observation` (state vector) |
+
+The four camera recipes use `NexuML-Cartpole-Sensors`, 32×32 images and the existing
+dense policy head with one 32-unit hidden layer. Mixed inputs add the declared
+float32 Cartpole state vector `[4]`, not undeclared privileged observations.
+These are small I/O references, not vision benchmarks; no pretrained download is
+needed. The categorical recipe uses the existing small logits MLP.
+
+Feature shapes below exclude caller/environment batch axes:
+
+| Field | Raw frame | Declared actor tensor (float32) |
+| --- | --- | --- |
+| `rgb` | uint8 HWC `[32,32,3]`, `uint8_sRGB` | CHW `[6,32,32]`: cast, divide by 255, stack two frames |
+| `depth` | float32 HWC `[32,32,1]`, z-depth in metres | `[4,32,32]`: two channels per frame (depth, validity), two frames |
+| `segmentation` | int32 HWC `[32,32,1]`, class IDs | `[6,32,32]`: three ordered one-hot channels per frame, two frames |
+
+Depth explicitly declares inclusive valid bounds **0.1–100 m**, scale 1, offset 0
+and `invalid_depth="mask_zero"`. NaN/Inf, zero sentinels and out-of-range depths
+become depth 0 with validity 0; valid pixels keep metre depth and validity 1.
+Channel order is `[old_depth, old_validity, new_depth, new_validity]`. Invalid
+depth rejects unless this masking is explicitly declared; there is no general
+NaN/Inf coercion for other modalities or actor tensors.
+
+Segmentation declares `label_set_id="cartpole-class-v1"` and the actual native
+vocabulary: **0 `BACKGROUND`, 1 `UNLABELLED`, 2 `cartpole`**. One-hot channels
+follow that declared order; unknown pixel IDs reject, rather than being silently
+remapped or treated as background.
+
+Every image uses `SensorHistoryProcessor` version `"1"`, history length 2,
+`oldest_first`, `repeat_first`, `post_control`, `latency_steps=0` and 60-Hz
+sensor/control updates (`control_period_s=1/60`). The owned processor rejects
+unsupported timing/latency, rather than implementing a delay queue.
+
+Native admission checks the actual camera source, raw dtype/layout/units,
+uncolorized label metadata, update period and control timing. The
+`assets["camera_geometry"]` identity is checked against the resolved camera's
+actual pose, convention, projection, clipping range and resolution—not just its
+shape or a supplied hash. Missing metadata, wrong labels/units/rates or changed
+geometry reject. Matching tensor dimensions alone do not establish compatibility;
+bare tensor inference cannot independently measure camera pose, units or timing.
+
+## Choose one processing owner at each boundary
+
+- **Package-owned:** the default recipes set `sensor.owner="package"` and
+  `policy.processor=SensorHistoryProcessor()`. Portable raw-frame inference uses
+  the explicit policy-state methods below.
+- **External:** call a camera recipe with `processing_owner="external"`. It sets
+  `sensor.owner="external"` and `policy.processor=None`. The caller supplies the
+  declared normalized, float32, channel-stacked tensors, and owns buffering,
+  episode resets and timing. This artifact does **not** offer raw-frame inference;
+  its state methods reject because there is no processor.
+
+Both modes use `IsaacBindings(processing="raw")` for native execution. This means
+the **same portable processing component runs in the Isaac runtime** during
+training/evaluation, including when the artifact declares an external owner.
+The runtime supplies processed tensors to ordinary policy `forward()`. A packaged
+processor handles raw input only on the package's explicit `step()` path; it does
+not process runtime tensors a second time. Native observation terms must not add
+their own normalization, history, corruption or delay to these raw bindings.
+
+Ordinary `policy(processed)` / `forward()` and `forward_parameters(processed)`
+remain stateless and consume the **declared processed tensors unchanged**. They
+do not initialize history, reorder frames or invoke the processor, even when one
+is attached. Raw single frames reject on this interface.
+
+## Pass history explicitly
+
+The opt-in `CompiledPolicy` API is:
+
+- `initialize_state(batch_size=(), *, device=None) -> TensorDict`: new,
+  uninitialized caller-owned history; omitted device uses the pipeline parameter
+  device (CPU if none is available).
+- `step(observation, state, *, deterministic=True) -> (actions, next_state)`:
+  process one raw observation and return declared actions plus new history.
+- `reset_state(state, mask) -> TensorDict`: return new state with only selected
+  streams cleared. `mask` must be bool, on the state device, with exactly the state
+  batch shape; `[N,1]` is not a substitute for `[N]`.
+
+Inputs are not mutated. Keep the returned state for the next call; the policy has
+no hidden live history buffers or automatic episode detection. Initial history is
+zero/uninitialized, then the first frame is repeated twice. After selected reset,
+the next frame initializes only those streams; unselected histories remain
+unchanged. Separate callers can keep independent states for the same policy.
+
+This CPU example compiles without constructing Isaac. The pixels and episode
+mask are illustrative, not native sensor evidence:
+
+```python
+import torch
+from tensordict import TensorDict
+
+from nexuml.core.compiler import compile
+from nexuml.core.policy import CompiledPolicy
+from nexuml_library.scenarios.reinforcement.isaaclab_sensors import (
+    isaac_rgb_cartpole_ppo,
+)
+
+scenario = isaac_rgb_cartpole_ppo(
+    total_frames=32, frames_per_batch=16, num_envs=2,
+)
+policy = CompiledPolicy.from_pipeline(compile(scenario)).eval()
+raw = TensorDict(
+    {"rgb": torch.full((2, 32, 32, 3), 128, dtype=torch.uint8)},
+    batch_size=(2,), device="cpu",
+)
+state = policy.initialize_state(batch_size=(2,), device="cpu")
+with torch.inference_mode():
+    actions, state = policy.step(raw, state, deterministic=True)
+assert actions["action"].shape == (2, 1)
+
+# After consuming the ending episode's transition, reset only ended rows.
+ended = torch.tensor([True, False], dtype=torch.bool, device="cpu")
+previous = state
+state = policy.reset_state(state, ended)
+assert not state["rgb", "initialized"][0]
+assert torch.equal(state["rgb", "frames"][1], previous["rgb", "frames"][1])
+# Next step: provide a fresh reset frame for row 0 and the next frame for row 1.
+```
+
+For an external-owner artifact, the equivalent **first-frame** interface is:
+
+```python
+external = isaac_rgb_cartpole_ppo(
+    total_frames=32, frames_per_batch=16, num_envs=2,
+    processing_owner="external",
+)
+external_policy = CompiledPolicy.from_pipeline(compile(external)).eval()
+assert external_policy.processor is None
+frame = raw["rgb"].movedim(-1, -3).float() / 255
+processed = TensorDict(
+    {"rgb": torch.cat((frame, frame), dim=1)}, batch_size=(2,),
+)
+with torch.inference_mode():
+    external_actions = external_policy(processed)
+```
+
+Subsequent external calls must advance oldest-first history, not repeat every
+frame as above. The caller must clear only ended streams and initialize their
+next episode from its fresh first frame. Supplying `raw` to `external_policy`
+rejects; declaring an external owner does not add a raw-input API.
+
+The native runtime snapshots camera buffers before reuse, advances the ending
+episode's history from genuine pre-reset `final_obs`, and starts ended rows from
+cached reset observations. Collector reset acknowledgements reuse that cache
+without a second native reset. Continuing rows keep their history; reset frames
+must never replace terminal frames used for learning or timeout bootstrapping.
+
+## Categorical actions are a distinct task
+
+`isaac-categorical-cartpole-ppo` selects `NexuML-Cartpole-Categorical`, not a renamed
+continuous task. Its scalar int64 `action` has three classes: **0 → −100 N,
+1 → 0 N, 2 → +100 N** on `slider_to_cart` at 60 Hz. The policy returns class
+indices (batch `[N]`, no action feature dimension); the native task decodes those
+indices into force. Out-of-range or non-int64 commands reject.
+
+Ordinary continuous Cartpole and the camera recipes remain float32 action `[1]`
+in `[-1,1]`, with native effort **`100 * action` N**, zero offset and the same
+joint/control period. A categorical index is not a normalized continuous force.
+Gaussian outputs that round to a transform endpoint use the nearest qualified
+floating-point interior, so entropy and freshly recomputed stored-action
+likelihoods remain finite. Ordinary interior values and PPO equations are unchanged.
+MultiDiscrete, MultiBinary and hybrid single-actor controls are not promised.
+
+## Static resolve, bounded execution and separate replay
+
+Choose any recipe from the table; resolve is static and does not launch Isaac:
+
+```bash
+export PYTHONPATH="$PWD/src:$PWD/library/src"
+recipe=isaac-rgb-cartpole-ppo
+.venv/bin/python -m nexuml resolve "$recipe" \
+  --output /tmp/opencode/isaac-sensor.yaml
+# Native execution only in the already-approved stack, with available resources.
+.venv/bin/python -m nexuml train --config /tmp/opencode/isaac-sensor.yaml \
+  -O training.total_frames=32 -O training.frames_per_batch=16 \
+  -O training.collector.num_envs_per_collector=2 \
+  -O training.algorithm.update_epochs=1 -O training.algorithm.minibatch_size=8
+# Separately exported complete policy; run replay in a fresh process after training.
+.venv/bin/python -m nexuml evaluate /approved/run/policy --device cuda:0 \
+  -O training.evaluation.episodes=2 -O training.evaluation.max_steps_per_episode=120
+```
+
+Use the explicit small overrides even for the categorical recipe's larger
+defaults. Training uses one synchronous direct collector and matching CUDA
+simulation/policy/storage/learner devices. In-fit evaluation stays disabled.
+Monitor native work and stop owned jobs at **4 GiB free**; absent
+prerequisites are blockers, not permission to install or replace the environment.
+
+The qualified camera combination is exactly `physics="newton_mjwarp"`,
+`presets=("rgb", "newton_renderer")`, with actual
+`renderer_type="newton_warp"` on the pinned Lab 3.0 / Sim 6.2 stack. This is
+Newton-Warp sensor production, **not RTX/Vulkan qualification**. Do not substitute
+another backend/renderer or infer universal task/backend/modality support.
+This qualification covers the four declared camera families and their reset
+semantics, not every native camera task or renderer.
+
+For actor-only deployment, export the complete `CompiledPolicy` using
+`export_package(policy, output)`, not just its neural pipeline; reload with
+`load_inference_package(output)`. The artifact preserves weights, processing
+ownership/definition, initial/reset semantics and physical/temporal contracts,
+**not a live caller's history**. Initialize fresh state after loading, or supply
+the declared processed interface for an external owner. Actor inference does not
+reconstruct task factories, a simulator, critics or a native GUI, and needs no
+Isaac, TorchRL, Viser or custom task/configuration package. Simulation replay is
+separate: it requires the matching trusted installed task/configuration package
+and native runtime. Packages themselves remain trusted executable local code.
+
+Viser is independent and opt-in. The [private read-only viewer](isaac-read-only-viser.md)
+has separate native training/replay browser qualification; unqualified viewer
+selections fail closed. A viewer screenshot is not proof of policy sensor values,
+and sensor probes are not browser acceptance. See [grouped learning](isaac-multi-agent-learning.md)
+for the distinct limits on native grouped sensors and history.

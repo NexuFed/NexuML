@@ -96,11 +96,15 @@ nav:
       - Trusted scenario files: how-to/scenario-file.md
     - Training and evaluation:
       - Train a model: how-to/train.md
+      - Reinforcement learning: how-to/reinforcement-learning.md
+      - State-only Isaac Cartpole: how-to/isaac-cartpole.md
+      - SO-101 local fit SDK: how-to/so101-local-fit.md
       - Evaluate a model: how-to/evaluate.md
       - Checkpoints: how-to/checkpoints.md
       - Automatic batch size: how-to/auto-batch-size.md
     - Data:
       - Choose a data loader: how-to/data-loading.md
+      - Local LeRobot demonstrations: how-to/lerobot-data.md
       - Export a dataset: how-to/export-dataset.md
     - Experimentation:
       - Tracking and logging: how-to/tracking.md
@@ -123,6 +127,8 @@ nav:
     - Mental model: learn/mental-model.md
     - Architecture: explanation/architecture.md
     - TensorDict data flow: explanation/tensordict.md
+    - Physical policy meaning: explanation/physical-contracts.md
+    - Physical AI architecture: explanation/physical-ai-architecture.md
     - Scenarios and configuration: learn/scenarios.md
     - Components and discovery: learn/decorators-and-discovery.md
     - Coming from Lightning: learn/from-lightning.md

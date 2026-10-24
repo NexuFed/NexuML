@@ -34,6 +34,21 @@ Run it directly:
 nexuml train --scenario-file experiment.py
 ```
 
+The file declares configuration, not its own training loop. It does not need a
+`NexuSession`, `job_scope()` or `if __name__ == "__main__"` runner: the CLI owns the
+session, native lifetime, logger cleanup and outputs. Declare `ExportSpec` entries
+on the returned scenario to save the trained model or complete policy.
+
+Standalone evaluation uses the same file contract when selecting test data or an
+environment different from the export's embedded configuration:
+
+```bash
+nexuml evaluate /approved/export --scenario-file experiment.py
+```
+
+This keeps the exported architecture and weights; see [Evaluate](evaluate.md) for
+the selected model/test-split versus policy/environment paths and allowed overrides.
+
 ## Save provenance
 
 ```bash

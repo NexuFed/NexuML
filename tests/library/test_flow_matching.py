@@ -9,7 +9,7 @@ from tensordict import TensorDict
 from nexuml.core.components import LayerBuildContext
 from nexuml.core.compiler import compile
 from nexuml.core.config import ResolvedConfig
-from nexuml.training.lightning import create_runtime_artifacts
+from nexuml.training.lightning import NexuLightningModule, create_runtime_artifacts
 from nexuml_library.evaluation.visualizers.flow import FlowVisualizer
 from nexuml_library.layers.generative.flow.euler import EulerIntegrator
 from nexuml_library.scenarios.flow.mnist_flow_matching import mnist_flow_matching
@@ -151,6 +151,8 @@ def test_flow_scenario_one_step_and_sampling() -> None:
         max_epochs=1,
     )
     artifacts = create_runtime_artifacts(scenario)
+    assert artifacts.data_module is not None
+    assert isinstance(artifacts.lightning_module, NexuLightningModule)
     artifacts.data_module.setup("fit")
     x, y = next(iter(artifacts.data_module.train_dataloader()))
 

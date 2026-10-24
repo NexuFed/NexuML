@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import copy
 import fnmatch
 import hashlib
@@ -14,7 +15,7 @@ import sys
 from dataclasses import dataclass, field, is_dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import torch
 from safetensors.torch import load_file as load_safetensors_file
@@ -24,10 +25,18 @@ from torch.package.package_exporter import PackageExporter
 from torch.package.package_importer import PackageImporter
 
 from nexuml.core.compiler import compile as compile_pipeline
+from nexuml.core.compiler import compile_context_from_data, compile_context_from_interaction
+from nexuml.core.compiler import compile_pipeline as compile_spec
 from nexuml.core.config import ResolvedConfig
 from nexuml.core.pipeline import CompiledPipeline
-from nexuml.core.serialization import lower_model, restore_model_data
-from nexuml.core.types import CheckpointLoadSpec, ScenarioSpec
+from nexuml.core.policy import CompiledPolicy
+from nexuml.core.serialization import lower_component, lower_model, restore_model_data
+from nexuml.core.types import (
+    CheckpointLoadSpec,
+    InteractionContract,
+    ReinforcementLearningSpec,
+    ScenarioSpec,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +75,7 @@ _RUNTIME_EXTERN_PATTERNS = [
     "librosa.**",
     "torchmetrics.**",
     "torchrl.**",
+    "gymnasium.**",
     "lightning.**",
     "pydantic.**",
     "ruamel.**",
@@ -76,9 +86,12 @@ _RUNTIME_EXTERN_PATTERNS = [
     "PIL.**",
     "tqdm.**",
     "sklearn.**",
+    "scipy.**",
     "matplotlib.**",
     "umap.**",
     "transformers.**",
+    "datasets.**",
+    "lerobot.**",
     "nvidia.**",
     "onnxscript.**",
     "optuna.**",
@@ -91,6 +104,15 @@ _RUNTIME_EXTERN_PATTERNS = [
     "pyarrow.**",
     "kubernetes.**",
     "psutil.**",
+    # Source scanning follows lazy execution/CLI imports, not only inference calls.
+    "lightning_utilities.**",
+    "tensorboard.**",
+    "uvicorn.**",
+    "websockets.**",
+    "fastapi.**",
+    "starlette.**",
+    "imageio.**",
+    "imageio_ffmpeg.**",
 ]
 
 # Top-level names covered by the extern policy.
@@ -140,6 +162,7 @@ class TrainingReload:
     scenario: ScenarioSpec
     metadata: dict[str, Any]
     report: LoadReport
+    policy: CompiledPolicy | None = None
 
 
 def _config_hash(config: ResolvedConfig) -> str:
@@ -207,10 +230,17 @@ def _package_payload(
     pipeline: CompiledPipeline,
     metadata: dict[str, Any],
     training_state: dict[str, Any] | None = None,
+    policy: CompiledPolicy | None = None,
 ) -> dict[str, Any]:
-    packaged_pipeline = copy.deepcopy(pipeline).cpu().eval()
+    packaged_policy = copy.deepcopy(policy).cpu().eval() if policy is not None else None
+    packaged_pipeline = (
+        packaged_policy.pipeline
+        if packaged_policy is not None
+        else copy.deepcopy(pipeline).cpu().eval()
+    )
     return {
         "pipeline": packaged_pipeline,
+        **({"policy": packaged_policy} if packaged_policy is not None else {}),
         "resolved_config": lower_model(pipeline.resolved_config),
         "metadata": _make_json_safe(metadata),
         "state_dict": {k: v.detach().cpu() for k, v in pipeline.state_dict().items()},
@@ -235,28 +265,27 @@ def _is_runtime_module(module_name: str) -> bool:
     return False
 
 
-def _discover_pipeline_module_packages(pipeline: CompiledPipeline) -> set[str]:
+def _discover_pipeline_module_packages(pipeline: torch.nn.Module) -> set[str]:
     """Find top-level source packages referenced by concrete pipeline layers.
 
     Returns:
         Set of top-level package names that are not NexuML-owned or runtime deps.
     """
     packages: set[str] = set()
-    for _stage, _name, layer in pipeline.iter_layers():
-        for module in layer.modules():
-            module_name = getattr(module.__class__, "__module__", None)
-            if not module_name:
-                continue
-            top = module_name.split(".")[0]
-            if top in ("nexuml", "nexuml_library") or _is_runtime_module(top):
-                continue
-            packages.add(top)
+    for module in pipeline.modules():
+        module_name = getattr(module.__class__, "__module__", None)
+        if not module_name:
+            continue
+        top = module_name.split(".")[0]
+        if top in ("nexuml", "nexuml_library") or _is_runtime_module(top):
+            continue
+        packages.add(top)
     return packages
 
 
 def _apply_package_policy(
     exporter: PackageExporter,
-    pipeline: CompiledPipeline,
+    pipeline: CompiledPipeline | CompiledPolicy,
     include_modules: list[str] | None = None,
 ) -> set[str]:
     """Apply the export packaging policy and return the set of externed modules.
@@ -394,13 +423,21 @@ def _resolve_distribution(module_name: str) -> tuple[str, str | None]:
 
 def _collect_external_dependencies(
     exporter: PackageExporter,
+    *,
+    inference_only: bool = False,
 ) -> tuple[list[dict[str, Any]], list[str]]:
-    """Collect actual external dependencies referenced by the packaged payload.
+    """Collect external source dependencies, or inferred actor installation needs.
+
+    Policy inference excludes dormant settings dispatch and type-only imports;
+    archive externs and supervised requirements retain the full source contract.
 
     Returns:
         Tuple of (structured dependency entries, requirements.txt lines).
     """
     externed = sorted(set(exporter.externed_modules()))
+    if inference_only:
+        required = _policy_requirement_modules(exporter)
+        externed = [module for module in externed if module in required]
     entries: list[dict[str, Any]] = []
     lines: list[str] = []
     seen: set[str] = set()
@@ -427,6 +464,73 @@ def _collect_external_dependencies(
         lines.append(f"{dist}=={version}" if version else dist)
 
     return entries, lines
+
+
+def _policy_requirement_modules(exporter: PackageExporter) -> set[str]:
+    """Find policy requirements without dormant settings-dispatch dependencies.
+
+    The archive still contains complete source and its declared externs. Only
+    installation requirements omit dispatch methods that actor inference never
+    calls; other source imports, including custom actor imports, remain intact.
+
+    Returns:
+        Modules reachable through the policy's inference dependency boundary.
+    """
+
+    class SettingsImports(ast.NodeTransformer):
+        """Keep imports executed when portable settings are loaded."""
+
+        def __init__(self, deferred_dispatch: bool):
+            self.deferred_dispatch = deferred_dispatch
+
+        def visit_FunctionDef(self, node):
+            return ast.Pass() if self.deferred_dispatch else self.generic_visit(node)
+
+        visit_AsyncFunctionDef = visit_FunctionDef
+
+        def visit_If(self, node):
+            if (isinstance(node.test, ast.Name) and node.test.id == "TYPE_CHECKING") or (
+                isinstance(node.test, ast.Attribute)
+                and isinstance(node.test.value, ast.Name)
+                and node.test.value.id == "typing"
+                and node.test.attr == "TYPE_CHECKING"
+            ):
+                return node.orelse or ast.Pass()
+            return self.generic_visit(node)
+
+    graph = exporter.dependency_graph
+    settings_modules = {
+        "nexuml.execution",
+        "nexuml.execution.definitions",
+        "nexuml.data.loaders.definitions",
+    }
+    # Custom imports may invoke settings' lazy exports eagerly while loading an actor.
+    custom_dispatch = any(
+        not attrs.get("is_pickle")
+        and module.split(".")[0] not in {"nexuml", "nexuml_library"}
+        and any(dependency in settings_modules for dependency in graph.successors(module))
+        for module, attrs in graph.nodes.items()
+    )
+    pending = [
+        module
+        for module, attrs in graph.nodes.items()
+        if attrs.get("is_pickle") or not list(graph.predecessors(module))
+    ]
+    required: set[str] = set()
+    while pending:
+        module = pending.pop()
+        if module in required:
+            continue
+        required.add(module)
+        dependencies = list(graph.successors(module))
+        settings = module in settings_modules and not custom_dispatch
+        if settings or module == "nexuml.core.factory":
+            attrs = graph.nodes[module]
+            source = ast.unparse(SettingsImports(settings).visit(ast.parse(attrs["source"])))
+            # Use Torch's resolver so relative imports and imported submodules agree.
+            dependencies = exporter._get_dependencies(source, module, attrs["is_package"])
+        pending.extend(dependencies)
+    return required
 
 
 def _load_checkpoint_metadata(checkpoint_path: Path) -> dict[str, Any]:
@@ -499,7 +603,7 @@ def _extern_runtime_dependencies(exporter: PackageExporter) -> None:
 
 
 def export_package(
-    pipeline: CompiledPipeline,
+    pipeline: CompiledPipeline | CompiledPolicy,
     path: Path,
     metadata: dict[str, Any] | None = None,
     lightning_module: Any | None = None,
@@ -508,7 +612,7 @@ def export_package(
     include_modules: list[str] | None = None,
     source_metadata: dict[str, Any] | None = None,
 ) -> Path:
-    """Export a trained pipeline as a rich package-backed artifact directory.
+    """Export a pipeline or complete deployable policy as a package directory.
 
     Args:
         pipeline: Compiled pipeline to export.
@@ -524,15 +628,47 @@ def export_package(
 
     Returns:
         Path to the created export directory.
+
+    Raises:
+        ValueError: If RL export supplies only a neural pipeline, not its complete policy.
+            Also raised if a policy's source physical-frame counter is invalid.
     """
+    policy = pipeline if isinstance(pipeline, CompiledPolicy) else None
+    pipeline = policy.pipeline if policy is not None else cast(CompiledPipeline, pipeline)
+    config = pipeline.resolved_config
+    if isinstance(config.training, ReinforcementLearningSpec) and policy is None:
+        raise ValueError("RL export requires the complete CompiledPolicy; use result.policy")
     path = Path(path)
     path.mkdir(parents=True, exist_ok=True)
 
     metadata = {**(metadata or {}), **(source_metadata or {})}
+    if policy is not None:
+        assert config.interaction is not None and config.policy is not None
+        contract = policy.contract.model_dump(mode="json")
+        metadata.update(
+            {
+                "artifact_kind": "policy",
+                "interaction_contract": contract,
+                "interaction_contract_hash": hashlib.sha256(
+                    json.dumps(contract, sort_keys=True, separators=(",", ":")).encode()
+                ).hexdigest(),
+                "environment": lower_component(config.interaction.environment),
+                "action_adapter": lower_component(config.policy.action_adapter)
+                if config.policy.action_adapter is not None
+                else None,
+                "pipeline_state_prefix": "pipeline.",
+                "x_keys": list(policy.contract.groups or policy.contract.observations),
+                "y_keys": [],
+                "action_keys": list(policy.contract.groups or policy.contract.actions),
+            }
+        )
+        if isinstance(config.training, ReinforcementLearningSpec):
+            metadata["training_mode"] = config.training.mode
+            metadata["algorithm"] = lower_component(config.training.algorithm)
 
     # Gather training state from the live trainer when available.
     training_state: dict[str, Any] = {}
-    if trainer is not None:
+    if trainer is not None and policy is None:
         optimizers = trainer.optimizers if hasattr(trainer, "optimizers") else []
         lr_schedulers = (
             trainer.lr_scheduler_configs if hasattr(trainer, "lr_scheduler_configs") else []
@@ -555,11 +691,38 @@ def export_package(
         checkpoint_raw = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
         if isinstance(checkpoint_raw, dict):
             metadata["checkpoint"] = _load_checkpoint_metadata(checkpoint_path)
-            training_state = _training_state_from_checkpoint(checkpoint_raw)
+            if policy is None:
+                training_state = _training_state_from_checkpoint(checkpoint_raw)
         # Preserve the original checkpoint as a sidecar.
         import shutil
 
-        shutil.copy2(checkpoint_path, path / CHECKPOINT_SIDECAR)
+        if policy is None:
+            shutil.copy2(checkpoint_path, path / CHECKPOINT_SIDECAR)
+
+    if policy is not None:
+        frames = None
+        if isinstance(config.training, ReinforcementLearningSpec):
+            if checkpoint_path is not None:
+                if isinstance(checkpoint_raw, dict):
+                    frames = checkpoint_raw.get("state_dict", {}).get("frames")
+            else:
+                owner = lightning_module
+                if owner is None and trainer is not None:
+                    owner = getattr(trainer, "lightning_module", None)
+                if getattr(owner, "policy", None) is policy:
+                    frames = getattr(owner, "frames", None)
+            if isinstance(frames, torch.Tensor):
+                if frames.ndim != 0:
+                    raise ValueError("Source physical training frames must be a scalar counter")
+                frames = frames.item()
+            if frames is not None and (type(frames) is not int or frames < 0):
+                raise ValueError("Source physical training frames must be a nonnegative integer")
+        metadata["training_frames"] = frames
+        if checkpoint_path is not None:
+            with checkpoint_path.open("rb") as source:
+                metadata.setdefault("checkpoint", {"source": str(checkpoint_path)})["sha256"] = (
+                    hashlib.file_digest(source, "sha256").hexdigest()
+                )
 
     meta = _artifact_metadata(pipeline, metadata=metadata, training_state=training_state)
 
@@ -567,6 +730,14 @@ def export_package(
         {k: v.detach().cpu() for k, v in pipeline.state_dict().items()}, path / "state_dict.pt"
     )
     pipeline.resolved_config.save(path / "resolved_config.yaml")
+    if policy is not None:
+        torch.save(policy.action_adapter.state_dict(), path / "action_adapter_state.pt")
+        meta["policy_files_sha256"] = {}
+        for filename in ("state_dict.pt", "action_adapter_state.pt"):
+            with (path / filename).open("rb") as source:
+                meta["policy_files_sha256"][filename] = hashlib.file_digest(
+                    source, "sha256"
+                ).hexdigest()
     if training_state:
         torch.save(training_state, path / "training_state.pt")
 
@@ -575,7 +746,9 @@ def export_package(
     # dependency graph; we then read the actual externed modules and write the
     # primary payload with the dependency manifest included.
     with PackageExporter(str(package_path)) as exporter:
-        custom_packages = _apply_package_policy(exporter, pipeline, include_modules=include_modules)
+        custom_packages = _apply_package_policy(
+            exporter, policy if policy is not None else pipeline, include_modules=include_modules
+        )
 
         legacy_pipeline = copy.deepcopy(pipeline).cpu().eval()
         exporter.save_pickle(
@@ -583,11 +756,16 @@ def export_package(
             LEGACY_PACKAGE_PICKLE_NAME,
             legacy_pipeline,
         )
+        if policy is not None:
+            exporter.save_pickle("nexuml_export", "policy.pkl", copy.deepcopy(policy).cpu().eval())
 
         external_deps, requirements_lines = _collect_external_dependencies(exporter)
         meta["external_dependencies"] = external_deps
+        if policy is not None:
+            # Preserve the archive's complete source manifest, not its dormant install needs.
+            _, requirements_lines = _collect_external_dependencies(exporter, inference_only=True)
 
-        payload = _package_payload(pipeline, meta, training_state=training_state)
+        payload = _package_payload(pipeline, meta, training_state=training_state, policy=policy)
         exporter.save_pickle(PACKAGE_PICKLE_PACKAGE, PACKAGE_PICKLE_NAME, payload)
 
         _validate_package_policy(exporter, custom_packages)
@@ -600,7 +778,7 @@ def export_package(
 
     # Generate or preserve a Lightning checkpoint sidecar.
     sidecar_path = path / CHECKPOINT_SIDECAR
-    if not sidecar_path.exists():
+    if policy is None and not sidecar_path.exists():
         if checkpoint_path is not None:
             # Already copied above.
             pass
@@ -659,7 +837,7 @@ def _load_packaged_payload(package_path: Path) -> dict[str, Any]:
 
 
 def _infer_io_keys(config: ResolvedConfig) -> tuple[list[str], list[str]]:
-    x_keys = list(config.data.input_shapes.keys()) or [config.data.feature_key]
+    x_keys = list(compile_context_from_data(config.data).input_sizes)
 
     y_candidates: list[str] = []
     y_candidates.extend([target.key for target in config.data.targets])
@@ -746,6 +924,16 @@ def _load_artifact(
     # Strip it so the keys match the exported-package convention.
     if isinstance(raw, dict) and "state_dict" in raw and "epoch" in raw:
         inner = raw["state_dict"]
+        if any(k.startswith("policy.pipeline.") for k in inner):
+            return (
+                {
+                    k.removeprefix("policy.pipeline."): v
+                    for k, v in inner.items()
+                    if k.startswith("policy.pipeline.")
+                },
+                None,
+                {},
+            )
         prefix = "pipeline."
         state_dict = {
             (k[len(prefix) :] if k.startswith(prefix) else k): v for k, v in inner.items()
@@ -827,7 +1015,9 @@ def load_weights(
     return report
 
 
-def load_package(path: Path) -> tuple[CompiledPipeline, ResolvedConfig, dict[str, Any]]:
+def load_package(
+    path: Path,
+) -> tuple[CompiledPipeline | CompiledPolicy, ResolvedConfig, dict[str, Any]]:
     """Reload an exported pipeline into the current codebase.
 
     Returns:
@@ -849,12 +1039,38 @@ def load_package(path: Path) -> tuple[CompiledPipeline, ResolvedConfig, dict[str
         )
 
     scenario = config.to_scenario()
-    pipeline = compile_pipeline(scenario)
+    policy = None
+    if metadata.get("artifact_kind") == "policy":
+        assert scenario.policy is not None
+        contract = InteractionContract.model_validate(metadata["interaction_contract"])
+        pipeline = (
+            compile_spec(
+                scenario.pipeline,
+                context=compile_context_from_interaction(contract),
+                resolved_config=config,
+            )
+            if isinstance(scenario.training, ReinforcementLearningSpec)
+            else compile_pipeline(scenario)
+        )
+        policy = CompiledPolicy.from_pipeline(pipeline, contract)
+        adapter_state = Path(path) / "action_adapter_state.pt"
+        if Path(path).is_dir() and adapter_state.exists():
+            policy.action_adapter.load_state_dict(
+                torch.load(adapter_state, weights_only=True, map_location="cpu")
+            )
+        else:
+            package_path = Path(path) / PACKAGE_FILENAME if Path(path).is_dir() else Path(path)
+            packaged_policy = _load_packaged_payload(package_path)["policy"]
+            policy.action_adapter.load_state_dict(packaged_policy.action_adapter.state_dict())
+    else:
+        pipeline = compile_pipeline(scenario)
     pipeline.load_state_dict(state_dict, strict=False)
-    return pipeline, config, metadata
+    return policy if policy is not None else pipeline, config, metadata
 
 
-def load_inference_package(path: Path) -> tuple[CompiledPipeline, ResolvedConfig, dict[str, Any]]:
+def load_inference_package(
+    path: Path,
+) -> tuple[CompiledPipeline | CompiledPolicy, ResolvedConfig, dict[str, Any]]:
     """Load the packaged pipeline object directly from the torch.package artifact.
 
     Returns:
@@ -869,9 +1085,12 @@ def load_inference_package(path: Path) -> tuple[CompiledPipeline, ResolvedConfig
         raise FileNotFoundError(f"No package artifact found at {package_path}")
 
     payload = _load_packaged_payload(package_path)
-    pipeline = payload["pipeline"]
+    pipeline = payload.get("policy", payload["pipeline"])
     config = _normalize_config(payload["resolved_config"])
-    pipeline.resolved_config = config
+    if "policy" in payload:
+        pipeline.pipeline.resolved_config = config
+    else:
+        pipeline.resolved_config = config
     metadata = dict(payload.get("metadata", {}))
     assert config is not None, "Config must not be None for inference package"
     return pipeline, config, metadata
@@ -894,6 +1113,27 @@ def load_package_for_training(
     scenario = scenario or (config.to_scenario() if config is not None else None)
     if scenario is None:
         raise ValueError("A scenario must be provided when the artifact has no packaged config.")
+
+    if isinstance(scenario.training, ReinforcementLearningSpec) or (
+        scenario.interaction is not None and scenario.policy is not None
+    ):
+        from nexuml.training.lightning import create_runtime_artifacts
+
+        runtime = create_runtime_artifacts(scenario, apply_selective_checkpoint=False)
+        report = load_weights(runtime.pipeline, path, checkpoint=checkpoint)
+        if metadata.get("artifact_kind") == "policy":
+            loaded, _, _ = load_package(path)
+            assert isinstance(loaded, CompiledPolicy) and runtime.policy is not None
+            runtime.policy.action_adapter.load_state_dict(loaded.action_adapter.state_dict())
+        assert runtime.lightning_module.scenario is not None
+        return TrainingReload(
+            runtime.pipeline,
+            runtime.lightning_module,
+            runtime.lightning_module.scenario,
+            metadata,
+            report,
+            runtime.policy,
+        )
 
     pipeline = compile_pipeline(scenario)
     report = load_weights(
@@ -954,7 +1194,7 @@ class _OnnxWrapper(torch.nn.Module):
         self.input_key = input_key
         self.output_key = output_key
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:  # ty: ignore[invalid-mutable-override]
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         td = TensorDict({self.input_key: x}, batch_size=[x.shape[0]])
         x_out, _ = self.pipeline(td, None)
         return x_out[self.output_key]
@@ -988,8 +1228,14 @@ def export_onnx(
     if source is None and config.data.datasets:
         source = config.data.datasets[0].source
     source_shape = getattr(source, "feature_shape", (128,))
-    input_shape = tuple(config.data.input_shapes.get(input_key) or source_shape)
-    dummy = torch.randn(1, *input_shape)
+    context = compile_context_from_data(config.data)
+    input_shape = context.input_sizes.get(input_key, tuple(source_shape))
+    leaf = context.input_metadata.get(input_key)
+    dummy = (
+        torch.zeros(1, *input_shape, dtype=getattr(torch, leaf["dtype"]))
+        if leaf is not None
+        else torch.randn(1, *input_shape)
+    )
     wrapper = _OnnxWrapper(pipeline, input_key=input_key, output_key=output_key)
     torch.onnx.export(
         wrapper,
@@ -1004,7 +1250,7 @@ def export_onnx(
 
 
 def infer(
-    pipeline: CompiledPipeline,
+    pipeline: CompiledPipeline | CompiledPolicy,
     x: TensorDict,
     y: TensorDict | None = None,
 ) -> TensorDict:
@@ -1015,5 +1261,7 @@ def infer(
     """
     pipeline.eval()
     with torch.no_grad():
+        if isinstance(pipeline, CompiledPolicy) or hasattr(pipeline, "action_adapter"):
+            return pipeline(x)
         x_out, _ = pipeline(x, y)
     return x_out

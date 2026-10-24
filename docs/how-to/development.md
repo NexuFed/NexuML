@@ -41,6 +41,30 @@ Gated tests are skipped automatically when their prerequisites are missing:
 - `requires_data` — set `NEXUML_RUN_DATA_TESTS=1` and a valid `NEXUML_DATA_ROOT`.
 - `requires_gpu` — skipped when no CUDA device is available.
 - `requires_optional(name)` — skipped when the optional dependency is missing.
+- `requires_simulator` — opt in with `NEXUML_RUN_SIMULATOR_TESTS=1`.
+- `requires_system` — opt in with `NEXUML_RUN_SYSTEM_TESTS=1` and configured middleware/server.
+- `requires_hardware` — manual only, requires `NEXUML_RUN_HARDWARE_TESTS=1` and operator review.
+
+The CI `rl-simulators` workflow-dispatch input runs optional visual/MuJoCo CPU smokes
+and real headless GIF/MP4 evaluation checks. It installs the scoped library `video,mujoco`
+extras; default CI does not install these simulator/media extras. No tracking server,
+GPU renderer, simulator download, or stochastic reward threshold is required.
+ROS/Gazebo, CARLA and hardware are never installed or started by normal CI.
+See [Reinforcement learning](reinforcement-learning.md) for exact system prerequisites.
+
+```bash
+uv pip install -e ".[dev,reinforcement]" -e "./library[video,mujoco]"
+NEXUML_RUN_SIMULATOR_TESTS=1 SDL_VIDEODRIVER=dummy CUDA_VISIBLE_DEVICES='' \
+  OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 python -m pytest \
+  tests/core/test_simulation_scenarios.py tests/core/test_rl_evaluation.py \
+  tests/tracking/test_evaluation_media.py -q
+gh workflow run ci.yml --ref <branch> -f rl-simulators=true
+```
+
+Optional local-MLflow tests use a temporary local store and skip when MLflow is absent;
+install `nexuml[tracking]` to run them. Ordinary CPU/configuration tests use fake RGB
+frames and do not require graphics or codecs. See the test markers above for opt-in
+versus missing-prerequisite skips.
 
 ## Type checking
 

@@ -2,6 +2,15 @@ name: CI
 
 on:
   workflow_dispatch:
+    inputs:
+      rl-simulators:
+        description: Run optional visual/MuJoCo and GIF/MP4 RL integration smokes
+        type: boolean
+        default: false
+      isaaclab:
+        description: Run Isaac GPU acceptance using the pre-cached NEXUML_ISAAC_IMAGE
+        type: boolean
+        default: false
   push:
     branches: ["**"]
   # Institute runners must never execute fork pull_request code. Maintainers review
@@ -68,6 +77,10 @@ jobs:
 
   test:
     runs-on: ika-runner-gpu
+    env:
+      NEXUML_RUN_SIMULATOR_TESTS: "0"
+      NEXUML_RUN_SYSTEM_TESTS: "0"
+      NEXUML_RUN_HARDWARE_TESTS: "0"
     strategy:
       fail-fast: false
       matrix:
@@ -184,6 +197,61 @@ jobs:
             dist/nexuml-library/*.tar.gz
           if-no-files-found: error
 
+  rl-simulators:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.rl-simulators }}
+    runs-on: ika-runner
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v10.0.1
+        with:
+          version: "latest"
+      - name: Install simulator prerequisites
+        run: |
+          uv venv --python 3.12
+          source .venv/bin/activate
+          uv pip install -e ".[dev,reinforcement,tracking]" -e "./library[video,mujoco]"
+          echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
+      - name: Run CPU simulator integrations
+        env:
+          NEXUML_RUN_SIMULATOR_TESTS: "1"
+          SDL_VIDEODRIVER: dummy
+          CUDA_VISIBLE_DEVICES: ""
+        run: >-
+          python -m pytest tests/core/test_simulation_scenarios.py
+          tests/core/test_rl_evaluation.py tests/tracking/test_evaluation_media.py -q
+
+  isaaclab:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.isaaclab }}
+    runs-on: ika-runner-gpu
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+      - name: Run prepared Isaac profile without installs or image pulls
+        env:
+          NEXUML_ISAAC_IMAGE: ${{ vars.NEXUML_ISAAC_IMAGE }}
+        run: |
+          test -n "$NEXUML_ISAAC_IMAGE"
+          docker image inspect "$NEXUML_ISAAC_IMAGE" >/dev/null
+          install -d -m 0777 "$RUNNER_TEMP/isaaclab-output"
+          docker run --rm --gpus '"device=0"' --cpus 4 --memory 16g --shm-size 2g \
+            --cap-drop ALL --security-opt no-new-privileges \
+            -e NVIDIA_DRIVER_CAPABILITIES=compute,utility,graphics \
+            -e ACCEPT_EULA=Y -e OMNI_KIT_ACCEPT_EULA=YES \
+            -e NEXUML_RUN_SIMULATOR_TESTS=1 \
+            -e NEXUML_RUN_SYSTEM_TESTS=0 -e NEXUML_RUN_HARDWARE_TESTS=0 \
+            --mount "type=bind,source=$GITHUB_WORKSPACE,target=/workspace/nexuml,readonly" \
+            --mount "type=bind,source=$RUNNER_TEMP/isaaclab-output,target=/workspace/output" \
+            --entrypoint /bin/bash "$NEXUML_ISAAC_IMAGE" \
+            /workspace/nexuml/scripts/isaaclab/run.sh -m pytest \
+            tests/core/test_isaaclab_integration.py -q \
+            --basetemp=/workspace/output/pytest -o cache_dir=/workspace/output/pytest-cache
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: isaaclab-acceptance
+          path: ${{ runner.temp }}/isaaclab-output
+          if-no-files-found: warn
+          retention-days: 7
   studio-static:
     name: Studio static
     runs-on: ika-runner
@@ -357,6 +425,8 @@ jobs:
       - studio-static
       - studio-build
       - studio-package
+      - rl-simulators
+      - isaaclab
     if: ${{ always() }}
     runs-on: ika-runner
 
@@ -369,6 +439,10 @@ jobs:
           STUDIO_STATIC_RESULT: ${{ needs.studio-static.result }}
           STUDIO_BUILD_RESULT: ${{ needs.studio-build.result }}
           STUDIO_PACKAGE_RESULT: ${{ needs.studio-package.result }}
+          RL_SIMULATORS_RESULT: ${{ needs.rl-simulators.result }}
+          ISAACLAB_RESULT: ${{ needs.isaaclab.result }}
+          RL_SIMULATORS_REQUESTED: ${{ github.event_name == 'workflow_dispatch' && inputs.rl-simulators }}
+          ISAACLAB_REQUESTED: ${{ github.event_name == 'workflow_dispatch' && inputs.isaaclab }}
         run: |
           echo "static: $STATIC_RESULT"
           echo "test:   $TEST_RESULT"
@@ -387,6 +461,8 @@ jobs:
             echo "| Studio static | $STUDIO_STATIC_RESULT |"
             echo "| Studio build | $STUDIO_BUILD_RESULT |"
             echo "| Studio packages | $STUDIO_PACKAGE_RESULT |"
+            echo "| Optional RL simulators (requested: $RL_SIMULATORS_REQUESTED) | $RL_SIMULATORS_RESULT |"
+            echo "| Optional Isaac Lab (requested: $ISAACLAB_REQUESTED) | $ISAACLAB_RESULT |"
             echo ""
             echo "Linux project/tool verified here; macOS and Windows are disabled, not verified."
           } >> "$GITHUB_STEP_SUMMARY"
@@ -400,3 +476,11 @@ jobs:
             echo "One or more required CI jobs failed."
             exit 1
           fi
+          case "$RL_SIMULATORS_REQUESTED:$RL_SIMULATORS_RESULT" in
+            true:success|false:success|false:skipped) ;;
+            *) echo "RL simulator checks failed or requested checks were skipped"; exit 1 ;;
+          esac
+          case "$ISAACLAB_REQUESTED:$ISAACLAB_RESULT" in
+            true:success|false:success|false:skipped) ;;
+            *) echo "Isaac Lab checks failed or requested checks were skipped"; exit 1 ;;
+          esac

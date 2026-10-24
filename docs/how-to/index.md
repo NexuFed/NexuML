@@ -15,6 +15,8 @@ Guides answer a specific "how do I ...?" question. They are not intended to be r
 ## Training and evaluation
 
 - [Train a model](train.md) — run the Lightning lifecycle and apply common overrides.
+- [Reinforcement learning](reinforcement-learning.md) — finite rollouts, complete policies, simulation and ROS boundaries.
+- [State-only Isaac Cartpole](isaac-cartpole.md) — declarative GPU training, private viewing and exported-policy evaluation.
 - [Evaluate a model](evaluate.md) — pipeline metrics, post-train layers, and evaluation algorithms.
 - [Checkpoints](checkpoints.md) — distinguish Lightning resume from selective weight loading.
 - [Automatic batch size](auto-batch-size.md) — probe CUDA batch sizes at runtime.
@@ -22,6 +24,7 @@ Guides answer a specific "how do I ...?" question. They are not intended to be r
 ## Data
 
 - [Choose a data loader](data-loading.md) — Torch, DALI, and tensor-shard loading.
+- [Local LeRobot demonstrations](lerobot-data.md) — offline state/video frames and explicit episode splits.
 - [Export a dataset](export-dataset.md) — persist raw or partially processed dataset views for reuse.
 
 ## Experimentation

@@ -1,0 +1,42 @@
+# Native spectator construction boundary
+
+The Library spectator adapter reuses Isaac/Newton geometry and Viser transport.
+It bypasses Isaac's constructor that temporarily reassigns the global server
+class. A local native subclass supplies the private server instead; no vendor
+files or process-global classes/functions are replaced.
+
+## Restricted construction
+
+- Exact installed Lab/Sim/Newton/Viser versions, source identities and bundled,
+  noneditable frontend are checked before opening a listener.
+- Bind only to `127.0.0.1` at the requested explicit port, normally 8080. Native
+  public sharing, recording, streaming and port overrides are rejected. A port
+  conflict fails before construction; reassignment fails the endpoint check.
+- Construction requires the POSIX main thread and unowned `SIGALRM`. A temporary
+  ten-second timer bounds synchronous constructor readiness; prior signal/timer
+  state is restored, including cancellation during context entry.
+- Partial viewer/server ownership is retained before constructors can fail.
+  Shutdown checks the server and callback threads within one fifteen-second
+  budget, reserving the pinned transport's synchronous one-second join. Failure
+  to stop is an explicit job failure, never successful cleanup.
+
+The bare constructor probe permits display pause. Integrated jobs add only
+display environment selection, markers, cached plots and browser-camera controls.
+Final native pause/reset polls and force handoffs deny simulation mutation even
+if stale native flags are set. Camera/display state never authorizes physics,
+task configuration, timing/budget or actor changes.
+
+## Scope of the gate
+
+Run the bounded constructor/dispatch/failure tests explicitly in the prepared
+environment:
+
+```bash
+CUDA_VISIBLE_DEVICES='' NEXUML_RUN_SYSTEM_TESTS=1 OMP_NUM_THREADS=1 \
+  .venv/bin/python -m pytest tests/core/test_isaaclab_viser.py -q
+```
+
+These are constructor-safety checks, not training, replay, sensor or browser
+acceptance. Job activation, environment selection, markers, supported plots and
+actual training/replay browsers have separate required integration gates; see
+[the viewing guide](../how-to/isaac-read-only-viser.md).

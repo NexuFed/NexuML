@@ -350,7 +350,7 @@ def build_pipeline_mermaid_diagram(
 
         keys_in: list[str] = []
         if hasattr(consumer_layer, "keys_in"):
-            raw_keys_in = getattr(consumer_layer, "keys_in")
+            raw_keys_in: list[str] | dict[str, str] = getattr(consumer_layer, "keys_in")
             if isinstance(raw_keys_in, dict):
                 keys_in = list(raw_keys_in.values())
             else:
@@ -393,10 +393,10 @@ def build_pipeline_mermaid_diagram(
             is_consumed = False
             for _, _, layer in all_layers:
                 if hasattr(layer, "keys_in"):
-                    raw_keys_in = getattr(layer, "keys_in")
+                    raw_keys_in: list[str] | dict[str, str] = getattr(layer, "keys_in")
                     if isinstance(raw_keys_in, dict):
                         raw_keys_in = list(raw_keys_in.values())
-                    if key in cast(list[str], raw_keys_in):
+                    if key in raw_keys_in:
                         is_consumed = True
                         break
 

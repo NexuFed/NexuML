@@ -138,9 +138,11 @@ def test_latent_consumes_context_feature_and_label_keys(build):
     runtime.fit_batch(x, y)
     runtime.eval_batch(x, y)
 
+    embedding = x["embedding"]
+    assert isinstance(embedding, torch.Tensor)
     for storage in (runtime._train_storage, runtime._test_storage):
         stored = storage.get()
-        assert torch.equal(stored["feature"], x["embedding"])
+        assert torch.equal(stored["feature"], embedding)
         assert torch.equal(stored["label"], y["target"].float())
 
 
@@ -197,8 +199,11 @@ def test_anomaly_visualizer_consumes_score_and_context_keys(build):
 
     runtime.eval_batch(x, y)
 
-    assert torch.equal(runtime._scores[0], x["score"])
-    assert torch.equal(runtime._features[0], x["embedding"])
+    score, embedding = x["score"], x["embedding"]
+    assert isinstance(score, torch.Tensor)
+    assert isinstance(embedding, torch.Tensor)
+    assert torch.equal(runtime._scores[0], score)
+    assert torch.equal(runtime._features[0], embedding)
     assert torch.equal(runtime._labels[0], y["target"].float())
 
 

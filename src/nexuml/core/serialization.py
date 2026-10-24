@@ -23,7 +23,7 @@ def lower_component(component: ComponentDefinition) -> dict[str, Any]:
     return {
         "type": entry.name,
         "version": entry.version,
-        "params": component.model_dump(mode="json"),
+        "params": lower_model(component),
     }
 
 
@@ -45,7 +45,7 @@ def restore_component(*, kind: str, value: Mapping[str, Any]) -> ComponentDefini
     if not isinstance(params, Mapping):
         raise TypeError("serialized component params must be a mapping")
     definition_type = get_component_registry().get_type(kind, name, version)
-    return definition_type.model_validate(params)
+    return definition_type.model_validate(restore_model_data(params, definition_type))
 
 
 def lower_model(model: BaseModel) -> dict[str, Any]:
@@ -54,7 +54,13 @@ def lower_model(model: BaseModel) -> dict[str, Any]:
     Returns:
         Portable plain model data.
     """
-    return {name: _lower_value(getattr(model, name)) for name in type(model).model_fields}
+    lowered = {}
+    for name, field in type(model).model_fields.items():
+        value = getattr(model, name)
+        exclude_if = getattr(field, "exclude_if", None)
+        if exclude_if is None or not exclude_if(value):
+            lowered[name] = _lower_value(value)
+    return lowered
 
 
 def _lower_value(value: Any) -> Any:
@@ -148,6 +154,13 @@ def _restore_value(value: Any, annotation: Any) -> Any:
 
     nested_model = _model_subclass(annotation, BaseModel)
     if nested_model is not None and isinstance(value, Mapping):
+        if origin in (Union, UnionType) and "mode" in value:
+            for option in args:
+                if isinstance(option, type) and issubclass(option, BaseModel):
+                    mode = option.model_fields.get("mode")
+                    if mode is not None and mode.default == value["mode"]:
+                        nested_model = option
+                        break
         return restore_model_data(value, nested_model)
     return value
 
