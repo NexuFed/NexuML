@@ -45,6 +45,9 @@ jobs:
           python skills/tests/check_skills.py
           python skills/tests/check_runtime.py
 
+      - name: Verify shared Python and Studio release versions
+        run: python scripts/check-release-versions.py
+
       - name: Lint
         id: lint
         continue-on-error: true

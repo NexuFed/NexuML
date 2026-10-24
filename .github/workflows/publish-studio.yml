@@ -1,8 +1,11 @@
 name: Publish Studio
 
 on:
+  push:
+    tags: ["v*"]
   release:
     types: [published]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -13,7 +16,7 @@ concurrency:
 
 jobs:
   publish:
-    if: startsWith(github.event.release.tag_name, 'studio-v')
+    if: (github.event_name == 'push' && !github.event.deleted) || github.event_name == 'workflow_dispatch' || startsWith(github.event.release.tag_name, 'v')
     # npm Trusted Publishing does not support self-hosted runners. Publication only;
     # all builds and tests remain on ika-runner. Never rebuild the release artifact.
     runs-on: ubuntu-latest
@@ -36,19 +39,23 @@ jobs:
           registry-url: https://registry.npmjs.org
           package-manager-cache: false
 
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
       - name: Validate tag and protected release revision
+        id: version
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_TAG: ${{ github.ref_name }}
         run: |
-          node --input-type=module - <<'JS'
-          import { readFileSync } from 'node:fs';
-          import assert from 'node:assert/strict';
-          const pkg = JSON.parse(readFileSync('studio/package.json'));
-          assert.match(process.env.RELEASE_TAG, /^studio-v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/);
-          assert.equal(process.env.RELEASE_TAG, `studio-v${pkg.version}`);
-          assert.equal(pkg.name, '@nexufed/nexuml-studio');
-          JS
+          args=()
+          if [ "$GITHUB_EVENT_NAME" != workflow_dispatch ]; then
+            args+=(--tag "$RELEASE_TAG")
+          fi
+          version=$(python scripts/check-release-versions.py "${args[@]}")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          git fetch --no-tags origin main:refs/remotes/origin/main
           git merge-base --is-ancestor HEAD origin/main
           test "$(gh api "repos/$GITHUB_REPOSITORY/branches/main" --jq .protected)" = true
           test "$(gh api "repos/$GITHUB_REPOSITORY/environments/npm" \
@@ -88,7 +95,7 @@ jobs:
       - name: Verify tarball integrity and publication metadata
         id: package
         env:
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
         run: |
           node --input-type=module - <<'JS'
           import { readFileSync, appendFileSync } from 'node:fs';
@@ -110,14 +117,32 @@ jobs:
           assert.equal(pkg.repository.url, 'git+https://github.com/NexuFed/NexuML.git');
           assert.equal(pkg.publishConfig.access, 'public');
           assert.equal(pkg.publishConfig.provenance, true);
-          assert.equal(process.env.RELEASE_TAG, `studio-v${pkg.version}`);
+          assert.equal(process.env.RELEASE_VERSION, pkg.version);
           appendFileSync(process.env.GITHUB_OUTPUT, `tarball=${tarball}\n`);
           JS
 
       - name: Install supported npm publishing CLI
-        run: npm install --global npm@11
+        # OIDC dist-tag operations require npm >=11.21.0 on the 11.x line.
+        run: npm install --global npm@11.21.0
 
-      - name: Publish the tested tarball with OIDC and provenance
-        run: npm publish "$TARBALL" --ignore-scripts --access public --provenance
+      - name: Publish the tested tarball to next with OIDC and provenance
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        run: npm publish "$TARBALL" --tag next --ignore-scripts --access public --provenance
         env:
           TARBALL: ${{ steps.package.outputs.tarball }}
+
+      - name: Promote the verified registry package to latest
+        if: github.event_name == 'release'
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          package="@nexufed/nexuml-studio@$RELEASE_VERSION"
+          npm view "$package" dist.integrity --json > "$RUNNER_TEMP/studio-registry-integrity.json"
+          node --input-type=module - <<'JS'
+          import { readFileSync } from 'node:fs';
+          import assert from 'node:assert/strict';
+          const [pack] = JSON.parse(readFileSync('release-studio/pack.json'));
+          const integrity = JSON.parse(readFileSync(`${process.env.RUNNER_TEMP}/studio-registry-integrity.json`));
+          assert.equal(integrity, pack.integrity, 'Publish and test this exact CI tarball on next before promotion.');
+          JS
+          npm dist-tag add "$package" latest

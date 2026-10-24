@@ -101,7 +101,7 @@ Release validation SHALL test the packaged application, rather than only source-
 - **WHEN** NexuML is installed without the API extra
 - **THEN** existing nonserver CLI operations remain available and do not require frontend or FastAPI imports
 
-### Requirement: Immutable independent npm release
+### Requirement: Immutable coordinated npm release
 
 CI SHALL build the Studio npm tarball once, upload it as an immutable artifact and
 test that exact tarball against independently installed Python wheel environments.
@@ -109,7 +109,26 @@ The required gate SHALL depend on all mandatory static, unit, package and instal
 workflow checks and reject failures, skips and cancellations. Untrusted fork code
 SHALL NOT execute on persistent institute runners.
 
-#### Scenario: Studio release is published
-- **WHEN** a matching `studio-v<package version>` GitHub release is approved
-- **THEN** publication verifies protected-main membership, successful CI for that exact commit, artifact identity/integrity and metadata, then publishes the tested tarball without rebuilding via protected-environment npm Trusted Publishing and provenance
-- **AND** no Python publication runs for a Studio tag, and Python `v*` releases do not publish Studio
+#### Scenario: Shared candidate tag is pushed
+- **WHEN** a matching shared `vX.Y.Z` tag is pushed for a validated main commit
+- **THEN** publication verifies protected-main membership, successful CI for that exact commit, artifact identity/integrity and metadata, then publishes the tested tarball to npm next without rebuilding via protected-environment npm Trusted Publishing and provenance
+- **AND** latest remains unchanged while the matching Python packages are tested through TestPyPI
+
+#### Scenario: Shared release is published
+- **WHEN** the matching shared GitHub Release is published and npm promotion is approved
+- **THEN** the workflow revalidates the exact-commit CI artifact and compares the registry version's integrity to the tested tarball
+- **AND** only that matching existing version is promoted to latest, without rebuilding or uploading another package
+- **AND** missing or mismatched registry packages block promotion
+
+#### Scenario: Manual candidate publication
+- **WHEN** a maintainer dispatches Publish Studio for a validated integrated commit
+- **THEN** the same artifact and version checks apply and publication targets next, not latest
+
+### Requirement: Shared Python and Studio versions
+
+Both Python distributions and Studio SHALL use the same stable package version and
+shared `vX.Y.Z` tag. CI SHALL reject version drift, including Studio lock metadata.
+
+#### Scenario: Package versions diverge
+- **WHEN** either Python distribution, Studio package, or Studio lock root declares a different version
+- **THEN** CI and Studio publication fail before any registry write

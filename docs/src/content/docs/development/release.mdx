@@ -9,7 +9,9 @@ environments, and successful exact-commit CI. This is an operator procedure, not
 to run while contributing documentation.
 
 Python `nexuml`/`nexuml-library` publish through `.github/workflows/release.yml`.
-Studio `@nexufed/nexuml-studio` publishes independently through `publish-studio.yml`.
+Studio `@nexufed/nexuml-studio` uses `publish-studio.yml` with the same shared `vX.Y.Z`
+tags and GitHub Release events as Python. Tag pushes publish npm `next`; GitHub
+Release publication promotes that exact version to `latest` without another upload.
 Both consume immutable artifacts from successful CI on the **exact release commit**.
 Never add publishing tokens to repository secrets.
 
@@ -64,18 +66,19 @@ identity rather than assuming dispatch means publication.
 
 Validated distributions are retained for seven days; rerun CI on the exact candidate if
 expired. Release never rebuilds files. TestPyPI uploads are immutable: bump both package
-versions before retrying a candidate already uploaded.
+versions (including Studio and its package lock) before retrying a candidate already uploaded.
 
 ## Production Python release
 
-1. Confirm both projects declare the intended version and TestPyPI passed.
+1. Confirm both Python projects and Studio declare the intended version, TestPyPI passed,
+   and the matching Studio package on npm `next` passed release testing.
 2. Use the same stable `v<project version>` tag already tested through TestPyPI.
 3. Publish its GitHub release to trigger production; approve `pypi`, then `pypi-library`.
 
 The workflow rejects a tag differing from either package version, publishes validated core
 then library artifacts, and attaches those files to the existing GitHub release.
 On partial upload failure, fix forward with a new patch release; never reuse an already
-published version. `studio-v*` skips this Python pipeline.
+published version. Separate `studio-v*` release tags are no longer supported.
 
 ## Studio: one-time owner configuration
 
@@ -84,10 +87,12 @@ published version. `studio-v*` skips this Python pipeline.
    the exact validated tarball. No placeholder/token workaround; implementation alone
    must never publish a package.
 2. Protect GitHub environment **npm** with required reviewers/no self-review, restrict
-   deployment to protected Studio tags, and protect main, `studio-v*`, and workflow edits.
+   deployment to protected shared `v*` tags (and main for manual dispatch), and protect
+   main, `v*`, and workflow edits.
 3. Add npm GitHub Actions Trusted Publisher: owner **NexuFed**, repo **NexuML**, workflow
-   **publish-studio.yml**, environment **npm**. Enable **Allow npm publish**; new publishers
-   can default to stage-only. Match case/filename exactly.
+   **publish-studio.yml**, environment **npm**. Enable **Allow npm publish** and
+   **Allow npm dist-tag**; new publishers can default to stage-only, and dist-tag
+   permission is separate. Match case/filename exactly.
 4. Complete the first authorized publish within npm's current setup window or recreate an
    expired publisher. Then require two-factor authentication and disallow tokens in npm access.
 
@@ -100,17 +105,29 @@ Python GPU suites use separately approved `ika-runner-gpu`.
 
 ## Studio release
 
-1. Release a compatible backend first. Launcher runtime/interface compatibility is enforced;
-   package versions are independent. Operators explicitly install API extra/custom libraries.
+1. Keep both Python distribution versions, `studio/package.json`, and both root version
+   fields in `studio/package-lock.json` identical. CI enforces this through
+   `scripts/check-release-versions.py`. Launcher runtime/interface compatibility remains
+   enforced; matching version numbers alone are not a compatibility test. Operators
+   explicitly install API extra/custom libraries.
 2. Merge the reviewed candidate to protected main, wait for complete required CI on that
    commit, and verify unexpired `studio-distribution`. Studio is built/packed once; Linux
    project/tool jobs test that tarball plus matching Python wheels. Maintainer-disabled
    macOS/Windows acceptance remains unverified.
-3. Push `studio-v<studio/package.json version>` and publish its GitHub release. Do not
-   bump/tag merely to test the workflow.
-4. Approve **npm**. The workflow checks tag/version, protected-main ancestry, successful
-   push CI/required main gate, artifact ID/commit, SHA-512, and packed metadata, then
-   publishes **that tarball** with provenance. No rebuild; Python `v*` skips npm.
+3. Push the same `v<project version>` tag used for TestPyPI. Approve **npm** to publish
+   **that tested tarball** with provenance to npm `next`, leaving `latest` unchanged.
+   Test the pair with the TestPyPI wheels and `@nexufed/nexuml-studio@next` (or pin the
+   exact version if another candidate has advanced `next`). Manual **Publish Studio**
+   dispatch also publishes to `next`, never `latest`.
+4. Publish the shared GitHub Release. After Python's production publication succeeds,
+   approve **npm** for promotion. The workflow repeats exact-commit/artifact validation,
+   checks the registry version's SHA-512 against the tested tarball, and moves `latest`
+   to **that exact version**, not whichever version `next` currently references. A missing
+   package or integrity mismatch blocks promotion. No rebuild or second package upload.
+
+The npm CLI is pinned to 11.21.0 for OIDC-authenticated dist-tag operations. Both
+workflows share triggers, but registry writes are not an atomic transaction:
+inspect both results before announcing the release. No automated nightly schedule is added.
 
 If artifacts expire, rerun exact-commit CI. Validation failure means fix/revalidate the
 candidate, not manually upload a replacement. After publication, npm versions are immutable.

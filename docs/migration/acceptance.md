@@ -100,6 +100,29 @@ Release publication remains the production trigger; ordinary branch pushes do
 not publish packages. Push the tag after exact-commit CI passes. No live registry
 upload or hosted rerun of these changes was performed.
 
+### Shared Python/Studio release channel follow-up
+
+`publish-studio.yml` now shares Python's stable-tag, GitHub Release, and manual
+triggers. Tags/manual dispatch publish the tested tarball to npm `next`; release
+publication promotes the exact matching registry version to `latest` only after
+its integrity matches the CI tarball. No rebuild, second upload, or mutable `next`
+lookup occurs during promotion. Main ancestry, protected npm environment, exact
+successful main CI, artifact commit/integrity, and provenance checks remain.
+
+Studio metadata/lock roots are aligned to Python's current `0.2.1`. CI and Studio
+publication enforce shared versions through `scripts/check-release-versions.py`.
+The npm CLI is pinned to 11.21.0, which supports OIDC dist-tag operations; registry
+metadata confirms that version supports the workflow's Node 24 runtime.
+
+Verification: 19 workflow/version/promotion tests pass, including missing/empty/
+mismatched registry integrity and version-drift rejection; docs checks pass with
+35 tests/two runtime-only skips; Studio typecheck/lint and all 124 unit tests pass.
+Ruff, targeted typing, and the affected strict Studio spec validation pass. npm
+dependencies were installed from the existing lock for local checks. No registry
+write, environment change, hosted workflow run, or package/browser release smoke
+was performed. Owners must permit shared tags and both publish/dist-tag actions;
+cross-registry publication is not atomic and still needs release-result review.
+
 ### Remaining environment and owner checks
 
 - Full institute/GPU/optional-stack CI and hosted Actions artifact transfer/Pages

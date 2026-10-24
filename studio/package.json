@@ -1,6 +1,6 @@
 {
   "name": "@nexufed/nexuml-studio",
-  "version": "0.1.0",
+  "version": "0.2.1",
   "description": "Local visual interface for your installed NexuML",
   "license": "Apache-2.0",
   "repository": { "type": "git", "url": "git+https://github.com/NexuFed/NexuML.git", "directory": "studio" },

@@ -65,43 +65,156 @@ def test_studio_ci_builds_once_and_tests_both_trusted_linux_installations(tmp_pa
     assert result.returncode == 2 and "must be a new directory" in result.stderr
 
 
-def test_release_namespaces_and_studio_tag_validation(tmp_path):
+def test_shared_release_triggers_and_studio_channels():
     root = Path(__file__).resolve().parents[2]
     python = YAML(typ="safe").load((root / ".github/workflows/release.yml").read_text())
     assert "startsWith(github.event.release.tag_name, 'v')" in python["jobs"]["validate"]["if"]
     studio = YAML(typ="safe").load((root / ".github/workflows/publish-studio.yml").read_text())
     publish = studio["jobs"]["publish"]
-    assert publish["if"] == "startsWith(github.event.release.tag_name, 'studio-v')"
+    assert studio["on"] == python["on"]
+    assert publish["if"] == python["jobs"]["validate"]["if"]
     assert publish["environment"]["name"] == "npm"
     assert publish["permissions"]["id-token"] == "write"
     assert publish["runs-on"] == "ubuntu-latest"  # npm OIDC rejects self-hosted runners.
     scripts = "\n".join(step.get("run", "") for step in publish["steps"])
     assert "npm publish" in scripts and "--ignore-scripts" in scripts and "--provenance" in scripts
     assert "npm ci" not in scripts and "npm pack" not in scripts and "npm run build" not in scripts
-    if not shutil.which("node"):
-        pytest.skip("Tag validator uses Node")
-    source = next(
-        step["run"] for step in publish["steps"] if step.get("name", "").startswith("Validate tag")
+    assert "python scripts/check-release-versions.py" in scripts
+    assert 'args+=(--tag "$RELEASE_TAG")' in scripts
+    assert "git merge-base --is-ancestor HEAD origin/main" in scripts
+    assert "a.name === 'studio-distribution' && !a.expired" in scripts
+    assert "artifacts[0].workflow_run.head_sha, process.env.GITHUB_SHA" in scripts
+    assert "npm install --global npm@11.21.0" in scripts
+    candidate = next(step for step in publish["steps"] if "npm publish" in step.get("run", ""))
+    assert (
+        candidate["if"] == "github.event_name == 'push' || github.event_name == 'workflow_dispatch'"
     )
-    validator = source.split("<<'JS'\n", 1)[1].split("\nJS", 1)[0]
+    assert "--tag next" in candidate["run"]
+    promote = next(step for step in publish["steps"] if "npm dist-tag add" in step.get("run", ""))
+    assert promote["if"] == "github.event_name == 'release'"
+    assert "npm publish" not in promote["run"]
+    assert 'npm dist-tag add "$package" latest' in promote["run"]
+    assert any(
+        step.get("run") == "python scripts/check-release-versions.py"
+        for step in WORKFLOW["jobs"]["static"]["steps"]
+    )
+
+
+@pytest.fixture
+def release_versions(tmp_path):
+    root = Path(__file__).resolve().parents[2]
+    (tmp_path / "scripts").mkdir()
+    (tmp_path / "library").mkdir()
     (tmp_path / "studio").mkdir()
-    (tmp_path / "studio/package.json").write_text(
-        json.dumps({"name": "@nexufed/nexuml-studio", "version": "0.1.0"})
+    script = tmp_path / "scripts/check-release-versions.py"
+    shutil.copyfile(root / "scripts/check-release-versions.py", script)
+    for path in ("pyproject.toml", "library/pyproject.toml"):
+        (tmp_path / path).write_text('[project]\nversion = "0.3.0"\n')
+    (tmp_path / "studio/package.json").write_text(json.dumps({"version": "0.3.0"}))
+    (tmp_path / "studio/package-lock.json").write_text(
+        json.dumps({"version": "0.3.0", "packages": {"": {"version": "0.3.0"}}})
     )
-    for tag, accepted in [
-        ("studio-v0.1.0", True),
-        ("v0.1.0", False),
-        ("studio-v0.1.1", False),
-        ("studio-v0.1.0-rc.1", False),
+    return script
+
+
+def test_shared_release_versions_and_tags(release_versions):
+    for args, accepted in [
+        ([], True),
+        (["--tag", "v0.3.0"], True),
+        (["--tag", "v0.3.1"], False),
+        (["--tag", "v00.3.0"], False),
+        (["--tag", "v0.3.0rc1"], False),
+        (["--tag", "studio-v0.3.0"], False),
+        (["--tag", "main"], False),
     ]:
         result = subprocess.run(
-            ["node", "--input-type=module", "-e", validator],
-            cwd=tmp_path,
-            env={**os.environ, "RELEASE_TAG": tag},
-            capture_output=True,
-            check=False,
+            [sys.executable, str(release_versions), *args], capture_output=True, text=True
         )
-        assert (result.returncode == 0) is accepted, (tag, result.stderr)
+        assert (result.returncode == 0) is accepted, result.stderr
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "pyproject.toml",
+        "library/pyproject.toml",
+        "studio/package.json",
+        "studio/package-lock.json",
+        "lock-root",
+    ],
+)
+def test_shared_release_rejects_version_drift(release_versions, path):
+    root = release_versions.parents[1]
+    target = root / ("studio/package-lock.json" if path == "lock-root" else path)
+    if path.endswith(".toml"):
+        target.write_text('[project]\nversion = "0.4.0"\n')
+    else:
+        value = json.loads(target.read_text())
+        if path == "lock-root":
+            value["packages"][""]["version"] = "0.4.0"
+        else:
+            value["version"] = "0.4.0"
+        target.write_text(json.dumps(value))
+    result = subprocess.run([sys.executable, str(release_versions)], capture_output=True, text=True)
+    assert result.returncode != 0
+    assert "Package versions must match" in result.stderr
+
+
+@pytest.mark.parametrize("registry", ["matching", "different", "missing", "empty"])
+def test_studio_promotion_requires_the_tested_registry_integrity(tmp_path, registry):
+    if not shutil.which("node") or not shutil.which("bash"):
+        pytest.skip("Promotion verifier uses Node and bash")
+    root = Path(__file__).resolve().parents[2]
+    workflow = YAML(typ="safe").load((root / ".github/workflows/publish-studio.yml").read_text())
+    source = next(
+        step["run"]
+        for step in workflow["jobs"]["publish"]["steps"]
+        if "npm dist-tag add" in step.get("run", "")
+    )
+    (tmp_path / "release-studio").mkdir()
+    (tmp_path / "release-studio/pack.json").write_text(json.dumps([{"integrity": "sha512-tested"}]))
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    npm = bin_dir / "npm"
+    npm.write_text(
+        f"#!{sys.executable}\n"
+        "import json, os, sys\n"
+        "with open(os.environ['NPM_CALLS'], 'a') as log:\n"
+        "    log.write(json.dumps(sys.argv[1:]) + '\\n')\n"
+        "if sys.argv[1] == 'view':\n"
+        "    print(os.environ['REGISTRY_RESPONSE'])\n"
+        "    sys.exit(1 if os.environ['REGISTRY_MODE'] == 'missing' else 0)\n"
+    )
+    npm.chmod(0o755)
+    calls = tmp_path / "calls.jsonl"
+    response = (
+        '"sha512-tested"'
+        if registry == "matching"
+        else ('"sha512-other"' if registry == "different" else "")
+    )
+    result = subprocess.run(
+        ["bash", "-e", "-c", source],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        env={
+            **os.environ,
+            "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}",
+            "RUNNER_TEMP": str(tmp_path),
+            "RELEASE_VERSION": "0.3.0",
+            "NPM_CALLS": str(calls),
+            "REGISTRY_MODE": registry,
+            "REGISTRY_RESPONSE": response,
+        },
+    )
+    commands = [json.loads(line) for line in calls.read_text().splitlines()]
+    assert commands[0] == ["view", "@nexufed/nexuml-studio@0.3.0", "dist.integrity", "--json"]
+    if registry == "matching":
+        assert result.returncode == 0, result.stderr
+        assert commands[1:] == [["dist-tag", "add", "@nexufed/nexuml-studio@0.3.0", "latest"]]
+    else:
+        assert result.returncode != 0
+        assert len(commands) == 1
 
 
 def test_required_ci_checks_every_job_and_fails_closed(tmp_path):
