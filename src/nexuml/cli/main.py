@@ -316,7 +316,7 @@ def train_cmd(
         capture_provenance(result)
 
     if isinstance(result, str):
-        _print_job_submission(result)
+        _print_job_submission(result, scenario, worker_input=trainer_checkpoint)
         return
     status = result.get("status", "unknown") if isinstance(result, dict) else "succeeded"
     console.print(
@@ -342,6 +342,9 @@ def train_cmd(
     steps = getattr(trainer, "global_step", None)
     if steps is not None:
         console.print(f"  Optimizer steps: {steps}")
+    completed_device = getattr(module, "device", None)
+    if completed_device is not None:
+        console.print(f"  Module device after completion: {completed_device}", markup=False)
     packages = {
         Path(artifact["path"]).parent
         for artifact in getattr(result, "artifacts", [])
@@ -385,8 +388,9 @@ def evaluate_cmd(
         if config_path is not None or scenario_file is not None
         else None
     )
+    selected = supplied if supplied is not None else ScenarioSpec(name="package-evaluation")
     result = run(
-        supplied if supplied is not None else ScenarioSpec(name="package-evaluation"),
+        selected,
         operation="evaluate",
         model_package=model_package,
         device=device,
@@ -395,12 +399,55 @@ def evaluate_cmd(
         evaluation_scenario_file=scenario_file,
     )
     if isinstance(result, str):
-        _print_job_submission(result)
+        _print_job_submission(result, selected, operation="evaluate", worker_input=model_package)
 
 
-def _print_job_submission(job_id: str) -> None:
+def _print_job_submission(
+    job_id: str,
+    scenario: Any,
+    *,
+    operation: Literal["train", "evaluate", "export"] = "train",
+    worker_input: Path | None = None,
+    output: Path | None = None,
+) -> None:
     """Report asynchronous submission without implying remote completion."""
     console.print(f"[green]Ray job submitted: {job_id}[/green]")
+    execution = scenario.execution
+    memory = getattr(execution, "entrypoint_memory", None)
+    console.print(
+        f"  Scenario: {scenario.name}; backend: {execution.component_name}; operation: {operation}",
+        markup=False,
+    )
+    console.print(
+        "  Requested resources (logical): "
+        f"GPUs={getattr(execution, 'entrypoint_num_gpus', 'unknown')}; "
+        f"CPUs={getattr(execution, 'entrypoint_num_cpus', 'unknown')}; "
+        f"RAM bytes={memory if memory is not None else 'unspecified'}",
+        markup=False,
+    )
+    console.print(
+        f"  Requested resource tags: {getattr(execution, 'entrypoint_resources', {})}",
+        markup=False,
+    )
+    if operation == "train":
+        training = scenario.training
+        console.print(f"  Requested training device: {training.accelerator}", markup=False)
+        frames = getattr(training, "total_frames", None)
+        if frames is not None:
+            console.print(f"  Configured physical frame budget: {frames}", markup=False)
+        else:
+            console.print(f"  Configured epoch budget: {training.max_epochs}", markup=False)
+    if worker_input is not None:
+        console.print(f"  Worker {operation} input: {worker_input}", markup=False)
+        if operation == "train":
+            console.print("  Resume keeps the checkpoint's saved semantics and output paths.")
+    if output is not None:
+        console.print(
+            f"  Requested worker export output (not yet produced): {output}", markup=False
+        )
+    console.print(
+        "  Worker allocation/device and setup/learning phase: unknown until observed in job logs."
+    )
     console.print("Submission only; use Ray Jobs status/logs to monitor remote execution.")
 
 
@@ -786,7 +833,9 @@ def export_cmd(
     scenario = _load_scenario(scenario_name, config_path, scenario_file)
     result = run(scenario, operation="export", checkpoint=checkpoint, output=output)
     if isinstance(result, str):
-        _print_job_submission(result)
+        _print_job_submission(
+            result, scenario, operation="export", worker_input=checkpoint, output=output
+        )
 
 
 def _export_local(

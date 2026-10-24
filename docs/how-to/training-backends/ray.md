@@ -176,6 +176,13 @@ convenience `submit_ray_job(spec)` return a **submission ID**,
 not a training result. Neither starts a local learner/simulator, waits, tails logs
 or retries. Use Ray's native status/log/stop tools afterwards.
 
+The CLI reports requested logical CPU/GPU/RAM reservations and resource tags, not
+measured utilization or hard memory limits. Training submissions also label the
+configured frame/epoch budget and requested device. Worker inputs and explicit
+export outputs remain requested paths until a terminal result proves they exist.
+The actual worker allocation and setup-versus-learning phase are unknown at
+submission; inspect the job logs rather than infer learning from a running status.
+
 The backend sends the resolved scenario after overrides, resets execution to
 `LocalExecution`, and invokes the normal remote CLI. It does not rerun the
 factory, compile locally, write local staging files or recursively submit.
@@ -270,8 +277,23 @@ the same locked sync ran inside the guard with explicit private uv settings. It
 retained the 4 GiB physical-disk stop and a wall-time deadline. The SDK backend
 itself still does not add those limits to ordinary submissions.
 
-Graphics-dependent qualification is deferred pending the operator's container
-rebuild, not passed or removed. Do not switch renderers to turn a deferred gate green.
+Graphics-dependent qualification requires a separately qualified Ray worker image
+and display/browser routes; a submitter devcontainer rebuild does not satisfy those
+gates. Do not switch renderers to turn a deferred gate green.
+
+For the test-owned campaign, an inert input review is available before submission:
+
+```bash
+python scripts/physical_ai_acceptance.py --case preflight \
+  --ca /path/to/ca.pem --output /path/to/new-control-records
+```
+
+Without `--submit`, this prints the approved target/CA paths, durable root, budgets
+and missing/unqualified worker prerequisites without creating a client, installing
+dependencies or initializing a workload. A supplied private-data path is not data
+approval or successful worker admission. Initial qualification stays serial; the
+four-job ceiling is not evidence of parallel capacity. A working local development
+container does not qualify the separately selected Ray worker image or display route.
 
 ### Remote dependency setup
 
