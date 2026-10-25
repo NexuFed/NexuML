@@ -43,7 +43,11 @@ def infer(output):
     if (output / "expected-state.pt").is_file():
         expected_state = torch.load(output / "expected-state.pt", weights_only=True)
         torch.testing.assert_close(policy.state_dict(), expected_state, rtol=0, atol=0)
-        print("PARENT_CONTEXT", (output / "parent-context.json").read_text())
+        parent_context = json.loads((output / "parent-context.json").read_text())
+        print("PARENT_CONTEXT", json.dumps(parent_context))
+        print("CHILD_INITIAL_PRECISION", torch.get_float32_matmul_precision())
+        # Exact parity requires the parent's numerical execution policy.
+        torch.set_float32_matmul_precision(parent_context["precision"])
         print(
             "CHILD_CONTEXT",
             json.dumps(

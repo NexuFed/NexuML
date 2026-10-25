@@ -12,6 +12,7 @@ import os
 from pathlib import Path
 import runpy
 import sys
+import sysconfig
 import tempfile
 from types import SimpleNamespace
 import unittest
@@ -335,6 +336,12 @@ class PhysicalAIDistributionTest(unittest.TestCase):
     def execute_probe(self, direct_hash=None):
         expected = self.provenance()
         output = self.root / f"sanitized-{len(list(self.root.glob('sanitized-*')))}.json"
+        real_import_module = importlib.import_module
+
+        def import_module(name, package=None):
+            if name in {"nexuml", "nexuml_library"}:
+                return SimpleNamespace(__file__=str(self.site / name / "__init__.py"))
+            return real_import_module(name, package)
 
         def distribution(name):
             direct = json.dumps(
@@ -366,9 +373,7 @@ class PhysicalAIDistributionTest(unittest.TestCase):
             mock.patch.object(
                 importlib,
                 "import_module",
-                side_effect=lambda name: SimpleNamespace(
-                    __file__=str(self.site / name / "__init__.py")
-                ),
+                side_effect=import_module,
             ),
             mock.patch.object(importlib.metadata, "distribution", side_effect=distribution),
             mock.patch.object(sys, "prefix", str(self.venv)),
@@ -377,6 +382,9 @@ class PhysicalAIDistributionTest(unittest.TestCase):
             mock.patch.object(sys, "argv", ["-c", str(output), *wheels]),
             mock.patch.object(zipfile, "ZipFile", side_effect=wheel_archive),
         ):
+            self.assertIs(importlib.import_module("sysconfig"), sysconfig)
+            self.assertIs(importlib.import_module(".decoder", package="json"), json.decoder)
+            self.assertIn("purelib", sysconfig.get_paths())
             exec(compile(self.probe, "<fixed-distribution-probe>", "exec"), {})
         actual = json.loads(output.read_text())
         for identity in expected["modules"].values():

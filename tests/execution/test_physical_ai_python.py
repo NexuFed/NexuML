@@ -62,6 +62,7 @@ class PhysicalAIPythonTest(unittest.TestCase):
             "UV_CONCURRENT_DOWNLOADS": "4",
             "CUDA_VISIBLE_DEVICES": "GPU-job-owned",
             "TMPDIR": "/foreign/tmp",
+            "COVERAGE_FILE": "/foreign/.coverage",
             "HTTP_PROXY": "http://parent-proxy",
             "PARENT_TOKEN": "not-in-receipt",
             **{
@@ -251,6 +252,10 @@ class PhysicalAIPythonTest(unittest.TestCase):
                         "-m",
                         "pytest",
                         "tests",
+                        "--cov=nexuml",
+                        "--cov=nexuml_library",
+                        "--cov-report=term-missing",
+                        "--cov-report=xml:" + str(self.root / "python-matrix-coverage.xml"),
                         "-q",
                         "--tb=short",
                         "-p",
@@ -272,6 +277,7 @@ class PhysicalAIPythonTest(unittest.TestCase):
                             "VIRTUAL_ENV": str(self.venv),
                             "UV_PYTHON_INSTALL_DIR": str(self.scratch / "pythons"),
                             "TMPDIR": str(self.scratch),
+                            "COVERAGE_FILE": str(self.scratch / ".coverage"),
                             **{
                                 f"NEXUML_RUN_{tier}_TESTS": "0"
                                 for tier in ("SIMULATOR", "SYSTEM", "HARDWARE", "DATA", "RESOLVER")

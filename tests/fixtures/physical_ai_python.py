@@ -125,6 +125,7 @@ def run_matrix(record: dict, root: Path, env: dict, stage, python_version: str):
         VIRTUAL_ENV=str(venv),
         UV_PYTHON_INSTALL_DIR=str(scratch / "pythons"),
         TMPDIR=str(scratch),
+        COVERAGE_FILE=str(scratch / ".coverage"),
     )
     for tier in ("SIMULATOR", "SYSTEM", "HARDWARE", "DATA", "RESOLVER"):
         private[f"NEXUML_RUN_{tier}_TESTS"] = "0"
@@ -239,6 +240,10 @@ def run_matrix(record: dict, root: Path, env: dict, stage, python_version: str):
             "-m",
             "pytest",
             "tests",
+            "--cov=nexuml",
+            "--cov=nexuml_library",
+            "--cov-report=term-missing",
+            "--cov-report=xml:" + str(root / "python-matrix-coverage.xml"),
             "-q",
             "--tb=short",
             "-p",

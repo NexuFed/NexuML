@@ -259,7 +259,11 @@ root = Path(sys.argv[1])
 observation = TensorDict(torch.load(root / "observation.pt", weights_only=True), batch_size=[2])
 expected = torch.load(root / "expected.pt", weights_only=True)
 expected_state = torch.load(root / "expected-state.pt", weights_only=True)
-print("PARENT_CONTEXT", (root / "parent-context.json").read_text())
+parent_context = json.loads((root / "parent-context.json").read_text())
+print("PARENT_CONTEXT", json.dumps(parent_context))
+print("CHILD_INITIAL_PRECISION", torch.get_float32_matmul_precision())
+# Exact parity compares the same numerical execution policy, not two precision modes.
+torch.set_float32_matmul_precision(parent_context["precision"])
 print("CHILD_CONTEXT", json.dumps({"torch": str(torch.__version__),
     "precision": torch.get_float32_matmul_precision(), "threads": torch.get_num_threads()}))
 for loader in (load_package, load_inference_package):
