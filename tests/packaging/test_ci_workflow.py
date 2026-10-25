@@ -57,6 +57,8 @@ def test_studio_ci_builds_once_and_tests_both_trusted_linux_installations(tmp_pa
     assert "UV_TOOL_DIR=$RUNNER_TEMP/" in tool_paths
     assert "UV_TOOL_BIN_DIR=$RUNNER_TEMP/" in tool_paths
     assert WORKFLOW["jobs"]["test"]["runs-on"] == "ika-runner-gpu"
+    assert WORKFLOW["jobs"]["test"]["env"]["UV_HTTP_TIMEOUT"] == "600"
+    assert WORKFLOW["jobs"]["test"]["env"]["UV_CONCURRENT_DOWNLOADS"] == "4"
     assert any(
         "assert torch.cuda.is_available()" in step.get("run", "")
         for step in WORKFLOW["jobs"]["test"]["steps"]

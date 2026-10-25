@@ -111,6 +111,8 @@ jobs:
       NEXUML_RUN_SIMULATOR_TESTS: "0"
       NEXUML_RUN_SYSTEM_TESTS: "0"
       NEXUML_RUN_HARDWARE_TESTS: "0"
+      UV_HTTP_TIMEOUT: "600"
+      UV_CONCURRENT_DOWNLOADS: "4"
     strategy:
       fail-fast: false
       matrix:
