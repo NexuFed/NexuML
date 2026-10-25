@@ -19,7 +19,7 @@ test("exact form types, automatic fields, inheritance and retained invalid/custo
   await trainingSection(page,"Data loading");await trainingSection(page,"Basics");
   await expect(page.getByLabel("Learning rate",{exact:true})).toHaveValue("1e-");
   await check(page,"Check fields",422);await expect(page.locator(".problems-list")).toContainText("training.lr");
-  await trainingSection(page,"Execution");await page.locator(".problems-list button").filter({hasText:"training.lr"}).click();
+  await trainingSection(page,"Execution");await page.locator(".problems-list button").filter({hasText:"training.lr"}).first().click();
   await expect(page.getByLabel("Learning rate",{exact:true})).toBeFocused();await page.getByLabel("Learning rate",{exact:true}).fill("1e-3");
   await page.locator('.training-content article:not([hidden])> .fields>details>summary').filter({hasText:"Raw configuration"}).click();
   const raw=await page.getByLabel("Raw training settings",{exact:true}).inputValue();
