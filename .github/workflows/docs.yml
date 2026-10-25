@@ -13,7 +13,7 @@ jobs:
   release-identity:
     runs-on: ika-runner
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -41,7 +41,7 @@ jobs:
       VERSION: ${{ github.ref_name }}
       SOURCE_SHA: ${{ github.sha }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -103,12 +103,12 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           path: source
           persist-credentials: false
       # This fetch happens after this job acquires its serialized deployment slot.
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           ref: gh-pages
           path: archive
