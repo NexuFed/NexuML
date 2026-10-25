@@ -16,7 +16,8 @@ members = [
 constraints = [{ name = "lerobot", specifier = "==0.6.1" }]
 overrides = [
     { package = { name = "lerobot", version = "0.6.1" }, dependencies = [{ name = "opencv-python-headless-noffmpeg", specifier = "==4.14.0.94rc3" }] },
-    { name = "numpy", specifier = "==2.3.1" },
+    { name = "numpy", marker = "python_full_version < '3.14'", specifier = "==2.3.1" },
+    { name = "numpy", marker = "python_full_version == '3.14.*'", specifier = "==2.3.3" },
     { name = "packaging", specifier = "==25.0" },
     { name = "requests", specifier = "==2.34.2" },
     { name = "transformers", specifier = "==5.10.4" },
@@ -3231,11 +3232,11 @@ export = [
     { name = "pillow" },
     { name = "soundfile" },
 ]
-kubernetes = [
-    { name = "kubernetes" },
-]
 isaac = [
     { name = "nexuml-library", extra = ["isaac"] },
+]
+kubernetes = [
+    { name = "kubernetes" },
 ]
 lerobot = [
     { name = "nexuml-library", extra = ["lerobot"] },

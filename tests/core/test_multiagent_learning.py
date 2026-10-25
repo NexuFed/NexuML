@@ -1,6 +1,7 @@
 """Native MARL numerical, dependency, optimizer and current-continuation proofs."""
 
 import copy
+import json
 from typing import Any
 
 import pytest
@@ -550,6 +551,18 @@ def test_registered_marl_actor_packages_run_cleanly_without_learner_or_native_im
     output.mkdir()
     torch.save(data, output / "observation.pt")
     torch.save(expected, output / "expected.pt")
+    torch.save(policy.state_dict(), output / "expected-state.pt")
+    (output / "parent-context.json").write_text(
+        json.dumps(
+            {
+                "torch": str(torch.__version__),
+                "precision": torch.get_float32_matmul_precision(),
+                "threads": torch.get_num_threads(),
+                "training": policy.training,
+                "device": str(next(policy.parameters()).device),
+            }
+        )
+    )
     export_package(policy, output / "policy")
     assert "torchrl" not in (output / "policy/requirements.txt").read_text().lower()
     fixture = Path(__file__).resolve().parents[1] / "fixtures/isaaclab_marl_job.py"

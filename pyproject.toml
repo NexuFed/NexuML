@@ -187,7 +187,10 @@ convention = "google"
 "src/nexuml/evaluation/__init__.py" = ["F822"]
 
 [tool.ty.environment]
-extra-paths = ["src", "library/src", "skills/nexuml-library/assets/minimal-library/src"]
+extra-paths = [
+    "src", "library/src", "skills/nexuml-library/assets/minimal-library/src",
+    "tests/core", "tests/fixtures",
+]
 
 [tool.ty.src]
 exclude = ["docs"]
@@ -203,7 +206,9 @@ constraint-dependencies = ["lerobot==0.6.1"]
 override-dependencies = [
     "packaging==25.0",
     "transformers==5.10.4",
-    "numpy==2.3.1",
+    "numpy==2.3.1; python_version < '3.14'",
+    # Keep the native 3.12 profile; 2.3.3 supplies ordinary CPython 3.14 wheels.
+    "numpy==2.3.3; python_version == '3.14'",
     "urllib3==2.8.0",
     "usd-exchange==3.0.1",
     # Sim's 2.32.3 pin predates the CVE-2024-47081 netrc credential-leak fix.

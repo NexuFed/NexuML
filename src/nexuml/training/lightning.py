@@ -63,6 +63,7 @@ class NexuLightningModule(L.LightningModule):
 
         self.pipeline = pipeline
         self.scenario = scenario
+        self.fit_device: str | None = None
         self._eval_results: dict[str, float] = {}
         self._stage_metric_results: dict[str, dict[str, float]] = {"val": {}, "test": {}}
         self._evaluation_algorithms = self._instantiate_evaluation_algorithms(
@@ -188,6 +189,7 @@ class NexuLightningModule(L.LightningModule):
         return [optimizer], [{"scheduler": scheduler, "interval": "epoch"}]
 
     def on_fit_start(self):
+        self.fit_device = str(self.device)
         self.pipeline.call_layer_hook("on_fit_start")
 
     def on_fit_end(self):

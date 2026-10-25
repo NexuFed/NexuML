@@ -231,8 +231,20 @@ def test_complete_policy_package_inference_with_simulation_and_learning_blocked(
     export_package(policy, tmp_path / "policy")
     torch.save(observation.to_dict(), tmp_path / "observation.pt")
     torch.save(expected, tmp_path / "expected.pt")
+    torch.save(policy.state_dict(), tmp_path / "expected-state.pt")
+    (tmp_path / "parent-context.json").write_text(
+        json.dumps(
+            {
+                "torch": str(torch.__version__),
+                "precision": torch.get_float32_matmul_precision(),
+                "threads": torch.get_num_threads(),
+                "training": policy.training,
+                "device": str(next(policy.parameters()).device),
+            }
+        )
+    )
     code = """
-import importlib.abc, sys, torch
+import importlib.abc, json, sys, torch
 from pathlib import Path
 from tensordict import TensorDict
 blocked = {"torchrl", "gymnasium", "PIL", "imageio", "imageio_ffmpeg", "moviepy", "omni", "pxr"}
@@ -246,9 +258,14 @@ from nexuml.core.export import load_inference_package, load_package, infer
 root = Path(sys.argv[1])
 observation = TensorDict(torch.load(root / "observation.pt", weights_only=True), batch_size=[2])
 expected = torch.load(root / "expected.pt", weights_only=True)
+expected_state = torch.load(root / "expected-state.pt", weights_only=True)
+print("PARENT_CONTEXT", (root / "parent-context.json").read_text())
+print("CHILD_CONTEXT", json.dumps({"torch": str(torch.__version__),
+    "precision": torch.get_float32_matmul_precision(), "threads": torch.get_num_threads()}))
 for loader in (load_package, load_inference_package):
     policy, config, metadata = loader(root / "policy")
-    assert torch.equal(infer(policy, observation)["action"], expected)
+    torch.testing.assert_close(policy.state_dict(), expected_state, rtol=0, atol=0)
+    torch.testing.assert_close(infer(policy, observation)["action"], expected, rtol=0, atol=0)
     assert metadata["training_state_available"] is False
     assert metadata["environment"]["type"] == "IsaacLabEnvironment"
     assert not any(

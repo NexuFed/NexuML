@@ -6,6 +6,7 @@ from types import SimpleNamespace
 
 import pytest
 import torch
+from click import unstyle
 from typer.testing import CliRunner
 
 from nexuml.cli.main import app
@@ -145,10 +146,14 @@ def test_reference_logging_defaults_round_trip(factory):
     assert scenario.training.evaluation.every_n_frames is None
 
 
-def test_evaluate_help():
-    result = runner.invoke(app, ["evaluate", "--help"])
+@pytest.mark.parametrize("color", [False, True])
+def test_evaluate_help(monkeypatch, color):
+    monkeypatch.setattr("typer.rich_utils.FORCE_TERMINAL", color)
+    result = runner.invoke(app, ["evaluate", "--help"], color=color)
     assert result.exit_code == 0, result.output
-    assert "--override" in result.output
+    if color:
+        assert "\x1b[" in result.output
+    assert "--override" in unstyle(result.output)
 
 
 @pytest.mark.parametrize("name", ["cartpole-ppo", "pendulum-ppo"])

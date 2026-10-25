@@ -209,6 +209,14 @@ unchanged. Evaluation `--config` supplies only allowed evaluation/data/logging/e
 settings, never replacement packaged weights. Dependent native stages run sequentially
 in fresh processes; submission alone does not establish completion or qualification.
 
+Worker completion reports the Ray submission ID, host and PID when Ray supplies
+its job metadata. `Fit device observed at start` records placement before training;
+`Module device after completion` may instead be CPU after Lightning teardown.
+Printed resume/evaluation commands quote the produced worker paths and are labelled
+**worker-local**. To run them from the submitter, add the appropriate trusted
+`--config` as above; those paths are not uploaded. A missing fit-device observation
+is not evidence of GPU training (for example, an already exhausted checkpoint).
+
 Remote export requires an explicit `--output` worker path; omitted output remains
 `exported_model` only for local execution. Use an absolute durable destination.
 For policy evaluation, configure top-level `policy_evaluation` and override, for example,

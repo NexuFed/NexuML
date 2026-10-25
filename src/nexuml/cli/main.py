@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import inspect
 import json
+import os
+import shlex
+import socket
 import sys
 import warnings
 from contextlib import ExitStack
@@ -342,9 +345,25 @@ def train_cmd(
     steps = getattr(trainer, "global_step", None)
     if steps is not None:
         console.print(f"  Optimizer steps: {steps}")
+    fit_device = getattr(module, "fit_device", None)
+    if fit_device is not None:
+        console.print(f"  Fit device observed at start: {fit_device}", markup=False)
     completed_device = getattr(module, "device", None)
     if completed_device is not None:
         console.print(f"  Module device after completion: {completed_device}", markup=False)
+    checkpoints = {
+        Path(path)
+        for callback in getattr(trainer, "checkpoint_callbacks", [])
+        for path in (
+            getattr(callback, "last_model_path", ""),
+            getattr(callback, "best_model_path", ""),
+        )
+        if path and Path(path).is_file()
+    }
+    for checkpoint_path in sorted(checkpoints):
+        console.print(f"  Resumable trainer checkpoint: {checkpoint_path}", markup=False)
+        command = shlex.join(["nexuml", "train", "--trainer-checkpoint", str(checkpoint_path)])
+        console.print(f"  Worker-local resume: {command}", markup=False, soft_wrap=True)
     packages = {
         Path(artifact["path"]).parent
         for artifact in getattr(result, "artifacts", [])
@@ -352,6 +371,14 @@ def train_cmd(
     }
     for package in sorted(packages):
         console.print(f"  Complete inference package: {package}")
+        command = shlex.join(["nexuml", "evaluate", str(package), "--device", fit_device or "cpu"])
+        console.print(f"  Worker-local evaluation: {command}", markup=False, soft_wrap=True)
+    if checkpoints or packages:
+        console.print(
+            "  These are worker-local commands. From the submitter, select a trusted "
+            "ray-jobs-sdk config; worker inputs are not uploaded automatically."
+        )
+    _print_worker_identity("train")
 
 
 @app.command(name="evaluate", help="Evaluate a trusted exported model or policy without training")
@@ -449,6 +476,29 @@ def _print_job_submission(
         "  Worker allocation/device and setup/learning phase: unknown until observed in job logs."
     )
     console.print("Submission only; use Ray Jobs status/logs to monitor remote execution.")
+
+
+def _print_worker_identity(operation: Literal["train", "evaluate", "export"]) -> None:
+    """Read only Ray's declared submission identity; never initialize a Ray client."""
+    raw = os.environ.get("RAY_JOB_CONFIG_JSON_ENV_VAR")
+    if not raw:
+        return
+    job_id = None
+    try:
+        config = json.loads(raw)
+    except json.JSONDecodeError:
+        config = None
+    if isinstance(config, dict) and isinstance(config.get("metadata"), dict):
+        value = config["metadata"].get("job_submission_id")
+        if isinstance(value, str) and value.strip():
+            job_id = value
+    console.print(
+        f"  Ray submission ID: {job_id if job_id is not None else 'unavailable'}", markup=False
+    )
+    console.print(
+        f"  Worker operation: {operation}; host: {socket.gethostname()}; PID: {os.getpid()}",
+        markup=False,
+    )
 
 
 def _evaluate_local(
@@ -659,6 +709,7 @@ def _evaluate_local(
         console.print(f"  {label}: {metrics}")
         if is_policy:
             _print_policy_evaluation_summary(metrics, evaluation, source_frames)
+        _print_worker_identity("evaluate")
 
 
 def _print_policy_evaluation_summary(metrics: dict, evaluation: Any, source_frames: int | None):
@@ -905,6 +956,7 @@ def _export_local(
         raise
     else:
         session.finalize_loggers("success")
+        _print_worker_identity("export")
         return result
 
 
