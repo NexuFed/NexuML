@@ -4,7 +4,7 @@
 
 Learning-rate schedulers for NexuML library scenarios.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/training/schedulers/warmup_cosine.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/training/schedulers/warmup_cosine.py#L1-L1)
 
 ## nexuml_library.training.schedulers.warmup_cosine.WarmupCosineLR
 
@@ -26,7 +26,7 @@ Linear warmup followed by cosine decay to an absolute LR floor.
 - `min_lr` (`float`) — Absolute minimum learning rate, not a multiplier.
 - `last_epoch` (`int`) (default: `-1`) — Last scheduler epoch, forwarded to PyTorch's scheduler base.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/training/schedulers/warmup_cosine.py#L10-L63)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/training/schedulers/warmup_cosine.py#L10-L63)
 
 ### nexuml_library.training.schedulers.warmup_cosine.WarmupCosineLR.max_epochs
 
@@ -36,7 +36,7 @@ Linear warmup followed by cosine decay to an absolute LR floor.
 max_epochs = max_epochs
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/training/schedulers/warmup_cosine.py#L46-L46)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/training/schedulers/warmup_cosine.py#L46-L46)
 
 ### nexuml_library.training.schedulers.warmup_cosine.WarmupCosineLR.min_lr
 
@@ -46,7 +46,7 @@ max_epochs = max_epochs
 min_lr = min_lr
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/training/schedulers/warmup_cosine.py#L47-L47)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/training/schedulers/warmup_cosine.py#L47-L47)
 
 ### nexuml_library.training.schedulers.warmup_cosine.WarmupCosineLR.warmup_epochs
 
@@ -56,7 +56,7 @@ min_lr = min_lr
 warmup_epochs = warmup_epochs
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/training/schedulers/warmup_cosine.py#L45-L45)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/training/schedulers/warmup_cosine.py#L45-L45)
 
 ### nexuml_library.training.schedulers.warmup_cosine.WarmupCosineLR.get_lr
 
@@ -68,4 +68,4 @@ def get_lr() -> list[float | torch.Tensor]
 
 Return scheduled learning rates for the current epoch.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/training/schedulers/warmup_cosine.py#L50-L53)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/training/schedulers/warmup_cosine.py#L50-L53)

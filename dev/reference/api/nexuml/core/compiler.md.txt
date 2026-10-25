@@ -4,7 +4,7 @@
 
 Compiler: transforms ScenarioSpec into a runnable CompiledPipeline.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/compiler.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/compiler.py#L1-L1)
 
 ## nexuml.core.compiler.logger
 
@@ -14,7 +14,7 @@ Compiler: transforms ScenarioSpec into a runnable CompiledPipeline.
 logger = logging.getLogger(__name__)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/compiler.py#L18-L18)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/compiler.py#L18-L18)
 
 ## nexuml.core.compiler.compile
 
@@ -41,4 +41,4 @@ Compile a ScenarioSpec into a runnable CompiledPipeline.
 
 - `TypeError` — If a definition does not build a ``PipelineLayer``.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/compiler.py#L21-L130)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/compiler.py#L21-L130)

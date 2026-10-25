@@ -4,7 +4,7 @@
 
 Typed definition for loading NexuML exported datasets.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/exported.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/data/exported.py#L1-L1)
 
 ## nexuml_library.data.exported.ExportedDataset
 
@@ -18,7 +18,7 @@ Bases: `DataSourceDefinition`
 
 Load a local or S3 dataset previously written by ``export_data_module``.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/exported.py#L11-L25)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/data/exported.py#L11-L25)
 
 ### nexuml_library.data.exported.ExportedDataset.feature_keys
 
@@ -28,7 +28,7 @@ Load a local or S3 dataset previously written by ``export_data_module``.
 feature_keys: list[str] | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/exported.py#L17-L17)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/data/exported.py#L17-L17)
 
 ### nexuml_library.data.exported.ExportedDataset.label_keys
 
@@ -38,7 +38,7 @@ feature_keys: list[str] | None = None
 label_keys: list[str] | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/exported.py#L18-L18)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/data/exported.py#L18-L18)
 
 ### nexuml_library.data.exported.ExportedDataset.label_prefix
 
@@ -48,7 +48,7 @@ label_keys: list[str] | None = None
 label_prefix: str = 'label__'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/exported.py#L19-L19)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/data/exported.py#L19-L19)
 
 ### nexuml_library.data.exported.ExportedDataset.root
 
@@ -58,7 +58,7 @@ label_prefix: str = 'label__'
 root: str | Path
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/exported.py#L15-L15)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/data/exported.py#L15-L15)
 
 ### nexuml_library.data.exported.ExportedDataset.s3_endpoint_url
 
@@ -68,7 +68,7 @@ root: str | Path
 s3_endpoint_url: str | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/exported.py#L20-L20)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/data/exported.py#L20-L20)
 
 ### nexuml_library.data.exported.ExportedDataset.s3_profile
 
@@ -78,7 +78,7 @@ s3_endpoint_url: str | None = None
 s3_profile: str | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/exported.py#L22-L22)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/data/exported.py#L22-L22)
 
 ### nexuml_library.data.exported.ExportedDataset.s3_region
 
@@ -88,7 +88,7 @@ s3_profile: str | None = None
 s3_region: str | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/exported.py#L21-L21)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/data/exported.py#L21-L21)
 
 ### nexuml_library.data.exported.ExportedDataset.split
 
@@ -98,7 +98,7 @@ s3_region: str | None = None
 split: str | list[str] | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/exported.py#L16-L16)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/data/exported.py#L16-L16)
 
 ### nexuml_library.data.exported.ExportedDataset.build
 
@@ -108,4 +108,4 @@ split: str | list[str] | None = None
 def build() -> NexuDataset
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/exported.py#L24-L25)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/data/exported.py#L24-L25)

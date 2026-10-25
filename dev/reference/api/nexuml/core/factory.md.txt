@@ -4,7 +4,7 @@
 
 Portable importable-factory helpers for typed Python configuration.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/factory.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/factory.py#L1-L1)
 
 ## nexuml.core.factory.JsonValue
 
@@ -14,7 +14,7 @@ Portable importable-factory helpers for typed Python configuration.
 JsonValue
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/factory.py#L26-L26)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/factory.py#L26-L26)
 
 ## nexuml.core.factory.P
 
@@ -24,7 +24,7 @@ JsonValue
 P = ParamSpec('P')
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/factory.py#L124-L124)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/factory.py#L124-L124)
 
 ## nexuml.core.factory.callback
 
@@ -40,7 +40,7 @@ Configure an importable Lightning callback factory.
 
 - (`CallbackSpec`) — Portable callback specification.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/factory.py#L127-L135)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/factory.py#L127-L135)
 
 ## nexuml.core.factory.factory_target
 
@@ -61,7 +61,7 @@ Return and verify the portable target for an importable callable.
 - `TypeError` — If *factory* is not callable.
 - `ValueError` — If *factory* cannot be re-imported safely.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/factory.py#L88-L121)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/factory.py#L88-L121)
 
 ## nexuml.core.factory.factory_values
 
@@ -77,7 +77,7 @@ Build validated Pydantic field values for a factory helper.
 
 - (`dict[str, object]`) — Factory target and constructor arguments.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/factory.py#L195-L211)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/factory.py#L195-L211)
 
 ## nexuml.core.factory.normalize_json_value
 
@@ -97,7 +97,7 @@ Normalize one constructor value to portable JSON data.
 
 - `ValueError` — If the value cannot be represented portably.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/factory.py#L29-L54)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/factory.py#L29-L54)
 
 ## nexuml.core.factory.optimizer
 
@@ -113,7 +113,7 @@ Configure an optimizer factory; model parameters are supplied at runtime.
 
 - (`OptimizerSpec`) — Portable optimizer specification.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/factory.py#L138-L148)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/factory.py#L138-L148)
 
 ## nexuml.core.factory.resolve_factory
 
@@ -134,7 +134,7 @@ Resolve a portable ``module:name`` target.
 - `TypeError` — If the imported target is not callable.
 - `ValueError` — If the target is malformed or cannot be imported.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/factory.py#L57-L85)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/factory.py#L57-L85)
 
 ## nexuml.core.factory.scheduler
 
@@ -150,7 +150,7 @@ Configure a scheduler factory; its optimizer is supplied at runtime.
 
 - (`SchedulerSpec`) — Portable scheduler specification.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/factory.py#L151-L163)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/factory.py#L151-L163)
 
 ## nexuml.core.factory.strategy
 
@@ -166,7 +166,7 @@ Configure an importable Lightning strategy factory.
 
 - (`StrategySpec`) — Portable strategy specification.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/factory.py#L166-L174)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/factory.py#L166-L174)
 
 ## nexuml.core.factory.writer
 
@@ -186,4 +186,4 @@ Configure an importable dataset export backend factory.
 
 - `TypeError` — If *factory* is not an export backend class.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/factory.py#L177-L192)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/factory.py#L177-L192)

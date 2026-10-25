@@ -4,7 +4,7 @@
 
 Loader backend protocol and typed materialization helpers.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/loaders/registry.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/loaders/registry.py#L1-L1)
 
 ## nexuml.data.loaders.registry.LoaderBackend
 
@@ -18,7 +18,7 @@ Bases: `Protocol`
 
 Runtime protocol implemented by loader backends.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/loaders/registry.py#L13-L24)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/loaders/registry.py#L13-L24)
 
 ### nexuml.data.loaders.registry.LoaderBackend.create_loader
 
@@ -28,7 +28,7 @@ Runtime protocol implemented by loader backends.
 def create_loader(module: Any, dataset: Any, *, split: str, shuffle: bool = False, sampler: WeightedRandomSampler | None = None) -> Any
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/loaders/registry.py#L16-L24)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/loaders/registry.py#L16-L24)
 
 ## nexuml.data.loaders.registry.get_loader_backend
 
@@ -44,7 +44,7 @@ Materialize a loader backend definition.
 
 - (`LoaderBackend`) — Runtime loader backend.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/loaders/registry.py#L27-L33)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/loaders/registry.py#L27-L33)
 
 ## nexuml.data.loaders.registry.list_loader_backends
 
@@ -60,4 +60,4 @@ List registered loader backend identities.
 
 - (`list[str]`) — Stable loader backend names.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/loaders/registry.py#L36-L42)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/loaders/registry.py#L36-L42)

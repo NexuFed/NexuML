@@ -4,7 +4,7 @@
 
 Continuous flow model layer.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/model/flow.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/layers/model/flow.py#L1-L1)
 
 ## nexuml_library.layers.model.flow.Flow
 
@@ -18,7 +18,7 @@ Bases: `LayerDefinition`
 
 Trainable vector field with Euler sampling.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/model/flow.py#L20-L45)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/layers/model/flow.py#L20-L45)
 
 ### nexuml_library.layers.model.flow.Flow.hidden_dims
 
@@ -28,7 +28,7 @@ Trainable vector field with Euler sampling.
 hidden_dims: list[int] = Field(default_factory=lambda : [128, 128])
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/model/flow.py#L24-L24)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/layers/model/flow.py#L24-L24)
 
 ### nexuml_library.layers.model.flow.Flow.num_steps
 
@@ -38,7 +38,7 @@ hidden_dims: list[int] = Field(default_factory=lambda : [128, 128])
 num_steps: int = Field(default=100, gt=0)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/model/flow.py#L25-L25)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/layers/model/flow.py#L25-L25)
 
 ### nexuml_library.layers.model.flow.Flow.record_trajectory
 
@@ -48,7 +48,7 @@ num_steps: int = Field(default=100, gt=0)
 record_trajectory: bool = False
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/model/flow.py#L26-L26)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/layers/model/flow.py#L26-L26)
 
 ### nexuml_library.layers.model.flow.Flow.build
 
@@ -58,7 +58,7 @@ record_trajectory: bool = False
 def build(context: LayerBuildContext) -> PipelineLayer
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/model/flow.py#L28-L45)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/layers/model/flow.py#L28-L45)
 
 ## nexuml_library.layers.model.flow.UNetFlow
 
@@ -72,7 +72,7 @@ Bases: `LayerDefinition`
 
 Image flow using a time-conditioned U-Net vector field.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/model/flow.py#L48-L75)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/layers/model/flow.py#L48-L75)
 
 ### nexuml_library.layers.model.flow.UNetFlow.base_channels
 
@@ -82,7 +82,7 @@ Image flow using a time-conditioned U-Net vector field.
 base_channels: int = Field(default=32, gt=0)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/model/flow.py#L52-L52)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/layers/model/flow.py#L52-L52)
 
 ### nexuml_library.layers.model.flow.UNetFlow.num_steps
 
@@ -92,7 +92,7 @@ base_channels: int = Field(default=32, gt=0)
 num_steps: int = Field(default=100, gt=0)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/model/flow.py#L54-L54)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/layers/model/flow.py#L54-L54)
 
 ### nexuml_library.layers.model.flow.UNetFlow.record_trajectory
 
@@ -102,7 +102,7 @@ num_steps: int = Field(default=100, gt=0)
 record_trajectory: bool = False
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/model/flow.py#L55-L55)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/layers/model/flow.py#L55-L55)
 
 ### nexuml_library.layers.model.flow.UNetFlow.time_embedding_dim
 
@@ -112,7 +112,7 @@ record_trajectory: bool = False
 time_embedding_dim: int = Field(default=128, gt=0)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/model/flow.py#L53-L53)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/layers/model/flow.py#L53-L53)
 
 ### nexuml_library.layers.model.flow.UNetFlow.build
 
@@ -122,4 +122,4 @@ time_embedding_dim: int = Field(default=128, gt=0)
 def build(context: LayerBuildContext) -> PipelineLayer
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/model/flow.py#L57-L75)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/layers/model/flow.py#L57-L75)

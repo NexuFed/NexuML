@@ -4,7 +4,7 @@
 
 NexuML - Modular deep learning pipeline framework.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/__init__.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/__init__.py#L1-L1)
 
 ## nexuml.NnModuleLayer
 
@@ -20,7 +20,7 @@ Re-exported from: `nexuml.core.torch_adapter`
 
 Portable definition for an importable one-input/one-output PyTorch module.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/torch_adapter.py#L22-L69)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/torch_adapter.py#L22-L69)
 
 ### nexuml.NnModuleLayer.args
 
@@ -30,7 +30,7 @@ Portable definition for an importable one-input/one-output PyTorch module.
 args: list[object]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/torch_adapter.py#L27-L27)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/torch_adapter.py#L27-L27)
 
 ### nexuml.NnModuleLayer.factory
 
@@ -40,7 +40,7 @@ args: list[object]
 factory: str
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/torch_adapter.py#L26-L26)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/torch_adapter.py#L26-L26)
 
 ### nexuml.NnModuleLayer.kwargs
 
@@ -50,7 +50,7 @@ factory: str
 kwargs: dict[str, object]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/torch_adapter.py#L28-L28)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/torch_adapter.py#L28-L28)
 
 ### nexuml.NnModuleLayer.kind
 
@@ -62,7 +62,7 @@ kind = 'layer'
 
 Inherited from: `nexuml.core.components.LayerDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/components.py#L124-L124)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/components.py#L124-L124)
 
 ### nexuml.NnModuleLayer.requires_post_train_fit
 
@@ -74,7 +74,7 @@ requires_post_train_fit: bool = False
 
 Inherited from: `nexuml.core.components.LayerDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/components.py#L125-L125)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/components.py#L125-L125)
 
 ### nexuml.NnModuleLayer.component_name
 
@@ -86,7 +86,7 @@ component_name: str
 
 Inherited from: `nexuml.core.components.ComponentDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/components.py#L34-L34)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/components.py#L34-L34)
 
 ### nexuml.NnModuleLayer.component_version
 
@@ -98,7 +98,7 @@ component_version: str = '1'
 
 Inherited from: `nexuml.core.components.ComponentDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/components.py#L35-L35)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/components.py#L35-L35)
 
 ### nexuml.NnModuleLayer.model_config
 
@@ -110,7 +110,7 @@ model_config = ConfigDict(extra='forbid', frozen=True, validate_default=True, al
 
 Inherited from: `nexuml.core.components.ComponentDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/components.py#L25-L31)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/components.py#L25-L31)
 
 ### nexuml.NnModuleLayer.build
 
@@ -120,7 +120,7 @@ Inherited from: `nexuml.core.components.ComponentDefinition`
 def build(context: LayerBuildContext) -> PipelineLayer
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/torch_adapter.py#L46-L69)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/torch_adapter.py#L46-L69)
 
 ## nexuml.callback
 
@@ -138,7 +138,7 @@ Configure an importable Lightning callback factory.
 
 - (`CallbackSpec`) — Portable callback specification.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/factory.py#L127-L135)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/factory.py#L127-L135)
 
 ## nexuml.nn_module
 
@@ -160,7 +160,7 @@ Create a portable direct-module definition from an importable factory.
 
 - `TypeError` — If *factory* is a live module instance.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/torch_adapter.py#L75-L92)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/torch_adapter.py#L75-L92)
 
 ## nexuml.optimizer
 
@@ -178,7 +178,7 @@ Configure an optimizer factory; model parameters are supplied at runtime.
 
 - (`OptimizerSpec`) — Portable optimizer specification.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/factory.py#L138-L148)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/factory.py#L138-L148)
 
 ## nexuml.scheduler
 
@@ -196,7 +196,7 @@ Configure a scheduler factory; its optimizer is supplied at runtime.
 
 - (`SchedulerSpec`) — Portable scheduler specification.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/factory.py#L151-L163)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/factory.py#L151-L163)
 
 ## nexuml.strategy
 
@@ -214,7 +214,7 @@ Configure an importable Lightning strategy factory.
 
 - (`StrategySpec`) — Portable strategy specification.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/factory.py#L166-L174)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/factory.py#L166-L174)
 
 ## nexuml.writer
 
@@ -236,7 +236,7 @@ Configure an importable dataset export backend factory.
 
 - `TypeError` — If *factory* is not an export backend class.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/factory.py#L177-L192)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/factory.py#L177-L192)
 
 **Modules**
 

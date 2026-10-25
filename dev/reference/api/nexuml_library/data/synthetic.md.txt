@@ -4,7 +4,7 @@
 
 Synthetic dataset for testing architectures without real data.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/synthetic.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/data/synthetic.py#L1-L1)
 
 ## nexuml_library.data.synthetic.SyntheticDataset
 
@@ -24,7 +24,7 @@ Generates arbitrary feature tensors with optional targets:
 - multilabel labels (random binary vectors)
 - multi-output regression targets (linear combination + noise)
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/synthetic.py#L30-L50)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/data/synthetic.py#L30-L50)
 
 ### nexuml_library.data.synthetic.SyntheticDataset.feature_key
 
@@ -34,7 +34,7 @@ Generates arbitrary feature tensors with optional targets:
 feature_key: str = 'features'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/synthetic.py#L47-L47)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/data/synthetic.py#L47-L47)
 
 ### nexuml_library.data.synthetic.SyntheticDataset.feature_shape
 
@@ -44,7 +44,7 @@ feature_key: str = 'features'
 feature_shape: tuple[int, ...] = (128)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/synthetic.py#L41-L41)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/data/synthetic.py#L41-L41)
 
 ### nexuml_library.data.synthetic.SyntheticDataset.noise_type
 
@@ -54,7 +54,7 @@ feature_shape: tuple[int, ...] = (128)
 noise_type: str = 'gaussian'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/synthetic.py#L43-L43)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/data/synthetic.py#L43-L43)
 
 ### nexuml_library.data.synthetic.SyntheticDataset.num_clusters
 
@@ -64,7 +64,7 @@ noise_type: str = 'gaussian'
 num_clusters: int | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/synthetic.py#L44-L44)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/data/synthetic.py#L44-L44)
 
 ### nexuml_library.data.synthetic.SyntheticDataset.num_samples
 
@@ -74,7 +74,7 @@ num_clusters: int | None = None
 num_samples: int = 1000
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/synthetic.py#L42-L42)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/data/synthetic.py#L42-L42)
 
 ### nexuml_library.data.synthetic.SyntheticDataset.seed
 
@@ -84,7 +84,7 @@ num_samples: int = 1000
 seed: int = 42
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/synthetic.py#L46-L46)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/data/synthetic.py#L46-L46)
 
 ### nexuml_library.data.synthetic.SyntheticDataset.targets
 
@@ -94,7 +94,7 @@ seed: int = 42
 targets: list[TargetConfig] = Field(default_factory=list)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/synthetic.py#L45-L45)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/data/synthetic.py#L45-L45)
 
 ### nexuml_library.data.synthetic.SyntheticDataset.build
 
@@ -104,7 +104,7 @@ targets: list[TargetConfig] = Field(default_factory=list)
 def build() -> NexuDataset
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/synthetic.py#L49-L50)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/data/synthetic.py#L49-L50)
 
 ## nexuml_library.data.synthetic.TargetConfig
 
@@ -116,7 +116,7 @@ class TargetConfig
 
 Configuration for a synthetic target.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/synthetic.py#L18-L27)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/data/synthetic.py#L18-L27)
 
 ### nexuml_library.data.synthetic.TargetConfig.key
 
@@ -126,7 +126,7 @@ Configuration for a synthetic target.
 key: str
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/synthetic.py#L23-L23)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/data/synthetic.py#L23-L23)
 
 ### nexuml_library.data.synthetic.TargetConfig.label_density
 
@@ -136,7 +136,7 @@ key: str
 label_density: float = 0.3
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/synthetic.py#L26-L26)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/data/synthetic.py#L26-L26)
 
 ### nexuml_library.data.synthetic.TargetConfig.num_classes
 
@@ -146,7 +146,7 @@ label_density: float = 0.3
 num_classes: int | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/synthetic.py#L24-L24)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/data/synthetic.py#L24-L24)
 
 ### nexuml_library.data.synthetic.TargetConfig.num_outputs
 
@@ -156,7 +156,7 @@ num_classes: int | None = None
 num_outputs: int | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/synthetic.py#L25-L25)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/data/synthetic.py#L25-L25)
 
 ### nexuml_library.data.synthetic.TargetConfig.positive_fraction
 
@@ -166,7 +166,7 @@ num_outputs: int | None = None
 positive_fraction: float | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/synthetic.py#L27-L27)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/data/synthetic.py#L27-L27)
 
 ### nexuml_library.data.synthetic.TargetConfig.type
 
@@ -176,4 +176,4 @@ positive_fraction: float | None = None
 type: str
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/synthetic.py#L22-L22)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/data/synthetic.py#L22-L22)

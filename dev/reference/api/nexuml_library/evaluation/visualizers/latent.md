@@ -4,7 +4,7 @@
 
 Latent space visualizer using t-SNE or UMAP.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/evaluation/visualizers/latent.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/evaluation/visualizers/latent.py#L1-L1)
 
 ## nexuml_library.evaluation.visualizers.latent.logger
 
@@ -14,7 +14,7 @@ Latent space visualizer using t-SNE or UMAP.
 logger = logging.getLogger(__name__)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/evaluation/visualizers/latent.py#L28-L28)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/evaluation/visualizers/latent.py#L28-L28)
 
 ## nexuml_library.evaluation.visualizers.latent.LatentVisualizer
 
@@ -31,7 +31,7 @@ Visualizes latent space using t-SNE or UMAP projection.
 Uses reservoir sampling to handle large datasets efficiently.
 Train and test samples are projected together and colored by label/split.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/evaluation/visualizers/latent.py#L31-L56)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/evaluation/visualizers/latent.py#L31-L56)
 
 ### nexuml_library.evaluation.visualizers.latent.LatentVisualizer.context_inputs
 
@@ -41,7 +41,7 @@ Train and test samples are projected together and colored by label/split.
 context_inputs = EvalContextInputs(feature_key=ContextInput(default='latent'), label_key=ContextInput(default='y_true'))
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/evaluation/visualizers/latent.py#L39-L42)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/evaluation/visualizers/latent.py#L39-L42)
 
 ### nexuml_library.evaluation.visualizers.latent.LatentVisualizer.max_samples
 
@@ -51,7 +51,7 @@ context_inputs = EvalContextInputs(feature_key=ContextInput(default='latent'), l
 max_samples: int = 2000
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/evaluation/visualizers/latent.py#L44-L44)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/evaluation/visualizers/latent.py#L44-L44)
 
 ### nexuml_library.evaluation.visualizers.latent.LatentVisualizer.method
 
@@ -61,7 +61,7 @@ max_samples: int = 2000
 method: Literal['tsne', 'umap'] = 'tsne'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/evaluation/visualizers/latent.py#L43-L43)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/evaluation/visualizers/latent.py#L43-L43)
 
 ### nexuml_library.evaluation.visualizers.latent.LatentVisualizer.perplexity
 
@@ -71,7 +71,7 @@ method: Literal['tsne', 'umap'] = 'tsne'
 perplexity: int = 30
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/evaluation/visualizers/latent.py#L45-L45)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/evaluation/visualizers/latent.py#L45-L45)
 
 ### nexuml_library.evaluation.visualizers.latent.LatentVisualizer.storage_backend
 
@@ -81,7 +81,7 @@ perplexity: int = 30
 storage_backend: str = 'memory'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/evaluation/visualizers/latent.py#L46-L46)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/evaluation/visualizers/latent.py#L46-L46)
 
 ### nexuml_library.evaluation.visualizers.latent.LatentVisualizer.storage_path
 
@@ -91,7 +91,7 @@ storage_backend: str = 'memory'
 storage_path: str | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/evaluation/visualizers/latent.py#L47-L47)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/evaluation/visualizers/latent.py#L47-L47)
 
 ### nexuml_library.evaluation.visualizers.latent.LatentVisualizer.build
 
@@ -101,4 +101,4 @@ storage_path: str | None = None
 def build(context: EvalBuildContext) -> EvalAlgorithm
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/evaluation/visualizers/latent.py#L49-L56)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/evaluation/visualizers/latent.py#L49-L56)

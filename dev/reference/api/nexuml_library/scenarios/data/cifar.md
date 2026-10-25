@@ -4,7 +4,7 @@
 
 CIFAR data scenario fragments.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/scenarios/data/cifar.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/scenarios/data/cifar.py#L1-L1)
 
 ## nexuml_library.scenarios.data.cifar.cifar100_data
 
@@ -20,7 +20,7 @@ Create a DataSpec for CIFAR-100 image classification.
 
 - `DataSpec` (`DataSpec`) — CIFAR-100 dataset specification.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/scenarios/data/cifar.py#L34-L55)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/scenarios/data/cifar.py#L34-L55)
 
 ## nexuml_library.scenarios.data.cifar.cifar10_data
 
@@ -36,4 +36,4 @@ Create a DataSpec for CIFAR-10 image classification.
 
 - `DataSpec` (`DataSpec`) — CIFAR-10 dataset specification.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/scenarios/data/cifar.py#L10-L31)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/scenarios/data/cifar.py#L10-L31)

@@ -4,7 +4,7 @@
 
 Utilities for evaluation algorithms.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/utils.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/utils.py#L1-L1)
 
 ## nexuml.evaluation.utils.FeatureStore
 
@@ -18,7 +18,7 @@ Bases: `ABC`
 
 Collect fit features for batch-fit distance estimators.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/utils.py#L55-L72)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/utils.py#L55-L72)
 
 ### nexuml.evaluation.utils.FeatureStore.append
 
@@ -30,7 +30,7 @@ def append(features: torch.Tensor) -> None
 
 Append a feature batch.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/utils.py#L58-L60)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/utils.py#L58-L60)
 
 ### nexuml.evaluation.utils.FeatureStore.as_array
 
@@ -42,7 +42,7 @@ def as_array() -> torch.Tensor | np.ndarray | None
 
 Return stored features as a CPU-compatible matrix.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/utils.py#L66-L68)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/utils.py#L66-L68)
 
 ### nexuml.evaluation.utils.FeatureStore.cleanup
 
@@ -54,7 +54,7 @@ def cleanup() -> None
 
 Close handles and remove temporary files when not retained.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/utils.py#L70-L72)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/utils.py#L70-L72)
 
 ### nexuml.evaluation.utils.FeatureStore.finalize
 
@@ -66,7 +66,7 @@ def finalize() -> None
 
 Finalize storage for reading.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/utils.py#L62-L64)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/utils.py#L62-L64)
 
 ## nexuml.evaluation.utils.MemmapFeatureStore
 
@@ -85,7 +85,7 @@ The memmap is pre-allocated to ``(max_samples, D)`` when ``max_samples`` is
 provided; otherwise capacity starts at 1024 rows and doubles as needed.
 ``finalize()`` trims the file to the actual row count written.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/utils.py#L109-L199)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/utils.py#L109-L199)
 
 ### nexuml.evaluation.utils.MemmapFeatureStore.filename
 
@@ -95,7 +95,7 @@ provided; otherwise capacity starts at 1024 rows and doubles as needed.
 filename = self.storage_path / features-{uuid.uuid4().hex}.dat
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/utils.py#L134-L134)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/utils.py#L134-L134)
 
 ### nexuml.evaluation.utils.MemmapFeatureStore.max_samples
 
@@ -105,7 +105,7 @@ filename = self.storage_path / features-{uuid.uuid4().hex}.dat
 max_samples = max_samples
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/utils.py#L126-L126)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/utils.py#L126-L126)
 
 ### nexuml.evaluation.utils.MemmapFeatureStore.retain_storage
 
@@ -115,7 +115,7 @@ max_samples = max_samples
 retain_storage = retain_storage or storage_path is not None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/utils.py#L132-L132)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/utils.py#L132-L132)
 
 ### nexuml.evaluation.utils.MemmapFeatureStore.storage_path
 
@@ -125,7 +125,7 @@ retain_storage = retain_storage or storage_path is not None
 storage_path = Path(storage_path) if storage_path is not None else Path(tempfile.mkdtemp(prefix='nexuml-features-'))
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/utils.py#L127-L131)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/utils.py#L127-L131)
 
 ### nexuml.evaluation.utils.MemmapFeatureStore.append
 
@@ -135,7 +135,7 @@ storage_path = Path(storage_path) if storage_path is not None else Path(tempfile
 def append(features: torch.Tensor) -> None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/utils.py#L159-L170)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/utils.py#L159-L170)
 
 ### nexuml.evaluation.utils.MemmapFeatureStore.as_array
 
@@ -145,7 +145,7 @@ def append(features: torch.Tensor) -> None
 def as_array() -> np.ndarray | None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/utils.py#L187-L192)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/utils.py#L187-L192)
 
 ### nexuml.evaluation.utils.MemmapFeatureStore.cleanup
 
@@ -155,7 +155,7 @@ def as_array() -> np.ndarray | None
 def cleanup() -> None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/utils.py#L194-L199)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/utils.py#L194-L199)
 
 ### nexuml.evaluation.utils.MemmapFeatureStore.finalize
 
@@ -165,7 +165,7 @@ def cleanup() -> None
 def finalize() -> None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/utils.py#L172-L185)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/utils.py#L172-L185)
 
 ## nexuml.evaluation.utils.RAMFeatureStore
 
@@ -179,7 +179,7 @@ Bases: `nexuml.evaluation.utils.FeatureStore`
 
 In-memory feature storage with optional reservoir sampling.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/utils.py#L75-L106)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/utils.py#L75-L106)
 
 ### nexuml.evaluation.utils.RAMFeatureStore.max_samples
 
@@ -189,7 +189,7 @@ In-memory feature storage with optional reservoir sampling.
 max_samples = max_samples
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/utils.py#L79-L79)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/utils.py#L79-L79)
 
 ### nexuml.evaluation.utils.RAMFeatureStore.append
 
@@ -199,7 +199,7 @@ max_samples = max_samples
 def append(features: torch.Tensor) -> None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/utils.py#L84-L89)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/utils.py#L84-L89)
 
 ### nexuml.evaluation.utils.RAMFeatureStore.as_array
 
@@ -209,7 +209,7 @@ def append(features: torch.Tensor) -> None
 def as_array() -> torch.Tensor | None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/utils.py#L99-L102)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/utils.py#L99-L102)
 
 ### nexuml.evaluation.utils.RAMFeatureStore.cleanup
 
@@ -219,7 +219,7 @@ def as_array() -> torch.Tensor | None
 def cleanup() -> None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/utils.py#L104-L106)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/utils.py#L104-L106)
 
 ### nexuml.evaluation.utils.RAMFeatureStore.finalize
 
@@ -229,7 +229,7 @@ def cleanup() -> None
 def finalize() -> None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/utils.py#L91-L97)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/utils.py#L91-L97)
 
 ## nexuml.evaluation.utils.ReservoirSampler
 
@@ -244,7 +244,7 @@ Online reservoir sampling (Vitter's Algorithm R).
 Maintains a fixed-size random sample of items seen so far,
 suitable for streaming large datasets without storing everything.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/utils.py#L16-L52)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/utils.py#L16-L52)
 
 ### nexuml.evaluation.utils.ReservoirSampler.max_samples
 
@@ -254,7 +254,7 @@ suitable for streaming large datasets without storing everything.
 max_samples = max_samples
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/utils.py#L24-L24)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/utils.py#L24-L24)
 
 ### nexuml.evaluation.utils.ReservoirSampler.n_sampled
 
@@ -264,7 +264,7 @@ max_samples = max_samples
 n_sampled: int
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/utils.py#L51-L52)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/utils.py#L51-L52)
 
 ### nexuml.evaluation.utils.ReservoirSampler.n_seen
 
@@ -274,7 +274,7 @@ n_sampled: int
 n_seen: int
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/utils.py#L47-L48)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/utils.py#L47-L48)
 
 ### nexuml.evaluation.utils.ReservoirSampler.add
 
@@ -286,7 +286,7 @@ def add(items: torch.Tensor) -> None
 
 Add a batch of items (first dim = batch size).
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/utils.py#L28-L38)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/utils.py#L28-L38)
 
 ### nexuml.evaluation.utils.ReservoirSampler.get
 
@@ -298,7 +298,7 @@ def get() -> torch.Tensor | None
 
 Return sampled items as a tensor, or None if empty.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/utils.py#L40-L44)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/utils.py#L40-L44)
 
 ## nexuml.evaluation.utils.create_feature_store
 
@@ -318,4 +318,4 @@ Create a feature store backend.
 
 - `ValueError` — If *backend* is not ``"ram"`` or ``"memmap"``.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/utils.py#L202-L225)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/utils.py#L202-L225)

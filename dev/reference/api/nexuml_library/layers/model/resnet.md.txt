@@ -4,7 +4,7 @@
 
 ResNet pipeline layer for image classification backbones.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/model/resnet.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/layers/model/resnet.py#L1-L1)
 
 ## nexuml_library.layers.model.resnet.ResNetType
 
@@ -14,7 +14,7 @@ ResNet pipeline layer for image classification backbones.
 ResNetType = Literal['resnet18', 'resnet34', 'resnet50', 'resnet101', 'resnet152']
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/model/resnet.py#L17-L17)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/layers/model/resnet.py#L17-L17)
 
 ## nexuml_library.layers.model.resnet.logger
 
@@ -24,7 +24,7 @@ ResNetType = Literal['resnet18', 'resnet34', 'resnet50', 'resnet101', 'resnet152
 logger = logging.getLogger(__name__)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/model/resnet.py#L15-L15)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/layers/model/resnet.py#L15-L15)
 
 ## nexuml_library.layers.model.resnet.ResNet
 
@@ -48,7 +48,7 @@ can operate on embeddings.
 - `pretrained` (`bool`) — Whether to load pretrained ImageNet weights.
 - `cifar_stem` (`bool | None`) — Use a CIFAR-friendly stem (3x3 stride-1, no maxpool). Defaults to ``False`` when pretrained, ``True`` otherwise.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/model/resnet.py#L20-L40)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/layers/model/resnet.py#L20-L40)
 
 ### nexuml_library.layers.model.resnet.ResNet.cifar_stem
 
@@ -58,7 +58,7 @@ can operate on embeddings.
 cifar_stem: bool | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/model/resnet.py#L37-L37)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/layers/model/resnet.py#L37-L37)
 
 ### nexuml_library.layers.model.resnet.ResNet.pretrained
 
@@ -68,7 +68,7 @@ cifar_stem: bool | None = None
 pretrained: bool = False
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/model/resnet.py#L36-L36)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/layers/model/resnet.py#L36-L36)
 
 ### nexuml_library.layers.model.resnet.ResNet.resnet_type
 
@@ -78,7 +78,7 @@ pretrained: bool = False
 resnet_type: ResNetType = 'resnet18'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/model/resnet.py#L35-L35)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/layers/model/resnet.py#L35-L35)
 
 ### nexuml_library.layers.model.resnet.ResNet.build
 
@@ -88,4 +88,4 @@ resnet_type: ResNetType = 'resnet18'
 def build(context: LayerBuildContext) -> PipelineLayer
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/model/resnet.py#L39-L40)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/layers/model/resnet.py#L39-L40)

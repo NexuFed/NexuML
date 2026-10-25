@@ -4,7 +4,7 @@
 
 Base class for post-training evaluation algorithms.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/algorithm.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/algorithm.py#L1-L1)
 
 ## nexuml.evaluation.algorithm.ContractError
 
@@ -18,7 +18,7 @@ Bases: `KeyError`
 
 Raised when a declared key contract cannot be satisfied at runtime.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/algorithm.py#L12-L13)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/algorithm.py#L12-L13)
 
 ## nexuml.evaluation.algorithm.DistanceEstimator
 
@@ -38,7 +38,7 @@ Abstract base for streaming distance estimators.
 > 2. fit_end() — finalize (compute inverse covariance, fit GMM, etc.)
 > 3. score(features, labels=None) — return per-sample anomaly scores
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/algorithm.py#L162-L181)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/algorithm.py#L162-L181)
 
 ### nexuml.evaluation.algorithm.DistanceEstimator.fit_batch
 
@@ -50,7 +50,7 @@ def fit_batch(features: torch.Tensor, labels: TensorDict | None = None) -> None
 
 Accumulate statistics from a batch of features.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/algorithm.py#L171-L173)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/algorithm.py#L171-L173)
 
 ### nexuml.evaluation.algorithm.DistanceEstimator.fit_end
 
@@ -62,7 +62,7 @@ def fit_end() -> None
 
 Finalize the estimator after all batches.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/algorithm.py#L175-L177)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/algorithm.py#L175-L177)
 
 ### nexuml.evaluation.algorithm.DistanceEstimator.score
 
@@ -74,7 +74,7 @@ def score(features: torch.Tensor, labels: TensorDict | None = None) -> torch.Ten
 
 Return per-sample anomaly scores (higher = more anomalous).
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/algorithm.py#L179-L181)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/algorithm.py#L179-L181)
 
 ## nexuml.evaluation.algorithm.EvalAlgorithm
 
@@ -100,7 +100,7 @@ Evaluation algorithms are consumer-only: they read from the pipeline output
 TensorDict and never produce new score keys. Score-producing components
 belong in the pipeline as PostTrainFitLayer subclasses.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/algorithm.py#L127-L159)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/algorithm.py#L127-L159)
 
 ### nexuml.evaluation.algorithm.EvalAlgorithm.eval_batch
 
@@ -112,7 +112,7 @@ def eval_batch(x: TensorDict, y: TensorDict | None) -> None
 
 Score/process one test batch using fitted state.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/algorithm.py#L148-L149)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/algorithm.py#L148-L149)
 
 ### nexuml.evaluation.algorithm.EvalAlgorithm.eval_end
 
@@ -124,7 +124,7 @@ def eval_end() -> None
 
 Finalize evaluation after all test batches.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/algorithm.py#L151-L152)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/algorithm.py#L151-L152)
 
 ### nexuml.evaluation.algorithm.EvalAlgorithm.fit_batch
 
@@ -136,7 +136,7 @@ def fit_batch(x: TensorDict, y: TensorDict | None) -> None
 
 Accumulate statistics from one train batch.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/algorithm.py#L142-L143)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/algorithm.py#L142-L143)
 
 ### nexuml.evaluation.algorithm.EvalAlgorithm.fit_end
 
@@ -148,7 +148,7 @@ def fit_end() -> None
 
 Finalize fitting after all train batches. Default: no-op.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/algorithm.py#L145-L146)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/algorithm.py#L145-L146)
 
 ### nexuml.evaluation.algorithm.EvalAlgorithm.results
 
@@ -160,7 +160,7 @@ def results() -> dict[str, float]
 
 Return computed metrics as a flat dict.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/algorithm.py#L157-L159)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/algorithm.py#L157-L159)
 
 ### nexuml.evaluation.algorithm.EvalAlgorithm.visualize
 
@@ -172,7 +172,7 @@ def visualize(logger: Any) -> None
 
 Produce visualizations and log them (optional).
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/algorithm.py#L154-L155)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/algorithm.py#L154-L155)
 
 ## nexuml.evaluation.algorithm.get_declared_axis
 
@@ -197,7 +197,7 @@ axis_spec may be a string (shorthand, defaults source=y) or an AxisKeySpec.
 - `ValueError` — If *axis_spec* references an unknown source.
 - `ContractError` — If the declared key is missing from the resolved source.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/algorithm.py#L36-L92)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/algorithm.py#L36-L92)
 
 ## nexuml.evaluation.algorithm.get_declared_tensor
 
@@ -219,7 +219,7 @@ Return a declared tensor key from x; raise ContractError if absent.
 
 - `ContractError` — If *key* is not present in *x*.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/algorithm.py#L16-L33)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/algorithm.py#L16-L33)
 
 ## nexuml.evaluation.algorithm.get_fit_mask
 
@@ -239,4 +239,4 @@ Resolve fit mask to a bool tensor; returns all-True if fit_mask_key is None.
 
 - `ContractError` — If *fit_mask_key* is not found in *y* or *x*.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/algorithm.py#L95-L124)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/algorithm.py#L95-L124)

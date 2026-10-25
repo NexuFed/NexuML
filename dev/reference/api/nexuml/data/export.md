@@ -4,7 +4,7 @@
 
 Dataset export backends for NexuML.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/__init__.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/__init__.py#L1-L1)
 
 ## nexuml.data.export.BatchTransform
 
@@ -16,7 +16,7 @@ BatchTransform: TypeAlias = Callable[[TensorDict, TensorDict | None], tuple[Tens
 
 Re-exported from: `nexuml.data.export.runner`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/runner.py#L28-L31)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/runner.py#L28-L31)
 
 ## nexuml.data.export.ExportBackend
 
@@ -36,7 +36,7 @@ Each backend handles serialization of feature tensors to a specific
 storage format. The metadata (labels, splits, source info) is always
 stored as parquet alongside the backend-specific data directory.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/backend.py#L40-L89)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/backend.py#L40-L89)
 
 ### nexuml.data.export.ExportBackend.finalize
 
@@ -48,7 +48,7 @@ def finalize() -> dict[str, Any]
 
 Flush/close files. Return backend-specific metadata for config.yaml.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/backend.py#L82-L84)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/backend.py#L82-L84)
 
 ### nexuml.data.export.ExportBackend.initialize
 
@@ -60,7 +60,7 @@ def initialize(export_dir: Path, num_samples: int, feature_shapes: dict[str, tup
 
 Prepare storage (create files, allocate mmap, etc.).
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/backend.py#L51-L59)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/backend.py#L51-L59)
 
 ### nexuml.data.export.ExportBackend.load_sample
 
@@ -72,7 +72,7 @@ def load_sample(export_dir: Path, index: int) -> dict[str, torch.Tensor]
 
 Load one sample's feature tensors from an exported directory.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/backend.py#L86-L89)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/backend.py#L86-L89)
 
 ### nexuml.data.export.ExportBackend.save_batch
 
@@ -90,7 +90,7 @@ Backends can override this for more efficient contiguous writes.
 
 - `ValueError` — If batch sizes across feature tensors are inconsistent.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/backend.py#L65-L80)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/backend.py#L65-L80)
 
 ### nexuml.data.export.ExportBackend.save_sample
 
@@ -102,7 +102,7 @@ def save_sample(index: int, features: dict[str, torch.Tensor]) -> None
 
 Save one sample's feature tensors.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/backend.py#L61-L63)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/backend.py#L61-L63)
 
 ## nexuml.data.export.ExportConfig
 
@@ -116,7 +116,7 @@ Re-exported from: `nexuml.data.export.backend`
 
 Schema for config.yaml written alongside exported data.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/backend.py#L19-L37)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/backend.py#L19-L37)
 
 ### nexuml.data.export.ExportConfig.backend
 
@@ -126,7 +126,7 @@ Schema for config.yaml written alongside exported data.
 backend: str
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/backend.py#L24-L24)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/backend.py#L24-L24)
 
 ### nexuml.data.export.ExportConfig.extra
 
@@ -136,7 +136,7 @@ backend: str
 extra: dict[str, Any] = field(default_factory=dict)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/backend.py#L37-L37)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/backend.py#L37-L37)
 
 ### nexuml.data.export.ExportConfig.feature_shapes
 
@@ -146,7 +146,7 @@ extra: dict[str, Any] = field(default_factory=dict)
 feature_shapes: dict[str, list[int]]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/backend.py#L33-L33)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/backend.py#L33-L33)
 
 ### nexuml.data.export.ExportConfig.format_version
 
@@ -156,7 +156,7 @@ feature_shapes: dict[str, list[int]]
 format_version: int
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/backend.py#L23-L23)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/backend.py#L23-L23)
 
 ### nexuml.data.export.ExportConfig.key_specs
 
@@ -166,7 +166,7 @@ format_version: int
 key_specs: dict[str, dict[str, Any]] = field(default_factory=dict)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/backend.py#L34-L34)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/backend.py#L34-L34)
 
 ### nexuml.data.export.ExportConfig.label_names
 
@@ -176,7 +176,7 @@ key_specs: dict[str, dict[str, Any]] = field(default_factory=dict)
 label_names: list[str]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/backend.py#L27-L27)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/backend.py#L27-L27)
 
 ### nexuml.data.export.ExportConfig.label_prefix
 
@@ -186,7 +186,7 @@ label_names: list[str]
 label_prefix: str
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/backend.py#L32-L32)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/backend.py#L32-L32)
 
 ### nexuml.data.export.ExportConfig.merge_labels_config
 
@@ -196,7 +196,7 @@ label_prefix: str
 merge_labels_config: dict[str, Any] | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/backend.py#L36-L36)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/backend.py#L36-L36)
 
 ### nexuml.data.export.ExportConfig.modality
 
@@ -206,7 +206,7 @@ merge_labels_config: dict[str, Any] | None = None
 modality: str
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/backend.py#L29-L29)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/backend.py#L29-L29)
 
 ### nexuml.data.export.ExportConfig.num_classes
 
@@ -216,7 +216,7 @@ modality: str
 num_classes: dict[str, int]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/backend.py#L28-L28)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/backend.py#L28-L28)
 
 ### nexuml.data.export.ExportConfig.num_samples
 
@@ -226,7 +226,7 @@ num_classes: dict[str, int]
 num_samples: int
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/backend.py#L26-L26)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/backend.py#L26-L26)
 
 ### nexuml.data.export.ExportConfig.source_datasets
 
@@ -236,7 +236,7 @@ num_samples: int
 source_datasets: list[str] = field(default_factory=list)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/backend.py#L35-L35)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/backend.py#L35-L35)
 
 ### nexuml.data.export.ExportConfig.writer
 
@@ -246,7 +246,7 @@ source_datasets: list[str] = field(default_factory=list)
 writer: str
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/backend.py#L25-L25)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/backend.py#L25-L25)
 
 ### nexuml.data.export.ExportConfig.x_keys
 
@@ -256,7 +256,7 @@ writer: str
 x_keys: list[str]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/backend.py#L30-L30)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/backend.py#L30-L30)
 
 ### nexuml.data.export.ExportConfig.y_keys
 
@@ -266,7 +266,7 @@ x_keys: list[str]
 y_keys: list[str]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/backend.py#L31-L31)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/backend.py#L31-L31)
 
 ## nexuml.data.export.NumpyBackend
 
@@ -282,7 +282,7 @@ Re-exported from: `nexuml.data.export.numpy_files`
 
 Store each key as one `.npy` file per sample.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/numpy_files.py#L21-L98)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/numpy_files.py#L21-L98)
 
 ### nexuml.data.export.NumpyBackend.finalize
 
@@ -292,7 +292,7 @@ Store each key as one `.npy` file per sample.
 def finalize() -> dict[str, Any]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/numpy_files.py#L71-L87)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/numpy_files.py#L71-L87)
 
 ### nexuml.data.export.NumpyBackend.initialize
 
@@ -302,7 +302,7 @@ def finalize() -> dict[str, Any]
 def initialize(export_dir: Path, num_samples: int, feature_shapes: dict[str, tuple[int, ...]], dtype: np.dtype[Any] | str | None = None) -> None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/numpy_files.py#L32-L45)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/numpy_files.py#L32-L45)
 
 ### nexuml.data.export.NumpyBackend.load_sample
 
@@ -312,7 +312,7 @@ def initialize(export_dir: Path, num_samples: int, feature_shapes: dict[str, tup
 def load_sample(export_dir: Path, index: int) -> dict[str, torch.Tensor]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/numpy_files.py#L89-L98)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/numpy_files.py#L89-L98)
 
 ### nexuml.data.export.NumpyBackend.save_sample
 
@@ -322,7 +322,7 @@ def load_sample(export_dir: Path, index: int) -> dict[str, torch.Tensor]
 def save_sample(index: int, features: dict[str, torch.Tensor]) -> None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/numpy_files.py#L47-L69)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/numpy_files.py#L47-L69)
 
 ### nexuml.data.export.NumpyBackend.save_batch
 
@@ -342,7 +342,7 @@ Backends can override this for more efficient contiguous writes.
 
 - `ValueError` — If batch sizes across feature tensors are inconsistent.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/backend.py#L65-L80)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/backend.py#L65-L80)
 
 ## nexuml.data.export.NumpyMmapBackend
 
@@ -362,7 +362,7 @@ Pre-allocates a single `.npy` file per feature key with shape
 `(num_samples, *feature_shape)` for efficient sequential writes and
 memory-mapped reads. Requires all samples to have uniform feature shapes.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/numpy_mmap.py#L17-L170)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/numpy_mmap.py#L17-L170)
 
 ### nexuml.data.export.NumpyMmapBackend.finalize
 
@@ -372,7 +372,7 @@ memory-mapped reads. Requires all samples to have uniform feature shapes.
 def finalize() -> dict[str, Any]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/numpy_mmap.py#L128-L152)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/numpy_mmap.py#L128-L152)
 
 ### nexuml.data.export.NumpyMmapBackend.initialize
 
@@ -382,7 +382,7 @@ def finalize() -> dict[str, Any]
 def initialize(export_dir: Path, num_samples: int, feature_shapes: dict[str, tuple[int, ...]], dtype: np.dtype[Any] | str | None = None) -> None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/numpy_mmap.py#L34-L65)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/numpy_mmap.py#L34-L65)
 
 ### nexuml.data.export.NumpyMmapBackend.load_sample
 
@@ -392,7 +392,7 @@ def initialize(export_dir: Path, num_samples: int, feature_shapes: dict[str, tup
 def load_sample(export_dir: Path, index: int) -> dict[str, torch.Tensor]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/numpy_mmap.py#L154-L170)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/numpy_mmap.py#L154-L170)
 
 ### nexuml.data.export.NumpyMmapBackend.save_batch
 
@@ -402,7 +402,7 @@ def load_sample(export_dir: Path, index: int) -> dict[str, torch.Tensor]
 def save_batch(start_index: int, features: dict[str, torch.Tensor]) -> None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/numpy_mmap.py#L92-L126)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/numpy_mmap.py#L92-L126)
 
 ### nexuml.data.export.NumpyMmapBackend.save_sample
 
@@ -412,7 +412,7 @@ def save_batch(start_index: int, features: dict[str, torch.Tensor]) -> None
 def save_sample(index: int, features: dict[str, torch.Tensor]) -> None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/numpy_mmap.py#L67-L90)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/numpy_mmap.py#L67-L90)
 
 ## nexuml.data.export.TensorDictMemmapBackend
 
@@ -428,7 +428,7 @@ Re-exported from: `nexuml.data.export.tensordict_memmap`
 
 Persist the exported dataset as one memmapped TensorDict.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/tensordict_memmap.py#L15-L113)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/tensordict_memmap.py#L15-L113)
 
 ### nexuml.data.export.TensorDictMemmapBackend.finalize
 
@@ -438,7 +438,7 @@ Persist the exported dataset as one memmapped TensorDict.
 def finalize() -> dict[str, Any]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/tensordict_memmap.py#L92-L107)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/tensordict_memmap.py#L92-L107)
 
 ### nexuml.data.export.TensorDictMemmapBackend.initialize
 
@@ -448,7 +448,7 @@ def finalize() -> dict[str, Any]
 def initialize(export_dir: Path, num_samples: int, feature_shapes: dict[str, tuple[int, ...]], dtype: np.dtype[Any] | str | None = None) -> None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/tensordict_memmap.py#L27-L53)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/tensordict_memmap.py#L27-L53)
 
 ### nexuml.data.export.TensorDictMemmapBackend.load_sample
 
@@ -458,7 +458,7 @@ def initialize(export_dir: Path, num_samples: int, feature_shapes: dict[str, tup
 def load_sample(export_dir: Path, index: int) -> dict[str, torch.Tensor]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/tensordict_memmap.py#L109-L113)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/tensordict_memmap.py#L109-L113)
 
 ### nexuml.data.export.TensorDictMemmapBackend.save_batch
 
@@ -468,7 +468,7 @@ def load_sample(export_dir: Path, index: int) -> dict[str, torch.Tensor]
 def save_batch(start_index: int, features: dict[str, torch.Tensor]) -> None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/tensordict_memmap.py#L72-L90)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/tensordict_memmap.py#L72-L90)
 
 ### nexuml.data.export.TensorDictMemmapBackend.save_sample
 
@@ -478,7 +478,7 @@ def save_batch(start_index: int, features: dict[str, torch.Tensor]) -> None
 def save_sample(index: int, features: dict[str, torch.Tensor]) -> None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/tensordict_memmap.py#L55-L70)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/tensordict_memmap.py#L55-L70)
 
 ## nexuml.data.export.TensorShardsBackend
 
@@ -498,7 +498,7 @@ A shard is a storage unit with ``N`` samples along dimension zero. It is
 NOT a training batch; the runtime loader may create arbitrary batch sizes
 from the shard contents.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/tensor_shards.py#L52-L520)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/tensor_shards.py#L52-L520)
 
 ### nexuml.data.export.TensorShardsBackend.samples_per_shard
 
@@ -508,7 +508,7 @@ from the shard contents.
 samples_per_shard = int(samples_per_shard)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/tensor_shards.py#L70-L70)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/tensor_shards.py#L70-L70)
 
 ### nexuml.data.export.TensorShardsBackend.end_split
 
@@ -518,7 +518,7 @@ samples_per_shard = int(samples_per_shard)
 def end_split(split: str) -> None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/tensor_shards.py#L140-L146)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/tensor_shards.py#L140-L146)
 
 ### nexuml.data.export.TensorShardsBackend.finalize
 
@@ -528,7 +528,7 @@ def end_split(split: str) -> None
 def finalize() -> dict[str, Any]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/tensor_shards.py#L208-L260)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/tensor_shards.py#L208-L260)
 
 ### nexuml.data.export.TensorShardsBackend.initialize
 
@@ -538,7 +538,7 @@ def finalize() -> dict[str, Any]
 def initialize(export_dir: Path, num_samples: int, feature_shapes: dict[str, tuple[int, ...]], dtype: object | None = None) -> None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/tensor_shards.py#L91-L127)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/tensor_shards.py#L91-L127)
 
 ### nexuml.data.export.TensorShardsBackend.load_manifest
 
@@ -548,7 +548,7 @@ def initialize(export_dir: Path, num_samples: int, feature_shapes: dict[str, tup
 def load_manifest(export_dir: Path) -> dict[str, Any]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/tensor_shards.py#L262-L268)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/tensor_shards.py#L262-L268)
 
 ### nexuml.data.export.TensorShardsBackend.load_sample
 
@@ -568,7 +568,7 @@ Map-style compatibility path; the window loader should use load_shard.
 
 - `IndexError` — If the sample index is outside available shard bounds.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/tensor_shards.py#L330-L360)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/tensor_shards.py#L330-L360)
 
 ### nexuml.data.export.TensorShardsBackend.load_shard
 
@@ -589,7 +589,7 @@ Load a complete shard for the future windowed loader.
 - `IndexError` — If an integer shard index is out of range.
 - `ValueError` — If the shard content or metadata is invalid.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/tensor_shards.py#L270-L328)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/tensor_shards.py#L270-L328)
 
 ### nexuml.data.export.TensorShardsBackend.save_batch
 
@@ -599,7 +599,7 @@ Load a complete shard for the future windowed loader.
 def save_batch(start_index: int, features: dict[str, torch.Tensor]) -> None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/tensor_shards.py#L158-L206)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/tensor_shards.py#L158-L206)
 
 ### nexuml.data.export.TensorShardsBackend.save_sample
 
@@ -609,7 +609,7 @@ def save_batch(start_index: int, features: dict[str, torch.Tensor]) -> None
 def save_sample(index: int, features: dict[str, torch.Tensor]) -> None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/tensor_shards.py#L148-L156)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/tensor_shards.py#L148-L156)
 
 ### nexuml.data.export.TensorShardsBackend.start_split
 
@@ -619,7 +619,7 @@ def save_sample(index: int, features: dict[str, torch.Tensor]) -> None
 def start_split(split: str) -> None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/tensor_shards.py#L130-L138)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/tensor_shards.py#L130-L138)
 
 ## nexuml.data.export.TorchBackend
 
@@ -635,7 +635,7 @@ Re-exported from: `nexuml.data.export.torch_files`
 
 Store one `.pt` file per sample containing all exported keys.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/torch_files.py#L17-L91)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/torch_files.py#L17-L91)
 
 ### nexuml.data.export.TorchBackend.finalize
 
@@ -645,7 +645,7 @@ Store one `.pt` file per sample containing all exported keys.
 def finalize() -> dict[str, Any]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/torch_files.py#L67-L84)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/torch_files.py#L67-L84)
 
 ### nexuml.data.export.TorchBackend.initialize
 
@@ -655,7 +655,7 @@ def finalize() -> dict[str, Any]
 def initialize(export_dir: Path, num_samples: int, feature_shapes: dict[str, tuple[int, ...]], dtype: torch.dtype | str | None = None) -> None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/torch_files.py#L28-L43)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/torch_files.py#L28-L43)
 
 ### nexuml.data.export.TorchBackend.load_sample
 
@@ -665,7 +665,7 @@ def initialize(export_dir: Path, num_samples: int, feature_shapes: dict[str, tup
 def load_sample(export_dir: Path, index: int) -> dict[str, torch.Tensor]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/torch_files.py#L86-L91)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/torch_files.py#L86-L91)
 
 ### nexuml.data.export.TorchBackend.save_sample
 
@@ -675,7 +675,7 @@ def load_sample(export_dir: Path, index: int) -> dict[str, torch.Tensor]
 def save_sample(index: int, features: dict[str, torch.Tensor]) -> None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/torch_files.py#L45-L65)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/torch_files.py#L45-L65)
 
 ### nexuml.data.export.TorchBackend.save_batch
 
@@ -695,7 +695,7 @@ Backends can override this for more efficient contiguous writes.
 
 - `ValueError` — If batch sizes across feature tensors are inconsistent.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/backend.py#L65-L80)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/backend.py#L65-L80)
 
 ## nexuml.data.export.WebDatasetBackend
 
@@ -711,7 +711,7 @@ Re-exported from: `nexuml.data.export.webdataset`
 
 Write lossless NumPy components into indexed WebDataset tar shards.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/webdataset.py#L33-L319)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/webdataset.py#L33-L319)
 
 ### nexuml.data.export.WebDatasetBackend.create_index
 
@@ -721,7 +721,7 @@ Write lossless NumPy components into indexed WebDataset tar shards.
 create_index = bool(create_index)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/webdataset.py#L52-L52)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/webdataset.py#L52-L52)
 
 ### nexuml.data.export.WebDatasetBackend.samples_per_shard
 
@@ -731,7 +731,7 @@ create_index = bool(create_index)
 samples_per_shard = int(samples_per_shard)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/webdataset.py#L51-L51)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/webdataset.py#L51-L51)
 
 ### nexuml.data.export.WebDatasetBackend.remote_uri
 
@@ -743,7 +743,7 @@ remote_uri: str | None
 
 S3 dataset root for remote exports.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/webdataset.py#L82-L84)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/webdataset.py#L82-L84)
 
 ### nexuml.data.export.WebDatasetBackend.end_split
 
@@ -759,7 +759,7 @@ Finish one dataset split and close its current shard.
 
 - `RuntimeError` — If the requested split is not the active split.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/webdataset.py#L113-L123)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/webdataset.py#L113-L123)
 
 ### nexuml.data.export.WebDatasetBackend.finalize
 
@@ -779,7 +779,7 @@ Close the final shard and return metadata for ``config.yaml``.
 
 - `RuntimeError` — If the backend was never initialized.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/webdataset.py#L256-L283)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/webdataset.py#L256-L283)
 
 ### nexuml.data.export.WebDatasetBackend.initialize
 
@@ -798,7 +798,7 @@ Prepare local shard staging.
 - `feature_shapes` (`dict[str, tuple[int, ...]]`) — Tensor shapes supplied by the export runner.
 - `dtype` (`np.dtype[Any] | str | None`) (default: `None`) — Optional floating-point storage dtype.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/webdataset.py#L86-L104)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/webdataset.py#L86-L104)
 
 ### nexuml.data.export.WebDatasetBackend.load_sample
 
@@ -819,7 +819,7 @@ Load one sample from a local WebDataset export.
 - `IndexError` — If the sample is absent from the export index.
 - `FileNotFoundError` — If a referenced tar member cannot be read.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/webdataset.py#L292-L319)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/webdataset.py#L292-L319)
 
 ### nexuml.data.export.WebDatasetBackend.publish_export_metadata
 
@@ -831,7 +831,7 @@ def publish_export_metadata(config_path: Path, metadata_path: Path) -> None
 
 Upload the final lightweight export metadata for an S3 export.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/webdataset.py#L285-L290)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/webdataset.py#L285-L290)
 
 ### nexuml.data.export.WebDatasetBackend.save_sample
 
@@ -847,7 +847,7 @@ Append one tensor sample to the active tar shard.
 
 - `ValueError` — If a component key contains a path separator.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/webdataset.py#L210-L254)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/webdataset.py#L210-L254)
 
 ### nexuml.data.export.WebDatasetBackend.start_split
 
@@ -859,7 +859,7 @@ def start_split(split: str) -> None
 
 Start one physically isolated dataset split.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/webdataset.py#L106-L111)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/webdataset.py#L106-L111)
 
 ### nexuml.data.export.WebDatasetBackend.save_batch
 
@@ -879,7 +879,7 @@ Backends can override this for more efficient contiguous writes.
 
 - `ValueError` — If batch sizes across feature tensors are inconsistent.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/backend.py#L65-L80)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/backend.py#L65-L80)
 
 ## nexuml.data.export.export_data_module
 
@@ -901,7 +901,7 @@ Export the data exactly as seen through a configured data module.
 
 - `ValueError` — If there are no samples or an unsupported remote backend is requested.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/runner.py#L70-L150)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/runner.py#L70-L150)
 
 ## nexuml.data.export.get_export_backend
 
@@ -923,7 +923,7 @@ Retrieve a registered export backend by name.
 
 - `KeyError` — If no backend is registered under that name.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/backend.py#L117-L129)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/backend.py#L117-L129)
 
 ## nexuml.data.export.get_export_backend_name
 
@@ -945,7 +945,7 @@ Return the registered name for an export backend class.
 
 - `KeyError` — If the backend class is not registered.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/backend.py#L132-L146)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/backend.py#L132-L146)
 
 ## nexuml.data.export.list_export_backends
 
@@ -959,7 +959,7 @@ Re-exported from: `nexuml.data.export.backend`
 
 Return names of all registered export backends.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/backend.py#L149-L151)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/backend.py#L149-L151)
 
 ## nexuml.data.export.register_export_backend
 
@@ -977,7 +977,7 @@ Decorator to register an export backend.
 
 - (`Callable[[type[_ExportBackendT]], type[_ExportBackendT]]`) — A decorator that registers the backend class and returns it.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/backend.py#L99-L114)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/data/export/backend.py#L99-L114)
 
 **Modules**
 

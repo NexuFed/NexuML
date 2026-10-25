@@ -4,7 +4,7 @@
 
 Thin Ray Train execution for the canonical NexuML Lightning session.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/ray.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/execution/ray.py#L1-L1)
 
 ## nexuml.execution.ray.RayExecutionError
 
@@ -18,7 +18,7 @@ Bases: `nexuml.execution.semantics.ExecutionError`
 
 Ray placement cannot preserve the requested execution semantics.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/ray.py#L19-L20)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/execution/ray.py#L19-L20)
 
 ## nexuml.execution.ray.run_ray
 
@@ -39,7 +39,7 @@ Execute one resolved scenario with Ray Train and return Ray's native Result.
 - `RayExecutionError` — If the scenario cannot be executed safely with Ray or
 Ray dependencies are unavailable.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/ray.py#L296-L325)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/execution/ray.py#L296-L325)
 
 ## nexuml.execution.ray.train_loop_per_worker
 
@@ -55,4 +55,4 @@ Run one Ray worker through the normal NexuML session lifecycle.
 
 - `RayExecutionError` — If Ray Train is unavailable in the worker environment.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/ray.py#L138-L158)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/execution/ray.py#L138-L158)

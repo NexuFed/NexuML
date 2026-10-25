@@ -4,7 +4,7 @@
 
 Core NexuML runtime: pipeline, layers, registry, compiler, and types.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/__init__.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/__init__.py#L1-L1)
 
 ## nexuml.core.NnModuleLayer
 
@@ -20,7 +20,7 @@ Re-exported from: `nexuml.core.torch_adapter`
 
 Portable definition for an importable one-input/one-output PyTorch module.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/torch_adapter.py#L22-L69)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/torch_adapter.py#L22-L69)
 
 ### nexuml.core.NnModuleLayer.args
 
@@ -30,7 +30,7 @@ Portable definition for an importable one-input/one-output PyTorch module.
 args: list[object]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/torch_adapter.py#L27-L27)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/torch_adapter.py#L27-L27)
 
 ### nexuml.core.NnModuleLayer.factory
 
@@ -40,7 +40,7 @@ args: list[object]
 factory: str
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/torch_adapter.py#L26-L26)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/torch_adapter.py#L26-L26)
 
 ### nexuml.core.NnModuleLayer.kwargs
 
@@ -50,7 +50,7 @@ factory: str
 kwargs: dict[str, object]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/torch_adapter.py#L28-L28)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/torch_adapter.py#L28-L28)
 
 ### nexuml.core.NnModuleLayer.kind
 
@@ -62,7 +62,7 @@ kind = 'layer'
 
 Inherited from: `nexuml.core.components.LayerDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/components.py#L124-L124)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/components.py#L124-L124)
 
 ### nexuml.core.NnModuleLayer.requires_post_train_fit
 
@@ -74,7 +74,7 @@ requires_post_train_fit: bool = False
 
 Inherited from: `nexuml.core.components.LayerDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/components.py#L125-L125)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/components.py#L125-L125)
 
 ### nexuml.core.NnModuleLayer.component_name
 
@@ -86,7 +86,7 @@ component_name: str
 
 Inherited from: `nexuml.core.components.ComponentDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/components.py#L34-L34)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/components.py#L34-L34)
 
 ### nexuml.core.NnModuleLayer.component_version
 
@@ -98,7 +98,7 @@ component_version: str = '1'
 
 Inherited from: `nexuml.core.components.ComponentDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/components.py#L35-L35)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/components.py#L35-L35)
 
 ### nexuml.core.NnModuleLayer.model_config
 
@@ -110,7 +110,7 @@ model_config = ConfigDict(extra='forbid', frozen=True, validate_default=True, al
 
 Inherited from: `nexuml.core.components.ComponentDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/components.py#L25-L31)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/components.py#L25-L31)
 
 ### nexuml.core.NnModuleLayer.build
 
@@ -120,7 +120,7 @@ Inherited from: `nexuml.core.components.ComponentDefinition`
 def build(context: LayerBuildContext) -> PipelineLayer
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/torch_adapter.py#L46-L69)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/torch_adapter.py#L46-L69)
 
 ## nexuml.core.PostTrainFitLayer
 
@@ -147,7 +147,7 @@ Lifecycle (managed by NexuSession._fit_post_train_layers):
 Fitted state is persisted via Lightning checkpoint hooks so loading a checkpoint
 restores a fully fitted pipeline without re-running fit passes.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/post_train_layer.py#L17-L98)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/post_train_layer.py#L17-L98)
 
 ### nexuml.core.PostTrainFitLayer.delay_epochs
 
@@ -159,7 +159,7 @@ delay_epochs = delay_epochs
 
 Inherited from: `nexuml.core.base_layer.PipelineLayer`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L64-L64)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L64-L64)
 
 ### nexuml.core.PostTrainFitLayer.epoch
 
@@ -171,7 +171,7 @@ epoch = 0
 
 Inherited from: `nexuml.core.base_layer.PipelineLayer`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L71-L71)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L71-L71)
 
 ### nexuml.core.PostTrainFitLayer.fit_mode
 
@@ -183,7 +183,7 @@ fit_mode = False
 
 Inherited from: `nexuml.core.base_layer.PipelineLayer`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L72-L72)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L72-L72)
 
 ### nexuml.core.PostTrainFitLayer.input_sizes
 
@@ -195,7 +195,7 @@ input_sizes = input_sizes
 
 Inherited from: `nexuml.core.base_layer.PipelineLayer`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L61-L61)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L61-L61)
 
 ### nexuml.core.PostTrainFitLayer.keys_in
 
@@ -207,7 +207,7 @@ keys_in = keys_in
 
 Inherited from: `nexuml.core.base_layer.PipelineLayer`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L56-L56)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L56-L56)
 
 ### nexuml.core.PostTrainFitLayer.keys_out
 
@@ -219,7 +219,7 @@ keys_out = keys_out
 
 Inherited from: `nexuml.core.base_layer.PipelineLayer`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L57-L57)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L57-L57)
 
 ### nexuml.core.PostTrainFitLayer.label_in_x
 
@@ -231,7 +231,7 @@ label_in_x = label_in_x
 
 Inherited from: `nexuml.core.base_layer.PipelineLayer`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L59-L59)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L59-L59)
 
 ### nexuml.core.PostTrainFitLayer.label_key
 
@@ -243,7 +243,7 @@ label_key = label_key
 
 Inherited from: `nexuml.core.base_layer.PipelineLayer`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L58-L58)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L58-L58)
 
 ### nexuml.core.PostTrainFitLayer.lightning_mode
 
@@ -255,7 +255,7 @@ lightning_mode = LightningMode.NONE
 
 Inherited from: `nexuml.core.base_layer.PipelineLayer`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L73-L73)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L73-L73)
 
 ### nexuml.core.PostTrainFitLayer.num_classes
 
@@ -267,7 +267,7 @@ num_classes = num_classes
 
 Inherited from: `nexuml.core.base_layer.PipelineLayer`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L60-L60)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L60-L60)
 
 ### nexuml.core.PostTrainFitLayer.output_sizes
 
@@ -279,7 +279,7 @@ output_sizes = output_sizes
 
 Inherited from: `nexuml.core.base_layer.PipelineLayer`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L62-L62)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L62-L62)
 
 ### nexuml.core.PostTrainFitLayer.shared_inputs
 
@@ -291,7 +291,7 @@ shared_inputs = shared_inputs
 
 Inherited from: `nexuml.core.base_layer.PipelineLayer`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L69-L69)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L69-L69)
 
 ### nexuml.core.PostTrainFitLayer.shared_memory
 
@@ -303,7 +303,7 @@ shared_memory = shared_memory
 
 Inherited from: `nexuml.core.base_layer.PipelineLayer`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L67-L67)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L67-L67)
 
 ### nexuml.core.PostTrainFitLayer.shared_outputs
 
@@ -315,7 +315,7 @@ shared_outputs = shared_outputs
 
 Inherited from: `nexuml.core.base_layer.PipelineLayer`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L68-L68)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L68-L68)
 
 ### nexuml.core.PostTrainFitLayer.update_every_n_epochs
 
@@ -327,7 +327,7 @@ update_every_n_epochs = update_every_n_epochs
 
 Inherited from: `nexuml.core.base_layer.PipelineLayer`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L65-L65)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L65-L65)
 
 ### nexuml.core.PostTrainFitLayer.collect_batch
 
@@ -339,7 +339,7 @@ def collect_batch(x: TensorDict, y: TensorDict | None) -> None
 
 Accumulate statistics from one train batch during the fit predict pass.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/post_train_layer.py#L38-L40)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/post_train_layer.py#L38-L40)
 
 ### nexuml.core.PostTrainFitLayer.finalize_fit
 
@@ -351,7 +351,7 @@ def finalize_fit() -> None
 
 Finalize fitting after all train batches have been collected.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/post_train_layer.py#L42-L44)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/post_train_layer.py#L42-L44)
 
 ### nexuml.core.PostTrainFitLayer.forward
 
@@ -361,7 +361,7 @@ Finalize fitting after all train batches have been collected.
 def forward(x: TensorDict, y: TensorDict | None = None) -> tuple[TensorDict, TensorDict | None]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/post_train_layer.py#L52-L69)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/post_train_layer.py#L52-L69)
 
 ### nexuml.core.PostTrainFitLayer.on_load_checkpoint
 
@@ -371,7 +371,7 @@ def forward(x: TensorDict, y: TensorDict | None = None) -> tuple[TensorDict, Ten
 def on_load_checkpoint(checkpoint: dict[str, Any]) -> None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/post_train_layer.py#L86-L91)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/post_train_layer.py#L86-L91)
 
 ### nexuml.core.PostTrainFitLayer.on_predict_end
 
@@ -381,7 +381,7 @@ def on_load_checkpoint(checkpoint: dict[str, Any]) -> None
 def on_predict_end() -> None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/post_train_layer.py#L71-L76)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/post_train_layer.py#L71-L76)
 
 ### nexuml.core.PostTrainFitLayer.on_save_checkpoint
 
@@ -391,7 +391,7 @@ def on_predict_end() -> None
 def on_save_checkpoint(checkpoint: dict[str, Any]) -> None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/post_train_layer.py#L80-L84)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/post_train_layer.py#L80-L84)
 
 ### nexuml.core.PostTrainFitLayer.check_update
 
@@ -403,7 +403,7 @@ def check_update() -> bool
 
 Inherited from: `nexuml.core.base_layer.PipelineLayer`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L91-L99)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L91-L99)
 
 ### nexuml.core.PostTrainFitLayer.forward_tensor
 
@@ -415,7 +415,7 @@ def forward_tensor(x: torch.Tensor, y: torch.Tensor | None = None) -> torch.Tens
 
 Inherited from: `nexuml.core.base_layer.PipelineLayer`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L149-L150)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L149-L150)
 
 ### nexuml.core.PostTrainFitLayer.get_label
 
@@ -427,7 +427,7 @@ def get_label(x: TensorDict | torch.Tensor, y: TensorDict | None) -> torch.Tenso
 
 Inherited from: `nexuml.core.base_layer.PipelineLayer`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L101-L109)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L101-L109)
 
 ### nexuml.core.PostTrainFitLayer.merge_td
 
@@ -446,7 +446,7 @@ Concatenate multiple keys_in tensors along the token (dim=1).
 - (`torch.Tensor`) — Concatenated tensor from the TensorDict keys, or *x* unchanged
 - (`torch.Tensor`) — when it is already a plain tensor.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L75-L89)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L75-L89)
 
 ### nexuml.core.PostTrainFitLayer.on_fit_end
 
@@ -458,7 +458,7 @@ def on_fit_end()
 
 Inherited from: `nexuml.core.base_layer.PipelineLayer`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L155-L156)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L155-L156)
 
 ### nexuml.core.PostTrainFitLayer.on_fit_start
 
@@ -470,7 +470,7 @@ def on_fit_start()
 
 Inherited from: `nexuml.core.base_layer.PipelineLayer`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L152-L153)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L152-L153)
 
 ### nexuml.core.PostTrainFitLayer.on_predict_start
 
@@ -482,7 +482,7 @@ def on_predict_start()
 
 Inherited from: `nexuml.core.base_layer.PipelineLayer`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L179-L180)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L179-L180)
 
 ### nexuml.core.PostTrainFitLayer.on_test_end
 
@@ -494,7 +494,7 @@ def on_test_end()
 
 Inherited from: `nexuml.core.base_layer.PipelineLayer`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L176-L177)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L176-L177)
 
 ### nexuml.core.PostTrainFitLayer.on_test_start
 
@@ -506,7 +506,7 @@ def on_test_start()
 
 Inherited from: `nexuml.core.base_layer.PipelineLayer`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L173-L174)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L173-L174)
 
 ### nexuml.core.PostTrainFitLayer.on_train_end
 
@@ -518,7 +518,7 @@ def on_train_end()
 
 Inherited from: `nexuml.core.base_layer.PipelineLayer`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L164-L165)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L164-L165)
 
 ### nexuml.core.PostTrainFitLayer.on_train_epoch_end
 
@@ -530,7 +530,7 @@ def on_train_epoch_end()
 
 Inherited from: `nexuml.core.base_layer.PipelineLayer`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L161-L162)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L161-L162)
 
 ### nexuml.core.PostTrainFitLayer.on_train_start
 
@@ -542,7 +542,7 @@ def on_train_start()
 
 Inherited from: `nexuml.core.base_layer.PipelineLayer`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L158-L159)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L158-L159)
 
 ### nexuml.core.PostTrainFitLayer.on_validation_end
 
@@ -554,7 +554,7 @@ def on_validation_end()
 
 Inherited from: `nexuml.core.base_layer.PipelineLayer`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L170-L171)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L170-L171)
 
 ### nexuml.core.PostTrainFitLayer.on_validation_start
 
@@ -566,7 +566,7 @@ def on_validation_start()
 
 Inherited from: `nexuml.core.base_layer.PipelineLayer`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L167-L168)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L167-L168)
 
 ## nexuml.core.PostTrainLayerNotFittedError
 
@@ -582,7 +582,7 @@ Re-exported from: `nexuml.core.post_train_layer`
 
 Raised when a PostTrainFitLayer is asked to transform before fitting.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/post_train_layer.py#L13-L14)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/post_train_layer.py#L13-L14)
 
 ## nexuml.core.TorchModuleAdapter
 
@@ -598,7 +598,7 @@ Re-exported from: `nexuml.core.torch_adapter`
 
 Wraps any torch.nn.Module to conform to PipelineLayer interface.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/torch_adapter.py#L95-L116)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/torch_adapter.py#L95-L116)
 
 ### nexuml.core.TorchModuleAdapter.module
 
@@ -608,7 +608,7 @@ Wraps any torch.nn.Module to conform to PipelineLayer interface.
 module = module
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/torch_adapter.py#L107-L107)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/torch_adapter.py#L107-L107)
 
 ### nexuml.core.TorchModuleAdapter.delay_epochs
 
@@ -620,7 +620,7 @@ delay_epochs = delay_epochs
 
 Inherited from: `nexuml.core.base_layer.PipelineLayer`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L64-L64)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L64-L64)
 
 ### nexuml.core.TorchModuleAdapter.epoch
 
@@ -632,7 +632,7 @@ epoch = 0
 
 Inherited from: `nexuml.core.base_layer.PipelineLayer`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L71-L71)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L71-L71)
 
 ### nexuml.core.TorchModuleAdapter.fit_mode
 
@@ -644,7 +644,7 @@ fit_mode = False
 
 Inherited from: `nexuml.core.base_layer.PipelineLayer`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L72-L72)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L72-L72)
 
 ### nexuml.core.TorchModuleAdapter.input_sizes
 
@@ -656,7 +656,7 @@ input_sizes = input_sizes
 
 Inherited from: `nexuml.core.base_layer.PipelineLayer`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L61-L61)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L61-L61)
 
 ### nexuml.core.TorchModuleAdapter.keys_in
 
@@ -668,7 +668,7 @@ keys_in = keys_in
 
 Inherited from: `nexuml.core.base_layer.PipelineLayer`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L56-L56)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L56-L56)
 
 ### nexuml.core.TorchModuleAdapter.keys_out
 
@@ -680,7 +680,7 @@ keys_out = keys_out
 
 Inherited from: `nexuml.core.base_layer.PipelineLayer`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L57-L57)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L57-L57)
 
 ### nexuml.core.TorchModuleAdapter.label_in_x
 
@@ -692,7 +692,7 @@ label_in_x = label_in_x
 
 Inherited from: `nexuml.core.base_layer.PipelineLayer`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L59-L59)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L59-L59)
 
 ### nexuml.core.TorchModuleAdapter.label_key
 
@@ -704,7 +704,7 @@ label_key = label_key
 
 Inherited from: `nexuml.core.base_layer.PipelineLayer`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L58-L58)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L58-L58)
 
 ### nexuml.core.TorchModuleAdapter.lightning_mode
 
@@ -716,7 +716,7 @@ lightning_mode = LightningMode.NONE
 
 Inherited from: `nexuml.core.base_layer.PipelineLayer`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L73-L73)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L73-L73)
 
 ### nexuml.core.TorchModuleAdapter.num_classes
 
@@ -728,7 +728,7 @@ num_classes = num_classes
 
 Inherited from: `nexuml.core.base_layer.PipelineLayer`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L60-L60)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L60-L60)
 
 ### nexuml.core.TorchModuleAdapter.output_sizes
 
@@ -740,7 +740,7 @@ output_sizes = output_sizes
 
 Inherited from: `nexuml.core.base_layer.PipelineLayer`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L62-L62)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L62-L62)
 
 ### nexuml.core.TorchModuleAdapter.shared_inputs
 
@@ -752,7 +752,7 @@ shared_inputs = shared_inputs
 
 Inherited from: `nexuml.core.base_layer.PipelineLayer`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L69-L69)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L69-L69)
 
 ### nexuml.core.TorchModuleAdapter.shared_memory
 
@@ -764,7 +764,7 @@ shared_memory = shared_memory
 
 Inherited from: `nexuml.core.base_layer.PipelineLayer`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L67-L67)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L67-L67)
 
 ### nexuml.core.TorchModuleAdapter.shared_outputs
 
@@ -776,7 +776,7 @@ shared_outputs = shared_outputs
 
 Inherited from: `nexuml.core.base_layer.PipelineLayer`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L68-L68)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L68-L68)
 
 ### nexuml.core.TorchModuleAdapter.update_every_n_epochs
 
@@ -788,7 +788,7 @@ update_every_n_epochs = update_every_n_epochs
 
 Inherited from: `nexuml.core.base_layer.PipelineLayer`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L65-L65)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L65-L65)
 
 ### nexuml.core.TorchModuleAdapter.forward_tensor
 
@@ -798,7 +798,7 @@ Inherited from: `nexuml.core.base_layer.PipelineLayer`
 def forward_tensor(x: torch.Tensor, y: torch.Tensor | None = None) -> torch.Tensor
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/torch_adapter.py#L109-L116)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/torch_adapter.py#L109-L116)
 
 ### nexuml.core.TorchModuleAdapter.check_update
 
@@ -810,7 +810,7 @@ def check_update() -> bool
 
 Inherited from: `nexuml.core.base_layer.PipelineLayer`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L91-L99)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L91-L99)
 
 ### nexuml.core.TorchModuleAdapter.forward
 
@@ -822,7 +822,7 @@ def forward(x: TensorDict | torch.Tensor, y: TensorDict | None = None) -> tuple[
 
 Inherited from: `nexuml.core.base_layer.PipelineLayer`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L111-L147)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L111-L147)
 
 ### nexuml.core.TorchModuleAdapter.get_label
 
@@ -834,7 +834,7 @@ def get_label(x: TensorDict | torch.Tensor, y: TensorDict | None) -> torch.Tenso
 
 Inherited from: `nexuml.core.base_layer.PipelineLayer`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L101-L109)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L101-L109)
 
 ### nexuml.core.TorchModuleAdapter.merge_td
 
@@ -853,7 +853,7 @@ Concatenate multiple keys_in tensors along the token (dim=1).
 - (`torch.Tensor`) — Concatenated tensor from the TensorDict keys, or *x* unchanged
 - (`torch.Tensor`) — when it is already a plain tensor.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L75-L89)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L75-L89)
 
 ### nexuml.core.TorchModuleAdapter.on_fit_end
 
@@ -865,7 +865,7 @@ def on_fit_end()
 
 Inherited from: `nexuml.core.base_layer.PipelineLayer`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L155-L156)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L155-L156)
 
 ### nexuml.core.TorchModuleAdapter.on_fit_start
 
@@ -877,7 +877,7 @@ def on_fit_start()
 
 Inherited from: `nexuml.core.base_layer.PipelineLayer`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L152-L153)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L152-L153)
 
 ### nexuml.core.TorchModuleAdapter.on_predict_end
 
@@ -889,7 +889,7 @@ def on_predict_end()
 
 Inherited from: `nexuml.core.base_layer.PipelineLayer`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L182-L183)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L182-L183)
 
 ### nexuml.core.TorchModuleAdapter.on_predict_start
 
@@ -901,7 +901,7 @@ def on_predict_start()
 
 Inherited from: `nexuml.core.base_layer.PipelineLayer`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L179-L180)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L179-L180)
 
 ### nexuml.core.TorchModuleAdapter.on_test_end
 
@@ -913,7 +913,7 @@ def on_test_end()
 
 Inherited from: `nexuml.core.base_layer.PipelineLayer`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L176-L177)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L176-L177)
 
 ### nexuml.core.TorchModuleAdapter.on_test_start
 
@@ -925,7 +925,7 @@ def on_test_start()
 
 Inherited from: `nexuml.core.base_layer.PipelineLayer`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L173-L174)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L173-L174)
 
 ### nexuml.core.TorchModuleAdapter.on_train_end
 
@@ -937,7 +937,7 @@ def on_train_end()
 
 Inherited from: `nexuml.core.base_layer.PipelineLayer`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L164-L165)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L164-L165)
 
 ### nexuml.core.TorchModuleAdapter.on_train_epoch_end
 
@@ -949,7 +949,7 @@ def on_train_epoch_end()
 
 Inherited from: `nexuml.core.base_layer.PipelineLayer`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L161-L162)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L161-L162)
 
 ### nexuml.core.TorchModuleAdapter.on_train_start
 
@@ -961,7 +961,7 @@ def on_train_start()
 
 Inherited from: `nexuml.core.base_layer.PipelineLayer`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L158-L159)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L158-L159)
 
 ### nexuml.core.TorchModuleAdapter.on_validation_end
 
@@ -973,7 +973,7 @@ def on_validation_end()
 
 Inherited from: `nexuml.core.base_layer.PipelineLayer`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L170-L171)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L170-L171)
 
 ### nexuml.core.TorchModuleAdapter.on_validation_start
 
@@ -985,7 +985,7 @@ def on_validation_start()
 
 Inherited from: `nexuml.core.base_layer.PipelineLayer`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/base_layer.py#L167-L168)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/base_layer.py#L167-L168)
 
 ## nexuml.core.callback
 
@@ -1003,7 +1003,7 @@ Configure an importable Lightning callback factory.
 
 - (`CallbackSpec`) — Portable callback specification.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/factory.py#L127-L135)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/factory.py#L127-L135)
 
 ## nexuml.core.nn_module
 
@@ -1025,7 +1025,7 @@ Create a portable direct-module definition from an importable factory.
 
 - `TypeError` — If *factory* is a live module instance.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/torch_adapter.py#L75-L92)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/torch_adapter.py#L75-L92)
 
 ## nexuml.core.optimizer
 
@@ -1043,7 +1043,7 @@ Configure an optimizer factory; model parameters are supplied at runtime.
 
 - (`OptimizerSpec`) — Portable optimizer specification.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/factory.py#L138-L148)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/factory.py#L138-L148)
 
 ## nexuml.core.scheduler
 
@@ -1061,7 +1061,7 @@ Configure a scheduler factory; its optimizer is supplied at runtime.
 
 - (`SchedulerSpec`) — Portable scheduler specification.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/factory.py#L151-L163)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/factory.py#L151-L163)
 
 ## nexuml.core.strategy
 
@@ -1079,7 +1079,7 @@ Configure an importable Lightning strategy factory.
 
 - (`StrategySpec`) — Portable strategy specification.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/factory.py#L166-L174)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/factory.py#L166-L174)
 
 ## nexuml.core.writer
 
@@ -1101,7 +1101,7 @@ Configure an importable dataset export backend factory.
 
 - `TypeError` — If *factory* is not an export backend class.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/factory.py#L177-L192)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/factory.py#L177-L192)
 
 **Modules**
 

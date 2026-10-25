@@ -4,7 +4,7 @@
 
 One native Kubernetes adapter for template-owned Job, RayJob and PyTorchJob.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/kubernetes.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/execution/kubernetes.py#L1-L1)
 
 ## nexuml.execution.kubernetes.cancel
 
@@ -24,7 +24,7 @@ Delete only a UID-verified owned workload and confirm foreground termination.
 
 - `ExecutionError` — If cancellation cannot stop the native workload safely.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/kubernetes.py#L572-L595)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/execution/kubernetes.py#L572-L595)
 
 ## nexuml.execution.kubernetes.discover_resources
 
@@ -40,7 +40,7 @@ Bound context authentication and selected-scope read-only capacity queries.
 
 - (`ResourceSnapshot`) — Independent successes with unknown/forbidden/timeout diagnostics.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/kubernetes.py#L464-L505)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/execution/kubernetes.py#L464-L505)
 
 ## nexuml.execution.kubernetes.inspect
 
@@ -56,7 +56,7 @@ Inspect only the recorded native identity through its trusted context.
 
 - (`dict`) — Actual workload state and safe reference, without fabricated telemetry.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/kubernetes.py#L555-L569)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/execution/kubernetes.py#L555-L569)
 
 ## nexuml.execution.kubernetes.main
 
@@ -68,7 +68,7 @@ def main() -> None
 
 Run a private bounded probe, never a workload submission endpoint.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/kubernetes.py#L758-L779)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/execution/kubernetes.py#L758-L779)
 
 ## nexuml.execution.kubernetes.native_status
 
@@ -84,7 +84,7 @@ Interpret actual native workload conditions, never submitter exit.
 
 - (`str`) — Submitted/pending/running or a verified terminal state.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/kubernetes.py#L275-L304)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/execution/kubernetes.py#L275-L304)
 
 ## nexuml.execution.kubernetes.prepare_job
 
@@ -104,7 +104,7 @@ Review exact inputs, native create access and admission without submitting.
 
 - `ExecutionError` — On stale template, denied create access or admission rejection.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/kubernetes.py#L508-L552)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/execution/kubernetes.py#L508-L552)
 
 ## nexuml.execution.kubernetes.run_job
 
@@ -120,4 +120,4 @@ Submit once, publish the reference promptly, then observe the native workload.
 
 - (`dict`) — Native reference and actual terminal state.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/kubernetes.py#L598-L649)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/execution/kubernetes.py#L598-L649)

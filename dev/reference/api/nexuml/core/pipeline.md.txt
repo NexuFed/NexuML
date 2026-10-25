@@ -4,7 +4,7 @@
 
 Compiled pipeline: the runtime model assembled from specs.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/pipeline.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/pipeline.py#L1-L1)
 
 ## nexuml.core.pipeline.CompiledPipeline
 
@@ -21,7 +21,7 @@ Executable pipeline assembled from compiled layer specs.
 Holds ordered stages of layers, executes sequentially over TensorDicts,
 and provides optimizer/scheduler factory methods.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/pipeline.py#L17-L143)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/pipeline.py#L17-L143)
 
 ### nexuml.core.pipeline.CompiledPipeline.input_sizes
 
@@ -31,7 +31,7 @@ and provides optimizer/scheduler factory methods.
 input_sizes = input_sizes or {}
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/pipeline.py#L49-L49)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/pipeline.py#L49-L49)
 
 ### nexuml.core.pipeline.CompiledPipeline.loss_keys
 
@@ -41,7 +41,7 @@ input_sizes = input_sizes or {}
 loss_keys = loss_keys
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/pipeline.py#L36-L36)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/pipeline.py#L36-L36)
 
 ### nexuml.core.pipeline.CompiledPipeline.metric_keys
 
@@ -51,7 +51,7 @@ loss_keys = loss_keys
 metric_keys = metric_keys
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/pipeline.py#L37-L37)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/pipeline.py#L37-L37)
 
 ### nexuml.core.pipeline.CompiledPipeline.resolved_config
 
@@ -61,7 +61,7 @@ metric_keys = metric_keys
 resolved_config = resolved_config
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/pipeline.py#L38-L38)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/pipeline.py#L38-L38)
 
 ### nexuml.core.pipeline.CompiledPipeline.stages
 
@@ -71,7 +71,7 @@ resolved_config = resolved_config
 stages = stages
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/pipeline.py#L35-L35)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/pipeline.py#L35-L35)
 
 ### nexuml.core.pipeline.CompiledPipeline.call_layer_hook
 
@@ -83,7 +83,7 @@ def call_layer_hook(hook_name: str) -> None
 
 Propagate a lifecycle hook to all pipeline layers.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/pipeline.py#L129-L143)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/pipeline.py#L129-L143)
 
 ### nexuml.core.pipeline.CompiledPipeline.create_optimizer
 
@@ -93,7 +93,7 @@ Propagate a lifecycle hook to all pipeline layers.
 def create_optimizer() -> torch.optim.Optimizer
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/pipeline.py#L109-L116)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/pipeline.py#L109-L116)
 
 ### nexuml.core.pipeline.CompiledPipeline.create_scheduler
 
@@ -103,7 +103,7 @@ def create_optimizer() -> torch.optim.Optimizer
 def create_scheduler(optimizer: torch.optim.Optimizer) -> torch.optim.lr_scheduler.LRScheduler
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/pipeline.py#L118-L127)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/pipeline.py#L118-L127)
 
 ### nexuml.core.pipeline.CompiledPipeline.forward
 
@@ -113,7 +113,7 @@ def create_scheduler(optimizer: torch.optim.Optimizer) -> torch.optim.lr_schedul
 def forward(x: TensorDict, y: TensorDict | None = None) -> tuple[TensorDict, TensorDict | None]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/pipeline.py#L63-L68)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/pipeline.py#L63-L68)
 
 ### nexuml.core.pipeline.CompiledPipeline.forward_until
 
@@ -136,7 +136,7 @@ preprocessing layers separately from the rest of the network.
 
 - `KeyError` — If the pipeline did not produce the requested keys.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/pipeline.py#L70-L107)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/pipeline.py#L70-L107)
 
 ### nexuml.core.pipeline.CompiledPipeline.iter_layers
 
@@ -148,4 +148,4 @@ def iter_layers() -> Iterator[tuple[str, str, nn.Module]]
 
 Yield pipeline layers in execution order.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/pipeline.py#L51-L61)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/core/pipeline.py#L51-L61)

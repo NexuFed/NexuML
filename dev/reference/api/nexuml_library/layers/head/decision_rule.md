@@ -4,7 +4,7 @@
 
 DecisionRulePipelineLayer — post-training fit layer for binary decision thresholding.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/head/decision_rule.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/layers/head/decision_rule.py#L1-L1)
 
 ## nexuml_library.layers.head.decision_rule.DecisionRulePipelineLayer
 
@@ -20,7 +20,7 @@ Fits a decision threshold on train scores; emits binary decisions at inference.
 
 Replaces DecisionRuleAlgorithm as a proper pipeline layer.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/head/decision_rule.py#L23-L46)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/layers/head/decision_rule.py#L23-L46)
 
 ### nexuml_library.layers.head.decision_rule.DecisionRulePipelineLayer.fit_label_key
 
@@ -30,7 +30,7 @@ Replaces DecisionRuleAlgorithm as a proper pipeline layer.
 fit_label_key: str | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/head/decision_rule.py#L34-L34)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/layers/head/decision_rule.py#L34-L34)
 
 ### nexuml_library.layers.head.decision_rule.DecisionRulePipelineLayer.fit_mask_key
 
@@ -40,7 +40,7 @@ fit_label_key: str | None = None
 fit_mask_key: str | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/head/decision_rule.py#L33-L33)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/layers/head/decision_rule.py#L33-L33)
 
 ### nexuml_library.layers.head.decision_rule.DecisionRulePipelineLayer.normal_label_value
 
@@ -50,7 +50,7 @@ fit_mask_key: str | None = None
 normal_label_value: int | float = 0
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/head/decision_rule.py#L35-L35)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/layers/head/decision_rule.py#L35-L35)
 
 ### nexuml_library.layers.head.decision_rule.DecisionRulePipelineLayer.requires_post_train_fit
 
@@ -60,7 +60,7 @@ normal_label_value: int | float = 0
 requires_post_train_fit = True
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/head/decision_rule.py#L30-L30)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/layers/head/decision_rule.py#L30-L30)
 
 ### nexuml_library.layers.head.decision_rule.DecisionRulePipelineLayer.rule
 
@@ -70,7 +70,7 @@ requires_post_train_fit = True
 rule: DecisionRuleSpec = Field(default_factory=lambda : decision_rule(PercentileThresholdRule))
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/head/decision_rule.py#L32-L32)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/layers/head/decision_rule.py#L32-L32)
 
 ### nexuml_library.layers.head.decision_rule.DecisionRulePipelineLayer.build
 
@@ -80,4 +80,4 @@ rule: DecisionRuleSpec = Field(default_factory=lambda : decision_rule(Percentile
 def build(context: LayerBuildContext) -> PostTrainFitLayer
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/head/decision_rule.py#L37-L46)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/layers/head/decision_rule.py#L37-L46)

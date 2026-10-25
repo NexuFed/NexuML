@@ -4,7 +4,7 @@
 
 Temporary storage helpers for evaluation algorithms.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/storage.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/storage.py#L1-L1)
 
 ## nexuml.evaluation.storage.logger
 
@@ -14,7 +14,7 @@ Temporary storage helpers for evaluation algorithms.
 logger = logging.getLogger(__name__)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/storage.py#L15-L15)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/storage.py#L15-L15)
 
 ## nexuml.evaluation.storage.AppendableTensorDictBuffer
 
@@ -26,7 +26,7 @@ class AppendableTensorDictBuffer
 
 Append TensorDict batches into temporary storage up to a fixed capacity.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/storage.py#L136-L170)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/storage.py#L136-L170)
 
 ### nexuml.evaluation.storage.AppendableTensorDictBuffer.max_samples
 
@@ -36,7 +36,7 @@ Append TensorDict batches into temporary storage up to a fixed capacity.
 max_samples = max_samples
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/storage.py#L145-L145)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/storage.py#L145-L145)
 
 ### nexuml.evaluation.storage.AppendableTensorDictBuffer.truncated
 
@@ -46,7 +46,7 @@ max_samples = max_samples
 truncated = False
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/storage.py#L151-L151)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/storage.py#L151-L151)
 
 ### nexuml.evaluation.storage.AppendableTensorDictBuffer.add_batch
 
@@ -56,7 +56,7 @@ truncated = False
 def add_batch(data: TensorDict) -> None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/storage.py#L153-L161)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/storage.py#L153-L161)
 
 ### nexuml.evaluation.storage.AppendableTensorDictBuffer.finalize
 
@@ -66,7 +66,7 @@ def add_batch(data: TensorDict) -> None
 def finalize() -> None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/storage.py#L166-L167)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/storage.py#L166-L167)
 
 ### nexuml.evaluation.storage.AppendableTensorDictBuffer.get
 
@@ -76,7 +76,7 @@ def finalize() -> None
 def get() -> TensorDict | None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/storage.py#L163-L164)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/storage.py#L163-L164)
 
 ## nexuml.evaluation.storage.ReservoirTensorDictBuffer
 
@@ -88,7 +88,7 @@ class ReservoirTensorDictBuffer
 
 Reservoir-sample TensorDict rows into temporary storage.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/storage.py#L173-L211)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/storage.py#L173-L211)
 
 ### nexuml.evaluation.storage.ReservoirTensorDictBuffer.max_samples
 
@@ -98,7 +98,7 @@ Reservoir-sample TensorDict rows into temporary storage.
 max_samples = max_samples
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/storage.py#L182-L182)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/storage.py#L182-L182)
 
 ### nexuml.evaluation.storage.ReservoirTensorDictBuffer.n_seen
 
@@ -108,7 +108,7 @@ max_samples = max_samples
 n_seen = 0
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/storage.py#L188-L188)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/storage.py#L188-L188)
 
 ### nexuml.evaluation.storage.ReservoirTensorDictBuffer.add_batch
 
@@ -118,7 +118,7 @@ n_seen = 0
 def add_batch(data: TensorDict) -> None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/storage.py#L190-L202)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/storage.py#L190-L202)
 
 ### nexuml.evaluation.storage.ReservoirTensorDictBuffer.finalize
 
@@ -128,7 +128,7 @@ def add_batch(data: TensorDict) -> None
 def finalize() -> None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/storage.py#L207-L208)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/storage.py#L207-L208)
 
 ### nexuml.evaluation.storage.ReservoirTensorDictBuffer.get
 
@@ -138,7 +138,7 @@ def finalize() -> None
 def get() -> TensorDict | None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/storage.py#L204-L205)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/storage.py#L204-L205)
 
 ## nexuml.evaluation.storage.create_temporary_storage
 
@@ -158,4 +158,4 @@ Create a temporary TensorDict storage backend.
 
 - `ValueError` — If *backend* is not ``"memory"`` or ``"memmap"``.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/evaluation/storage.py#L116-L133)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/evaluation/storage.py#L116-L133)

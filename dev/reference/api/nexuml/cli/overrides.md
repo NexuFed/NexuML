@@ -4,7 +4,7 @@
 
 CLI override utilities: apply key.path=value overrides to a ScenarioSpec.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/cli/overrides.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/cli/overrides.py#L1-L1)
 
 ## nexuml.cli.overrides.console
 
@@ -14,7 +14,7 @@ CLI override utilities: apply key.path=value overrides to a ScenarioSpec.
 console = Console()
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/cli/overrides.py#L11-L11)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/cli/overrides.py#L11-L11)
 
 ## nexuml.cli.overrides.apply_overrides
 
@@ -39,4 +39,4 @@ Prints a Rich table summarising each change.
 - `ValueError` — If an override string is malformed or has an empty path segment.
 - `KeyError` — If a path segment does not exist on the scenario.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/cli/overrides.py#L40-L98)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/cli/overrides.py#L40-L98)

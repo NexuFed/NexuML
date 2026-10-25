@@ -4,7 +4,7 @@
 
 FashionMNIST dataset source for in-memory image experiments and benchmarks.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/image/fashionmnist.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/data/image/fashionmnist.py#L1-L1)
 
 ## nexuml_library.data.image.fashionmnist.FashionMNISTDataset
 
@@ -18,7 +18,7 @@ Bases: `DataSourceDefinition`
 
 In-memory FashionMNIST dataset backed by ``self.data`` and metadata labels.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/image/fashionmnist.py#L17-L29)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/data/image/fashionmnist.py#L17-L29)
 
 ### nexuml_library.data.image.fashionmnist.FashionMNISTDataset.download
 
@@ -28,7 +28,7 @@ In-memory FashionMNIST dataset backed by ``self.data`` and metadata labels.
 download: bool = False
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/image/fashionmnist.py#L25-L25)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/data/image/fashionmnist.py#L25-L25)
 
 ### nexuml_library.data.image.fashionmnist.FashionMNISTDataset.fixed_label_keys
 
@@ -38,7 +38,7 @@ download: bool = False
 fixed_label_keys = ('category')
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/image/fashionmnist.py#L21-L21)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/data/image/fashionmnist.py#L21-L21)
 
 ### nexuml_library.data.image.fashionmnist.FashionMNISTDataset.root
 
@@ -48,7 +48,7 @@ fixed_label_keys = ('category')
 root: str | Path = 'data/fashionmnist'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/image/fashionmnist.py#L23-L23)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/data/image/fashionmnist.py#L23-L23)
 
 ### nexuml_library.data.image.fashionmnist.FashionMNISTDataset.split
 
@@ -58,7 +58,7 @@ root: str | Path = 'data/fashionmnist'
 split: str | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/image/fashionmnist.py#L26-L26)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/data/image/fashionmnist.py#L26-L26)
 
 ### nexuml_library.data.image.fashionmnist.FashionMNISTDataset.train
 
@@ -68,7 +68,7 @@ split: str | None = None
 train: bool = True
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/image/fashionmnist.py#L24-L24)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/data/image/fashionmnist.py#L24-L24)
 
 ### nexuml_library.data.image.fashionmnist.FashionMNISTDataset.build
 
@@ -78,4 +78,4 @@ train: bool = True
 def build() -> NexuDataset
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/image/fashionmnist.py#L28-L29)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/data/image/fashionmnist.py#L28-L29)

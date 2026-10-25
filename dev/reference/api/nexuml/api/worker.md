@@ -4,7 +4,7 @@
 
 Call existing framework APIs in a fresh process, never parse terminal output.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/api/worker.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/api/worker.py#L1-L1)
 
 ## nexuml.api.worker.catalog
 
@@ -20,7 +20,7 @@ Read authoritative registries/schemas and existing discovery diagnostics.
 
 - (`dict`) — Existing library/component/scenario metadata and runtime dependency availability.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/api/worker.py#L64-L121)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/api/worker.py#L64-L121)
 
 ## nexuml.api.worker.configuration
 
@@ -40,7 +40,7 @@ Restore portable typed configuration, preserving explicit stage order.
 
 - `ValueError` — If the representation or ordered stage view is invalid.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/api/worker.py#L17-L45)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/api/worker.py#L17-L45)
 
 ## nexuml.api.worker.dispatch
 
@@ -60,7 +60,7 @@ Route transport calls to existing NexuML APIs.
 
 - `ValueError` — For unknown operations (there is no arbitrary code endpoint).
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/api/worker.py#L124-L225)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/api/worker.py#L124-L225)
 
 ## nexuml.api.worker.document
 
@@ -76,7 +76,7 @@ Return editable existing configuration plus representation metadata.
 
 - (`dict`) — Portable config, ordered stage names, ordinary YAML and semantic revision.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/api/worker.py#L48-L61)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/api/worker.py#L48-L61)
 
 ## nexuml.api.worker.execute
 
@@ -96,7 +96,7 @@ Delegate execution and exports to the existing session/backend lifecycle.
 
 - `ValueError` — When an unsupported backend/export combination is requested.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/api/worker.py#L228-L286)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/api/worker.py#L228-L286)
 
 ## nexuml.api.worker.main
 
@@ -108,4 +108,4 @@ def main() -> None
 
 Read a private request and write a plain response, not terminal logs.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/api/worker.py#L289-L330)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/api/worker.py#L289-L330)

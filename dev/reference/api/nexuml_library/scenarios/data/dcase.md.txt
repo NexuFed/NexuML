@@ -4,7 +4,7 @@
 
 DCASE Task 2 data specification builders.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/scenarios/data/dcase.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/scenarios/data/dcase.py#L1-L1)
 
 ## nexuml_library.scenarios.data.dcase.DCASE_MACHINE_SPECS
 
@@ -14,7 +14,7 @@ DCASE Task 2 data specification builders.
 DCASE_MACHINE_SPECS: tuple[MachineSpec, ...] = tuple((MachineSpec(machine_type=machine_type, year=year, data_type=data_type) for year, data_types in _DCASE_MACHINES.items() for data_type, machine_types in data_types.items() for machine_type in machine_types))
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/scenarios/data/dcase.py#L103-L108)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/scenarios/data/dcase.py#L103-L108)
 
 ## nexuml_library.scenarios.data.dcase.logger
 
@@ -24,7 +24,7 @@ DCASE_MACHINE_SPECS: tuple[MachineSpec, ...] = tuple((MachineSpec(machine_type=m
 logger = logging.getLogger(__name__)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/scenarios/data/dcase.py#L14-L14)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/scenarios/data/dcase.py#L14-L14)
 
 ## nexuml_library.scenarios.data.dcase.MachineSpec
 
@@ -42,7 +42,7 @@ The year determines which dataset subdirectory the files live in
 (e.g. year=2023 → ``dcase2023t2/``).  ``data_type`` is either
 ``"dev"`` (labelled development set) or ``"eval"`` (evaluation set).
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/scenarios/data/dcase.py#L17-L36)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/scenarios/data/dcase.py#L17-L36)
 
 ### nexuml_library.scenarios.data.dcase.MachineSpec.data_type
 
@@ -52,7 +52,7 @@ The year determines which dataset subdirectory the files live in
 data_type: str = 'dev'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/scenarios/data/dcase.py#L27-L27)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/scenarios/data/dcase.py#L27-L27)
 
 ### nexuml_library.scenarios.data.dcase.MachineSpec.machine_type
 
@@ -62,7 +62,7 @@ data_type: str = 'dev'
 machine_type: str
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/scenarios/data/dcase.py#L25-L25)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/scenarios/data/dcase.py#L25-L25)
 
 ### nexuml_library.scenarios.data.dcase.MachineSpec.year
 
@@ -72,7 +72,7 @@ machine_type: str
 year: int = 2023
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/scenarios/data/dcase.py#L26-L26)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/scenarios/data/dcase.py#L26-L26)
 
 ### nexuml_library.scenarios.data.dcase.MachineSpec.dataset_name
 
@@ -82,7 +82,7 @@ year: int = 2023
 dataset_name: str
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/scenarios/data/dcase.py#L35-L36)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/scenarios/data/dcase.py#L35-L36)
 
 ### nexuml_library.scenarios.data.dcase.MachineSpec.key
 
@@ -94,7 +94,7 @@ key: str
 
 Unique machine identity across years/data splits.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/scenarios/data/dcase.py#L30-L32)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/scenarios/data/dcase.py#L30-L32)
 
 ## nexuml_library.scenarios.data.dcase.dcase_data
 
@@ -133,7 +133,7 @@ paths without cluster-specific paths in code.
 
 - `DataSpec` (`DataSpec`) — DCASE dataset specification with fit and test splits.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/scenarios/data/dcase.py#L187-L344)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/scenarios/data/dcase.py#L187-L344)
 
 ## nexuml_library.scenarios.data.dcase.dcase_machine_specs
 
@@ -148,4 +148,4 @@ Return known DCASE machine specs from the static scenario catalog.
 When ``dedupe_machine_types`` is true, keep at most one spec per raw machine
 type, preferring eval over dev and newer years over older years.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/scenarios/data/dcase.py#L151-L184)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/scenarios/data/dcase.py#L151-L184)

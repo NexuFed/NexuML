@@ -4,7 +4,7 @@
 
 Classification loss layer.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/loss/classification_loss.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/layers/loss/classification_loss.py#L1-L1)
 
 ## nexuml_library.layers.loss.classification_loss.ClassificationLoss
 
@@ -22,7 +22,7 @@ keys_in: [logits_key]
 keys_out: [loss_key]
 Reads labels from y TensorDict using label_key.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/loss/classification_loss.py#L15-L32)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/layers/loss/classification_loss.py#L15-L32)
 
 ### nexuml_library.layers.loss.classification_loss.ClassificationLoss.label_smoothing
 
@@ -32,7 +32,7 @@ Reads labels from y TensorDict using label_key.
 label_smoothing: float = 0.0
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/loss/classification_loss.py#L25-L25)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/layers/loss/classification_loss.py#L25-L25)
 
 ### nexuml_library.layers.loss.classification_loss.ClassificationLoss.loss_type
 
@@ -42,7 +42,7 @@ label_smoothing: float = 0.0
 loss_type: str = 'cross_entropy'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/loss/classification_loss.py#L24-L24)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/layers/loss/classification_loss.py#L24-L24)
 
 ### nexuml_library.layers.loss.classification_loss.ClassificationLoss.build
 
@@ -52,7 +52,7 @@ loss_type: str = 'cross_entropy'
 def build(context: LayerBuildContext) -> PipelineLayer
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/loss/classification_loss.py#L27-L32)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/layers/loss/classification_loss.py#L27-L32)
 
 ## nexuml_library.layers.loss.classification_loss.LogitsToClass
 
@@ -66,7 +66,7 @@ Bases: `LayerDefinition`
 
 Converts class logits to predicted class integers via argmax.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/loss/classification_loss.py#L87-L92)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/layers/loss/classification_loss.py#L87-L92)
 
 ### nexuml_library.layers.loss.classification_loss.LogitsToClass.build
 
@@ -76,4 +76,4 @@ Converts class logits to predicted class integers via argmax.
 def build(context: LayerBuildContext) -> PipelineLayer
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/loss/classification_loss.py#L91-L92)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/layers/loss/classification_loss.py#L91-L92)

@@ -4,7 +4,7 @@
 
 Optuna-based hyperparameter tuning for NexuML.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/tuning/optuna_tuner.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/tuning/optuna_tuner.py#L1-L1)
 
 ## nexuml.tuning.optuna_tuner.DEFAULT_SEARCH_SPACE
 
@@ -14,7 +14,7 @@ Optuna-based hyperparameter tuning for NexuML.
 DEFAULT_SEARCH_SPACE: dict[str, dict[str, Any]] = {'training.lr': {'type': 'float', 'low': 1e-05, 'high': 0.01, 'log': True}, 'training.batch_size': {'type': 'categorical', 'choices': [32, 64, 128]}}
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/tuning/optuna_tuner.py#L16-L19)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/tuning/optuna_tuner.py#L16-L19)
 
 ## nexuml.tuning.optuna_tuner.OptunaDirection
 
@@ -24,7 +24,7 @@ DEFAULT_SEARCH_SPACE: dict[str, dict[str, Any]] = {'training.lr': {'type': 'floa
 OptunaDirection = Literal['minimize', 'maximize']
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/tuning/optuna_tuner.py#L14-L14)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/tuning/optuna_tuner.py#L14-L14)
 
 ## nexuml.tuning.optuna_tuner.logger
 
@@ -34,7 +34,7 @@ OptunaDirection = Literal['minimize', 'maximize']
 logger = logging.getLogger(__name__)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/tuning/optuna_tuner.py#L13-L13)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/tuning/optuna_tuner.py#L13-L13)
 
 ## nexuml.tuning.optuna_tuner.build_objective
 
@@ -62,7 +62,7 @@ Build an Optuna objective function from a base scenario and search space.
 
 - `ImportError` — If the ``optuna`` package is not installed.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/tuning/optuna_tuner.py#L41-L112)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/tuning/optuna_tuner.py#L41-L112)
 
 ## nexuml.tuning.optuna_tuner.tune
 
@@ -91,4 +91,4 @@ Run Optuna hyperparameter search.
 
 - `ImportError` — If the ``optuna`` package is not installed.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/tuning/optuna_tuner.py#L233-L325)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/tuning/optuna_tuner.py#L233-L325)

@@ -4,7 +4,7 @@
 
 Shared guard against plausible but incorrect rank-local finalization.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/semantics.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/execution/semantics.py#L1-L1)
 
 ## nexuml.execution.semantics.ExecutionError
 
@@ -18,7 +18,7 @@ Bases: `RuntimeError`
 
 An execution request cannot preserve NexuML semantics or ownership.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/semantics.py#L6-L7)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/execution/semantics.py#L6-L7)
 
 ## nexuml.execution.semantics.ensure_distributed_semantics
 
@@ -34,4 +34,4 @@ Reject stateful phases until global distributed finalization exists.
 
 - `ExecutionError` — If rank-sharded execution would change scenario semantics.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/semantics.py#L10-L31)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/execution/semantics.py#L10-L31)

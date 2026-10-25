@@ -4,7 +4,7 @@
 
 Linear probability path for Flow Matching.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/generative/flow/linear_path.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/layers/generative/flow/linear_path.py#L1-L1)
 
 ## nexuml_library.layers.generative.flow.linear_path.LinearFlowPath
 
@@ -18,7 +18,7 @@ Bases: `LayerDefinition`
 
 Sample the linear path from standard Gaussian noise to data.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/generative/flow/linear_path.py#L24-L29)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/layers/generative/flow/linear_path.py#L24-L29)
 
 ### nexuml_library.layers.generative.flow.linear_path.LinearFlowPath.build
 
@@ -28,4 +28,4 @@ Sample the linear path from standard Gaussian noise to data.
 def build(context: LayerBuildContext) -> PipelineLayer
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/generative/flow/linear_path.py#L28-L29)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/layers/generative/flow/linear_path.py#L28-L29)

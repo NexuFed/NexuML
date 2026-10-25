@@ -4,7 +4,7 @@
 
 MNIST dataset source for in-memory image experiments and benchmarks.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/image/mnist.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/data/image/mnist.py#L1-L1)
 
 ## nexuml_library.data.image.mnist.MNISTDataset
 
@@ -18,7 +18,7 @@ Bases: `DataSourceDefinition`
 
 In-memory MNIST dataset backed by ``self.data`` and metadata labels.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/image/mnist.py#L17-L30)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/data/image/mnist.py#L17-L30)
 
 ### nexuml_library.data.image.mnist.MNISTDataset.download
 
@@ -28,7 +28,7 @@ In-memory MNIST dataset backed by ``self.data`` and metadata labels.
 download: bool = False
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/image/mnist.py#L25-L25)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/data/image/mnist.py#L25-L25)
 
 ### nexuml_library.data.image.mnist.MNISTDataset.fixed_label_keys
 
@@ -38,7 +38,7 @@ download: bool = False
 fixed_label_keys = ('digit')
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/image/mnist.py#L21-L21)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/data/image/mnist.py#L21-L21)
 
 ### nexuml_library.data.image.mnist.MNISTDataset.normalize
 
@@ -48,7 +48,7 @@ fixed_label_keys = ('digit')
 normalize: bool = False
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/image/mnist.py#L27-L27)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/data/image/mnist.py#L27-L27)
 
 ### nexuml_library.data.image.mnist.MNISTDataset.root
 
@@ -58,7 +58,7 @@ normalize: bool = False
 root: str | Path = 'data/mnist'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/image/mnist.py#L23-L23)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/data/image/mnist.py#L23-L23)
 
 ### nexuml_library.data.image.mnist.MNISTDataset.split
 
@@ -68,7 +68,7 @@ root: str | Path = 'data/mnist'
 split: str | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/image/mnist.py#L26-L26)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/data/image/mnist.py#L26-L26)
 
 ### nexuml_library.data.image.mnist.MNISTDataset.train
 
@@ -78,7 +78,7 @@ split: str | None = None
 train: bool = True
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/image/mnist.py#L24-L24)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/data/image/mnist.py#L24-L24)
 
 ### nexuml_library.data.image.mnist.MNISTDataset.build
 
@@ -88,4 +88,4 @@ train: bool = True
 def build() -> NexuDataset
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/image/mnist.py#L29-L30)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/data/image/mnist.py#L29-L30)

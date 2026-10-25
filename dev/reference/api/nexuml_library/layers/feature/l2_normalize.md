@@ -14,7 +14,7 @@ target pipeline uses. It is intentionally a separate layer from
 :class:`FeaturePostproc` so the target scenario does not need a
 train-fitted postproc / pre-materialization bridge contract.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/feature/l2_normalize.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/layers/feature/l2_normalize.py#L1-L1)
 
 ## nexuml_library.layers.feature.l2_normalize.L2Normalize
 
@@ -35,7 +35,7 @@ to ``torch.nn.functional.normalize(x, p=2, dim=-1, eps=eps)``.
 
 - `eps` (`float`) — Small epsilon added to the denominator to avoid division by zero. Defaults to ``1e-12`` (matches ``F.normalize`` default).
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/feature/l2_normalize.py#L24-L39)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/layers/feature/l2_normalize.py#L24-L39)
 
 ### nexuml_library.layers.feature.l2_normalize.L2Normalize.eps
 
@@ -45,7 +45,7 @@ to ``torch.nn.functional.normalize(x, p=2, dim=-1, eps=eps)``.
 eps: float = 1e-12
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/feature/l2_normalize.py#L36-L36)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/layers/feature/l2_normalize.py#L36-L36)
 
 ### nexuml_library.layers.feature.l2_normalize.L2Normalize.build
 
@@ -55,4 +55,4 @@ eps: float = 1e-12
 def build(context: LayerBuildContext) -> PipelineLayer
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/feature/l2_normalize.py#L38-L39)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/layers/feature/l2_normalize.py#L38-L39)

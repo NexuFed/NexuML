@@ -4,7 +4,7 @@
 
 Authenticated existing-operation controls and disk-backed WebSocket replay.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/api/operation_routes.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/api/operation_routes.py#L1-L1)
 
 ## nexuml.api.operation_routes.BuildInput
 
@@ -18,7 +18,7 @@ Bases: `nexuml.api.config_routes.ConfigInput`
 
 Explicit executable check with a bounded deadline.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/api/operation_routes.py#L21-L24)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/api/operation_routes.py#L21-L24)
 
 ### nexuml.api.operation_routes.BuildInput.timeout
 
@@ -28,7 +28,7 @@ Explicit executable check with a bounded deadline.
 timeout: float = 120
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/api/operation_routes.py#L24-L24)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/api/operation_routes.py#L24-L24)
 
 ### nexuml.api.operation_routes.BuildInput.data
 
@@ -40,7 +40,7 @@ data: dict[str, Any] | None = None
 
 Inherited from: `nexuml.api.config_routes.ConfigInput`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/api/config_routes.py#L20-L20)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/api/config_routes.py#L20-L20)
 
 ### nexuml.api.operation_routes.BuildInput.model_config
 
@@ -52,7 +52,7 @@ model_config = ConfigDict(extra='forbid')
 
 Inherited from: `nexuml.api.config_routes.ConfigInput`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/api/config_routes.py#L19-L19)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/api/config_routes.py#L19-L19)
 
 ### nexuml.api.operation_routes.BuildInput.stage_order
 
@@ -64,7 +64,7 @@ stage_order: list[str] | None = None
 
 Inherited from: `nexuml.api.config_routes.ConfigInput`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/api/config_routes.py#L22-L22)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/api/config_routes.py#L22-L22)
 
 ### nexuml.api.operation_routes.BuildInput.yaml
 
@@ -76,7 +76,7 @@ yaml: str | None = None
 
 Inherited from: `nexuml.api.config_routes.ConfigInput`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/api/config_routes.py#L21-L21)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/api/config_routes.py#L21-L21)
 
 ## nexuml.api.operation_routes.DiscoveryInput
 
@@ -90,7 +90,7 @@ Bases: `nexuml.api.config_routes.ConfigInput`
 
 Explicit selected-scope discovery outside the resource-consuming slot.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/api/operation_routes.py#L34-L37)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/api/operation_routes.py#L34-L37)
 
 ### nexuml.api.operation_routes.DiscoveryInput.timeout
 
@@ -100,7 +100,7 @@ Explicit selected-scope discovery outside the resource-consuming slot.
 timeout: float = 10
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/api/operation_routes.py#L37-L37)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/api/operation_routes.py#L37-L37)
 
 ### nexuml.api.operation_routes.DiscoveryInput.data
 
@@ -112,7 +112,7 @@ data: dict[str, Any] | None = None
 
 Inherited from: `nexuml.api.config_routes.ConfigInput`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/api/config_routes.py#L20-L20)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/api/config_routes.py#L20-L20)
 
 ### nexuml.api.operation_routes.DiscoveryInput.model_config
 
@@ -124,7 +124,7 @@ model_config = ConfigDict(extra='forbid')
 
 Inherited from: `nexuml.api.config_routes.ConfigInput`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/api/config_routes.py#L19-L19)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/api/config_routes.py#L19-L19)
 
 ### nexuml.api.operation_routes.DiscoveryInput.stage_order
 
@@ -136,7 +136,7 @@ stage_order: list[str] | None = None
 
 Inherited from: `nexuml.api.config_routes.ConfigInput`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/api/config_routes.py#L22-L22)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/api/config_routes.py#L22-L22)
 
 ### nexuml.api.operation_routes.DiscoveryInput.yaml
 
@@ -148,7 +148,7 @@ yaml: str | None = None
 
 Inherited from: `nexuml.api.config_routes.ConfigInput`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/api/config_routes.py#L21-L21)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/api/config_routes.py#L21-L21)
 
 ## nexuml.api.operation_routes.ExportInput
 
@@ -162,7 +162,7 @@ Bases: `BaseModel`
 
 Export from a completed operation and actual checkpoint, not placeholder weights.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/api/operation_routes.py#L40-L46)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/api/operation_routes.py#L40-L46)
 
 ### nexuml.api.operation_routes.ExportInput.kind
 
@@ -172,7 +172,7 @@ Export from a completed operation and actual checkpoint, not placeholder weights
 kind: Literal['train_package', 'safetensors', 'onnx'] = 'train_package'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/api/operation_routes.py#L45-L45)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/api/operation_routes.py#L45-L45)
 
 ### nexuml.api.operation_routes.ExportInput.model_config
 
@@ -182,7 +182,7 @@ kind: Literal['train_package', 'safetensors', 'onnx'] = 'train_package'
 model_config = ConfigDict(extra='forbid')
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/api/operation_routes.py#L43-L43)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/api/operation_routes.py#L43-L43)
 
 ### nexuml.api.operation_routes.ExportInput.output
 
@@ -192,7 +192,7 @@ model_config = ConfigDict(extra='forbid')
 output: str
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/api/operation_routes.py#L46-L46)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/api/operation_routes.py#L46-L46)
 
 ### nexuml.api.operation_routes.ExportInput.source_id
 
@@ -202,7 +202,7 @@ output: str
 source_id: str
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/api/operation_routes.py#L44-L44)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/api/operation_routes.py#L44-L44)
 
 ## nexuml.api.operation_routes.TrainInput
 
@@ -216,7 +216,7 @@ Bases: `nexuml.api.config_routes.ConfigInput`
 
 Freeze a scenario, or use existing Trainer checkpoint resume semantics.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/api/operation_routes.py#L27-L31)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/api/operation_routes.py#L27-L31)
 
 ### nexuml.api.operation_routes.TrainInput.template_revision
 
@@ -226,7 +226,7 @@ Freeze a scenario, or use existing Trainer checkpoint resume semantics.
 template_revision: str | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/api/operation_routes.py#L31-L31)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/api/operation_routes.py#L31-L31)
 
 ### nexuml.api.operation_routes.TrainInput.trainer_checkpoint
 
@@ -236,7 +236,7 @@ template_revision: str | None = None
 trainer_checkpoint: str | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/api/operation_routes.py#L30-L30)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/api/operation_routes.py#L30-L30)
 
 ### nexuml.api.operation_routes.TrainInput.data
 
@@ -248,7 +248,7 @@ data: dict[str, Any] | None = None
 
 Inherited from: `nexuml.api.config_routes.ConfigInput`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/api/config_routes.py#L20-L20)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/api/config_routes.py#L20-L20)
 
 ### nexuml.api.operation_routes.TrainInput.model_config
 
@@ -260,7 +260,7 @@ model_config = ConfigDict(extra='forbid')
 
 Inherited from: `nexuml.api.config_routes.ConfigInput`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/api/config_routes.py#L19-L19)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/api/config_routes.py#L19-L19)
 
 ### nexuml.api.operation_routes.TrainInput.stage_order
 
@@ -272,7 +272,7 @@ stage_order: list[str] | None = None
 
 Inherited from: `nexuml.api.config_routes.ConfigInput`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/api/config_routes.py#L22-L22)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/api/config_routes.py#L22-L22)
 
 ### nexuml.api.operation_routes.TrainInput.yaml
 
@@ -284,7 +284,7 @@ yaml: str | None = None
 
 Inherited from: `nexuml.api.config_routes.ConfigInput`
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/api/config_routes.py#L21-L21)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/api/config_routes.py#L21-L21)
 
 ## nexuml.api.operation_routes.operation_router
 
@@ -300,4 +300,4 @@ Expose lightweight observation without a training loop or event queue.
 
 - (`APIRouter`) — REST/WebSocket router over actual invocation ownership and persisted observations.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/api/operation_routes.py#L49-L220)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/api/operation_routes.py#L49-L220)

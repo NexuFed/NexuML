@@ -4,7 +4,7 @@
 
 Hugging Face-only AudioSet downloader.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/audioset/audioset_hf_download.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/data/audioset/audioset_hf_download.py#L1-L1)
 
 ## nexuml_library.data.audioset.audioset_hf_download.CONFIG_NAME
 
@@ -14,7 +14,7 @@ Hugging Face-only AudioSet downloader.
 CONFIG_NAME = 'full'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/audioset/audioset_hf_download.py#L12-L12)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/data/audioset/audioset_hf_download.py#L12-L12)
 
 ## nexuml_library.data.audioset.audioset_hf_download.DATASET_ID
 
@@ -24,7 +24,7 @@ CONFIG_NAME = 'full'
 DATASET_ID = 'agkphysics/AudioSet'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/audioset/audioset_hf_download.py#L11-L11)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/data/audioset/audioset_hf_download.py#L11-L11)
 
 ## nexuml_library.data.audioset.audioset_hf_download.SPLITS
 
@@ -34,7 +34,7 @@ DATASET_ID = 'agkphysics/AudioSet'
 SPLITS = ('bal_train', 'eval')
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/audioset/audioset_hf_download.py#L13-L13)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/data/audioset/audioset_hf_download.py#L13-L13)
 
 ## nexuml_library.data.audioset.audioset_hf_download.logger
 
@@ -44,7 +44,7 @@ SPLITS = ('bal_train', 'eval')
 logger = logging.getLogger(__name__)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/audioset/audioset_hf_download.py#L9-L9)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/data/audioset/audioset_hf_download.py#L9-L9)
 
 ## nexuml_library.data.audioset.audioset_hf_download.download_hf_audioset
 
@@ -65,7 +65,7 @@ imported or invoked.
 - `RuntimeError` — If required packages (datasets, torchaudio, tqdm)
 are not installed.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/audioset/audioset_hf_download.py#L33-L106)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/data/audioset/audioset_hf_download.py#L33-L106)
 
 ## nexuml_library.data.audioset.audioset_hf_download.expected_hf_audioset_layout
 
@@ -77,7 +77,7 @@ def expected_hf_audioset_layout(root: str | Path) -> str
 
 Return the expected HuggingFace AudioSet directory layout path.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/audioset/audioset_hf_download.py#L24-L30)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/data/audioset/audioset_hf_download.py#L24-L30)
 
 ## nexuml_library.data.audioset.audioset_hf_download.is_hf_audioset_complete
 
@@ -89,4 +89,4 @@ def is_hf_audioset_complete(root: str | Path) -> bool
 
 Return whether the Hugging Face AudioSet layout exists.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/audioset/audioset_hf_download.py#L16-L21)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/library/src/nexuml_library/data/audioset/audioset_hf_download.py#L16-L21)

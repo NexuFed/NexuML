@@ -4,7 +4,7 @@
 
 Training runtime exports.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/training/__init__.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/training/__init__.py#L1-L1)
 
 ## nexuml.training.NexuSession
 
@@ -18,7 +18,7 @@ Re-exported from: `nexuml.training.lightning`
 
 Thin orchestration layer for building and running a NexuML session.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/training/lightning.py#L591-L977)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/training/lightning.py#L591-L977)
 
 ### nexuml.training.NexuSession.accelerator
 
@@ -28,7 +28,7 @@ Thin orchestration layer for building and running a NexuML session.
 accelerator = accelerator
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/training/lightning.py#L609-L609)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/training/lightning.py#L609-L609)
 
 ### nexuml.training.NexuSession.devices
 
@@ -38,7 +38,7 @@ accelerator = accelerator
 devices = devices
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/training/lightning.py#L610-L610)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/training/lightning.py#L610-L610)
 
 ### nexuml.training.NexuSession.enable_loggers
 
@@ -48,7 +48,7 @@ devices = devices
 enable_loggers = enable_loggers
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/training/lightning.py#L613-L613)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/training/lightning.py#L613-L613)
 
 ### nexuml.training.NexuSession.enable_progress_bar
 
@@ -58,7 +58,7 @@ enable_loggers = enable_loggers
 enable_progress_bar = enable_progress_bar
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/training/lightning.py#L612-L612)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/training/lightning.py#L612-L612)
 
 ### nexuml.training.NexuSession.log_dir
 
@@ -68,7 +68,7 @@ enable_progress_bar = enable_progress_bar
 log_dir = resolve_logs_root(log_dir)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/training/lightning.py#L611-L611)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/training/lightning.py#L611-L611)
 
 ### nexuml.training.NexuSession.num_nodes
 
@@ -78,7 +78,7 @@ log_dir = resolve_logs_root(log_dir)
 num_nodes = num_nodes
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/training/lightning.py#L620-L620)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/training/lightning.py#L620-L620)
 
 ### nexuml.training.NexuSession.run_name
 
@@ -88,7 +88,7 @@ num_nodes = num_nodes
 run_name = run_name
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/training/lightning.py#L617-L617)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/training/lightning.py#L617-L617)
 
 ### nexuml.training.NexuSession.scenario
 
@@ -98,7 +98,7 @@ run_name = run_name
 scenario = self._resolve_scenario(scenario)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/training/lightning.py#L621-L621)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/training/lightning.py#L621-L621)
 
 ### nexuml.training.NexuSession.trainer_checkpoint
 
@@ -108,7 +108,7 @@ scenario = self._resolve_scenario(scenario)
 trainer_checkpoint = Path(trainer_checkpoint) if trainer_checkpoint is not None else None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/training/lightning.py#L614-L616)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/training/lightning.py#L614-L616)
 
 ### nexuml.training.NexuSession.data_module
 
@@ -118,7 +118,7 @@ trainer_checkpoint = Path(trainer_checkpoint) if trainer_checkpoint is not None 
 data_module: NexuDataModule
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/training/lightning.py#L674-L675)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/training/lightning.py#L674-L675)
 
 ### nexuml.training.NexuSession.lightning_module
 
@@ -128,7 +128,7 @@ data_module: NexuDataModule
 lightning_module: NexuLightningModule
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/training/lightning.py#L670-L671)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/training/lightning.py#L670-L671)
 
 ### nexuml.training.NexuSession.pipeline
 
@@ -138,7 +138,7 @@ lightning_module: NexuLightningModule
 pipeline: CompiledPipeline
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/training/lightning.py#L666-L667)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/training/lightning.py#L666-L667)
 
 ### nexuml.training.NexuSession.runtime
 
@@ -148,7 +148,7 @@ pipeline: CompiledPipeline
 runtime: RuntimeArtifacts
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/training/lightning.py#L662-L663)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/training/lightning.py#L662-L663)
 
 ### nexuml.training.NexuSession.trainer
 
@@ -158,7 +158,7 @@ runtime: RuntimeArtifacts
 trainer: L.Trainer
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/training/lightning.py#L678-L679)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/training/lightning.py#L678-L679)
 
 ### nexuml.training.NexuSession.trainer_callbacks
 
@@ -168,7 +168,7 @@ trainer: L.Trainer
 trainer_callbacks: list[Any]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/training/lightning.py#L687-L689)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/training/lightning.py#L687-L689)
 
 ### nexuml.training.NexuSession.trainer_loggers
 
@@ -178,7 +178,7 @@ trainer_callbacks: list[Any]
 trainer_loggers: list[Any] | bool
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/training/lightning.py#L682-L684)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/training/lightning.py#L682-L684)
 
 ### nexuml.training.NexuSession.build_runtime
 
@@ -194,7 +194,7 @@ Create runtime artifacts lazily.
 
 - (`RuntimeArtifacts`) — The ``RuntimeArtifacts`` (creating them on first call).
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/training/lightning.py#L701-L715)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/training/lightning.py#L701-L715)
 
 ### nexuml.training.NexuSession.build_trainer
 
@@ -210,7 +210,7 @@ Create the Lightning Trainer lazily.
 
 - (`L.Trainer`) — The ``lightning.Trainer`` instance (creating it on first call).
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/training/lightning.py#L717-L773)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/training/lightning.py#L717-L773)
 
 ### nexuml.training.NexuSession.fit
 
@@ -226,7 +226,7 @@ Run Trainer.fit() for the current session.
 
 - (`'NexuSession'`) — The same ``NexuSession`` instance (for chaining).
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/training/lightning.py#L775-L786)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/training/lightning.py#L775-L786)
 
 ### nexuml.training.NexuSession.from_scenario
 
@@ -242,7 +242,7 @@ Create a session from a scenario definition.
 
 - (`'NexuSession'`) — New ``NexuSession`` instance.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/training/lightning.py#L630-L641)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/training/lightning.py#L630-L641)
 
 ### nexuml.training.NexuSession.from_trainer_checkpoint
 
@@ -258,7 +258,7 @@ Create a session from a Lightning Trainer checkpoint.
 
 - (`'NexuSession'`) — New ``NexuSession`` instance restored from the checkpoint.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/training/lightning.py#L643-L659)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/training/lightning.py#L643-L659)
 
 ### nexuml.training.NexuSession.predict
 
@@ -275,7 +275,7 @@ Run Trainer.predict() with session defaults unless explicitly overridden.
 - (`Any`) — Prediction outputs from ``Trainer.predict()``, or ``None`` when
 - (`Any`) — *return_predictions* is ``False``.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/training/lightning.py#L805-L824)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/training/lightning.py#L805-L824)
 
 ### nexuml.training.NexuSession.run
 
@@ -292,7 +292,7 @@ Execute the standard fit → validate → post-train fit → test flow.
 - (`TrainResult`) — ``TrainResult`` containing the pipeline, module, trainer, and
 - (`TrainResult`) — metric results.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/training/lightning.py#L854-L883)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/training/lightning.py#L854-L883)
 
 ### nexuml.training.NexuSession.setup
 
@@ -308,7 +308,7 @@ Build runtime objects and trainer.
 
 - (`'NexuSession'`) — The same ``NexuSession`` instance (for chaining).
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/training/lightning.py#L691-L699)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/training/lightning.py#L691-L699)
 
 ### nexuml.training.NexuSession.test
 
@@ -324,7 +324,7 @@ Run Trainer.test() with session defaults unless explicitly overridden.
 
 - (`list[dict[str, float]]`) — List of metric dictionaries from the test stage.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/training/lightning.py#L826-L852)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/training/lightning.py#L826-L852)
 
 ### nexuml.training.NexuSession.validate
 
@@ -340,7 +340,7 @@ Run Trainer.validate() with the session datamodule.
 
 - (`list[dict[str, float]]`) — List of metric dictionaries from the validation stage.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/training/lightning.py#L788-L803)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/training/lightning.py#L788-L803)
 
 ## nexuml.training.TrainResult
 
@@ -354,7 +354,7 @@ Re-exported from: `nexuml.training.lightning`
 
 Result of a training run.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/training/lightning.py#L567-L578)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/training/lightning.py#L567-L578)
 
 ### nexuml.training.TrainResult.artifacts
 
@@ -364,7 +364,7 @@ Result of a training run.
 artifacts: list[dict[str, str]] = field(default_factory=list)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/training/lightning.py#L578-L578)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/training/lightning.py#L578-L578)
 
 ### nexuml.training.TrainResult.eval_algorithm_results
 
@@ -374,7 +374,7 @@ artifacts: list[dict[str, str]] = field(default_factory=list)
 eval_algorithm_results: dict[str, float] = field(default_factory=dict)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/training/lightning.py#L577-L577)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/training/lightning.py#L577-L577)
 
 ### nexuml.training.TrainResult.lightning_module
 
@@ -384,7 +384,7 @@ eval_algorithm_results: dict[str, float] = field(default_factory=dict)
 lightning_module: NexuLightningModule
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/training/lightning.py#L572-L572)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/training/lightning.py#L572-L572)
 
 ### nexuml.training.TrainResult.load_report
 
@@ -394,7 +394,7 @@ lightning_module: NexuLightningModule
 load_report: dict[str, list[str]] | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/training/lightning.py#L576-L576)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/training/lightning.py#L576-L576)
 
 ### nexuml.training.TrainResult.pipeline
 
@@ -404,7 +404,7 @@ load_report: dict[str, list[str]] | None = None
 pipeline: CompiledPipeline
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/training/lightning.py#L571-L571)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/training/lightning.py#L571-L571)
 
 ### nexuml.training.TrainResult.test_results
 
@@ -414,7 +414,7 @@ pipeline: CompiledPipeline
 test_results: list[dict[str, float]] = field(default_factory=list)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/training/lightning.py#L575-L575)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/training/lightning.py#L575-L575)
 
 ### nexuml.training.TrainResult.trainer
 
@@ -424,7 +424,7 @@ test_results: list[dict[str, float]] = field(default_factory=list)
 trainer: L.Trainer
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/training/lightning.py#L573-L573)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/training/lightning.py#L573-L573)
 
 ### nexuml.training.TrainResult.validation_results
 
@@ -434,7 +434,7 @@ trainer: L.Trainer
 validation_results: list[dict[str, float]] = field(default_factory=list)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/training/lightning.py#L574-L574)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/training/lightning.py#L574-L574)
 
 ## nexuml.training.train
 
@@ -452,7 +452,7 @@ Compatibility wrapper around ``NexuSession.run()``.
 
 - (`TrainResult`) — ``TrainResult`` from the session run.
 
-[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/training/lightning.py#L1275-L1298)
+[View source](https://github.com/NexuFed/NexuML/blob/0ac41f9fdf4b1f0bdb4182261c550f9fa6b08dba/src/nexuml/training/lightning.py#L1275-L1298)
 
 **Modules**
 
