@@ -4,7 +4,7 @@
 
 MNIST and FashionMNIST ResNet classification scenarios.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/scenarios/vision/mnist_resnet.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/scenarios/vision/mnist_resnet.py#L1-L1)
 
 ## nexuml_library.scenarios.vision.mnist_resnet.fashionmnist_data
 
@@ -20,7 +20,7 @@ Create a DataSpec for FashionMNIST image classification.
 
 - `DataSpec` (`DataSpec`) — FashionMNIST dataset specification with fit and test splits.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/scenarios/vision/mnist_resnet.py#L56-L79)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/scenarios/vision/mnist_resnet.py#L56-L79)
 
 ## nexuml_library.scenarios.vision.mnist_resnet.fashionmnist_resnet
 
@@ -36,7 +36,7 @@ FashionMNIST image classification with ResNet backbone.
 
 - `ScenarioSpec` (`ScenarioSpec`) — Assembled scenario with pipeline, training, data and evaluation.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/scenarios/vision/mnist_resnet.py#L110-L135)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/scenarios/vision/mnist_resnet.py#L110-L135)
 
 ## nexuml_library.scenarios.vision.mnist_resnet.mnist_data
 
@@ -52,7 +52,7 @@ Create a DataSpec for MNIST image classification.
 
 - `DataSpec` (`DataSpec`) — MNIST dataset specification with fit and test splits.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/scenarios/vision/mnist_resnet.py#L16-L53)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/scenarios/vision/mnist_resnet.py#L16-L53)
 
 ## nexuml_library.scenarios.vision.mnist_resnet.mnist_resnet
 
@@ -68,4 +68,4 @@ MNIST image classification with ResNet backbone.
 
 - `ScenarioSpec` (`ScenarioSpec`) — Assembled scenario with pipeline, training, data and evaluation.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/scenarios/vision/mnist_resnet.py#L82-L107)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/scenarios/vision/mnist_resnet.py#L82-L107)

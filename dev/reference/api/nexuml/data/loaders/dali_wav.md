@@ -4,7 +4,7 @@
 
 DALI WAV audio pipeline for file-backed audio datasets.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/loaders/dali_wav.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/dali_wav.py#L1-L1)
 
 ## nexuml.data.loaders.dali_wav.logger
 
@@ -14,7 +14,7 @@ DALI WAV audio pipeline for file-backed audio datasets.
 logger = logging.getLogger(__name__)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/loaders/dali_wav.py#L15-L15)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/dali_wav.py#L15-L15)
 
 ## nexuml.data.loaders.dali_wav.PyTorchIterator
 
@@ -28,7 +28,7 @@ Bases: `DALIGenericIterator`
 
 DALIGenericIterator with multi-label support via TensorDict lookup.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/loaders/dali_wav.py#L23-L47)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/dali_wav.py#L23-L47)
 
 ### nexuml.data.loaders.dali_wav.PyTorchIterator.labels
 
@@ -38,7 +38,7 @@ DALIGenericIterator with multi-label support via TensorDict lookup.
 labels = labels
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/loaders/dali_wav.py#L30-L30)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/dali_wav.py#L30-L30)
 
 ## nexuml.data.loaders.dali_wav.DaliAudioPipeline
 
@@ -54,7 +54,7 @@ Build and return a DALI audio pipeline as a PyTorchIterator.
 
 - (`PyTorchIterator`) — A ``PyTorchIterator`` over the built DALI pipeline.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/loaders/dali_wav.py#L134-L194)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/dali_wav.py#L134-L194)
 
 ## nexuml.data.loaders.dali_wav.wav_data_pipeline
 
@@ -74,4 +74,4 @@ Load WAV files with DALI native readers and return audio + file index label.
 
 - `ValueError` — If a crop/start offset is requested without a target length.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/loaders/dali_wav.py#L50-L131)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/dali_wav.py#L50-L131)

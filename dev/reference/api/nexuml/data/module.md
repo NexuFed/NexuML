@@ -4,7 +4,7 @@
 
 Lightning DataModule for NexuML datasets.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/module.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/module.py#L1-L1)
 
 ## nexuml.data.module.logger
 
@@ -14,7 +14,7 @@ Lightning DataModule for NexuML datasets.
 logger = logging.getLogger(__name__)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/module.py#L15-L15)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/module.py#L15-L15)
 
 ## nexuml.data.module.NexuDataModule
 
@@ -33,7 +33,7 @@ Supports:
 - weighted sampling for the native torch backend
 - backend-driven loader construction via ``LoaderSpec.backend``
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/module.py#L18-L154)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/module.py#L18-L154)
 
 ### nexuml.data.module.NexuDataModule.dataset
 
@@ -43,7 +43,7 @@ Supports:
 dataset = dataset
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/module.py#L38-L38)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/module.py#L38-L38)
 
 ### nexuml.data.module.NexuDataModule.loader_spec
 
@@ -53,7 +53,7 @@ dataset = dataset
 loader_spec = loader_spec or LoaderSpec()
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/module.py#L39-L39)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/module.py#L39-L39)
 
 ### nexuml.data.module.NexuDataModule.seed
 
@@ -63,7 +63,7 @@ loader_spec = loader_spec or LoaderSpec()
 seed = seed
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/module.py#L43-L43)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/module.py#L43-L43)
 
 ### nexuml.data.module.NexuDataModule.split_by_column
 
@@ -73,7 +73,7 @@ seed = seed
 split_by_column = split_by_column
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/module.py#L44-L44)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/module.py#L44-L44)
 
 ### nexuml.data.module.NexuDataModule.test_split
 
@@ -83,7 +83,7 @@ split_by_column = split_by_column
 test_split = test_split
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/module.py#L42-L42)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/module.py#L42-L42)
 
 ### nexuml.data.module.NexuDataModule.train_split
 
@@ -93,7 +93,7 @@ test_split = test_split
 train_split = train_split
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/module.py#L40-L40)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/module.py#L40-L40)
 
 ### nexuml.data.module.NexuDataModule.val_split
 
@@ -103,7 +103,7 @@ train_split = train_split
 val_split = val_split
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/module.py#L41-L41)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/module.py#L41-L41)
 
 ### nexuml.data.module.NexuDataModule.predict_dataloader
 
@@ -113,7 +113,7 @@ val_split = val_split
 def predict_dataloader()
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/module.py#L153-L154)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/module.py#L153-L154)
 
 ### nexuml.data.module.NexuDataModule.setup
 
@@ -123,7 +123,7 @@ def predict_dataloader()
 def setup(stage: str | None = None) -> None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/module.py#L49-L56)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/module.py#L49-L56)
 
 ### nexuml.data.module.NexuDataModule.test_dataloader
 
@@ -133,7 +133,7 @@ def setup(stage: str | None = None) -> None
 def test_dataloader()
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/module.py#L150-L151)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/module.py#L150-L151)
 
 ### nexuml.data.module.NexuDataModule.train_dataloader
 
@@ -143,7 +143,7 @@ def test_dataloader()
 def train_dataloader()
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/module.py#L138-L145)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/module.py#L138-L145)
 
 ### nexuml.data.module.NexuDataModule.val_dataloader
 
@@ -153,4 +153,4 @@ def train_dataloader()
 def val_dataloader()
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/module.py#L147-L148)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/module.py#L147-L148)

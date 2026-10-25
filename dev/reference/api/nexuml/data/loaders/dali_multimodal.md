@@ -4,7 +4,7 @@
 
 General DALI pipeline helpers for keyed TensorDict outputs.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/loaders/dali_multimodal.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/dali_multimodal.py#L1-L1)
 
 ## nexuml.data.loaders.dali_multimodal.INDEX_OUTPUT
 
@@ -14,7 +14,7 @@ General DALI pipeline helpers for keyed TensorDict outputs.
 INDEX_OUTPUT = '__index'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/loaders/dali_multimodal.py#L32-L32)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/dali_multimodal.py#L32-L32)
 
 ## nexuml.data.loaders.dali_multimodal.ExternalSampleIterator
 
@@ -26,7 +26,7 @@ class ExternalSampleIterator
 
 External source iterator backed by a dataset's `__getitem__`.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/loaders/dali_multimodal.py#L134-L178)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/dali_multimodal.py#L134-L178)
 
 ### nexuml.data.loaders.dali_multimodal.ExternalSampleIterator.dataset
 
@@ -36,7 +36,7 @@ External source iterator backed by a dataset's `__getitem__`.
 dataset = dataset
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/loaders/dali_multimodal.py#L147-L147)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/dali_multimodal.py#L147-L147)
 
 ### nexuml.data.loaders.dali_multimodal.ExternalSampleIterator.indices
 
@@ -46,7 +46,7 @@ dataset = dataset
 indices = indices[len(indices) * shard_id // num_shards:len(indices) * shard_id + 1 // num_shards]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/loaders/dali_multimodal.py#L152-L154)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/dali_multimodal.py#L152-L154)
 
 ### nexuml.data.loaders.dali_multimodal.ExternalSampleIterator.n
 
@@ -56,7 +56,7 @@ indices = indices[len(indices) * shard_id // num_shards:len(indices) * shard_id 
 n = len(self.indices)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/loaders/dali_multimodal.py#L155-L155)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/dali_multimodal.py#L155-L155)
 
 ### nexuml.data.loaders.dali_multimodal.ExternalSampleIterator.shuffle
 
@@ -66,7 +66,7 @@ n = len(self.indices)
 shuffle = shuffle
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/loaders/dali_multimodal.py#L150-L150)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/dali_multimodal.py#L150-L150)
 
 ### nexuml.data.loaders.dali_multimodal.ExternalSampleIterator.x_keys
 
@@ -76,7 +76,7 @@ shuffle = shuffle
 x_keys = list(x_keys)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/loaders/dali_multimodal.py#L148-L148)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/dali_multimodal.py#L148-L148)
 
 ### nexuml.data.loaders.dali_multimodal.ExternalSampleIterator.y_keys
 
@@ -86,7 +86,7 @@ x_keys = list(x_keys)
 y_keys = list(y_keys)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/loaders/dali_multimodal.py#L149-L149)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/dali_multimodal.py#L149-L149)
 
 ## nexuml.data.loaders.dali_multimodal.KeyedDaliIterator
 
@@ -100,7 +100,7 @@ Bases: `DALIGenericIterator`
 
 DALI iterator that returns `(x, y)` TensorDict pairs keyed semantically.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/loaders/dali_multimodal.py#L93-L131)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/dali_multimodal.py#L93-L131)
 
 ### nexuml.data.loaders.dali_multimodal.KeyedDaliIterator.metadata
 
@@ -110,7 +110,7 @@ DALI iterator that returns `(x, y)` TensorDict pairs keyed semantically.
 metadata: pd.DataFrame | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/loaders/dali_multimodal.py#L96-L96)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/dali_multimodal.py#L96-L96)
 
 ### nexuml.data.loaders.dali_multimodal.KeyedDaliIterator.metadata_labels
 
@@ -120,7 +120,7 @@ metadata: pd.DataFrame | None = None
 metadata_labels = metadata_labels
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/loaders/dali_multimodal.py#L111-L111)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/dali_multimodal.py#L111-L111)
 
 ### nexuml.data.loaders.dali_multimodal.KeyedDaliIterator.x_keys
 
@@ -130,7 +130,7 @@ metadata_labels = metadata_labels
 x_keys = list(x_keys)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/loaders/dali_multimodal.py#L109-L109)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/dali_multimodal.py#L109-L109)
 
 ### nexuml.data.loaders.dali_multimodal.KeyedDaliIterator.y_keys
 
@@ -140,7 +140,7 @@ x_keys = list(x_keys)
 y_keys = list(y_keys)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/loaders/dali_multimodal.py#L110-L110)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/dali_multimodal.py#L110-L110)
 
 ## nexuml.data.loaders.dali_multimodal.WebDatasetComponentSpec
 
@@ -152,7 +152,7 @@ class WebDatasetComponentSpec
 
 Component specification for a WebDataset tar shard.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/loaders/dali_multimodal.py#L369-L379)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/dali_multimodal.py#L369-L379)
 
 ### nexuml.data.loaders.dali_multimodal.WebDatasetComponentSpec.dtype
 
@@ -162,7 +162,7 @@ Component specification for a WebDataset tar shard.
 dtype: str | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/loaders/dali_multimodal.py#L378-L378)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/dali_multimodal.py#L378-L378)
 
 ### nexuml.data.loaders.dali_multimodal.WebDatasetComponentSpec.encoding
 
@@ -172,7 +172,7 @@ dtype: str | None = None
 encoding: str
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/loaders/dali_multimodal.py#L375-L375)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/dali_multimodal.py#L375-L375)
 
 ### nexuml.data.loaders.dali_multimodal.WebDatasetComponentSpec.key
 
@@ -182,7 +182,7 @@ encoding: str
 key: str
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/loaders/dali_multimodal.py#L373-L373)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/dali_multimodal.py#L373-L373)
 
 ### nexuml.data.loaders.dali_multimodal.WebDatasetComponentSpec.layout
 
@@ -192,7 +192,7 @@ key: str
 layout: str | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/loaders/dali_multimodal.py#L376-L376)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/dali_multimodal.py#L376-L376)
 
 ### nexuml.data.loaders.dali_multimodal.WebDatasetComponentSpec.member_ext
 
@@ -202,7 +202,7 @@ layout: str | None = None
 member_ext: str
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/loaders/dali_multimodal.py#L374-L374)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/dali_multimodal.py#L374-L374)
 
 ### nexuml.data.loaders.dali_multimodal.WebDatasetComponentSpec.modality
 
@@ -212,7 +212,7 @@ member_ext: str
 modality: str = 'generic'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/loaders/dali_multimodal.py#L379-L379)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/dali_multimodal.py#L379-L379)
 
 ### nexuml.data.loaders.dali_multimodal.WebDatasetComponentSpec.shape
 
@@ -222,7 +222,7 @@ modality: str = 'generic'
 shape: list[int] | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/loaders/dali_multimodal.py#L377-L377)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/dali_multimodal.py#L377-L377)
 
 ## nexuml.data.loaders.dali_multimodal.audio_file_pipeline
 
@@ -238,7 +238,7 @@ Build a DALI pipeline that decodes audio files from paths.
 
 - (`Any`) — Tuple of decoded audio tensor and integer file-index label.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/loaders/dali_multimodal.py#L202-L247)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/dali_multimodal.py#L202-L247)
 
 ## nexuml.data.loaders.dali_multimodal.build_external_source_loader
 
@@ -254,7 +254,7 @@ Build a DALI external-source loader from a Python iterable.
 
 - (`KeyedDaliIterator`) — A ``KeyedDaliIterator`` yielding ``(x, y)`` TensorDict pairs.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/loaders/dali_multimodal.py#L457-L504)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/dali_multimodal.py#L457-L504)
 
 ## nexuml.data.loaders.dali_multimodal.build_native_file_loader
 
@@ -274,7 +274,7 @@ Build a DALI native file loader for the given modality.
 
 - `ValueError` — If ``kind`` is unsupported or video lacks a sequence length.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/loaders/dali_multimodal.py#L507-L580)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/dali_multimodal.py#L507-L580)
 
 ## nexuml.data.loaders.dali_multimodal.build_webdataset_loader
 
@@ -290,7 +290,7 @@ Build a DALI WebDataset loader from tar archive paths.
 
 - (`KeyedDaliIterator`) — A ``KeyedDaliIterator`` yielding ``(x, y)`` TensorDict pairs.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/loaders/dali_multimodal.py#L583-L628)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/dali_multimodal.py#L583-L628)
 
 ## nexuml.data.loaders.dali_multimodal.external_source_pipeline
 
@@ -307,7 +307,7 @@ Build a DALI pipeline backed by an external Python source.
 - (`Any`) — A single DALI output node when ``num_outputs == 1``,
 - (`Any`) — otherwise a tuple of output nodes.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/loaders/dali_multimodal.py#L181-L199)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/dali_multimodal.py#L181-L199)
 
 ## nexuml.data.loaders.dali_multimodal.image_file_pipeline
 
@@ -323,7 +323,7 @@ Build a DALI pipeline that decodes image files from paths.
 
 - (`Any`) — Tuple of decoded image tensor and integer file-index label.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/loaders/dali_multimodal.py#L250-L275)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/dali_multimodal.py#L250-L275)
 
 ## nexuml.data.loaders.dali_multimodal.numpy_file_pipeline
 
@@ -339,7 +339,7 @@ Build a DALI pipeline that loads numpy array files from paths.
 
 - (`Any`) — Tuple of loaded numpy data tensor and integer file-index label.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/loaders/dali_multimodal.py#L339-L361)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/dali_multimodal.py#L339-L361)
 
 ## nexuml.data.loaders.dali_multimodal.text_file_pipeline
 
@@ -355,7 +355,7 @@ Build a DALI pipeline that reads text files as byte strings.
 
 - (`Any`) — Tuple of text byte tensor and integer file-index label.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/loaders/dali_multimodal.py#L278-L301)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/dali_multimodal.py#L278-L301)
 
 ## nexuml.data.loaders.dali_multimodal.video_file_pipeline
 
@@ -371,7 +371,7 @@ Build a DALI pipeline that decodes video files from paths.
 
 - (`Any`) — Tuple of decoded video tensor and integer file-index label.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/loaders/dali_multimodal.py#L304-L336)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/dali_multimodal.py#L304-L336)
 
 ## nexuml.data.loaders.dali_multimodal.webdataset_pipeline
 
@@ -391,4 +391,4 @@ Build a DALI pipeline that reads a WebDataset tar archive.
 
 - `ValueError` — If a component encoding is unsupported.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/loaders/dali_multimodal.py#L382-L454)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/dali_multimodal.py#L382-L454)

@@ -4,7 +4,7 @@
 
 Loopback trust boundary shared by HTTP and WebSocket transports.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/security.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/security.py#L1-L1)
 
 ## nexuml.api.security.INTERFACE_VERSION
 
@@ -14,7 +14,7 @@ Loopback trust boundary shared by HTTP and WebSocket transports.
 INTERFACE_VERSION = 3
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/security.py#L16-L16)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/security.py#L16-L16)
 
 ## nexuml.api.security.LOOPBACK_HOSTS
 
@@ -24,7 +24,7 @@ INTERFACE_VERSION = 3
 LOOPBACK_HOSTS = {'127.0.0.1', 'localhost', '::1'}
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/security.py#L18-L18)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/security.py#L18-L18)
 
 ## nexuml.api.security.MAX_BODY
 
@@ -34,7 +34,7 @@ LOOPBACK_HOSTS = {'127.0.0.1', 'localhost', '::1'}
 MAX_BODY = 2 * 1024 * 1024
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/security.py#L17-L17)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/security.py#L17-L17)
 
 ## nexuml.api.security.Settings
 
@@ -46,7 +46,7 @@ class Settings
 
 Explicit selected-runtime settings; credentials are never serialized.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/security.py#L37-L87)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/security.py#L37-L87)
 
 ### nexuml.api.security.Settings.directory
 
@@ -56,7 +56,7 @@ Explicit selected-runtime settings; credentials are never serialized.
 directory: Path
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/security.py#L41-L41)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/security.py#L41-L41)
 
 ### nexuml.api.security.Settings.origin
 
@@ -66,7 +66,7 @@ directory: Path
 origin: str
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/security.py#L42-L42)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/security.py#L42-L42)
 
 ### nexuml.api.security.Settings.token
 
@@ -76,7 +76,7 @@ origin: str
 token: str
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/security.py#L43-L43)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/security.py#L43-L43)
 
 ### nexuml.api.security.Settings.matches
 
@@ -86,7 +86,7 @@ token: str
 def matches(value: str) -> bool
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/security.py#L70-L71)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/security.py#L70-L71)
 
 ### nexuml.api.security.Settings.permits
 
@@ -96,7 +96,7 @@ def matches(value: str) -> bool
 def permits(headers) -> bool
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/security.py#L73-L87)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/security.py#L73-L87)
 
 ## nexuml.api.security.TransportSecurity
 
@@ -108,7 +108,7 @@ class TransportSecurity
 
 Authenticate before routing, including docs and WebSocket upgrades.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/security.py#L90-L152)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/security.py#L90-L152)
 
 ### nexuml.api.security.TransportSecurity.app
 
@@ -118,7 +118,7 @@ Authenticate before routing, including docs and WebSocket upgrades.
 app = app
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/security.py#L94-L94)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/security.py#L94-L94)
 
 ### nexuml.api.security.TransportSecurity.settings
 
@@ -128,7 +128,7 @@ app = app
 settings = settings
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/security.py#L95-L95)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/security.py#L95-L95)
 
 ### nexuml.api.security.TransportSecurity.reject
 
@@ -138,7 +138,7 @@ settings = settings
 async def reject(scope, receive, send, status, code, message)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/security.py#L149-L152)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/security.py#L149-L152)
 
 ## nexuml.api.security.authenticate_websocket
 
@@ -154,7 +154,7 @@ Accept only a bounded, timely first authentication frame.
 
 - (`bool`) — Whether authentication succeeded; failures close the socket without data.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/security.py#L155-L177)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/security.py#L155-L177)
 
 ## nexuml.api.security.read_token
 
@@ -174,4 +174,4 @@ Read an explicit private file or the runtime environment.
 
 - `ValueError` — If a token file is not private on POSIX.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/security.py#L21-L34)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/security.py#L21-L34)

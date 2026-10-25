@@ -4,7 +4,7 @@
 
 Authorized transport file access, separate from NexuML dataset path policies.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/files.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/files.py#L1-L1)
 
 ## nexuml.api.files.Files
 
@@ -16,7 +16,7 @@ class Files
 
 One selected directory boundary and serialized revision-checked writes.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/files.py#L12-L73)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/files.py#L12-L73)
 
 ### nexuml.api.files.Files.directory
 
@@ -26,7 +26,7 @@ One selected directory boundary and serialized revision-checked writes.
 directory = directory
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/files.py#L16-L16)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/files.py#L16-L16)
 
 ### nexuml.api.files.Files.lock
 
@@ -36,7 +36,7 @@ directory = directory
 lock = threading.Lock()
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/files.py#L17-L17)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/files.py#L17-L17)
 
 ### nexuml.api.files.Files.path
 
@@ -56,7 +56,7 @@ Resolve a path and reject traversal/symlink escapes.
 
 - `ApiError` — When a path escapes the authorized directory.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/files.py#L19-L34)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/files.py#L19-L34)
 
 ### nexuml.api.files.Files.revision
 
@@ -72,7 +72,7 @@ Hash file bytes for conflict detection.
 
 - (`str | None`) — Current revision, or None for a new file.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/files.py#L36-L43)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/files.py#L36-L43)
 
 ### nexuml.api.files.Files.save
 
@@ -92,4 +92,4 @@ Atomically save only against the supplied current revision.
 
 - `ApiError` — When the source changed after load.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/files.py#L45-L73)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/files.py#L45-L73)

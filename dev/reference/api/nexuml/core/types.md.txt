@@ -4,7 +4,7 @@
 
 Core type definitions for NexuML pipeline specifications.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L1-L1)
 
 ## nexuml.core.types.BatchSizeSpec
 
@@ -14,7 +14,7 @@ Core type definitions for NexuML pipeline specifications.
 BatchSizeSpec = int | AutoBatchSizeSpec
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L216-L216)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L216-L216)
 
 ## nexuml.core.types.AutoBatchSizeSpec
 
@@ -28,7 +28,7 @@ Bases: `nexuml.core.types.SpecModel`
 
 Structured config for runtime automatic training batch-size resolution.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L193-L213)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L193-L213)
 
 ### nexuml.core.types.AutoBatchSizeSpec.candidates
 
@@ -38,7 +38,7 @@ Structured config for runtime automatic training batch-size resolution.
 candidates: Literal['power_of_two'] = 'power_of_two'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L199-L199)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L199-L199)
 
 ### nexuml.core.types.AutoBatchSizeSpec.margin
 
@@ -48,7 +48,7 @@ candidates: Literal['power_of_two'] = 'power_of_two'
 margin: float = 0.8
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L201-L201)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L201-L201)
 
 ### nexuml.core.types.AutoBatchSizeSpec.max
 
@@ -58,7 +58,7 @@ margin: float = 0.8
 max: int = 128
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L198-L198)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L198-L198)
 
 ### nexuml.core.types.AutoBatchSizeSpec.min
 
@@ -68,7 +68,7 @@ max: int = 128
 min: int = 1
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L197-L197)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L197-L197)
 
 ### nexuml.core.types.AutoBatchSizeSpec.mode
 
@@ -78,7 +78,7 @@ min: int = 1
 mode: Literal['auto'] = 'auto'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L196-L196)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L196-L196)
 
 ### nexuml.core.types.AutoBatchSizeSpec.safety
 
@@ -88,7 +88,7 @@ mode: Literal['auto'] = 'auto'
 safety: Literal['largest', 'previous_power_of_two', 'margin'] = 'previous_power_of_two'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L200-L200)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L200-L200)
 
 ### nexuml.core.types.AutoBatchSizeSpec.model_config
 
@@ -100,7 +100,7 @@ model_config = ConfigDict(extra='forbid')
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L46-L46)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L46-L46)
 
 ### nexuml.core.types.AutoBatchSizeSpec.validate_bounds
 
@@ -110,7 +110,7 @@ Inherited from: `nexuml.core.types.SpecModel`
 def validate_bounds() -> 'AutoBatchSizeSpec'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L203-L213)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L203-L213)
 
 ### nexuml.core.types.AutoBatchSizeSpec.from_dict
 
@@ -122,7 +122,7 @@ def from_dict(data: dict[str, Any]) -> 'SpecModel'
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L51-L53)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L51-L53)
 
 ### nexuml.core.types.AutoBatchSizeSpec.get
 
@@ -134,7 +134,7 @@ def get(key: str, default: Any = None) -> Any
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L58-L59)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L58-L59)
 
 ### nexuml.core.types.AutoBatchSizeSpec.to_dict
 
@@ -146,7 +146,7 @@ def to_dict() -> dict[str, Any]
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L48-L49)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L48-L49)
 
 ## nexuml.core.types.AxisKeySpec
 
@@ -171,7 +171,7 @@ Typed axis-key declaration with source provenance.
   are not part of the label TensorDict but are needed for grouped evaluation
   (e.g. ``basename``, ``domain``).  Only available during eval/test phases.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L24-L40)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L24-L40)
 
 ### nexuml.core.types.AxisKeySpec.key
 
@@ -181,7 +181,7 @@ Typed axis-key declaration with source provenance.
 key: str
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L39-L39)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L39-L39)
 
 ### nexuml.core.types.AxisKeySpec.source
 
@@ -191,7 +191,7 @@ key: str
 source: Literal['x', 'y', 'metadata'] = 'y'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L40-L40)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L40-L40)
 
 ## nexuml.core.types.CallbackSpec
 
@@ -205,7 +205,7 @@ Bases: `nexuml.core.types.FactorySpec`
 
 Specification for a training callback.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L462-L463)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L462-L463)
 
 ### nexuml.core.types.CallbackSpec.args
 
@@ -217,7 +217,7 @@ args: list[object]
 
 Inherited from: `nexuml.core.types.FactorySpec`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L74-L74)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L74-L74)
 
 ### nexuml.core.types.CallbackSpec.factory
 
@@ -229,7 +229,7 @@ factory: str
 
 Inherited from: `nexuml.core.types.FactorySpec`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L73-L73)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L73-L73)
 
 ### nexuml.core.types.CallbackSpec.kwargs
 
@@ -241,7 +241,7 @@ kwargs: dict[str, object]
 
 Inherited from: `nexuml.core.types.FactorySpec`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L75-L75)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L75-L75)
 
 ### nexuml.core.types.CallbackSpec.model_config
 
@@ -253,7 +253,7 @@ model_config = ConfigDict(extra='forbid')
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L46-L46)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L46-L46)
 
 ### nexuml.core.types.CallbackSpec.build
 
@@ -275,7 +275,7 @@ Construct the configured object with any runtime-supplied arguments.
 
 - `TypeError` — If construction fails.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L110-L125)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L110-L125)
 
 ### nexuml.core.types.CallbackSpec.from_factory
 
@@ -293,7 +293,7 @@ Capture an importable factory and portable constructor arguments.
 
 - (`Self`) — Validated factory specification.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L93-L100)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L93-L100)
 
 ### nexuml.core.types.CallbackSpec.resolve
 
@@ -311,7 +311,7 @@ Resolve the configured import target.
 
 - (`Callable[..., object]`) — Imported callable.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L102-L108)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L102-L108)
 
 ### nexuml.core.types.CallbackSpec.from_dict
 
@@ -323,7 +323,7 @@ def from_dict(data: dict[str, Any]) -> 'SpecModel'
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L51-L53)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L51-L53)
 
 ### nexuml.core.types.CallbackSpec.get
 
@@ -335,7 +335,7 @@ def get(key: str, default: Any = None) -> Any
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L58-L59)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L58-L59)
 
 ### nexuml.core.types.CallbackSpec.to_dict
 
@@ -347,7 +347,7 @@ def to_dict() -> dict[str, Any]
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L48-L49)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L48-L49)
 
 ## nexuml.core.types.CheckpointLoadSpec
 
@@ -361,7 +361,7 @@ Bases: `nexuml.core.types.SpecModel`
 
 Selective weight loading policy for resume/fine-tune flows.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L476-L484)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L476-L484)
 
 ### nexuml.core.types.CheckpointLoadSpec.allow_missing
 
@@ -371,7 +371,7 @@ Selective weight loading policy for resume/fine-tune flows.
 allow_missing: bool = True
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L482-L482)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L482-L482)
 
 ### nexuml.core.types.CheckpointLoadSpec.allow_shape_mismatch
 
@@ -381,7 +381,7 @@ allow_missing: bool = True
 allow_shape_mismatch: bool = True
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L483-L483)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L483-L483)
 
 ### nexuml.core.types.CheckpointLoadSpec.exclude
 
@@ -391,7 +391,7 @@ allow_shape_mismatch: bool = True
 exclude: list[str]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L481-L481)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L481-L481)
 
 ### nexuml.core.types.CheckpointLoadSpec.freeze_loaded
 
@@ -401,7 +401,7 @@ exclude: list[str]
 freeze_loaded: bool = False
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L484-L484)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L484-L484)
 
 ### nexuml.core.types.CheckpointLoadSpec.include
 
@@ -411,7 +411,7 @@ freeze_loaded: bool = False
 include: list[str]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L480-L480)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L480-L480)
 
 ### nexuml.core.types.CheckpointLoadSpec.source
 
@@ -421,7 +421,7 @@ include: list[str]
 source: str | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L479-L479)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L479-L479)
 
 ### nexuml.core.types.CheckpointLoadSpec.model_config
 
@@ -433,7 +433,7 @@ model_config = ConfigDict(extra='forbid')
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L46-L46)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L46-L46)
 
 ### nexuml.core.types.CheckpointLoadSpec.from_dict
 
@@ -445,7 +445,7 @@ def from_dict(data: dict[str, Any]) -> 'SpecModel'
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L51-L53)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L51-L53)
 
 ### nexuml.core.types.CheckpointLoadSpec.get
 
@@ -457,7 +457,7 @@ def get(key: str, default: Any = None) -> Any
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L58-L59)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L58-L59)
 
 ### nexuml.core.types.CheckpointLoadSpec.to_dict
 
@@ -469,7 +469,7 @@ def to_dict() -> dict[str, Any]
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L48-L49)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L48-L49)
 
 ## nexuml.core.types.DVCLiveSpec
 
@@ -483,7 +483,7 @@ Bases: `nexuml.core.types.SpecModel`
 
 DVCLive logger configuration.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L417-L420)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L417-L420)
 
 ### nexuml.core.types.DVCLiveSpec.dir
 
@@ -493,7 +493,7 @@ DVCLive logger configuration.
 dir: str = '.experiments/dvclive'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L420-L420)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L420-L420)
 
 ### nexuml.core.types.DVCLiveSpec.model_config
 
@@ -505,7 +505,7 @@ model_config = ConfigDict(extra='forbid')
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L46-L46)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L46-L46)
 
 ### nexuml.core.types.DVCLiveSpec.from_dict
 
@@ -517,7 +517,7 @@ def from_dict(data: dict[str, Any]) -> 'SpecModel'
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L51-L53)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L51-L53)
 
 ### nexuml.core.types.DVCLiveSpec.get
 
@@ -529,7 +529,7 @@ def get(key: str, default: Any = None) -> Any
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L58-L59)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L58-L59)
 
 ### nexuml.core.types.DVCLiveSpec.to_dict
 
@@ -541,7 +541,7 @@ def to_dict() -> dict[str, Any]
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L48-L49)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L48-L49)
 
 ## nexuml.core.types.DataSpec
 
@@ -555,7 +555,7 @@ Bases: `nexuml.core.types.SpecModel`
 
 Specification for data configuration.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L327-L349)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L327-L349)
 
 ### nexuml.core.types.DataSpec.datasets
 
@@ -565,7 +565,7 @@ Specification for data configuration.
 datasets: list[DatasetSpec]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L335-L335)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L335-L335)
 
 ### nexuml.core.types.DataSpec.feature_key
 
@@ -575,7 +575,7 @@ datasets: list[DatasetSpec]
 feature_key: str = 'features'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L340-L340)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L340-L340)
 
 ### nexuml.core.types.DataSpec.input_shapes
 
@@ -585,7 +585,7 @@ feature_key: str = 'features'
 input_shapes: dict[str, list[int]]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L337-L337)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L337-L337)
 
 ### nexuml.core.types.DataSpec.loader
 
@@ -595,7 +595,7 @@ input_shapes: dict[str, list[int]]
 loader: LoaderSpec
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L336-L336)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L336-L336)
 
 ### nexuml.core.types.DataSpec.merge_labels
 
@@ -605,7 +605,7 @@ loader: LoaderSpec
 merge_labels: dict[str, dict] | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L339-L339)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L339-L339)
 
 ### nexuml.core.types.DataSpec.num_classes
 
@@ -615,7 +615,7 @@ merge_labels: dict[str, dict] | None = None
 num_classes: int | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L338-L338)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L338-L338)
 
 ### nexuml.core.types.DataSpec.preprocessing
 
@@ -625,7 +625,7 @@ num_classes: int | None = None
 preprocessing: PreprocessingSpec
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L342-L342)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L342-L342)
 
 ### nexuml.core.types.DataSpec.skip_pipeline_stages
 
@@ -635,7 +635,7 @@ preprocessing: PreprocessingSpec
 skip_pipeline_stages: list[str]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L341-L341)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L341-L341)
 
 ### nexuml.core.types.DataSpec.source
 
@@ -645,7 +645,7 @@ skip_pipeline_stages: list[str]
 source: DataSourceDefinition | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L330-L330)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L330-L330)
 
 ### nexuml.core.types.DataSpec.targets
 
@@ -655,7 +655,7 @@ source: DataSourceDefinition | None = None
 targets: list[TargetSpec]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L331-L331)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L331-L331)
 
 ### nexuml.core.types.DataSpec.test_split
 
@@ -665,7 +665,7 @@ targets: list[TargetSpec]
 test_split: float = 0.15
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L334-L334)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L334-L334)
 
 ### nexuml.core.types.DataSpec.train_split
 
@@ -675,7 +675,7 @@ test_split: float = 0.15
 train_split: float = 0.7
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L332-L332)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L332-L332)
 
 ### nexuml.core.types.DataSpec.val_split
 
@@ -685,7 +685,7 @@ train_split: float = 0.7
 val_split: float = 0.15
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L333-L333)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L333-L333)
 
 ### nexuml.core.types.DataSpec.model_config
 
@@ -697,7 +697,7 @@ model_config = ConfigDict(extra='forbid')
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L46-L46)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L46-L46)
 
 ### nexuml.core.types.DataSpec.validate_splits
 
@@ -707,7 +707,7 @@ Inherited from: `nexuml.core.types.SpecModel`
 def validate_splits() -> 'DataSpec'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L344-L349)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L344-L349)
 
 ### nexuml.core.types.DataSpec.from_dict
 
@@ -719,7 +719,7 @@ def from_dict(data: dict[str, Any]) -> 'SpecModel'
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L51-L53)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L51-L53)
 
 ### nexuml.core.types.DataSpec.get
 
@@ -731,7 +731,7 @@ def get(key: str, default: Any = None) -> Any
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L58-L59)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L58-L59)
 
 ### nexuml.core.types.DataSpec.to_dict
 
@@ -743,7 +743,7 @@ def to_dict() -> dict[str, Any]
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L48-L49)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L48-L49)
 
 ## nexuml.core.types.DatasetSpec
 
@@ -757,7 +757,7 @@ Bases: `nexuml.core.types.SpecModel`
 
 Specification for a single dataset in the pipeline.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L253-L259)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L253-L259)
 
 ### nexuml.core.types.DatasetSpec.max_samples
 
@@ -767,7 +767,7 @@ Specification for a single dataset in the pipeline.
 max_samples: int | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L258-L258)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L258-L258)
 
 ### nexuml.core.types.DatasetSpec.modality
 
@@ -777,7 +777,7 @@ max_samples: int | None = None
 modality: str = 'audio'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L257-L257)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L257-L257)
 
 ### nexuml.core.types.DatasetSpec.source
 
@@ -787,7 +787,7 @@ modality: str = 'audio'
 source: DataSourceDefinition
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L256-L256)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L256-L256)
 
 ### nexuml.core.types.DatasetSpec.split_type
 
@@ -797,7 +797,7 @@ source: DataSourceDefinition
 split_type: str = 'fit'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L259-L259)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L259-L259)
 
 ### nexuml.core.types.DatasetSpec.model_config
 
@@ -809,7 +809,7 @@ model_config = ConfigDict(extra='forbid')
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L46-L46)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L46-L46)
 
 ### nexuml.core.types.DatasetSpec.from_dict
 
@@ -821,7 +821,7 @@ def from_dict(data: dict[str, Any]) -> 'SpecModel'
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L51-L53)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L51-L53)
 
 ### nexuml.core.types.DatasetSpec.get
 
@@ -833,7 +833,7 @@ def get(key: str, default: Any = None) -> Any
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L58-L59)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L58-L59)
 
 ### nexuml.core.types.DatasetSpec.to_dict
 
@@ -845,7 +845,7 @@ def to_dict() -> dict[str, Any]
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L48-L49)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L48-L49)
 
 ## nexuml.core.types.DiagramSpec
 
@@ -859,7 +859,7 @@ Bases: `nexuml.core.types.SpecModel`
 
 Mermaid diagram export configuration.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L437-L446)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L437-L446)
 
 ### nexuml.core.types.DiagramSpec.depth
 
@@ -869,7 +869,7 @@ Mermaid diagram export configuration.
 depth: int = 2
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L441-L441)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L441-L441)
 
 ### nexuml.core.types.DiagramSpec.direction
 
@@ -879,7 +879,7 @@ depth: int = 2
 direction: str = 'TB'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L442-L442)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L442-L442)
 
 ### nexuml.core.types.DiagramSpec.enabled
 
@@ -889,7 +889,7 @@ direction: str = 'TB'
 enabled: bool = True
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L440-L440)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L440-L440)
 
 ### nexuml.core.types.DiagramSpec.output_dir
 
@@ -899,7 +899,7 @@ enabled: bool = True
 output_dir: str = '.experiments/diagrams'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L446-L446)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L446-L446)
 
 ### nexuml.core.types.DiagramSpec.show_metrics
 
@@ -909,7 +909,7 @@ output_dir: str = '.experiments/diagrams'
 show_metrics: bool = True
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L445-L445)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L445-L445)
 
 ### nexuml.core.types.DiagramSpec.show_params
 
@@ -919,7 +919,7 @@ show_metrics: bool = True
 show_params: bool = True
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L443-L443)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L443-L443)
 
 ### nexuml.core.types.DiagramSpec.show_shapes
 
@@ -929,7 +929,7 @@ show_params: bool = True
 show_shapes: bool = True
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L444-L444)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L444-L444)
 
 ### nexuml.core.types.DiagramSpec.model_config
 
@@ -941,7 +941,7 @@ model_config = ConfigDict(extra='forbid')
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L46-L46)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L46-L46)
 
 ### nexuml.core.types.DiagramSpec.from_dict
 
@@ -953,7 +953,7 @@ def from_dict(data: dict[str, Any]) -> 'SpecModel'
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L51-L53)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L51-L53)
 
 ### nexuml.core.types.DiagramSpec.get
 
@@ -965,7 +965,7 @@ def get(key: str, default: Any = None) -> Any
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L58-L59)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L58-L59)
 
 ### nexuml.core.types.DiagramSpec.to_dict
 
@@ -977,7 +977,7 @@ def to_dict() -> dict[str, Any]
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L48-L49)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L48-L49)
 
 ## nexuml.core.types.DistanceEstimatorSpec
 
@@ -991,7 +991,7 @@ Bases: `nexuml.core.types.SpecModel`
 
 Specification for a distance estimator used in anomaly detection.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L352-L376)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L352-L376)
 
 ### nexuml.core.types.DistanceEstimatorSpec.fallback_policy
 
@@ -1001,7 +1001,7 @@ Specification for a distance estimator used in anomaly detection.
 fallback_policy: Literal['error', 'parent', 'global', 'parent_or_global'] = 'error'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L357-L357)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L357-L357)
 
 ### nexuml.core.types.DistanceEstimatorSpec.group_label_keys
 
@@ -1011,7 +1011,7 @@ fallback_policy: Literal['error', 'parent', 'global', 'parent_or_global'] = 'err
 group_label_keys: list[str]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L355-L355)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L355-L355)
 
 ### nexuml.core.types.DistanceEstimatorSpec.max_samples
 
@@ -1021,7 +1021,7 @@ group_label_keys: list[str]
 max_samples: int | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L360-L360)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L360-L360)
 
 ### nexuml.core.types.DistanceEstimatorSpec.missing_label_policy
 
@@ -1031,7 +1031,7 @@ max_samples: int | None = None
 missing_label_policy: Literal['error', 'skip', 'unknown'] = 'error'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L356-L356)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L356-L356)
 
 ### nexuml.core.types.DistanceEstimatorSpec.retain_storage
 
@@ -1041,7 +1041,7 @@ missing_label_policy: Literal['error', 'skip', 'unknown'] = 'error'
 retain_storage: bool = False
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L361-L361)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L361-L361)
 
 ### nexuml.core.types.DistanceEstimatorSpec.storage_backend
 
@@ -1051,7 +1051,7 @@ retain_storage: bool = False
 storage_backend: Literal['ram', 'memmap'] = 'memmap'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L358-L358)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L358-L358)
 
 ### nexuml.core.types.DistanceEstimatorSpec.storage_path
 
@@ -1061,7 +1061,7 @@ storage_backend: Literal['ram', 'memmap'] = 'memmap'
 storage_path: str | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L359-L359)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L359-L359)
 
 ### nexuml.core.types.DistanceEstimatorSpec.model_config
 
@@ -1073,7 +1073,7 @@ model_config = ConfigDict(extra='forbid')
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L46-L46)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L46-L46)
 
 ### nexuml.core.types.DistanceEstimatorSpec.create_feature_store
 
@@ -1089,7 +1089,7 @@ Create the feature store configured for estimator fitting.
 
 - (`FeatureStore`) — Configured feature store runtime.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L363-L376)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L363-L376)
 
 ### nexuml.core.types.DistanceEstimatorSpec.from_dict
 
@@ -1101,7 +1101,7 @@ def from_dict(data: dict[str, Any]) -> 'SpecModel'
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L51-L53)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L51-L53)
 
 ### nexuml.core.types.DistanceEstimatorSpec.get
 
@@ -1113,7 +1113,7 @@ def get(key: str, default: Any = None) -> Any
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L58-L59)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L58-L59)
 
 ### nexuml.core.types.DistanceEstimatorSpec.to_dict
 
@@ -1125,7 +1125,7 @@ def to_dict() -> dict[str, Any]
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L48-L49)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L48-L49)
 
 ## nexuml.core.types.EvalAlgorithmSpec
 
@@ -1139,7 +1139,7 @@ Bases: `nexuml.core.types.SpecModel`
 
 Specification for a post-training evaluation algorithm.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L379-L400)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L379-L400)
 
 ### nexuml.core.types.EvalAlgorithmSpec.algorithm
 
@@ -1149,7 +1149,7 @@ Specification for a post-training evaluation algorithm.
 algorithm: EvalAlgorithmDefinition
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L382-L382)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L382-L382)
 
 ### nexuml.core.types.EvalAlgorithmSpec.axis_keys
 
@@ -1159,7 +1159,7 @@ algorithm: EvalAlgorithmDefinition
 axis_keys: list[AxisKeySpec | str]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L385-L385)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L385-L385)
 
 ### nexuml.core.types.EvalAlgorithmSpec.enabled
 
@@ -1169,7 +1169,7 @@ axis_keys: list[AxisKeySpec | str]
 enabled: bool = True
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L384-L384)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L384-L384)
 
 ### nexuml.core.types.EvalAlgorithmSpec.feature_key
 
@@ -1179,7 +1179,7 @@ enabled: bool = True
 feature_key: str | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L386-L386)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L386-L386)
 
 ### nexuml.core.types.EvalAlgorithmSpec.label_key
 
@@ -1189,7 +1189,7 @@ feature_key: str | None = None
 label_key: str | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L387-L387)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L387-L387)
 
 ### nexuml.core.types.EvalAlgorithmSpec.name
 
@@ -1199,7 +1199,7 @@ label_key: str | None = None
 name: str | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L383-L383)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L383-L383)
 
 ### nexuml.core.types.EvalAlgorithmSpec.model_config
 
@@ -1211,7 +1211,7 @@ model_config = ConfigDict(extra='forbid')
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L46-L46)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L46-L46)
 
 ### nexuml.core.types.EvalAlgorithmSpec.contract_summary
 
@@ -1223,7 +1223,7 @@ def contract_summary() -> dict[str, Any]
 
 Return a summary of the key contract for diagnostics.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L389-L400)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L389-L400)
 
 ### nexuml.core.types.EvalAlgorithmSpec.from_dict
 
@@ -1235,7 +1235,7 @@ def from_dict(data: dict[str, Any]) -> 'SpecModel'
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L51-L53)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L51-L53)
 
 ### nexuml.core.types.EvalAlgorithmSpec.get
 
@@ -1247,7 +1247,7 @@ def get(key: str, default: Any = None) -> Any
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L58-L59)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L58-L59)
 
 ### nexuml.core.types.EvalAlgorithmSpec.to_dict
 
@@ -1259,7 +1259,7 @@ def to_dict() -> dict[str, Any]
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L48-L49)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L48-L49)
 
 ## nexuml.core.types.EvaluationSpec
 
@@ -1273,7 +1273,7 @@ Bases: `nexuml.core.types.SpecModel`
 
 Specification for evaluation configuration.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L403-L408)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L403-L408)
 
 ### nexuml.core.types.EvaluationSpec.algorithms
 
@@ -1283,7 +1283,7 @@ Specification for evaluation configuration.
 algorithms: list[EvalAlgorithmSpec]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L407-L407)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L407-L407)
 
 ### nexuml.core.types.EvaluationSpec.metrics
 
@@ -1293,7 +1293,7 @@ algorithms: list[EvalAlgorithmSpec]
 metrics: list[str]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L406-L406)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L406-L406)
 
 ### nexuml.core.types.EvaluationSpec.test_result_metrics
 
@@ -1303,7 +1303,7 @@ metrics: list[str]
 test_result_metrics: list[str] | Literal['all', 'none'] = 'none'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L408-L408)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L408-L408)
 
 ### nexuml.core.types.EvaluationSpec.model_config
 
@@ -1315,7 +1315,7 @@ model_config = ConfigDict(extra='forbid')
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L46-L46)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L46-L46)
 
 ### nexuml.core.types.EvaluationSpec.from_dict
 
@@ -1327,7 +1327,7 @@ def from_dict(data: dict[str, Any]) -> 'SpecModel'
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L51-L53)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L51-L53)
 
 ### nexuml.core.types.EvaluationSpec.get
 
@@ -1339,7 +1339,7 @@ def get(key: str, default: Any = None) -> Any
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L58-L59)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L58-L59)
 
 ### nexuml.core.types.EvaluationSpec.to_dict
 
@@ -1351,7 +1351,7 @@ def to_dict() -> dict[str, Any]
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L48-L49)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L48-L49)
 
 ## nexuml.core.types.ExportSpec
 
@@ -1365,7 +1365,7 @@ Bases: `nexuml.core.types.SpecModel`
 
 Requested export artifact.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L487-L493)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L487-L493)
 
 ### nexuml.core.types.ExportSpec.exclude
 
@@ -1375,7 +1375,7 @@ Requested export artifact.
 exclude: list[str]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L493-L493)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L493-L493)
 
 ### nexuml.core.types.ExportSpec.include
 
@@ -1385,7 +1385,7 @@ exclude: list[str]
 include: list[str]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L492-L492)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L492-L492)
 
 ### nexuml.core.types.ExportSpec.kind
 
@@ -1395,7 +1395,7 @@ include: list[str]
 kind: Literal['train_package', 'onnx', 'safetensors'] = 'train_package'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L490-L490)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L490-L490)
 
 ### nexuml.core.types.ExportSpec.output
 
@@ -1405,7 +1405,7 @@ kind: Literal['train_package', 'onnx', 'safetensors'] = 'train_package'
 output: str | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L491-L491)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L491-L491)
 
 ### nexuml.core.types.ExportSpec.model_config
 
@@ -1417,7 +1417,7 @@ model_config = ConfigDict(extra='forbid')
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L46-L46)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L46-L46)
 
 ### nexuml.core.types.ExportSpec.from_dict
 
@@ -1429,7 +1429,7 @@ def from_dict(data: dict[str, Any]) -> 'SpecModel'
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L51-L53)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L51-L53)
 
 ### nexuml.core.types.ExportSpec.get
 
@@ -1441,7 +1441,7 @@ def get(key: str, default: Any = None) -> Any
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L58-L59)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L58-L59)
 
 ### nexuml.core.types.ExportSpec.to_dict
 
@@ -1453,7 +1453,7 @@ def to_dict() -> dict[str, Any]
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L48-L49)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L48-L49)
 
 ## nexuml.core.types.FactorySpec
 
@@ -1467,7 +1467,7 @@ Bases: `nexuml.core.types.SpecModel`
 
 Portable constructor configuration authored through a typed factory helper.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L70-L125)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L70-L125)
 
 ### nexuml.core.types.FactorySpec.args
 
@@ -1477,7 +1477,7 @@ Portable constructor configuration authored through a typed factory helper.
 args: list[object]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L74-L74)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L74-L74)
 
 ### nexuml.core.types.FactorySpec.factory
 
@@ -1487,7 +1487,7 @@ args: list[object]
 factory: str
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L73-L73)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L73-L73)
 
 ### nexuml.core.types.FactorySpec.kwargs
 
@@ -1497,7 +1497,7 @@ factory: str
 kwargs: dict[str, object]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L75-L75)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L75-L75)
 
 ### nexuml.core.types.FactorySpec.model_config
 
@@ -1509,7 +1509,7 @@ model_config = ConfigDict(extra='forbid')
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L46-L46)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L46-L46)
 
 ### nexuml.core.types.FactorySpec.build
 
@@ -1529,7 +1529,7 @@ Construct the configured object with any runtime-supplied arguments.
 
 - `TypeError` — If construction fails.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L110-L125)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L110-L125)
 
 ### nexuml.core.types.FactorySpec.from_factory
 
@@ -1545,7 +1545,7 @@ Capture an importable factory and portable constructor arguments.
 
 - (`Self`) — Validated factory specification.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L93-L100)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L93-L100)
 
 ### nexuml.core.types.FactorySpec.resolve
 
@@ -1561,7 +1561,7 @@ Resolve the configured import target.
 
 - (`Callable[..., object]`) — Imported callable.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L102-L108)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L102-L108)
 
 ### nexuml.core.types.FactorySpec.from_dict
 
@@ -1573,7 +1573,7 @@ def from_dict(data: dict[str, Any]) -> 'SpecModel'
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L51-L53)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L51-L53)
 
 ### nexuml.core.types.FactorySpec.get
 
@@ -1585,7 +1585,7 @@ def get(key: str, default: Any = None) -> Any
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L58-L59)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L58-L59)
 
 ### nexuml.core.types.FactorySpec.to_dict
 
@@ -1597,7 +1597,7 @@ def to_dict() -> dict[str, Any]
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L48-L49)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L48-L49)
 
 ## nexuml.core.types.LayerSpec
 
@@ -1611,7 +1611,7 @@ Bases: `nexuml.core.types.SpecModel`
 
 Specification for a single layer in the pipeline.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L128-L139)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L128-L139)
 
 ### nexuml.core.types.LayerSpec.component
 
@@ -1621,7 +1621,7 @@ Specification for a single layer in the pipeline.
 component: LayerDefinition
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L131-L131)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L131-L131)
 
 ### nexuml.core.types.LayerSpec.delay_epochs
 
@@ -1631,7 +1631,7 @@ component: LayerDefinition
 delay_epochs: int = 0
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L138-L138)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L138-L138)
 
 ### nexuml.core.types.LayerSpec.keys_in
 
@@ -1641,7 +1641,7 @@ delay_epochs: int = 0
 keys_in: list[str] | dict[str, str]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L132-L132)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L132-L132)
 
 ### nexuml.core.types.LayerSpec.keys_out
 
@@ -1651,7 +1651,7 @@ keys_in: list[str] | dict[str, str]
 keys_out: list[str]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L133-L133)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L133-L133)
 
 ### nexuml.core.types.LayerSpec.label_in_x
 
@@ -1661,7 +1661,7 @@ keys_out: list[str]
 label_in_x: bool = False
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L135-L135)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L135-L135)
 
 ### nexuml.core.types.LayerSpec.label_key
 
@@ -1671,7 +1671,7 @@ label_in_x: bool = False
 label_key: str | list[str] | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L134-L134)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L134-L134)
 
 ### nexuml.core.types.LayerSpec.meta_in
 
@@ -1681,7 +1681,7 @@ label_key: str | list[str] | None = None
 meta_in: dict[str, str] | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L136-L136)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L136-L136)
 
 ### nexuml.core.types.LayerSpec.meta_out
 
@@ -1691,7 +1691,7 @@ meta_in: dict[str, str] | None = None
 meta_out: dict[str, str] | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L137-L137)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L137-L137)
 
 ### nexuml.core.types.LayerSpec.update_every_n_epochs
 
@@ -1701,7 +1701,7 @@ meta_out: dict[str, str] | None = None
 update_every_n_epochs: int = 1
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L139-L139)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L139-L139)
 
 ### nexuml.core.types.LayerSpec.model_config
 
@@ -1713,7 +1713,7 @@ model_config = ConfigDict(extra='forbid')
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L46-L46)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L46-L46)
 
 ### nexuml.core.types.LayerSpec.from_dict
 
@@ -1725,7 +1725,7 @@ def from_dict(data: dict[str, Any]) -> 'SpecModel'
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L51-L53)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L51-L53)
 
 ### nexuml.core.types.LayerSpec.get
 
@@ -1737,7 +1737,7 @@ def get(key: str, default: Any = None) -> Any
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L58-L59)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L58-L59)
 
 ### nexuml.core.types.LayerSpec.to_dict
 
@@ -1749,7 +1749,7 @@ def to_dict() -> dict[str, Any]
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L48-L49)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L48-L49)
 
 ## nexuml.core.types.LoaderSpec
 
@@ -1763,7 +1763,7 @@ Bases: `nexuml.core.types.SpecModel`
 
 Specification for the data loader.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L262-L279)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L262-L279)
 
 ### nexuml.core.types.LoaderSpec.backend
 
@@ -1773,7 +1773,7 @@ Specification for the data loader.
 backend: LoaderBackendDefinition
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L265-L265)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L265-L265)
 
 ### nexuml.core.types.LoaderSpec.batch_size
 
@@ -1783,7 +1783,7 @@ backend: LoaderBackendDefinition
 batch_size: int | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L267-L267)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L267-L267)
 
 ### nexuml.core.types.LoaderSpec.num_workers
 
@@ -1793,7 +1793,7 @@ batch_size: int | None = None
 num_workers: int = 0
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L268-L268)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L268-L268)
 
 ### nexuml.core.types.LoaderSpec.persistent_workers
 
@@ -1803,7 +1803,7 @@ num_workers: int = 0
 persistent_workers: bool = False
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L270-L270)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L270-L270)
 
 ### nexuml.core.types.LoaderSpec.prefetch_factor
 
@@ -1813,7 +1813,7 @@ persistent_workers: bool = False
 prefetch_factor: int | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L269-L269)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L269-L269)
 
 ### nexuml.core.types.LoaderSpec.shuffle_train
 
@@ -1823,7 +1823,7 @@ prefetch_factor: int | None = None
 shuffle_train: bool = True
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L272-L272)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L272-L272)
 
 ### nexuml.core.types.LoaderSpec.weighted_sampling
 
@@ -1833,7 +1833,7 @@ shuffle_train: bool = True
 weighted_sampling: bool = False
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L271-L271)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L271-L271)
 
 ### nexuml.core.types.LoaderSpec.model_config
 
@@ -1845,7 +1845,7 @@ model_config = ConfigDict(extra='forbid')
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L46-L46)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L46-L46)
 
 ### nexuml.core.types.LoaderSpec.validate_batch_size
 
@@ -1855,7 +1855,7 @@ Inherited from: `nexuml.core.types.SpecModel`
 def validate_batch_size(value: int | None) -> int | None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L274-L279)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L274-L279)
 
 ### nexuml.core.types.LoaderSpec.from_dict
 
@@ -1867,7 +1867,7 @@ def from_dict(data: dict[str, Any]) -> 'SpecModel'
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L51-L53)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L51-L53)
 
 ### nexuml.core.types.LoaderSpec.get
 
@@ -1879,7 +1879,7 @@ def get(key: str, default: Any = None) -> Any
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L58-L59)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L58-L59)
 
 ### nexuml.core.types.LoaderSpec.to_dict
 
@@ -1891,7 +1891,7 @@ def to_dict() -> dict[str, Any]
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L48-L49)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L48-L49)
 
 ## nexuml.core.types.LoggingSpec
 
@@ -1905,7 +1905,7 @@ Bases: `nexuml.core.types.SpecModel`
 
 Experiment logging configuration.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L449-L459)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L449-L459)
 
 ### nexuml.core.types.LoggingSpec.diagram
 
@@ -1915,7 +1915,7 @@ Experiment logging configuration.
 diagram: DiagramSpec | None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L455-L455)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L455-L455)
 
 ### nexuml.core.types.LoggingSpec.dvclive
 
@@ -1925,7 +1925,7 @@ diagram: DiagramSpec | None
 dvclive: DVCLiveSpec | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L453-L453)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L453-L453)
 
 ### nexuml.core.types.LoggingSpec.experiment_name
 
@@ -1935,7 +1935,7 @@ dvclive: DVCLiveSpec | None = None
 experiment_name: str = 'NexuML'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L457-L457)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L457-L457)
 
 ### nexuml.core.types.LoggingSpec.log_system_metrics
 
@@ -1945,7 +1945,7 @@ experiment_name: str = 'NexuML'
 log_system_metrics: bool = False
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L459-L459)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L459-L459)
 
 ### nexuml.core.types.LoggingSpec.mlflow
 
@@ -1955,7 +1955,7 @@ log_system_metrics: bool = False
 mlflow: MLflowSpec | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L454-L454)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L454-L454)
 
 ### nexuml.core.types.LoggingSpec.run_name
 
@@ -1965,7 +1965,7 @@ mlflow: MLflowSpec | None = None
 run_name: str | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L458-L458)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L458-L458)
 
 ### nexuml.core.types.LoggingSpec.temp_artifact_dir
 
@@ -1975,7 +1975,7 @@ run_name: str | None = None
 temp_artifact_dir: str = '/tmp/mlruns'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L456-L456)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L456-L456)
 
 ### nexuml.core.types.LoggingSpec.tensorboard
 
@@ -1985,7 +1985,7 @@ temp_artifact_dir: str = '/tmp/mlruns'
 tensorboard: TensorBoardSpec | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L452-L452)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L452-L452)
 
 ### nexuml.core.types.LoggingSpec.model_config
 
@@ -1997,7 +1997,7 @@ model_config = ConfigDict(extra='forbid')
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L46-L46)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L46-L46)
 
 ### nexuml.core.types.LoggingSpec.from_dict
 
@@ -2009,7 +2009,7 @@ def from_dict(data: dict[str, Any]) -> 'SpecModel'
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L51-L53)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L51-L53)
 
 ### nexuml.core.types.LoggingSpec.get
 
@@ -2021,7 +2021,7 @@ def get(key: str, default: Any = None) -> Any
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L58-L59)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L58-L59)
 
 ### nexuml.core.types.LoggingSpec.to_dict
 
@@ -2033,7 +2033,7 @@ def to_dict() -> dict[str, Any]
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L48-L49)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L48-L49)
 
 ## nexuml.core.types.MLflowSpec
 
@@ -2047,7 +2047,7 @@ Bases: `nexuml.core.types.SpecModel`
 
 MLflow logger configuration.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L423-L434)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L423-L434)
 
 ### nexuml.core.types.MLflowSpec.artifact_location
 
@@ -2057,7 +2057,7 @@ MLflow logger configuration.
 artifact_location: str | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L427-L427)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L427-L427)
 
 ### nexuml.core.types.MLflowSpec.auto_nested_runs
 
@@ -2067,7 +2067,7 @@ artifact_location: str | None = None
 auto_nested_runs: bool = True
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L432-L432)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L432-L432)
 
 ### nexuml.core.types.MLflowSpec.experiment_name
 
@@ -2077,7 +2077,7 @@ auto_nested_runs: bool = True
 experiment_name: str | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L428-L428)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L428-L428)
 
 ### nexuml.core.types.MLflowSpec.log_model
 
@@ -2087,7 +2087,7 @@ experiment_name: str | None = None
 log_model: bool = False
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L429-L429)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L429-L429)
 
 ### nexuml.core.types.MLflowSpec.parent_run_id
 
@@ -2097,7 +2097,7 @@ log_model: bool = False
 parent_run_id: str | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L431-L431)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L431-L431)
 
 ### nexuml.core.types.MLflowSpec.run_id
 
@@ -2107,7 +2107,7 @@ parent_run_id: str | None = None
 run_id: str | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L430-L430)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L430-L430)
 
 ### nexuml.core.types.MLflowSpec.synchronous
 
@@ -2117,7 +2117,7 @@ run_id: str | None = None
 synchronous: bool | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L434-L434)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L434-L434)
 
 ### nexuml.core.types.MLflowSpec.tags
 
@@ -2127,7 +2127,7 @@ synchronous: bool | None = None
 tags: dict[str, Any]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L433-L433)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L433-L433)
 
 ### nexuml.core.types.MLflowSpec.tracking_uri
 
@@ -2137,7 +2137,7 @@ tags: dict[str, Any]
 tracking_uri: str = 'file:./.experiments/mlflow'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L426-L426)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L426-L426)
 
 ### nexuml.core.types.MLflowSpec.model_config
 
@@ -2149,7 +2149,7 @@ model_config = ConfigDict(extra='forbid')
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L46-L46)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L46-L46)
 
 ### nexuml.core.types.MLflowSpec.from_dict
 
@@ -2161,7 +2161,7 @@ def from_dict(data: dict[str, Any]) -> 'SpecModel'
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L51-L53)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L51-L53)
 
 ### nexuml.core.types.MLflowSpec.get
 
@@ -2173,7 +2173,7 @@ def get(key: str, default: Any = None) -> Any
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L58-L59)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L58-L59)
 
 ### nexuml.core.types.MLflowSpec.to_dict
 
@@ -2185,7 +2185,7 @@ def to_dict() -> dict[str, Any]
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L48-L49)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L48-L49)
 
 ## nexuml.core.types.OptimizerSpec
 
@@ -2199,7 +2199,7 @@ Bases: `nexuml.core.types.FactorySpec`
 
 Specification for an optimizer.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L151-L155)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L151-L155)
 
 ### nexuml.core.types.OptimizerSpec.factory
 
@@ -2209,7 +2209,7 @@ Specification for an optimizer.
 factory: str = 'torch.optim.adam:Adam'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L154-L154)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L154-L154)
 
 ### nexuml.core.types.OptimizerSpec.kwargs
 
@@ -2219,7 +2219,7 @@ factory: str = 'torch.optim.adam:Adam'
 kwargs: dict[str, object]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L155-L155)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L155-L155)
 
 ### nexuml.core.types.OptimizerSpec.args
 
@@ -2231,7 +2231,7 @@ args: list[object]
 
 Inherited from: `nexuml.core.types.FactorySpec`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L74-L74)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L74-L74)
 
 ### nexuml.core.types.OptimizerSpec.model_config
 
@@ -2243,7 +2243,7 @@ model_config = ConfigDict(extra='forbid')
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L46-L46)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L46-L46)
 
 ### nexuml.core.types.OptimizerSpec.build
 
@@ -2265,7 +2265,7 @@ Construct the configured object with any runtime-supplied arguments.
 
 - `TypeError` — If construction fails.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L110-L125)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L110-L125)
 
 ### nexuml.core.types.OptimizerSpec.from_factory
 
@@ -2283,7 +2283,7 @@ Capture an importable factory and portable constructor arguments.
 
 - (`Self`) — Validated factory specification.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L93-L100)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L93-L100)
 
 ### nexuml.core.types.OptimizerSpec.resolve
 
@@ -2301,7 +2301,7 @@ Resolve the configured import target.
 
 - (`Callable[..., object]`) — Imported callable.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L102-L108)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L102-L108)
 
 ### nexuml.core.types.OptimizerSpec.from_dict
 
@@ -2313,7 +2313,7 @@ def from_dict(data: dict[str, Any]) -> 'SpecModel'
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L51-L53)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L51-L53)
 
 ### nexuml.core.types.OptimizerSpec.get
 
@@ -2325,7 +2325,7 @@ def get(key: str, default: Any = None) -> Any
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L58-L59)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L58-L59)
 
 ### nexuml.core.types.OptimizerSpec.to_dict
 
@@ -2337,7 +2337,7 @@ def to_dict() -> dict[str, Any]
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L48-L49)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L48-L49)
 
 ## nexuml.core.types.PipelineSpec
 
@@ -2351,7 +2351,7 @@ Bases: `nexuml.core.types.SpecModel`
 
 Ordered specification of pipeline stages, each containing layer specs.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L142-L145)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L142-L145)
 
 ### nexuml.core.types.PipelineSpec.stages
 
@@ -2361,7 +2361,7 @@ Ordered specification of pipeline stages, each containing layer specs.
 stages: dict[str, list[LayerSpec]]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L145-L145)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L145-L145)
 
 ### nexuml.core.types.PipelineSpec.model_config
 
@@ -2373,7 +2373,7 @@ model_config = ConfigDict(extra='forbid')
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L46-L46)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L46-L46)
 
 ### nexuml.core.types.PipelineSpec.from_dict
 
@@ -2385,7 +2385,7 @@ def from_dict(data: dict[str, Any]) -> 'SpecModel'
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L51-L53)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L51-L53)
 
 ### nexuml.core.types.PipelineSpec.get
 
@@ -2397,7 +2397,7 @@ def get(key: str, default: Any = None) -> Any
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L58-L59)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L58-L59)
 
 ### nexuml.core.types.PipelineSpec.to_dict
 
@@ -2409,7 +2409,7 @@ def to_dict() -> dict[str, Any]
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L48-L49)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L48-L49)
 
 ## nexuml.core.types.PreprocessingSpec
 
@@ -2423,7 +2423,7 @@ Bases: `nexuml.core.types.SpecModel`
 
 Optional preprocessing stage contract.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L310-L324)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L310-L324)
 
 ### nexuml.core.types.PreprocessingSpec.enabled
 
@@ -2433,7 +2433,7 @@ Optional preprocessing stage contract.
 enabled: bool = False
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L313-L313)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L313-L313)
 
 ### nexuml.core.types.PreprocessingSpec.include_labels
 
@@ -2443,7 +2443,7 @@ enabled: bool = False
 include_labels: bool = True
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L321-L321)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L321-L321)
 
 ### nexuml.core.types.PreprocessingSpec.label_prefix
 
@@ -2453,7 +2453,7 @@ include_labels: bool = True
 label_prefix: str = 'label__'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L322-L322)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L322-L322)
 
 ### nexuml.core.types.PreprocessingSpec.overwrite
 
@@ -2463,7 +2463,7 @@ label_prefix: str = 'label__'
 overwrite: bool = False
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L324-L324)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L324-L324)
 
 ### nexuml.core.types.PreprocessingSpec.path
 
@@ -2473,7 +2473,7 @@ overwrite: bool = False
 path: str | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L316-L316)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L316-L316)
 
 ### nexuml.core.types.PreprocessingSpec.source_view
 
@@ -2483,7 +2483,7 @@ path: str | None = None
 source_view: str = 'raw'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L314-L314)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L314-L314)
 
 ### nexuml.core.types.PreprocessingSpec.target_view
 
@@ -2493,7 +2493,7 @@ source_view: str = 'raw'
 target_view: str = 'prepared'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L315-L315)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L315-L315)
 
 ### nexuml.core.types.PreprocessingSpec.until_x_keys
 
@@ -2503,7 +2503,7 @@ target_view: str = 'prepared'
 until_x_keys: list[str]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L317-L317)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L317-L317)
 
 ### nexuml.core.types.PreprocessingSpec.until_y_keys
 
@@ -2513,7 +2513,7 @@ until_x_keys: list[str]
 until_y_keys: list[str]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L318-L318)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L318-L318)
 
 ### nexuml.core.types.PreprocessingSpec.writer
 
@@ -2523,7 +2523,7 @@ until_y_keys: list[str]
 writer: WriterSpec
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L323-L323)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L323-L323)
 
 ### nexuml.core.types.PreprocessingSpec.x_keys
 
@@ -2533,7 +2533,7 @@ writer: WriterSpec
 x_keys: list[str] | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L319-L319)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L319-L319)
 
 ### nexuml.core.types.PreprocessingSpec.y_keys
 
@@ -2543,7 +2543,7 @@ x_keys: list[str] | None = None
 y_keys: list[str] | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L320-L320)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L320-L320)
 
 ### nexuml.core.types.PreprocessingSpec.model_config
 
@@ -2555,7 +2555,7 @@ model_config = ConfigDict(extra='forbid')
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L46-L46)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L46-L46)
 
 ### nexuml.core.types.PreprocessingSpec.from_dict
 
@@ -2567,7 +2567,7 @@ def from_dict(data: dict[str, Any]) -> 'SpecModel'
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L51-L53)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L51-L53)
 
 ### nexuml.core.types.PreprocessingSpec.get
 
@@ -2579,7 +2579,7 @@ def get(key: str, default: Any = None) -> Any
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L58-L59)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L58-L59)
 
 ### nexuml.core.types.PreprocessingSpec.to_dict
 
@@ -2591,7 +2591,7 @@ def to_dict() -> dict[str, Any]
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L48-L49)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L48-L49)
 
 ## nexuml.core.types.ScenarioSpec
 
@@ -2605,7 +2605,7 @@ Bases: `nexuml.core.types.SpecModel`
 
 Complete scenario specification combining all components.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L496-L524)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L496-L524)
 
 ### nexuml.core.types.ScenarioSpec.callbacks
 
@@ -2615,7 +2615,7 @@ Complete scenario specification combining all components.
 callbacks: list[CallbackSpec]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L505-L505)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L505-L505)
 
 ### nexuml.core.types.ScenarioSpec.checkpoint
 
@@ -2625,7 +2625,7 @@ callbacks: list[CallbackSpec]
 checkpoint: CheckpointLoadSpec | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L507-L507)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L507-L507)
 
 ### nexuml.core.types.ScenarioSpec.data
 
@@ -2635,7 +2635,7 @@ checkpoint: CheckpointLoadSpec | None = None
 data: DataSpec
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L502-L502)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L502-L502)
 
 ### nexuml.core.types.ScenarioSpec.evaluation
 
@@ -2645,7 +2645,7 @@ data: DataSpec
 evaluation: EvaluationSpec
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L503-L503)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L503-L503)
 
 ### nexuml.core.types.ScenarioSpec.execution
 
@@ -2655,7 +2655,7 @@ evaluation: EvaluationSpec
 execution: ExecutionBackendDefinition
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L509-L509)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L509-L509)
 
 ### nexuml.core.types.ScenarioSpec.exports
 
@@ -2665,7 +2665,7 @@ execution: ExecutionBackendDefinition
 exports: list[ExportSpec]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L508-L508)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L508-L508)
 
 ### nexuml.core.types.ScenarioSpec.logging
 
@@ -2675,7 +2675,7 @@ exports: list[ExportSpec]
 logging: LoggingSpec | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L504-L504)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L504-L504)
 
 ### nexuml.core.types.ScenarioSpec.name
 
@@ -2685,7 +2685,7 @@ logging: LoggingSpec | None = None
 name: str
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L499-L499)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L499-L499)
 
 ### nexuml.core.types.ScenarioSpec.pipeline
 
@@ -2695,7 +2695,7 @@ name: str
 pipeline: PipelineSpec
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L500-L500)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L500-L500)
 
 ### nexuml.core.types.ScenarioSpec.training
 
@@ -2705,7 +2705,7 @@ pipeline: PipelineSpec
 training: TrainingSpec
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L501-L501)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L501-L501)
 
 ### nexuml.core.types.ScenarioSpec.tuning
 
@@ -2715,7 +2715,7 @@ training: TrainingSpec
 tuning: TuningSpec | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L506-L506)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L506-L506)
 
 ### nexuml.core.types.ScenarioSpec.model_config
 
@@ -2727,7 +2727,7 @@ model_config = ConfigDict(extra='forbid')
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L46-L46)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L46-L46)
 
 ### nexuml.core.types.ScenarioSpec.restore_execution
 
@@ -2737,7 +2737,7 @@ Inherited from: `nexuml.core.types.SpecModel`
 def restore_execution(value: Any) -> ExecutionBackendDefinition
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L511-L524)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L511-L524)
 
 ### nexuml.core.types.ScenarioSpec.from_dict
 
@@ -2749,7 +2749,7 @@ def from_dict(data: dict[str, Any]) -> 'SpecModel'
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L51-L53)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L51-L53)
 
 ### nexuml.core.types.ScenarioSpec.get
 
@@ -2761,7 +2761,7 @@ def get(key: str, default: Any = None) -> Any
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L58-L59)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L58-L59)
 
 ### nexuml.core.types.ScenarioSpec.to_dict
 
@@ -2773,7 +2773,7 @@ def to_dict() -> dict[str, Any]
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L48-L49)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L48-L49)
 
 ## nexuml.core.types.SchedulerSpec
 
@@ -2787,7 +2787,7 @@ Bases: `nexuml.core.types.FactorySpec`
 
 Specification for a learning rate scheduler.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L161-L186)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L161-L186)
 
 ### nexuml.core.types.SchedulerSpec.factory
 
@@ -2797,7 +2797,7 @@ Specification for a learning rate scheduler.
 factory: str = 'torch.optim.lr_scheduler:ConstantLR'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L164-L164)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L164-L164)
 
 ### nexuml.core.types.SchedulerSpec.kwargs
 
@@ -2807,7 +2807,7 @@ factory: str = 'torch.optim.lr_scheduler:ConstantLR'
 kwargs: dict[str, object]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L165-L165)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L165-L165)
 
 ### nexuml.core.types.SchedulerSpec.warmup
 
@@ -2817,7 +2817,7 @@ kwargs: dict[str, object]
 warmup: str | int | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L166-L166)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L166-L166)
 
 ### nexuml.core.types.SchedulerSpec.args
 
@@ -2829,7 +2829,7 @@ args: list[object]
 
 Inherited from: `nexuml.core.types.FactorySpec`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L74-L74)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L74-L74)
 
 ### nexuml.core.types.SchedulerSpec.model_config
 
@@ -2841,7 +2841,7 @@ model_config = ConfigDict(extra='forbid')
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L46-L46)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L46-L46)
 
 ### nexuml.core.types.SchedulerSpec.resolve_warmup
 
@@ -2861,7 +2861,7 @@ The result is always at least 1 when a non-zero warmup is specified.
 
 - (`int`) — Resolved warmup epoch count.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L168-L186)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L168-L186)
 
 ### nexuml.core.types.SchedulerSpec.build
 
@@ -2883,7 +2883,7 @@ Construct the configured object with any runtime-supplied arguments.
 
 - `TypeError` — If construction fails.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L110-L125)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L110-L125)
 
 ### nexuml.core.types.SchedulerSpec.from_factory
 
@@ -2901,7 +2901,7 @@ Capture an importable factory and portable constructor arguments.
 
 - (`Self`) — Validated factory specification.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L93-L100)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L93-L100)
 
 ### nexuml.core.types.SchedulerSpec.resolve
 
@@ -2919,7 +2919,7 @@ Resolve the configured import target.
 
 - (`Callable[..., object]`) — Imported callable.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L102-L108)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L102-L108)
 
 ### nexuml.core.types.SchedulerSpec.from_dict
 
@@ -2931,7 +2931,7 @@ def from_dict(data: dict[str, Any]) -> 'SpecModel'
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L51-L53)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L51-L53)
 
 ### nexuml.core.types.SchedulerSpec.get
 
@@ -2943,7 +2943,7 @@ def get(key: str, default: Any = None) -> Any
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L58-L59)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L58-L59)
 
 ### nexuml.core.types.SchedulerSpec.to_dict
 
@@ -2955,7 +2955,7 @@ def to_dict() -> dict[str, Any]
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L48-L49)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L48-L49)
 
 ## nexuml.core.types.SpecModel
 
@@ -2969,7 +2969,7 @@ Bases: `BaseModel`
 
 Shared base model for scenario specifications.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L43-L67)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L43-L67)
 
 ### nexuml.core.types.SpecModel.model_config
 
@@ -2979,7 +2979,7 @@ Shared base model for scenario specifications.
 model_config = ConfigDict(extra='forbid')
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L46-L46)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L46-L46)
 
 ### nexuml.core.types.SpecModel.from_dict
 
@@ -2989,7 +2989,7 @@ model_config = ConfigDict(extra='forbid')
 def from_dict(data: dict[str, Any]) -> 'SpecModel'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L51-L53)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L51-L53)
 
 ### nexuml.core.types.SpecModel.get
 
@@ -2999,7 +2999,7 @@ def from_dict(data: dict[str, Any]) -> 'SpecModel'
 def get(key: str, default: Any = None) -> Any
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L58-L59)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L58-L59)
 
 ### nexuml.core.types.SpecModel.to_dict
 
@@ -3009,7 +3009,7 @@ def get(key: str, default: Any = None) -> Any
 def to_dict() -> dict[str, Any]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L48-L49)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L48-L49)
 
 ## nexuml.core.types.StrategySpec
 
@@ -3023,7 +3023,7 @@ Bases: `nexuml.core.types.FactorySpec`
 
 Specification for an importable Lightning strategy.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L189-L190)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L189-L190)
 
 ### nexuml.core.types.StrategySpec.args
 
@@ -3035,7 +3035,7 @@ args: list[object]
 
 Inherited from: `nexuml.core.types.FactorySpec`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L74-L74)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L74-L74)
 
 ### nexuml.core.types.StrategySpec.factory
 
@@ -3047,7 +3047,7 @@ factory: str
 
 Inherited from: `nexuml.core.types.FactorySpec`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L73-L73)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L73-L73)
 
 ### nexuml.core.types.StrategySpec.kwargs
 
@@ -3059,7 +3059,7 @@ kwargs: dict[str, object]
 
 Inherited from: `nexuml.core.types.FactorySpec`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L75-L75)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L75-L75)
 
 ### nexuml.core.types.StrategySpec.model_config
 
@@ -3071,7 +3071,7 @@ model_config = ConfigDict(extra='forbid')
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L46-L46)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L46-L46)
 
 ### nexuml.core.types.StrategySpec.build
 
@@ -3093,7 +3093,7 @@ Construct the configured object with any runtime-supplied arguments.
 
 - `TypeError` — If construction fails.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L110-L125)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L110-L125)
 
 ### nexuml.core.types.StrategySpec.from_factory
 
@@ -3111,7 +3111,7 @@ Capture an importable factory and portable constructor arguments.
 
 - (`Self`) — Validated factory specification.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L93-L100)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L93-L100)
 
 ### nexuml.core.types.StrategySpec.resolve
 
@@ -3129,7 +3129,7 @@ Resolve the configured import target.
 
 - (`Callable[..., object]`) — Imported callable.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L102-L108)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L102-L108)
 
 ### nexuml.core.types.StrategySpec.from_dict
 
@@ -3141,7 +3141,7 @@ def from_dict(data: dict[str, Any]) -> 'SpecModel'
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L51-L53)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L51-L53)
 
 ### nexuml.core.types.StrategySpec.get
 
@@ -3153,7 +3153,7 @@ def get(key: str, default: Any = None) -> Any
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L58-L59)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L58-L59)
 
 ### nexuml.core.types.StrategySpec.to_dict
 
@@ -3165,7 +3165,7 @@ def to_dict() -> dict[str, Any]
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L48-L49)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L48-L49)
 
 ## nexuml.core.types.TargetSpec
 
@@ -3179,7 +3179,7 @@ Bases: `nexuml.core.types.SpecModel`
 
 Specification for a synthetic target.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L243-L250)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L243-L250)
 
 ### nexuml.core.types.TargetSpec.key
 
@@ -3189,7 +3189,7 @@ Specification for a synthetic target.
 key: str
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L247-L247)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L247-L247)
 
 ### nexuml.core.types.TargetSpec.num_classes
 
@@ -3199,7 +3199,7 @@ key: str
 num_classes: int | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L248-L248)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L248-L248)
 
 ### nexuml.core.types.TargetSpec.num_outputs
 
@@ -3209,7 +3209,7 @@ num_classes: int | None = None
 num_outputs: int | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L249-L249)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L249-L249)
 
 ### nexuml.core.types.TargetSpec.positive_fraction
 
@@ -3219,7 +3219,7 @@ num_outputs: int | None = None
 positive_fraction: float | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L250-L250)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L250-L250)
 
 ### nexuml.core.types.TargetSpec.type
 
@@ -3229,7 +3229,7 @@ positive_fraction: float | None = None
 type: str
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L246-L246)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L246-L246)
 
 ### nexuml.core.types.TargetSpec.model_config
 
@@ -3241,7 +3241,7 @@ model_config = ConfigDict(extra='forbid')
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L46-L46)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L46-L46)
 
 ### nexuml.core.types.TargetSpec.from_dict
 
@@ -3253,7 +3253,7 @@ def from_dict(data: dict[str, Any]) -> 'SpecModel'
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L51-L53)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L51-L53)
 
 ### nexuml.core.types.TargetSpec.get
 
@@ -3265,7 +3265,7 @@ def get(key: str, default: Any = None) -> Any
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L58-L59)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L58-L59)
 
 ### nexuml.core.types.TargetSpec.to_dict
 
@@ -3277,7 +3277,7 @@ def to_dict() -> dict[str, Any]
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L48-L49)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L48-L49)
 
 ## nexuml.core.types.TensorBoardSpec
 
@@ -3291,7 +3291,7 @@ Bases: `nexuml.core.types.SpecModel`
 
 TensorBoard logger configuration.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L411-L414)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L411-L414)
 
 ### nexuml.core.types.TensorBoardSpec.log_dir
 
@@ -3301,7 +3301,7 @@ TensorBoard logger configuration.
 log_dir: str = '.experiments/tensorboard'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L414-L414)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L414-L414)
 
 ### nexuml.core.types.TensorBoardSpec.model_config
 
@@ -3313,7 +3313,7 @@ model_config = ConfigDict(extra='forbid')
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L46-L46)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L46-L46)
 
 ### nexuml.core.types.TensorBoardSpec.from_dict
 
@@ -3325,7 +3325,7 @@ def from_dict(data: dict[str, Any]) -> 'SpecModel'
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L51-L53)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L51-L53)
 
 ### nexuml.core.types.TensorBoardSpec.get
 
@@ -3337,7 +3337,7 @@ def get(key: str, default: Any = None) -> Any
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L58-L59)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L58-L59)
 
 ### nexuml.core.types.TensorBoardSpec.to_dict
 
@@ -3349,7 +3349,7 @@ def to_dict() -> dict[str, Any]
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L48-L49)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L48-L49)
 
 ## nexuml.core.types.TrainingSpec
 
@@ -3363,7 +3363,7 @@ Bases: `nexuml.core.types.SpecModel`
 
 Specification for training configuration.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L219-L240)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L219-L240)
 
 ### nexuml.core.types.TrainingSpec.accelerator
 
@@ -3373,7 +3373,7 @@ Specification for training configuration.
 accelerator: str = 'auto'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L230-L230)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L230-L230)
 
 ### nexuml.core.types.TrainingSpec.batch_size
 
@@ -3383,7 +3383,7 @@ accelerator: str = 'auto'
 batch_size: BatchSizeSpec = 64
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L228-L228)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L228-L228)
 
 ### nexuml.core.types.TrainingSpec.devices
 
@@ -3393,7 +3393,7 @@ batch_size: BatchSizeSpec = 64
 devices: str | int = 'auto'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L231-L231)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L231-L231)
 
 ### nexuml.core.types.TrainingSpec.loss_keys
 
@@ -3403,7 +3403,7 @@ devices: str | int = 'auto'
 loss_keys: dict[str, float]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L224-L224)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L224-L224)
 
 ### nexuml.core.types.TrainingSpec.lr
 
@@ -3413,7 +3413,7 @@ loss_keys: dict[str, float]
 lr: float = 0.001
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L229-L229)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L229-L229)
 
 ### nexuml.core.types.TrainingSpec.max_epochs
 
@@ -3423,7 +3423,7 @@ lr: float = 0.001
 max_epochs: int = 10
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L227-L227)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L227-L227)
 
 ### nexuml.core.types.TrainingSpec.metric_keys
 
@@ -3433,7 +3433,7 @@ max_epochs: int = 10
 metric_keys: list[str]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L225-L225)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L225-L225)
 
 ### nexuml.core.types.TrainingSpec.optimizer
 
@@ -3443,7 +3443,7 @@ metric_keys: list[str]
 optimizer: OptimizerSpec
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L222-L222)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L222-L222)
 
 ### nexuml.core.types.TrainingSpec.precision
 
@@ -3453,7 +3453,7 @@ optimizer: OptimizerSpec
 precision: str | int = '32-true'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L233-L233)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L233-L233)
 
 ### nexuml.core.types.TrainingSpec.progress_bar_keys
 
@@ -3463,7 +3463,7 @@ precision: str | int = '32-true'
 progress_bar_keys: list[str] | Literal['all', 'none']
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L226-L226)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L226-L226)
 
 ### nexuml.core.types.TrainingSpec.scheduler
 
@@ -3473,7 +3473,7 @@ progress_bar_keys: list[str] | Literal['all', 'none']
 scheduler: SchedulerSpec
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L223-L223)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L223-L223)
 
 ### nexuml.core.types.TrainingSpec.strategy
 
@@ -3483,7 +3483,7 @@ scheduler: SchedulerSpec
 strategy: str | StrategySpec = 'auto'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L232-L232)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L232-L232)
 
 ### nexuml.core.types.TrainingSpec.model_config
 
@@ -3495,7 +3495,7 @@ model_config = ConfigDict(extra='forbid')
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L46-L46)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L46-L46)
 
 ### nexuml.core.types.TrainingSpec.validate_batch_size
 
@@ -3505,7 +3505,7 @@ Inherited from: `nexuml.core.types.SpecModel`
 def validate_batch_size(value: BatchSizeSpec) -> BatchSizeSpec
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L235-L240)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L235-L240)
 
 ### nexuml.core.types.TrainingSpec.from_dict
 
@@ -3517,7 +3517,7 @@ def from_dict(data: dict[str, Any]) -> 'SpecModel'
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L51-L53)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L51-L53)
 
 ### nexuml.core.types.TrainingSpec.get
 
@@ -3529,7 +3529,7 @@ def get(key: str, default: Any = None) -> Any
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L58-L59)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L58-L59)
 
 ### nexuml.core.types.TrainingSpec.to_dict
 
@@ -3541,7 +3541,7 @@ def to_dict() -> dict[str, Any]
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L48-L49)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L48-L49)
 
 ## nexuml.core.types.TuningSpec
 
@@ -3555,7 +3555,7 @@ Bases: `nexuml.core.types.SpecModel`
 
 Specification for hyperparameter tuning with Optuna.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L466-L473)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L466-L473)
 
 ### nexuml.core.types.TuningSpec.directions
 
@@ -3565,7 +3565,7 @@ Specification for hyperparameter tuning with Optuna.
 directions: list[str]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L470-L470)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L470-L470)
 
 ### nexuml.core.types.TuningSpec.metric_key
 
@@ -3575,7 +3575,7 @@ directions: list[str]
 metric_key: str = 'val/loss'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L471-L471)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L471-L471)
 
 ### nexuml.core.types.TuningSpec.n_trials
 
@@ -3585,7 +3585,7 @@ metric_key: str = 'val/loss'
 n_trials: int = 50
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L469-L469)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L469-L469)
 
 ### nexuml.core.types.TuningSpec.prune
 
@@ -3595,7 +3595,7 @@ n_trials: int = 50
 prune: bool = False
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L473-L473)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L473-L473)
 
 ### nexuml.core.types.TuningSpec.storage
 
@@ -3605,7 +3605,7 @@ prune: bool = False
 storage: str = '.experiments/optuna/optuna.log'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L472-L472)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L472-L472)
 
 ### nexuml.core.types.TuningSpec.model_config
 
@@ -3617,7 +3617,7 @@ model_config = ConfigDict(extra='forbid')
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L46-L46)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L46-L46)
 
 ### nexuml.core.types.TuningSpec.from_dict
 
@@ -3629,7 +3629,7 @@ def from_dict(data: dict[str, Any]) -> 'SpecModel'
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L51-L53)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L51-L53)
 
 ### nexuml.core.types.TuningSpec.get
 
@@ -3641,7 +3641,7 @@ def get(key: str, default: Any = None) -> Any
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L58-L59)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L58-L59)
 
 ### nexuml.core.types.TuningSpec.to_dict
 
@@ -3653,7 +3653,7 @@ def to_dict() -> dict[str, Any]
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L48-L49)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L48-L49)
 
 ## nexuml.core.types.WriterSpec
 
@@ -3667,7 +3667,7 @@ Bases: `nexuml.core.types.FactorySpec`
 
 Specification for an importable dataset export backend.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L288-L307)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L288-L307)
 
 ### nexuml.core.types.WriterSpec.factory
 
@@ -3677,7 +3677,7 @@ Specification for an importable dataset export backend.
 factory: str = 'nexuml.data.export.numpy_files:NumpyBackend'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L291-L291)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L291-L291)
 
 ### nexuml.core.types.WriterSpec.args
 
@@ -3689,7 +3689,7 @@ args: list[object]
 
 Inherited from: `nexuml.core.types.FactorySpec`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L74-L74)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L74-L74)
 
 ### nexuml.core.types.WriterSpec.kwargs
 
@@ -3701,7 +3701,7 @@ kwargs: dict[str, object]
 
 Inherited from: `nexuml.core.types.FactorySpec`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L75-L75)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L75-L75)
 
 ### nexuml.core.types.WriterSpec.model_config
 
@@ -3713,7 +3713,7 @@ model_config = ConfigDict(extra='forbid')
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L46-L46)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L46-L46)
 
 ### nexuml.core.types.WriterSpec.backend_name
 
@@ -3733,7 +3733,7 @@ Return the stable registry name for the configured backend class.
 
 - `TypeError` — If the configured factory is not an export backend class.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L293-L307)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L293-L307)
 
 ### nexuml.core.types.WriterSpec.build
 
@@ -3755,7 +3755,7 @@ Construct the configured object with any runtime-supplied arguments.
 
 - `TypeError` — If construction fails.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L110-L125)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L110-L125)
 
 ### nexuml.core.types.WriterSpec.from_factory
 
@@ -3773,7 +3773,7 @@ Capture an importable factory and portable constructor arguments.
 
 - (`Self`) — Validated factory specification.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L93-L100)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L93-L100)
 
 ### nexuml.core.types.WriterSpec.resolve
 
@@ -3791,7 +3791,7 @@ Resolve the configured import target.
 
 - (`Callable[..., object]`) — Imported callable.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L102-L108)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L102-L108)
 
 ### nexuml.core.types.WriterSpec.from_dict
 
@@ -3803,7 +3803,7 @@ def from_dict(data: dict[str, Any]) -> 'SpecModel'
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L51-L53)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L51-L53)
 
 ### nexuml.core.types.WriterSpec.get
 
@@ -3815,7 +3815,7 @@ def get(key: str, default: Any = None) -> Any
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L58-L59)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L58-L59)
 
 ### nexuml.core.types.WriterSpec.to_dict
 
@@ -3827,4 +3827,4 @@ def to_dict() -> dict[str, Any]
 
 Inherited from: `nexuml.core.types.SpecModel`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/types.py#L48-L49)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/types.py#L48-L49)

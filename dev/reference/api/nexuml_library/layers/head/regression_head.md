@@ -4,7 +4,7 @@
 
 Regression head for latent space.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/layers/head/regression_head.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/head/regression_head.py#L1-L1)
 
 ## nexuml_library.layers.head.regression_head.LatentRegressionHead
 
@@ -18,7 +18,7 @@ Bases: `LayerDefinition`
 
 Regression head operating on latent vectors.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/layers/head/regression_head.py#L15-L23)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/head/regression_head.py#L15-L23)
 
 ### nexuml_library.layers.head.regression_head.LatentRegressionHead.hidden_dims
 
@@ -28,7 +28,7 @@ Regression head operating on latent vectors.
 hidden_dims: list[int] | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/layers/head/regression_head.py#L20-L20)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/head/regression_head.py#L20-L20)
 
 ### nexuml_library.layers.head.regression_head.LatentRegressionHead.num_outputs
 
@@ -38,7 +38,7 @@ hidden_dims: list[int] | None = None
 num_outputs: int = 1
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/layers/head/regression_head.py#L19-L19)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/head/regression_head.py#L19-L19)
 
 ### nexuml_library.layers.head.regression_head.LatentRegressionHead.build
 
@@ -48,4 +48,4 @@ num_outputs: int = 1
 def build(context: LayerBuildContext) -> PipelineLayer
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/layers/head/regression_head.py#L22-L23)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/head/regression_head.py#L22-L23)

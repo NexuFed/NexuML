@@ -4,7 +4,7 @@
 
 Review and bind infrastructure-owned templates without synthesizing cluster policy.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/execution/templates.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/templates.py#L1-L1)
 
 ## nexuml.execution.templates.CONFIG_TOKEN
 
@@ -14,7 +14,7 @@ Review and bind infrastructure-owned templates without synthesizing cluster poli
 CONFIG_TOKEN = '{{NEXUML_CONFIG}}'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/execution/templates.py#L20-L20)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/templates.py#L20-L20)
 
 ## nexuml.execution.templates.authorized_path
 
@@ -34,7 +34,7 @@ Resolve an explicitly selected file without escaping an API's allowed root.
 
 - `ValueError` — On traversal or symlink escape.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/execution/templates.py#L23-L40)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/templates.py#L23-L40)
 
 ## nexuml.execution.templates.pod_roles
 
@@ -50,7 +50,7 @@ Read every workload role without inventing an unseen controller footprint.
 
 - (`list[tuple[str, int, dict]]`) — Named replica counts and existing pod specifications.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/execution/templates.py#L43-L67)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/templates.py#L43-L67)
 
 ## nexuml.execution.templates.template_plan
 
@@ -70,4 +70,4 @@ Capture the exact reviewed template and derived worker configuration.
 
 - `ValueError` — For missing handoff, unsafe inputs or unsupported launch topology.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/execution/templates.py#L118-L348)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/templates.py#L118-L348)

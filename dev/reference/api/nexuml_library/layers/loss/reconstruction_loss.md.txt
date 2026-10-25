@@ -4,7 +4,7 @@
 
 Reconstruction loss layer.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/layers/loss/reconstruction_loss.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/loss/reconstruction_loss.py#L1-L1)
 
 ## nexuml_library.layers.loss.reconstruction_loss.ReconstructionLoss
 
@@ -21,7 +21,7 @@ Computes MSE reconstruction loss between original and reconstructed features.
 keys_in should be [original_key, reconstructed_key].
 keys_out should be [loss_key].
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/layers/loss/reconstruction_loss.py#L17-L33)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/loss/reconstruction_loss.py#L17-L33)
 
 ### nexuml_library.layers.loss.reconstruction_loss.ReconstructionLoss.inverse_mask
 
@@ -31,7 +31,7 @@ keys_out should be [loss_key].
 inverse_mask: bool = True
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/layers/loss/reconstruction_loss.py#L29-L29)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/loss/reconstruction_loss.py#L29-L29)
 
 ### nexuml_library.layers.loss.reconstruction_loss.ReconstructionLoss.match_min_length
 
@@ -41,7 +41,7 @@ inverse_mask: bool = True
 match_min_length: bool = False
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/layers/loss/reconstruction_loss.py#L26-L26)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/loss/reconstruction_loss.py#L26-L26)
 
 ### nexuml_library.layers.loss.reconstruction_loss.ReconstructionLoss.norm_pix_loss
 
@@ -51,7 +51,7 @@ match_min_length: bool = False
 norm_pix_loss: bool = False
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/layers/loss/reconstruction_loss.py#L25-L25)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/loss/reconstruction_loss.py#L25-L25)
 
 ### nexuml_library.layers.loss.reconstruction_loss.ReconstructionLoss.num_tokens
 
@@ -61,7 +61,7 @@ norm_pix_loss: bool = False
 num_tokens: int = 0
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/layers/loss/reconstruction_loss.py#L30-L30)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/loss/reconstruction_loss.py#L30-L30)
 
 ### nexuml_library.layers.loss.reconstruction_loss.ReconstructionLoss.patch_size
 
@@ -71,7 +71,7 @@ num_tokens: int = 0
 patch_size: int | tuple[int, int] | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/layers/loss/reconstruction_loss.py#L27-L27)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/loss/reconstruction_loss.py#L27-L27)
 
 ### nexuml_library.layers.loss.reconstruction_loss.ReconstructionLoss.use_mask_loss
 
@@ -81,7 +81,7 @@ patch_size: int | tuple[int, int] | None = None
 use_mask_loss: bool = False
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/layers/loss/reconstruction_loss.py#L28-L28)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/loss/reconstruction_loss.py#L28-L28)
 
 ### nexuml_library.layers.loss.reconstruction_loss.ReconstructionLoss.build
 
@@ -91,4 +91,4 @@ use_mask_loss: bool = False
 def build(context: LayerBuildContext) -> PipelineLayer
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/layers/loss/reconstruction_loss.py#L32-L33)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/loss/reconstruction_loss.py#L32-L33)

@@ -4,7 +4,7 @@
 
 Linear encoder/decoder layer for autoencoder architectures.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/layers/model/linear_encoder.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/model/linear_encoder.py#L1-L1)
 
 ## nexuml_library.layers.model.linear_encoder.LinearEncoder
 
@@ -21,7 +21,7 @@ Stacked fully-connected layers with optional batch norm and activation.
 Used for both encoder and decoder in linear autoencoders.
 Input is flattened to 2D before processing.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/layers/model/linear_encoder.py#L15-L30)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/model/linear_encoder.py#L15-L30)
 
 ### nexuml_library.layers.model.linear_encoder.LinearEncoder.activation
 
@@ -31,7 +31,7 @@ Input is flattened to 2D before processing.
 activation: str = 'torch.nn.ReLU'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/layers/model/linear_encoder.py#L25-L25)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/model/linear_encoder.py#L25-L25)
 
 ### nexuml_library.layers.model.linear_encoder.LinearEncoder.bias
 
@@ -41,7 +41,7 @@ activation: str = 'torch.nn.ReLU'
 bias: bool = True
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/layers/model/linear_encoder.py#L27-L27)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/model/linear_encoder.py#L27-L27)
 
 ### nexuml_library.layers.model.linear_encoder.LinearEncoder.hidden_dims
 
@@ -51,7 +51,7 @@ bias: bool = True
 hidden_dims: list[int] | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/layers/model/linear_encoder.py#L23-L23)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/model/linear_encoder.py#L23-L23)
 
 ### nexuml_library.layers.model.linear_encoder.LinearEncoder.last_activation
 
@@ -61,7 +61,7 @@ hidden_dims: list[int] | None = None
 last_activation: bool = False
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/layers/model/linear_encoder.py#L26-L26)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/model/linear_encoder.py#L26-L26)
 
 ### nexuml_library.layers.model.linear_encoder.LinearEncoder.output_dim
 
@@ -71,7 +71,7 @@ last_activation: bool = False
 output_dim: int = 8
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/layers/model/linear_encoder.py#L24-L24)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/model/linear_encoder.py#L24-L24)
 
 ### nexuml_library.layers.model.linear_encoder.LinearEncoder.build
 
@@ -81,4 +81,4 @@ output_dim: int = 8
 def build(context: LayerBuildContext) -> PipelineLayer
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/layers/model/linear_encoder.py#L29-L30)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/model/linear_encoder.py#L29-L30)

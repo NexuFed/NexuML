@@ -4,7 +4,7 @@
 
 Linear autoencoder model scenario fragments.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/scenarios/model/linear_ae.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/scenarios/model/linear_ae.py#L1-L1)
 
 ## nexuml_library.scenarios.model.linear_ae.linear_ae_anomaly_detection
 
@@ -20,7 +20,7 @@ Linear autoencoder with reconstruction loss and an anomaly score.
 
 - `PipelineSpec` (`PipelineSpec`) — Pipeline with linear encoder, decoder, reconstruction loss and anomaly score layers.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/scenarios/model/linear_ae.py#L69-L97)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/scenarios/model/linear_ae.py#L69-L97)
 
 ## nexuml_library.scenarios.model.linear_ae.linear_ae_lmbe
 
@@ -36,7 +36,7 @@ Waveform -> LMBE -> linear autoencoder with an anomaly score.
 
 - `PipelineSpec` (`PipelineSpec`) — Full waveform-to-reconstruction pipeline with LMBE feature extraction and linear autoencoder.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/scenarios/model/linear_ae.py#L100-L142)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/scenarios/model/linear_ae.py#L100-L142)
 
 ## nexuml_library.scenarios.model.linear_ae.linear_ae_multiclass
 
@@ -52,7 +52,7 @@ Create a PipelineSpec for a linear AE with reconstruction + classification.
 
 - `PipelineSpec` (`PipelineSpec`) — Pipeline with encoder, decoder, classification head, reconstruction loss, classification loss and metrics layers.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/scenarios/model/linear_ae.py#L145-L211)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/scenarios/model/linear_ae.py#L145-L211)
 
 ## nexuml_library.scenarios.model.linear_ae.linear_ae_multilabel
 
@@ -68,7 +68,7 @@ Create a PipelineSpec for a linear AE with reconstruction + multilabel classific
 
 - `PipelineSpec` (`PipelineSpec`) — Pipeline with encoder, decoder, multilabel head, reconstruction loss and multilabel loss layers.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/scenarios/model/linear_ae.py#L214-L274)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/scenarios/model/linear_ae.py#L214-L274)
 
 ## nexuml_library.scenarios.model.linear_ae.linear_ae_reconstruction
 
@@ -84,7 +84,7 @@ Create a PipelineSpec for a linear autoencoder with reconstruction loss.
 
 - `PipelineSpec` (`PipelineSpec`) — Pipeline with linear encoder, decoder and reconstruction loss layers.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/scenarios/model/linear_ae.py#L17-L66)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/scenarios/model/linear_ae.py#L17-L66)
 
 ## nexuml_library.scenarios.model.linear_ae.linear_ae_regression
 
@@ -100,4 +100,4 @@ Create a PipelineSpec for a linear AE with reconstruction + regression.
 
 - `PipelineSpec` (`PipelineSpec`) — Pipeline with encoder, decoder, regression head, reconstruction loss and regression loss layers.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/scenarios/model/linear_ae.py#L277-L338)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/scenarios/model/linear_ae.py#L277-L338)

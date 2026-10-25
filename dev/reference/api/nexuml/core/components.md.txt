@@ -4,7 +4,7 @@
 
 Typed component definitions and explicit runtime build contexts.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L1-L1)
 
 ## nexuml.core.components.FeatureKey
 
@@ -16,7 +16,7 @@ FeatureKey = Annotated[str, _KeyRole('x')]
 
 A feature-tensor key; values and generated schemas remain ordinary strings.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L16-L16)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L16-L16)
 
 ## nexuml.core.components.LabelKey
 
@@ -28,7 +28,7 @@ LabelKey = Annotated[str, _KeyRole('y')]
 
 A label-tensor key, also usable inside optional and list annotations.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L18-L18)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L18-L18)
 
 ## nexuml.core.components.ComponentDefinition
 
@@ -42,7 +42,7 @@ Bases: `BaseModel`, `ABC`
 
 Immutable semantic configuration for a registered component.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L22-L35)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L22-L35)
 
 ### nexuml.core.components.ComponentDefinition.component_name
 
@@ -52,7 +52,7 @@ Immutable semantic configuration for a registered component.
 component_name: str
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L34-L34)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L34-L34)
 
 ### nexuml.core.components.ComponentDefinition.component_version
 
@@ -62,7 +62,7 @@ component_name: str
 component_version: str = '1'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L35-L35)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L35-L35)
 
 ### nexuml.core.components.ComponentDefinition.kind
 
@@ -72,7 +72,7 @@ component_version: str = '1'
 kind: str
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L33-L33)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L33-L33)
 
 ### nexuml.core.components.ComponentDefinition.model_config
 
@@ -82,7 +82,7 @@ kind: str
 model_config = ConfigDict(extra='forbid', frozen=True, validate_default=True, allow_inf_nan=False, arbitrary_types_allowed=False)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L25-L31)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L25-L31)
 
 ## nexuml.core.components.ContextInput
 
@@ -94,7 +94,7 @@ class ContextInput
 
 One consumed context slot; a default replaces missing, null or empty values.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L81-L100)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L81-L100)
 
 ### nexuml.core.components.ContextInput.default
 
@@ -104,7 +104,7 @@ One consumed context slot; a default replaces missing, null or empty values.
 default: str | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L86-L86)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L86-L86)
 
 ### nexuml.core.components.ContextInput.required
 
@@ -114,7 +114,7 @@ default: str | None = None
 required: bool = False
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L85-L85)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L85-L85)
 
 ### nexuml.core.components.ContextInput.resolve
 
@@ -134,7 +134,7 @@ Resolve a context key without rejecting historically accepted empty strings.
 
 - `ValueError` — If a required key is absent and has no fallback.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L88-L100)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L88-L100)
 
 ## nexuml.core.components.DataSourceDefinition
 
@@ -148,7 +148,7 @@ Bases: `nexuml.core.components.ComponentDefinition`
 
 Semantic configuration that materializes a dataset.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L132-L141)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L132-L141)
 
 ### nexuml.core.components.DataSourceDefinition.fixed_label_keys
 
@@ -158,7 +158,7 @@ Semantic configuration that materializes a dataset.
 fixed_label_keys: tuple[str, ...] | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L137-L137)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L137-L137)
 
 ### nexuml.core.components.DataSourceDefinition.kind
 
@@ -168,7 +168,7 @@ fixed_label_keys: tuple[str, ...] | None = None
 kind = 'data_source'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L135-L135)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L135-L135)
 
 ### nexuml.core.components.DataSourceDefinition.component_name
 
@@ -180,7 +180,7 @@ component_name: str
 
 Inherited from: `nexuml.core.components.ComponentDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L34-L34)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L34-L34)
 
 ### nexuml.core.components.DataSourceDefinition.component_version
 
@@ -192,7 +192,7 @@ component_version: str = '1'
 
 Inherited from: `nexuml.core.components.ComponentDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L35-L35)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L35-L35)
 
 ### nexuml.core.components.DataSourceDefinition.model_config
 
@@ -204,7 +204,7 @@ model_config = ConfigDict(extra='forbid', frozen=True, validate_default=True, al
 
 Inherited from: `nexuml.core.components.ComponentDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L25-L31)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L25-L31)
 
 ### nexuml.core.components.DataSourceDefinition.build
 
@@ -216,7 +216,7 @@ def build() -> Any
 
 Build the mutable dataset runtime.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L139-L141)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L139-L141)
 
 ## nexuml.core.components.EvalAlgorithmDefinition
 
@@ -230,7 +230,7 @@ Bases: `nexuml.core.components.ComponentDefinition`
 
 Semantic configuration that materializes an evaluation algorithm.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L144-L153)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L144-L153)
 
 ### nexuml.core.components.EvalAlgorithmDefinition.context_inputs
 
@@ -240,7 +240,7 @@ Semantic configuration that materializes an evaluation algorithm.
 context_inputs: EvalContextInputs | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L149-L149)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L149-L149)
 
 ### nexuml.core.components.EvalAlgorithmDefinition.kind
 
@@ -250,7 +250,7 @@ context_inputs: EvalContextInputs | None = None
 kind = 'eval_algorithm'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L147-L147)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L147-L147)
 
 ### nexuml.core.components.EvalAlgorithmDefinition.component_name
 
@@ -262,7 +262,7 @@ component_name: str
 
 Inherited from: `nexuml.core.components.ComponentDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L34-L34)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L34-L34)
 
 ### nexuml.core.components.EvalAlgorithmDefinition.component_version
 
@@ -274,7 +274,7 @@ component_version: str = '1'
 
 Inherited from: `nexuml.core.components.ComponentDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L35-L35)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L35-L35)
 
 ### nexuml.core.components.EvalAlgorithmDefinition.model_config
 
@@ -286,7 +286,7 @@ model_config = ConfigDict(extra='forbid', frozen=True, validate_default=True, al
 
 Inherited from: `nexuml.core.components.ComponentDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L25-L31)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L25-L31)
 
 ### nexuml.core.components.EvalAlgorithmDefinition.build
 
@@ -298,7 +298,7 @@ def build(context: EvalBuildContext) -> Any
 
 Build the mutable evaluation runtime.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L151-L153)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L151-L153)
 
 ## nexuml.core.components.EvalBuildContext
 
@@ -310,7 +310,7 @@ class EvalBuildContext
 
 Runtime routing values supplied to an evaluation definition.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L73-L78)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L73-L78)
 
 ### nexuml.core.components.EvalBuildContext.feature_key
 
@@ -320,7 +320,7 @@ Runtime routing values supplied to an evaluation definition.
 feature_key: str | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L77-L77)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L77-L77)
 
 ### nexuml.core.components.EvalBuildContext.label_key
 
@@ -330,7 +330,7 @@ feature_key: str | None = None
 label_key: str | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L78-L78)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L78-L78)
 
 ## nexuml.core.components.EvalContextInputs
 
@@ -342,7 +342,7 @@ class EvalContextInputs
 
 Consumed evaluation slots; an omitted slot is unused, not a guessed route.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L103-L118)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L103-L118)
 
 ### nexuml.core.components.EvalContextInputs.feature_key
 
@@ -352,7 +352,7 @@ Consumed evaluation slots; an omitted slot is unused, not a guessed route.
 feature_key: ContextInput | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L107-L107)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L107-L107)
 
 ### nexuml.core.components.EvalContextInputs.label_key
 
@@ -362,7 +362,7 @@ feature_key: ContextInput | None = None
 label_key: ContextInput | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L108-L108)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L108-L108)
 
 ### nexuml.core.components.EvalContextInputs.resolve
 
@@ -374,7 +374,7 @@ def resolve(context: EvalBuildContext) -> EvalBuildContext
 
 Return runtime keys using the same rules exposed to tooling.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L110-L118)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L110-L118)
 
 ## nexuml.core.components.ExecutionBackendDefinition
 
@@ -388,7 +388,7 @@ Bases: `nexuml.core.components.ComponentDefinition`
 
 Installation-owned placement settings and execution behavior.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L166-L222)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L166-L222)
 
 ### nexuml.core.components.ExecutionBackendDefinition.capabilities
 
@@ -398,7 +398,7 @@ Installation-owned placement settings and execution behavior.
 capabilities: dict[str, bool] = {}
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L172-L172)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L172-L172)
 
 ### nexuml.core.components.ExecutionBackendDefinition.dependencies
 
@@ -408,7 +408,7 @@ capabilities: dict[str, bool] = {}
 dependencies: tuple[str, ...] = ()
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L171-L171)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L171-L171)
 
 ### nexuml.core.components.ExecutionBackendDefinition.kind
 
@@ -418,7 +418,7 @@ dependencies: tuple[str, ...] = ()
 kind = 'execution_backend'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L169-L169)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L169-L169)
 
 ### nexuml.core.components.ExecutionBackendDefinition.label
 
@@ -428,7 +428,7 @@ kind = 'execution_backend'
 label: str = ''
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L170-L170)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L170-L170)
 
 ### nexuml.core.components.ExecutionBackendDefinition.presentation
 
@@ -438,7 +438,7 @@ label: str = ''
 presentation: dict[str, list[str]] = {}
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L173-L173)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L173-L173)
 
 ### nexuml.core.components.ExecutionBackendDefinition.component_name
 
@@ -450,7 +450,7 @@ component_name: str
 
 Inherited from: `nexuml.core.components.ComponentDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L34-L34)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L34-L34)
 
 ### nexuml.core.components.ExecutionBackendDefinition.component_version
 
@@ -462,7 +462,7 @@ component_version: str = '1'
 
 Inherited from: `nexuml.core.components.ComponentDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L35-L35)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L35-L35)
 
 ### nexuml.core.components.ExecutionBackendDefinition.model_config
 
@@ -474,7 +474,7 @@ model_config = ConfigDict(extra='forbid', frozen=True, validate_default=True, al
 
 Inherited from: `nexuml.core.components.ComponentDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L25-L31)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L25-L31)
 
 ### nexuml.core.components.ExecutionBackendDefinition.cancel
 
@@ -490,7 +490,7 @@ Refuse to confuse submitter termination with native cancellation.
 
 - `NotImplementedError` — When native cancellation cannot be confirmed.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L208-L214)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L208-L214)
 
 ### nexuml.core.components.ExecutionBackendDefinition.discover
 
@@ -502,7 +502,7 @@ def discover(**kwargs: Any) -> Any
 
 Return an explicit unknown snapshot when a library has no capacity probe.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L190-L198)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L190-L198)
 
 ### nexuml.core.components.ExecutionBackendDefinition.inspect
 
@@ -518,7 +518,7 @@ Refuse native observation that the backend has not implemented.
 
 - `NotImplementedError` — When no native inspection is available.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L200-L206)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L200-L206)
 
 ### nexuml.core.components.ExecutionBackendDefinition.preflight
 
@@ -538,7 +538,7 @@ Validate a request without allocating workers.
 
 - `ValueError` — If requested resume or exports are unsupported.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L175-L188)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L175-L188)
 
 ### nexuml.core.components.ExecutionBackendDefinition.run
 
@@ -553,7 +553,7 @@ Execute the canonical lifecycle and return its native result.
 Shared dispatch supplies ``review`` from preflight and caller-specific keyword
 options (including an optional observer). Definitions accept these via kwargs.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L216-L222)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L216-L222)
 
 ## nexuml.core.components.LayerBuildContext
 
@@ -565,7 +565,7 @@ class LayerBuildContext
 
 Runtime values supplied by the pipeline compiler to a layer definition.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L38-L70)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L38-L70)
 
 ### nexuml.core.components.LayerBuildContext.delay_epochs
 
@@ -575,7 +575,7 @@ Runtime values supplied by the pipeline compiler to a layer definition.
 delay_epochs: int = 0
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L52-L52)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L52-L52)
 
 ### nexuml.core.components.LayerBuildContext.input_sizes
 
@@ -585,7 +585,7 @@ delay_epochs: int = 0
 input_sizes: Mapping[str, tuple[int, ...]]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L42-L42)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L42-L42)
 
 ### nexuml.core.components.LayerBuildContext.keys_in
 
@@ -595,7 +595,7 @@ input_sizes: Mapping[str, tuple[int, ...]]
 keys_in: list[str]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L43-L43)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L43-L43)
 
 ### nexuml.core.components.LayerBuildContext.keys_out
 
@@ -605,7 +605,7 @@ keys_in: list[str]
 keys_out: list[str]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L44-L44)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L44-L44)
 
 ### nexuml.core.components.LayerBuildContext.label_in_x
 
@@ -615,7 +615,7 @@ keys_out: list[str]
 label_in_x: bool = False
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L46-L46)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L46-L46)
 
 ### nexuml.core.components.LayerBuildContext.label_key
 
@@ -625,7 +625,7 @@ label_in_x: bool = False
 label_key: str | list[str] | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L45-L45)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L45-L45)
 
 ### nexuml.core.components.LayerBuildContext.metadata
 
@@ -635,7 +635,7 @@ label_key: str | list[str] | None = None
 metadata: Mapping[str, Any] = field(default_factory=dict)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L48-L48)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L48-L48)
 
 ### nexuml.core.components.LayerBuildContext.num_classes
 
@@ -645,7 +645,7 @@ metadata: Mapping[str, Any] = field(default_factory=dict)
 num_classes: int | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L47-L47)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L47-L47)
 
 ### nexuml.core.components.LayerBuildContext.shared_inputs
 
@@ -655,7 +655,7 @@ num_classes: int | None = None
 shared_inputs: list[str] | str | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L51-L51)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L51-L51)
 
 ### nexuml.core.components.LayerBuildContext.shared_outputs
 
@@ -665,7 +665,7 @@ shared_inputs: list[str] | str | None = None
 shared_outputs: list[str] | str | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L50-L50)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L50-L50)
 
 ### nexuml.core.components.LayerBuildContext.shared_storage
 
@@ -675,7 +675,7 @@ shared_outputs: list[str] | str | None = None
 shared_storage: Any = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L49-L49)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L49-L49)
 
 ### nexuml.core.components.LayerBuildContext.update_every_n_epochs
 
@@ -685,7 +685,7 @@ shared_storage: Any = None
 update_every_n_epochs: int = 1
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L53-L53)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L53-L53)
 
 ### nexuml.core.components.LayerBuildContext.runtime_kwargs
 
@@ -695,7 +695,7 @@ update_every_n_epochs: int = 1
 def runtime_kwargs(**overrides: Any) -> dict[str, Any]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L55-L70)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L55-L70)
 
 ## nexuml.core.components.LayerDefinition
 
@@ -709,7 +709,7 @@ Bases: `nexuml.core.components.ComponentDefinition`
 
 Semantic configuration that materializes a pipeline layer.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L121-L129)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L121-L129)
 
 ### nexuml.core.components.LayerDefinition.kind
 
@@ -719,7 +719,7 @@ Semantic configuration that materializes a pipeline layer.
 kind = 'layer'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L124-L124)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L124-L124)
 
 ### nexuml.core.components.LayerDefinition.requires_post_train_fit
 
@@ -729,7 +729,7 @@ kind = 'layer'
 requires_post_train_fit: bool = False
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L125-L125)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L125-L125)
 
 ### nexuml.core.components.LayerDefinition.component_name
 
@@ -741,7 +741,7 @@ component_name: str
 
 Inherited from: `nexuml.core.components.ComponentDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L34-L34)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L34-L34)
 
 ### nexuml.core.components.LayerDefinition.component_version
 
@@ -753,7 +753,7 @@ component_version: str = '1'
 
 Inherited from: `nexuml.core.components.ComponentDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L35-L35)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L35-L35)
 
 ### nexuml.core.components.LayerDefinition.model_config
 
@@ -765,7 +765,7 @@ model_config = ConfigDict(extra='forbid', frozen=True, validate_default=True, al
 
 Inherited from: `nexuml.core.components.ComponentDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L25-L31)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L25-L31)
 
 ### nexuml.core.components.LayerDefinition.build
 
@@ -777,7 +777,7 @@ def build(context: LayerBuildContext) -> Any
 
 Build the mutable pipeline layer runtime.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L127-L129)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L127-L129)
 
 ## nexuml.core.components.LoaderBackendDefinition
 
@@ -791,7 +791,7 @@ Bases: `nexuml.core.components.ComponentDefinition`
 
 Semantic configuration that materializes a loader backend.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L156-L163)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L156-L163)
 
 ### nexuml.core.components.LoaderBackendDefinition.kind
 
@@ -801,7 +801,7 @@ Semantic configuration that materializes a loader backend.
 kind = 'loader_backend'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L159-L159)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L159-L159)
 
 ### nexuml.core.components.LoaderBackendDefinition.component_name
 
@@ -813,7 +813,7 @@ component_name: str
 
 Inherited from: `nexuml.core.components.ComponentDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L34-L34)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L34-L34)
 
 ### nexuml.core.components.LoaderBackendDefinition.component_version
 
@@ -825,7 +825,7 @@ component_version: str = '1'
 
 Inherited from: `nexuml.core.components.ComponentDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L35-L35)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L35-L35)
 
 ### nexuml.core.components.LoaderBackendDefinition.model_config
 
@@ -837,7 +837,7 @@ model_config = ConfigDict(extra='forbid', frozen=True, validate_default=True, al
 
 Inherited from: `nexuml.core.components.ComponentDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L25-L31)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L25-L31)
 
 ### nexuml.core.components.LoaderBackendDefinition.build
 
@@ -849,4 +849,4 @@ def build() -> Any
 
 Build the loader backend runtime.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/components.py#L161-L163)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L161-L163)

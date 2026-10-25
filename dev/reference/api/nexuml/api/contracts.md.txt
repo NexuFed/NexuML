@@ -4,7 +4,7 @@
 
 Static catalog descriptions from native definitions, never runtime construction.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/contracts.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/contracts.py#L1-L1)
 
 ## nexuml.api.contracts.ComponentIO
 
@@ -18,7 +18,7 @@ Bases: `TypedDict`
 
 Known input bindings and labels; unknown is distinct from known-empty.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/contracts.py#L25-L30)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/contracts.py#L25-L30)
 
 ### nexuml.api.contracts.ComponentIO.inputs
 
@@ -28,7 +28,7 @@ Known input bindings and labels; unknown is distinct from known-empty.
 inputs: list[InputBinding]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/contracts.py#L28-L28)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/contracts.py#L28-L28)
 
 ### nexuml.api.contracts.ComponentIO.inputs_known
 
@@ -38,7 +38,7 @@ inputs: list[InputBinding]
 inputs_known: bool
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/contracts.py#L29-L29)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/contracts.py#L29-L29)
 
 ### nexuml.api.contracts.ComponentIO.labels
 
@@ -48,7 +48,7 @@ inputs_known: bool
 labels: list[str] | None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/contracts.py#L30-L30)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/contracts.py#L30-L30)
 
 ## nexuml.api.contracts.InputBinding
 
@@ -62,7 +62,7 @@ Bases: `TypedDict`
 
 A definition-local key field or surrounding evaluation context slot.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/contracts.py#L14-L22)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/contracts.py#L14-L22)
 
 ### nexuml.api.contracts.InputBinding.collection
 
@@ -72,7 +72,7 @@ A definition-local key field or surrounding evaluation context slot.
 collection: bool
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/contracts.py#L20-L20)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/contracts.py#L20-L20)
 
 ### nexuml.api.contracts.InputBinding.default
 
@@ -82,7 +82,7 @@ collection: bool
 default: str | list[str] | None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/contracts.py#L22-L22)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/contracts.py#L22-L22)
 
 ### nexuml.api.contracts.InputBinding.domain
 
@@ -92,7 +92,7 @@ default: str | list[str] | None
 domain: Literal['x', 'y']
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/contracts.py#L19-L19)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/contracts.py#L19-L19)
 
 ### nexuml.api.contracts.InputBinding.field
 
@@ -102,7 +102,7 @@ domain: Literal['x', 'y']
 field: str
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/contracts.py#L18-L18)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/contracts.py#L18-L18)
 
 ### nexuml.api.contracts.InputBinding.required
 
@@ -112,7 +112,7 @@ field: str
 required: bool
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/contracts.py#L21-L21)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/contracts.py#L21-L21)
 
 ### nexuml.api.contracts.InputBinding.source
 
@@ -122,7 +122,7 @@ required: bool
 source: Literal['parameter', 'context']
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/contracts.py#L17-L17)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/contracts.py#L17-L17)
 
 ## nexuml.api.contracts.component_io
 
@@ -138,4 +138,4 @@ Describe public field annotations and shared context rules without instances.
 
 - (`ComponentIO`) — Static bindings, contract completeness and fixed source labels.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/contracts.py#L50-L88)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/contracts.py#L50-L88)

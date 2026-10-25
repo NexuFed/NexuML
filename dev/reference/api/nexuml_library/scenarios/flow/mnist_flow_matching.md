@@ -4,7 +4,7 @@
 
 MNIST Flow Matching reference scenario.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/scenarios/flow/mnist_flow_matching.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/scenarios/flow/mnist_flow_matching.py#L1-L1)
 
 ## nexuml_library.scenarios.flow.mnist_flow_matching.mnist_flow_matching
 
@@ -20,4 +20,4 @@ Build an unconditional MNIST Flow Matching scenario.
 
 - (`ScenarioSpec`) — MNIST Flow Matching scenario.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/scenarios/flow/mnist_flow_matching.py#L13-L57)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/scenarios/flow/mnist_flow_matching.py#L13-L57)

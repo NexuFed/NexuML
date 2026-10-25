@@ -4,7 +4,7 @@
 
 DALI external source pipeline for NumPy datasets.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/loaders/dali_numpy_external.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/dali_numpy_external.py#L1-L1)
 
 ## nexuml.data.loaders.dali_numpy_external.ExternalInputIterator
 
@@ -16,7 +16,7 @@ class ExternalInputIterator
 
 Iterator that loads NumPy files on demand for DALI external_source.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/loaders/dali_numpy_external.py#L17-L48)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/dali_numpy_external.py#L17-L48)
 
 ### nexuml.data.loaders.dali_numpy_external.ExternalInputIterator.data_set_len
 
@@ -26,7 +26,7 @@ Iterator that loads NumPy files on demand for DALI external_source.
 data_set_len = len(self.files)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/loaders/dali_numpy_external.py#L23-L23)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/dali_numpy_external.py#L23-L23)
 
 ### nexuml.data.loaders.dali_numpy_external.ExternalInputIterator.files
 
@@ -36,7 +36,7 @@ data_set_len = len(self.files)
 files = self.files[self.data_set_len * shard_id // num_shards:self.data_set_len * shard_id + 1 // num_shards]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/loaders/dali_numpy_external.py#L25-L29)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/dali_numpy_external.py#L25-L29)
 
 ### nexuml.data.loaders.dali_numpy_external.ExternalInputIterator.n
 
@@ -46,7 +46,7 @@ files = self.files[self.data_set_len * shard_id // num_shards:self.data_set_len 
 n = len(self.files)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/loaders/dali_numpy_external.py#L31-L31)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/dali_numpy_external.py#L31-L31)
 
 ### nexuml.data.loaders.dali_numpy_external.ExternalInputIterator.shuffle
 
@@ -56,7 +56,7 @@ n = len(self.files)
 shuffle = shuffle
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/loaders/dali_numpy_external.py#L22-L22)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/dali_numpy_external.py#L22-L22)
 
 ## nexuml.data.loaders.dali_numpy_external.PyTorchIterator
 
@@ -70,7 +70,7 @@ Bases: `DALIGenericIterator`
 
 DALIGenericIterator with multi-label support for external source pipelines.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/loaders/dali_numpy_external.py#L51-L70)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/dali_numpy_external.py#L51-L70)
 
 ### nexuml.data.loaders.dali_numpy_external.PyTorchIterator.labels
 
@@ -80,7 +80,7 @@ DALIGenericIterator with multi-label support for external source pipelines.
 labels = labels
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/loaders/dali_numpy_external.py#L57-L57)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/dali_numpy_external.py#L57-L57)
 
 ## nexuml.data.loaders.dali_numpy_external.DaliNumpyExternalPipeline
 
@@ -96,7 +96,7 @@ Build and return a DALI external source pipeline as a PyTorchIterator.
 
 - (`PyTorchIterator`) — A ``PyTorchIterator`` over the built DALI pipeline.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/loaders/dali_numpy_external.py#L95-L148)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/dali_numpy_external.py#L95-L148)
 
 ## nexuml.data.loaders.dali_numpy_external.external_source_pipeline
 
@@ -112,4 +112,4 @@ DALI pipeline using external source for flexible data loading.
 
 - (`Any`) — Tuple of data tensor and label tensor from the external source.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/loaders/dali_numpy_external.py#L73-L92)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/dali_numpy_external.py#L73-L92)

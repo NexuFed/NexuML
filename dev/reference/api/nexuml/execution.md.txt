@@ -4,7 +4,7 @@
 
 Installation-owned execution, with lazy optional runtime imports.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/execution/__init__.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/__init__.py#L1-L1)
 
 ## nexuml.execution.RayExecutionError
 
@@ -20,7 +20,7 @@ Re-exported from: `nexuml.execution.ray`
 
 Ray placement cannot preserve the requested execution semantics.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/execution/ray.py#L19-L20)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/ray.py#L19-L20)
 
 ## nexuml.execution.cancel
 
@@ -38,7 +38,7 @@ Request supported native cancellation through the registered backend.
 
 - (`dict[str, Any]`) — Confirmed cancellation or an explicit unsupported/unknown error.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/execution/service.py#L113-L123)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/service.py#L113-L123)
 
 ## nexuml.execution.catalog
 
@@ -56,7 +56,7 @@ Describe execution definitions from the selected Python installation.
 
 - (`list[dict[str, Any]]`) — Registered identities, actual schemas, provenance and installation capabilities.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/execution/service.py#L25-L49)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/service.py#L25-L49)
 
 ## nexuml.execution.discover
 
@@ -74,7 +74,7 @@ Probe only the caller-selected backend and target.
 
 - (`ResourceSnapshot`) — An advisory snapshot, including unavailable/unknown diagnostics.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/execution/service.py#L52-L66)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/service.py#L52-L66)
 
 ## nexuml.execution.inspect
 
@@ -92,7 +92,7 @@ Inspect a native reference without resubmitting it.
 
 - (`dict[str, Any]`) — Actual supported native observation from the registered backend.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/execution/service.py#L100-L110)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/service.py#L100-L110)
 
 ## nexuml.execution.preflight
 
@@ -114,7 +114,7 @@ Revalidate a frozen selection before any worker allocation or submission.
 
 - `ValueError` — If dependencies, scenario semantics or launch inputs are invalid.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/execution/service.py#L69-L84)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/service.py#L69-L84)
 
 ## nexuml.execution.run
 
@@ -132,7 +132,7 @@ Launch through the same installation-owned dispatch in every interface.
 
 - (`Any`) — The backend's native result, never a second training result hierarchy.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/execution/service.py#L87-L97)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/service.py#L87-L97)
 
 ## nexuml.execution.run_ray
 
@@ -155,7 +155,7 @@ Execute one resolved scenario with Ray Train and return Ray's native Result.
 - `RayExecutionError` — If the scenario cannot be executed safely with Ray or
 Ray dependencies are unavailable.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/execution/ray.py#L296-L325)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/ray.py#L296-L325)
 
 **Modules**
 

@@ -4,7 +4,7 @@
 
 Identity registry for typed component definitions.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/registry.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/registry.py#L1-L1)
 
 ## nexuml.core.registry.ComponentEntry
 
@@ -16,7 +16,7 @@ class ComponentEntry
 
 Registered stable identity and its concrete definition type.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/registry.py#L9-L17)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/registry.py#L9-L17)
 
 ### nexuml.core.registry.ComponentEntry.definition_type
 
@@ -26,7 +26,7 @@ Registered stable identity and its concrete definition type.
 definition_type: type[ComponentDefinition]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/registry.py#L16-L16)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/registry.py#L16-L16)
 
 ### nexuml.core.registry.ComponentEntry.import_target
 
@@ -36,7 +36,7 @@ definition_type: type[ComponentDefinition]
 import_target: str
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/registry.py#L17-L17)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/registry.py#L17-L17)
 
 ### nexuml.core.registry.ComponentEntry.kind
 
@@ -46,7 +46,7 @@ import_target: str
 kind: str
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/registry.py#L13-L13)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/registry.py#L13-L13)
 
 ### nexuml.core.registry.ComponentEntry.name
 
@@ -56,7 +56,7 @@ kind: str
 name: str
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/registry.py#L14-L14)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/registry.py#L14-L14)
 
 ### nexuml.core.registry.ComponentEntry.version
 
@@ -66,7 +66,7 @@ name: str
 version: str
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/registry.py#L15-L15)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/registry.py#L15-L15)
 
 ## nexuml.core.registry.ComponentRegistry
 
@@ -78,7 +78,7 @@ class ComponentRegistry
 
 Map stable component identities to concrete definition types.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/registry.py#L20-L134)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/registry.py#L20-L134)
 
 ### nexuml.core.registry.ComponentRegistry.errors
 
@@ -88,7 +88,7 @@ Map stable component identities to concrete definition types.
 errors: list[DiscoveryError]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/registry.py#L30-L32)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/registry.py#L30-L32)
 
 ### nexuml.core.registry.ComponentRegistry.ensure_loaded
 
@@ -98,7 +98,7 @@ errors: list[DiscoveryError]
 def ensure_loaded() -> None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/registry.py#L132-L134)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/registry.py#L132-L134)
 
 ### nexuml.core.registry.ComponentRegistry.entries
 
@@ -108,7 +108,7 @@ def ensure_loaded() -> None
 def entries(kind: str | None = None) -> tuple[ComponentEntry, ...]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/registry.py#L101-L106)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/registry.py#L101-L106)
 
 ### nexuml.core.registry.ComponentRegistry.entry_for_type
 
@@ -118,7 +118,7 @@ def entries(kind: str | None = None) -> tuple[ComponentEntry, ...]
 def entry_for_type(definition_type: type[ComponentDefinition]) -> ComponentEntry
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/registry.py#L93-L99)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/registry.py#L93-L99)
 
 ### nexuml.core.registry.ComponentRegistry.get_entry
 
@@ -128,7 +128,7 @@ def entry_for_type(definition_type: type[ComponentDefinition]) -> ComponentEntry
 def get_entry(kind: str, name: str, version: str = '1') -> ComponentEntry
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/registry.py#L78-L88)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/registry.py#L78-L88)
 
 ### nexuml.core.registry.ComponentRegistry.get_type
 
@@ -138,7 +138,7 @@ def get_entry(kind: str, name: str, version: str = '1') -> ComponentEntry
 def get_type(kind: str, name: str, version: str = '1') -> type[ComponentDefinition]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/registry.py#L90-L91)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/registry.py#L90-L91)
 
 ### nexuml.core.registry.ComponentRegistry.register
 
@@ -148,7 +148,7 @@ def get_type(kind: str, name: str, version: str = '1') -> type[ComponentDefiniti
 def register(name: str, definition_type: type[ComponentDefinition], *, kind: str | None = None, version: str | None = None) -> None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/registry.py#L34-L76)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/registry.py#L34-L76)
 
 ### nexuml.core.registry.ComponentRegistry.scan
 
@@ -158,7 +158,7 @@ def register(name: str, definition_type: type[ComponentDefinition], *, kind: str
 def scan(package_paths: list[str] | None = None) -> None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/registry.py#L108-L130)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/registry.py#L108-L130)
 
 ## nexuml.core.registry.get_component_registry
 
@@ -170,4 +170,4 @@ def get_component_registry() -> ComponentRegistry
 
 Return the process-wide component identity registry.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/registry.py#L140-L145)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/registry.py#L140-L145)

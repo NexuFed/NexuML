@@ -4,7 +4,7 @@
 
 HTTP presentation of existing discovery and configuration boundaries.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/config_routes.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/config_routes.py#L1-L1)
 
 ## nexuml.api.config_routes.ConfigInput
 
@@ -18,7 +18,7 @@ Bases: `BaseModel`
 
 Editable portable config; stage_order is transport metadata only.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/config_routes.py#L16-L22)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/config_routes.py#L16-L22)
 
 ### nexuml.api.config_routes.ConfigInput.data
 
@@ -28,7 +28,7 @@ Editable portable config; stage_order is transport metadata only.
 data: dict[str, Any] | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/config_routes.py#L20-L20)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/config_routes.py#L20-L20)
 
 ### nexuml.api.config_routes.ConfigInput.model_config
 
@@ -38,7 +38,7 @@ data: dict[str, Any] | None = None
 model_config = ConfigDict(extra='forbid')
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/config_routes.py#L19-L19)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/config_routes.py#L19-L19)
 
 ### nexuml.api.config_routes.ConfigInput.stage_order
 
@@ -48,7 +48,7 @@ model_config = ConfigDict(extra='forbid')
 stage_order: list[str] | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/config_routes.py#L22-L22)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/config_routes.py#L22-L22)
 
 ### nexuml.api.config_routes.ConfigInput.yaml
 
@@ -58,7 +58,7 @@ stage_order: list[str] | None = None
 yaml: str | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/config_routes.py#L21-L21)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/config_routes.py#L21-L21)
 
 ## nexuml.api.config_routes.LayoutInput
 
@@ -72,7 +72,7 @@ Bases: `nexuml.api.config_routes.PathInput`
 
 Visual metadata remains separate from executable configuration.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/config_routes.py#L39-L44)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/config_routes.py#L39-L44)
 
 ### nexuml.api.config_routes.LayoutInput.base_revision
 
@@ -82,7 +82,7 @@ Visual metadata remains separate from executable configuration.
 base_revision: str | None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/config_routes.py#L42-L42)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/config_routes.py#L42-L42)
 
 ### nexuml.api.config_routes.LayoutInput.layout
 
@@ -92,7 +92,7 @@ base_revision: str | None
 layout: dict[str, Any]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/config_routes.py#L44-L44)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/config_routes.py#L44-L44)
 
 ### nexuml.api.config_routes.LayoutInput.semantic_revision
 
@@ -102,7 +102,7 @@ layout: dict[str, Any]
 semantic_revision: str
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/config_routes.py#L43-L43)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/config_routes.py#L43-L43)
 
 ### nexuml.api.config_routes.LayoutInput.model_config
 
@@ -114,7 +114,7 @@ model_config = ConfigDict(extra='forbid')
 
 Inherited from: `nexuml.api.config_routes.PathInput`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/config_routes.py#L35-L35)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/config_routes.py#L35-L35)
 
 ### nexuml.api.config_routes.LayoutInput.path
 
@@ -126,7 +126,7 @@ path: str
 
 Inherited from: `nexuml.api.config_routes.PathInput`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/config_routes.py#L36-L36)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/config_routes.py#L36-L36)
 
 ## nexuml.api.config_routes.PathInput
 
@@ -140,7 +140,7 @@ Bases: `BaseModel`
 
 Explicit authorized path, not arbitrary filesystem browsing.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/config_routes.py#L32-L36)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/config_routes.py#L32-L36)
 
 ### nexuml.api.config_routes.PathInput.model_config
 
@@ -150,7 +150,7 @@ Explicit authorized path, not arbitrary filesystem browsing.
 model_config = ConfigDict(extra='forbid')
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/config_routes.py#L35-L35)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/config_routes.py#L35-L35)
 
 ### nexuml.api.config_routes.PathInput.path
 
@@ -160,7 +160,7 @@ model_config = ConfigDict(extra='forbid')
 path: str
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/config_routes.py#L36-L36)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/config_routes.py#L36-L36)
 
 ## nexuml.api.config_routes.SaveInput
 
@@ -174,7 +174,7 @@ Bases: `nexuml.api.config_routes.ConfigInput`
 
 Revision-protected file save; new files require a null base_revision.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/config_routes.py#L25-L29)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/config_routes.py#L25-L29)
 
 ### nexuml.api.config_routes.SaveInput.base_revision
 
@@ -184,7 +184,7 @@ Revision-protected file save; new files require a null base_revision.
 base_revision: str | None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/config_routes.py#L29-L29)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/config_routes.py#L29-L29)
 
 ### nexuml.api.config_routes.SaveInput.path
 
@@ -194,7 +194,7 @@ base_revision: str | None
 path: str
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/config_routes.py#L28-L28)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/config_routes.py#L28-L28)
 
 ### nexuml.api.config_routes.SaveInput.data
 
@@ -206,7 +206,7 @@ data: dict[str, Any] | None = None
 
 Inherited from: `nexuml.api.config_routes.ConfigInput`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/config_routes.py#L20-L20)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/config_routes.py#L20-L20)
 
 ### nexuml.api.config_routes.SaveInput.model_config
 
@@ -218,7 +218,7 @@ model_config = ConfigDict(extra='forbid')
 
 Inherited from: `nexuml.api.config_routes.ConfigInput`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/config_routes.py#L19-L19)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/config_routes.py#L19-L19)
 
 ### nexuml.api.config_routes.SaveInput.stage_order
 
@@ -230,7 +230,7 @@ stage_order: list[str] | None = None
 
 Inherited from: `nexuml.api.config_routes.ConfigInput`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/config_routes.py#L22-L22)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/config_routes.py#L22-L22)
 
 ### nexuml.api.config_routes.SaveInput.yaml
 
@@ -242,7 +242,7 @@ yaml: str | None = None
 
 Inherited from: `nexuml.api.config_routes.ConfigInput`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/config_routes.py#L21-L21)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/config_routes.py#L21-L21)
 
 ## nexuml.api.config_routes.config_router
 
@@ -258,4 +258,4 @@ Register thin synchronous routes (FastAPI runs them outside its event loop).
 
 - (`APIRouter`) — Router over the selected working directory and existing framework calls.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/api/config_routes.py#L47-L152)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/config_routes.py#L47-L152)

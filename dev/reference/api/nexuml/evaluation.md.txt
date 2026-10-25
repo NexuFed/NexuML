@@ -4,7 +4,7 @@
 
 Evaluation module for NexuML.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/evaluation/__init__.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/evaluation/__init__.py#L1-L1)
 
 ## nexuml.evaluation.EvalAlgorithm
 
@@ -32,7 +32,7 @@ Evaluation algorithms are consumer-only: they read from the pipeline output
 TensorDict and never produce new score keys. Score-producing components
 belong in the pipeline as PostTrainFitLayer subclasses.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/evaluation/algorithm.py#L127-L159)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/evaluation/algorithm.py#L127-L159)
 
 ### nexuml.evaluation.EvalAlgorithm.eval_batch
 
@@ -44,7 +44,7 @@ def eval_batch(x: TensorDict, y: TensorDict | None) -> None
 
 Score/process one test batch using fitted state.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/evaluation/algorithm.py#L148-L149)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/evaluation/algorithm.py#L148-L149)
 
 ### nexuml.evaluation.EvalAlgorithm.eval_end
 
@@ -56,7 +56,7 @@ def eval_end() -> None
 
 Finalize evaluation after all test batches.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/evaluation/algorithm.py#L151-L152)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/evaluation/algorithm.py#L151-L152)
 
 ### nexuml.evaluation.EvalAlgorithm.fit_batch
 
@@ -68,7 +68,7 @@ def fit_batch(x: TensorDict, y: TensorDict | None) -> None
 
 Accumulate statistics from one train batch.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/evaluation/algorithm.py#L142-L143)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/evaluation/algorithm.py#L142-L143)
 
 ### nexuml.evaluation.EvalAlgorithm.fit_end
 
@@ -80,7 +80,7 @@ def fit_end() -> None
 
 Finalize fitting after all train batches. Default: no-op.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/evaluation/algorithm.py#L145-L146)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/evaluation/algorithm.py#L145-L146)
 
 ### nexuml.evaluation.EvalAlgorithm.results
 
@@ -92,7 +92,7 @@ def results() -> dict[str, float]
 
 Return computed metrics as a flat dict.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/evaluation/algorithm.py#L157-L159)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/evaluation/algorithm.py#L157-L159)
 
 ### nexuml.evaluation.EvalAlgorithm.visualize
 
@@ -104,7 +104,7 @@ def visualize(logger: Any) -> None
 
 Produce visualizations and log them (optional).
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/evaluation/algorithm.py#L154-L155)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/evaluation/algorithm.py#L154-L155)
 
 ## nexuml.evaluation.create_algorithm
 
@@ -126,7 +126,7 @@ Materialize and validate an evaluation algorithm definition.
 
 - `TypeError` — If the definition builds the wrong runtime type.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/evaluation/registry.py#L10-L27)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/evaluation/registry.py#L10-L27)
 
 **Modules**
 

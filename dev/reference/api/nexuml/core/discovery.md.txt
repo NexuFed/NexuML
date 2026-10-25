@@ -8,7 +8,7 @@ Provides decorators (@layer, @data_source, @scenario, @eval_algorithm) that atta
 metadata to objects, and a Scanner that collects decorated objects from imported
 modules. Supports entry-point and local-root discovery.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/discovery.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/discovery.py#L1-L1)
 
 ## nexuml.core.discovery.DEFAULT_CONFIG_DIR
 
@@ -18,7 +18,7 @@ modules. Supports entry-point and local-root discovery.
 DEFAULT_CONFIG_DIR = Path.home() / '.config' / 'nexuml'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/discovery.py#L390-L390)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/discovery.py#L390-L390)
 
 ## nexuml.core.discovery.DEFAULT_CONFIG_PATH
 
@@ -28,7 +28,7 @@ DEFAULT_CONFIG_DIR = Path.home() / '.config' / 'nexuml'
 DEFAULT_CONFIG_PATH = DEFAULT_CONFIG_DIR / 'libraries.json'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/discovery.py#L391-L391)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/discovery.py#L391-L391)
 
 ## nexuml.core.discovery.DISCOVERED_ATTR
 
@@ -38,7 +38,7 @@ DEFAULT_CONFIG_PATH = DEFAULT_CONFIG_DIR / 'libraries.json'
 DISCOVERED_ATTR = '__nexuml_discovered__'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/discovery.py#L37-L37)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/discovery.py#L37-L37)
 
 ## nexuml.core.discovery.DefinitionT
 
@@ -48,7 +48,7 @@ DISCOVERED_ATTR = '__nexuml_discovered__'
 DefinitionT = TypeVar('DefinitionT', bound=ComponentDefinition)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/discovery.py#L130-L130)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/discovery.py#L130-L130)
 
 ## nexuml.core.discovery.logger
 
@@ -58,7 +58,7 @@ DefinitionT = TypeVar('DefinitionT', bound=ComponentDefinition)
 logger = logging.getLogger(__name__)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/discovery.py#L31-L31)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/discovery.py#L31-L31)
 
 ## nexuml.core.discovery.DiscoveredItem
 
@@ -70,7 +70,7 @@ class DiscoveredItem
 
 Metadata for a decorated discovery item.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/discovery.py#L40-L63)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/discovery.py#L40-L63)
 
 ### nexuml.core.discovery.DiscoveredItem.key
 
@@ -80,7 +80,7 @@ Metadata for a decorated discovery item.
 key = key
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/discovery.py#L54-L54)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/discovery.py#L54-L54)
 
 ### nexuml.core.discovery.DiscoveredItem.kind
 
@@ -90,7 +90,7 @@ key = key
 kind = kind
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/discovery.py#L53-L53)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/discovery.py#L53-L53)
 
 ### nexuml.core.discovery.DiscoveredItem.module
 
@@ -100,7 +100,7 @@ kind = kind
 module = module
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/discovery.py#L56-L56)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/discovery.py#L56-L56)
 
 ### nexuml.core.discovery.DiscoveredItem.obj
 
@@ -110,7 +110,7 @@ module = module
 obj = obj
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/discovery.py#L55-L55)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/discovery.py#L55-L55)
 
 ### nexuml.core.discovery.DiscoveredItem.origin
 
@@ -120,7 +120,7 @@ obj = obj
 origin = origin
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/discovery.py#L57-L57)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/discovery.py#L57-L57)
 
 ## nexuml.core.discovery.DiscoveryError
 
@@ -135,7 +135,7 @@ A failure encountered while importing or registering a discovery item.
 Collected instead of raised so that one broken module cannot hide every
 other scenario/layer/dataset/eval algorithm in the registry.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/discovery.py#L66-L101)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/discovery.py#L66-L101)
 
 ### nexuml.core.discovery.DiscoveryError.error_type
 
@@ -145,7 +145,7 @@ other scenario/layer/dataset/eval algorithm in the registry.
 error_type = error_type
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/discovery.py#L86-L86)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/discovery.py#L86-L86)
 
 ### nexuml.core.discovery.DiscoveryError.key
 
@@ -155,7 +155,7 @@ error_type = error_type
 key = key
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/discovery.py#L89-L89)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/discovery.py#L89-L89)
 
 ### nexuml.core.discovery.DiscoveryError.message
 
@@ -165,7 +165,7 @@ key = key
 message = message
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/discovery.py#L87-L87)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/discovery.py#L87-L87)
 
 ### nexuml.core.discovery.DiscoveryError.module
 
@@ -175,7 +175,7 @@ message = message
 module = module
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/discovery.py#L84-L84)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/discovery.py#L84-L84)
 
 ### nexuml.core.discovery.DiscoveryError.phase
 
@@ -185,7 +185,7 @@ module = module
 phase = phase
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/discovery.py#L85-L85)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/discovery.py#L85-L85)
 
 ### nexuml.core.discovery.DiscoveryError.traceback
 
@@ -195,7 +195,7 @@ phase = phase
 traceback = traceback
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/discovery.py#L88-L88)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/discovery.py#L88-L88)
 
 ### nexuml.core.discovery.DiscoveryError.short
 
@@ -211,7 +211,7 @@ One-line, human-readable summary for tables/log lines.
 
 - (`str`) — Compact ``module (key): error_type: message`` string.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/discovery.py#L91-L98)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/discovery.py#L91-L98)
 
 ## nexuml.core.discovery.LibraryConfig
 
@@ -223,7 +223,7 @@ class LibraryConfig
 
 User-level configuration for local library roots.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/discovery.py#L394-L433)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/discovery.py#L394-L433)
 
 ### nexuml.core.discovery.LibraryConfig.roots
 
@@ -233,7 +233,7 @@ User-level configuration for local library roots.
 roots = list(roots or [])
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/discovery.py#L400-L400)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/discovery.py#L400-L400)
 
 ### nexuml.core.discovery.LibraryConfig.add_root
 
@@ -243,7 +243,7 @@ roots = list(roots or [])
 def add_root(root: str) -> None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/discovery.py#L425-L428)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/discovery.py#L425-L428)
 
 ### nexuml.core.discovery.LibraryConfig.load
 
@@ -253,7 +253,7 @@ def add_root(root: str) -> None
 def load(path: Path | None = None) -> 'LibraryConfig'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/discovery.py#L402-L415)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/discovery.py#L402-L415)
 
 ### nexuml.core.discovery.LibraryConfig.remove_root
 
@@ -263,7 +263,7 @@ def load(path: Path | None = None) -> 'LibraryConfig'
 def remove_root(root: str) -> None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/discovery.py#L430-L433)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/discovery.py#L430-L433)
 
 ### nexuml.core.discovery.LibraryConfig.save
 
@@ -273,7 +273,7 @@ def remove_root(root: str) -> None
 def save(path: Path | None = None) -> None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/discovery.py#L417-L420)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/discovery.py#L417-L420)
 
 ## nexuml.core.discovery.Scanner
 
@@ -285,7 +285,7 @@ class Scanner
 
 Collects decorated objects from imported modules.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/discovery.py#L244-L355)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/discovery.py#L244-L355)
 
 ### nexuml.core.discovery.Scanner.errors
 
@@ -297,7 +297,7 @@ errors: list[DiscoveryError]
 
 Import/walk failures collected during scanning.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/discovery.py#L350-L352)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/discovery.py#L350-L352)
 
 ### nexuml.core.discovery.Scanner.items
 
@@ -307,7 +307,7 @@ Import/walk failures collected during scanning.
 items: list[DiscoveredItem]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/discovery.py#L346-L347)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/discovery.py#L346-L347)
 
 ### nexuml.core.discovery.Scanner.by_kind
 
@@ -317,7 +317,7 @@ items: list[DiscoveredItem]
 def by_kind(kind: str) -> list[DiscoveredItem]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/discovery.py#L354-L355)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/discovery.py#L354-L355)
 
 ### nexuml.core.discovery.Scanner.scan_module
 
@@ -333,7 +333,7 @@ Scan a single already-imported module for decorated objects.
 
 - (`list[DiscoveredItem]`) — Newly discovered items found in *module*.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/discovery.py#L269-L291)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/discovery.py#L269-L291)
 
 ### nexuml.core.discovery.Scanner.scan_package
 
@@ -355,7 +355,7 @@ what was skipped and why.
 
 - (`list[DiscoveredItem]`) — Newly discovered items across all modules in the package.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/discovery.py#L293-L332)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/discovery.py#L293-L332)
 
 ### nexuml.core.discovery.Scanner.scan_packages
 
@@ -371,7 +371,7 @@ Scan multiple package paths.
 
 - (`list[DiscoveredItem]`) — Combined list of discovered items from all packages.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/discovery.py#L334-L343)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/discovery.py#L334-L343)
 
 ## nexuml.core.discovery.data_source
 
@@ -387,7 +387,7 @@ Register a typed data-source definition.
 
 - (`Callable[[type[DefinitionT]], type[DefinitionT]]`) — Definition class decorator.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/discovery.py#L164-L174)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/discovery.py#L164-L174)
 
 ## nexuml.core.discovery.discover_entry_point_packages
 
@@ -399,7 +399,7 @@ def discover_entry_point_packages(group: str = 'nexuml.libraries') -> list[str]
 
 Return package names advertised via importlib.metadata entry points.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/discovery.py#L363-L382)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/discovery.py#L363-L382)
 
 ## nexuml.core.discovery.discover_library_packages
 
@@ -411,7 +411,7 @@ def discover_library_packages(include_entry_points: bool = True, include_local_r
 
 Return package paths from installed entry points and configured roots.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/discovery.py#L488-L499)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/discovery.py#L488-L499)
 
 ## nexuml.core.discovery.discover_local_packages
 
@@ -427,7 +427,7 @@ Discover all importable package paths under configured local roots.
 
 - (`list[str]`) — Dotted package path strings discovered under all configured roots.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/discovery.py#L475-L485)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/discovery.py#L475-L485)
 
 ## nexuml.core.discovery.eval_algorithm
 
@@ -443,7 +443,7 @@ Register a typed evaluation-algorithm definition.
 
 - (`Callable[[type[DefinitionT]], type[DefinitionT]]`) — Definition class decorator.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/discovery.py#L191-L204)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/discovery.py#L191-L204)
 
 ## nexuml.core.discovery.execution_backend
 
@@ -459,7 +459,7 @@ Register installation-owned execution settings and behavior.
 
 - (`Callable[[type[DefinitionT]], type[DefinitionT]]`) — Definition class decorator.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/discovery.py#L223-L236)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/discovery.py#L223-L236)
 
 ## nexuml.core.discovery.layer
 
@@ -475,7 +475,7 @@ Register a typed layer definition under a stable persisted identity.
 
 - (`Callable[[type[DefinitionT]], type[DefinitionT]]`) — Definition class decorator.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/discovery.py#L155-L161)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/discovery.py#L155-L161)
 
 ## nexuml.core.discovery.loader_backend
 
@@ -491,7 +491,7 @@ Register a typed loader-backend definition.
 
 - (`Callable[[type[DefinitionT]], type[DefinitionT]]`) — Definition class decorator.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/discovery.py#L207-L220)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/discovery.py#L207-L220)
 
 ## nexuml.core.discovery.register_items
 
@@ -507,7 +507,7 @@ Mirrors the resilience of :meth:`Scanner.scan_package`: a single key
 conflict or bad item must not wipe out every other item in the registry.
 Appends a :class:`DiscoveryError` (phase="register") for each failure.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/discovery.py#L507-L538)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/discovery.py#L507-L538)
 
 ## nexuml.core.discovery.scan_all
 
@@ -525,7 +525,7 @@ No persistent object cache is used; this always performs fresh imports.
 
 - (`Scanner`) — Scanner populated with all discovered items.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/discovery.py#L541-L562)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/discovery.py#L541-L562)
 
 ## nexuml.core.discovery.scenario
 
@@ -541,4 +541,4 @@ Decorator to register a scenario function.
 
 - (`Callable[[Any], Any]`) — Decorator that attaches discovery metadata to *fn*.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/core/discovery.py#L177-L188)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/discovery.py#L177-L188)

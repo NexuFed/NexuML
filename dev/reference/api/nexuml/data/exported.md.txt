@@ -4,7 +4,7 @@
 
 Dataset source for loading NexuML exported datasets.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/exported.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/exported.py#L1-L1)
 
 ## nexuml.data.exported.ExportedDataset
 
@@ -18,7 +18,7 @@ Bases: `nexuml.data.dataset.NexuDataset`
 
 Load a dataset previously written by ``export_data_module``.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/exported.py#L25-L393)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/exported.py#L25-L393)
 
 ### nexuml.data.exported.ExportedDataset.backend
 
@@ -28,7 +28,7 @@ Load a dataset previously written by ``export_data_module``.
 backend = str(config.get('writer') or config.get('backend', 'numpy'))
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/exported.py#L55-L55)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/exported.py#L55-L55)
 
 ### nexuml.data.exported.ExportedDataset.config
 
@@ -38,7 +38,7 @@ backend = str(config.get('writer') or config.get('backend', 'numpy'))
 config = cast(dict[str, Any], config)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/exported.py#L54-L54)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/exported.py#L54-L54)
 
 ### nexuml.data.exported.ExportedDataset.extra
 
@@ -48,7 +48,7 @@ config = cast(dict[str, Any], config)
 extra = cast(dict[str, Any], config.get('extra', {}) or {})
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/exported.py#L71-L71)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/exported.py#L71-L71)
 
 ### nexuml.data.exported.ExportedDataset.feature_key
 
@@ -58,7 +58,7 @@ extra = cast(dict[str, Any], config.get('extra', {}) or {})
 feature_key = self.x_keys[0]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/exported.py#L135-L135)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/exported.py#L135-L135)
 
 ### nexuml.data.exported.ExportedDataset.feature_shapes
 
@@ -68,7 +68,7 @@ feature_key = self.x_keys[0]
 feature_shapes = {key: tuple(shape) for key, shape in config.get('feature_shapes', {}) or {}.items()}
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/exported.py#L67-L69)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/exported.py#L67-L69)
 
 ### nexuml.data.exported.ExportedDataset.file_label_keys
 
@@ -78,7 +78,7 @@ feature_shapes = {key: tuple(shape) for key, shape in config.get('feature_shapes
 file_label_keys = [key for key in requested_y if key in stored_y]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/exported.py#L106-L106)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/exported.py#L106-L106)
 
 ### nexuml.data.exported.ExportedDataset.key_specs
 
@@ -88,7 +88,7 @@ file_label_keys = [key for key in requested_y if key in stored_y]
 key_specs = cast(dict[str, dict[str, Any]], config.get('key_specs', {}) or {})
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/exported.py#L70-L70)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/exported.py#L70-L70)
 
 ### nexuml.data.exported.ExportedDataset.label_names
 
@@ -98,7 +98,7 @@ key_specs = cast(dict[str, dict[str, Any]], config.get('key_specs', {}) or {})
 label_names = list(self.y_keys)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/exported.py#L133-L133)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/exported.py#L133-L133)
 
 ### nexuml.data.exported.ExportedDataset.label_prefix
 
@@ -108,7 +108,7 @@ label_names = list(self.y_keys)
 label_prefix = str(config.get('label_prefix', label_prefix))
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/exported.py#L59-L59)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/exported.py#L59-L59)
 
 ### nexuml.data.exported.ExportedDataset.meta_label_keys
 
@@ -118,7 +118,7 @@ label_prefix = str(config.get('label_prefix', label_prefix))
 meta_label_keys = [key for key in requested_y if key not in self.file_label_keys and key in metadata.columns]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/exported.py#L107-L111)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/exported.py#L107-L111)
 
 ### nexuml.data.exported.ExportedDataset.modality
 
@@ -128,7 +128,7 @@ meta_label_keys = [key for key in requested_y if key not in self.file_label_keys
 modality = str(config.get('modality', 'generic'))
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/exported.py#L58-L58)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/exported.py#L58-L58)
 
 ### nexuml.data.exported.ExportedDataset.num_classes
 
@@ -138,7 +138,7 @@ modality = str(config.get('modality', 'generic'))
 num_classes = {key: int(config_num_classes[key]) for key in self.label_names if key in config_num_classes}
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/exported.py#L137-L141)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/exported.py#L137-L141)
 
 ### nexuml.data.exported.ExportedDataset.root
 
@@ -148,7 +148,7 @@ num_classes = {key: int(config_num_classes[key]) for key in self.label_names if 
 root: Path | S3Path = S3Path.parse(root_text) if self._s3 is not None else Path(root)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/exported.py#L51-L51)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/exported.py#L51-L51)
 
 ### nexuml.data.exported.ExportedDataset.supports_dali_loader
 
@@ -158,7 +158,7 @@ root: Path | S3Path = S3Path.parse(root_text) if self._s3 is not None else Path(
 supports_dali_loader = self.backend in {'numpy', 'numpy_mmap', 'webdataset', 'tensordict_memmap', 'torch'}
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/exported.py#L60-L66)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/exported.py#L60-L66)
 
 ### nexuml.data.exported.ExportedDataset.x_keys
 
@@ -168,7 +168,7 @@ supports_dali_loader = self.backend in {'numpy', 'numpy_mmap', 'webdataset', 'te
 x_keys = requested_x
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/exported.py#L105-L105)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/exported.py#L105-L105)
 
 ### nexuml.data.exported.ExportedDataset.y_keys
 
@@ -178,7 +178,7 @@ x_keys = requested_x
 y_keys = self.file_label_keys + self.meta_label_keys
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/exported.py#L112-L112)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/exported.py#L112-L112)
 
 ### nexuml.data.exported.ExportedDataset.data
 
@@ -190,7 +190,7 @@ data = data
 
 Inherited from: `nexuml.data.dataset.NexuDataset`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/dataset.py#L58-L58)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/dataset.py#L58-L58)
 
 ### nexuml.data.exported.ExportedDataset.meta
 
@@ -202,7 +202,7 @@ meta: pd.DataFrame | None = None
 
 Inherited from: `nexuml.data.dataset.NexuDataset`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/dataset.py#L56-L56)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/dataset.py#L56-L56)
 
 ### nexuml.data.exported.ExportedDataset.split_ratio
 
@@ -214,7 +214,7 @@ split_ratio = split_ratio or [0.85, 0.1, 0.05]
 
 Inherited from: `nexuml.data.dataset.NexuDataset`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/dataset.py#L59-L59)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/dataset.py#L59-L59)
 
 ### nexuml.data.exported.ExportedDataset.is_remote
 
@@ -226,7 +226,7 @@ is_remote: bool
 
 Whether tensors are stored in S3.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/exported.py#L145-L147)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/exported.py#L145-L147)
 
 ### nexuml.data.exported.ExportedDataset.clone_with_meta
 
@@ -236,7 +236,7 @@ Whether tensors are stored in S3.
 def clone_with_meta(meta: pd.DataFrame, data=_KEEP_DATA) -> 'ExportedDataset'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/exported.py#L352-L365)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/exported.py#L352-L365)
 
 ### nexuml.data.exported.ExportedDataset.load_item
 
@@ -246,7 +246,7 @@ def clone_with_meta(meta: pd.DataFrame, data=_KEEP_DATA) -> 'ExportedDataset'
 def load_item(idx: int, row: pd.Series) -> TensorDict
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/exported.py#L367-L376)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/exported.py#L367-L376)
 
 ### nexuml.data.exported.ExportedDataset.load_labels
 
@@ -256,7 +256,7 @@ def load_item(idx: int, row: pd.Series) -> TensorDict
 def load_labels(idx: int, row: pd.Series) -> TensorDict | None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/exported.py#L378-L393)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/exported.py#L378-L393)
 
 ### nexuml.data.exported.ExportedDataset.download
 
@@ -270,7 +270,7 @@ Inherited from: `nexuml.data.dataset.NexuDataset`
 
 Override to implement dataset downloading.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/dataset.py#L276-L278)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/dataset.py#L276-L278)
 
 ### nexuml.data.exported.ExportedDataset.get_split
 
@@ -292,7 +292,7 @@ Return a view of this dataset filtered to a single split.
 
 - `ValueError` — If the dataset has no metadata.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/dataset.py#L188-L201)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/dataset.py#L188-L201)
 
 ### nexuml.data.exported.ExportedDataset.split_meta
 
@@ -306,7 +306,7 @@ Inherited from: `nexuml.data.dataset.NexuDataset`
 
 Convert 'fit' rows to train/val and 'all' rows to train/val/test.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/dataset.py#L163-L186)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/dataset.py#L163-L186)
 
 ### nexuml.data.exported.ExportedDataset.take
 
@@ -318,4 +318,4 @@ def take(indices: Sequence[int]) -> Self
 
 Inherited from: `nexuml.data.dataset.NexuDataset`
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/dataset.py#L154-L161)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/dataset.py#L154-L161)

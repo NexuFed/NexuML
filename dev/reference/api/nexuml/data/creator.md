@@ -4,7 +4,7 @@
 
 Unified dataset and datamodule creation flow.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/creator.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/creator.py#L1-L1)
 
 ## nexuml.data.creator.logger
 
@@ -14,7 +14,7 @@ Unified dataset and datamodule creation flow.
 logger = logging.getLogger('lightning.pytorch')
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/creator.py#L12-L12)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/creator.py#L12-L12)
 
 ## nexuml.data.creator.NexuDataCreator
 
@@ -26,7 +26,7 @@ class NexuDataCreator
 
 Build datasets and datamodules from a ``DataSpec``.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/creator.py#L15-L162)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/creator.py#L15-L162)
 
 ### nexuml.data.creator.NexuDataCreator.build
 
@@ -36,7 +36,7 @@ Build datasets and datamodules from a ``DataSpec``.
 def build(spec: DataSpec, default_batch_size: int | AutoBatchSizeSpec = 64) -> NexuDataModule
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/creator.py#L104-L119)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/creator.py#L104-L119)
 
 ### nexuml.data.creator.NexuDataCreator.build_dataset
 
@@ -46,4 +46,4 @@ def build(spec: DataSpec, default_batch_size: int | AutoBatchSizeSpec = 64) -> N
 def build_dataset(spec: DataSpec) -> NexuDataset
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/data/creator.py#L18-L102)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/creator.py#L18-L102)

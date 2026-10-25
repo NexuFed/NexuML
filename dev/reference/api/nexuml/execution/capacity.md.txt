@@ -4,7 +4,7 @@
 
 Kubernetes request accounting, not a replacement for the native scheduler.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/execution/capacity.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/capacity.py#L1-L1)
 
 ## nexuml.execution.capacity.node_matches
 
@@ -20,7 +20,7 @@ Check observable node constraints and per-node allocatable fit.
 
 - (`bool`) — Whether the node matches this bounded subset of scheduler constraints.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/execution/capacity.py#L104-L148)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/capacity.py#L104-L148)
 
 ## nexuml.execution.capacity.node_resources
 
@@ -36,7 +36,7 @@ Keep allocatable and estimated unallocated resources separate.
 
 - (`list[NodeResources]`) — One safe resource row per visible node.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/execution/capacity.py#L151-L191)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/capacity.py#L151-L191)
 
 ## nexuml.execution.capacity.pod_requests
 
@@ -52,7 +52,7 @@ Account for ordinary/init/sidecar containers, pod requests and overhead.
 
 - (`dict[str, float]`) — Effective requests used for native scheduling, plus one pod slot.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/execution/capacity.py#L43-L66)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/capacity.py#L43-L66)
 
 ## nexuml.execution.capacity.quantities
 
@@ -72,4 +72,4 @@ Parse native Kubernetes quantities without confusing cores, bytes and devices.
 
 - `ValueError` — For negative or nonfinite resource requests.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/execution/capacity.py#L8-L28)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/capacity.py#L8-L28)

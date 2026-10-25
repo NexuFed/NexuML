@@ -4,7 +4,7 @@
 
 Feature extraction and embedding layers.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/layers/feature/__init__.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/feature/__init__.py#L1-L1)
 
 ## nexuml_library.layers.feature.L2Normalize
 
@@ -27,7 +27,7 @@ to ``torch.nn.functional.normalize(x, p=2, dim=-1, eps=eps)``.
 
 - `eps` (`float`) — Small epsilon added to the denominator to avoid division by zero. Defaults to ``1e-12`` (matches ``F.normalize`` default).
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/layers/feature/l2_normalize.py#L24-L39)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/feature/l2_normalize.py#L24-L39)
 
 ### nexuml_library.layers.feature.L2Normalize.eps
 
@@ -37,7 +37,7 @@ to ``torch.nn.functional.normalize(x, p=2, dim=-1, eps=eps)``.
 eps: float = 1e-12
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/layers/feature/l2_normalize.py#L36-L36)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/feature/l2_normalize.py#L36-L36)
 
 ### nexuml_library.layers.feature.L2Normalize.build
 
@@ -47,7 +47,7 @@ eps: float = 1e-12
 def build(context: LayerBuildContext) -> PipelineLayer
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/layers/feature/l2_normalize.py#L38-L39)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/feature/l2_normalize.py#L38-L39)
 
 **Modules**
 

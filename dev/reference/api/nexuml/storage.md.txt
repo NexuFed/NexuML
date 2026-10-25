@@ -4,7 +4,7 @@
 
 Storage helpers for remote dataset transport.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/storage/__init__.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/storage/__init__.py#L1-L1)
 
 ## nexuml.storage.S3Client
 
@@ -18,7 +18,7 @@ Re-exported from: `nexuml.storage.s3`
 
 Lazy boto3 wrapper for the few operations NexuML actually needs.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/storage/s3.py#L50-L134)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/storage/s3.py#L50-L134)
 
 ### nexuml.storage.S3Client.endpoint_url
 
@@ -28,7 +28,7 @@ Lazy boto3 wrapper for the few operations NexuML actually needs.
 endpoint_url = endpoint_url
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/storage/s3.py#L61-L61)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/storage/s3.py#L61-L61)
 
 ### nexuml.storage.S3Client.profile
 
@@ -38,7 +38,7 @@ endpoint_url = endpoint_url
 profile = profile
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/storage/s3.py#L63-L63)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/storage/s3.py#L63-L63)
 
 ### nexuml.storage.S3Client.region
 
@@ -48,7 +48,7 @@ profile = profile
 region = region
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/storage/s3.py#L62-L62)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/storage/s3.py#L62-L62)
 
 ### nexuml.storage.S3Client.download_file
 
@@ -60,7 +60,7 @@ def download_file(source: str | S3Path, destination: str | Path) -> None
 
 Download one object to a local path.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/storage/s3.py#L116-L119)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/storage/s3.py#L116-L119)
 
 ### nexuml.storage.S3Client.list
 
@@ -76,7 +76,7 @@ List object paths below an S3 prefix.
 
 - (`builtins.list[S3Path]`) — S3 paths in provider order.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/storage/s3.py#L121-L134)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/storage/s3.py#L121-L134)
 
 ### nexuml.storage.S3Client.read_bytes
 
@@ -92,7 +92,7 @@ Read one object into memory.
 
 - (`bytes`) — Object bytes.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/storage/s3.py#L93-L101)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/storage/s3.py#L93-L101)
 
 ### nexuml.storage.S3Client.upload_bytes
 
@@ -104,7 +104,7 @@ def upload_bytes(data: bytes, destination: str | S3Path, *, exclusive: bool = Fa
 
 Upload one in-memory object to S3.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/storage/s3.py#L108-L114)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/storage/s3.py#L108-L114)
 
 ### nexuml.storage.S3Client.upload_file
 
@@ -116,7 +116,7 @@ def upload_file(source: str | Path, destination: str | S3Path) -> None
 
 Upload one local file to S3.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/storage/s3.py#L103-L106)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/storage/s3.py#L103-L106)
 
 ## nexuml.storage.S3Path
 
@@ -130,7 +130,7 @@ Re-exported from: `nexuml.storage.s3`
 
 Minimal path-like wrapper around an ``s3://`` object key.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/storage/s3.py#L13-L47)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/storage/s3.py#L13-L47)
 
 ### nexuml.storage.S3Path.bucket
 
@@ -140,7 +140,7 @@ Minimal path-like wrapper around an ``s3://`` object key.
 bucket: str
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/storage/s3.py#L17-L17)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/storage/s3.py#L17-L17)
 
 ### nexuml.storage.S3Path.key
 
@@ -150,7 +150,7 @@ bucket: str
 key: str = ''
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/storage/s3.py#L18-L18)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/storage/s3.py#L18-L18)
 
 ### nexuml.storage.S3Path.suffix
 
@@ -162,7 +162,7 @@ suffix: str
 
 Object-key suffix.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/storage/s3.py#L41-L43)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/storage/s3.py#L41-L43)
 
 ### nexuml.storage.S3Path.parse
 
@@ -182,7 +182,7 @@ Parse one S3 URI.
 
 - `ValueError` — If *value* is not a plain ``s3://bucket/key`` URI.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/storage/s3.py#L20-L33)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/storage/s3.py#L20-L33)
 
 ## nexuml.storage.is_s3_uri
 
@@ -196,7 +196,7 @@ Re-exported from: `nexuml.storage.s3`
 
 Return whether *value* is an S3 URI.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/storage/s3.py#L137-L139)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/storage/s3.py#L137-L139)
 
 **Modules**
 

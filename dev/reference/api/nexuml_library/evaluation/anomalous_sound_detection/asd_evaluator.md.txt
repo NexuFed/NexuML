@@ -8,7 +8,7 @@ Score-producing components (GroupDistancePipelineLayer, ScoreCalibrationPipeline
 ScoreReductionPipelineLayer, DecisionRulePipelineLayer) are now in
 nexuml_library.layers.head as PostTrainFitLayer subclasses.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/evaluation/anomalous_sound_detection/asd_evaluator.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/evaluation/anomalous_sound_detection/asd_evaluator.py#L1-L1)
 
 ## nexuml_library.evaluation.anomalous_sound_detection.asd_evaluator.logger
 
@@ -18,7 +18,7 @@ nexuml_library.layers.head as PostTrainFitLayer subclasses.
 logger = logging.getLogger(__name__)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/evaluation/anomalous_sound_detection/asd_evaluator.py#L32-L32)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/evaluation/anomalous_sound_detection/asd_evaluator.py#L32-L32)
 
 ## nexuml_library.evaluation.anomalous_sound_detection.asd_evaluator.AnomalyEvaluator
 
@@ -35,7 +35,7 @@ Reporting algorithm: computes AUC, pAUC, and DCASE metrics.
 Reads anomaly_score from the pipeline output TensorDict. Does not produce
 any score keys — score production is handled by pipeline layers.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/evaluation/anomalous_sound_detection/asd_evaluator.py#L74-L95)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/evaluation/anomalous_sound_detection/asd_evaluator.py#L74-L95)
 
 ### nexuml_library.evaluation.anomalous_sound_detection.asd_evaluator.AnomalyEvaluator.context_inputs
 
@@ -45,7 +45,7 @@ any score keys — score production is handled by pipeline layers.
 context_inputs = EvalContextInputs(label_key=ContextInput(default='y_true'))
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/evaluation/anomalous_sound_detection/asd_evaluator.py#L82-L82)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/evaluation/anomalous_sound_detection/asd_evaluator.py#L82-L82)
 
 ### nexuml_library.evaluation.anomalous_sound_detection.asd_evaluator.AnomalyEvaluator.dcase_metric_axes
 
@@ -55,7 +55,7 @@ context_inputs = EvalContextInputs(label_key=ContextInput(default='y_true'))
 dcase_metric_axes: dict[str, str] | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/evaluation/anomalous_sound_detection/asd_evaluator.py#L86-L86)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/evaluation/anomalous_sound_detection/asd_evaluator.py#L86-L86)
 
 ### nexuml_library.evaluation.anomalous_sound_detection.asd_evaluator.AnomalyEvaluator.decision_key
 
@@ -65,7 +65,7 @@ dcase_metric_axes: dict[str, str] | None = None
 decision_key: FeatureKey | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/evaluation/anomalous_sound_detection/asd_evaluator.py#L84-L84)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/evaluation/anomalous_sound_detection/asd_evaluator.py#L84-L84)
 
 ### nexuml_library.evaluation.anomalous_sound_detection.asd_evaluator.AnomalyEvaluator.group_keys
 
@@ -75,7 +75,7 @@ decision_key: FeatureKey | None = None
 group_keys: list[str] | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/evaluation/anomalous_sound_detection/asd_evaluator.py#L85-L85)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/evaluation/anomalous_sound_detection/asd_evaluator.py#L85-L85)
 
 ### nexuml_library.evaluation.anomalous_sound_detection.asd_evaluator.AnomalyEvaluator.max_fpr
 
@@ -85,7 +85,7 @@ group_keys: list[str] | None = None
 max_fpr: float = 0.1
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/evaluation/anomalous_sound_detection/asd_evaluator.py#L87-L87)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/evaluation/anomalous_sound_detection/asd_evaluator.py#L87-L87)
 
 ### nexuml_library.evaluation.anomalous_sound_detection.asd_evaluator.AnomalyEvaluator.score_key
 
@@ -95,7 +95,7 @@ max_fpr: float = 0.1
 score_key: FeatureKey = 'anomaly_score'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/evaluation/anomalous_sound_detection/asd_evaluator.py#L83-L83)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/evaluation/anomalous_sound_detection/asd_evaluator.py#L83-L83)
 
 ### nexuml_library.evaluation.anomalous_sound_detection.asd_evaluator.AnomalyEvaluator.build
 
@@ -105,7 +105,7 @@ score_key: FeatureKey = 'anomaly_score'
 def build(context: EvalBuildContext) -> EvalAlgorithm
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/evaluation/anomalous_sound_detection/asd_evaluator.py#L89-L95)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/evaluation/anomalous_sound_detection/asd_evaluator.py#L89-L95)
 
 ## nexuml_library.evaluation.anomalous_sound_detection.asd_evaluator.AnomalyVisualizer
 
@@ -119,7 +119,7 @@ Bases: `EvalAlgorithmDefinition`
 
 Diagnostic visualization consuming declared score, feature, and grouping axes.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/evaluation/anomalous_sound_detection/asd_evaluator.py#L190-L209)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/evaluation/anomalous_sound_detection/asd_evaluator.py#L190-L209)
 
 ### nexuml_library.evaluation.anomalous_sound_detection.asd_evaluator.AnomalyVisualizer.context_inputs
 
@@ -129,7 +129,7 @@ Diagnostic visualization consuming declared score, feature, and grouping axes.
 context_inputs = EvalContextInputs(feature_key=ContextInput(default='latent'), label_key=ContextInput(default='y_true'))
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/evaluation/anomalous_sound_detection/asd_evaluator.py#L194-L197)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/evaluation/anomalous_sound_detection/asd_evaluator.py#L194-L197)
 
 ### nexuml_library.evaluation.anomalous_sound_detection.asd_evaluator.AnomalyVisualizer.group_keys
 
@@ -139,7 +139,7 @@ context_inputs = EvalContextInputs(feature_key=ContextInput(default='latent'), l
 group_keys: list[str] | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/evaluation/anomalous_sound_detection/asd_evaluator.py#L199-L199)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/evaluation/anomalous_sound_detection/asd_evaluator.py#L199-L199)
 
 ### nexuml_library.evaluation.anomalous_sound_detection.asd_evaluator.AnomalyVisualizer.max_plot_samples
 
@@ -149,7 +149,7 @@ group_keys: list[str] | None = None
 max_plot_samples: int = 2000
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/evaluation/anomalous_sound_detection/asd_evaluator.py#L200-L200)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/evaluation/anomalous_sound_detection/asd_evaluator.py#L200-L200)
 
 ### nexuml_library.evaluation.anomalous_sound_detection.asd_evaluator.AnomalyVisualizer.score_key
 
@@ -159,7 +159,7 @@ max_plot_samples: int = 2000
 score_key: FeatureKey = 'anomaly_score'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/evaluation/anomalous_sound_detection/asd_evaluator.py#L198-L198)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/evaluation/anomalous_sound_detection/asd_evaluator.py#L198-L198)
 
 ### nexuml_library.evaluation.anomalous_sound_detection.asd_evaluator.AnomalyVisualizer.build
 
@@ -169,4 +169,4 @@ score_key: FeatureKey = 'anomaly_score'
 def build(context: EvalBuildContext) -> EvalAlgorithm
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/evaluation/anomalous_sound_detection/asd_evaluator.py#L202-L209)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/evaluation/anomalous_sound_detection/asd_evaluator.py#L202-L209)

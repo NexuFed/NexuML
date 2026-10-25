@@ -4,7 +4,7 @@
 
 Log Mel Band Energy (LMBE) feature extractor layer.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/layers/feature/lmbe.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/feature/lmbe.py#L1-L1)
 
 ## nexuml_library.layers.feature.lmbe.logger
 
@@ -14,7 +14,7 @@ Log Mel Band Energy (LMBE) feature extractor layer.
 logger = logging.getLogger(__name__)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/layers/feature/lmbe.py#L13-L13)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/feature/lmbe.py#L13-L13)
 
 ## nexuml_library.layers.feature.lmbe.LMBE
 
@@ -45,7 +45,7 @@ Optionally falls back to librosa for compatibility.
 - `pad_mode` (`str`) — Padding mode for STFT.
 - `use_librosa` (`bool`) — Use librosa backend instead of torchaudio.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/layers/feature/lmbe.py#L16-L52)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/feature/lmbe.py#L16-L52)
 
 ### nexuml_library.layers.feature.lmbe.LMBE.fmax
 
@@ -55,7 +55,7 @@ Optionally falls back to librosa for compatibility.
 fmax: int = Field(default=8000, gt=0)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/layers/feature/lmbe.py#L44-L44)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/feature/lmbe.py#L44-L44)
 
 ### nexuml_library.layers.feature.lmbe.LMBE.fmin
 
@@ -65,7 +65,7 @@ fmax: int = Field(default=8000, gt=0)
 fmin: int = Field(default=0, ge=0)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/layers/feature/lmbe.py#L43-L43)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/feature/lmbe.py#L43-L43)
 
 ### nexuml_library.layers.feature.lmbe.LMBE.hop_length
 
@@ -75,7 +75,7 @@ fmin: int = Field(default=0, ge=0)
 hop_length: int = Field(default=512, gt=0)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/layers/feature/lmbe.py#L40-L40)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/feature/lmbe.py#L40-L40)
 
 ### nexuml_library.layers.feature.lmbe.LMBE.mel_scale
 
@@ -85,7 +85,7 @@ hop_length: int = Field(default=512, gt=0)
 mel_scale: str = 'slaney'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/layers/feature/lmbe.py#L45-L45)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/feature/lmbe.py#L45-L45)
 
 ### nexuml_library.layers.feature.lmbe.LMBE.n_fft
 
@@ -95,7 +95,7 @@ mel_scale: str = 'slaney'
 n_fft: int = Field(default=1024, gt=0)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/layers/feature/lmbe.py#L39-L39)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/feature/lmbe.py#L39-L39)
 
 ### nexuml_library.layers.feature.lmbe.LMBE.n_mels
 
@@ -105,7 +105,7 @@ n_fft: int = Field(default=1024, gt=0)
 n_mels: int = Field(default=128, gt=0)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/layers/feature/lmbe.py#L38-L38)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/feature/lmbe.py#L38-L38)
 
 ### nexuml_library.layers.feature.lmbe.LMBE.normalize
 
@@ -115,7 +115,7 @@ n_mels: int = Field(default=128, gt=0)
 normalize: bool = False
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/layers/feature/lmbe.py#L49-L49)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/feature/lmbe.py#L49-L49)
 
 ### nexuml_library.layers.feature.lmbe.LMBE.pad_mode
 
@@ -125,7 +125,7 @@ normalize: bool = False
 pad_mode: str = 'constant'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/layers/feature/lmbe.py#L46-L46)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/feature/lmbe.py#L46-L46)
 
 ### nexuml_library.layers.feature.lmbe.LMBE.power
 
@@ -135,7 +135,7 @@ pad_mode: str = 'constant'
 power: int = Field(default=2, gt=0)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/layers/feature/lmbe.py#L42-L42)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/feature/lmbe.py#L42-L42)
 
 ### nexuml_library.layers.feature.lmbe.LMBE.sample_rate
 
@@ -145,7 +145,7 @@ power: int = Field(default=2, gt=0)
 sample_rate: int = Field(default=16000, gt=0)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/layers/feature/lmbe.py#L37-L37)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/feature/lmbe.py#L37-L37)
 
 ### nexuml_library.layers.feature.lmbe.LMBE.to_db
 
@@ -155,7 +155,7 @@ sample_rate: int = Field(default=16000, gt=0)
 to_db: bool = True
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/layers/feature/lmbe.py#L48-L48)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/feature/lmbe.py#L48-L48)
 
 ### nexuml_library.layers.feature.lmbe.LMBE.use_librosa
 
@@ -165,7 +165,7 @@ to_db: bool = True
 use_librosa: bool = False
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/layers/feature/lmbe.py#L47-L47)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/feature/lmbe.py#L47-L47)
 
 ### nexuml_library.layers.feature.lmbe.LMBE.win_length
 
@@ -175,7 +175,7 @@ use_librosa: bool = False
 win_length: int | None = Field(default=None, gt=0)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/layers/feature/lmbe.py#L41-L41)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/feature/lmbe.py#L41-L41)
 
 ### nexuml_library.layers.feature.lmbe.LMBE.build
 
@@ -185,4 +185,4 @@ win_length: int | None = Field(default=None, gt=0)
 def build(context: LayerBuildContext) -> PipelineLayer
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/layers/feature/lmbe.py#L51-L52)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/feature/lmbe.py#L51-L52)

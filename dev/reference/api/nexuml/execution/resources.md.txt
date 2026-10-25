@@ -4,7 +4,7 @@
 
 Bounded read-only Local and Ray resource probes; no implicit runtime startup.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/execution/resources.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/resources.py#L1-L1)
 
 ## nexuml.execution.resources.execution
 
@@ -14,7 +14,7 @@ Bounded read-only Local and Ray resource probes; no implicit runtime startup.
 execution = restore_component(kind='execution_backend', value=request['execution'])
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/execution/resources.py#L317-L317)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/resources.py#L317-L317)
 
 ## nexuml.execution.resources.request
 
@@ -24,7 +24,7 @@ execution = restore_component(kind='execution_backend', value=request['execution
 request = json.loads(sys.stdin.read())
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/execution/resources.py#L316-L316)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/resources.py#L316-L316)
 
 ## nexuml.execution.resources.result
 
@@ -34,7 +34,7 @@ request = json.loads(sys.stdin.read())
 result = _ray_resources(execution, request['timeout'], request['limit'])
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/execution/resources.py#L318-L318)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/resources.py#L318-L318)
 
 ## nexuml.execution.resources.DiscoveryBudget
 
@@ -46,7 +46,7 @@ class DiscoveryBudget
 
 One finite deadline and result bound shared by all probes in a request.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/execution/resources.py#L15-L28)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/resources.py#L15-L28)
 
 ### nexuml.execution.resources.DiscoveryBudget.deadline
 
@@ -56,7 +56,7 @@ One finite deadline and result bound shared by all probes in a request.
 deadline = time.monotonic() + timeout
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/execution/resources.py#L21-L21)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/resources.py#L21-L21)
 
 ### nexuml.execution.resources.DiscoveryBudget.limit
 
@@ -66,7 +66,7 @@ deadline = time.monotonic() + timeout
 limit = limit
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/execution/resources.py#L22-L22)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/resources.py#L22-L22)
 
 ### nexuml.execution.resources.DiscoveryBudget.remaining
 
@@ -76,7 +76,7 @@ limit = limit
 def remaining() -> float
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/execution/resources.py#L24-L28)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/resources.py#L24-L28)
 
 ## nexuml.execution.resources.local_resources
 
@@ -92,7 +92,7 @@ Inspect process-effective limits and visible accelerators without training.
 
 - (`ResourceSnapshot`) — Known limits plus explicit unknown/device-probe diagnostics.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/execution/resources.py#L116-L183)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/resources.py#L116-L183)
 
 ## nexuml.execution.resources.ray_resources
 
@@ -108,4 +108,4 @@ Isolate Ray inspection so a wedged client cannot outlive the finite budget.
 
 - (`ResourceSnapshot`) — A sourced snapshot or an explicit unknown diagnostic.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/src/nexuml/execution/resources.py#L186-L237)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/resources.py#L186-L237)

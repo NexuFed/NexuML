@@ -4,7 +4,7 @@
 
 DCASE convolutional autoencoder scenarios.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/scenarios/asd/dcase_conv_ae_baseline.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/scenarios/asd/dcase_conv_ae_baseline.py#L1-L1)
 
 ## nexuml_library.scenarios.asd.dcase_conv_ae_baseline.dcase_conv_ae
 
@@ -24,7 +24,7 @@ control. ``time_frames`` is computed from ``clip_num_samples / hop_length``.
 
 - `ScenarioSpec` (`ScenarioSpec`) — Assembled scenario with pipeline, training, data and evaluation.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/scenarios/asd/dcase_conv_ae_baseline.py#L15-L64)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/scenarios/asd/dcase_conv_ae_baseline.py#L15-L64)
 
 ## nexuml_library.scenarios.asd.dcase_conv_ae_baseline.dcase_conv_cvae
 
@@ -43,4 +43,4 @@ Machine year and data_type come from the built-in DCASE catalog when
 
 - `ScenarioSpec` (`ScenarioSpec`) — Assembled scenario with pipeline, training, data and evaluation.
 
-[View source](https://github.com/NexuFed/NexuML/blob/171c58d7e9a055ea6e378a6ff987baaded5ee009/library/src/nexuml_library/scenarios/asd/dcase_conv_ae_baseline.py#L67-L119)
+[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/scenarios/asd/dcase_conv_ae_baseline.py#L67-L119)
