@@ -212,7 +212,7 @@ jobs:
 
       - name: Upload validated distributions
         id: upload
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: python-distributions${{ env.ARTIFACT_SUFFIX }}
           retention-days: 7
@@ -297,7 +297,7 @@ jobs:
           git rev-parse HEAD > ../dist/studio/commit.txt
       - name: Upload immutable Studio distribution
         id: upload
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: studio-distribution${{ env.ARTIFACT_SUFFIX }}
           retention-days: 7
@@ -395,7 +395,7 @@ jobs:
 
       - name: Upload Studio test diagnostics
         if: ${{ always() }}
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: studio-results-${{ matrix.os }}-${{ matrix.mode }}
           retention-days: 7
@@ -494,7 +494,7 @@ jobs:
           uv run --no-project --python 3.12 python scripts/release_candidate.py create
           --dist dist --python-id "$PYTHON_ID" --studio-id "$STUDIO_ID"
           --output release-candidate/candidate.json
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
         with:
           name: release-candidate-${{ github.run_attempt }}
