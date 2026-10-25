@@ -1,10 +1,17 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
 const mount = `/${(process.env.DOCS_MOUNT ?? 'NexuML').replace(/^\/+|\/+$/g, '')}/`.replace('//', '/');
 const version = process.env.DOCS_VERSION || 'dev';
 const base = `${mount}${version}/`;
 const fallbackVersion = version === 'v0.0.0' ? 'v0.0.1' : 'v0.0.0';
+
+function collectPageErrors(page: Page) {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  page.on('response', response => { if (response.status() >= 400) errors.push(`${response.status()} ${response.url()}`); });
+  return errors;
+}
 
 test('task navigation follows the workflow without changing routes', async ({ page }, info) => {
   await page.goto(base);
@@ -33,10 +40,8 @@ test('task navigation follows the workflow without changing routes', async ({ pa
   await expect(page.locator('h1')).toHaveText('Choose an execution mode');
 });
 
-test('prose, API, CLI, diagrams, search, controls and accessible layout', async ({ page }, info) => {
-  const errors: string[] = [];
-  page.on('pageerror', error => errors.push(error.message));
-  page.on('response', response => { if (response.status() >= 400) errors.push(`${response.status()} ${response.url()}`); });
+test('prose, API and CLI have accessible layouts', async ({ page }, info) => {
+  const errors = collectPageErrors(page);
   for (const route of ['start/first-run/', 'reference/api/nexuml/', 'reference/api/nexuml_library/layers/model/linear_encoder/', 'reference/cli/']) {
     await page.goto(`${base}${route}`);
     await page.waitForLoadState('networkidle');
@@ -49,15 +54,32 @@ test('prose, API, CLI, diagrams, search, controls and accessible layout', async 
   }
   await expect(page.locator('#nexuml-train')).toBeVisible();
   await expect(page.locator('section[aria-labelledby="nexuml-train"]').getByText('--override, -O', { exact: true })).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test('architecture and generated pipeline diagrams render', async ({ page }) => {
+  const errors = collectPageErrors(page);
   await page.goto(`${base}explanation/architecture/`);
   await expect(page.locator('.mermaid svg').first()).toBeVisible();
   await page.goto(`${base}zz-generated-pipeline/`);
   await expect(page.locator('.mermaid svg').first()).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test('search finds the generated API reference', async ({ page }) => {
+  const errors = collectPageErrors(page);
+  await page.goto(`${base}start/first-run/`);
   await page.getByRole('button', { name: 'Search', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Search', exact: true });
+  await expect(dialog.getByRole('textbox', { name: 'Search', exact: true })).toBeVisible();
   await dialog.getByRole('textbox', { name: 'Search', exact: true }).fill('ScenarioSpec');
   await expect(dialog.locator('a[href*="/reference/api/"]').first()).toBeVisible();
   await page.keyboard.press('Escape');
+  expect(errors).toEqual([]);
+});
+
+test('tabs, copying, themes and keyboard navigation work', async ({ page }, info) => {
+  const errors = collectPageErrors(page);
   await page.goto(`${base}how-to/export/`);
   const tabs = page.getByRole('tab');
   expect(await tabs.count()).toBeGreaterThan(0);

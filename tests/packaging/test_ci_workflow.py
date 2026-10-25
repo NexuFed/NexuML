@@ -446,3 +446,26 @@ def test_tag_ci_prepares_every_package_checkout_before_use():
     )
     assert "--group" in action["runs"]["steps"][-1]["run"]
     assert "scripts/release_candidate.py verify" in action["runs"]["steps"][-1]["run"]
+
+
+def test_docker_prepares_tag_versions_before_validation_and_build():
+    root = Path(__file__).resolve().parents[2]
+    workflow = YAML(typ="safe").load((root / ".github/workflows/docker.yml").read_text())
+    steps = workflow["jobs"]["build"]["steps"]
+    prepared = next(
+        i for i, step in enumerate(steps) if step.get("uses") == "./.github/actions/prepare-release"
+    )
+    trusted = next(
+        i for i, step in enumerate(steps) if step.get("name") == "Validate trusted revision"
+    )
+    validated = next(
+        i for i, step in enumerate(steps) if step.get("name") == "Validate release tag"
+    )
+    built = next(
+        i
+        for i, step in enumerate(steps)
+        if step.get("uses", "").startswith("docker/build-push-action@")
+    )
+    assert steps[prepared]["if"] == "startsWith(github.ref, 'refs/tags/')"
+    assert trusted < prepared < validated < built
+    assert steps[built]["with"]["context"] == "."

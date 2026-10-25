@@ -2,7 +2,8 @@
 
 ARG UBUNTU_VERSION=24.04
 ARG CUDA_VERSION=12.8.1
-ARG PYTHON_VERSION=3.13
+ARG PYTHON_VERSION=3.12
+ARG TORCH_BACKEND=cu128
 ARG BASE_CONTAINER=nvidia/cuda:${CUDA_VERSION}-devel-ubuntu${UBUNTU_VERSION}
 
 FROM $BASE_CONTAINER
@@ -24,9 +25,12 @@ ENV USERNAME=${USERNAME}
 ARG CUDA_VERSION
 ARG UBUNTU_VERSION
 ARG PYTHON_VERSION
+ARG TORCH_BACKEND
 ENV NEXUML_CUDA_VERSION=${CUDA_VERSION} \
     NEXUML_UBUNTU_VERSION=${UBUNTU_VERSION} \
-    NEXUML_PYTHON_VERSION=${PYTHON_VERSION}
+    NEXUML_PYTHON_VERSION=${PYTHON_VERSION} \
+    NEXUML_TORCH_BACKEND=${TORCH_BACKEND}
+ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility,graphics,video,display
 
 # Expose ports
 EXPOSE 22 6007 8888
@@ -58,6 +62,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gpg \
     libopenblas-openmp-dev \
     ffmpeg \
+    libegl1 \
+    libgl1 \
+    libglib2.0-0t64 \
+    libvulkan1 \
+    vulkan-tools \
+    libxml2 \
     nano \
     && rm -rf /var/lib/apt/lists/*
 
@@ -112,16 +122,19 @@ ENV VIRTUAL_ENV=/env \
     UV_PROJECT_ENVIRONMENT=/env \
     UV_LINK_MODE=copy \
     PATH="/env/bin:$PATH"
+# TorchCodec loads NPP from the selected wheel family's runtime libraries.
+ENV LD_LIBRARY_PATH=/env/lib/python${PYTHON_VERSION}/site-packages/nvidia/npp/lib:/env/lib/python${PYTHON_VERSION}/site-packages/nvidia/cu13/lib:${LD_LIBRARY_PATH}
 WORKDIR /workspace
 
 # Resolve external dependencies before copying source so source-only changes reuse this layer.
 COPY --chown=${UID}:${GID} pyproject.toml uv.lock ./
 COPY --chown=${UID}:${GID} library/pyproject.toml library/
 RUN --mount=type=cache,target=/home/${USERNAME}/.cache/uv,uid=${UID},gid=${GID} \
-    uv sync --frozen --no-install-workspace --all-packages --all-extras
+    uv sync --frozen --no-install-workspace --all-packages --all-extras --no-extra dali --group "${TORCH_BACKEND}"
 
 COPY --chown=${UID}:${GID} . .
+# Each profile supplies DALI for its CUDA family instead of the legacy cuda120 extra.
 RUN --mount=type=cache,target=/home/${USERNAME}/.cache/uv,uid=${UID},gid=${GID} \
-    uv sync --locked --all-packages --all-extras
+    uv sync --locked --all-packages --all-extras --no-extra dali --group "${TORCH_BACKEND}"
 
 CMD ["/bin/bash"]

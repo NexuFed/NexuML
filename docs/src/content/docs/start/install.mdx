@@ -59,10 +59,38 @@ read -r -p "GHCR tag: " NEXUML_IMAGE_TAG
 test -n "$NEXUML_IMAGE_TAG" && docker run --rm -it --gpus all "ghcr.io/nexufed/nexuml:$NEXUML_IMAGE_TAG"
 ```
 
-Release tags use `<nexuml-version>-cuda<cuda-version>`; `edge-cuda` and
+Release tags use `<nexuml-version>-cuda<cuda-version>`; `edge-cuda<cuda-version>` and
 `sha-<short-sha>-cuda<cuda-version>` are development tags. GPU execution needs
 a matching NVIDIA driver and [Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html).
 Omit `--gpus all` for CPU use; mount directories if outputs must survive `--rm`.
+
+Two NVIDIA runtime variants use Python 3.12 and Ubuntu 24.04:
+
+| Image suffix | CUDA toolkit base | PyTorch wheel family | DALI |
+| --- | --- | --- | --- |
+| `cuda12.8.1` | 12.8.1 | `cu128` (CUDA 12.8) | `nvidia-dali-cuda120` |
+| `cuda13.3.1` | 13.3.1 | `cu130` (CUDA 13.0) | `nvidia-dali-cuda130` |
+
+Both install all declared feature extras from `uv.lock`, replacing the legacy
+CUDA-12 DALI extra with the matching `cu128` or `cu130` dependency group. These
+groups also select the explicit PyTorch index and NPP runtime; they cannot be
+combined. The CUDA 13 image mirrors NexuVibe's NVIDIA runtime, not its coding
+agents, cloud/VPN tooling, or private sibling repositories. The toolkit base and
+PyTorch's compiled CUDA version are checked separately; they need not be identical.
+The images request graphics/video driver capabilities as well as compute, but
+the host must supply compatible drivers through the NVIDIA Container Toolkit.
+
+For a local build, the default selects CUDA 12.8. To select the other variant:
+
+```bash
+docker build --build-arg CUDA_VERSION=13.3.1 --build-arg TORCH_BACKEND=cu130 -t nexuml:cu130 .
+```
+
+From a source checkout, `uv sync --locked --all-packages --all-extras --no-extra dali --group cu128`
+selects the CUDA 12.8 environment; use `--group cu130` for CUDA 13. All CUDA profiles
+are Linux runtime configurations, not a promise that every NVIDIA driver or
+external simulator is supported. Only features merged into the image's source
+commit are included; unmerged robotics work is not pulled into these images.
 
 ## CUDA and PyTorch
 

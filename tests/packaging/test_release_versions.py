@@ -337,3 +337,46 @@ def test_repository_branch_metadata_is_valid():
             (ROOT / "pyproject.toml").read_text(),
         )["project"]["version"]
     )
+
+
+def test_release_preparation_preserves_conflicting_cuda_profiles(checkout):
+    project = checkout / "pyproject.toml"
+    project.write_text(
+        project.read_text()
+        + """
+[dependency-groups]
+cu128 = ["cuda-runtime"]
+cu130 = ["cuda-runtime"]
+
+[tool.uv]
+conflicts = [[{ group = "cu128" }, { group = "cu130" }]]
+"""
+    )
+    for profile in ("cu128", "cu130"):
+        version = f"1.0+{profile}"
+        filename = f"cuda_runtime-{version}-py3-none-any.whl"
+        with zipfile.ZipFile(checkout / filename, "w") as wheel:
+            dist = f"cuda_runtime-{version}.dist-info"
+            wheel.writestr(
+                f"{dist}/METADATA",
+                f"Metadata-Version: 2.3\nName: cuda-runtime\nVersion: {version}\n",
+            )
+            wheel.writestr(
+                f"{dist}/WHEEL",
+                "Wheel-Version: 1.0\nRoot-Is-Purelib: true\nTag: py3-none-any\n",
+            )
+            wheel.writestr(f"{dist}/RECORD", "")
+        with project.open("a") as stream:
+            stream.write(
+                f'\n[[tool.uv.sources.cuda-runtime]]\npath = "{filename}"\ngroup = "{profile}"\n'
+            )
+    run(checkout, "uv", "lock")
+    run(checkout, "git", "add", ".")
+    run(checkout, "git", "commit", "--quiet", "-m", "Locked CUDA profile fixtures")
+    run(checkout, "git", "tag", "-a", "v0.2.2", "-m", "Local release-preparation test")
+    commit = run(checkout, "git", "rev-parse", "HEAD").stdout.strip()
+    before = release._without_release_versions(release._read_metadata(checkout))
+    assert release.prepare_release(checkout, "refs/tags/v0.2.2") == "0.2.2"
+    assert release._without_release_versions(release._read_metadata(checkout)) == before
+    assert run(checkout, "git", "rev-parse", "HEAD").stdout.strip() == commit
+    run(checkout, "uv", "lock", "--check")

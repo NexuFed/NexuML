@@ -649,6 +649,8 @@ class NexuSession:
     ) -> "NexuSession":
         """Create a session from a Lightning Trainer checkpoint.
 
+        A supplied scenario takes precedence over serialized scenario metadata.
+
         Returns:
             New ``NexuSession`` instance restored from the checkpoint.
         """
@@ -918,7 +920,8 @@ class NexuSession:
             logger.info("Post-train fit: %s done.", layer.__class__.__name__)
 
     def _resolve_scenario(self, scenario: ScenarioSpec | None) -> ScenarioSpec:
-        if self.trainer_checkpoint is not None:
+        # A supplied scenario may already contain validated CLI overrides.
+        if scenario is None and self.trainer_checkpoint is not None:
             return load_scenario_from_trainer_checkpoint(
                 self.trainer_checkpoint,
                 fallback=scenario,
@@ -1333,7 +1336,9 @@ def create_runtime_artifacts_from_trainer_checkpoint(
     Returns:
         ``RuntimeArtifacts`` reconstructed from the checkpoint.
     """
-    restored_scenario = load_scenario_from_trainer_checkpoint(checkpoint_path, fallback=scenario)
+    restored_scenario = scenario
+    if restored_scenario is None:
+        restored_scenario = load_scenario_from_trainer_checkpoint(checkpoint_path)
     restored_scenario = restored_scenario.model_copy(update={"checkpoint": None})
     data_module = create_data_module_from_spec(restored_scenario)
     lightning_module = NexuLightningModule.load_from_checkpoint(

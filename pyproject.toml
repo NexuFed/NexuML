@@ -96,6 +96,26 @@ all = [
     "nexuml[api,library,audio,data,tracking,tuning,export,ray,kubernetes,s3]",
 ]
 
+[dependency-groups]
+cu128 = [
+    "torch",
+    "torchvision",
+    "torchaudio",
+    "torchcodec",
+    "nvidia-ml-py",
+    "nvidia-dali-cuda120; sys_platform == 'linux'",
+    "nvidia-npp-cu12; sys_platform == 'linux'",
+]
+cu130 = [
+    "torch",
+    "torchvision",
+    "torchaudio",
+    "torchcodec",
+    "nvidia-ml-py",
+    "nvidia-dali-cuda130; sys_platform == 'linux'",
+    "nvidia-npp>=13,<14; sys_platform == 'linux'",
+]
+
 [project.scripts]
 nexuml = "nexuml.cli.main:app"
 
@@ -160,6 +180,22 @@ extra-paths = ["src", "library/src", "skills/nexuml-library/assets/minimal-libra
 [tool.ty.src]
 exclude = ["docs"]
 
+[tool.uv]
+conflicts = [
+    [{ group = "cu128" }, { group = "cu130" }],
+    [{ extra = "dali" }, { group = "cu130" }],
+]
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
+explicit = true
+
 [[tool.uv.index]]
 name = "nvidia-pypi"
 url = "https://pypi.nvidia.com"
@@ -169,6 +205,22 @@ explicit = true
 members = ["library"]
 
 [tool.uv.sources]
+torch = [
+    { index = "pytorch-cu128", group = "cu128" },
+    { index = "pytorch-cu130", group = "cu130" },
+]
+torchvision = [
+    { index = "pytorch-cu128", group = "cu128" },
+    { index = "pytorch-cu130", group = "cu130" },
+]
+torchaudio = [
+    { index = "pytorch-cu128", group = "cu128" },
+    { index = "pytorch-cu130", group = "cu130" },
+]
+torchcodec = [
+    { index = "pytorch-cu128", group = "cu128" },
+    { index = "pytorch-cu130", group = "cu130" },
+]
 nvidia-dali-cuda120 = [{ index = "nvidia-pypi" }]
 nexuml = { workspace = true } 
 nexuml-library = { workspace = true }
