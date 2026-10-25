@@ -1,0 +1,82 @@
+name: Documentation checks
+
+on:
+  pull_request:
+  workflow_call:
+    inputs:
+      version:
+        type: string
+        default: dev
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    # Skip fork PRs before scheduling institute runners.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ika-runner
+    timeout-minutes: 15
+    env:
+      ASTRO_TELEMETRY_DISABLED: "1"
+      DOCS_VERSION: ${{ inputs.version || 'dev' }}
+      DOCS_REVISION: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: docs/.node-version
+          cache: ${{ !startsWith(github.ref, 'refs/tags/') && 'npm' || '' }}
+          package-manager-cache: false
+          cache-dependency-path: docs/package-lock.json
+      - uses: astral-sh/setup-uv@v10.3.2
+        with:
+          version: "0.13.0"
+          python-version: "3.12"
+          enable-cache: ${{ startsWith(github.ref, 'refs/tags/') && 'false' || 'auto' }}
+      - uses: ./.github/actions/prepare-release
+        if: startsWith(github.ref, 'refs/tags/')
+      - name: Install locked documentation tools only
+        run: |
+          npm --prefix docs ci
+          npm --prefix docs run setup:python
+      - name: Validate source and rendered output
+        run: npm --prefix docs run check
+      - name: Prove automatic API discovery and both hosting mounts
+        run: npm --prefix docs run test:api
+      - name: Prove invalid content fails the gate
+        run: npm --prefix docs run test:gates
+      - name: Install headless browser
+        run: npm --prefix docs run setup:browser -- --with-deps
+      - name: Browser, accessibility, media and visual acceptance
+        run: npm --prefix docs run test:browser
+      - name: Validate the clean, fixture-free publication candidate
+        run: |
+          npm --prefix docs run check
+          docs/python/.venv/bin/python docs/scripts/verify_candidate.py --directory docs/.output --revision "$DOCS_REVISION" --version "$DOCS_VERSION"
+      - name: Upload exact-revision documentation builds
+        uses: actions/upload-artifact@v6
+        with:
+          name: docs-build-${{ github.sha }}-${{ inputs.version || 'dev' }}
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 7
+          path: |
+            docs/.output/versioned/
+            docs/.output/changelog/
+      - name: Upload acceptance diagnostics
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: docs-evidence-${{ github.sha }}-${{ inputs.version || 'dev' }}
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 7
+          path: |
+            docs/test-results/
+            docs/playwright-report/
+            docs/.output/logs/
+            docs/.output/api-proof.json

@@ -1,0 +1,150 @@
+---
+title: Build and discover a library
+description: Package reusable definitions and recipes, register installed packages or local roots, and verify discovery.
+---
+
+**Goal:** make reusable components and scenarios available to Python, CLI inspection,
+and persisted YAML restoration. **Prerequisites:** installed NexuML, an importable Python
+package, and its runtime dependencies installed in the selected environment.
+
+```text
+my_library/
+├── pyproject.toml
+└── src/my_library/
+    ├── __init__.py
+    ├── layers/
+    ├── data/
+    ├── evaluation/
+    └── scenarios/
+```
+
+Give package directories `__init__.py` files. Reuse existing components first, then follow
+the focused examples for a [layer](/how-to/custom-layer/),
+[data source](/how-to/custom-data-source/), [evaluation algorithm](/how-to/custom-eval-algorithm/),
+or [recipe](/how-to/run-scenarios/#define-a-recipe).
+
+## Definitions and runtime state
+
+Decorate public immutable definitions, not mutable runtime classes. Definitions contain
+Pydantic semantic fields and explicit build boundaries. Private runtimes hold tensors,
+modules, loaded datasets, shared storage, or accumulators. Python imports and constructs
+the definition directly:
+
+```python
+from my_library.layers.scaled_relu import ScaledReLU
+from nexuml.core.types import LayerSpec
+
+layer = LayerSpec(
+    component=ScaledReLU(scale=2.0),
+    keys_in=["features"],
+    keys_out=["activated"],
+)
+```
+
+`LayerBuildContext` supplies shapes, keys, labels, metadata, storage, and scheduling;
+those are not component constructor bags. The [custom-layer example](/how-to/custom-layer/)
+defines `ScaledReLU` completely. Other roles use `DataSourceDefinition`,
+`EvalAlgorithmDefinition`, `LoaderBackendDefinition`, or `ExecutionBackendDefinition`.
+
+## Discovery
+
+Each process scans:
+
+1. The optional built-in `nexuml_library` package, when installed.
+2. Installed packages exposing the `nexuml.libraries` entry-point group.
+3. Local roots registered with `nexuml library add`.
+
+The entry-point value names an importable package. NexuML scans its tree for decorators;
+there is no central `register_all()` function or persistent discovery cache. New modules
+in a configured root appear on the next invocation without re-registration.
+
+Decorators attach explicit kind/name/version identities. YAML stores `type`, `version`,
+and validated `params`, not the concrete semantic definition's import path. Restoration
+requires that exact identity to be discoverable. Duplicate `(kind, name, version)` identities
+fail instead of depending on import order. One broken module is recorded as a `DiscoveryError`
+without hiding unrelated valid definitions; verbose registry output exposes diagnostics.
+
+For ordinary top-level PyTorch factories with one tensor input/output,
+[`nn_module(...)`](/how-to/custom-layer/#prefer-a-direct-module) needs no per-module decorator.
+Only universal `NnModule@1` is registered; external factories are not individually scanned
+or listed. Rich context/routing/lifecycle behavior remains a registered semantic definition.
+Compiling a factory imports and invokes trusted code; registration is not a security boundary.
+
+## Installed libraries
+
+Declare the package entry point in `my_library/pyproject.toml` alongside ordinary package metadata:
+
+```toml
+[project.entry-points."nexuml.libraries"]
+my-library = "my_library"
+```
+
+Use the **importable package name**, not a function or filesystem path. Install it:
+
+```bash
+uv pip install -e /path/to/my_library
+nexuml library list
+nexuml registry list
+```
+
+Expect the installed entry point in the library list and decorated elements in registry
+output. Installing into a different interpreter or uv-tool environment does not make it
+available to the selected NexuML executable.
+
+## Local library roots
+
+For an uninstalled source tree:
+
+```bash
+mkdir -p my_library/src/my_library/layers
+touch my_library/src/my_library/__init__.py
+touch my_library/src/my_library/layers/__init__.py
+nexuml library add my_library
+nexuml library list
+nexuml registry list layers --verbose
+```
+
+The root contains importable package directories, directly or under `src/`.
+`library add` normalizes/stores its absolute path in `~/.config/nexuml/libraries.json`.
+On subsequent runs the scan root is added to `sys.path` and packages are scanned.
+The empty scaffold above has no layer until you add the decorated implementation.
+
+**Adding a source root does not install dependencies.** Install them explicitly in the same
+environment. This persistent configuration is shared by future invocations, not scoped to
+one terminal. Inspect both installed entry points and local roots with `library list`.
+
+```json
+{
+  "roots": ["/home/user/projects/my_library"]
+}
+```
+
+Remove the registration when finished:
+
+```bash
+nexuml library delete /path/to/my_library
+```
+
+This removes the root from the config; it does not delete source files or uninstall an
+installed package/entry point.
+
+## Verify all component roles
+
+```bash
+nexuml registry list
+nexuml registry list layers
+nexuml registry list data
+nexuml registry list eval
+nexuml registry list scenarios
+nexuml registry list layers --verbose
+nexuml backend list
+```
+
+Component output reports stable name/version, concrete definition type, and Pydantic fields;
+scenario output identifies recipes. Loader/execution/export/tracking catalogs are separate
+backend concerns. If an element is missing, check `library list`, the correct decorator,
+module imports, and optional dependencies, then inspect verbose discovery failures.
+
+Next, [resolve/build/run the recipe](/how-to/run-scenarios/) and inspect its explicit YAML.
+Use [registry reference](/reference/registry/) and the generated
+[decorator signatures](/reference/api/nexuml/core/discovery/) for exact contracts.

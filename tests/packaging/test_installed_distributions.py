@@ -2,6 +2,7 @@ import importlib.metadata
 import os
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -17,6 +18,13 @@ def _assert_no_source_paths() -> None:
     assert source_roots.isdisjoint(Path(path).resolve() for path in sys.path if path)
 
 
+def _expected_version() -> str:
+    return (
+        os.environ.get("NEXUML_EXPECTED_VERSION")
+        or tomllib.loads(Path("pyproject.toml").read_text())["project"]["version"]
+    )
+
+
 def test_core_distribution() -> None:
     _assert_no_source_paths()
     with pytest.raises(importlib.metadata.PackageNotFoundError):
@@ -25,14 +33,18 @@ def test_core_distribution() -> None:
     import nexuml
     import torch.nn as nn
 
-    assert nexuml.__version__ == importlib.metadata.version("nexuml")
+    assert nexuml.__version__ == importlib.metadata.version("nexuml") == _expected_version()
     assert nexuml.nn_module(nn.Identity).factory == "torch.nn.modules.linear:Identity"
     subprocess.run([sys.executable, "-I", "-m", "nexuml", "--help"], check=True)
 
 
 def test_library_distribution() -> None:
     _assert_no_source_paths()
-    assert importlib.metadata.version("nexuml-library") == importlib.metadata.version("nexuml")
+    assert (
+        importlib.metadata.version("nexuml-library")
+        == importlib.metadata.version("nexuml")
+        == _expected_version()
+    )
     entry_points = importlib.metadata.entry_points(group="nexuml.libraries")
     base = next((entry for entry in entry_points if entry.name == "base"), None)
     assert base is not None and base.value == "nexuml_library"

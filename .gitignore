@@ -251,3 +251,11 @@ studio/test-results/
 studio/LICENSE
 
 .nexuml/
+
+# Documentation build, extraction caches, and browser artifacts
+docs/node_modules/
+docs/.astro/
+docs/.generated/
+docs/.output/
+docs/test-results/
+docs/playwright-report/

@@ -1,0 +1,94 @@
+---
+title: Add a custom data source
+description: Build a NexuDataset from an immutable definition and return explicit feature and label TensorDicts.
+---
+
+**Goal:** make your dataset reusable in scenarios. **Prerequisites:** PyTorch/TensorDict,
+installed NexuML, and a [discoverable library](/how-to/custom-library/).
+Save this as `my_library/data/my_dataset.py`:
+
+```python
+import torch
+from tensordict import TensorDict
+from nexuml.core.components import DataSourceDefinition
+from nexuml.core.discovery import data_source
+from nexuml.data.dataset import NexuDataset
+
+
+@data_source("my_dataset")
+class MyDataset(DataSourceDefinition):
+    fixed_label_keys = ("label",)
+    num_samples: int = 1000
+    feature_dim: int = 64
+    seed: int = 42
+
+    def build(self) -> NexuDataset:
+        return _MyDatasetRuntime(**self.model_dump())
+
+
+class _MyDatasetRuntime(NexuDataset):
+    def __init__(self, num_samples: int, feature_dim: int, seed: int):
+        assert MyDataset.fixed_label_keys is not None
+        super().__init__(label_names=list(MyDataset.fixed_label_keys))
+        generator = torch.Generator().manual_seed(seed)
+        self.features = torch.randn(num_samples, feature_dim, generator=generator)
+        self.labels = torch.randint(0, 10, (num_samples,), generator=generator)
+
+    def __len__(self) -> int:
+        return len(self.features)
+
+    def __getitem__(self, index: int) -> tuple[TensorDict, TensorDict]:
+        x = TensorDict({"features": self.features[index]}, batch_size=[])
+        y = TensorDict({self.label_names[0]: self.labels[index]}, batch_size=[])
+        return x, y
+```
+
+The public `DataSourceDefinition` is immutable semantic configuration; loaded tensors and
+mutable dataset state belong only to the private runtime.
+
+## Compose the data view
+
+```python
+from nexuml.core.types import DataSpec, DatasetSpec
+from my_library.data.my_dataset import MyDataset
+
+data = DataSpec(
+    source=MyDataset(num_samples=2000, feature_dim=64),
+    input_shapes={"features": [64]},
+)
+
+data_list = DataSpec(
+    datasets=[DatasetSpec(source=MyDataset(num_samples=2000))],
+    input_shapes={"features": [64]},
+)
+```
+
+Split, modality, preprocessing, label merging, loader policy, and graph input shapes stay
+on `DataSpec`/`DatasetSpec`. Dataset-specific values stay on `MyDataset`.
+
+## Verify the contract
+
+- `build()` returns `NexuDataset`.
+- `__getitem__` returns `(x: TensorDict, y: TensorDict | None)`.
+- Declare fixed labels once and reuse them in the runtime. `fixed_label_keys=None` means
+  unknown, `()` means no labels. It is a class variable, not a parameter/YAML field.
+
+```python
+dataset = MyDataset(num_samples=10).build()
+x, y = dataset[0]
+assert len(dataset) == 10
+assert x["features"].shape == (64,)
+assert y is not None and "label" in y.keys()
+```
+
+After [library discovery setup](/how-to/custom-library/):
+
+```bash
+nexuml registry list data --verbose
+```
+
+Expect `my_dataset` and its semantic schema. YAML uses `type: my_dataset`, `version: '1'`,
+and validated params, not a module path. There is no file artifact until you
+[resolve a recipe](/how-to/run-scenarios/) or [export a dataset](/how-to/export-dataset/).
+Next, connect `features` and `label` to your pipeline and choose its
+[loader](/how-to/data-loading/). See [decorators](/reference/api/nexuml/core/discovery/).
