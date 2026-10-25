@@ -213,9 +213,13 @@ def analyze_gen2_failures(
         if rebuilt[key] != original[key]:
             raise ValueError(f"Frozen feature provenance changed: {key}")
     features = cast(Tensor, dataset.data).detach().cpu()
-    metadata = dataset.meta.reset_index(drop=True)
-    train_indices = [i for i, row in metadata.iterrows() if row["split"] == "train"]
-    test_indices = [i for i, row in metadata.iterrows() if row["split"] == "test"]
+    metadata = dataset.meta
+    if metadata is None:
+        raise ValueError("Gen2 failure diagnostics require asset metadata")
+    metadata = metadata.reset_index(drop=True)
+    splits = metadata["split"].tolist()
+    train_indices = [index for index, split in enumerate(splits) if split == "train"]
+    test_indices = [index for index, split in enumerate(splits) if split == "test"]
     if len(test_indices) != 100 or not train_indices:
         raise ValueError("Expected training windows and 100 official FD001 engines")
     ids = [str(metadata.iloc[index]["asset_id"]) for index in test_indices]
