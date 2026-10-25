@@ -271,6 +271,18 @@ def test_studio_promotion_requires_the_tested_registry_integrity(tmp_path, regis
         assert len(commands) == 1
 
 
+def test_robotics_discovery_runs_in_original_and_rebuilt_installed_library_smokes():
+    steps = WORKFLOW["jobs"]["package"]["steps"]
+    for name in ("Smoke test core and library wheels", "Smoke test rebuilt wheels"):
+        command = next(step["run"] for step in steps if step.get("name") == name)
+        assert "NEXUML_INSTALLED_DIST_TEST=1" in command
+        assert "test_installed_distributions.py -k library" in command
+    source = (Path(__file__).with_name("test_installed_distributions.py")).read_text()
+    assert "def test_library_discovery_does_not_import_robotics(" in source
+    metadata = Path(__file__).with_name("test_distribution_artifacts.py").read_text()
+    assert "def test_wheel_discovery_does_not_import_robotics(" not in metadata
+
+
 def test_required_ci_checks_every_job_and_fails_closed(tmp_path):
     if not shutil.which("bash"):
         pytest.skip("CI gate uses bash")

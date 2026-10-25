@@ -205,40 +205,6 @@ def test_distribution_artifacts() -> None:
     assert "ray[default,train]<2.59,>=2.57; extra == 'ray'" in core_requires
 
 
-def test_wheel_discovery_does_not_import_robotics(tmp_path):
-    root = Path(os.environ["NEXUML_DIST_ROOT"])
-    for directory in ("nexuml", "nexuml-library"):
-        with zipfile.ZipFile(_only(root / directory, "*.whl")) as archive:
-            archive.extractall(tmp_path)
-    code = """
-import importlib.abc, sys
-from pathlib import Path
-root = Path(sys.argv[1])
-sys.path.insert(0, str(root))
-blocked = {'lerobot', 'newton', 'mujoco', 'jax', 'rclpy', 'omni', 'pxr', 'torchrl', 'gymnasium'}
-class BlockNative(importlib.abc.MetaPathFinder):
-    def find_spec(self, fullname, path=None, target=None):
-        name = fullname.split('.')[0]
-        if name in blocked or name.startswith(('isaaclab', 'isaacsim')):
-            raise AssertionError('unexpected native import: ' + fullname)
-sys.meta_path.insert(0, BlockNative())
-import nexuml, nexuml_library
-assert Path(nexuml.__file__).is_relative_to(root)
-assert Path(nexuml_library.__file__).is_relative_to(root)
-from nexuml.core.scenario_registry import get_scenario_registry
-assert get_scenario_registry().get('isaac-cartpole-ppo')().interaction is not None
-assert not blocked.intersection(sys.modules)
-"""
-    result = subprocess.run(
-        [sys.executable, "-I", "-c", code, str(tmp_path)],
-        capture_output=True,
-        text=True,
-        timeout=60,
-        env={**os.environ, "CUDA_VISIBLE_DEVICES": ""},
-    )
-    assert result.returncode == 0, result.stdout + result.stderr
-
-
 @pytest.mark.skipif(
     os.environ.get("NEXUML_RUN_RESOLVER_TESTS") != "1",
     reason="explicit opt-in required for network-backed consumer resolution",
