@@ -34,9 +34,9 @@ INDEX_OUTPUT = "__index"
 
 def _to_numpy(value: Any) -> np.ndarray:
     if isinstance(value, torch.Tensor):
-        return value.detach().cpu().numpy()
+        value = value.detach().cpu().numpy()
     if isinstance(value, np.ndarray):
-        return value
+        return value if value.flags.c_contiguous else np.ascontiguousarray(value)
     if isinstance(value, np.generic):
         return np.asarray(value.item())
     return np.asarray(value)

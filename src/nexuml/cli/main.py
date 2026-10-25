@@ -207,6 +207,15 @@ def train_cmd(
         console.print("[red]Provide a scenario/config/scenario-file or --trainer-checkpoint[/red]")
         raise typer.Exit(1)
 
+    from nexuml.execution import preflight, run
+
+    if trainer_checkpoint is not None:
+        from nexuml.training.lightning import load_scenario_from_trainer_checkpoint
+
+        if scenario is not None:
+            preflight(scenario, trainer_checkpoint=trainer_checkpoint)
+        scenario = load_scenario_from_trainer_checkpoint(trainer_checkpoint, fallback=scenario)
+
     if scenario is not None and max_epochs is not None:
         scenario.training.max_epochs = max_epochs
         if (
@@ -254,14 +263,6 @@ def train_cmd(
         except Exception as exc:
             console.print(f"[yellow]Warning: diagram export failed: {exc}[/yellow]")
 
-    from nexuml.execution import preflight, run
-
-    if trainer_checkpoint is not None:
-        from nexuml.training.lightning import load_scenario_from_trainer_checkpoint
-
-        if scenario is not None:
-            preflight(scenario, trainer_checkpoint=trainer_checkpoint)
-        scenario = load_scenario_from_trainer_checkpoint(trainer_checkpoint, fallback=scenario)
     result = run(scenario, trainer_checkpoint=trainer_checkpoint)
     if loaded_file is not None and artifact_dir is not None:
         from nexuml.core.provenance import snapshot_scenario_file_run
