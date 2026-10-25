@@ -4,7 +4,7 @@
 
 Mermaid diagram export for NexuML pipelines.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/diagram.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/diagram.py#L1-L1)
 
 ## nexuml.core.diagram.build_pipeline_mermaid_diagram
 
@@ -20,7 +20,7 @@ Build a Mermaid flowchart string representing *pipeline*.
 
 - (`str`) — Complete Mermaid flowchart as a string.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/diagram.py#L241-L414)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/diagram.py#L241-L414)
 
 ## nexuml.core.diagram.export_mermaid_diagram
 
@@ -32,4 +32,4 @@ def export_mermaid_diagram(pipeline: Any, path: Path | str, **kwargs: Any) -> No
 
 Render a Mermaid diagram for *pipeline* and write it to *path* as Markdown.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/diagram.py#L417-L423)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/diagram.py#L417-L423)

@@ -4,7 +4,7 @@
 
 Generic component lowering and restoration at config boundaries.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/serialization.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/serialization.py#L1-L1)
 
 ## nexuml.core.serialization.lower_component
 
@@ -20,7 +20,7 @@ Lower a concrete definition to its stable serialized identity.
 
 - (`dict[str, Any]`) — Portable component identity and validated parameters.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/serialization.py#L16-L27)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/serialization.py#L16-L27)
 
 ## nexuml.core.serialization.lower_model
 
@@ -36,7 +36,7 @@ Recursively lower a Pydantic model and all component definitions.
 
 - (`dict[str, Any]`) — Portable plain model data.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/serialization.py#L51-L57)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/serialization.py#L51-L57)
 
 ## nexuml.core.serialization.restore_component
 
@@ -57,7 +57,7 @@ Restore a concrete definition from stable serialized data.
 - `TypeError` — If serialized parameters are not a mapping.
 - `ValueError` — If identity fields are missing or invalid.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/serialization.py#L30-L48)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/serialization.py#L30-L48)
 
 ## nexuml.core.serialization.restore_model_data
 
@@ -73,4 +73,4 @@ Restore definitions, preserving full document locations on component validation 
 
 - (`dict[str, Any]`) — Model data containing concrete component definition instances.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/serialization.py#L74-L89)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/serialization.py#L74-L89)

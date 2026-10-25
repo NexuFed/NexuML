@@ -4,7 +4,7 @@
 
 Export, reload, and selective checkpoint loading for trained pipelines.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/export.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/export.py#L1-L1)
 
 ## nexuml.core.export.CHECKPOINT_SIDECAR
 
@@ -14,7 +14,7 @@ Export, reload, and selective checkpoint loading for trained pipelines.
 CHECKPOINT_SIDECAR = 'lightning.ckpt'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/export.py#L40-L40)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/export.py#L40-L40)
 
 ## nexuml.core.export.LEGACY_PACKAGE_PICKLE_NAME
 
@@ -24,7 +24,7 @@ CHECKPOINT_SIDECAR = 'lightning.ckpt'
 LEGACY_PACKAGE_PICKLE_NAME = 'pipeline.pkl'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/export.py#L38-L38)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/export.py#L38-L38)
 
 ## nexuml.core.export.LEGACY_PACKAGE_PICKLE_PACKAGE
 
@@ -34,7 +34,7 @@ LEGACY_PACKAGE_PICKLE_NAME = 'pipeline.pkl'
 LEGACY_PACKAGE_PICKLE_PACKAGE = 'model'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/export.py#L37-L37)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/export.py#L37-L37)
 
 ## nexuml.core.export.PACKAGE_FILENAME
 
@@ -44,7 +44,7 @@ LEGACY_PACKAGE_PICKLE_PACKAGE = 'model'
 PACKAGE_FILENAME = 'pipeline.package'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/export.py#L34-L34)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/export.py#L34-L34)
 
 ## nexuml.core.export.PACKAGE_PICKLE_NAME
 
@@ -54,7 +54,7 @@ PACKAGE_FILENAME = 'pipeline.package'
 PACKAGE_PICKLE_NAME = 'artifact.pkl'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/export.py#L36-L36)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/export.py#L36-L36)
 
 ## nexuml.core.export.PACKAGE_PICKLE_PACKAGE
 
@@ -64,7 +64,7 @@ PACKAGE_PICKLE_NAME = 'artifact.pkl'
 PACKAGE_PICKLE_PACKAGE = 'nexuml_export'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/export.py#L35-L35)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/export.py#L35-L35)
 
 ## nexuml.core.export.REQUIREMENTS_FILENAME
 
@@ -74,7 +74,7 @@ PACKAGE_PICKLE_PACKAGE = 'nexuml_export'
 REQUIREMENTS_FILENAME = 'requirements.txt'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/export.py#L39-L39)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/export.py#L39-L39)
 
 ## nexuml.core.export.logger
 
@@ -84,7 +84,7 @@ REQUIREMENTS_FILENAME = 'requirements.txt'
 logger = logging.getLogger(__name__)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/export.py#L32-L32)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/export.py#L32-L32)
 
 ## nexuml.core.export.LoadReport
 
@@ -96,7 +96,7 @@ class LoadReport
 
 Selective load result for package/state reuse.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/export.py#L114-L131)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/export.py#L114-L131)
 
 ### nexuml.core.export.LoadReport.excluded
 
@@ -106,7 +106,7 @@ Selective load result for package/state reuse.
 excluded: list[str] = field(default_factory=list)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/export.py#L121-L121)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/export.py#L121-L121)
 
 ### nexuml.core.export.LoadReport.matched
 
@@ -116,7 +116,7 @@ excluded: list[str] = field(default_factory=list)
 matched: list[str] = field(default_factory=list)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/export.py#L118-L118)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/export.py#L118-L118)
 
 ### nexuml.core.export.LoadReport.missing
 
@@ -126,7 +126,7 @@ matched: list[str] = field(default_factory=list)
 missing: list[str] = field(default_factory=list)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/export.py#L119-L119)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/export.py#L119-L119)
 
 ### nexuml.core.export.LoadReport.shape_mismatched
 
@@ -136,7 +136,7 @@ missing: list[str] = field(default_factory=list)
 shape_mismatched: list[str] = field(default_factory=list)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/export.py#L122-L122)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/export.py#L122-L122)
 
 ### nexuml.core.export.LoadReport.unexpected
 
@@ -146,7 +146,7 @@ shape_mismatched: list[str] = field(default_factory=list)
 unexpected: list[str] = field(default_factory=list)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/export.py#L120-L120)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/export.py#L120-L120)
 
 ### nexuml.core.export.LoadReport.to_dict
 
@@ -156,7 +156,7 @@ unexpected: list[str] = field(default_factory=list)
 def to_dict() -> dict[str, list[str]]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/export.py#L124-L131)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/export.py#L124-L131)
 
 ## nexuml.core.export.TrainingReload
 
@@ -168,7 +168,7 @@ class TrainingReload
 
 Reloaded package prepared for current-codebase training.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/export.py#L134-L142)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/export.py#L134-L142)
 
 ### nexuml.core.export.TrainingReload.lightning_module
 
@@ -178,7 +178,7 @@ Reloaded package prepared for current-codebase training.
 lightning_module: Any
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/export.py#L139-L139)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/export.py#L139-L139)
 
 ### nexuml.core.export.TrainingReload.metadata
 
@@ -188,7 +188,7 @@ lightning_module: Any
 metadata: dict[str, Any]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/export.py#L141-L141)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/export.py#L141-L141)
 
 ### nexuml.core.export.TrainingReload.pipeline
 
@@ -198,7 +198,7 @@ metadata: dict[str, Any]
 pipeline: CompiledPipeline
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/export.py#L138-L138)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/export.py#L138-L138)
 
 ### nexuml.core.export.TrainingReload.report
 
@@ -208,7 +208,7 @@ pipeline: CompiledPipeline
 report: LoadReport
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/export.py#L142-L142)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/export.py#L142-L142)
 
 ### nexuml.core.export.TrainingReload.scenario
 
@@ -218,7 +218,7 @@ report: LoadReport
 scenario: ScenarioSpec
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/export.py#L140-L140)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/export.py#L140-L140)
 
 ## nexuml.core.export.export_onnx
 
@@ -238,7 +238,7 @@ Export an inference-only ONNX graph for single-input pipelines.
 
 - `ImportError` — If the ``onnxscript`` package is not installed.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/export.py#L963-L1003)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/export.py#L963-L1003)
 
 ## nexuml.core.export.export_package
 
@@ -265,7 +265,7 @@ Export a trained pipeline as a rich package-backed artifact directory.
 
 - (`Path`) — Path to the created export directory.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/export.py#L501-L623)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/export.py#L501-L623)
 
 ## nexuml.core.export.export_safetensors
 
@@ -281,7 +281,7 @@ Export pipeline weights as SafeTensors plus a JSON manifest.
 
 - (`Path`) — Path to the created ``.safetensors`` file.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/export.py#L917-L947)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/export.py#L917-L947)
 
 ## nexuml.core.export.infer
 
@@ -297,7 +297,7 @@ Run inference on a pipeline (eval mode, no grad).
 
 - (`TensorDict`) — Output TensorDict from the pipeline.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/export.py#L1006-L1019)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/export.py#L1006-L1019)
 
 ## nexuml.core.export.load_inference_package
 
@@ -317,7 +317,7 @@ Load the packaged pipeline object directly from the torch.package artifact.
 
 - `FileNotFoundError` — If no package artifact exists at *path*.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/export.py#L857-L877)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/export.py#L857-L877)
 
 ## nexuml.core.export.load_package
 
@@ -337,7 +337,7 @@ Reload an exported pipeline into the current codebase.
 
 - `ValueError` — If no scenario config is found in the artifact.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/export.py#L830-L854)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/export.py#L830-L854)
 
 ## nexuml.core.export.load_package_for_training
 
@@ -357,7 +357,7 @@ Reload a package into the current codebase for resume or fine-tuning.
 
 - `ValueError` — If no scenario is provided and the artifact has no packaged config.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/export.py#L880-L914)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/export.py#L880-L914)
 
 ## nexuml.core.export.load_weights
 
@@ -377,4 +377,4 @@ Selectively load weights into an already-compiled pipeline.
 
 - `ValueError` — On shape mismatch or unexpected missing keys when not allowed.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/export.py#L761-L827)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/export.py#L761-L827)

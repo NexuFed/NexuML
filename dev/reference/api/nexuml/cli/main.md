@@ -4,7 +4,7 @@
 
 NexuML CLI — entry point for all pipeline operations.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/cli/main.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/cli/main.py#L1-L1)
 
 ## nexuml.cli.main.app
 
@@ -14,7 +14,7 @@ NexuML CLI — entry point for all pipeline operations.
 app = typer.Typer(name='nexuml', help='NexuML pipeline framework CLI')
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/cli/main.py#L14-L14)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/cli/main.py#L14-L14)
 
 ## nexuml.cli.main.backend_app
 
@@ -24,7 +24,7 @@ app = typer.Typer(name='nexuml', help='NexuML pipeline framework CLI')
 backend_app = typer.Typer(help='Inspect available backend implementations')
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/cli/main.py#L649-L649)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/cli/main.py#L649-L649)
 
 ## nexuml.cli.main.click_app
 
@@ -34,7 +34,7 @@ backend_app = typer.Typer(help='Inspect available backend implementations')
 click_app = typer.main.get_command(app)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/cli/main.py#L936-L936)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/cli/main.py#L936-L936)
 
 ## nexuml.cli.main.console
 
@@ -44,7 +44,7 @@ click_app = typer.main.get_command(app)
 console = Console()
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/cli/main.py#L15-L15)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/cli/main.py#L15-L15)
 
 ## nexuml.cli.main.library_app
 
@@ -54,7 +54,7 @@ console = Console()
 library_app = typer.Typer(help='Manage local library roots')
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/cli/main.py#L814-L814)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/cli/main.py#L814-L814)
 
 ## nexuml.cli.main.registry_app
 
@@ -64,7 +64,7 @@ library_app = typer.Typer(help='Manage local library roots')
 registry_app = typer.Typer(help='Inspect discovered registry contents')
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/cli/main.py#L646-L646)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/cli/main.py#L646-L646)
 
 ## nexuml.cli.main.backend_list
 
@@ -80,7 +80,7 @@ List available backend implementations.
 
 - `typer.Exit` — If *category* does not match any registered backends.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/cli/main.py#L735-L762)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/cli/main.py#L735-L762)
 
 ## nexuml.cli.main.build
 
@@ -92,7 +92,7 @@ def build(config_path: Path = typer.Argument(help='Path to resolved YAML config'
 
 Compile and validate a pipeline from a resolved YAML config.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/cli/main.py#L110-L151)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/cli/main.py#L110-L151)
 
 ## nexuml.cli.main.execution_catalog
 
@@ -104,7 +104,7 @@ def execution_catalog()
 
 List registered execution schemas and installation support without probing targets.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/cli/main.py#L765-L771)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/cli/main.py#L765-L771)
 
 ## nexuml.cli.main.execution_discover
 
@@ -116,7 +116,7 @@ def execution_discover(config: Path = typer.Option(..., '--config', '-c'), timeo
 
 Read the configured target's sourced capacity, without starting training.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/cli/main.py#L774-L788)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/cli/main.py#L774-L788)
 
 ## nexuml.cli.main.execution_inspect
 
@@ -128,7 +128,7 @@ def execution_inspect(reference: Path = typer.Argument(...))
 
 Inspect a recorded native reference, refusing a same-named UID replacement.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/cli/main.py#L801-L811)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/cli/main.py#L801-L811)
 
 ## nexuml.cli.main.execution_preflight
 
@@ -140,7 +140,7 @@ def execution_preflight(config: Path = typer.Option(..., '--config', '-c'))
 
 Validate the exact configured execution selection without submitting a job.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/cli/main.py#L791-L798)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/cli/main.py#L791-L798)
 
 ## nexuml.cli.main.export_cmd
 
@@ -152,7 +152,7 @@ def export_cmd(scenario_name: str = typer.Argument(help='Scenario name to train 
 
 Export a trained pipeline to a portable model package.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/cli/main.py#L406-L444)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/cli/main.py#L406-L444)
 
 ## nexuml.cli.main.export_dataset_cmd
 
@@ -168,7 +168,7 @@ Export a dataset view to disk or S3 from a scenario or config.
 
 - `typer.Exit` — If preprocessing is enabled without --preprocess-until-key.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/cli/main.py#L292-L403)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/cli/main.py#L292-L403)
 
 ## nexuml.cli.main.library_add
 
@@ -180,7 +180,7 @@ def library_add(path: Path = typer.Argument(..., help='Path to local library roo
 
 Add a local library root path to the NexuML config.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/cli/main.py#L818-L831)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/cli/main.py#L818-L831)
 
 ## nexuml.cli.main.library_delete
 
@@ -196,7 +196,7 @@ Remove a local library root path from the NexuML config.
 
 - `typer.Exit` — If the path is not currently configured as a library root.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/cli/main.py#L834-L853)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/cli/main.py#L834-L853)
 
 ## nexuml.cli.main.library_list
 
@@ -208,7 +208,7 @@ def library_list()
 
 List all available library sources (installed and local).
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/cli/main.py#L856-L880)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/cli/main.py#L856-L880)
 
 ## nexuml.cli.main.registry_list
 
@@ -224,7 +224,7 @@ List registered items by kind (layers, data, scenarios, eval).
 
 - `typer.Exit` — If *kind* is not one of the recognised values.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/cli/main.py#L682-L732)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/cli/main.py#L682-L732)
 
 ## nexuml.cli.main.scenario_resolve
 
@@ -236,7 +236,7 @@ def scenario_resolve(name: str = typer.Argument(help='Scenario name'), output: O
 
 Resolve a named scenario to a YAML config file.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/cli/main.py#L89-L107)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/cli/main.py#L89-L107)
 
 ## nexuml.cli.main.serve_cmd
 
@@ -252,7 +252,7 @@ Start a loopback API using this installation; never install dependencies.
 
 - `typer.Exit` — If API dependencies or protected startup settings are missing.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/cli/main.py#L883-L930)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/cli/main.py#L883-L930)
 
 ## nexuml.cli.main.smoke
 
@@ -264,7 +264,7 @@ def smoke(scenario_name: str = typer.Argument(default='synthetic-linear-ae-recon
 
 Run a full smoke-test: resolve → build → train → export → reload → infer.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/cli/main.py#L447-L509)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/cli/main.py#L447-L509)
 
 ## nexuml.cli.main.train_cmd
 
@@ -280,7 +280,7 @@ Train a pipeline from a scenario name or config file.
 
 - `typer.Exit` — If input validation fails or training encounters an error.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/cli/main.py#L154-L289)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/cli/main.py#L154-L289)
 
 ## nexuml.cli.main.tune_cmd
 
@@ -296,4 +296,4 @@ Tune a scenario's hyperparameters with Optuna using a default search space.
 
 - `typer.Exit` — If scenario input is ambiguous or loading fails.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/cli/main.py#L512-L643)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/cli/main.py#L512-L643)

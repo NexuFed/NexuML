@@ -4,7 +4,7 @@
 
 NumPy memory-mapped export backend.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/export/numpy_mmap.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/numpy_mmap.py#L1-L1)
 
 ## nexuml.data.export.numpy_mmap.logger
 
@@ -14,7 +14,7 @@ NumPy memory-mapped export backend.
 logger = logging.getLogger(__name__)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/export/numpy_mmap.py#L14-L14)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/numpy_mmap.py#L14-L14)
 
 ## nexuml.data.export.numpy_mmap.NumpyMmapBackend
 
@@ -32,7 +32,7 @@ Pre-allocates a single `.npy` file per feature key with shape
 `(num_samples, *feature_shape)` for efficient sequential writes and
 memory-mapped reads. Requires all samples to have uniform feature shapes.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/export/numpy_mmap.py#L17-L170)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/numpy_mmap.py#L17-L170)
 
 ### nexuml.data.export.numpy_mmap.NumpyMmapBackend.finalize
 
@@ -42,7 +42,7 @@ memory-mapped reads. Requires all samples to have uniform feature shapes.
 def finalize() -> dict[str, Any]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/export/numpy_mmap.py#L128-L152)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/numpy_mmap.py#L128-L152)
 
 ### nexuml.data.export.numpy_mmap.NumpyMmapBackend.initialize
 
@@ -52,7 +52,7 @@ def finalize() -> dict[str, Any]
 def initialize(export_dir: Path, num_samples: int, feature_shapes: dict[str, tuple[int, ...]], dtype: np.dtype[Any] | str | None = None) -> None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/export/numpy_mmap.py#L34-L65)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/numpy_mmap.py#L34-L65)
 
 ### nexuml.data.export.numpy_mmap.NumpyMmapBackend.load_sample
 
@@ -62,7 +62,7 @@ def initialize(export_dir: Path, num_samples: int, feature_shapes: dict[str, tup
 def load_sample(export_dir: Path, index: int) -> dict[str, torch.Tensor]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/export/numpy_mmap.py#L154-L170)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/numpy_mmap.py#L154-L170)
 
 ### nexuml.data.export.numpy_mmap.NumpyMmapBackend.save_batch
 
@@ -72,7 +72,7 @@ def load_sample(export_dir: Path, index: int) -> dict[str, torch.Tensor]
 def save_batch(start_index: int, features: dict[str, torch.Tensor]) -> None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/export/numpy_mmap.py#L92-L126)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/numpy_mmap.py#L92-L126)
 
 ### nexuml.data.export.numpy_mmap.NumpyMmapBackend.save_sample
 
@@ -82,4 +82,4 @@ def save_batch(start_index: int, features: dict[str, torch.Tensor]) -> None
 def save_sample(index: int, features: dict[str, torch.Tensor]) -> None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/export/numpy_mmap.py#L67-L90)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/numpy_mmap.py#L67-L90)

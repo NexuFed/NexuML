@@ -4,7 +4,7 @@
 
 DALI NumPy pipeline for file-backed numpy datasets.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/dali_numpy.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/loaders/dali_numpy.py#L1-L1)
 
 ## nexuml.data.loaders.dali_numpy.logger
 
@@ -14,7 +14,7 @@ DALI NumPy pipeline for file-backed numpy datasets.
 logger = logging.getLogger(__name__)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/dali_numpy.py#L13-L13)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/loaders/dali_numpy.py#L13-L13)
 
 ## nexuml.data.loaders.dali_numpy.PyTorchIterator
 
@@ -28,7 +28,7 @@ Bases: `DALIGenericIterator`
 
 DALIGenericIterator with filename-based label lookup for NumPy datasets.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/dali_numpy.py#L16-L38)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/loaders/dali_numpy.py#L16-L38)
 
 ### nexuml.data.loaders.dali_numpy.PyTorchIterator.labels
 
@@ -38,7 +38,7 @@ DALIGenericIterator with filename-based label lookup for NumPy datasets.
 labels = labels
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/dali_numpy.py#L21-L21)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/loaders/dali_numpy.py#L21-L21)
 
 ## nexuml.data.loaders.dali_numpy.DaliNumpyPipeline
 
@@ -54,7 +54,7 @@ Build and return a DALI numpy pipeline as a PyTorchIterator.
 
 - (`PyTorchIterator`) — A ``PyTorchIterator`` over the built DALI pipeline.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/dali_numpy.py#L101-L165)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/loaders/dali_numpy.py#L101-L165)
 
 ## nexuml.data.loaders.dali_numpy.numpy_data_pipeline
 
@@ -70,4 +70,4 @@ Load pre-encoded NumPy arrays with DALI native reader.
 
 - (`Any`) — Tuple of audio tensor and integer file-index label.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/dali_numpy.py#L41-L98)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/loaders/dali_numpy.py#L41-L98)

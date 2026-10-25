@@ -4,7 +4,7 @@
 
 Trusted Python scenario/tuning file loading.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/scenario_loader.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/scenario_loader.py#L1-L1)
 
 ## nexuml.core.scenario_loader.LoadedScenarioFile
 
@@ -16,7 +16,7 @@ class LoadedScenarioFile
 
 Loaded trusted scenario file plus optional agent metadata.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/scenario_loader.py#L15-L27)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/scenario_loader.py#L15-L27)
 
 ### nexuml.core.scenario_loader.LoadedScenarioFile.build_factory
 
@@ -26,7 +26,7 @@ Loaded trusted scenario file plus optional agent metadata.
 build_factory: Callable[..., ScenarioSpec] | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/scenario_loader.py#L27-L27)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/scenario_loader.py#L27-L27)
 
 ### nexuml.core.scenario_loader.LoadedScenarioFile.hypothesis
 
@@ -36,7 +36,7 @@ build_factory: Callable[..., ScenarioSpec] | None = None
 hypothesis: str | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/scenario_loader.py#L22-L22)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/scenario_loader.py#L22-L22)
 
 ### nexuml.core.scenario_loader.LoadedScenarioFile.parent
 
@@ -46,7 +46,7 @@ hypothesis: str | None = None
 parent: str | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/scenario_loader.py#L23-L23)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/scenario_loader.py#L23-L23)
 
 ### nexuml.core.scenario_loader.LoadedScenarioFile.path
 
@@ -56,7 +56,7 @@ parent: str | None = None
 path: Path
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/scenario_loader.py#L19-L19)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/scenario_loader.py#L19-L19)
 
 ### nexuml.core.scenario_loader.LoadedScenarioFile.scenario
 
@@ -66,7 +66,7 @@ path: Path
 scenario: ScenarioSpec
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/scenario_loader.py#L20-L20)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/scenario_loader.py#L20-L20)
 
 ### nexuml.core.scenario_loader.LoadedScenarioFile.search_space
 
@@ -76,7 +76,7 @@ scenario: ScenarioSpec
 search_space: dict[str, dict[str, Any]] | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/scenario_loader.py#L25-L25)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/scenario_loader.py#L25-L25)
 
 ### nexuml.core.scenario_loader.LoadedScenarioFile.source
 
@@ -86,7 +86,7 @@ search_space: dict[str, dict[str, Any]] | None = None
 source: str
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/scenario_loader.py#L21-L21)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/scenario_loader.py#L21-L21)
 
 ### nexuml.core.scenario_loader.LoadedScenarioFile.tags
 
@@ -96,7 +96,7 @@ source: str
 tags: list[str] = field(default_factory=list)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/scenario_loader.py#L24-L24)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/scenario_loader.py#L24-L24)
 
 ### nexuml.core.scenario_loader.LoadedScenarioFile.tuning_spec
 
@@ -106,7 +106,7 @@ tags: list[str] = field(default_factory=list)
 tuning_spec: TuningSpec | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/scenario_loader.py#L26-L26)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/scenario_loader.py#L26-L26)
 
 ## nexuml.core.scenario_loader.load_scenario_file
 
@@ -128,7 +128,7 @@ Load a trusted Python file exposing ``scenario() -> ScenarioSpec``.
 - `ValueError` — If the file is not a ``.py`` file or lacks a callable ``scenario()``.
 - `TypeError` — If ``scenario()`` does not return a ``ScenarioSpec``.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/scenario_loader.py#L166-L205)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/scenario_loader.py#L166-L205)
 
 ## nexuml.core.scenario_loader.project_root_for
 
@@ -140,4 +140,4 @@ def project_root_for(path: Path) -> Path
 
 Return the project root directory for a given path.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/scenario_loader.py#L30-L36)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/scenario_loader.py#L30-L36)

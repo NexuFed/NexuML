@@ -4,7 +4,7 @@
 
 AudioSet dataset source for NexuML.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/audioset/audioset.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/audioset/audioset.py#L1-L1)
 
 ## nexuml_library.data.audioset.audioset.logger
 
@@ -14,7 +14,7 @@ AudioSet dataset source for NexuML.
 logger = logging.getLogger(__name__)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/audioset/audioset.py#L21-L21)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/audioset/audioset.py#L21-L21)
 
 ## nexuml_library.data.audioset.audioset.AudiosetDataset
 
@@ -45,7 +45,7 @@ Label columns: class (int index), class_logits (multi-hot list).
 - `len_seconds` (`float`) — Minimum audio duration in seconds to include a file.
 - `sample_rate` (`int`) — Target sample rate for audio loading.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/audioset/audioset.py#L89-L117)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/audioset/audioset.py#L89-L117)
 
 ### nexuml_library.data.audioset.audioset.AudiosetDataset.data_dir
 
@@ -55,7 +55,7 @@ Label columns: class (int index), class_logits (multi-hot list).
 data_dir: str | Path = 'data/audioset/eval'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/audioset/audioset.py#L110-L110)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/audioset/audioset.py#L110-L110)
 
 ### nexuml_library.data.audioset.audioset.AudiosetDataset.len_seconds
 
@@ -65,7 +65,7 @@ data_dir: str | Path = 'data/audioset/eval'
 len_seconds: float = 5.0
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/audioset/audioset.py#L113-L113)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/audioset/audioset.py#L113-L113)
 
 ### nexuml_library.data.audioset.audioset.AudiosetDataset.meta_dir
 
@@ -75,7 +75,7 @@ len_seconds: float = 5.0
 meta_dir: str | Path = 'data/AudioSet/meta'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/audioset/audioset.py#L111-L111)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/audioset/audioset.py#L111-L111)
 
 ### nexuml_library.data.audioset.audioset.AudiosetDataset.perform_checks
 
@@ -85,7 +85,7 @@ meta_dir: str | Path = 'data/AudioSet/meta'
 perform_checks: bool = True
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/audioset/audioset.py#L112-L112)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/audioset/audioset.py#L112-L112)
 
 ### nexuml_library.data.audioset.audioset.AudiosetDataset.sample_rate
 
@@ -95,7 +95,7 @@ perform_checks: bool = True
 sample_rate: int = 16000
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/audioset/audioset.py#L114-L114)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/audioset/audioset.py#L114-L114)
 
 ### nexuml_library.data.audioset.audioset.AudiosetDataset.build
 
@@ -105,4 +105,4 @@ sample_rate: int = 16000
 def build() -> NexuDataset
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/audioset/audioset.py#L116-L117)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/audioset/audioset.py#L116-L117)

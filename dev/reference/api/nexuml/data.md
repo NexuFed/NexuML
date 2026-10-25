@@ -4,7 +4,7 @@
 
 Data loading primitives for NexuML.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/__init__.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/__init__.py#L1-L1)
 
 ## nexuml.data.DaliLoader
 
@@ -20,7 +20,7 @@ Re-exported from: `nexuml.data.loaders.definitions`
 
 Use the NVIDIA DALI data loader backend.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/definitions.py#L19-L26)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/loaders/definitions.py#L19-L26)
 
 ### nexuml.data.DaliLoader.kind
 
@@ -32,7 +32,7 @@ kind = 'loader_backend'
 
 Inherited from: `nexuml.core.components.LoaderBackendDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L159-L159)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/components.py#L159-L159)
 
 ### nexuml.data.DaliLoader.component_name
 
@@ -44,7 +44,7 @@ component_name: str
 
 Inherited from: `nexuml.core.components.ComponentDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L34-L34)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/components.py#L34-L34)
 
 ### nexuml.data.DaliLoader.component_version
 
@@ -56,7 +56,7 @@ component_version: str = '1'
 
 Inherited from: `nexuml.core.components.ComponentDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L35-L35)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/components.py#L35-L35)
 
 ### nexuml.data.DaliLoader.model_config
 
@@ -68,7 +68,7 @@ model_config = ConfigDict(extra='forbid', frozen=True, validate_default=True, al
 
 Inherited from: `nexuml.core.components.ComponentDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L25-L31)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/components.py#L25-L31)
 
 ### nexuml.data.DaliLoader.build
 
@@ -78,7 +78,7 @@ Inherited from: `nexuml.core.components.ComponentDefinition`
 def build()
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/definitions.py#L23-L26)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/loaders/definitions.py#L23-L26)
 
 ## nexuml.data.NexuDataCreator
 
@@ -92,7 +92,7 @@ Re-exported from: `nexuml.data.creator`
 
 Build datasets and datamodules from a ``DataSpec``.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/creator.py#L15-L162)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/creator.py#L15-L162)
 
 ### nexuml.data.NexuDataCreator.build
 
@@ -102,7 +102,7 @@ Build datasets and datamodules from a ``DataSpec``.
 def build(spec: DataSpec, default_batch_size: int | AutoBatchSizeSpec = 64) -> NexuDataModule
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/creator.py#L104-L119)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/creator.py#L104-L119)
 
 ### nexuml.data.NexuDataCreator.build_dataset
 
@@ -112,7 +112,7 @@ def build(spec: DataSpec, default_batch_size: int | AutoBatchSizeSpec = 64) -> N
 def build_dataset(spec: DataSpec) -> NexuDataset
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/creator.py#L18-L102)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/creator.py#L18-L102)
 
 ## nexuml.data.NexuDataModule
 
@@ -133,7 +133,7 @@ Supports:
 - weighted sampling for the native torch backend
 - backend-driven loader construction via ``LoaderSpec.backend``
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/module.py#L18-L154)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/module.py#L18-L154)
 
 ### nexuml.data.NexuDataModule.dataset
 
@@ -143,7 +143,7 @@ Supports:
 dataset = dataset
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/module.py#L38-L38)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/module.py#L38-L38)
 
 ### nexuml.data.NexuDataModule.loader_spec
 
@@ -153,7 +153,7 @@ dataset = dataset
 loader_spec = loader_spec or LoaderSpec()
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/module.py#L39-L39)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/module.py#L39-L39)
 
 ### nexuml.data.NexuDataModule.seed
 
@@ -163,7 +163,7 @@ loader_spec = loader_spec or LoaderSpec()
 seed = seed
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/module.py#L43-L43)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/module.py#L43-L43)
 
 ### nexuml.data.NexuDataModule.split_by_column
 
@@ -173,7 +173,7 @@ seed = seed
 split_by_column = split_by_column
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/module.py#L44-L44)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/module.py#L44-L44)
 
 ### nexuml.data.NexuDataModule.test_split
 
@@ -183,7 +183,7 @@ split_by_column = split_by_column
 test_split = test_split
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/module.py#L42-L42)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/module.py#L42-L42)
 
 ### nexuml.data.NexuDataModule.train_split
 
@@ -193,7 +193,7 @@ test_split = test_split
 train_split = train_split
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/module.py#L40-L40)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/module.py#L40-L40)
 
 ### nexuml.data.NexuDataModule.val_split
 
@@ -203,7 +203,7 @@ train_split = train_split
 val_split = val_split
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/module.py#L41-L41)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/module.py#L41-L41)
 
 ### nexuml.data.NexuDataModule.predict_dataloader
 
@@ -213,7 +213,7 @@ val_split = val_split
 def predict_dataloader()
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/module.py#L153-L154)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/module.py#L153-L154)
 
 ### nexuml.data.NexuDataModule.setup
 
@@ -223,7 +223,7 @@ def predict_dataloader()
 def setup(stage: str | None = None) -> None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/module.py#L49-L56)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/module.py#L49-L56)
 
 ### nexuml.data.NexuDataModule.test_dataloader
 
@@ -233,7 +233,7 @@ def setup(stage: str | None = None) -> None
 def test_dataloader()
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/module.py#L150-L151)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/module.py#L150-L151)
 
 ### nexuml.data.NexuDataModule.train_dataloader
 
@@ -243,7 +243,7 @@ def test_dataloader()
 def train_dataloader()
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/module.py#L138-L145)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/module.py#L138-L145)
 
 ### nexuml.data.NexuDataModule.val_dataloader
 
@@ -253,7 +253,7 @@ def train_dataloader()
 def val_dataloader()
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/module.py#L147-L148)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/module.py#L147-L148)
 
 ## nexuml.data.NexuDataset
 
@@ -276,7 +276,7 @@ The base class supports two common patterns used throughout NexuML:
 
 Subclasses can still override ``__getitem__`` entirely for bespoke behavior.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/dataset.py#L34-L278)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/dataset.py#L34-L278)
 
 ### nexuml.data.NexuDataset.data
 
@@ -286,7 +286,7 @@ Subclasses can still override ``__getitem__`` entirely for bespoke behavior.
 data = data
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/dataset.py#L58-L58)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/dataset.py#L58-L58)
 
 ### nexuml.data.NexuDataset.label_names
 
@@ -296,7 +296,7 @@ data = data
 label_names: list[str] = list(label_names or [])
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/dataset.py#L60-L60)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/dataset.py#L60-L60)
 
 ### nexuml.data.NexuDataset.meta
 
@@ -306,7 +306,7 @@ label_names: list[str] = list(label_names or [])
 meta: pd.DataFrame | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/dataset.py#L56-L56)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/dataset.py#L56-L56)
 
 ### nexuml.data.NexuDataset.modality
 
@@ -316,7 +316,7 @@ meta: pd.DataFrame | None = None
 modality = modality
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/dataset.py#L57-L57)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/dataset.py#L57-L57)
 
 ### nexuml.data.NexuDataset.num_classes
 
@@ -326,7 +326,7 @@ modality = modality
 num_classes: dict[str, int] = {}
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/dataset.py#L61-L61)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/dataset.py#L61-L61)
 
 ### nexuml.data.NexuDataset.split_ratio
 
@@ -336,7 +336,7 @@ num_classes: dict[str, int] = {}
 split_ratio = split_ratio or [0.85, 0.1, 0.05]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/dataset.py#L59-L59)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/dataset.py#L59-L59)
 
 ### nexuml.data.NexuDataset.clone_with_meta
 
@@ -346,7 +346,7 @@ split_ratio = split_ratio or [0.85, 0.1, 0.05]
 def clone_with_meta(meta: pd.DataFrame, data=_KEEP_DATA) -> Self
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/dataset.py#L119-L128)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/dataset.py#L119-L128)
 
 ### nexuml.data.NexuDataset.download
 
@@ -358,7 +358,7 @@ def download() -> None
 
 Override to implement dataset downloading.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/dataset.py#L276-L278)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/dataset.py#L276-L278)
 
 ### nexuml.data.NexuDataset.get_split
 
@@ -378,7 +378,7 @@ Return a view of this dataset filtered to a single split.
 
 - `ValueError` — If the dataset has no metadata.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/dataset.py#L188-L201)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/dataset.py#L188-L201)
 
 ### nexuml.data.NexuDataset.load_item
 
@@ -396,7 +396,7 @@ Subclasses can override this to lazily load file-backed content.
 
 - (`TensorDict`) — Feature tensor dictionary for the sample.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/dataset.py#L203-L227)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/dataset.py#L203-L227)
 
 ### nexuml.data.NexuDataset.load_labels
 
@@ -415,7 +415,7 @@ Subclasses can override this for file-backed or computed targets.
 
 - (`TensorDict | None`) — Label tensor dictionary, or ``None`` if no labels are configured.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/dataset.py#L237-L255)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/dataset.py#L237-L255)
 
 ### nexuml.data.NexuDataset.split_meta
 
@@ -427,7 +427,7 @@ def split_meta(split_ratio: list[float]) -> None
 
 Convert 'fit' rows to train/val and 'all' rows to train/val/test.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/dataset.py#L163-L186)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/dataset.py#L163-L186)
 
 ### nexuml.data.NexuDataset.take
 
@@ -437,7 +437,7 @@ Convert 'fit' rows to train/val and 'all' rows to train/val/test.
 def take(indices: Sequence[int]) -> Self
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/dataset.py#L154-L161)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/dataset.py#L154-L161)
 
 ## nexuml.data.TensorShardsLoader
 
@@ -453,7 +453,7 @@ Re-exported from: `nexuml.data.loaders.definitions`
 
 Configure the windowed tensor-shard loader backend.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/definitions.py#L29-L45)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/loaders/definitions.py#L29-L45)
 
 ### nexuml.data.TensorShardsLoader.drop_last
 
@@ -463,7 +463,7 @@ Configure the windowed tensor-shard loader backend.
 drop_last: bool = False
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/definitions.py#L39-L39)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/loaders/definitions.py#L39-L39)
 
 ### nexuml.data.TensorShardsLoader.pin_memory
 
@@ -473,7 +473,7 @@ drop_last: bool = False
 pin_memory: bool = False
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/definitions.py#L38-L38)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/loaders/definitions.py#L38-L38)
 
 ### nexuml.data.TensorShardsLoader.prefetch_windows
 
@@ -483,7 +483,7 @@ pin_memory: bool = False
 prefetch_windows: int = 2
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/definitions.py#L34-L34)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/loaders/definitions.py#L34-L34)
 
 ### nexuml.data.TensorShardsLoader.prefetch_workers
 
@@ -493,7 +493,7 @@ prefetch_windows: int = 2
 prefetch_workers: int = 2
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/definitions.py#L35-L35)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/loaders/definitions.py#L35-L35)
 
 ### nexuml.data.TensorShardsLoader.seed
 
@@ -503,7 +503,7 @@ prefetch_workers: int = 2
 seed: int | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/definitions.py#L40-L40)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/loaders/definitions.py#L40-L40)
 
 ### nexuml.data.TensorShardsLoader.shards_per_window
 
@@ -513,7 +513,7 @@ seed: int | None = None
 shards_per_window: int = 6
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/definitions.py#L33-L33)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/loaders/definitions.py#L33-L33)
 
 ### nexuml.data.TensorShardsLoader.shuffle_samples
 
@@ -523,7 +523,7 @@ shards_per_window: int = 6
 shuffle_samples: bool | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/definitions.py#L37-L37)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/loaders/definitions.py#L37-L37)
 
 ### nexuml.data.TensorShardsLoader.shuffle_shards
 
@@ -533,7 +533,7 @@ shuffle_samples: bool | None = None
 shuffle_shards: bool | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/definitions.py#L36-L36)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/loaders/definitions.py#L36-L36)
 
 ### nexuml.data.TensorShardsLoader.kind
 
@@ -545,7 +545,7 @@ kind = 'loader_backend'
 
 Inherited from: `nexuml.core.components.LoaderBackendDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L159-L159)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/components.py#L159-L159)
 
 ### nexuml.data.TensorShardsLoader.component_name
 
@@ -557,7 +557,7 @@ component_name: str
 
 Inherited from: `nexuml.core.components.ComponentDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L34-L34)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/components.py#L34-L34)
 
 ### nexuml.data.TensorShardsLoader.component_version
 
@@ -569,7 +569,7 @@ component_version: str = '1'
 
 Inherited from: `nexuml.core.components.ComponentDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L35-L35)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/components.py#L35-L35)
 
 ### nexuml.data.TensorShardsLoader.model_config
 
@@ -581,7 +581,7 @@ model_config = ConfigDict(extra='forbid', frozen=True, validate_default=True, al
 
 Inherited from: `nexuml.core.components.ComponentDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L25-L31)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/components.py#L25-L31)
 
 ### nexuml.data.TensorShardsLoader.build
 
@@ -591,7 +591,7 @@ Inherited from: `nexuml.core.components.ComponentDefinition`
 def build()
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/definitions.py#L42-L45)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/loaders/definitions.py#L42-L45)
 
 ## nexuml.data.TorchLoader
 
@@ -607,7 +607,7 @@ Re-exported from: `nexuml.data.loaders.definitions`
 
 Use the standard PyTorch data loader backend.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/definitions.py#L9-L16)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/loaders/definitions.py#L9-L16)
 
 ### nexuml.data.TorchLoader.kind
 
@@ -619,7 +619,7 @@ kind = 'loader_backend'
 
 Inherited from: `nexuml.core.components.LoaderBackendDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L159-L159)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/components.py#L159-L159)
 
 ### nexuml.data.TorchLoader.component_name
 
@@ -631,7 +631,7 @@ component_name: str
 
 Inherited from: `nexuml.core.components.ComponentDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L34-L34)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/components.py#L34-L34)
 
 ### nexuml.data.TorchLoader.component_version
 
@@ -643,7 +643,7 @@ component_version: str = '1'
 
 Inherited from: `nexuml.core.components.ComponentDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L35-L35)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/components.py#L35-L35)
 
 ### nexuml.data.TorchLoader.model_config
 
@@ -655,7 +655,7 @@ model_config = ConfigDict(extra='forbid', frozen=True, validate_default=True, al
 
 Inherited from: `nexuml.core.components.ComponentDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L25-L31)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/components.py#L25-L31)
 
 ### nexuml.data.TorchLoader.build
 
@@ -665,7 +665,7 @@ Inherited from: `nexuml.core.components.ComponentDefinition`
 def build()
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/loaders/definitions.py#L13-L16)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/loaders/definitions.py#L13-L16)
 
 **Modules**
 

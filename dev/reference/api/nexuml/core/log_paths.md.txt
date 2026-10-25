@@ -4,7 +4,7 @@
 
 Utilities for resolving log and artifact output paths.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/log_paths.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/log_paths.py#L1-L1)
 
 ## nexuml.core.log_paths.LOGS_ROOT_ENV
 
@@ -14,7 +14,7 @@ Utilities for resolving log and artifact output paths.
 LOGS_ROOT_ENV = 'NEXUML_LOGS_ROOT'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/log_paths.py#L9-L9)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/log_paths.py#L9-L9)
 
 ## nexuml.core.log_paths.resolve_logs_file_uri
 
@@ -31,7 +31,7 @@ Resolve relative file URIs under logs root; preserve absolute/remote URIs.
 - (`str`) — Resolved ``file://`` URI with absolute path, or the original *uri*
 - (`str`) — unchanged if it is absolute or remote.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/log_paths.py#L30-L42)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/log_paths.py#L30-L42)
 
 ## nexuml.core.log_paths.resolve_logs_root
 
@@ -47,7 +47,7 @@ Prefix relative log paths with ``NEXUML_LOGS_ROOT`` when configured.
 
 - (`Path`) — Resolved absolute or relative path.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/log_paths.py#L12-L22)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/log_paths.py#L12-L22)
 
 ## nexuml.core.log_paths.resolve_logs_root_str
 
@@ -59,4 +59,4 @@ def resolve_logs_root_str(path: str | Path, *, env_var: str = LOGS_ROOT_ENV) -> 
 
 Return the logs root path resolved to a string.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/log_paths.py#L25-L27)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/log_paths.py#L25-L27)

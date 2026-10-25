@@ -4,7 +4,7 @@
 
 WebDataset tar-shard export backend.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/export/webdataset.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/webdataset.py#L1-L1)
 
 ## nexuml.data.export.webdataset.WebDatasetBackend
 
@@ -18,7 +18,7 @@ Bases: `nexuml.data.export.backend.ExportBackend`
 
 Write lossless NumPy components into indexed WebDataset tar shards.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/export/webdataset.py#L33-L319)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/webdataset.py#L33-L319)
 
 ### nexuml.data.export.webdataset.WebDatasetBackend.create_index
 
@@ -28,7 +28,7 @@ Write lossless NumPy components into indexed WebDataset tar shards.
 create_index = bool(create_index)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/export/webdataset.py#L52-L52)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/webdataset.py#L52-L52)
 
 ### nexuml.data.export.webdataset.WebDatasetBackend.samples_per_shard
 
@@ -38,7 +38,7 @@ create_index = bool(create_index)
 samples_per_shard = int(samples_per_shard)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/export/webdataset.py#L51-L51)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/webdataset.py#L51-L51)
 
 ### nexuml.data.export.webdataset.WebDatasetBackend.remote_uri
 
@@ -50,7 +50,7 @@ remote_uri: str | None
 
 S3 dataset root for remote exports.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/export/webdataset.py#L82-L84)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/webdataset.py#L82-L84)
 
 ### nexuml.data.export.webdataset.WebDatasetBackend.end_split
 
@@ -66,7 +66,7 @@ Finish one dataset split and close its current shard.
 
 - `RuntimeError` — If the requested split is not the active split.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/export/webdataset.py#L113-L123)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/webdataset.py#L113-L123)
 
 ### nexuml.data.export.webdataset.WebDatasetBackend.finalize
 
@@ -86,7 +86,7 @@ Close the final shard and return metadata for ``config.yaml``.
 
 - `RuntimeError` — If the backend was never initialized.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/export/webdataset.py#L256-L283)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/webdataset.py#L256-L283)
 
 ### nexuml.data.export.webdataset.WebDatasetBackend.initialize
 
@@ -105,7 +105,7 @@ Prepare local shard staging.
 - `feature_shapes` (`dict[str, tuple[int, ...]]`) — Tensor shapes supplied by the export runner.
 - `dtype` (`np.dtype[Any] | str | None`) (default: `None`) — Optional floating-point storage dtype.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/export/webdataset.py#L86-L104)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/webdataset.py#L86-L104)
 
 ### nexuml.data.export.webdataset.WebDatasetBackend.load_sample
 
@@ -126,7 +126,7 @@ Load one sample from a local WebDataset export.
 - `IndexError` — If the sample is absent from the export index.
 - `FileNotFoundError` — If a referenced tar member cannot be read.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/export/webdataset.py#L292-L319)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/webdataset.py#L292-L319)
 
 ### nexuml.data.export.webdataset.WebDatasetBackend.publish_export_metadata
 
@@ -138,7 +138,7 @@ def publish_export_metadata(config_path: Path, metadata_path: Path) -> None
 
 Upload the final lightweight export metadata for an S3 export.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/export/webdataset.py#L285-L290)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/webdataset.py#L285-L290)
 
 ### nexuml.data.export.webdataset.WebDatasetBackend.save_sample
 
@@ -154,7 +154,7 @@ Append one tensor sample to the active tar shard.
 
 - `ValueError` — If a component key contains a path separator.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/export/webdataset.py#L210-L254)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/webdataset.py#L210-L254)
 
 ### nexuml.data.export.webdataset.WebDatasetBackend.start_split
 
@@ -166,7 +166,7 @@ def start_split(split: str) -> None
 
 Start one physically isolated dataset split.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/export/webdataset.py#L106-L111)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/webdataset.py#L106-L111)
 
 ### nexuml.data.export.webdataset.WebDatasetBackend.save_batch
 
@@ -186,4 +186,4 @@ Backends can override this for more efficient contiguous writes.
 
 - `ValueError` — If batch sizes across feature tensors are inconsistent.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/export/backend.py#L65-L80)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/backend.py#L65-L80)

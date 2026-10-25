@@ -4,7 +4,7 @@
 
 Output head layers.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/head/__init__.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/head/__init__.py#L1-L1)
 
 ## nexuml_library.layers.head.AnomalyScore
 
@@ -20,7 +20,7 @@ Re-exported from: `nexuml_library.layers.head.anomaly_score`
 
 Compute a per-sample anomaly score from original and reconstructed tensors.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/head/anomaly_score.py#L14-L21)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/head/anomaly_score.py#L14-L21)
 
 ### nexuml_library.layers.head.AnomalyScore.reduction
 
@@ -30,7 +30,7 @@ Compute a per-sample anomaly score from original and reconstructed tensors.
 reduction: str = 'mean'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/head/anomaly_score.py#L18-L18)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/head/anomaly_score.py#L18-L18)
 
 ### nexuml_library.layers.head.AnomalyScore.build
 
@@ -40,7 +40,7 @@ reduction: str = 'mean'
 def build(context: LayerBuildContext) -> PipelineLayer
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/head/anomaly_score.py#L20-L21)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/head/anomaly_score.py#L20-L21)
 
 ## nexuml_library.layers.head.DecisionRulePipelineLayer
 
@@ -58,7 +58,7 @@ Fits a decision threshold on train scores; emits binary decisions at inference.
 
 Replaces DecisionRuleAlgorithm as a proper pipeline layer.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/head/decision_rule.py#L23-L46)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/head/decision_rule.py#L23-L46)
 
 ### nexuml_library.layers.head.DecisionRulePipelineLayer.fit_label_key
 
@@ -68,7 +68,7 @@ Replaces DecisionRuleAlgorithm as a proper pipeline layer.
 fit_label_key: str | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/head/decision_rule.py#L34-L34)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/head/decision_rule.py#L34-L34)
 
 ### nexuml_library.layers.head.DecisionRulePipelineLayer.fit_mask_key
 
@@ -78,7 +78,7 @@ fit_label_key: str | None = None
 fit_mask_key: str | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/head/decision_rule.py#L33-L33)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/head/decision_rule.py#L33-L33)
 
 ### nexuml_library.layers.head.DecisionRulePipelineLayer.normal_label_value
 
@@ -88,7 +88,7 @@ fit_mask_key: str | None = None
 normal_label_value: int | float = 0
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/head/decision_rule.py#L35-L35)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/head/decision_rule.py#L35-L35)
 
 ### nexuml_library.layers.head.DecisionRulePipelineLayer.requires_post_train_fit
 
@@ -98,7 +98,7 @@ normal_label_value: int | float = 0
 requires_post_train_fit = True
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/head/decision_rule.py#L30-L30)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/head/decision_rule.py#L30-L30)
 
 ### nexuml_library.layers.head.DecisionRulePipelineLayer.rule
 
@@ -108,7 +108,7 @@ requires_post_train_fit = True
 rule: DecisionRuleSpec = Field(default_factory=lambda : decision_rule(PercentileThresholdRule))
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/head/decision_rule.py#L32-L32)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/head/decision_rule.py#L32-L32)
 
 ### nexuml_library.layers.head.DecisionRulePipelineLayer.build
 
@@ -118,7 +118,7 @@ rule: DecisionRuleSpec = Field(default_factory=lambda : decision_rule(Percentile
 def build(context: LayerBuildContext) -> PostTrainFitLayer
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/head/decision_rule.py#L37-L46)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/head/decision_rule.py#L37-L46)
 
 ## nexuml_library.layers.head.LatentClassificationHead
 
@@ -136,7 +136,7 @@ Classification head operating on latent vectors.
 
 Produces logits for multiclass or multilabel classification.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/head/classification_head.py#L15-L28)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/head/classification_head.py#L15-L28)
 
 ### nexuml_library.layers.head.LatentClassificationHead.hidden_dims
 
@@ -146,7 +146,7 @@ Produces logits for multiclass or multilabel classification.
 hidden_dims: list[int] | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/head/classification_head.py#L22-L22)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/head/classification_head.py#L22-L22)
 
 ### nexuml_library.layers.head.LatentClassificationHead.build
 
@@ -156,7 +156,7 @@ hidden_dims: list[int] | None = None
 def build(context: LayerBuildContext) -> PipelineLayer
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/head/classification_head.py#L24-L28)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/head/classification_head.py#L24-L28)
 
 ## nexuml_library.layers.head.LatentRegressionHead
 
@@ -172,7 +172,7 @@ Re-exported from: `nexuml_library.layers.head.regression_head`
 
 Regression head operating on latent vectors.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/head/regression_head.py#L15-L23)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/head/regression_head.py#L15-L23)
 
 ### nexuml_library.layers.head.LatentRegressionHead.hidden_dims
 
@@ -182,7 +182,7 @@ Regression head operating on latent vectors.
 hidden_dims: list[int] | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/head/regression_head.py#L20-L20)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/head/regression_head.py#L20-L20)
 
 ### nexuml_library.layers.head.LatentRegressionHead.num_outputs
 
@@ -192,7 +192,7 @@ hidden_dims: list[int] | None = None
 num_outputs: int = 1
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/head/regression_head.py#L19-L19)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/head/regression_head.py#L19-L19)
 
 ### nexuml_library.layers.head.LatentRegressionHead.build
 
@@ -202,7 +202,7 @@ num_outputs: int = 1
 def build(context: LayerBuildContext) -> PipelineLayer
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/head/regression_head.py#L22-L23)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/head/regression_head.py#L22-L23)
 
 **Modules**
 

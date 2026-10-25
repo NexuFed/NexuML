@@ -4,7 +4,7 @@
 
 Convolutional autoencoder model scenario fragments.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/scenarios/model/conv_ae.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/scenarios/model/conv_ae.py#L1-L1)
 
 ## nexuml_library.scenarios.model.conv_ae.conv_ae_lmbe
 
@@ -20,7 +20,7 @@ Waveform -> LMBE -> convolutional AE.
 
 - `PipelineSpec` (`PipelineSpec`) — Full waveform-to-reconstruction pipeline with LMBE feature extraction and convolutional autoencoder.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/scenarios/model/conv_ae.py#L137-L176)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/scenarios/model/conv_ae.py#L137-L176)
 
 ## nexuml_library.scenarios.model.conv_ae.conv_cvae_lmbe
 
@@ -36,7 +36,7 @@ Waveform -> LMBE -> convolutional CVAE.
 
 - `PipelineSpec` (`PipelineSpec`) — Full waveform-to-reconstruction pipeline with LMBE feature extraction and convolutional variational autoencoder.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/scenarios/model/conv_ae.py#L179-L222)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/scenarios/model/conv_ae.py#L179-L222)
 
 ## nexuml_library.scenarios.model.conv_ae.spectrogram_conv_ae
 
@@ -52,7 +52,7 @@ def spectrogram_conv_ae(input_shape: tuple[int, int, int] = (1, 64, 64), latent_
 
 - `PipelineSpec` (`PipelineSpec`) — Pipeline with encoder, decoder, reconstruction loss and anomaly score layers.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/scenarios/model/conv_ae.py#L16-L71)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/scenarios/model/conv_ae.py#L16-L71)
 
 ## nexuml_library.scenarios.model.conv_ae.spectrogram_conv_cvae
 
@@ -68,4 +68,4 @@ def spectrogram_conv_cvae(input_shape: tuple[int, int, int] = (1, 64, 64), encod
 
 - `PipelineSpec` (`PipelineSpec`) — Pipeline with encoder, variational latent, decoder, reconstruction loss and anomaly score layers.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/scenarios/model/conv_ae.py#L74-L134)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/scenarios/model/conv_ae.py#L74-L134)

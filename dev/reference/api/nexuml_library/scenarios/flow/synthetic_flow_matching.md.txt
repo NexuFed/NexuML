@@ -4,7 +4,7 @@
 
 Synthetic Flow Matching reference scenario.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/scenarios/flow/synthetic_flow_matching.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/scenarios/flow/synthetic_flow_matching.py#L1-L1)
 
 ## nexuml_library.scenarios.flow.synthetic_flow_matching.synthetic_flow_matching
 
@@ -20,4 +20,4 @@ Build a self-contained synthetic Flow Matching scenario.
 
 - (`ScenarioSpec`) — Synthetic Flow Matching scenario.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/scenarios/flow/synthetic_flow_matching.py#L13-L61)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/scenarios/flow/synthetic_flow_matching.py#L13-L61)

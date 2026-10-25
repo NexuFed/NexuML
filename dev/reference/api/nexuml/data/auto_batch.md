@@ -4,7 +4,7 @@
 
 Automatic CUDA batch-size resolution helpers.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/auto_batch.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/auto_batch.py#L1-L1)
 
 ## nexuml.data.auto_batch.logger
 
@@ -14,7 +14,7 @@ Automatic CUDA batch-size resolution helpers.
 logger = logging.getLogger(__name__)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/auto_batch.py#L15-L15)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/auto_batch.py#L15-L15)
 
 ## nexuml.data.auto_batch.BatchProbeAttempt
 
@@ -26,7 +26,7 @@ class BatchProbeAttempt
 
 Result of a single batch-size probe attempt.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/auto_batch.py#L18-L28)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/auto_batch.py#L18-L28)
 
 ### nexuml.data.auto_batch.BatchProbeAttempt.batch_size
 
@@ -36,7 +36,7 @@ Result of a single batch-size probe attempt.
 batch_size: int
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/auto_batch.py#L22-L22)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/auto_batch.py#L22-L22)
 
 ### nexuml.data.auto_batch.BatchProbeAttempt.error
 
@@ -46,7 +46,7 @@ batch_size: int
 error: str | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/auto_batch.py#L24-L24)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/auto_batch.py#L24-L24)
 
 ### nexuml.data.auto_batch.BatchProbeAttempt.memory_fraction
 
@@ -56,7 +56,7 @@ error: str | None = None
 memory_fraction: float | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/auto_batch.py#L28-L28)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/auto_batch.py#L28-L28)
 
 ### nexuml.data.auto_batch.BatchProbeAttempt.memory_peak_bytes
 
@@ -66,7 +66,7 @@ memory_fraction: float | None = None
 memory_peak_bytes: int | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/auto_batch.py#L26-L26)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/auto_batch.py#L26-L26)
 
 ### nexuml.data.auto_batch.BatchProbeAttempt.memory_total_bytes
 
@@ -76,7 +76,7 @@ memory_peak_bytes: int | None = None
 memory_total_bytes: int | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/auto_batch.py#L27-L27)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/auto_batch.py#L27-L27)
 
 ### nexuml.data.auto_batch.BatchProbeAttempt.seconds
 
@@ -86,7 +86,7 @@ memory_total_bytes: int | None = None
 seconds: float | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/auto_batch.py#L25-L25)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/auto_batch.py#L25-L25)
 
 ### nexuml.data.auto_batch.BatchProbeAttempt.status
 
@@ -96,7 +96,7 @@ seconds: float | None = None
 status: str
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/auto_batch.py#L23-L23)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/auto_batch.py#L23-L23)
 
 ## nexuml.data.auto_batch.BatchProbeResult
 
@@ -108,7 +108,7 @@ class BatchProbeResult
 
 Aggregated result of an automatic batch-size probe run.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/auto_batch.py#L31-L46)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/auto_batch.py#L31-L46)
 
 ### nexuml.data.auto_batch.BatchProbeResult.attempts
 
@@ -118,7 +118,7 @@ Aggregated result of an automatic batch-size probe run.
 attempts: list[BatchProbeAttempt] = field(default_factory=list)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/auto_batch.py#L36-L36)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/auto_batch.py#L36-L36)
 
 ### nexuml.data.auto_batch.BatchProbeResult.device
 
@@ -128,7 +128,7 @@ attempts: list[BatchProbeAttempt] = field(default_factory=list)
 device: dict[str, Any] = field(default_factory=dict)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/auto_batch.py#L38-L38)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/auto_batch.py#L38-L38)
 
 ### nexuml.data.auto_batch.BatchProbeResult.safety
 
@@ -138,7 +138,7 @@ device: dict[str, Any] = field(default_factory=dict)
 safety: str = 'largest'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/auto_batch.py#L37-L37)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/auto_batch.py#L37-L37)
 
 ### nexuml.data.auto_batch.BatchProbeResult.selected_batch_size
 
@@ -148,7 +148,7 @@ safety: str = 'largest'
 selected_batch_size: int
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/auto_batch.py#L35-L35)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/auto_batch.py#L35-L35)
 
 ### nexuml.data.auto_batch.BatchProbeResult.to_dict
 
@@ -158,7 +158,7 @@ selected_batch_size: int
 def to_dict() -> dict[str, Any]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/auto_batch.py#L40-L46)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/auto_batch.py#L40-L46)
 
 ## nexuml.data.auto_batch.cuda_device_info
 
@@ -170,7 +170,7 @@ def cuda_device_info() -> dict[str, Any]
 
 Return CUDA device metadata, or ``{"available": False}`` if no GPU is present.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/auto_batch.py#L100-L112)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/auto_batch.py#L100-L112)
 
 ## nexuml.data.auto_batch.generate_candidates
 
@@ -190,7 +190,7 @@ Generate bounded power-of-two candidates in ascending order.
 
 - `ValueError` — If the candidate strategy is not ``power_of_two``.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/auto_batch.py#L49-L69)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/auto_batch.py#L49-L69)
 
 ## nexuml.data.auto_batch.is_cuda_oom
 
@@ -202,7 +202,7 @@ def is_cuda_oom(exc: BaseException) -> bool
 
 Return True if the exception is a CUDA out-of-memory error.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/auto_batch.py#L94-L97)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/auto_batch.py#L94-L97)
 
 ## nexuml.data.auto_batch.resolve_with_probe
 
@@ -223,7 +223,7 @@ Try candidate batch sizes and return selected size plus observable metadata.
 - `RuntimeError` — If no candidate succeeds because candidates hit CUDA OOM or exceed
 the configured margin policy.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/auto_batch.py#L127-L202)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/auto_batch.py#L127-L202)
 
 ## nexuml.data.auto_batch.select_batch_size
 
@@ -243,4 +243,4 @@ Select the effective batch size from successful candidates.
 
 - `ValueError` — If ``successes`` is empty or the safety policy is unsupported.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/auto_batch.py#L72-L91)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/auto_batch.py#L72-L91)

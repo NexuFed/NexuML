@@ -4,7 +4,7 @@
 
 Own and observe API-started calls, not a second ML execution engine.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/operations.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/api/operations.py#L1-L1)
 
 ## nexuml.api.operations.MAX_EVENT
 
@@ -14,7 +14,7 @@ Own and observe API-started calls, not a second ML execution engine.
 MAX_EVENT = 65500
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/operations.py#L26-L26)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/api/operations.py#L26-L26)
 
 ## nexuml.api.operations.TERMINAL
 
@@ -24,7 +24,7 @@ MAX_EVENT = 65500
 TERMINAL = {'succeeded', 'failed', 'cancelled', 'timeout', 'ownership_unknown'}
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/operations.py#L25-L25)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/api/operations.py#L25-L25)
 
 ## nexuml.api.operations.Operations
 
@@ -36,7 +36,7 @@ class Operations
 
 One local invocation owner with disk-backed, sequenced observation.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/operations.py#L98-L469)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/api/operations.py#L98-L469)
 
 ### nexuml.api.operations.Operations.active
 
@@ -46,7 +46,7 @@ One local invocation owner with disk-backed, sequenced observation.
 active: tuple[str, subprocess.Popen] | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/operations.py#L108-L108)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/api/operations.py#L108-L108)
 
 ### nexuml.api.operations.Operations.lock
 
@@ -56,7 +56,7 @@ active: tuple[str, subprocess.Popen] | None = None
 lock = threading.RLock()
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/operations.py#L107-L107)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/api/operations.py#L107-L107)
 
 ### nexuml.api.operations.Operations.root
 
@@ -66,7 +66,7 @@ lock = threading.RLock()
 root = settings.directory / resolve_logs_root('.experiments/.studio/operations').resolve()
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/operations.py#L103-L105)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/api/operations.py#L103-L105)
 
 ### nexuml.api.operations.Operations.settings
 
@@ -76,7 +76,7 @@ root = settings.directory / resolve_logs_root('.experiments/.studio/operations')
 settings = settings
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/operations.py#L102-L102)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/api/operations.py#L102-L102)
 
 ### nexuml.api.operations.Operations.stopping
 
@@ -86,7 +86,7 @@ settings = settings
 stopping: dict[str, str] = {}
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/operations.py#L110-L110)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/api/operations.py#L110-L110)
 
 ### nexuml.api.operations.Operations.threads
 
@@ -96,7 +96,7 @@ stopping: dict[str, str] = {}
 threads: list[threading.Thread] = []
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/operations.py#L109-L109)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/api/operations.py#L109-L109)
 
 ### nexuml.api.operations.Operations.append
 
@@ -108,7 +108,7 @@ def append(folder: Path, kind: str, payload: dict) -> None
 
 Record bounded observations before clients can replay them.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/operations.py#L158-L195)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/api/operations.py#L158-L195)
 
 ### nexuml.api.operations.Operations.cancel
 
@@ -128,7 +128,7 @@ Stop confirmed owned local work only.
 
 - `ApiError` — For unsupported remote stop or unknown ownership.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/operations.py#L399-L441)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/api/operations.py#L399-L441)
 
 ### nexuml.api.operations.Operations.close
 
@@ -140,7 +140,7 @@ def close() -> None
 
 Stop owned local calls on API shutdown; never claim remote cancellation.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/operations.py#L443-L453)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/api/operations.py#L443-L453)
 
 ### nexuml.api.operations.Operations.folder
 
@@ -160,7 +160,7 @@ Locate an observed invocation safely.
 
 - `ApiError` — For an invalid or missing invocation identity.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/operations.py#L118-L132)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/api/operations.py#L118-L132)
 
 ### nexuml.api.operations.Operations.inspect
 
@@ -180,7 +180,7 @@ Explicitly inspect a stored remote identity without resubmitting.
 
 - `ApiError` — When no native identity was recorded.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/operations.py#L455-L469)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/api/operations.py#L455-L469)
 
 ### nexuml.api.operations.Operations.list
 
@@ -196,7 +196,7 @@ List API-observed invocations, not unrelated CLI processes.
 
 - (`builtins.list[dict]`) — Persisted snapshots, newest first.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/operations.py#L142-L156)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/api/operations.py#L142-L156)
 
 ### nexuml.api.operations.Operations.observe
 
@@ -208,7 +208,7 @@ def observe(folder: Path, process: subprocess.Popen, timeout: float | None) -> N
 
 Drain actual logs/callbacks and publish the real terminal result.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/operations.py#L297-L397)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/api/operations.py#L297-L397)
 
 ### nexuml.api.operations.Operations.start
 
@@ -228,7 +228,7 @@ Freeze a validated config and call the existing framework in an owned process.
 
 - `ApiError` — If another resource-consuming call is active or startup fails.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/operations.py#L201-L295)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/api/operations.py#L201-L295)
 
 ### nexuml.api.operations.Operations.status
 
@@ -244,7 +244,7 @@ Read actual persisted status.
 
 - (`dict`) — Invocation snapshot, including its frozen source revision and capabilities.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/operations.py#L134-L140)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/api/operations.py#L134-L140)
 
 ## nexuml.api.operations.stop_process_tree
 
@@ -260,7 +260,7 @@ Stop only an owned process group and wait for local execution to exit.
 
 - `ApiError` — If the OS cannot confirm stopping the owned process tree.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/operations.py#L36-L95)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/api/operations.py#L36-L95)
 
 ## nexuml.api.operations.write_json
 
@@ -272,4 +272,4 @@ def write_json(path: Path, data: dict) -> None
 
 Atomically publish a status snapshot for reconnect/restart readers.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/api/operations.py#L29-L33)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/api/operations.py#L29-L33)

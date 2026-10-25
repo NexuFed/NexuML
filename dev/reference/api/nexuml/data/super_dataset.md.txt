@@ -4,7 +4,7 @@
 
 SuperDataset: merges multiple datasets into one unified dataset.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/super_dataset.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/super_dataset.py#L1-L1)
 
 ## nexuml.data.super_dataset.logger
 
@@ -14,7 +14,7 @@ SuperDataset: merges multiple datasets into one unified dataset.
 logger = logging.getLogger(__name__)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/super_dataset.py#L13-L13)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/super_dataset.py#L13-L13)
 
 ## nexuml.data.super_dataset.SuperDataset
 
@@ -31,7 +31,7 @@ Merges multiple datasets (keyed by name) into one dataset.
 Adds a "dataset" column to the merged DataFrame to track origin.
 Supports label merging and dataset subdivision for federated/multi-client scenarios.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/super_dataset.py#L16-L256)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/super_dataset.py#L16-L256)
 
 ### nexuml.data.super_dataset.SuperDataset.meta_data_list
 
@@ -41,7 +41,7 @@ Supports label merging and dataset subdivision for federated/multi-client scenar
 meta_data_list = dict(meta_data_list)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/super_dataset.py#L30-L30)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/super_dataset.py#L30-L30)
 
 ### nexuml.data.super_dataset.SuperDataset.data
 
@@ -53,7 +53,7 @@ data = data
 
 Inherited from: `nexuml.data.dataset.NexuDataset`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/dataset.py#L58-L58)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/dataset.py#L58-L58)
 
 ### nexuml.data.super_dataset.SuperDataset.label_names
 
@@ -65,7 +65,7 @@ label_names: list[str] = list(label_names or [])
 
 Inherited from: `nexuml.data.dataset.NexuDataset`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/dataset.py#L60-L60)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/dataset.py#L60-L60)
 
 ### nexuml.data.super_dataset.SuperDataset.meta
 
@@ -77,7 +77,7 @@ meta: pd.DataFrame | None = None
 
 Inherited from: `nexuml.data.dataset.NexuDataset`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/dataset.py#L56-L56)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/dataset.py#L56-L56)
 
 ### nexuml.data.super_dataset.SuperDataset.modality
 
@@ -89,7 +89,7 @@ modality = modality
 
 Inherited from: `nexuml.data.dataset.NexuDataset`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/dataset.py#L57-L57)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/dataset.py#L57-L57)
 
 ### nexuml.data.super_dataset.SuperDataset.num_classes
 
@@ -101,7 +101,7 @@ num_classes: dict[str, int] = {}
 
 Inherited from: `nexuml.data.dataset.NexuDataset`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/dataset.py#L61-L61)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/dataset.py#L61-L61)
 
 ### nexuml.data.super_dataset.SuperDataset.split_ratio
 
@@ -113,7 +113,7 @@ split_ratio = split_ratio or [0.85, 0.1, 0.05]
 
 Inherited from: `nexuml.data.dataset.NexuDataset`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/dataset.py#L59-L59)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/dataset.py#L59-L59)
 
 ### nexuml.data.super_dataset.SuperDataset.create_subset_dataset
 
@@ -133,7 +133,7 @@ Return a dataset for a single assignment subset.
 
 - `ValueError` — If metadata is missing.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/super_dataset.py#L190-L207)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/super_dataset.py#L190-L207)
 
 ### nexuml.data.super_dataset.SuperDataset.divide_dataset
 
@@ -149,7 +149,7 @@ Assign samples to splits via Dirichlet cluster skew distribution.
 
 - `ValueError` — If ``key`` is ``None`` or metadata is missing.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/super_dataset.py#L121-L156)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/super_dataset.py#L121-L156)
 
 ### nexuml.data.super_dataset.SuperDataset.divide_dataset_by_key
 
@@ -169,7 +169,7 @@ Assign each unique key value to its own split index.
 
 - `ValueError` — If metadata is missing.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/super_dataset.py#L158-L174)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/super_dataset.py#L158-L174)
 
 ### nexuml.data.super_dataset.SuperDataset.load_item
 
@@ -179,7 +179,7 @@ Assign each unique key value to its own split index.
 def load_item(idx: int, row: pd.Series) -> TensorDict
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/super_dataset.py#L209-L221)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/super_dataset.py#L209-L221)
 
 ### nexuml.data.super_dataset.SuperDataset.clone_with_meta
 
@@ -191,7 +191,7 @@ def clone_with_meta(meta: pd.DataFrame, data=_KEEP_DATA) -> Self
 
 Inherited from: `nexuml.data.dataset.NexuDataset`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/dataset.py#L119-L128)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/dataset.py#L119-L128)
 
 ### nexuml.data.super_dataset.SuperDataset.download
 
@@ -205,7 +205,7 @@ Inherited from: `nexuml.data.dataset.NexuDataset`
 
 Override to implement dataset downloading.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/dataset.py#L276-L278)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/dataset.py#L276-L278)
 
 ### nexuml.data.super_dataset.SuperDataset.get_split
 
@@ -227,7 +227,7 @@ Return a view of this dataset filtered to a single split.
 
 - `ValueError` — If the dataset has no metadata.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/dataset.py#L188-L201)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/dataset.py#L188-L201)
 
 ### nexuml.data.super_dataset.SuperDataset.load_labels
 
@@ -248,7 +248,7 @@ Subclasses can override this for file-backed or computed targets.
 
 - (`TensorDict | None`) — Label tensor dictionary, or ``None`` if no labels are configured.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/dataset.py#L237-L255)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/dataset.py#L237-L255)
 
 ### nexuml.data.super_dataset.SuperDataset.split_meta
 
@@ -262,7 +262,7 @@ Inherited from: `nexuml.data.dataset.NexuDataset`
 
 Convert 'fit' rows to train/val and 'all' rows to train/val/test.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/dataset.py#L163-L186)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/dataset.py#L163-L186)
 
 ### nexuml.data.super_dataset.SuperDataset.take
 
@@ -274,4 +274,4 @@ def take(indices: Sequence[int]) -> Self
 
 Inherited from: `nexuml.data.dataset.NexuDataset`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/dataset.py#L154-L161)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/dataset.py#L154-L161)

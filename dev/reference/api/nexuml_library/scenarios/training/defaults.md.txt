@@ -4,7 +4,7 @@
 
 Default training scenario fragments.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/scenarios/training/defaults.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/scenarios/training/defaults.py#L1-L1)
 
 ## nexuml_library.scenarios.training.defaults.DEFAULT_AUTO_BATCH_SIZE
 
@@ -14,7 +14,7 @@ Default training scenario fragments.
 DEFAULT_AUTO_BATCH_SIZE = AutoBatchSizeSpec(min=8, max=128, candidates='power_of_two', safety='margin', margin=0.8)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/scenarios/training/defaults.py#L31-L37)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/scenarios/training/defaults.py#L31-L37)
 
 ## nexuml_library.scenarios.training.defaults.default_callbacks
 
@@ -30,7 +30,7 @@ Create a default list of CallbackSpec.
 
 - (`list[CallbackSpec]`) — list[CallbackSpec]: Default callbacks for training.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/scenarios/training/defaults.py#L105-L124)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/scenarios/training/defaults.py#L105-L124)
 
 ## nexuml_library.scenarios.training.defaults.default_checkpoint
 
@@ -46,7 +46,7 @@ Create a default CheckpointLoadSpec.
 
 - `CheckpointLoadSpec` (`CheckpointLoadSpec`) — Default checkpoint loading configuration.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/scenarios/training/defaults.py#L127-L137)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/scenarios/training/defaults.py#L127-L137)
 
 ## nexuml_library.scenarios.training.defaults.default_exports
 
@@ -62,7 +62,7 @@ Create a default exports configuration.
 
 - (`list[ExportSpec]`) — list[ExportSpec]: Default exports configuration.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/scenarios/training/defaults.py#L155-L163)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/scenarios/training/defaults.py#L155-L163)
 
 ## nexuml_library.scenarios.training.defaults.default_logging
 
@@ -78,7 +78,7 @@ Create a default LoggingSpec.
 
 - `LoggingSpec` (`LoggingSpec`) — Default logging configuration with optional TensorBoard, MLflow and DVC Live backends.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/scenarios/training/defaults.py#L66-L102)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/scenarios/training/defaults.py#L66-L102)
 
 ## nexuml_library.scenarios.training.defaults.default_training
 
@@ -94,7 +94,7 @@ Create a default TrainingSpec.
 
 - `TrainingSpec` (`TrainingSpec`) — Default training configuration with optimizer, scheduler and loss keys.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/scenarios/training/defaults.py#L40-L63)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/scenarios/training/defaults.py#L40-L63)
 
 ## nexuml_library.scenarios.training.defaults.default_tuning
 
@@ -110,4 +110,4 @@ Create a default tuning configuration.
 
 - `TuningSpec` (`TuningSpec`) — Default tuning configuration.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/scenarios/training/defaults.py#L140-L152)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/scenarios/training/defaults.py#L140-L152)

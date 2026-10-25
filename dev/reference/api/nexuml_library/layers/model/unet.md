@@ -4,7 +4,7 @@
 
 Time-conditioned U-Net for image-valued vector fields.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/model/unet.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/model/unet.py#L1-L1)
 
 ## nexuml_library.layers.model.unet.TimeConditionedUNet
 
@@ -18,7 +18,7 @@ Bases: `LayerDefinition`
 
 Small time-conditioned U-Net for image-valued continuous flows.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/model/unet.py#L67-L78)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/model/unet.py#L67-L78)
 
 ### nexuml_library.layers.model.unet.TimeConditionedUNet.base_channels
 
@@ -28,7 +28,7 @@ Small time-conditioned U-Net for image-valued continuous flows.
 base_channels: int = Field(default=32, gt=0)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/model/unet.py#L71-L71)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/model/unet.py#L71-L71)
 
 ### nexuml_library.layers.model.unet.TimeConditionedUNet.time_embedding_dim
 
@@ -38,7 +38,7 @@ base_channels: int = Field(default=32, gt=0)
 time_embedding_dim: int = Field(default=128, gt=0, multiple_of=2)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/model/unet.py#L72-L72)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/model/unet.py#L72-L72)
 
 ### nexuml_library.layers.model.unet.TimeConditionedUNet.build
 
@@ -48,4 +48,4 @@ time_embedding_dim: int = Field(default=128, gt=0, multiple_of=2)
 def build(context: LayerBuildContext) -> PipelineLayer
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/model/unet.py#L74-L78)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/model/unet.py#L74-L78)

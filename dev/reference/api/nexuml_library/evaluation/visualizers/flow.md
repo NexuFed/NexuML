@@ -4,7 +4,7 @@
 
 Flow sample and trajectory visualizer.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/evaluation/visualizers/flow.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/evaluation/visualizers/flow.py#L1-L1)
 
 ## nexuml_library.evaluation.visualizers.flow.FlowVisualizer
 
@@ -18,7 +18,7 @@ Bases: `EvalAlgorithmDefinition`
 
 Visualize target, initial, generated, and optional trajectory samples.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/evaluation/visualizers/flow.py#L19-L34)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/evaluation/visualizers/flow.py#L19-L34)
 
 ### nexuml_library.evaluation.visualizers.flow.FlowVisualizer.generated_key
 
@@ -28,7 +28,7 @@ Visualize target, initial, generated, and optional trajectory samples.
 generated_key: str = 'flow_sample'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/evaluation/visualizers/flow.py#L24-L24)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/evaluation/visualizers/flow.py#L24-L24)
 
 ### nexuml_library.evaluation.visualizers.flow.FlowVisualizer.image_range
 
@@ -38,7 +38,7 @@ generated_key: str = 'flow_sample'
 image_range: Literal['zero_one', 'minus_one_one'] = 'zero_one'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/evaluation/visualizers/flow.py#L28-L28)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/evaluation/visualizers/flow.py#L28-L28)
 
 ### nexuml_library.evaluation.visualizers.flow.FlowVisualizer.initial_key
 
@@ -48,7 +48,7 @@ image_range: Literal['zero_one', 'minus_one_one'] = 'zero_one'
 initial_key: str = 'flow_initial'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/evaluation/visualizers/flow.py#L23-L23)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/evaluation/visualizers/flow.py#L23-L23)
 
 ### nexuml_library.evaluation.visualizers.flow.FlowVisualizer.max_samples
 
@@ -58,7 +58,7 @@ initial_key: str = 'flow_initial'
 max_samples: int = Field(default=512, gt=0)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/evaluation/visualizers/flow.py#L26-L26)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/evaluation/visualizers/flow.py#L26-L26)
 
 ### nexuml_library.evaluation.visualizers.flow.FlowVisualizer.max_trajectories
 
@@ -68,7 +68,7 @@ max_samples: int = Field(default=512, gt=0)
 max_trajectories: int = Field(default=32, gt=0)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/evaluation/visualizers/flow.py#L27-L27)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/evaluation/visualizers/flow.py#L27-L27)
 
 ### nexuml_library.evaluation.visualizers.flow.FlowVisualizer.trajectory_key
 
@@ -78,7 +78,7 @@ max_trajectories: int = Field(default=32, gt=0)
 trajectory_key: str = 'flow_trajectory'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/evaluation/visualizers/flow.py#L25-L25)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/evaluation/visualizers/flow.py#L25-L25)
 
 ### nexuml_library.evaluation.visualizers.flow.FlowVisualizer.build
 
@@ -88,4 +88,4 @@ trajectory_key: str = 'flow_trajectory'
 def build(context: EvalBuildContext) -> EvalAlgorithm
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/evaluation/visualizers/flow.py#L30-L34)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/evaluation/visualizers/flow.py#L30-L34)

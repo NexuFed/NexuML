@@ -4,7 +4,7 @@
 
 Class histogram visualizer.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/evaluation/visualizers/class_histogram.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/evaluation/visualizers/class_histogram.py#L1-L1)
 
 ## nexuml_library.evaluation.visualizers.class_histogram.logger
 
@@ -14,7 +14,7 @@ Class histogram visualizer.
 logger = logging.getLogger(__name__)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/evaluation/visualizers/class_histogram.py#L26-L26)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/evaluation/visualizers/class_histogram.py#L26-L26)
 
 ## nexuml_library.evaluation.visualizers.class_histogram.ClassHistogramVisualizer
 
@@ -28,7 +28,7 @@ Bases: `EvalAlgorithmDefinition`
 
 Bar chart of class label distribution in train and test sets.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/evaluation/visualizers/class_histogram.py#L29-L43)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/evaluation/visualizers/class_histogram.py#L29-L43)
 
 ### nexuml_library.evaluation.visualizers.class_histogram.ClassHistogramVisualizer.context_inputs
 
@@ -38,7 +38,7 @@ Bar chart of class label distribution in train and test sets.
 context_inputs = EvalContextInputs(label_key=ContextInput(default='y_true'))
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/evaluation/visualizers/class_histogram.py#L33-L33)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/evaluation/visualizers/class_histogram.py#L33-L33)
 
 ### nexuml_library.evaluation.visualizers.class_histogram.ClassHistogramVisualizer.title
 
@@ -48,7 +48,7 @@ context_inputs = EvalContextInputs(label_key=ContextInput(default='y_true'))
 title: str | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/evaluation/visualizers/class_histogram.py#L35-L35)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/evaluation/visualizers/class_histogram.py#L35-L35)
 
 ### nexuml_library.evaluation.visualizers.class_histogram.ClassHistogramVisualizer.build
 
@@ -58,4 +58,4 @@ title: str | None = None
 def build(context: EvalBuildContext) -> EvalAlgorithm
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/evaluation/visualizers/class_histogram.py#L37-L43)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/evaluation/visualizers/class_histogram.py#L37-L43)

@@ -4,7 +4,7 @@
 
 Anomaly scoring layers.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/head/anomaly_score.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/head/anomaly_score.py#L1-L1)
 
 ## nexuml_library.layers.head.anomaly_score.AnomalyScore
 
@@ -18,7 +18,7 @@ Bases: `LayerDefinition`
 
 Compute a per-sample anomaly score from original and reconstructed tensors.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/head/anomaly_score.py#L14-L21)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/head/anomaly_score.py#L14-L21)
 
 ### nexuml_library.layers.head.anomaly_score.AnomalyScore.reduction
 
@@ -28,7 +28,7 @@ Compute a per-sample anomaly score from original and reconstructed tensors.
 reduction: str = 'mean'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/head/anomaly_score.py#L18-L18)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/head/anomaly_score.py#L18-L18)
 
 ### nexuml_library.layers.head.anomaly_score.AnomalyScore.build
 
@@ -38,4 +38,4 @@ reduction: str = 'mean'
 def build(context: LayerBuildContext) -> PipelineLayer
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/head/anomaly_score.py#L20-L21)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/head/anomaly_score.py#L20-L21)

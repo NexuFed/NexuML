@@ -4,7 +4,7 @@
 
 Decision rules: fit thresholds from train scores, emit binary decisions.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/evaluation/anomalous_sound_detection/decision.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/evaluation/anomalous_sound_detection/decision.py#L1-L1)
 
 ## nexuml_library.evaluation.anomalous_sound_detection.decision.P
 
@@ -14,7 +14,7 @@ Decision rules: fit thresholds from train scores, emit binary decisions.
 P = ParamSpec('P')
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/evaluation/anomalous_sound_detection/decision.py#L150-L150)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/evaluation/anomalous_sound_detection/decision.py#L150-L150)
 
 ## nexuml_library.evaluation.anomalous_sound_detection.decision.DecisionRule
 
@@ -33,7 +33,7 @@ Abstract decision rule.
 > 1. fit(train_scores) — fit threshold from normal train scores
 > 2. forward(scores) -> decisions — apply threshold to produce binary decisions
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/evaluation/anomalous_sound_detection/decision.py#L15-L37)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/evaluation/anomalous_sound_detection/decision.py#L15-L37)
 
 ### nexuml_library.evaluation.anomalous_sound_detection.decision.DecisionRule.threshold
 
@@ -43,7 +43,7 @@ Abstract decision rule.
 threshold: float | None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/evaluation/anomalous_sound_detection/decision.py#L32-L37)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/evaluation/anomalous_sound_detection/decision.py#L32-L37)
 
 ### nexuml_library.evaluation.anomalous_sound_detection.decision.DecisionRule.fit
 
@@ -55,7 +55,7 @@ def fit(train_scores: torch.Tensor) -> None
 
 Fit the decision threshold from train-only scores.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/evaluation/anomalous_sound_detection/decision.py#L23-L25)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/evaluation/anomalous_sound_detection/decision.py#L23-L25)
 
 ### nexuml_library.evaluation.anomalous_sound_detection.decision.DecisionRule.forward
 
@@ -67,7 +67,7 @@ def forward(scores: torch.Tensor) -> torch.Tensor
 
 Return 1 (anomalous) / 0 (normal) binary decisions.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/evaluation/anomalous_sound_detection/decision.py#L27-L29)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/evaluation/anomalous_sound_detection/decision.py#L27-L29)
 
 ## nexuml_library.evaluation.anomalous_sound_detection.decision.DecisionRuleSpec
 
@@ -81,7 +81,7 @@ Bases: `FactorySpec`
 
 Portable constructor configuration for a decision rule.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/evaluation/anomalous_sound_detection/decision.py#L40-L41)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/evaluation/anomalous_sound_detection/decision.py#L40-L41)
 
 ## nexuml_library.evaluation.anomalous_sound_detection.decision.GammaPercentileRule
 
@@ -95,7 +95,7 @@ Bases: `nexuml_library.evaluation.anomalous_sound_detection.decision.DecisionRul
 
 Gamma-fit threshold at a given percentile of train scores.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/evaluation/anomalous_sound_detection/decision.py#L127-L147)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/evaluation/anomalous_sound_detection/decision.py#L127-L147)
 
 ### nexuml_library.evaluation.anomalous_sound_detection.decision.GammaPercentileRule.percentile
 
@@ -105,7 +105,7 @@ Gamma-fit threshold at a given percentile of train scores.
 percentile = percentile
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/evaluation/anomalous_sound_detection/decision.py#L134-L134)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/evaluation/anomalous_sound_detection/decision.py#L134-L134)
 
 ### nexuml_library.evaluation.anomalous_sound_detection.decision.GammaPercentileRule.threshold
 
@@ -117,7 +117,7 @@ threshold: float | None
 
 Inherited from: `nexuml_library.evaluation.anomalous_sound_detection.decision.DecisionRule`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/evaluation/anomalous_sound_detection/decision.py#L32-L37)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/evaluation/anomalous_sound_detection/decision.py#L32-L37)
 
 ### nexuml_library.evaluation.anomalous_sound_detection.decision.GammaPercentileRule.fit
 
@@ -127,7 +127,7 @@ Inherited from: `nexuml_library.evaluation.anomalous_sound_detection.decision.De
 def fit(train_scores: torch.Tensor) -> None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/evaluation/anomalous_sound_detection/decision.py#L137-L139)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/evaluation/anomalous_sound_detection/decision.py#L137-L139)
 
 ### nexuml_library.evaluation.anomalous_sound_detection.decision.GammaPercentileRule.forward
 
@@ -137,7 +137,7 @@ def fit(train_scores: torch.Tensor) -> None
 def forward(scores: torch.Tensor) -> torch.Tensor
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/evaluation/anomalous_sound_detection/decision.py#L141-L147)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/evaluation/anomalous_sound_detection/decision.py#L141-L147)
 
 ## nexuml_library.evaluation.anomalous_sound_detection.decision.PercentileThresholdRule
 
@@ -154,7 +154,7 @@ Threshold at a given percentile of the train score distribution.
 ``percentile`` in [0, 100]; equivalent to QuantileThresholdRule with
 quantile = percentile / 100.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/evaluation/anomalous_sound_detection/decision.py#L70-L94)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/evaluation/anomalous_sound_detection/decision.py#L70-L94)
 
 ### nexuml_library.evaluation.anomalous_sound_detection.decision.PercentileThresholdRule.percentile
 
@@ -164,7 +164,7 @@ quantile = percentile / 100.
 percentile = percentile
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/evaluation/anomalous_sound_detection/decision.py#L81-L81)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/evaluation/anomalous_sound_detection/decision.py#L81-L81)
 
 ### nexuml_library.evaluation.anomalous_sound_detection.decision.PercentileThresholdRule.threshold
 
@@ -176,7 +176,7 @@ threshold: float | None
 
 Inherited from: `nexuml_library.evaluation.anomalous_sound_detection.decision.DecisionRule`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/evaluation/anomalous_sound_detection/decision.py#L32-L37)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/evaluation/anomalous_sound_detection/decision.py#L32-L37)
 
 ### nexuml_library.evaluation.anomalous_sound_detection.decision.PercentileThresholdRule.fit
 
@@ -186,7 +186,7 @@ Inherited from: `nexuml_library.evaluation.anomalous_sound_detection.decision.De
 def fit(train_scores: torch.Tensor) -> None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/evaluation/anomalous_sound_detection/decision.py#L84-L86)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/evaluation/anomalous_sound_detection/decision.py#L84-L86)
 
 ### nexuml_library.evaluation.anomalous_sound_detection.decision.PercentileThresholdRule.forward
 
@@ -196,7 +196,7 @@ def fit(train_scores: torch.Tensor) -> None
 def forward(scores: torch.Tensor) -> torch.Tensor
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/evaluation/anomalous_sound_detection/decision.py#L88-L94)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/evaluation/anomalous_sound_detection/decision.py#L88-L94)
 
 ## nexuml_library.evaluation.anomalous_sound_detection.decision.QuantileThresholdRule
 
@@ -212,7 +212,7 @@ Threshold at a given quantile of the train score distribution.
 
 ``quantile`` in [0, 1]; e.g. 0.95 means the top-5% of train scores.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/evaluation/anomalous_sound_detection/decision.py#L44-L67)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/evaluation/anomalous_sound_detection/decision.py#L44-L67)
 
 ### nexuml_library.evaluation.anomalous_sound_detection.decision.QuantileThresholdRule.quantile
 
@@ -222,7 +222,7 @@ Threshold at a given quantile of the train score distribution.
 quantile = quantile
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/evaluation/anomalous_sound_detection/decision.py#L54-L54)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/evaluation/anomalous_sound_detection/decision.py#L54-L54)
 
 ### nexuml_library.evaluation.anomalous_sound_detection.decision.QuantileThresholdRule.threshold
 
@@ -234,7 +234,7 @@ threshold: float | None
 
 Inherited from: `nexuml_library.evaluation.anomalous_sound_detection.decision.DecisionRule`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/evaluation/anomalous_sound_detection/decision.py#L32-L37)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/evaluation/anomalous_sound_detection/decision.py#L32-L37)
 
 ### nexuml_library.evaluation.anomalous_sound_detection.decision.QuantileThresholdRule.fit
 
@@ -244,7 +244,7 @@ Inherited from: `nexuml_library.evaluation.anomalous_sound_detection.decision.De
 def fit(train_scores: torch.Tensor) -> None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/evaluation/anomalous_sound_detection/decision.py#L57-L59)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/evaluation/anomalous_sound_detection/decision.py#L57-L59)
 
 ### nexuml_library.evaluation.anomalous_sound_detection.decision.QuantileThresholdRule.forward
 
@@ -254,7 +254,7 @@ def fit(train_scores: torch.Tensor) -> None
 def forward(scores: torch.Tensor) -> torch.Tensor
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/evaluation/anomalous_sound_detection/decision.py#L61-L67)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/evaluation/anomalous_sound_detection/decision.py#L61-L67)
 
 ## nexuml_library.evaluation.anomalous_sound_detection.decision.decision_rule
 
@@ -270,4 +270,4 @@ Configure an importable decision-rule factory.
 
 - (`DecisionRuleSpec`) — Portable decision-rule specification.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/evaluation/anomalous_sound_detection/decision.py#L153-L161)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/evaluation/anomalous_sound_detection/decision.py#L153-L161)

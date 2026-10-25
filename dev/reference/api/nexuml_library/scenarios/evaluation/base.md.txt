@@ -4,7 +4,7 @@
 
 Evaluation scenario fragments.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/scenarios/evaluation/base.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/scenarios/evaluation/base.py#L1-L1)
 
 ## nexuml_library.scenarios.evaluation.base.classification_evaluation
 
@@ -20,7 +20,7 @@ Evaluation spec for classification metrics.
 
 - `EvaluationSpec` (`EvaluationSpec`) — Evaluation specification with classification metrics.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/scenarios/evaluation/base.py#L60-L90)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/scenarios/evaluation/base.py#L60-L90)
 
 ## nexuml_library.scenarios.evaluation.base.merge_eval_specs
 
@@ -36,7 +36,7 @@ Merge a list of evaluation specs into a single combined spec.
 
 - `EvaluationSpec` (`EvaluationSpec`) — Merged evaluation specification.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/scenarios/evaluation/base.py#L11-L27)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/scenarios/evaluation/base.py#L11-L27)
 
 ## nexuml_library.scenarios.evaluation.base.reconstruction_evaluation
 
@@ -52,7 +52,7 @@ Evaluation spec for reconstruction metrics.
 
 - `EvaluationSpec` (`EvaluationSpec`) — Evaluation specification with reconstruction metrics.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/scenarios/evaluation/base.py#L30-L57)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/scenarios/evaluation/base.py#L30-L57)
 
 ## nexuml_library.scenarios.evaluation.base.regression_evaluation
 
@@ -68,4 +68,4 @@ Evaluation spec for regression metrics.
 
 - `EvaluationSpec` (`EvaluationSpec`) — Evaluation specification with regression metrics.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/scenarios/evaluation/base.py#L93-L99)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/scenarios/evaluation/base.py#L93-L99)

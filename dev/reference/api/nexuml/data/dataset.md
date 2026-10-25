@@ -4,7 +4,7 @@
 
 Base dataset contracts and metadata-backed helpers for NexuML.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/dataset.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/dataset.py#L1-L1)
 
 ## nexuml.data.dataset.logger
 
@@ -14,7 +14,7 @@ Base dataset contracts and metadata-backed helpers for NexuML.
 logger = logging.getLogger(__name__)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/dataset.py#L16-L16)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/dataset.py#L16-L16)
 
 ## nexuml.data.dataset.NexuDataset
 
@@ -35,7 +35,7 @@ The base class supports two common patterns used throughout NexuML:
 
 Subclasses can still override ``__getitem__`` entirely for bespoke behavior.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/dataset.py#L34-L278)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/dataset.py#L34-L278)
 
 ### nexuml.data.dataset.NexuDataset.data
 
@@ -45,7 +45,7 @@ Subclasses can still override ``__getitem__`` entirely for bespoke behavior.
 data = data
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/dataset.py#L58-L58)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/dataset.py#L58-L58)
 
 ### nexuml.data.dataset.NexuDataset.label_names
 
@@ -55,7 +55,7 @@ data = data
 label_names: list[str] = list(label_names or [])
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/dataset.py#L60-L60)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/dataset.py#L60-L60)
 
 ### nexuml.data.dataset.NexuDataset.meta
 
@@ -65,7 +65,7 @@ label_names: list[str] = list(label_names or [])
 meta: pd.DataFrame | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/dataset.py#L56-L56)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/dataset.py#L56-L56)
 
 ### nexuml.data.dataset.NexuDataset.modality
 
@@ -75,7 +75,7 @@ meta: pd.DataFrame | None = None
 modality = modality
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/dataset.py#L57-L57)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/dataset.py#L57-L57)
 
 ### nexuml.data.dataset.NexuDataset.num_classes
 
@@ -85,7 +85,7 @@ modality = modality
 num_classes: dict[str, int] = {}
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/dataset.py#L61-L61)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/dataset.py#L61-L61)
 
 ### nexuml.data.dataset.NexuDataset.split_ratio
 
@@ -95,7 +95,7 @@ num_classes: dict[str, int] = {}
 split_ratio = split_ratio or [0.85, 0.1, 0.05]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/dataset.py#L59-L59)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/dataset.py#L59-L59)
 
 ### nexuml.data.dataset.NexuDataset.clone_with_meta
 
@@ -105,7 +105,7 @@ split_ratio = split_ratio or [0.85, 0.1, 0.05]
 def clone_with_meta(meta: pd.DataFrame, data=_KEEP_DATA) -> Self
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/dataset.py#L119-L128)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/dataset.py#L119-L128)
 
 ### nexuml.data.dataset.NexuDataset.download
 
@@ -117,7 +117,7 @@ def download() -> None
 
 Override to implement dataset downloading.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/dataset.py#L276-L278)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/dataset.py#L276-L278)
 
 ### nexuml.data.dataset.NexuDataset.get_split
 
@@ -137,7 +137,7 @@ Return a view of this dataset filtered to a single split.
 
 - `ValueError` — If the dataset has no metadata.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/dataset.py#L188-L201)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/dataset.py#L188-L201)
 
 ### nexuml.data.dataset.NexuDataset.load_item
 
@@ -155,7 +155,7 @@ Subclasses can override this to lazily load file-backed content.
 
 - (`TensorDict`) — Feature tensor dictionary for the sample.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/dataset.py#L203-L227)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/dataset.py#L203-L227)
 
 ### nexuml.data.dataset.NexuDataset.load_labels
 
@@ -174,7 +174,7 @@ Subclasses can override this for file-backed or computed targets.
 
 - (`TensorDict | None`) — Label tensor dictionary, or ``None`` if no labels are configured.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/dataset.py#L237-L255)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/dataset.py#L237-L255)
 
 ### nexuml.data.dataset.NexuDataset.split_meta
 
@@ -186,7 +186,7 @@ def split_meta(split_ratio: list[float]) -> None
 
 Convert 'fit' rows to train/val and 'all' rows to train/val/test.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/dataset.py#L163-L186)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/dataset.py#L163-L186)
 
 ### nexuml.data.dataset.NexuDataset.take
 
@@ -196,4 +196,4 @@ Convert 'fit' rows to train/val and 'all' rows to train/val/test.
 def take(indices: Sequence[int]) -> Self
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/dataset.py#L154-L161)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/dataset.py#L154-L161)

@@ -4,7 +4,7 @@
 
 Non-prebatched tensor-shard export backend.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/export/tensor_shards.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/tensor_shards.py#L1-L1)
 
 ## nexuml.data.export.tensor_shards.TensorShardsBackend
 
@@ -22,7 +22,7 @@ A shard is a storage unit with ``N`` samples along dimension zero. It is
 NOT a training batch; the runtime loader may create arbitrary batch sizes
 from the shard contents.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/export/tensor_shards.py#L52-L520)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/tensor_shards.py#L52-L520)
 
 ### nexuml.data.export.tensor_shards.TensorShardsBackend.samples_per_shard
 
@@ -32,7 +32,7 @@ from the shard contents.
 samples_per_shard = int(samples_per_shard)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/export/tensor_shards.py#L70-L70)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/tensor_shards.py#L70-L70)
 
 ### nexuml.data.export.tensor_shards.TensorShardsBackend.end_split
 
@@ -42,7 +42,7 @@ samples_per_shard = int(samples_per_shard)
 def end_split(split: str) -> None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/export/tensor_shards.py#L140-L146)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/tensor_shards.py#L140-L146)
 
 ### nexuml.data.export.tensor_shards.TensorShardsBackend.finalize
 
@@ -52,7 +52,7 @@ def end_split(split: str) -> None
 def finalize() -> dict[str, Any]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/export/tensor_shards.py#L208-L260)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/tensor_shards.py#L208-L260)
 
 ### nexuml.data.export.tensor_shards.TensorShardsBackend.initialize
 
@@ -62,7 +62,7 @@ def finalize() -> dict[str, Any]
 def initialize(export_dir: Path, num_samples: int, feature_shapes: dict[str, tuple[int, ...]], dtype: object | None = None) -> None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/export/tensor_shards.py#L91-L127)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/tensor_shards.py#L91-L127)
 
 ### nexuml.data.export.tensor_shards.TensorShardsBackend.load_manifest
 
@@ -72,7 +72,7 @@ def initialize(export_dir: Path, num_samples: int, feature_shapes: dict[str, tup
 def load_manifest(export_dir: Path) -> dict[str, Any]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/export/tensor_shards.py#L262-L268)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/tensor_shards.py#L262-L268)
 
 ### nexuml.data.export.tensor_shards.TensorShardsBackend.load_sample
 
@@ -92,7 +92,7 @@ Map-style compatibility path; the window loader should use load_shard.
 
 - `IndexError` — If the sample index is outside available shard bounds.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/export/tensor_shards.py#L330-L360)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/tensor_shards.py#L330-L360)
 
 ### nexuml.data.export.tensor_shards.TensorShardsBackend.load_shard
 
@@ -113,7 +113,7 @@ Load a complete shard for the future windowed loader.
 - `IndexError` — If an integer shard index is out of range.
 - `ValueError` — If the shard content or metadata is invalid.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/export/tensor_shards.py#L270-L328)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/tensor_shards.py#L270-L328)
 
 ### nexuml.data.export.tensor_shards.TensorShardsBackend.save_batch
 
@@ -123,7 +123,7 @@ Load a complete shard for the future windowed loader.
 def save_batch(start_index: int, features: dict[str, torch.Tensor]) -> None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/export/tensor_shards.py#L158-L206)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/tensor_shards.py#L158-L206)
 
 ### nexuml.data.export.tensor_shards.TensorShardsBackend.save_sample
 
@@ -133,7 +133,7 @@ def save_batch(start_index: int, features: dict[str, torch.Tensor]) -> None
 def save_sample(index: int, features: dict[str, torch.Tensor]) -> None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/export/tensor_shards.py#L148-L156)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/tensor_shards.py#L148-L156)
 
 ### nexuml.data.export.tensor_shards.TensorShardsBackend.start_split
 
@@ -143,4 +143,4 @@ def save_sample(index: int, features: dict[str, torch.Tensor]) -> None
 def start_split(split: str) -> None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/data/export/tensor_shards.py#L130-L138)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/data/export/tensor_shards.py#L130-L138)

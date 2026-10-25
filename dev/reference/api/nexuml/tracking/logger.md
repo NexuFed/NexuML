@@ -4,7 +4,7 @@
 
 Logger factory for NexuML experiment tracking.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/tracking/logger.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/tracking/logger.py#L1-L1)
 
 ## nexuml.tracking.logger.logger
 
@@ -14,7 +14,7 @@ Logger factory for NexuML experiment tracking.
 logger = logging.getLogger(__name__)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/tracking/logger.py#L21-L21)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/tracking/logger.py#L21-L21)
 
 ## nexuml.tracking.logger.create_loggers
 
@@ -38,7 +38,7 @@ Each backend is imported lazily so missing optional deps don't crash the import.
 
 - (`list[Any]`) — List of Lightning logger instances ready for Trainer(logger=...).
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/tracking/logger.py#L238-L296)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/tracking/logger.py#L238-L296)
 
 ## nexuml.tracking.logger.get_temp_artifact_root
 
@@ -50,7 +50,7 @@ def get_temp_artifact_root() -> Path
 
 Return the directory used for temporary artifact staging.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/tracking/logger.py#L40-L44)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/tracking/logger.py#L40-L44)
 
 ## nexuml.tracking.logger.iter_loggers
 
@@ -66,7 +66,7 @@ Normalize Lightning logger containers into a flat list.
 
 - (`list[Any]`) — Flat list of non-None logger instances.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/tracking/logger.py#L422-L437)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/tracking/logger.py#L422-L437)
 
 ## nexuml.tracking.logger.log_artifact
 
@@ -82,7 +82,7 @@ Log or copy a file artifact to all configured logger backends.
 
 - `FileNotFoundError` — If *source_path* does not exist.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/tracking/logger.py#L440-L477)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/tracking/logger.py#L440-L477)
 
 ## nexuml.tracking.logger.log_image
 
@@ -102,7 +102,7 @@ Log an image to all configured logger backends.
 - `step` (`int | None`) (default: `None`) — Global step for time-series backends (TensorBoard).
 - `artifact_path` (`str | None`) (default: `None`) — Optional subdirectory within the run's artifact store (MLflow / file-based backends only).
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/tracking/logger.py#L519-L580)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/tracking/logger.py#L519-L580)
 
 ## nexuml.tracking.logger.log_text_artifact
 
@@ -114,7 +114,7 @@ def log_text_artifact(logger_obj: Any, text: str, artifact_name: str, artifact_p
 
 Write text content to a temporary file and log it as an artifact.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/tracking/logger.py#L480-L490)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/tracking/logger.py#L480-L490)
 
 ## nexuml.tracking.logger.print_service_info
 
@@ -129,7 +129,7 @@ Print actionable commands for all active monitoring services.
 Called once at the start of training so the user knows how to
 inspect metrics, tune hyperparameters, etc.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/tracking/logger.py#L706-L821)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/tracking/logger.py#L706-L821)
 
 ## nexuml.tracking.logger.staged_artifact_path
 
@@ -141,4 +141,4 @@ def staged_artifact_path(artifact_name: str, *, prefix: str = 'nexuml_artifact_'
 
 Yield a temporary filesystem path for building an artifact before logging it.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/tracking/logger.py#L47-L58)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/tracking/logger.py#L47-L58)

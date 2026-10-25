@@ -4,7 +4,7 @@
 
 Build configured Lightning callbacks.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/training/callbacks.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/training/callbacks.py#L1-L1)
 
 ## nexuml.training.callbacks.logger
 
@@ -14,7 +14,7 @@ Build configured Lightning callbacks.
 logger = logging.getLogger(__name__)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/training/callbacks.py#L13-L13)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/training/callbacks.py#L13-L13)
 
 ## nexuml.training.callbacks.build_callbacks
 
@@ -30,4 +30,4 @@ Instantiate Lightning callbacks from portable factory specs.
 
 - (`list[Callback]`) — List of instantiated Lightning callback objects.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/training/callbacks.py#L16-L37)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/training/callbacks.py#L16-L37)

@@ -8,7 +8,7 @@ All datasets are metadata-backed and fake-fixture friendly: they accept
 pre-built DataFrames and tiny local audio files for testing without
 requiring network downloads.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L1-L1)
 
 ## nexuml_library.data.dcaset2.dcase2026.DCASE2026_T1_BSD10K_RECORD
 
@@ -18,7 +18,7 @@ requiring network downloads.
 DCASE2026_T1_BSD10K_RECORD = 17233905
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L597-L597)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L597-L597)
 
 ## nexuml_library.data.dcaset2.dcase2026.DCASE2026_T1_OFFICIAL_URL
 
@@ -28,7 +28,7 @@ DCASE2026_T1_BSD10K_RECORD = 17233905
 DCASE2026_T1_OFFICIAL_URL = 'https://zenodo.org/records/17233905'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L598-L598)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L598-L598)
 
 ## nexuml_library.data.dcaset2.dcase2026.DCASE2026_T2_OFFICIAL_URL
 
@@ -38,7 +38,7 @@ DCASE2026_T1_OFFICIAL_URL = 'https://zenodo.org/records/17233905'
 DCASE2026_T2_OFFICIAL_URL = 'https://dcase.community/challenge2026/'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L907-L907)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L907-L907)
 
 ## nexuml_library.data.dcaset2.dcase2026.DCASE2026_T7_DEV_RECORD
 
@@ -48,7 +48,7 @@ DCASE2026_T2_OFFICIAL_URL = 'https://dcase.community/challenge2026/'
 DCASE2026_T7_DEV_RECORD = 19335184
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L1057-L1057)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L1057-L1057)
 
 ## nexuml_library.data.dcaset2.dcase2026.DCASE2026_T7_OFFICIAL_URL
 
@@ -58,7 +58,7 @@ DCASE2026_T7_DEV_RECORD = 19335184
 DCASE2026_T7_OFFICIAL_URL = 'https://zenodo.org/records/19335184'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L1058-L1058)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L1058-L1058)
 
 ## nexuml_library.data.dcaset2.dcase2026.DownloadMode
 
@@ -68,7 +68,7 @@ DCASE2026_T7_OFFICIAL_URL = 'https://zenodo.org/records/19335184'
 DownloadMode = Literal['disabled', 'dry_run', 'manual', 'already_downloaded', 'download']
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L36-L36)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L36-L36)
 
 ## nexuml_library.data.dcaset2.dcase2026.logger
 
@@ -78,7 +78,7 @@ DownloadMode = Literal['disabled', 'dry_run', 'manual', 'already_downloaded', 'd
 logger = logging.getLogger(__name__)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L34-L34)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L34-L34)
 
 ## nexuml_library.data.dcaset2.dcase2026.DCASE2026T1Dataset
 
@@ -109,7 +109,7 @@ Optional columns: ``confidence``, ``uploader``, ``license``, ``title``,
 - `split` (`str`) — ``"fit"``, ``"val"``, ``"test"``, or ``"eval"``.
 - `sample_rate` (`int`) — Target audio sample rate.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L725-L758)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L725-L758)
 
 ### nexuml_library.data.dcaset2.dcase2026.DCASE2026T1Dataset.checksum
 
@@ -119,7 +119,7 @@ Optional columns: ``confidence``, ``uploader``, ``license``, ``title``,
 checksum: str | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L749-L749)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L749-L749)
 
 ### nexuml_library.data.dcaset2.dcase2026.DCASE2026T1Dataset.clap_embeddings_dir
 
@@ -129,7 +129,7 @@ checksum: str | None = None
 clap_embeddings_dir: str | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L750-L750)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L750-L750)
 
 ### nexuml_library.data.dcaset2.dcase2026.DCASE2026T1Dataset.clip_num_samples
 
@@ -139,7 +139,7 @@ clap_embeddings_dir: str | None = None
 clip_num_samples: int | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L755-L755)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L755-L755)
 
 ### nexuml_library.data.dcaset2.dcase2026.DCASE2026T1Dataset.download_mode
 
@@ -149,7 +149,7 @@ clip_num_samples: int | None = None
 download_mode: DownloadMode = 'disabled'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L748-L748)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L748-L748)
 
 ### nexuml_library.data.dcaset2.dcase2026.DCASE2026T1Dataset.fold_id
 
@@ -159,7 +159,7 @@ download_mode: DownloadMode = 'disabled'
 fold_id: int | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L752-L752)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L752-L752)
 
 ### nexuml_library.data.dcaset2.dcase2026.DCASE2026T1Dataset.fold_seed
 
@@ -169,7 +169,7 @@ fold_id: int | None = None
 fold_seed: int = 42
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L751-L751)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L751-L751)
 
 ### nexuml_library.data.dcaset2.dcase2026.DCASE2026T1Dataset.metadata_csv
 
@@ -179,7 +179,7 @@ fold_seed: int = 42
 metadata_csv: str = 'metadata.csv'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L747-L747)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L747-L747)
 
 ### nexuml_library.data.dcaset2.dcase2026.DCASE2026T1Dataset.root
 
@@ -189,7 +189,7 @@ metadata_csv: str = 'metadata.csv'
 root: str | Path
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L746-L746)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L746-L746)
 
 ### nexuml_library.data.dcaset2.dcase2026.DCASE2026T1Dataset.sample_rate
 
@@ -199,7 +199,7 @@ root: str | Path
 sample_rate: int = 16000
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L754-L754)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L754-L754)
 
 ### nexuml_library.data.dcaset2.dcase2026.DCASE2026T1Dataset.split
 
@@ -209,7 +209,7 @@ sample_rate: int = 16000
 split: str = 'fit'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L753-L753)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L753-L753)
 
 ### nexuml_library.data.dcaset2.dcase2026.DCASE2026T1Dataset.build
 
@@ -219,7 +219,7 @@ split: str = 'fit'
 def build() -> NexuDataset
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L757-L758)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L757-L758)
 
 ## nexuml_library.data.dcaset2.dcase2026.DCASE2026T2Dataset
 
@@ -240,7 +240,7 @@ Extends ``DCASET2Dataset`` with 2026-specific metadata:
 Audio is 2-channel (stereo). Channel selection happens in pipeline layers,
 not here. DALI loads raw stereo audio as [C, T] via ``dali_layout="CT"``.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L944-L960)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L944-L960)
 
 ### nexuml_library.data.dcaset2.dcase2026.DCASE2026T2Dataset.attributes_csv
 
@@ -250,7 +250,7 @@ not here. DALI loads raw stereo audio as [C, T] via ``dali_layout="CT"``.
 attributes_csv: str | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L957-L957)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L957-L957)
 
 ### nexuml_library.data.dcaset2.dcase2026.DCASE2026T2Dataset.dataset_name
 
@@ -260,7 +260,7 @@ attributes_csv: str | None = None
 dataset_name: str = 'DCASE2026T2'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L956-L956)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L956-L956)
 
 ### nexuml_library.data.dcaset2.dcase2026.DCASE2026T2Dataset.clip_num_samples
 
@@ -272,7 +272,7 @@ clip_num_samples: int | None = None
 
 Inherited from: `nexuml_library.data.dcaset2.dcase2026.DCASET2Dataset`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L164-L164)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L164-L164)
 
 ### nexuml_library.data.dcaset2.dcase2026.DCASE2026T2Dataset.data_root
 
@@ -284,7 +284,7 @@ data_root: str | Path | None = None
 
 Inherited from: `nexuml_library.data.dcaset2.dcase2026.DCASET2Dataset`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L156-L156)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L156-L156)
 
 ### nexuml_library.data.dcaset2.dcase2026.DCASE2026T2Dataset.data_type
 
@@ -296,7 +296,7 @@ data_type: str = 'dev'
 
 Inherited from: `nexuml_library.data.dcaset2.dcase2026.DCASET2Dataset`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L161-L161)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L161-L161)
 
 ### nexuml_library.data.dcaset2.dcase2026.DCASE2026T2Dataset.download
 
@@ -308,7 +308,7 @@ download: bool = False
 
 Inherited from: `nexuml_library.data.dcaset2.dcase2026.DCASET2Dataset`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L168-L168)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L168-L168)
 
 ### nexuml_library.data.dcaset2.dcase2026.DCASE2026T2Dataset.download_manifest
 
@@ -320,7 +320,7 @@ download_manifest: Path | None = None
 
 Inherited from: `nexuml_library.data.dcaset2.dcase2026.DCASET2Dataset`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L169-L169)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L169-L169)
 
 ### nexuml_library.data.dcaset2.dcase2026.DCASE2026T2Dataset.machine_id
 
@@ -332,7 +332,7 @@ machine_id: int | None = None
 
 Inherited from: `nexuml_library.data.dcaset2.dcase2026.DCASET2Dataset`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L166-L166)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L166-L166)
 
 ### nexuml_library.data.dcaset2.dcase2026.DCASE2026T2Dataset.machine_label
 
@@ -344,7 +344,7 @@ machine_label: str | None = None
 
 Inherited from: `nexuml_library.data.dcaset2.dcase2026.DCASET2Dataset`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L167-L167)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L167-L167)
 
 ### nexuml_library.data.dcaset2.dcase2026.DCASE2026T2Dataset.machine_type
 
@@ -356,7 +356,7 @@ machine_type: str = 'ToyCar'
 
 Inherited from: `nexuml_library.data.dcaset2.dcase2026.DCASET2Dataset`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L158-L158)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L158-L158)
 
 ### nexuml_library.data.dcaset2.dcase2026.DCASE2026T2Dataset.machine_types
 
@@ -368,7 +368,7 @@ machine_types: list[str] | None = None
 
 Inherited from: `nexuml_library.data.dcaset2.dcase2026.DCASET2Dataset`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L165-L165)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L165-L165)
 
 ### nexuml_library.data.dcaset2.dcase2026.DCASE2026T2Dataset.root
 
@@ -380,7 +380,7 @@ root: str | Path | None = None
 
 Inherited from: `nexuml_library.data.dcaset2.dcase2026.DCASET2Dataset`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L155-L155)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L155-L155)
 
 ### nexuml_library.data.dcaset2.dcase2026.DCASE2026T2Dataset.sample_rate
 
@@ -392,7 +392,7 @@ sample_rate: int = 16000
 
 Inherited from: `nexuml_library.data.dcaset2.dcase2026.DCASET2Dataset`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L163-L163)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L163-L163)
 
 ### nexuml_library.data.dcaset2.dcase2026.DCASE2026T2Dataset.section_ids
 
@@ -404,7 +404,7 @@ section_ids: list[str] | None = None
 
 Inherited from: `nexuml_library.data.dcaset2.dcase2026.DCASET2Dataset`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L160-L160)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L160-L160)
 
 ### nexuml_library.data.dcaset2.dcase2026.DCASE2026T2Dataset.section_keyword
 
@@ -416,7 +416,7 @@ section_keyword: str = 'section'
 
 Inherited from: `nexuml_library.data.dcaset2.dcase2026.DCASET2Dataset`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L159-L159)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L159-L159)
 
 ### nexuml_library.data.dcaset2.dcase2026.DCASE2026T2Dataset.train
 
@@ -428,7 +428,7 @@ train: bool = True
 
 Inherited from: `nexuml_library.data.dcaset2.dcase2026.DCASET2Dataset`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L162-L162)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L162-L162)
 
 ### nexuml_library.data.dcaset2.dcase2026.DCASE2026T2Dataset.build
 
@@ -438,7 +438,7 @@ Inherited from: `nexuml_library.data.dcaset2.dcase2026.DCASET2Dataset`
 def build() -> NexuDataset
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L959-L960)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L959-L960)
 
 ## nexuml_library.data.dcaset2.dcase2026.DCASE2026T7Dataset
 
@@ -462,7 +462,7 @@ contain:
 The dataset exposes a sequence-of-increments interface via
 ``get_increment()``.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L1179-L1203)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L1179-L1203)
 
 ### nexuml_library.data.dcaset2.dcase2026.DCASE2026T7Dataset.checksum
 
@@ -472,7 +472,7 @@ The dataset exposes a sequence-of-increments interface via
 checksum: str | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L1197-L1197)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L1197-L1197)
 
 ### nexuml_library.data.dcaset2.dcase2026.DCASE2026T7Dataset.clip_num_samples
 
@@ -482,7 +482,7 @@ checksum: str | None = None
 clip_num_samples: int | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L1200-L1200)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L1200-L1200)
 
 ### nexuml_library.data.dcaset2.dcase2026.DCASE2026T7Dataset.d1_baseline_dir
 
@@ -492,7 +492,7 @@ clip_num_samples: int | None = None
 d1_baseline_dir: str | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L1198-L1198)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L1198-L1198)
 
 ### nexuml_library.data.dcaset2.dcase2026.DCASE2026T7Dataset.domains
 
@@ -502,7 +502,7 @@ d1_baseline_dir: str | None = None
 domains: list[str] | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L1195-L1195)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L1195-L1195)
 
 ### nexuml_library.data.dcaset2.dcase2026.DCASE2026T7Dataset.download_mode
 
@@ -512,7 +512,7 @@ domains: list[str] | None = None
 download_mode: DownloadMode = 'disabled'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L1196-L1196)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L1196-L1196)
 
 ### nexuml_library.data.dcaset2.dcase2026.DCASE2026T7Dataset.root
 
@@ -522,7 +522,7 @@ download_mode: DownloadMode = 'disabled'
 root: str | Path
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L1194-L1194)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L1194-L1194)
 
 ### nexuml_library.data.dcaset2.dcase2026.DCASE2026T7Dataset.sample_rate
 
@@ -532,7 +532,7 @@ root: str | Path
 sample_rate: int = 16000
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L1199-L1199)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L1199-L1199)
 
 ### nexuml_library.data.dcaset2.dcase2026.DCASE2026T7Dataset.build
 
@@ -542,7 +542,7 @@ sample_rate: int = 16000
 def build() -> NexuDataset
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L1202-L1203)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L1202-L1203)
 
 ## nexuml_library.data.dcaset2.dcase2026.DCASET2Dataset
 
@@ -580,7 +580,7 @@ lazily loads audio/features in load_item().
 - `sample_rate` (`int`) — target sample rate for audio loading
 - `machine_types` (`list[str] | None`) — list of all machine types (for machine index mapping)
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L129-L172)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L129-L172)
 
 ### nexuml_library.data.dcaset2.dcase2026.DCASET2Dataset.clip_num_samples
 
@@ -590,7 +590,7 @@ lazily loads audio/features in load_item().
 clip_num_samples: int | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L164-L164)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L164-L164)
 
 ### nexuml_library.data.dcaset2.dcase2026.DCASET2Dataset.data_root
 
@@ -600,7 +600,7 @@ clip_num_samples: int | None = None
 data_root: str | Path | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L156-L156)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L156-L156)
 
 ### nexuml_library.data.dcaset2.dcase2026.DCASET2Dataset.data_type
 
@@ -610,7 +610,7 @@ data_root: str | Path | None = None
 data_type: str = 'dev'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L161-L161)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L161-L161)
 
 ### nexuml_library.data.dcaset2.dcase2026.DCASET2Dataset.dataset_name
 
@@ -620,7 +620,7 @@ data_type: str = 'dev'
 dataset_name: str = 'DCASE2024T2'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L157-L157)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L157-L157)
 
 ### nexuml_library.data.dcaset2.dcase2026.DCASET2Dataset.download
 
@@ -630,7 +630,7 @@ dataset_name: str = 'DCASE2024T2'
 download: bool = False
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L168-L168)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L168-L168)
 
 ### nexuml_library.data.dcaset2.dcase2026.DCASET2Dataset.download_manifest
 
@@ -640,7 +640,7 @@ download: bool = False
 download_manifest: Path | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L169-L169)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L169-L169)
 
 ### nexuml_library.data.dcaset2.dcase2026.DCASET2Dataset.machine_id
 
@@ -650,7 +650,7 @@ download_manifest: Path | None = None
 machine_id: int | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L166-L166)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L166-L166)
 
 ### nexuml_library.data.dcaset2.dcase2026.DCASET2Dataset.machine_label
 
@@ -660,7 +660,7 @@ machine_id: int | None = None
 machine_label: str | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L167-L167)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L167-L167)
 
 ### nexuml_library.data.dcaset2.dcase2026.DCASET2Dataset.machine_type
 
@@ -670,7 +670,7 @@ machine_label: str | None = None
 machine_type: str = 'ToyCar'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L158-L158)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L158-L158)
 
 ### nexuml_library.data.dcaset2.dcase2026.DCASET2Dataset.machine_types
 
@@ -680,7 +680,7 @@ machine_type: str = 'ToyCar'
 machine_types: list[str] | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L165-L165)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L165-L165)
 
 ### nexuml_library.data.dcaset2.dcase2026.DCASET2Dataset.root
 
@@ -690,7 +690,7 @@ machine_types: list[str] | None = None
 root: str | Path | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L155-L155)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L155-L155)
 
 ### nexuml_library.data.dcaset2.dcase2026.DCASET2Dataset.sample_rate
 
@@ -700,7 +700,7 @@ root: str | Path | None = None
 sample_rate: int = 16000
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L163-L163)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L163-L163)
 
 ### nexuml_library.data.dcaset2.dcase2026.DCASET2Dataset.section_ids
 
@@ -710,7 +710,7 @@ sample_rate: int = 16000
 section_ids: list[str] | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L160-L160)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L160-L160)
 
 ### nexuml_library.data.dcaset2.dcase2026.DCASET2Dataset.section_keyword
 
@@ -720,7 +720,7 @@ section_ids: list[str] | None = None
 section_keyword: str = 'section'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L159-L159)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L159-L159)
 
 ### nexuml_library.data.dcaset2.dcase2026.DCASET2Dataset.train
 
@@ -730,7 +730,7 @@ section_keyword: str = 'section'
 train: bool = True
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L162-L162)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L162-L162)
 
 ### nexuml_library.data.dcaset2.dcase2026.DCASET2Dataset.build
 
@@ -740,4 +740,4 @@ train: bool = True
 def build() -> NexuDataset
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/dcaset2/dcase2026.py#L171-L172)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/dcaset2/dcase2026.py#L171-L172)

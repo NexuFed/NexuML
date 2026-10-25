@@ -4,7 +4,7 @@
 
 Pooling layers for token/sequence aggregation.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/feature/pooling.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/feature/pooling.py#L1-L1)
 
 ## nexuml_library.layers.feature.pooling.AttentionPool
 
@@ -24,7 +24,7 @@ Learned attention pooling using a query token.
 - `remove_dim` (`bool`) — Whether to remove the pooled dimension.
 - `n_heads` (`int`) — Number of attention heads.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/feature/pooling.py#L184-L199)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/feature/pooling.py#L184-L199)
 
 ### nexuml_library.layers.feature.pooling.AttentionPool.dim
 
@@ -34,7 +34,7 @@ Learned attention pooling using a query token.
 dim: int = -2
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/feature/pooling.py#L194-L194)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/feature/pooling.py#L194-L194)
 
 ### nexuml_library.layers.feature.pooling.AttentionPool.n_heads
 
@@ -44,7 +44,7 @@ dim: int = -2
 n_heads: int = 8
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/feature/pooling.py#L196-L196)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/feature/pooling.py#L196-L196)
 
 ### nexuml_library.layers.feature.pooling.AttentionPool.remove_dim
 
@@ -54,7 +54,7 @@ n_heads: int = 8
 remove_dim: bool = True
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/feature/pooling.py#L195-L195)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/feature/pooling.py#L195-L195)
 
 ### nexuml_library.layers.feature.pooling.AttentionPool.build
 
@@ -64,7 +64,7 @@ remove_dim: bool = True
 def build(context: LayerBuildContext) -> PipelineLayer
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/feature/pooling.py#L198-L199)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/feature/pooling.py#L198-L199)
 
 ## nexuml_library.layers.feature.pooling.AttentiveStatisticsPool
 
@@ -86,7 +86,7 @@ Computes attention-weighted mean and std, then projects to input dim.
 - `remove_dim` (`bool`) — Whether to remove the pooled dimension.
 - `hidden_dim` (`int`) — Hidden dimension for the attention MLP.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/feature/pooling.py#L230-L247)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/feature/pooling.py#L230-L247)
 
 ### nexuml_library.layers.feature.pooling.AttentiveStatisticsPool.dim
 
@@ -96,7 +96,7 @@ Computes attention-weighted mean and std, then projects to input dim.
 dim: int = -2
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/feature/pooling.py#L242-L242)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/feature/pooling.py#L242-L242)
 
 ### nexuml_library.layers.feature.pooling.AttentiveStatisticsPool.hidden_dim
 
@@ -106,7 +106,7 @@ dim: int = -2
 hidden_dim: int = 128
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/feature/pooling.py#L244-L244)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/feature/pooling.py#L244-L244)
 
 ### nexuml_library.layers.feature.pooling.AttentiveStatisticsPool.remove_dim
 
@@ -116,7 +116,7 @@ hidden_dim: int = 128
 remove_dim: bool = True
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/feature/pooling.py#L243-L243)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/feature/pooling.py#L243-L243)
 
 ### nexuml_library.layers.feature.pooling.AttentiveStatisticsPool.build
 
@@ -126,7 +126,7 @@ remove_dim: bool = True
 def build(context: LayerBuildContext) -> PipelineLayer
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/feature/pooling.py#L246-L247)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/feature/pooling.py#L246-L247)
 
 ## nexuml_library.layers.feature.pooling.TokenPool
 
@@ -147,7 +147,7 @@ Pool tokens along a specified dimension.
 - `remove_dim` (`bool`) — Whether to squeeze the pooled dimension.
 - `skip_first` (`bool`) — Skip the first token (e.g. CLS token) before pooling.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/feature/pooling.py#L21-L48)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/feature/pooling.py#L21-L48)
 
 ### nexuml_library.layers.feature.pooling.TokenPool.dim
 
@@ -157,7 +157,7 @@ Pool tokens along a specified dimension.
 dim: int = -2
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/feature/pooling.py#L42-L42)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/feature/pooling.py#L42-L42)
 
 ### nexuml_library.layers.feature.pooling.TokenPool.pooling_type
 
@@ -167,7 +167,7 @@ dim: int = -2
 pooling_type: Literal['mean', 'max', 'std', 'mean_std', 'cls', 'multilayer'] = 'mean'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/feature/pooling.py#L43-L43)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/feature/pooling.py#L43-L43)
 
 ### nexuml_library.layers.feature.pooling.TokenPool.remove_dim
 
@@ -177,7 +177,7 @@ pooling_type: Literal['mean', 'max', 'std', 'mean_std', 'cls', 'multilayer'] = '
 remove_dim: bool = True
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/feature/pooling.py#L44-L44)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/feature/pooling.py#L44-L44)
 
 ### nexuml_library.layers.feature.pooling.TokenPool.skip_first
 
@@ -187,7 +187,7 @@ remove_dim: bool = True
 skip_first: bool = False
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/feature/pooling.py#L45-L45)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/feature/pooling.py#L45-L45)
 
 ### nexuml_library.layers.feature.pooling.TokenPool.build
 
@@ -197,4 +197,4 @@ skip_first: bool = False
 def build(context: LayerBuildContext) -> PipelineLayer
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/layers/feature/pooling.py#L47-L48)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/layers/feature/pooling.py#L47-L48)

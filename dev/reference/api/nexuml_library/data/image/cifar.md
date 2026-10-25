@@ -4,7 +4,7 @@
 
 CIFAR dataset sources for image classification experiments.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/image/cifar.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/image/cifar.py#L1-L1)
 
 ## nexuml_library.data.image.cifar.CIFAR100Dataset
 
@@ -18,7 +18,7 @@ Bases: `DataSourceDefinition`
 
 CIFAR-100 dataset backed by ``self.data`` and metadata labels.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/image/cifar.py#L106-L118)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/image/cifar.py#L106-L118)
 
 ### nexuml_library.data.image.cifar.CIFAR100Dataset.download
 
@@ -28,7 +28,7 @@ CIFAR-100 dataset backed by ``self.data`` and metadata labels.
 download: bool = False
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/image/cifar.py#L114-L114)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/image/cifar.py#L114-L114)
 
 ### nexuml_library.data.image.cifar.CIFAR100Dataset.fixed_label_keys
 
@@ -38,7 +38,7 @@ download: bool = False
 fixed_label_keys = ('class_labels')
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/image/cifar.py#L110-L110)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/image/cifar.py#L110-L110)
 
 ### nexuml_library.data.image.cifar.CIFAR100Dataset.root
 
@@ -48,7 +48,7 @@ fixed_label_keys = ('class_labels')
 root: str | Path = 'data/cifar100'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/image/cifar.py#L112-L112)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/image/cifar.py#L112-L112)
 
 ### nexuml_library.data.image.cifar.CIFAR100Dataset.split
 
@@ -58,7 +58,7 @@ root: str | Path = 'data/cifar100'
 split: str | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/image/cifar.py#L115-L115)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/image/cifar.py#L115-L115)
 
 ### nexuml_library.data.image.cifar.CIFAR100Dataset.train
 
@@ -68,7 +68,7 @@ split: str | None = None
 train: bool = True
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/image/cifar.py#L113-L113)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/image/cifar.py#L113-L113)
 
 ### nexuml_library.data.image.cifar.CIFAR100Dataset.build
 
@@ -78,7 +78,7 @@ train: bool = True
 def build() -> NexuDataset
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/image/cifar.py#L117-L118)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/image/cifar.py#L117-L118)
 
 ## nexuml_library.data.image.cifar.CIFAR10Dataset
 
@@ -92,7 +92,7 @@ Bases: `DataSourceDefinition`
 
 CIFAR-10 dataset backed by ``self.data`` and metadata labels.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/image/cifar.py#L17-L29)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/image/cifar.py#L17-L29)
 
 ### nexuml_library.data.image.cifar.CIFAR10Dataset.download
 
@@ -102,7 +102,7 @@ CIFAR-10 dataset backed by ``self.data`` and metadata labels.
 download: bool = False
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/image/cifar.py#L25-L25)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/image/cifar.py#L25-L25)
 
 ### nexuml_library.data.image.cifar.CIFAR10Dataset.fixed_label_keys
 
@@ -112,7 +112,7 @@ download: bool = False
 fixed_label_keys = ('class_labels')
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/image/cifar.py#L21-L21)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/image/cifar.py#L21-L21)
 
 ### nexuml_library.data.image.cifar.CIFAR10Dataset.root
 
@@ -122,7 +122,7 @@ fixed_label_keys = ('class_labels')
 root: str | Path = 'data/cifar10'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/image/cifar.py#L23-L23)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/image/cifar.py#L23-L23)
 
 ### nexuml_library.data.image.cifar.CIFAR10Dataset.split
 
@@ -132,7 +132,7 @@ root: str | Path = 'data/cifar10'
 split: str | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/image/cifar.py#L26-L26)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/image/cifar.py#L26-L26)
 
 ### nexuml_library.data.image.cifar.CIFAR10Dataset.train
 
@@ -142,7 +142,7 @@ split: str | None = None
 train: bool = True
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/image/cifar.py#L24-L24)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/image/cifar.py#L24-L24)
 
 ### nexuml_library.data.image.cifar.CIFAR10Dataset.build
 
@@ -152,4 +152,4 @@ train: bool = True
 def build() -> NexuDataset
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/library/src/nexuml_library/data/image/cifar.py#L28-L29)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/library/src/nexuml_library/data/image/cifar.py#L28-L29)

@@ -4,7 +4,7 @@
 
 Core execution definitions; importing settings never imports cluster runtimes.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L1-L1)
 
 ## nexuml.execution.definitions.ConfigHandoff
 
@@ -18,7 +18,7 @@ Bases: `BaseModel`
 
 Explicit shared filesystem or S3 destination for one frozen worker config.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L182-L208)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L182-L208)
 
 ### nexuml.execution.definitions.ConfigHandoff.destination
 
@@ -28,7 +28,7 @@ Explicit shared filesystem or S3 destination for one frozen worker config.
 destination: str
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L186-L186)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L186-L186)
 
 ### nexuml.execution.definitions.ConfigHandoff.model_config
 
@@ -38,7 +38,7 @@ destination: str
 model_config = ConfigDict(extra='forbid', frozen=True)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L185-L185)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L185-L185)
 
 ### nexuml.execution.definitions.ConfigHandoff.worker_directory
 
@@ -48,7 +48,7 @@ model_config = ConfigDict(extra='forbid', frozen=True)
 worker_directory: str | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L187-L187)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L187-L187)
 
 ### nexuml.execution.definitions.ConfigHandoff.validate_destination
 
@@ -58,7 +58,7 @@ worker_directory: str | None = None
 def validate_destination(value: str | None) -> str | None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L189-L208)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L189-L208)
 
 ## nexuml.execution.definitions.KubernetesExecution
 
@@ -72,7 +72,7 @@ Bases: `nexuml.core.components.ExecutionBackendDefinition`
 
 Infrastructure-owned template and named training resource bindings.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L211-L270)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L211-L270)
 
 ### nexuml.execution.definitions.KubernetesExecution.api_version
 
@@ -82,7 +82,7 @@ Infrastructure-owned template and named training resource bindings.
 api_version: str
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L221-L221)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L221-L221)
 
 ### nexuml.execution.definitions.KubernetesExecution.capabilities
 
@@ -92,7 +92,7 @@ api_version: str
 capabilities = {'status': True, 'logs': True, 'metrics': False, 'cancellation': True, 'resume': False, 'artifacts': False, 'process_ownership': False, 'native_reference': True}
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L224-L233)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L224-L233)
 
 ### nexuml.execution.definitions.KubernetesExecution.container
 
@@ -102,7 +102,7 @@ capabilities = {'status': True, 'logs': True, 'metrics': False, 'cancellation': 
 container: str | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L240-L240)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L240-L240)
 
 ### nexuml.execution.definitions.KubernetesExecution.context
 
@@ -112,7 +112,7 @@ container: str | None = None
 context: str | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L234-L234)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L234-L234)
 
 ### nexuml.execution.definitions.KubernetesExecution.dependencies
 
@@ -122,7 +122,7 @@ context: str | None = None
 dependencies = ('kubernetes')
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L214-L214)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L214-L214)
 
 ### nexuml.execution.definitions.KubernetesExecution.handoff
 
@@ -132,7 +132,7 @@ dependencies = ('kubernetes')
 handoff: ConfigHandoff | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L239-L239)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L239-L239)
 
 ### nexuml.execution.definitions.KubernetesExecution.namespace
 
@@ -142,7 +142,7 @@ handoff: ConfigHandoff | None = None
 namespace: str = 'default'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L235-L237)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L235-L237)
 
 ### nexuml.execution.definitions.KubernetesExecution.plural
 
@@ -152,7 +152,7 @@ namespace: str = 'default'
 plural: str
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L223-L223)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L223-L223)
 
 ### nexuml.execution.definitions.KubernetesExecution.presentation
 
@@ -162,7 +162,7 @@ plural: str
 presentation = {'target': ['context', 'namespace'], 'setup': ['template', 'handoff'], 'resources': ['worker_group', 'container', 'replicas', 'resources'], 'expert': ['ray']}
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L215-L220)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L215-L220)
 
 ### nexuml.execution.definitions.KubernetesExecution.replicas
 
@@ -172,7 +172,7 @@ presentation = {'target': ['context', 'namespace'], 'setup': ['template', 'hando
 replicas: int | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L242-L242)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L242-L242)
 
 ### nexuml.execution.definitions.KubernetesExecution.resource_kind
 
@@ -182,7 +182,7 @@ replicas: int | None = None
 resource_kind: str
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L222-L222)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L222-L222)
 
 ### nexuml.execution.definitions.KubernetesExecution.resources
 
@@ -192,7 +192,7 @@ resource_kind: str
 resources: dict[str, str]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L243-L243)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L243-L243)
 
 ### nexuml.execution.definitions.KubernetesExecution.template
 
@@ -202,7 +202,7 @@ resources: dict[str, str]
 template: str | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L238-L238)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L238-L238)
 
 ### nexuml.execution.definitions.KubernetesExecution.worker_group
 
@@ -212,7 +212,7 @@ template: str | None = None
 worker_group: str | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L241-L241)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L241-L241)
 
 ### nexuml.execution.definitions.KubernetesExecution.kind
 
@@ -224,7 +224,7 @@ kind = 'execution_backend'
 
 Inherited from: `nexuml.core.components.ExecutionBackendDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L169-L169)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/components.py#L169-L169)
 
 ### nexuml.execution.definitions.KubernetesExecution.label
 
@@ -236,7 +236,7 @@ label: str = ''
 
 Inherited from: `nexuml.core.components.ExecutionBackendDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L170-L170)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/components.py#L170-L170)
 
 ### nexuml.execution.definitions.KubernetesExecution.component_name
 
@@ -248,7 +248,7 @@ component_name: str
 
 Inherited from: `nexuml.core.components.ComponentDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L34-L34)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/components.py#L34-L34)
 
 ### nexuml.execution.definitions.KubernetesExecution.component_version
 
@@ -260,7 +260,7 @@ component_version: str = '1'
 
 Inherited from: `nexuml.core.components.ComponentDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L35-L35)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/components.py#L35-L35)
 
 ### nexuml.execution.definitions.KubernetesExecution.model_config
 
@@ -272,7 +272,7 @@ model_config = ConfigDict(extra='forbid', frozen=True, validate_default=True, al
 
 Inherited from: `nexuml.core.components.ComponentDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L25-L31)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/components.py#L25-L31)
 
 ### nexuml.execution.definitions.KubernetesExecution.cancel
 
@@ -282,7 +282,7 @@ Inherited from: `nexuml.core.components.ComponentDefinition`
 def cancel(reference: Any) -> dict[str, Any]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L267-L270)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L267-L270)
 
 ### nexuml.execution.definitions.KubernetesExecution.discover
 
@@ -292,7 +292,7 @@ def cancel(reference: Any) -> dict[str, Any]
 def discover(**kwargs: Any) -> Any
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L257-L260)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L257-L260)
 
 ### nexuml.execution.definitions.KubernetesExecution.inspect
 
@@ -302,7 +302,7 @@ def discover(**kwargs: Any) -> Any
 def inspect(reference: Any) -> dict[str, Any]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L262-L265)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L262-L265)
 
 ### nexuml.execution.definitions.KubernetesExecution.preflight
 
@@ -312,7 +312,7 @@ def inspect(reference: Any) -> dict[str, Any]
 def preflight(scenario: Any, **kwargs: Any) -> dict[str, Any]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L245-L249)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L245-L249)
 
 ### nexuml.execution.definitions.KubernetesExecution.run
 
@@ -322,7 +322,7 @@ def preflight(scenario: Any, **kwargs: Any) -> dict[str, Any]
 def run(scenario: Any, **kwargs: Any) -> Any
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L251-L255)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L251-L255)
 
 ## nexuml.execution.definitions.KubernetesJobExecution
 
@@ -336,7 +336,7 @@ Bases: `nexuml.execution.definitions.KubernetesExecution`
 
 Submit one Kubernetes training pod.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L287-L294)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L287-L294)
 
 ### nexuml.execution.definitions.KubernetesJobExecution.api_version
 
@@ -346,7 +346,7 @@ Submit one Kubernetes training pod.
 api_version = 'batch/v1'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L292-L292)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L292-L292)
 
 ### nexuml.execution.definitions.KubernetesJobExecution.label
 
@@ -356,7 +356,7 @@ api_version = 'batch/v1'
 label = 'Kubernetes Job'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L291-L291)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L291-L291)
 
 ### nexuml.execution.definitions.KubernetesJobExecution.plural
 
@@ -366,7 +366,7 @@ label = 'Kubernetes Job'
 plural = 'jobs'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L294-L294)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L294-L294)
 
 ### nexuml.execution.definitions.KubernetesJobExecution.resource_kind
 
@@ -376,7 +376,7 @@ plural = 'jobs'
 resource_kind = 'Job'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L293-L293)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L293-L293)
 
 ### nexuml.execution.definitions.KubernetesJobExecution.capabilities
 
@@ -388,7 +388,7 @@ capabilities = {'status': True, 'logs': True, 'metrics': False, 'cancellation': 
 
 Inherited from: `nexuml.execution.definitions.KubernetesExecution`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L224-L233)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L224-L233)
 
 ### nexuml.execution.definitions.KubernetesJobExecution.container
 
@@ -400,7 +400,7 @@ container: str | None = None
 
 Inherited from: `nexuml.execution.definitions.KubernetesExecution`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L240-L240)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L240-L240)
 
 ### nexuml.execution.definitions.KubernetesJobExecution.context
 
@@ -412,7 +412,7 @@ context: str | None = None
 
 Inherited from: `nexuml.execution.definitions.KubernetesExecution`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L234-L234)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L234-L234)
 
 ### nexuml.execution.definitions.KubernetesJobExecution.dependencies
 
@@ -424,7 +424,7 @@ dependencies = ('kubernetes')
 
 Inherited from: `nexuml.execution.definitions.KubernetesExecution`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L214-L214)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L214-L214)
 
 ### nexuml.execution.definitions.KubernetesJobExecution.handoff
 
@@ -436,7 +436,7 @@ handoff: ConfigHandoff | None = None
 
 Inherited from: `nexuml.execution.definitions.KubernetesExecution`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L239-L239)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L239-L239)
 
 ### nexuml.execution.definitions.KubernetesJobExecution.namespace
 
@@ -448,7 +448,7 @@ namespace: str = 'default'
 
 Inherited from: `nexuml.execution.definitions.KubernetesExecution`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L235-L237)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L235-L237)
 
 ### nexuml.execution.definitions.KubernetesJobExecution.presentation
 
@@ -460,7 +460,7 @@ presentation = {'target': ['context', 'namespace'], 'setup': ['template', 'hando
 
 Inherited from: `nexuml.execution.definitions.KubernetesExecution`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L215-L220)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L215-L220)
 
 ### nexuml.execution.definitions.KubernetesJobExecution.replicas
 
@@ -472,7 +472,7 @@ replicas: int | None = None
 
 Inherited from: `nexuml.execution.definitions.KubernetesExecution`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L242-L242)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L242-L242)
 
 ### nexuml.execution.definitions.KubernetesJobExecution.resources
 
@@ -484,7 +484,7 @@ resources: dict[str, str]
 
 Inherited from: `nexuml.execution.definitions.KubernetesExecution`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L243-L243)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L243-L243)
 
 ### nexuml.execution.definitions.KubernetesJobExecution.template
 
@@ -496,7 +496,7 @@ template: str | None = None
 
 Inherited from: `nexuml.execution.definitions.KubernetesExecution`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L238-L238)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L238-L238)
 
 ### nexuml.execution.definitions.KubernetesJobExecution.worker_group
 
@@ -508,7 +508,7 @@ worker_group: str | None = None
 
 Inherited from: `nexuml.execution.definitions.KubernetesExecution`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L241-L241)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L241-L241)
 
 ### nexuml.execution.definitions.KubernetesJobExecution.kind
 
@@ -520,7 +520,7 @@ kind = 'execution_backend'
 
 Inherited from: `nexuml.core.components.ExecutionBackendDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L169-L169)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/components.py#L169-L169)
 
 ### nexuml.execution.definitions.KubernetesJobExecution.component_name
 
@@ -532,7 +532,7 @@ component_name: str
 
 Inherited from: `nexuml.core.components.ComponentDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L34-L34)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/components.py#L34-L34)
 
 ### nexuml.execution.definitions.KubernetesJobExecution.component_version
 
@@ -544,7 +544,7 @@ component_version: str = '1'
 
 Inherited from: `nexuml.core.components.ComponentDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L35-L35)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/components.py#L35-L35)
 
 ### nexuml.execution.definitions.KubernetesJobExecution.model_config
 
@@ -556,7 +556,7 @@ model_config = ConfigDict(extra='forbid', frozen=True, validate_default=True, al
 
 Inherited from: `nexuml.core.components.ComponentDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L25-L31)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/components.py#L25-L31)
 
 ### nexuml.execution.definitions.KubernetesJobExecution.cancel
 
@@ -568,7 +568,7 @@ def cancel(reference: Any) -> dict[str, Any]
 
 Inherited from: `nexuml.execution.definitions.KubernetesExecution`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L267-L270)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L267-L270)
 
 ### nexuml.execution.definitions.KubernetesJobExecution.discover
 
@@ -580,7 +580,7 @@ def discover(**kwargs: Any) -> Any
 
 Inherited from: `nexuml.execution.definitions.KubernetesExecution`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L257-L260)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L257-L260)
 
 ### nexuml.execution.definitions.KubernetesJobExecution.inspect
 
@@ -592,7 +592,7 @@ def inspect(reference: Any) -> dict[str, Any]
 
 Inherited from: `nexuml.execution.definitions.KubernetesExecution`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L262-L265)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L262-L265)
 
 ### nexuml.execution.definitions.KubernetesJobExecution.preflight
 
@@ -604,7 +604,7 @@ def preflight(scenario: Any, **kwargs: Any) -> dict[str, Any]
 
 Inherited from: `nexuml.execution.definitions.KubernetesExecution`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L245-L249)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L245-L249)
 
 ### nexuml.execution.definitions.KubernetesJobExecution.run
 
@@ -616,7 +616,7 @@ def run(scenario: Any, **kwargs: Any) -> Any
 
 Inherited from: `nexuml.execution.definitions.KubernetesExecution`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L251-L255)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L251-L255)
 
 ## nexuml.execution.definitions.LocalExecution
 
@@ -630,7 +630,7 @@ Bases: `nexuml.core.components.ExecutionBackendDefinition`
 
 Run the existing NexuML session in the current process.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L12-L48)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L12-L48)
 
 ### nexuml.execution.definitions.LocalExecution.capabilities
 
@@ -640,7 +640,7 @@ Run the existing NexuML session in the current process.
 capabilities = {'status': True, 'logs': True, 'metrics': True, 'cancellation': True, 'resume': True, 'artifacts': True, 'process_ownership': True}
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L17-L25)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L17-L25)
 
 ### nexuml.execution.definitions.LocalExecution.label
 
@@ -650,7 +650,7 @@ capabilities = {'status': True, 'logs': True, 'metrics': True, 'cancellation': T
 label = 'Local'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L16-L16)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L16-L16)
 
 ### nexuml.execution.definitions.LocalExecution.dependencies
 
@@ -662,7 +662,7 @@ dependencies: tuple[str, ...] = ()
 
 Inherited from: `nexuml.core.components.ExecutionBackendDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L171-L171)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/components.py#L171-L171)
 
 ### nexuml.execution.definitions.LocalExecution.kind
 
@@ -674,7 +674,7 @@ kind = 'execution_backend'
 
 Inherited from: `nexuml.core.components.ExecutionBackendDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L169-L169)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/components.py#L169-L169)
 
 ### nexuml.execution.definitions.LocalExecution.presentation
 
@@ -686,7 +686,7 @@ presentation: dict[str, list[str]] = {}
 
 Inherited from: `nexuml.core.components.ExecutionBackendDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L173-L173)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/components.py#L173-L173)
 
 ### nexuml.execution.definitions.LocalExecution.component_name
 
@@ -698,7 +698,7 @@ component_name: str
 
 Inherited from: `nexuml.core.components.ComponentDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L34-L34)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/components.py#L34-L34)
 
 ### nexuml.execution.definitions.LocalExecution.component_version
 
@@ -710,7 +710,7 @@ component_version: str = '1'
 
 Inherited from: `nexuml.core.components.ComponentDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L35-L35)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/components.py#L35-L35)
 
 ### nexuml.execution.definitions.LocalExecution.model_config
 
@@ -722,7 +722,7 @@ model_config = ConfigDict(extra='forbid', frozen=True, validate_default=True, al
 
 Inherited from: `nexuml.core.components.ComponentDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L25-L31)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/components.py#L25-L31)
 
 ### nexuml.execution.definitions.LocalExecution.discover
 
@@ -732,7 +732,7 @@ Inherited from: `nexuml.core.components.ComponentDefinition`
 def discover(**kwargs: Any) -> Any
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L45-L48)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L45-L48)
 
 ### nexuml.execution.definitions.LocalExecution.run
 
@@ -742,7 +742,7 @@ def discover(**kwargs: Any) -> Any
 def run(scenario: Any, **kwargs: Any) -> Any
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L27-L43)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L27-L43)
 
 ### nexuml.execution.definitions.LocalExecution.cancel
 
@@ -760,7 +760,7 @@ Refuse to confuse submitter termination with native cancellation.
 
 - `NotImplementedError` — When native cancellation cannot be confirmed.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L208-L214)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/components.py#L208-L214)
 
 ### nexuml.execution.definitions.LocalExecution.inspect
 
@@ -778,7 +778,7 @@ Refuse native observation that the backend has not implemented.
 
 - `NotImplementedError` — When no native inspection is available.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L200-L206)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/components.py#L200-L206)
 
 ### nexuml.execution.definitions.LocalExecution.preflight
 
@@ -800,7 +800,7 @@ Validate a request without allocating workers.
 
 - `ValueError` — If requested resume or exports are unsupported.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L175-L188)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/components.py#L175-L188)
 
 ## nexuml.execution.definitions.PyTorchJobExecution
 
@@ -814,7 +814,7 @@ Bases: `nexuml.execution.definitions.KubernetesExecution`
 
 Submit the served Kubeflow Training Operator PyTorchJob resource.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L297-L304)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L297-L304)
 
 ### nexuml.execution.definitions.PyTorchJobExecution.api_version
 
@@ -824,7 +824,7 @@ Submit the served Kubeflow Training Operator PyTorchJob resource.
 api_version = 'kubeflow.org/v1'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L302-L302)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L302-L302)
 
 ### nexuml.execution.definitions.PyTorchJobExecution.label
 
@@ -834,7 +834,7 @@ api_version = 'kubeflow.org/v1'
 label = 'Kubernetes PyTorchJob'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L301-L301)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L301-L301)
 
 ### nexuml.execution.definitions.PyTorchJobExecution.plural
 
@@ -844,7 +844,7 @@ label = 'Kubernetes PyTorchJob'
 plural = 'pytorchjobs'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L304-L304)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L304-L304)
 
 ### nexuml.execution.definitions.PyTorchJobExecution.resource_kind
 
@@ -854,7 +854,7 @@ plural = 'pytorchjobs'
 resource_kind = 'PyTorchJob'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L303-L303)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L303-L303)
 
 ### nexuml.execution.definitions.PyTorchJobExecution.capabilities
 
@@ -866,7 +866,7 @@ capabilities = {'status': True, 'logs': True, 'metrics': False, 'cancellation': 
 
 Inherited from: `nexuml.execution.definitions.KubernetesExecution`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L224-L233)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L224-L233)
 
 ### nexuml.execution.definitions.PyTorchJobExecution.container
 
@@ -878,7 +878,7 @@ container: str | None = None
 
 Inherited from: `nexuml.execution.definitions.KubernetesExecution`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L240-L240)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L240-L240)
 
 ### nexuml.execution.definitions.PyTorchJobExecution.context
 
@@ -890,7 +890,7 @@ context: str | None = None
 
 Inherited from: `nexuml.execution.definitions.KubernetesExecution`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L234-L234)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L234-L234)
 
 ### nexuml.execution.definitions.PyTorchJobExecution.dependencies
 
@@ -902,7 +902,7 @@ dependencies = ('kubernetes')
 
 Inherited from: `nexuml.execution.definitions.KubernetesExecution`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L214-L214)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L214-L214)
 
 ### nexuml.execution.definitions.PyTorchJobExecution.handoff
 
@@ -914,7 +914,7 @@ handoff: ConfigHandoff | None = None
 
 Inherited from: `nexuml.execution.definitions.KubernetesExecution`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L239-L239)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L239-L239)
 
 ### nexuml.execution.definitions.PyTorchJobExecution.namespace
 
@@ -926,7 +926,7 @@ namespace: str = 'default'
 
 Inherited from: `nexuml.execution.definitions.KubernetesExecution`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L235-L237)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L235-L237)
 
 ### nexuml.execution.definitions.PyTorchJobExecution.presentation
 
@@ -938,7 +938,7 @@ presentation = {'target': ['context', 'namespace'], 'setup': ['template', 'hando
 
 Inherited from: `nexuml.execution.definitions.KubernetesExecution`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L215-L220)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L215-L220)
 
 ### nexuml.execution.definitions.PyTorchJobExecution.replicas
 
@@ -950,7 +950,7 @@ replicas: int | None = None
 
 Inherited from: `nexuml.execution.definitions.KubernetesExecution`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L242-L242)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L242-L242)
 
 ### nexuml.execution.definitions.PyTorchJobExecution.resources
 
@@ -962,7 +962,7 @@ resources: dict[str, str]
 
 Inherited from: `nexuml.execution.definitions.KubernetesExecution`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L243-L243)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L243-L243)
 
 ### nexuml.execution.definitions.PyTorchJobExecution.template
 
@@ -974,7 +974,7 @@ template: str | None = None
 
 Inherited from: `nexuml.execution.definitions.KubernetesExecution`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L238-L238)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L238-L238)
 
 ### nexuml.execution.definitions.PyTorchJobExecution.worker_group
 
@@ -986,7 +986,7 @@ worker_group: str | None = None
 
 Inherited from: `nexuml.execution.definitions.KubernetesExecution`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L241-L241)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L241-L241)
 
 ### nexuml.execution.definitions.PyTorchJobExecution.kind
 
@@ -998,7 +998,7 @@ kind = 'execution_backend'
 
 Inherited from: `nexuml.core.components.ExecutionBackendDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L169-L169)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/components.py#L169-L169)
 
 ### nexuml.execution.definitions.PyTorchJobExecution.component_name
 
@@ -1010,7 +1010,7 @@ component_name: str
 
 Inherited from: `nexuml.core.components.ComponentDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L34-L34)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/components.py#L34-L34)
 
 ### nexuml.execution.definitions.PyTorchJobExecution.component_version
 
@@ -1022,7 +1022,7 @@ component_version: str = '1'
 
 Inherited from: `nexuml.core.components.ComponentDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L35-L35)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/components.py#L35-L35)
 
 ### nexuml.execution.definitions.PyTorchJobExecution.model_config
 
@@ -1034,7 +1034,7 @@ model_config = ConfigDict(extra='forbid', frozen=True, validate_default=True, al
 
 Inherited from: `nexuml.core.components.ComponentDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L25-L31)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/components.py#L25-L31)
 
 ### nexuml.execution.definitions.PyTorchJobExecution.cancel
 
@@ -1046,7 +1046,7 @@ def cancel(reference: Any) -> dict[str, Any]
 
 Inherited from: `nexuml.execution.definitions.KubernetesExecution`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L267-L270)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L267-L270)
 
 ### nexuml.execution.definitions.PyTorchJobExecution.discover
 
@@ -1058,7 +1058,7 @@ def discover(**kwargs: Any) -> Any
 
 Inherited from: `nexuml.execution.definitions.KubernetesExecution`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L257-L260)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L257-L260)
 
 ### nexuml.execution.definitions.PyTorchJobExecution.inspect
 
@@ -1070,7 +1070,7 @@ def inspect(reference: Any) -> dict[str, Any]
 
 Inherited from: `nexuml.execution.definitions.KubernetesExecution`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L262-L265)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L262-L265)
 
 ### nexuml.execution.definitions.PyTorchJobExecution.preflight
 
@@ -1082,7 +1082,7 @@ def preflight(scenario: Any, **kwargs: Any) -> dict[str, Any]
 
 Inherited from: `nexuml.execution.definitions.KubernetesExecution`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L245-L249)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L245-L249)
 
 ### nexuml.execution.definitions.PyTorchJobExecution.run
 
@@ -1094,7 +1094,7 @@ def run(scenario: Any, **kwargs: Any) -> Any
 
 Inherited from: `nexuml.execution.definitions.KubernetesExecution`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L251-L255)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L251-L255)
 
 ## nexuml.execution.definitions.RayClusterExecution
 
@@ -1108,7 +1108,7 @@ Bases: `nexuml.core.components.ExecutionBackendDefinition`
 
 Ray placement configuration; training semantics stay in TrainingSpec.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L91-L179)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L91-L179)
 
 ### nexuml.execution.definitions.RayClusterExecution.capabilities
 
@@ -1118,7 +1118,7 @@ Ray placement configuration; training semantics stay in TrainingSpec.
 capabilities = {'status': True, 'logs': True, 'metrics': True, 'cancellation': False, 'resume': False, 'artifacts': False, 'process_ownership': False}
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L102-L110)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L102-L110)
 
 ### nexuml.execution.definitions.RayClusterExecution.dependencies
 
@@ -1128,7 +1128,7 @@ capabilities = {'status': True, 'logs': True, 'metrics': True, 'cancellation': F
 dependencies = ('ray')
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L96-L96)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L96-L96)
 
 ### nexuml.execution.definitions.RayClusterExecution.label
 
@@ -1138,7 +1138,7 @@ dependencies = ('ray')
 label = 'RayCluster'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L95-L95)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L95-L95)
 
 ### nexuml.execution.definitions.RayClusterExecution.presentation
 
@@ -1148,7 +1148,7 @@ label = 'RayCluster'
 presentation = {'target': ['target'], 'resources': ['workers', 'resources_per_worker'], 'expert': ['storage_path']}
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L97-L101)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L97-L101)
 
 ### nexuml.execution.definitions.RayClusterExecution.resources_per_worker
 
@@ -1158,7 +1158,7 @@ presentation = {'target': ['target'], 'resources': ['workers', 'resources_per_wo
 resources_per_worker: dict[str, float]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L113-L113)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L113-L113)
 
 ### nexuml.execution.definitions.RayClusterExecution.storage_path
 
@@ -1168,7 +1168,7 @@ resources_per_worker: dict[str, float]
 storage_path: str | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L114-L114)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L114-L114)
 
 ### nexuml.execution.definitions.RayClusterExecution.target
 
@@ -1178,7 +1178,7 @@ storage_path: str | None = None
 target: RayClusterTarget
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L111-L111)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L111-L111)
 
 ### nexuml.execution.definitions.RayClusterExecution.workers
 
@@ -1188,7 +1188,7 @@ target: RayClusterTarget
 workers: int | tuple[int, int] = 1
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L112-L112)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L112-L112)
 
 ### nexuml.execution.definitions.RayClusterExecution.kind
 
@@ -1200,7 +1200,7 @@ kind = 'execution_backend'
 
 Inherited from: `nexuml.core.components.ExecutionBackendDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L169-L169)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/components.py#L169-L169)
 
 ### nexuml.execution.definitions.RayClusterExecution.component_name
 
@@ -1212,7 +1212,7 @@ component_name: str
 
 Inherited from: `nexuml.core.components.ComponentDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L34-L34)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/components.py#L34-L34)
 
 ### nexuml.execution.definitions.RayClusterExecution.component_version
 
@@ -1224,7 +1224,7 @@ component_version: str = '1'
 
 Inherited from: `nexuml.core.components.ComponentDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L35-L35)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/components.py#L35-L35)
 
 ### nexuml.execution.definitions.RayClusterExecution.model_config
 
@@ -1236,7 +1236,7 @@ model_config = ConfigDict(extra='forbid', frozen=True, validate_default=True, al
 
 Inherited from: `nexuml.core.components.ComponentDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L25-L31)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/components.py#L25-L31)
 
 ### nexuml.execution.definitions.RayClusterExecution.discover
 
@@ -1246,7 +1246,7 @@ Inherited from: `nexuml.core.components.ComponentDefinition`
 def discover(**kwargs: Any) -> Any
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L176-L179)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L176-L179)
 
 ### nexuml.execution.definitions.RayClusterExecution.preflight
 
@@ -1256,7 +1256,7 @@ def discover(**kwargs: Any) -> Any
 def preflight(scenario: Any, **kwargs: Any) -> dict[str, Any]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L146-L169)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L146-L169)
 
 ### nexuml.execution.definitions.RayClusterExecution.run
 
@@ -1266,7 +1266,7 @@ def preflight(scenario: Any, **kwargs: Any) -> dict[str, Any]
 def run(scenario: Any, **kwargs: Any) -> Any
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L171-L174)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L171-L174)
 
 ### nexuml.execution.definitions.RayClusterExecution.validate_resources
 
@@ -1276,7 +1276,7 @@ def run(scenario: Any, **kwargs: Any) -> Any
 def validate_resources(value: dict[str, float]) -> dict[str, float]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L139-L144)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L139-L144)
 
 ### nexuml.execution.definitions.RayClusterExecution.validate_storage
 
@@ -1286,7 +1286,7 @@ def validate_resources(value: dict[str, float]) -> dict[str, float]
 def validate_storage(value: str | None) -> str | None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L116-L125)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L116-L125)
 
 ### nexuml.execution.definitions.RayClusterExecution.validate_workers
 
@@ -1296,7 +1296,7 @@ def validate_storage(value: str | None) -> str | None
 def validate_workers(value: int | tuple[int, int]) -> int | tuple[int, int]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L127-L137)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L127-L137)
 
 ### nexuml.execution.definitions.RayClusterExecution.cancel
 
@@ -1314,7 +1314,7 @@ Refuse to confuse submitter termination with native cancellation.
 
 - `NotImplementedError` — When native cancellation cannot be confirmed.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L208-L214)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/components.py#L208-L214)
 
 ### nexuml.execution.definitions.RayClusterExecution.inspect
 
@@ -1332,7 +1332,7 @@ Refuse native observation that the backend has not implemented.
 
 - `NotImplementedError` — When no native inspection is available.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L200-L206)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/components.py#L200-L206)
 
 ## nexuml.execution.definitions.RayClusterTarget
 
@@ -1346,7 +1346,7 @@ Bases: `BaseModel`
 
 An explicit existing Ray cluster and its native runtime environment.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L51-L88)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L51-L88)
 
 ### nexuml.execution.definitions.RayClusterTarget.address
 
@@ -1356,7 +1356,7 @@ An explicit existing Ray cluster and its native runtime environment.
 address: str = 'auto'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L55-L55)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L55-L55)
 
 ### nexuml.execution.definitions.RayClusterTarget.context
 
@@ -1366,7 +1366,7 @@ address: str = 'auto'
 context: str | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L59-L59)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L59-L59)
 
 ### nexuml.execution.definitions.RayClusterTarget.dashboard_address
 
@@ -1376,7 +1376,7 @@ context: str | None = None
 dashboard_address: str | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L56-L56)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L56-L56)
 
 ### nexuml.execution.definitions.RayClusterTarget.model_config
 
@@ -1386,7 +1386,7 @@ dashboard_address: str | None = None
 model_config = ConfigDict(extra='forbid', frozen=True)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L54-L54)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L54-L54)
 
 ### nexuml.execution.definitions.RayClusterTarget.namespace
 
@@ -1396,7 +1396,7 @@ model_config = ConfigDict(extra='forbid', frozen=True)
 namespace: str = 'default'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L60-L60)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L60-L60)
 
 ### nexuml.execution.definitions.RayClusterTarget.py_executable
 
@@ -1406,7 +1406,7 @@ namespace: str = 'default'
 py_executable: str | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L58-L58)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L58-L58)
 
 ### nexuml.execution.definitions.RayClusterTarget.working_dir
 
@@ -1416,7 +1416,7 @@ py_executable: str | None = None
 working_dir: str | None = '.'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L57-L57)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L57-L57)
 
 ### nexuml.execution.definitions.RayClusterTarget.validate_address
 
@@ -1426,7 +1426,7 @@ working_dir: str | None = '.'
 def validate_address(value: str | None) -> str | None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L62-L88)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L62-L88)
 
 ## nexuml.execution.definitions.RayJobExecution
 
@@ -1440,7 +1440,7 @@ Bases: `nexuml.execution.definitions.KubernetesExecution`
 
 Submit a KubeRay RayJob; its template owns the cluster and cleanup policy.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L273-L284)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L273-L284)
 
 ### nexuml.execution.definitions.RayJobExecution.api_version
 
@@ -1450,7 +1450,7 @@ Submit a KubeRay RayJob; its template owns the cluster and cleanup policy.
 api_version = 'ray.io/v1'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L278-L278)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L278-L278)
 
 ### nexuml.execution.definitions.RayJobExecution.capabilities
 
@@ -1460,7 +1460,7 @@ api_version = 'ray.io/v1'
 capabilities = {: KubernetesExecution.capabilities, 'cancellation': False, 'logs': False}
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L281-L281)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L281-L281)
 
 ### nexuml.execution.definitions.RayJobExecution.label
 
@@ -1470,7 +1470,7 @@ capabilities = {: KubernetesExecution.capabilities, 'cancellation': False, 'logs
 label = 'RayJob'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L277-L277)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L277-L277)
 
 ### nexuml.execution.definitions.RayJobExecution.plural
 
@@ -1480,7 +1480,7 @@ label = 'RayJob'
 plural = 'rayjobs'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L280-L280)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L280-L280)
 
 ### nexuml.execution.definitions.RayJobExecution.ray
 
@@ -1490,7 +1490,7 @@ plural = 'rayjobs'
 ray: RayClusterExecution
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L282-L284)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L282-L284)
 
 ### nexuml.execution.definitions.RayJobExecution.resource_kind
 
@@ -1500,7 +1500,7 @@ ray: RayClusterExecution
 resource_kind = 'RayJob'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L279-L279)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L279-L279)
 
 ### nexuml.execution.definitions.RayJobExecution.container
 
@@ -1512,7 +1512,7 @@ container: str | None = None
 
 Inherited from: `nexuml.execution.definitions.KubernetesExecution`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L240-L240)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L240-L240)
 
 ### nexuml.execution.definitions.RayJobExecution.context
 
@@ -1524,7 +1524,7 @@ context: str | None = None
 
 Inherited from: `nexuml.execution.definitions.KubernetesExecution`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L234-L234)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L234-L234)
 
 ### nexuml.execution.definitions.RayJobExecution.dependencies
 
@@ -1536,7 +1536,7 @@ dependencies = ('kubernetes')
 
 Inherited from: `nexuml.execution.definitions.KubernetesExecution`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L214-L214)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L214-L214)
 
 ### nexuml.execution.definitions.RayJobExecution.handoff
 
@@ -1548,7 +1548,7 @@ handoff: ConfigHandoff | None = None
 
 Inherited from: `nexuml.execution.definitions.KubernetesExecution`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L239-L239)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L239-L239)
 
 ### nexuml.execution.definitions.RayJobExecution.namespace
 
@@ -1560,7 +1560,7 @@ namespace: str = 'default'
 
 Inherited from: `nexuml.execution.definitions.KubernetesExecution`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L235-L237)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L235-L237)
 
 ### nexuml.execution.definitions.RayJobExecution.presentation
 
@@ -1572,7 +1572,7 @@ presentation = {'target': ['context', 'namespace'], 'setup': ['template', 'hando
 
 Inherited from: `nexuml.execution.definitions.KubernetesExecution`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L215-L220)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L215-L220)
 
 ### nexuml.execution.definitions.RayJobExecution.replicas
 
@@ -1584,7 +1584,7 @@ replicas: int | None = None
 
 Inherited from: `nexuml.execution.definitions.KubernetesExecution`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L242-L242)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L242-L242)
 
 ### nexuml.execution.definitions.RayJobExecution.resources
 
@@ -1596,7 +1596,7 @@ resources: dict[str, str]
 
 Inherited from: `nexuml.execution.definitions.KubernetesExecution`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L243-L243)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L243-L243)
 
 ### nexuml.execution.definitions.RayJobExecution.template
 
@@ -1608,7 +1608,7 @@ template: str | None = None
 
 Inherited from: `nexuml.execution.definitions.KubernetesExecution`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L238-L238)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L238-L238)
 
 ### nexuml.execution.definitions.RayJobExecution.worker_group
 
@@ -1620,7 +1620,7 @@ worker_group: str | None = None
 
 Inherited from: `nexuml.execution.definitions.KubernetesExecution`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L241-L241)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L241-L241)
 
 ### nexuml.execution.definitions.RayJobExecution.kind
 
@@ -1632,7 +1632,7 @@ kind = 'execution_backend'
 
 Inherited from: `nexuml.core.components.ExecutionBackendDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L169-L169)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/components.py#L169-L169)
 
 ### nexuml.execution.definitions.RayJobExecution.component_name
 
@@ -1644,7 +1644,7 @@ component_name: str
 
 Inherited from: `nexuml.core.components.ComponentDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L34-L34)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/components.py#L34-L34)
 
 ### nexuml.execution.definitions.RayJobExecution.component_version
 
@@ -1656,7 +1656,7 @@ component_version: str = '1'
 
 Inherited from: `nexuml.core.components.ComponentDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L35-L35)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/components.py#L35-L35)
 
 ### nexuml.execution.definitions.RayJobExecution.model_config
 
@@ -1668,7 +1668,7 @@ model_config = ConfigDict(extra='forbid', frozen=True, validate_default=True, al
 
 Inherited from: `nexuml.core.components.ComponentDefinition`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/core/components.py#L25-L31)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/core/components.py#L25-L31)
 
 ### nexuml.execution.definitions.RayJobExecution.cancel
 
@@ -1680,7 +1680,7 @@ def cancel(reference: Any) -> dict[str, Any]
 
 Inherited from: `nexuml.execution.definitions.KubernetesExecution`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L267-L270)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L267-L270)
 
 ### nexuml.execution.definitions.RayJobExecution.discover
 
@@ -1692,7 +1692,7 @@ def discover(**kwargs: Any) -> Any
 
 Inherited from: `nexuml.execution.definitions.KubernetesExecution`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L257-L260)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L257-L260)
 
 ### nexuml.execution.definitions.RayJobExecution.inspect
 
@@ -1704,7 +1704,7 @@ def inspect(reference: Any) -> dict[str, Any]
 
 Inherited from: `nexuml.execution.definitions.KubernetesExecution`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L262-L265)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L262-L265)
 
 ### nexuml.execution.definitions.RayJobExecution.preflight
 
@@ -1716,7 +1716,7 @@ def preflight(scenario: Any, **kwargs: Any) -> dict[str, Any]
 
 Inherited from: `nexuml.execution.definitions.KubernetesExecution`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L245-L249)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L245-L249)
 
 ### nexuml.execution.definitions.RayJobExecution.run
 
@@ -1728,4 +1728,4 @@ def run(scenario: Any, **kwargs: Any) -> Any
 
 Inherited from: `nexuml.execution.definitions.KubernetesExecution`
 
-[View source](https://github.com/NexuFed/NexuML/blob/1e2e9e39fea3b6a25da3752c55398e43e00d3830/src/nexuml/execution/definitions.py#L251-L255)
+[View source](https://github.com/NexuFed/NexuML/blob/f54bedddeadd6bea3168c52441dc09bb2d77a22b/src/nexuml/execution/definitions.py#L251-L255)
