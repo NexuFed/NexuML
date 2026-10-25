@@ -71,3 +71,34 @@ def test_library_distribution() -> None:
     assert features["features"].shape == (4, 4)
     assert targets is not None
     assert targets["reconstruction_target"].shape == (4, 4)
+
+
+def test_library_discovery_does_not_import_robotics() -> None:
+    _assert_no_source_paths()
+    # Runtime discovery needs declared dependencies, unlike metadata-only artifact checks.
+    code = """
+import importlib.abc, sys
+from pathlib import Path
+root = Path(sys.prefix).resolve()
+blocked = {'lerobot', 'newton', 'mujoco', 'jax', 'rclpy', 'omni', 'pxr', 'torchrl', 'gymnasium'}
+class BlockNative(importlib.abc.MetaPathFinder):
+    def find_spec(self, fullname, path=None, target=None):
+        name = fullname.split('.')[0]
+        if name in blocked or name.startswith(('isaaclab', 'isaacsim')):
+            raise AssertionError('unexpected native import: ' + fullname)
+sys.meta_path.insert(0, BlockNative())
+import nexuml, nexuml_library
+assert Path(nexuml.__file__).resolve().is_relative_to(root)
+assert Path(nexuml_library.__file__).resolve().is_relative_to(root)
+from nexuml.core.scenario_registry import get_scenario_registry
+assert get_scenario_registry().get('isaac-cartpole-ppo')().interaction is not None
+assert not blocked.intersection(sys.modules)
+"""
+    result = subprocess.run(
+        [sys.executable, "-I", "-c", code],
+        capture_output=True,
+        text=True,
+        timeout=60,
+        env={**os.environ, "CUDA_VISIBLE_DEVICES": ""},
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
