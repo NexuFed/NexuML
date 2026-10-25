@@ -1,19 +1,19 @@
 [
   {
-    "version": "dev",
-    "title": "dev",
-    "aliases": []
+    "aliases": [],
+    "title": "dev (unreleased)",
+    "version": "dev"
   },
   {
-    "version": "v0.2.1",
-    "title": "v0.2.1",
     "aliases": [
       "latest"
-    ]
+    ],
+    "title": "v0.2.1",
+    "version": "v0.2.1"
   },
   {
-    "version": "v0.1.0",
+    "aliases": [],
     "title": "v0.1.0",
-    "aliases": []
+    "version": "v0.1.0"
   }
 ]
