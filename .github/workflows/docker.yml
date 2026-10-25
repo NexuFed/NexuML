@@ -15,15 +15,27 @@ permissions:
   packages: write
 
 env:
-  CUDA_VERSION: 12.8.1
   IMAGE_NAME: ghcr.io/nexufed/nexuml
-  LOCAL_IMAGE: nexuml:ci
-  PYTHON_VERSION: "3.13"
+  PYTHON_VERSION: "3.12"
   UBUNTU_VERSION: "24.04"
 
 jobs:
   build:
     runs-on: ika-runner
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        include:
+          - backend: cu128
+            cuda: 12.8.1
+            torch-cuda: "12.8"
+          - backend: cu130
+            cuda: 13.3.1
+            torch-cuda: "13.0"
+    env:
+      CUDA_VERSION: ${{ matrix.cuda }}
+      LOCAL_IMAGE: nexuml:ci-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.backend }}
 
     steps:
       - uses: actions/checkout@v7
@@ -96,8 +108,9 @@ jobs:
             CUDA_VERSION=${{ env.CUDA_VERSION }}
             PYTHON_VERSION=${{ env.PYTHON_VERSION }}
             UBUNTU_VERSION=${{ env.UBUNTU_VERSION }}
-          cache-from: type=gha,scope=nexuml-cuda
-          cache-to: type=gha,mode=min,scope=nexuml-cuda
+            TORCH_BACKEND=${{ matrix.backend }}
+          cache-from: type=gha,scope=nexuml-${{ matrix.backend }}
+          cache-to: type=gha,mode=min,scope=nexuml-${{ matrix.backend }}
           context: .
           labels: ${{ steps.meta.outputs.labels }}
           load: true
@@ -109,6 +122,8 @@ jobs:
         env:
           EXPECTED_CUDA: ${{ env.CUDA_VERSION }}
           EXPECTED_PYTHON: ${{ env.PYTHON_VERSION }}
+          EXPECTED_TORCH_CUDA: ${{ matrix.torch-cuda }}
+          EXPECTED_BACKEND: ${{ matrix.backend }}
         run: |
           expected_version=$(python3 - <<'PY'
           import tomllib
@@ -122,11 +137,14 @@ jobs:
             --entrypoint /bin/bash \
             -e EXPECTED_CUDA \
             -e EXPECTED_PYTHON \
+            -e EXPECTED_TORCH_CUDA \
+            -e EXPECTED_BACKEND \
             -e EXPECTED_VERSION="$expected_version" \
-            "$LOCAL_IMAGE" -lc '
+            "$LOCAL_IMAGE" -c '
               python - <<"PY"
           import importlib.metadata
           import os
+          import subprocess
           import sys
 
           import nexuml
@@ -135,7 +153,18 @@ jobs:
 
           assert sys.version_info[:2] == tuple(map(int, os.environ["EXPECTED_PYTHON"].split(".")))
           assert os.environ["NEXUML_CUDA_VERSION"] == os.environ["EXPECTED_CUDA"]
-          assert torch.version.cuda == ".".join(os.environ["EXPECTED_CUDA"].split(".")[:2])
+          toolkit = subprocess.check_output(["nvcc", "--version"], text=True)
+          assert "release " + ".".join(os.environ["EXPECTED_CUDA"].split(".")[:2]) + "," in toolkit
+          assert os.environ["NEXUML_TORCH_BACKEND"] == os.environ["EXPECTED_BACKEND"]
+          assert torch.version.cuda == os.environ["EXPECTED_TORCH_CUDA"]
+          assert torch.__version__.endswith("+" + os.environ["EXPECTED_BACKEND"])
+          dali_family = "120" if os.environ["EXPECTED_BACKEND"] == "cu128" else "130"
+          assert importlib.metadata.version("nvidia-dali-cuda" + dali_family)
+          other_dali = "nvidia-dali-cuda" + ("130" if dali_family == "120" else "120")
+          assert not any(
+              dist.metadata["Name"].lower().replace("_", "-") == other_dali
+              for dist in importlib.metadata.distributions()
+          )
           assert importlib.metadata.version("nexuml") == os.environ["EXPECTED_VERSION"]
           assert importlib.metadata.version("nexuml-library") == os.environ["EXPECTED_VERSION"]
           PY
