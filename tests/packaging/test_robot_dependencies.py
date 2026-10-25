@@ -74,6 +74,25 @@ def test_native_validation_lock_has_one_opencv_provider():
     assert Version(requests["version"]) >= Version("2.32.4")
 
 
+def test_numpy_override_keeps_native_pin_and_uses_a_python314_wheel_release():
+    core = tomllib.loads(Path("pyproject.toml").read_text())
+    overrides = [
+        Requirement(value)
+        for value in core["tool"]["uv"]["override-dependencies"]
+        if isinstance(value, str) and Requirement(value).name == "numpy"
+    ]
+    for python, version in [("3.12", "2.3.1"), ("3.13", "2.3.1"), ("3.14", "2.3.3")]:
+        selected = [
+            req
+            for req in overrides
+            if req.marker is None
+            or req.marker.evaluate({"python_version": python, "python_full_version": python + ".0"})
+        ]
+        assert len(selected) == 1 and str(selected[0].specifier) == "==" + version
+    lock = tomllib.loads(Path("uv.lock").read_text())
+    assert next(p["version"] for p in lock["package"] if p["name"] == "numpy") == "2.3.1"
+
+
 def test_download_dependency_does_not_leak_netrc_to_a_different_host(tmp_path, monkeypatch):
     import base64
     import requests

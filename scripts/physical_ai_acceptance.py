@@ -311,7 +311,9 @@ def main() -> None:
     parser.add_argument("--source-attempt", type=str)
     parser.add_argument("--source-case-sha256", type=str)
     parser.add_argument("--source-guard-sha256", type=str)
-    parser.add_argument("--suite", choices=("full", "focused", "static"), default="full")
+    parser.add_argument(
+        "--suite", choices=("full", "focused", "static", "python313", "python314"), default="full"
+    )
     parser.add_argument("--submit", action="store_true")
     args = parser.parse_args()
     os.environ["CUDA_VISIBLE_DEVICES"] = ""

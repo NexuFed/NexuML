@@ -40,6 +40,22 @@ def infer(output):
         "nexuml_export", "artifact.pkl"
     )
     policy = payload["policy"]
+    if (output / "expected-state.pt").is_file():
+        expected_state = torch.load(output / "expected-state.pt", weights_only=True)
+        torch.testing.assert_close(policy.state_dict(), expected_state, rtol=0, atol=0)
+        print("PARENT_CONTEXT", (output / "parent-context.json").read_text())
+        print(
+            "CHILD_CONTEXT",
+            json.dumps(
+                {
+                    "torch": str(torch.__version__),
+                    "precision": torch.get_float32_matmul_precision(),
+                    "threads": torch.get_num_threads(),
+                    "training": policy.training,
+                    "device": str(next(policy.parameters()).device),
+                }
+            ),
+        )
     with torch.no_grad():
         actual = policy(observation)
     torch.testing.assert_close(actual, expected, rtol=0, atol=0)

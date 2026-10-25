@@ -69,11 +69,11 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
 
       - name: Install nexuml + library
+        env:
+          UV_PROJECT_ENVIRONMENT: .venv
         run: |
-          uv venv
-          source .venv/bin/activate
-          uv pip install -e ".[dev,all,dali]"
-          uv pip install -e "./library[all]"
+          # Type-check every optional source against the locked native Python profile.
+          uv sync --locked --python 3.12 --all-packages --all-extras
           echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
           echo "VIRTUAL_ENV=$PWD/.venv" >> "$GITHUB_ENV"
 

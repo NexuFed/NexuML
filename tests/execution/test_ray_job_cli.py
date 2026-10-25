@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import shlex
 from pathlib import Path
 
 import pytest
@@ -180,17 +181,108 @@ def test_worker_completion_does_not_relabel_post_teardown_cpu_as_training_device
     scenario.training.accelerator = training_device
     monkeypatch.setattr(main, "_get_scenario_fn", lambda _: lambda: scenario)
     session = SimpleNamespace(
-        lightning_module=SimpleNamespace(frames=0, device="cpu"),
+        lightning_module=SimpleNamespace(
+            frames=0, device="cpu", fit_device="cuda:0" if training_device == "gpu" else "cpu"
+        ),
         trainer=SimpleNamespace(global_step=0),
     )
     monkeypatch.setattr(execution, "run", lambda *_args, **_kwargs: session)
     result = runner.invoke(main.app, ["train", "finished"])
     assert result.exit_code == 0, (result.output, result.exception)
     assert "Module device after completion: cpu" in result.output
+    expected_fit_device = "cuda:0" if training_device == "gpu" else "cpu"
+    assert f"Fit device observed at start: {expected_fit_device}" in result.output
     assert "Actual training device:" not in result.output
     assert "Physical training frames: 0" in result.output
     assert "Optimizer steps: 0" in result.output
     assert "Ray job submitted" not in result.output
+
+
+@pytest.mark.parametrize("operation", ["train", "evaluate", "export"])
+def test_worker_identity_uses_ray_metadata_without_printing_runtime_secrets(
+    operation, monkeypatch, capsys
+):
+    monkeypatch.setenv(
+        "RAY_JOB_CONFIG_JSON_ENV_VAR",
+        json.dumps(
+            {
+                "metadata": {"job_submission_id": "actual-job-id", "private": "metadata-secret"},
+                "runtime_env": {"env_vars": {"TOKEN": "runtime-secret"}},
+            }
+        ),
+    )
+    monkeypatch.setattr(main.socket, "gethostname", lambda: "allocated-worker")
+    monkeypatch.setattr(main.os, "getpid", lambda: 123)
+    main._print_worker_identity(operation)
+    text = " ".join(capsys.readouterr().out.split())
+    assert "Ray submission ID: actual-job-id" in text
+    assert f"Worker operation: {operation}; host: allocated-worker; PID: 123" in text
+    assert "metadata-secret" not in text and "runtime-secret" not in text
+    assert "TOKEN" not in text and "private" not in text
+
+
+@pytest.mark.parametrize(
+    "metadata",
+    ["broken json", "null", "[]", '{"metadata": []}', '{"metadata":{"job_submission_id":123}}'],
+)
+def test_worker_identity_marks_unavailable_metadata_without_failing(metadata, monkeypatch, capsys):
+    monkeypatch.setenv("RAY_JOB_CONFIG_JSON_ENV_VAR", metadata)
+    main._print_worker_identity("train")
+    assert "Ray submission ID: unavailable" in capsys.readouterr().out
+
+
+def test_local_identity_does_not_invent_a_ray_job(monkeypatch, capsys):
+    monkeypatch.delenv("RAY_JOB_CONFIG_JSON_ENV_VAR", raising=False)
+    main._print_worker_identity("train")
+    assert capsys.readouterr().out == ""
+
+
+@pytest.mark.parametrize("width", [80, 1000])
+def test_completion_commands_use_only_real_checkpoints_and_quote_worker_paths(
+    tmp_path, monkeypatch, width
+):
+    from types import SimpleNamespace
+    from rich.console import Console
+    import nexuml.execution as execution
+
+    checkpoint = tmp_path / ("saved " * 20 + "; 'checkpoint.ckpt")
+    checkpoint.write_bytes(b"fixture only: never loaded")
+    package = tmp_path / ("policy " * 20 + "; 'directory")
+    package.mkdir()
+    metadata = package / "metadata.json"
+    metadata.write_text("{}")
+    callbacks = [
+        SimpleNamespace(last_model_path=str(checkpoint), best_model_path=str(checkpoint)),
+        SimpleNamespace(last_model_path=str(tmp_path / "missing.ckpt")),
+    ]
+    scenario = ScenarioSpec(name="finished", logging=None)
+    session = SimpleNamespace(
+        lightning_module=SimpleNamespace(device="cpu", fit_device="cuda:0"),
+        trainer=SimpleNamespace(checkpoint_callbacks=callbacks),
+        artifacts=[{"kind": "train_package", "path": str(metadata)}],
+    )
+    monkeypatch.setattr(main, "console", Console(width=width, no_color=True))
+    monkeypatch.setattr(main, "_get_scenario_fn", lambda _: lambda: scenario)
+    monkeypatch.setattr(execution, "run", lambda *_args, **_kwargs: session)
+    result = runner.invoke(main.app, ["train", "finished"])
+    assert result.exit_code == 0, (result.output, result.exception)
+    resume = [
+        line.partition("Worker-local resume: ")[2]
+        for line in result.output.splitlines()
+        if "Worker-local resume: " in line
+    ]
+    evaluate = [
+        line.partition("Worker-local evaluation: ")[2]
+        for line in result.output.splitlines()
+        if "Worker-local evaluation: " in line
+    ]
+    assert len(resume) == len(evaluate) == 1
+    assert shlex.split(resume[0]) == ["nexuml", "train", "--trainer-checkpoint", str(checkpoint)]
+    assert shlex.split(evaluate[0]) == ["nexuml", "evaluate", str(package), "--device", "cuda:0"]
+    assert "missing.ckpt" not in result.output
+    assert "From the submitter, select a trusted ray-jobs-sdk config" in " ".join(
+        result.output.split()
+    )
 
 
 def test_cli_selects_ray_job_without_changing_the_local_scenario(submit_only):

@@ -494,6 +494,28 @@ class PhysicalAICasesTest(unittest.TestCase):
         self.assertEqual(receipt["regression"]["full_suite_gate"], "UNVERIFIED")
         self.assertTrue(all(value == "UNVERIFIED" for value in receipt["gates"].values()))
 
+    def test_declared_python_suites_reuse_guarded_profile_and_preserve_gpu_visibility(self):
+        for suite, version in (("python313", "3.13"), ("python314", "3.14")):
+            with self.subTest(suite=suite):
+                self.root = self.base / suite
+                self.guarded_root()
+                profile = mock.Mock()
+                with (
+                    mock.patch("runpy.run_path", return_value={"run_matrix": profile}),
+                    mock.patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": "0"}),
+                ):
+                    code, receipt = self.run_case("regression", {"suite": suite})
+                self.assertEqual(code, 0)
+                args = profile.call_args.args
+                self.assertEqual(args[1], self.root)
+                self.assertEqual(args[4], version)
+                self.assertEqual(args[2]["CUDA_VISIBLE_DEVICES"], "0")
+                for tier in ("SIMULATOR", "SYSTEM", "HARDWARE", "DATA"):
+                    self.assertEqual(args[2][f"NEXUML_RUN_{tier}_TESTS"], "0")
+                self.assertEqual(receipt["regression"]["full_suite_gate"], "PASS")
+                self.assertFalse(receipt["regression"]["native_proof"])
+                self.assertTrue(all(value == "UNVERIFIED" for value in receipt["gates"].values()))
+
     def test_stage_refuses_resume_when_descendants_survive(self):
         self.guarded_root()
         self.fake_launch()

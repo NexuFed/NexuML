@@ -662,10 +662,23 @@ def _recovery(record, root, options, env):
 
 def _regression(record, root, options, env):
     suite = options.get("suite", "full")
-    if suite not in {"full", "focused", "static"}:
-        raise Blocked("suite must be the fixed full, focused or static inventory")
+    if suite not in {"full", "focused", "static", "python313", "python314"}:
+        raise Blocked("suite must be a fixed full, focused, static or declared-Python inventory")
     for tier in ("SIMULATOR", "SYSTEM", "HARDWARE", "DATA"):
         env[f"NEXUML_RUN_{tier}_TESTS"] = "0"
+    if suite in {"python313", "python314"}:
+        import runpy
+
+        profile = runpy.run_path(str(Path(__file__).with_name("physical_ai_python.py")))
+        record["regression"] = {
+            "suite": suite,
+            "full_suite_gate": "UNVERIFIED",
+            "native_proof": False,
+            "gpu_tests": "job-visible GPU; ordinary CUDA controls only",
+        }
+        profile["run_matrix"](record, root, env, _stage, "3.13" if suite == "python313" else "3.14")
+        record["regression"]["full_suite_gate"] = "PASS"
+        return
     env.update(CUDA_VISIBLE_DEVICES="", TMPDIR="/tmp/ray")
     scratch = Path(tempfile.mkdtemp(prefix="nexuml-regression-", dir="/tmp/ray"))
     argv = [

@@ -1,6 +1,8 @@
 """Portable sensor meaning, explicit history ownership and clean inference parity."""
 
+import ast
 import hashlib
+import inspect
 import json
 import os
 from pathlib import Path
@@ -633,9 +635,13 @@ def test_existing_so101_semantics_and_physical_schema_are_unchanged():
     )
 
 
-def test_sdk_and_ppo_source_bytes_are_unchanged():
-    import ast
+def _baseline_ast_dump(tree):
+    # Python 3.13 omits empty fields by default; retain the Python 3.12 baseline.
+    options = {"show_empty": True} if "show_empty" in inspect.signature(ast.dump).parameters else {}
+    return ast.dump(tree, include_attributes=False, **options)
 
+
+def test_sdk_and_ppo_source_bytes_are_unchanged():
     root = Path(__file__).resolve().parents[2]
     tree = ast.parse((root / "src/nexuml/training/local_fit.py").read_text())
     # Registered execution admission changed; retain the pre-rebase fit/math baseline.
@@ -645,7 +651,7 @@ def test_sdk_and_ppo_source_bytes_are_unchanged():
         if not isinstance(node, (ast.Import, ast.ImportFrom))
         and not (isinstance(node, ast.FunctionDef) and node.name == "_check_recipe")
     ]
-    assert hashlib.sha256(ast.dump(tree, include_attributes=False).encode()).hexdigest() == (
+    assert hashlib.sha256(_baseline_ast_dump(tree).encode()).hexdigest() == (
         "209d53aae8a9335d1303066ddc91ca0e570f4b56a0f6adc323a60da44fe62c17"
     )
     for path, digest in [
@@ -662,8 +668,6 @@ def test_sdk_and_ppo_source_bytes_are_unchanged():
 
 
 def test_ordinary_ppo_numerical_bodies_and_defaults_match_pre_sensor_baseline():
-    import ast
-
     root = Path(__file__).resolve().parents[2]
     tree = ast.parse(
         (root / "library/src/nexuml_library/reinforcement/algorithms/ppo.py").read_text()
@@ -676,7 +680,7 @@ def test_ordinary_ppo_numerical_bodies_and_defaults_match_pre_sensor_baseline():
     # Only the learner dependency-resolution block changed, not construction/update math.
     assert isinstance(build.body[0], ast.Try)
     build.body = build.body[1:]
-    assert hashlib.sha256(ast.dump(tree, include_attributes=False).encode()).hexdigest() == (
+    assert hashlib.sha256(_baseline_ast_dump(tree).encode()).hexdigest() == (
         "06f57bdae30232fd4e778345781491e4f486ef34e765a53700bf9b253cbf9f3d"
     )
 

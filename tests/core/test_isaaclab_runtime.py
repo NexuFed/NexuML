@@ -521,6 +521,9 @@ def native_launch(monkeypatch, tmp_path):
             JointPositionAction=_PositionAction,
         ),
     }
+    monkeypatch.setattr(
+        _isaaclab_runtime, "sys", SimpleNamespace(version_info=(3, 12), modules=sys.modules)
+    )
     monkeypatch.setattr(_isaaclab_runtime, "import_module", modules.__getitem__)
     monkeypatch.setattr(
         _isaaclab_runtime,
@@ -739,6 +742,18 @@ def test_invalid_source_or_foreign_runtime_fails_before_launch(native_launch, in
             native_launch.build()
         assert not native_launch.launchers
         assert _isaaclab_runtime._active_runtime is None
+
+
+def test_unpinned_python_fails_before_launcher_allocation(native_launch, monkeypatch):
+    monkeypatch.setattr(
+        _isaaclab_runtime, "sys", SimpleNamespace(version_info=(3, 13), modules=sys.modules)
+    )
+    with _isaaclab_runtime.isaaclab_process():
+        with pytest.raises(ValueError, match="source revision/Python.*pinned profile"):
+            native_launch.build()
+    assert native_launch.launchers == []
+    assert native_launch.parsed == []
+    assert _isaaclab_runtime._active_runtime is None
 
 
 def test_failed_launcher_enter_is_not_exited_twice(native_launch, monkeypatch):

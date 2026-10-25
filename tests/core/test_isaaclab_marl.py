@@ -3,6 +3,7 @@
 import builtins
 from contextlib import contextmanager
 import json
+import sys
 from types import SimpleNamespace
 from typing import Any
 
@@ -554,6 +555,9 @@ def test_native_admission_uses_config_and_environment_types_without_launching_na
         ),
     }
     modules["isaaclab_tasks.utils.hydra"].resolve_presets = lambda *args, **kwargs: cfg
+    monkeypatch.setattr(
+        _isaaclab_runtime, "sys", SimpleNamespace(version_info=(3, 12), modules=sys.modules)
+    )
     monkeypatch.setattr(_isaaclab_runtime, "import_module", modules.__getitem__)
     monkeypatch.setattr(
         _isaaclab_runtime,

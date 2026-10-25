@@ -44,6 +44,7 @@ class NexuRLLightningModule(L.LightningModule):
         )
         resolve_policy_evaluation(scenario)
         self.scenario = scenario
+        self.fit_device: str | None = None
         self.training_spec = scenario.training
         if policy is None:
             if scenario.training.seed is not None:
@@ -171,6 +172,7 @@ class NexuRLLightningModule(L.LightningModule):
                 self._next_evaluation_frame = (int(self.frames) // interval + 1) * interval
 
     def on_fit_start(self):
+        self.fit_device = str(self.device)
         assert self.scenario.interaction is not None
         self.scenario.interaction.environment.validate_training(
             self.training_spec.model_copy(update={"evaluation": self.evaluation_spec}),
