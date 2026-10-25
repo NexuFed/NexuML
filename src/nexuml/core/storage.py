@@ -40,10 +40,11 @@ class SharedStorage:
             self.set(key, value)
         elif self.memory_mapped:
             existing = self.data[key]
-            concatenated = torch.cat([existing, value], dim=0)  # ty: ignore[no-matching-overload]
+            # TensorDict dispatches torch.cat via __torch_function__, beyond PyTorch's stubs.
+            concatenated = torch.cat([existing, value], dim=0)  # ty: ignore[invalid-argument-type]
             self.set(key, concatenated)
         else:
-            self.data[key] = torch.cat([self.data[key], value], dim=0)  # ty: ignore[no-matching-overload]
+            self.data[key] = torch.cat([self.data[key], value], dim=0)  # ty: ignore[invalid-argument-type]
 
     def set_ring_buffer(self, key: str, value: torch.Tensor | TensorDict, counter: int):
         B = value.shape[0]
