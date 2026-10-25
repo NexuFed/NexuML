@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from typer.testing import CliRunner
@@ -150,3 +151,97 @@ def test_library_add_missing_root_fails_clearly(isolated_library_config, tmp_pat
 
     assert result.exit_code != 0
     assert not isolated_library_config.exists()
+
+
+@pytest.mark.parametrize("with_scenario", [False, True])
+@pytest.mark.parametrize("overrides, expected", [([], 2), (["-O", "training.max_epochs=3"], 3)])
+def test_resume_applies_epoch_overrides_after_restoring_scenario(
+    monkeypatch, tmp_path, with_scenario, overrides, expected
+):
+    from nexuml.cli import main
+    from nexuml.core.types import ScenarioSpec, TrainingSpec
+    from nexuml.training import lightning
+
+    checkpoint = tmp_path / "source.ckpt"
+    restored = ScenarioSpec(name="restored", training=TrainingSpec(max_epochs=1))
+    restored.logging = None
+    supplied = restored.model_copy(deep=True)
+    supplied.name = "supplied"
+    monkeypatch.setattr(main, "_load_scenario", lambda *args: supplied)
+    monkeypatch.setattr(
+        lightning, "load_scenario_from_trainer_checkpoint", lambda *a, **kw: restored
+    )
+    monkeypatch.setattr("nexuml.execution.preflight", lambda *a, **kw: {})
+    captured = []
+
+    def run(scenario, **kwargs):
+        session = lightning.NexuSession(scenario=scenario, **kwargs)
+        captured.append(session.scenario)
+        return SimpleNamespace(test_results=[])
+
+    monkeypatch.setattr("nexuml.execution.run", run)
+    args = [
+        "train",
+        *(["supplied"] if with_scenario else []),
+        "--trainer-checkpoint",
+        str(checkpoint),
+        "--max-epochs",
+        "2",
+        *overrides,
+    ]
+
+    result = runner.invoke(app, args)
+
+    assert result.exit_code == 0, result.output
+    assert captured[0].name == "restored"
+    assert captured[0].training.max_epochs == expected
+
+
+def test_session_keeps_resolved_scenario_when_resuming(monkeypatch, tmp_path):
+    from nexuml.core.types import ScenarioSpec, TrainingSpec
+    from nexuml.training import lightning
+
+    restored = ScenarioSpec(name="checkpoint", training=TrainingSpec(max_epochs=1))
+    resolved = restored.model_copy(deep=True)
+    resolved.training.max_epochs = 2
+    monkeypatch.setattr(
+        lightning, "load_scenario_from_trainer_checkpoint", lambda *a, **kw: restored
+    )
+
+    session = lightning.NexuSession(scenario=resolved, trainer_checkpoint=tmp_path / "source.ckpt")
+
+    assert session.scenario is resolved
+    assert session.scenario.training.max_epochs == 2
+
+    implicit = lightning.NexuSession.from_trainer_checkpoint(tmp_path / "source.ckpt")
+    assert implicit.scenario is restored
+    assert implicit.scenario.training.max_epochs == 1
+
+
+def test_checkpoint_runtime_keeps_resolved_scenario(monkeypatch, tmp_path):
+    from nexuml.core.types import ScenarioSpec, TrainingSpec
+    from nexuml.training import lightning
+
+    stored = ScenarioSpec(name="checkpoint", training=TrainingSpec(max_epochs=1))
+    resolved = stored.model_copy(deep=True)
+    resolved.training.max_epochs = 2
+    monkeypatch.setattr(lightning, "load_scenario_from_trainer_checkpoint", lambda *a, **kw: stored)
+    captured = []
+
+    def create_data_module(scenario):
+        captured.append(scenario)
+        return SimpleNamespace()
+
+    def load_module(path, *, scenario):
+        captured.append(scenario)
+        return SimpleNamespace(pipeline=SimpleNamespace())
+
+    monkeypatch.setattr(lightning, "create_data_module_from_spec", create_data_module)
+    monkeypatch.setattr(lightning.NexuLightningModule, "load_from_checkpoint", load_module)
+
+    lightning.create_runtime_artifacts_from_trainer_checkpoint(
+        tmp_path / "source.ckpt", scenario=resolved
+    )
+
+    assert len(captured) == 2
+    assert all(scenario.training.max_epochs == 2 for scenario in captured)
