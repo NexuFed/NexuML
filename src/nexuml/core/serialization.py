@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from dataclasses import fields, is_dataclass
 from pathlib import PurePath
 from types import UnionType
 from typing import Any, Union, cast, get_args, get_origin
@@ -68,6 +69,8 @@ def _lower_value(value: Any) -> Any:
         return lower_component(value)
     if isinstance(value, BaseModel):
         return lower_model(value)
+    if is_dataclass(value) and not isinstance(value, type):
+        return {field.name: _lower_value(getattr(value, field.name)) for field in fields(value)}
     if isinstance(value, Mapping):
         return {str(key): _lower_value(item) for key, item in value.items()}
     if isinstance(value, (list, tuple)):
