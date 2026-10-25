@@ -90,13 +90,23 @@ def test_distribution_artifacts() -> None:
     core_sdist_names, core_sdist_license = _sdist_files(core_sdist)
     library_sdist_names, library_sdist_license = _sdist_files(library_sdist)
 
-    _require_names(core_wheel_names, ("nexuml/__init__.py",), core_wheel)
+    _require_names(core_wheel_names, ("nexuml/__init__.py", "nexuml/api/app.py"), core_wheel)
     _require_names(
         library_wheel_names,
         ("nexuml_library/__init__.py", "nexuml_library/data/dcaset2/dcase_zenodo.yaml"),
         library_wheel,
     )
     _require_names(core_sdist_names, ("README.md", "src/nexuml/__init__.py"), core_sdist)
+    assert not any(
+        "studio/" in name or "node_modules/" in name for name in core_wheel_names | core_sdist_names
+    )
+    for dependency in ("fastapi", "uvicorn", "websockets", "psutil"):
+        assert any(
+            requirement.startswith(dependency) and "extra == 'api'" in requirement
+            for requirement in BytesParser()
+            .parsebytes(core_raw_metadata)
+            .get_all("Requires-Dist", [])
+        )
     _require_names(
         library_sdist_names,
         ("README.md", "src/nexuml_library/__init__.py", "dcase_zenodo.yaml"),
@@ -136,10 +146,15 @@ def test_distribution_artifacts() -> None:
         for requirement in library_requires
     )
 
-    forbidden = ("rapids", "numba", "psutil", "huggingface-hub", "ffmpeg", "einops", "omegaconf")
+    forbidden = ("rapids", "numba", "huggingface-hub", "ffmpeg", "einops", "omegaconf")
     assert not any(
         requirement.lower().startswith(forbidden)
         for requirement in core_requires + library_requires
+    )
+    assert not any(
+        requirement.startswith(("fastapi", "uvicorn", "websockets", "psutil"))
+        and "extra ==" not in requirement
+        for requirement in core_requires
     )
 
     all_requires = [

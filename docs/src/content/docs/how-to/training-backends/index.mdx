@@ -1,0 +1,70 @@
+---
+title: Choose an execution mode
+description: Keep one NexuML lifecycle while selecting local, Ray, or native-job placement.
+---
+
+**Goal:** choose where a working scenario runs. **Prerequisites:** installed NexuML;
+remote execution additionally needs operator-provided environments, access, and storage.
+Placement does not introduce a second model/training API.
+
+| Execution | Placement | Lifecycle |
+| --- | --- | --- |
+| Local | current process | `NexuSession.run()` |
+| RayCluster | existing Ray Train workers | same session, Ray-aware Lightning |
+| RayJob | KubeRay template | RayCluster execution in remote driver |
+| Kubernetes Job | one template-owned training pod | same session |
+| PyTorchJob | Training Operator replicas | same lifecycle, native distributed launch |
+
+## Start locally
+
+`LocalExecution()` is the `ScenarioSpec` default:
+
+```python
+from nexuml.execution.definitions import LocalExecution
+
+execution = LocalExecution()
+```
+
+Attach it to a scenario, or leave the default, then:
+
+```bash
+nexuml train synthetic-linear-ae-reconstruction --max-epochs 1 \
+  -O training.accelerator=cpu -O training.devices=1
+```
+
+Expect successful fit/validation/test results. Output locations remain scenario-owned;
+see [first-run output discovery](/start/first-run/#inspect-what-was-produced).
+
+For an existing Ray cluster, [configure Ray](/how-to/training-backends/ray/). For
+operator-owned native templates, use [jobs and capacity review](/how-to/training-backends/jobs/).
+Epochs, precision, optimizer, and Lightning strategy stay in `TrainingSpec`;
+execution controls placement/resources.
+
+## Shared discovery and launch interfaces
+
+This is an advanced API sketch for an already defined `scenario` and its `execution`:
+
+```python
+from nexuml.execution import catalog, discover, preflight, run
+
+backends = catalog()            # schemas/dependencies; no cluster probes
+snapshot = discover(execution)  # read-only, selected target only
+review = preflight(scenario)    # no workers allocated or jobs created
+# Explicitly authorize the selected launch before calling:
+result = run(scenario)
+```
+
+Results/artifacts are backend-native. Read-only capacity is advisory and reserves nothing.
+Inspect the returned scope, diagnostics, actual native result, and artifact references;
+submission is not proof of successful training.
+
+Persisted execution uses `type`/`version`/`params`. Contributed definitions use
+`@execution_backend("my-backend")` on an `ExecutionBackendDefinition` subclass in an
+installed entry-point library or local root. Implement `run`, and supported `preflight`
+and `discover`, publishing truthful capability metadata. Do not import cluster runtimes
+at module scope. Unknown capacity stays unknown, not zero. `run(scenario, **kwargs)`
+receives preflight's `review` plus optional caller options/observer; keep reviews JSON-safe
+and browser summaries credential-free.
+
+Next, review [backend reference](/reference/backends/) or
+[library discovery](/how-to/custom-library/) for a contributed execution implementation.

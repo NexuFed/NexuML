@@ -1,0 +1,65 @@
+{
+  "skill_name": "nexuml-autoresearch",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Read-only research decision. My external NexuML project has four candidate runs left; no new runs now. Select for minimum val/loss under a hard 2 ms latency limit: baseline val/loss=0.30, 1 ms, test AUC=0.80; A val/loss=0.28, 3 ms, test AUC=0.95; B val/loss=0.29, 1.5 ms, test AUC=0.78. These are single-seed runs and test scores have already been exposed. Which is the feasible candidate, what evidence is still needed, how should I handle the leaked test cohort and what would you preserve? Don't claim a globally best model or spend the remaining budget automatically.",
+      "expected_output": "Admits B provisionally on validation/latency, excludes A, requires agreed confirmation, does not select by test AUC, discloses compromised final-test independence and preserves identities/evidence/budget.",
+      "files": [],
+      "expectations": [
+        "Selects B provisionally using validation and latency, while excluding A for violating the 2 ms hard limit.",
+        "Requires confirmation/repetition under an agreed budget instead of claiming a single-seed global winner.",
+        "Does not select by test AUC and explicitly discloses the exposed cohort's compromised independence.",
+        "Preserves baseline/candidate/protocol/evidence identities and does not spend the remaining four runs automatically."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Read-only tuning review for installed typed NexuML 0.2.1. Proposed command: nexuml tune --scenario-file candidate.py --max-epochs 3 --metric val/loss. The scenario still includes final-test records with data.test_split=0.15; I also have fixed metadata assignments. SEARCH_SPACE uses training.batch_size with categorical choices and directly mutates an immutable encoder definition's width. The file has no build factory and reuses an old study name/storage. Explain concrete corrections and provenance limits, without installing, writing code or executing a trial.",
+      "expected_output": "Rejects unsupported tune epoch flag; excludes actual final-test membership, routes categorical/immutable changes through a build factory, isolates or deliberately continues the study, preserves actual winning config beyond initial snapshots.",
+      "files": [],
+      "expectations": [
+        "Rejects tune --max-epochs and sets epoch limits through scenario/factory or a verified --override.",
+        "Excludes actual final-test records and checks fixed metadata/loader membership rather than relying only on val/loss or test_split=0.",
+        "Explains that categorical training.batch_size becomes a nested training dict for build, is ignored without a factory, and immutable components must be rebuilt.",
+        "Uses unique study/protocol identity or explicitly documents deliberate continuation and preserves the actual winner config beyond initial provenance snapshots."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Read-only next-step decision, not a request to run jobs in this test. My standing NexuML autoresearch contract authorizes six more CPU runs, two epochs each, existing training/validation data, no downloads or final-test access, and user-library fixes within that budget. A baseline is verified; a width variant reduced val/loss by 0.02 on one seed. The next confirmation and another architecture experiment meet all limits. For the real ongoing loop, should the agent ask me to approve each next run? Explain what it should do autonomously, how retries use budget, and which concrete changes actually require asking or stopping. Do not confuse this read-only test with cancelling the standing contract.",
+      "expected_output": "Continues experiments and confirmation automatically under the established contract; pauses only for explicit stops, real boundary changes, unresolved blockers or exhausted budget, while keeping this evaluation read-only.",
+      "files": [],
+      "expectations": [
+        "Treats the standing bounded research contract as permission to continue experiments/confirmation without per-run approval.",
+        "Selects a useful confirmation or experiment, records evidence and accounts for retries within the remaining budget.",
+        "Asks only for consequential boundary changes or unresolved decisions, not routine hypotheses or in-scope user-library fixes.",
+        "Honors this test's read-only boundary and explicit pauses/cancellation without inventing budget exhaustion or a new permanent approval gate."
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Read-only resumed-study decision. The standing CPU contract has three attempts left. Baseline is verified under cohort C/scorer S; a promising variant has one noisy seed. The queue offers a 5-minute paired confirmation, a 40-minute depth sweep based only on intuition, and a 1-minute gradient/routing check because the new loss might be detached. One earlier job is recorded running but its completion is unknown. A lesson says a larger learning rate always helps based on one run. What should the agent reconcile first, which experiments deserve priority, how should it handle the lesson and budget, and does a new context authorize a baseline restart or per-run approvals? No actual jobs or files in this test.",
+      "expected_output": "Reconciles the unknown live attempt and reservations, checks possible implementation invalidity cheaply, confirms promising evidence before intuition-driven expensive search, scopes the lesson and continues only within existing remaining capacity.",
+      "files": [],
+      "expectations": [
+        "Reconciles actual job/evidence and spent/reserved capacity before redispatching; unknown completion does not justify a duplicate or budget reset.",
+        "Prioritizes the cheap gradient/routing validity check and useful paired confirmation over an unsupported expensive sweep.",
+        "Revises the learning-rate lesson to its observed cohort/protocol and retains uncertainty/counterevidence rather than claiming a universal fact.",
+        "Keeps the verified baseline and standing authorization, avoids per-run approval gates and honors the read-only task."
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Read-only experiment-selection review of an external NexuML study. Baseline A uses 1M parameters, 100 updates and fixed preprocessing for 3 epochs; proposed B has 20M parameters, 600 updates and stronger augmentation for 3 epochs. B's validation loss is lower on one seed and the researcher wants to declare a novel method superior and run the final test after every new variant. The research budget has four attempts remaining. What exact validity gates, controls, falsifiers and resource comparisons should precede a publication-quality claim? No execution now.",
+      "expected_output": "Rejects equal epochs as comparable compute, prevents adaptive final-test use, requests matched budget/processing and targeted ablations, and scopes single-seed conclusions.",
+      "files": [],
+      "expectations": [
+        "Does not claim novelty or algorithmic gain from the confounded single-seed metric.",
+        "Flags model-capacity, augmentation and update-count confounds despite equal epoch counts.",
+        "Requires a numeric/data/metric/gradient correctness check, a falsifiable mechanism and matched baselines/ablations.",
+        "Preserves the unused attempt budget, validation-only selection and frozen one-time final-test gate."
+      ]
+    }
+  ]
+}

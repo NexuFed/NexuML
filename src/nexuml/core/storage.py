@@ -22,7 +22,7 @@ class SharedStorage:
 
     def set(self, key: str, value: torch.Tensor | TensorDict):
         if key in self.data and self.data[key].shape == value.shape:
-            self.data[key].copy_(value)  # ty: ignore[invalid-argument-type]
+            self.data[key].copy_(value)
         elif self.memory_mapped:
             memmap_path = self.map_location / key
             memmap_path.parent.mkdir(parents=True, exist_ok=True)
@@ -40,10 +40,11 @@ class SharedStorage:
             self.set(key, value)
         elif self.memory_mapped:
             existing = self.data[key]
-            concatenated = torch.cat([existing, value], dim=0)  # ty: ignore[no-matching-overload]
+            # TensorDict dispatches torch.cat via __torch_function__, beyond PyTorch's stubs.
+            concatenated = torch.cat([existing, value], dim=0)  # ty: ignore[invalid-argument-type]
             self.set(key, concatenated)
         else:
-            self.data[key] = torch.cat([self.data[key], value], dim=0)  # ty: ignore[no-matching-overload]
+            self.data[key] = torch.cat([self.data[key], value], dim=0)  # ty: ignore[invalid-argument-type]
 
     def set_ring_buffer(self, key: str, value: torch.Tensor | TensorDict, counter: int):
         B = value.shape[0]
@@ -52,14 +53,14 @@ class SharedStorage:
 
         data_size = self.data[key].shape[0]
         if counter + B < data_size:
-            self.data[key][counter : counter + B].copy_(value)  # ty: ignore[invalid-argument-type]
+            self.data[key][counter : counter + B].copy_(value)
         else:
             remaining = data_size - counter
             if remaining > 0:
-                self.data[key][counter : counter + remaining].copy_(value[:remaining])  # ty: ignore[invalid-argument-type]
+                self.data[key][counter : counter + remaining].copy_(value[:remaining])
             overflow = B - remaining
             if overflow > 0:
-                self.data[key][0:overflow].copy_(value[remaining : remaining + overflow])  # ty: ignore[invalid-argument-type]
+                self.data[key][0:overflow].copy_(value[remaining : remaining + overflow])
 
         return (counter + B) % data_size
 

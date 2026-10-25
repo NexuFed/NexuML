@@ -14,7 +14,14 @@ import torch.nn.functional as F
 from tensordict import TensorDict
 
 from nexuml.evaluation.algorithm import EvalAlgorithm
-from nexuml.core.components import EvalAlgorithmDefinition, EvalBuildContext
+from nexuml.core.components import (
+    ContextInput,
+    EvalAlgorithmDefinition,
+    EvalBuildContext,
+    EvalContextInputs,
+    FeatureKey,
+    LabelKey,
+)
 from nexuml.evaluation.storage import ReservoirTensorDictBuffer
 from nexuml_library.evaluation.visualizers._plotting import format_label, log_figure
 
@@ -25,17 +32,21 @@ logger = logging.getLogger(__name__)
 class ReconstructionVisualizer(EvalAlgorithmDefinition):
     """Shows side-by-side original vs reconstructed samples."""
 
-    reconstructed_key: str
-    mask_key: str | None = None
-    label_keys: list[str] | None = None
+    context_inputs = EvalContextInputs(feature_key=ContextInput(required=True))
+
+    reconstructed_key: FeatureKey
+    mask_key: FeatureKey | None = None
+    label_keys: list[LabelKey] | None = None
     n_samples: int = 8
     patch_size: int | tuple[int, int] | None = None
     storage_backend: str = "memory"
     storage_path: str | None = None
 
     def build(self, context: EvalBuildContext) -> EvalAlgorithm:
+        assert self.context_inputs is not None
+        context = self.context_inputs.resolve(context)
         return _ReconstructionVisualizerRuntime(
-            feature_key=context.feature_key,
+            feature_key=cast(str, context.feature_key),
             **self.model_dump(),
         )
 
@@ -43,8 +54,8 @@ class ReconstructionVisualizer(EvalAlgorithmDefinition):
 class _ReconstructionVisualizerRuntime(EvalAlgorithm):
     def __init__(
         self,
-        feature_key: str | None = None,
-        reconstructed_key: str | None = None,
+        feature_key: str,
+        reconstructed_key: str,
         mask_key: str | None = None,
         label_keys: list[str] | None = None,
         n_samples: int = 8,
@@ -52,10 +63,6 @@ class _ReconstructionVisualizerRuntime(EvalAlgorithm):
         storage_backend: str = "memory",
         storage_path: str | None = None,
     ) -> None:
-        if feature_key is None or reconstructed_key is None:
-            raise ValueError(
-                "ReconstructionVisualizer requires explicit feature_key and reconstructed_key."
-            )
         self.feature_key = feature_key
         self.reconstructed_key = reconstructed_key
         self.mask_key = mask_key
@@ -95,7 +102,7 @@ class _ReconstructionVisualizerRuntime(EvalAlgorithm):
             else:
                 payload[f"label__{label_key}"] = torch.full((original.shape[0],), float("nan"))
 
-        self._storage.add_batch(TensorDict(payload, batch_size=[original.shape[0]]))  # ty: ignore[invalid-argument-type]
+        self._storage.add_batch(TensorDict(payload, batch_size=[original.shape[0]]))
 
     def eval_end(self) -> None:
         pass

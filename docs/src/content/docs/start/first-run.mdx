@@ -1,0 +1,73 @@
+---
+title: Your first CPU run
+description: Discover, resolve, build, and train the synthetic autoencoder for one epoch on CPU.
+---
+
+**Goal:** complete a small reconstruction experiment and inspect its results.
+**Prerequisites:** [NexuML with the base library installed](/start/install/),
+an activated environment, and a writable directory. No GPU, dataset download,
+or repository checkout is needed. [Studio](/studio/#first-training-run) runs
+the same example through a browser.
+
+## 1. Discover the recipe
+
+```bash
+nexuml registry list scenarios
+```
+
+Find `synthetic-linear-ae-reconstruction`. This is a **registered recipe key**,
+not a file path. It generates 128-feature vectors locally and composes
+an encoder, decoder, reconstruction loss, and evaluation.
+
+## 2. Resolve an explicit configuration
+
+```bash
+nexuml resolve synthetic-linear-ae-reconstruction --output configs/first-run.yaml
+```
+
+Inspect the generated YAML. It contains validated parameters and stable component
+identities, not runtime objects. The scenario name is
+`synthetic_linear_ae_reconstruction`; recipe key, name, and filename may differ.
+Resolution compiles the graph but does not train it.
+
+## 3. Build the saved pipeline
+
+```bash
+nexuml build configs/first-run.yaml
+```
+
+Expect `Pipeline compiled successfully!`, stages `Encoder`, `Decoder`, and `Loss`,
+and the `reconstruction_loss` key. Shape propagation checks a 128-feature input,
+8-value latent representation, and 128-feature reconstruction. This recipe does
+not enable diagram output; see [pipeline diagrams](/explanation/diagrams/).
+
+## 4. Train for one CPU epoch
+
+```bash
+nexuml train --config configs/first-run.yaml --max-epochs 1 \
+  -O training.accelerator=cpu -O training.devices=1
+```
+
+The overrides apply to this invocation, not the saved YAML. Lightning runs
+fit, validation, post-train fitting if needed, and test. Expect
+`Execution finished: succeeded` and test results. One epoch verifies the workflow,
+not model convergence.
+
+## Inspect what was produced
+
+- `configs/first-run.yaml` is your saved, reproducible configuration; keep the CLI
+  overrides alongside results.
+- Metrics appear in the terminal. This recipe does not configure MLflow,
+  TensorBoard, model export, or a Mermaid diagram.
+- Session files, if created, live under `.experiments/` (or
+  `$NEXUML_LOGS_ROOT/.experiments/` when set). Check reported paths; do not assume
+  a checkpoint name or output layout.
+
+Persist curves with [tracking](/how-to/tracking/) or set a repeatable
+[checkpoint policy](/how-to/checkpoints/) when needed.
+
+## Next
+
+[Build a scenario](/how-to/run-scenarios/#define-a-recipe), follow the
+[external tutorials](/tutorials/), or try the [optional CIFAR example](/start/cifar-resnet/).
+To distribute a **trained** model, [export an actual checkpoint or live trained package](/how-to/export/).

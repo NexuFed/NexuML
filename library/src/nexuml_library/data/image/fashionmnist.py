@@ -18,6 +18,8 @@ from nexuml.core.components import DataSourceDefinition
 class FashionMNISTDataset(DataSourceDefinition):
     """In-memory FashionMNIST dataset backed by ``self.data`` and metadata labels."""
 
+    fixed_label_keys = ("category",)
+
     root: str | Path = "data/fashionmnist"
     train: bool = True
     download: bool = False
@@ -28,8 +30,6 @@ class FashionMNISTDataset(DataSourceDefinition):
 
 
 class _FashionMNISTDatasetRuntime(NexuDataset):
-    LABEL_NAMES = ["category"]
-
     def __init__(
         self,
         root: str | Path = "data/fashionmnist",
@@ -65,11 +65,13 @@ class _FashionMNISTDatasetRuntime(NexuDataset):
             target_list = list(dataset_targets)
 
         split_name = split or ("fit" if train else "test")
-        meta = pd.DataFrame({"category": target_list, "split": [split_name] * len(target_list)})
+        assert FashionMNISTDataset.fixed_label_keys is not None
+        label_names = list(FashionMNISTDataset.fixed_label_keys)
+        meta = pd.DataFrame({label_names[0]: target_list, "split": [split_name] * len(target_list)})
 
         super().__init__(
             meta=meta,
-            label_names=self.LABEL_NAMES,
+            label_names=label_names,
             do_split=False,
             modality="image",
             data=dataset_data,

@@ -3,17 +3,47 @@ name: CI
 on:
   workflow_dispatch:
   push:
-    branches: [main]
-  pull_request:
-    types: [opened, synchronize, reopened]
-    branches: [main]
+    branches: ["**"]
+    tags: ["v*"]
+  # Institute runners must never execute fork pull_request code. Maintainers review
+  # external contributions before bringing them onto a trusted repository branch.
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  UV_NO_CACHE: ${{ startsWith(github.ref, 'refs/tags/') && '1' || '0' }}
+  ARTIFACT_SUFFIX: ${{ startsWith(github.ref, 'refs/tags/') && format('-{0}', github.run_attempt) || '' }}
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  release-identity:
+    runs-on: ika-runner
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Verify tag eligibility before builds and tests
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python scripts/release_candidate.py eligibility
+
+  docs-checks:
+    needs: release-identity
+    uses: ./.github/workflows/docs-checks.yml
+    with:
+      version: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'dev' }}
+
   static:
+    needs: release-identity
     runs-on: ika-runner
     steps:
       - uses: actions/checkout@v5
@@ -26,6 +56,9 @@ jobs:
       - name: Verify lockfile
         run: uv lock --check
 
+      - uses: ./.github/actions/prepare-release
+        if: startsWith(github.ref, 'refs/tags/')
+
       - name: Install nexuml + library
         run: |
           uv venv
@@ -34,6 +67,14 @@ jobs:
           uv pip install -e "./library[all]"
           echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
           echo "VIRTUAL_ENV=$PWD/.venv" >> "$GITHUB_ENV"
+
+      - name: Verify independently installable agent skills
+        run: |
+          python skills/tests/check_skills.py
+          python skills/tests/check_runtime.py
+
+      - name: Verify shared Python and Studio release versions
+        run: python scripts/check-release-versions.py
 
       - name: Lint
         id: lint
@@ -50,16 +91,12 @@ jobs:
         continue-on-error: true
         run: ty check
 
-      - name: Build documentation
-        env:
-          DISABLE_MKDOCS_2_WARNING: "true"
-        run: mkdocs build --strict
-
       - name: Verify static checks
         if: ${{ always() && (steps.lint.outcome != 'success' || steps.format.outcome != 'success' || steps.type.outcome != 'success') }}
         run: exit 1
 
   test:
+    needs: release-identity
     runs-on: ika-runner-gpu
     strategy:
       fail-fast: false
@@ -77,6 +114,9 @@ jobs:
         uses: astral-sh/setup-uv@v10.0.1
         with:
           version: "latest"
+
+      - uses: ./.github/actions/prepare-release
+        if: startsWith(github.ref, 'refs/tags/')
 
       - name: Install nexuml + library
         run: |
@@ -103,8 +143,16 @@ jobs:
         run: pytest --cov=nexuml --cov=nexuml_library --cov-report=term-missing --cov-report=xml:reports/coverage.xml
 
   package:
-    runs-on: ubuntu-latest
+    needs: [static, test]
+    runs-on: ika-runner
+    outputs:
+      artifact-id: ${{ steps.upload.outputs.artifact-id }}
     steps:
+      - name: Configure writable uv tool paths
+        run: |
+          echo "UV_TOOL_DIR=$RUNNER_TEMP/package-tools-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_ENV"
+          echo "UV_TOOL_BIN_DIR=$RUNNER_TEMP/package-bin-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_ENV"
+
       - uses: actions/checkout@v5
 
       - uses: actions/setup-python@v6
@@ -115,6 +163,9 @@ jobs:
         uses: astral-sh/setup-uv@v10.0.1
         with:
           version: "latest"
+
+      - uses: ./.github/actions/prepare-release
+        if: startsWith(github.ref, 'refs/tags/')
 
       - name: Build distributions
         run: |
@@ -146,7 +197,7 @@ jobs:
         run: |
           uv venv --no-config --python 3.12 .venv-library
           uv pip install --no-config --python .venv-library/bin/python --default-index https://pypi.org/simple pytest dist/nexuml/*.whl dist/nexuml-library/*.whl
-          env -u PYTHONPATH NEXUML_INSTALLED_DIST_TEST=1 .venv-library/bin/python -I -m pytest -c /dev/null --rootdir=tests/packaging --confcutdir=tests/packaging -q tests/packaging/test_installed_distributions.py -k library
+          env -u PYTHONPATH NEXUML_INSTALLED_DIST_TEST=1 .venv-library/bin/python -I -m pytest -c /dev/null --rootdir=tests/packaging --confcutdir=tests/packaging -q tests/packaging/test_installed_distributions.py tests/packaging/test_documented_first_run.py -k "library or documented_synthetic"
 
       - name: Smoke test rebuilt wheels
         env:
@@ -160,9 +211,10 @@ jobs:
           env -u PYTHONPATH NEXUML_INSTALLED_DIST_TEST=1 .venv-rebuilt-library/bin/python -I -m pytest -c /dev/null --rootdir=tests/packaging --confcutdir=tests/packaging -q tests/packaging/test_installed_distributions.py -k library
 
       - name: Upload validated distributions
+        id: upload
         uses: actions/upload-artifact@v6
         with:
-          name: python-distributions
+          name: python-distributions${{ env.ARTIFACT_SUFFIX }}
           retention-days: 7
           path: |
             dist/nexuml/*.whl
@@ -171,27 +223,281 @@ jobs:
             dist/nexuml-library/*.tar.gz
           if-no-files-found: error
 
+  studio-static:
+    name: Studio static
+    needs: release-identity
+    runs-on: ika-runner
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: studio
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: ${{ !startsWith(github.ref, 'refs/tags/') && 'npm' || '' }}
+          package-manager-cache: false
+          cache-dependency-path: studio/package-lock.json
+
+      - uses: ./.github/actions/prepare-release
+        if: startsWith(github.ref, 'refs/tags/')
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Type check
+        id: type
+        continue-on-error: true
+        run: npm run typecheck
+
+      - name: Lint
+        id: lint
+        continue-on-error: true
+        run: npm run lint
+
+      - name: Unit tests
+        id: test
+        continue-on-error: true
+        run: npm test
+
+      - name: Verify Studio static checks
+        if: ${{ always() && (steps.type.outcome != 'success' || steps.lint.outcome != 'success' || steps.test.outcome != 'success') }}
+        run: exit 1
+
+  studio-build:
+    name: Studio build
+    needs: studio-static
+    runs-on: ika-runner
+    timeout-minutes: 15
+    outputs:
+      artifact-id: ${{ steps.upload.outputs.artifact-id }}
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    defaults:
+      run:
+        working-directory: studio
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: ${{ !startsWith(github.ref, 'refs/tags/') && 'npm' || '' }}
+          package-manager-cache: false
+          cache-dependency-path: studio/package-lock.json
+      - uses: ./.github/actions/prepare-release
+        if: startsWith(github.ref, 'refs/tags/')
+      - run: npm ci
+      - name: Build and pack exactly once
+        run: |
+          mkdir -p ../dist/studio
+          npm run prepack
+          npm pack --ignore-scripts --json --pack-destination ../dist/studio > ../dist/studio/pack.json
+          git rev-parse HEAD > ../dist/studio/commit.txt
+      - name: Upload immutable Studio distribution
+        id: upload
+        uses: actions/upload-artifact@v6
+        with:
+          name: studio-distribution${{ env.ARTIFACT_SUFFIX }}
+          retention-days: 7
+          path: dist/studio/
+          if-no-files-found: error
+
+  studio-package:
+    name: Studio package (${{ matrix.os }}, ${{ matrix.mode }})
+    needs:
+      - package
+      - studio-build
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        # macos-latest/windows-latest intentionally disabled pending owner approval.
+        os: [ika-runner]
+        mode: [tool, project]
+    defaults:
+      run:
+        shell: bash
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+      CUDA_VISIBLE_DEVICES: ""
+      # Tiny CPU models should not create competing full-machine BLAS pools.
+      OMP_NUM_THREADS: "2"
+      MKL_NUM_THREADS: "2"
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: ${{ !startsWith(github.ref, 'refs/tags/') && 'npm' || '' }}
+          package-manager-cache: false
+          cache-dependency-path: studio/package-lock.json
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.0.1
+        with:
+          version: "latest"
+
+      - name: Download validated Python distributions
+        uses: actions/download-artifact@v7
+        with:
+          name: python-distributions${{ env.ARTIFACT_SUFFIX }}
+          path: dist
+
+      - name: Download the single Studio build
+        uses: actions/download-artifact@v7
+        with:
+          name: studio-distribution${{ env.ARTIFACT_SUFFIX }}
+          path: dist/studio
+
+      - uses: ./.github/actions/prepare-release
+        if: startsWith(github.ref, 'refs/tags/')
+
+      - name: Verify artifact identity
+        run: |
+          test "$(cat dist/studio/commit.txt)" = "$(git rev-parse HEAD)"
+          node --input-type=module - <<'JS'
+          import { readFileSync } from 'node:fs';
+          import { createHash } from 'node:crypto';
+          import assert from 'node:assert/strict';
+          const [pack] = JSON.parse(readFileSync('dist/studio/pack.json'));
+          assert.equal(pack.name, '@nexufed/nexuml-studio');
+          assert.match(pack.filename, /^nexufed-nexuml-studio-\d+\.\d+\.\d+\.tgz$/);
+          assert.equal(`sha512-${createHash('sha512').update(readFileSync(`dist/studio/${pack.filename}`)).digest('base64')}`, pack.integrity);
+          JS
+
+      - name: Install and verify isolated ${{ matrix.mode }} runtime
+        run: >-
+          python scripts/studio-test-runtime.py
+          --wheel dist/nexuml/nexuml-*.whl
+          --library-wheel dist/nexuml-library/nexuml_library-*.whl
+          --output "$RUNNER_TEMP/studio runtime ${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.mode }}"
+          --mode ${{ matrix.mode }}
+
+      - name: Install frontend dependencies
+        working-directory: studio
+        run: npm ci
+
+      - name: Install headless test browser
+        working-directory: studio
+        run: npx playwright install chromium --with-deps --only-shell
+
+      - name: Verify packaged startup and CPU browser workflow
+        working-directory: studio
+        run: npm run test:package -- ../dist/studio/*.tgz 2>&1 | tee package-smoke.log
+
+      - name: Upload Studio test diagnostics
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: studio-results-${{ matrix.os }}-${{ matrix.mode }}
+          retention-days: 7
+          path: |
+            studio/package-smoke.log
+            studio/playwright-report/
+            studio/test-results/
+          if-no-files-found: ignore
+
   required-ci:
     name: CI
     needs:
+      - release-identity
+      - docs-checks
       - static
       - test
       - package
+      - studio-static
+      - studio-build
+      - studio-package
     if: ${{ always() }}
     runs-on: ika-runner
 
     steps:
       - name: Verify required jobs
         env:
+          IDENTITY_RESULT: ${{ needs.release-identity.result }}
+          DOCS_RESULT: ${{ needs.docs-checks.result }}
           STATIC_RESULT: ${{ needs.static.result }}
           TEST_RESULT: ${{ needs.test.result }}
           PACKAGE_RESULT: ${{ needs.package.result }}
+          STUDIO_STATIC_RESULT: ${{ needs.studio-static.result }}
+          STUDIO_BUILD_RESULT: ${{ needs.studio-build.result }}
+          STUDIO_PACKAGE_RESULT: ${{ needs.studio-package.result }}
         run: |
+          echo "release-identity: $IDENTITY_RESULT"
+          echo "docs: $DOCS_RESULT"
           echo "static: $STATIC_RESULT"
           echo "test:   $TEST_RESULT"
           echo "package: $PACKAGE_RESULT"
+          echo "studio-static: $STUDIO_STATIC_RESULT"
+          echo "studio-build: $STUDIO_BUILD_RESULT"
+          echo "studio-package: $STUDIO_PACKAGE_RESULT"
 
-          if [ "$STATIC_RESULT" != "success" ] || [ "$TEST_RESULT" != "success" ] || [ "$PACKAGE_RESULT" != "success" ]; then
+          {
+            echo "## CI results"
+            echo "| Check | Result |"
+            echo "| --- | --- |"
+            echo "| Release identity | $IDENTITY_RESULT |"
+            echo "| Documentation | $DOCS_RESULT |"
+            echo "| Python static | $STATIC_RESULT |"
+            echo "| Python tests | $TEST_RESULT |"
+            echo "| Python packages | $PACKAGE_RESULT |"
+            echo "| Studio static | $STUDIO_STATIC_RESULT |"
+            echo "| Studio build | $STUDIO_BUILD_RESULT |"
+            echo "| Studio packages | $STUDIO_PACKAGE_RESULT |"
+            echo ""
+            echo "Linux project/tool verified here; macOS and Windows are disabled, not verified."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$IDENTITY_RESULT" != "success" ] || \
+             [ "$DOCS_RESULT" != "success" ] || \
+             [ "$STATIC_RESULT" != "success" ] || \
+             [ "$TEST_RESULT" != "success" ] || \
+             [ "$PACKAGE_RESULT" != "success" ] || \
+             [ "$STUDIO_STATIC_RESULT" != "success" ] || \
+             [ "$STUDIO_BUILD_RESULT" != "success" ] || \
+             [ "$STUDIO_PACKAGE_RESULT" != "success" ]; then
             echo "One or more required CI jobs failed."
             exit 1
           fi
+
+      - uses: actions/checkout@v5
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: ./.github/actions/prepare-release
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+      - uses: actions/download-artifact@v7
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        with:
+          artifact-ids: ${{ needs.package.outputs.artifact-id }}
+          path: dist
+      - uses: actions/download-artifact@v7
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        with:
+          artifact-ids: ${{ needs.studio-build.outputs.artifact-id }}
+          path: dist/studio
+      - name: Bind the tested tag candidate
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        env:
+          PYTHON_ID: ${{ needs.package.outputs.artifact-id }}
+          STUDIO_ID: ${{ needs.studio-build.outputs.artifact-id }}
+        run: >-
+          uv run --no-project --python 3.12 python scripts/release_candidate.py create
+          --dist dist --python-id "$PYTHON_ID" --studio-id "$STUDIO_ID"
+          --output release-candidate/candidate.json
+      - uses: actions/upload-artifact@v6
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        with:
+          name: release-candidate-${{ github.run_attempt }}
+          path: release-candidate/candidate.json
+          if-no-files-found: error
+          retention-days: 7

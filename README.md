@@ -4,10 +4,9 @@
 
 <br/>
 
-<img alt="Python" src="https://img.shields.io/badge/python-3.12%2B-blue?style=flat-square&logo=python">
+<img alt="Python" src="https://img.shields.io/badge/python-blue?style=flat-square&logo=python">
 <img alt="PyTorch" src="https://img.shields.io/badge/PyTorch-compatible-ee4c2c?style=flat-square&logo=pytorch&logoColor=white">
-<img alt="Status" src="https://img.shields.io/badge/status-alpha-orange?style=flat-square">
-<a href="https://test.pypi.org/project/nexuml/"><img alt="TestPyPI" src="https://img.shields.io/badge/TestPyPI-nexuml-blue?style=flat-square&logo=pypi"></a>
+<a href="https://pypi.org/project/nexuml/"><img alt="PyPI" src="https://img.shields.io/badge/PyPI-nexuml-blue?style=flat-square&logo=pypi"></a>
 <a href="https://github.com/NexuFed/NexuML/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/NexuFed/NexuML/ci.yml?branch=main&style=flat-square&label=CI"></a>
 <a href="https://github.com/NexuFed/NexuML/actions/workflows/release.yml"><img alt="Release" src="https://img.shields.io/github/actions/workflow/status/NexuFed/NexuML/release.yml?style=flat-square&label=release"></a>
 
@@ -18,7 +17,7 @@
 
 NexuML is a modular PyTorch framework for building machine-learning systems from reusable, typed components connected through explicit TensorDict keys. A `ScenarioSpec` describes data, model pipelines, training, evaluation, logging, export, and execution in one place and can be persisted as validated YAML.
 
-[Documentation](https://nexufed.github.io/NexuML/) · [Hands-on tutorials](https://github.com/NexuFed/NexuMLTutorial) · [TestPyPI](https://test.pypi.org/project/nexuml/)
+[Documentation](https://nexufed.github.io/NexuML/) · [Hands-on tutorials](https://github.com/NexuFed/NexuMLTutorial) · [PyPI](https://pypi.org/project/nexuml/)
 
 </div>
 
@@ -41,32 +40,23 @@ NexuML separates **reusable implementations** from **experiment composition**. D
 
 ## Install
 
-NexuML is currently published on TestPyPI. PyPI remains the fallback for dependencies.
-
-For most users, install the framework together with the reusable base library:
+Create or activate your project's Python environment, then install the framework with the reusable base library:
 
 ```bash
-uv pip install --index https://test.pypi.org/simple --default-index https://pypi.org/simple "nexuml[library]"
+pip install "nexuml[library]"
 ```
 
 Install only the framework and CLI when you want to provide all components yourself:
 
 ```bash
-uv pip install --index https://test.pypi.org/simple --default-index https://pypi.org/simple nexuml
+pip install nexuml
 ```
 
-NVIDIA DALI, Ray, tracking, tuning, S3, and export integrations are optional. See the [installation guide](https://nexufed.github.io/NexuML/start/install/) before adding platform-specific extras.
+NVIDIA DALI, Ray, tracking, tuning, S3, and export integrations are optional. See the [installation guide](https://nexufed.github.io/NexuML/latest/start/install/) before adding platform-specific extras.
 
 ## Container image
 
-The complete Linux AMD64 development and training environment is also published with an explicit NexuML and CUDA version:
-
-```bash
-docker pull ghcr.io/nexufed/nexuml:0.2.0-cuda12.8.1
-docker run --rm -it --gpus all ghcr.io/nexufed/nexuml:0.2.0-cuda12.8.1
-```
-
-The image contains both NexuML packages and all optional extras. See the [installation guide](https://nexufed.github.io/NexuML/start/install/#container-image) for host requirements and other tags.
+For the complete Linux AMD64 development and training image, see [container installation](https://nexufed.github.io/NexuML/latest/start/install/#container-image) for tag selection and GPU host requirements.
 
 ## First look
 
@@ -74,11 +64,11 @@ With the base library installed, inspect a real scenario without starting a trai
 
 ```bash
 nexuml registry list scenarios
-nexuml resolve cifar-resnet
-nexuml build configs/cifar-resnet.yaml
+nexuml resolve synthetic-linear-ae-reconstruction --output configs/first-run.yaml
+nexuml build configs/first-run.yaml
 ```
 
-This shows the central NexuML flow: a Python scenario is resolved to a reproducible configuration and then materialized into a validated TensorDict pipeline. Continue with [Get started](https://nexufed.github.io/NexuML/start/) for training requirements.
+This resolves a Python recipe to reproducible configuration and builds a validated TensorDict pipeline without a dataset download. The [CPU walkthrough in development docs](https://nexufed.github.io/NexuML/dev/start/first-run/) adds one training epoch. The site home continues to select the latest stable release; historical releases keep their original documentation.
 
 ## Learn by building
 
@@ -86,16 +76,19 @@ The [NexuML Tutorial repository](https://github.com/NexuFed/NexuMLTutorial) is t
 
 The learning path starts with MNIST library basics, then adds file-backed Speech Commands audio with native DALI loading and demonstrates pipeline composition by swapping a CNN encoder for a Transformer while reusing the rest of the system.
 
-> **Version note:** the tutorial repository evolves independently from NexuML. NexuML 0.2 uses typed component definitions and rejects the legacy selector/parameter-bag syntax, so use a tutorial revision compatible with the NexuML version you install.
-
 ## Documentation
 
-- **[Get started](https://nexufed.github.io/NexuML/start/)** — install NexuML and inspect your first scenario.
-- **[Tutorials](https://nexufed.github.io/NexuML/tutorials/)** — complete hands-on projects and the tutorial compatibility note.
-- **[Guides](https://nexufed.github.io/NexuML/how-to/)** — accomplish a specific task such as training, tuning, exporting, or adding a component.
-- **[Concepts](https://nexufed.github.io/NexuML/explanation/)** — understand the architecture, TensorDict data flow, definitions, discovery, and scenarios.
-- **[Reference](https://nexufed.github.io/NexuML/reference/)** — exact CLI, configuration, backend, decorator, and Python API information.
+- **[Start here](https://nexufed.github.io/NexuML/latest/start/)** — install NexuML and inspect your first scenario.
+- **[Use NexuML](https://nexufed.github.io/NexuML/latest/how-to/)** — train, tune, export, and extend a pipeline.
+- **[Understand NexuML](https://nexufed.github.io/NexuML/latest/explanation/architecture/)** — architecture, data flow, definitions, and discovery.
+- **[Reference](https://nexufed.github.io/NexuML/latest/reference/)** — CLI, configuration, integrations, and Python API.
+
+[Studio in development docs](https://nexufed.github.io/NexuML/dev/studio/) and
+[tutorials](https://nexufed.github.io/NexuML/latest/tutorials/) remain available.
+The [global changelog](https://nexufed.github.io/NexuML/changelog/) publishes reviewed updates from main independently of release snapshots.
+
+Contributing to the site? Use the isolated [Starlight/MDX setup and checks](docs/README.md).
 
 ## Extending NexuML
 
-External libraries can provide their own typed layers, data sources, evaluation algorithms, loader backends, and scenarios through the `nexuml.libraries` entry-point group or a local library root. See [Build a custom library](https://nexufed.github.io/NexuML/how-to/custom-library/) for the package structure and component contracts.
+External libraries can provide their own typed layers, data sources, evaluation algorithms, loader backends, and scenarios through the `nexuml.libraries` entry-point group or a local library root. See [Build a custom library](https://nexufed.github.io/NexuML/latest/how-to/custom-library/) for the package structure and component contracts.

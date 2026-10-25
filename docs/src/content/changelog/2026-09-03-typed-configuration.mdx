@@ -1,0 +1,23 @@
+---
+date: '2026-09-03'
+title: Typed configuration and portable packages
+category: release
+summary: NexuML establishes a typed configuration and distribution baseline for reproducible machine learning pipelines.
+version: v0.2.1
+links:
+  - label: Read the full GitHub release notes
+    url: https://github.com/NexuFed/NexuML/releases/tag/v0.2.1
+---
+
+Reusable components are now explicit Pydantic definitions rather than loosely
+typed parameter bags. Scenarios construct definitions in Python; persisted YAML
+restores them through stable registry identities. Runtime objects are materialized
+through build contexts.
+
+The framework and reusable base library ship as separate distributions. Portable
+model packages carry dependency metadata and checkpoint provenance. Ray execution,
+S3 WebDataset export, and TensorShard window loading extend the existing training
+and data lifecycle.
+
+This release replaces legacy selector dictionaries and parameter bags. Read the
+linked release notes before migrating existing scenarios.

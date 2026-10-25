@@ -47,19 +47,18 @@ Issues = "https://github.com/NexuFed/NexuML/issues"
 Releases = "https://github.com/NexuFed/NexuML/releases"
 
 [project.optional-dependencies]
+api = [
+    "fastapi>=0.115,<1",
+    "uvicorn>=0.30,<1",
+    "websockets>=13,<17",
+    "psutil>=7,<9",
+]
 dev = [
     "pytest>=8.0",
     "pytest-cov>=4.0",
+    "httpx>=0.27,<1",
     "ruff>=0.4",
     "ty",
-    "mkdocs-material>=9.6",
-    "mkdocstrings[python]>=0.29",
-    "mkdocs-gen-files>=0.5",
-    "mkdocs-literate-nav>=0.6",
-    "mkdocs-section-index>=0.3",
-    "mike>=2.1",
-    "pymdown-extensions>=10.0",
-    "mkdocs-click>=0.8",
 ]
 audio = [
     "soundfile>=0.12",
@@ -84,6 +83,9 @@ export = [
 ray = [
     "ray[default,train]>=2.57,<2.59",
 ]
+kubernetes = [
+    "kubernetes>=36,<37",
+]
 s3 = [
     "boto3>=1.34",
 ]
@@ -91,7 +93,7 @@ library = [
     "nexuml-library>=0.2,<0.3",
 ]
 all = [
-    "nexuml[library,audio,data,tracking,tuning,export,ray,s3]",
+    "nexuml[api,library,audio,data,tracking,tuning,export,ray,kubernetes,s3]",
 ]
 
 [project.scripts]
@@ -102,7 +104,7 @@ packages = ["src/nexuml"]
 
 [tool.hatch.build.targets.sdist]
 include = ["src/nexuml", "README.md", "LICENSE", "pyproject.toml"]
-exclude = ["library"]
+exclude = ["library", "studio"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -149,10 +151,14 @@ convention = "google"
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["D", "DOC"]
+"docs/tests/**" = ["D", "DOC"]
 "src/nexuml/evaluation/__init__.py" = ["F822"]
 
 [tool.ty.environment]
-extra-paths = ["src", "library/src"]
+extra-paths = ["src", "library/src", "skills/nexuml-library/assets/minimal-library/src"]
+
+[tool.ty.src]
+exclude = ["docs"]
 
 [[tool.uv.index]]
 name = "nvidia-pypi"

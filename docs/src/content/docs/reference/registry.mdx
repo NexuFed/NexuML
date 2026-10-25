@@ -1,0 +1,45 @@
+---
+title: Registry reference
+description: Inspect exact discovered identities, component schemas, recipes, and import diagnostics.
+---
+
+Reference-only: discovery serves CLI inspection/recipe lookup and restoration of stable
+persisted identities. Python scenarios import/instantiate concrete definition classes directly.
+The canonical [library guide](/how-to/custom-library/#discovery) owns setup procedures.
+
+## Inspection commands
+
+```bash
+nexuml registry list
+nexuml registry list layers
+nexuml registry list data
+nexuml registry list eval
+nexuml registry list scenarios
+nexuml registry list layers --verbose
+```
+
+Component rows expose stable name/version, concrete definition type, and Pydantic fields;
+scenario rows identify recipe functions. Verbose output surfaces discovery/import failures.
+
+A registered layer must be a `LayerDefinition`, not mutable `PipelineLayer`. Likewise,
+role decorators require the corresponding typed definitions. A semantic identity such as
+`scaled_relu@1` is for YAML/discovery; Python uses `ScaledReLU(scale=2.0)`.
+Duplicate kind/name/version identities fail rather than depending on import order.
+
+## Backend catalogs
+
+`nexuml backend list` covers loader/export/training/tracking catalogs; execution schemas
+also have `backend catalog`. Registry commands intentionally focus on layer/data/eval/recipe
+inspection. Catalog availability does not establish optional dependency or driver health.
+
+## Missing component checklist
+
+1. Inspect `nexuml library list` for the selected installation/source root.
+2. Inspect the relevant registry with `--verbose`.
+3. Confirm the class/function has the correct role decorator.
+4. Confirm the module and its optional dependencies import in that environment.
+5. For local source, verify `nexuml library add PATH` registered the package-containing root.
+
+Each process discovers fresh; there is no persistent component cache to clear.
+Exact [decorator signatures](/reference/api/nexuml/core/discovery/) and
+[component registry APIs](/reference/api/nexuml/core/registry/) are source-derived.

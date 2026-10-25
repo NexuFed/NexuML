@@ -6,6 +6,7 @@ from nexuml.core.discovery import scenario
 from nexuml.core.types import DataSpec, DatasetSpec, ScenarioSpec
 from nexuml_library.data.image.fashionmnist import FashionMNISTDataset
 from nexuml_library.data.image.mnist import MNISTDataset
+from nexuml_library.layers.model.resnet import ResNetType
 from nexuml_library.scenarios.data.roots import resolve_data_root
 from nexuml_library.scenarios.evaluation.base import classification_evaluation
 from nexuml_library.scenarios.model.resnet_classifier import resnet_classifier
@@ -81,7 +82,7 @@ def fashionmnist_data(download: bool = True, root: str = "fashionmnist") -> Data
 @scenario("mnist-resnet")
 def mnist_resnet(
     download: bool = True,
-    resnet_type: str = "resnet18",
+    resnet_type: ResNetType = "resnet18",
     pretrained: bool = False,
     cifar_stem: bool = True,
     lr: float = 1e-3,
@@ -109,7 +110,7 @@ def mnist_resnet(
 @scenario("fashionmnist-resnet")
 def fashionmnist_resnet(
     download: bool = True,
-    resnet_type: str = "resnet18",
+    resnet_type: ResNetType = "resnet18",
     pretrained: bool = False,
     cifar_stem: bool = True,
     lr: float = 1e-3,
@@ -138,7 +139,7 @@ def _image_resnet_scenario(
     name: str,
     data: DataSpec,
     label_key: str,
-    resnet_type: str,
+    resnet_type: ResNetType,
     pretrained: bool,
     cifar_stem: bool,
     lr: float,

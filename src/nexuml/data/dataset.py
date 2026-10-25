@@ -252,7 +252,7 @@ class NexuDataset(torch.utils.data.Dataset):
                 continue
             y_dict[name] = self._label_to_tensor(row[name])
 
-        return TensorDict(y_dict, batch_size=[]) if y_dict else None  # ty: ignore[invalid-argument-type]
+        return TensorDict(y_dict, batch_size=[]) if y_dict else None
 
     def __len__(self) -> int:
         if self.meta is not None:
