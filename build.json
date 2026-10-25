@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "target": "changelog",
+  "version": "main",
+  "revision": "b9fb6586f015db459cb8881e6feb51b84b3f03e0",
+  "site": "https://nexufed.github.io",
+  "mount": "/NexuML/"
+}

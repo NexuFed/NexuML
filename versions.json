@@ -1,6 +1,11 @@
 [
   {
     "aliases": [],
+    "title": "main (unreleased)",
+    "version": "main"
+  },
+  {
+    "aliases": [],
     "title": "dev (unreleased)",
     "version": "dev"
   },

@@ -1,0 +1,1 @@
+export{i as createArchitectureServices}from"./chunk-KOCW2XDZ.DSCF0-2o.js";
