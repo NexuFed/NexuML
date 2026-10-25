@@ -139,3 +139,53 @@ pytest tests/library/test_rul_cfc_gen2.py \
 
 All additions are NexuML library components plus scenario, test,
 documentation and launch-script artifacts. No NexuML core code is changed.
+
+## 7. Post-hoc per-engine Flow failure analysis
+
+After the 72-run Gen2 sweep has been completed and the validation-only
+summary has selected `d010_adam_1e3_window` across head seeds 42, 43 and 44,
+use the repository's frozen-checkpoint diagnostic:
+
+```bash
+pytest tests/library/test_rul_cfc_gen2_failure_diagnostics.py -v
+
+python -m nexuml_library.evaluation.maintenance.rul_gen2_failure_diagnostics \
+  2>&1 | tee .experiments/rul/audits/gen2-failure-diagnostics.log
+```
+
+The diagnostic uses only the existing native experiment files; there is
+no auxiliary download, external script, new training, or model selection.
+It requires the saved Gen2 summary, six best-checkpoint manifests and
+matching per-engine test CSVs, original FD001 prepared data, and frozen
+FD001 seed-42 PatchFormer/CfC Flow checkpoints.
+
+It reconstructs the preselected readouts and checks their predictions
+against the existing native test CSVs before reporting per-engine
+differences. It compares the Flow displacement to **train-only**
+high-/low-RUL representation centroids and the distribution of training
+displacement magnitudes. The official test labels are used solely for
+post-hoc error diagnosis.
+
+Output is written to
+`.experiments/rul/audits/gen2-flow-failure-diagnostics.json`.
+Relevant fields include:
+
+- `delta_rms` and `train_delta_rms_percentile`: displacement magnitude
+  and its percentile relative to training-window displacements.
+- `delta_toward_low_rul`: displacement projection onto the train-derived
+  direction from high-RUL to low-RUL pooled embeddings. This is not a
+  calibrated physical degradation clock.
+- `nearest_train_pooled_embedding_distance`: proximity to the original
+  training embeddings, using pooled representations.
+- `flow_minus_encoder_prediction` and `flow_minus_encoder_nasa`:
+  differences between independently fitted readouts on the same engine.
+- `flow_head_displacement_effect`: how much the **same fixed Flow
+  readout's** prediction changes when its displacement channel is
+  suppressed. This is an off-manifold sensitivity probe, not a causal
+  effect or a replacement benchmark.
+
+The code verifies upstream checkpoint provenance and identical official
+test-engine identities/targets. Keep all 100 engines in the reported
+benchmark. Do **not** use inspected FD001 test failures to tune
+hyperparameters or choose models; use an independent dataset such as
+FD003 for subsequent confirmation.
