@@ -1,9 +1,13 @@
 import os
 import json
+import io
+import runpy
 import shutil
 import subprocess
 import sys
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import MagicMock, Mock
 
 import pytest
 from ruamel.yaml import YAML
@@ -43,6 +47,59 @@ def test_only_package_publishers_use_hosted_runners():
             else:
                 assert runner == "ika-runner", identity
     assert hosted == publishers
+
+
+@pytest.mark.parametrize("mode", ["tool", "project"])
+@pytest.mark.parametrize("platform", ["Linux", "Darwin"])
+def test_studio_setup_scopes_cpu_index_to_torch(mode, platform, tmp_path, monkeypatch):
+    setup = Path(__file__).resolve().parents[2] / "scripts/studio-test-runtime.py"
+    root = tmp_path / "private runtime"
+    executable = root / "installed interpreter" / "bin/python"
+    identity = {
+        "interface_version": 3,
+        "working_directory": str(root),
+        "python_executable": str(executable),
+    }
+    run = Mock()
+    process = Mock()
+    process.poll.return_value = None
+    listener = MagicMock()
+    listener.__enter__.return_value.getsockname.return_value = ("127.0.0.1", 9000)
+    monkeypatch.setattr(subprocess, "run", run)
+    monkeypatch.setattr(subprocess, "Popen", Mock(return_value=process))
+    monkeypatch.setattr("socket.socket", Mock(return_value=listener))
+    monkeypatch.setattr(
+        "urllib.request.urlopen", lambda *args, **kwargs: io.BytesIO(json.dumps(identity).encode())
+    )
+    monkeypatch.setattr(os, "uname", lambda: SimpleNamespace(sysname=platform))
+    monkeypatch.delenv("GITHUB_ENV", raising=False)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            str(setup),
+            "--wheel",
+            str(tmp_path / "core.whl"),
+            "--library-wheel",
+            str(tmp_path / "library.whl"),
+            "--output",
+            str(root),
+            "--mode",
+            mode,
+        ],
+    )
+    runpy.run_path(str(setup), run_name="__main__")
+    install = next(call.args[0] for call in run.call_args_list if "install" in call.args[0])
+    assert "--index" not in install and "--index-strategy" not in install
+    if platform == "Linux":
+        assert install[install.index("--torch-backend") + 1] == "cpu"
+    else:
+        assert "--torch-backend" not in install
+    assert str((tmp_path / "core.whl").resolve()) + "[api]" in install
+    assert str((tmp_path / "library.whl").resolve()) in install
+    assert json.loads((root / "runtime.json").read_text())["STUDIO_TEST_PYTHON"] == str(executable)
+    process.terminate.assert_called_once()
+    process.wait.assert_called_once_with(timeout=15)
 
 
 def test_studio_ci_builds_once_and_tests_both_trusted_linux_installations(tmp_path):
