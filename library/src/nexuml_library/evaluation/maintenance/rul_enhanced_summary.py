@@ -91,37 +91,35 @@ def summarize_enhanced_cfc(
                 ),
                 "legacy_postfit_validation_excluded": legacy,
             }
-    comparison = []
+    comparison: list[dict[str, Any]] = []
+    scores_by_configuration: dict[str, dict[int, float]] = {}
     for configuration in CONFIGURATIONS:
         scores = [
             float(records[f"{configuration}_s{seed}"]["best_val_mse"])
             for seed in seeds
         ]
+        by_seed = dict(zip(seeds, scores))
+        scores_by_configuration[configuration] = by_seed
         comparison.append({
             "configuration": configuration,
             "enabled": sorted(enabled_options(configuration)),
             "val_mse_mean": statistics.mean(scores),
             "val_mse_std": statistics.stdev(scores) if len(scores) > 1 else None,
-            "val_mse_by_head_seed": dict(zip((str(s) for s in seeds), scores)),
+            "val_mse_by_head_seed": {
+                str(seed): score for seed, score in by_seed.items()
+            },
         })
-    reference = {
-        item["configuration"]: item for item in comparison
-    }
     effects: dict[str, Any] = {}
+    baseline_scores = scores_by_configuration["baseline"]
+    all_scores = scores_by_configuration["all"]
     for option in OPTIONS:
-        enabled = reference[option]
-        disabled = reference[f"all_no_{option}"]
-        base = reference["baseline"]
-        full = reference["all"]
+        enabled_scores = scores_by_configuration[option]
+        omitted_scores = scores_by_configuration[f"all_no_{option}"]
         one_delta = [
-            float(enabled["val_mse_by_head_seed"][str(seed)])
-            - float(base["val_mse_by_head_seed"][str(seed)])
-            for seed in seeds
+            enabled_scores[seed] - baseline_scores[seed] for seed in seeds
         ]
         omit_delta = [
-            float(full["val_mse_by_head_seed"][str(seed)])
-            - float(disabled["val_mse_by_head_seed"][str(seed)])
-            for seed in seeds
+            all_scores[seed] - omitted_scores[seed] for seed in seeds
         ]
         effects[option] = {
             "single_minus_baseline_mean": statistics.mean(one_delta),
