@@ -26,6 +26,7 @@ from nexuml_library.evaluation.maintenance.rul_mc_conformal import (
 )
 from nexuml_library.layers.model.rul_enhanced_cfc import (
     EnhancedCfCRULHead,
+    _EnhancedCfCRuntime,
 )
 from nexuml_library.layers.model.rul_trajectory_loss import (
     RULTrajectoryConsistencyLoss,
@@ -180,6 +181,7 @@ def test_enhanced_head_uses_pretrained_encoder_and_backward(
         trajectory=True,
         initialization_seed=42,
     ).build(_context())
+    assert isinstance(head, _EnhancedCfCRuntime)
     head.train()
     x = TensorDict(
         {
