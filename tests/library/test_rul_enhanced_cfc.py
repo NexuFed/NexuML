@@ -5,7 +5,11 @@ from __future__ import annotations
 import csv
 import json
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Literal, cast
+
+import lightning as L
+from lightning.pytorch.trainer.states import TrainerFn
 
 import pytest
 import torch
@@ -16,6 +20,9 @@ from nexuml.core.components import LayerBuildContext
 from nexuml_library.data.maintenance.rul_enhanced import (
     _PairedRULRuntime,
     AutoPairedCMapSSRULWindows,
+)
+from nexuml_library.evaluation.maintenance.rul_composite_comparison import (
+    RULCompositeAblationComparison,
 )
 from nexuml_library.evaluation.maintenance.rul_enhanced_summary import (
     summarize_enhanced_cfc,
@@ -36,6 +43,7 @@ from nexuml_library.scenarios.maintenance.rul_enhanced_cfc import (
     OPTIONS,
     enabled_options,
     enhanced_cfc_rul_study,
+    enhanced_cfc_native_comparison,
 )
 
 
@@ -311,3 +319,71 @@ def test_enhanced_summary_never_reads_test_audits(tmp_path: Path) -> None:
     assert len(report["ranking"]) == 16
     assert len(report["effects"]) == 7
     assert report["effects"]["finetune"]["single_minus_baseline_mean"] == 1
+
+
+@pytest.mark.parametrize("seed", [42, 43, 44])
+def test_native_composite_trains_independent_named_heads(seed: int) -> None:
+    """One ordinary scenario carries all 16 on/off RUL model/loss branches."""
+    scenario = enhanced_cfc_native_comparison(seed)
+    assert scenario.name == f"rul-FD003-enhanced-cfc-compare-s{seed}"
+    assert scenario.training.batch_size == 16
+    assert len(scenario.pipeline.stages["RULModels"]) == len(CONFIGURATIONS)
+    assert len(scenario.pipeline.stages["RULLoss"]) == len(CONFIGURATIONS)
+    assert len(scenario.training.loss_keys) == len(CONFIGURATIONS)
+    assert len(scenario.evaluation.algorithms) == 0
+    assert sum(scenario.training.loss_keys.values()) == pytest.approx(1.0)
+    for conf, model, loss in zip(
+        CONFIGURATIONS,
+        scenario.pipeline.stages["RULModels"],
+        scenario.pipeline.stages["RULLoss"],
+    ):
+        assert isinstance(model.component, EnhancedCfCRULHead)
+        assert isinstance(loss.component, RULTrajectoryConsistencyLoss)
+        assert model.keys_out == [
+            f"predicted_rul_{conf}", f"previous_predicted_rul_{conf}"
+        ]
+        assert loss.keys_in == [f"predicted_rul_{conf}"]
+        assert loss.keys_out == [f"rul_loss_{conf}"]
+        assert loss.component.previous_key == f"previous_predicted_rul_{conf}"
+        assert (
+            loss.component.consistency_weight > 0
+        ) is ("trajectory" in enabled_options(conf))
+        assert model.component.initialization_seed == seed
+        assert scenario.training.loss_keys[f"rul_loss_{conf}"] == pytest.approx(
+            1.0 / len(CONFIGURATIONS)
+        )
+    callbacks = [cb.factory for cb in scenario.callbacks]
+    assert any("RULCompositeAblationComparison" in name for name in callbacks)
+    assert any("ModelCheckpoint" in name for name in callbacks)
+
+
+def test_native_comparison_records_only_fitting_validation(
+    tmp_path: Path,
+) -> None:
+    """The composite result ranks recorded per-arm validation MSE, not test."""
+    output = tmp_path / "comparison.validation.csv"
+    callback = RULCompositeAblationComparison(str(output), seed=42)
+    metrics = {
+        f"val/rul_loss_{conf}": torch.tensor(100.0 + index)
+        for index, conf in enumerate(CONFIGURATIONS)
+    }
+    trainer = cast(
+        L.Trainer,
+        SimpleNamespace(
+            sanity_checking=False,
+            state=SimpleNamespace(fn=TrainerFn.FITTING),
+            current_epoch=0,
+            callback_metrics=metrics,
+        ),
+    )
+    module = cast(L.LightningModule, SimpleNamespace())
+    callback.on_fit_start(trainer, module)
+    callback.on_validation_end(trainer, module)
+    callback.on_fit_end(trainer, module)
+    report = json.loads(output.with_suffix(".json").read_text(encoding="utf-8"))
+    assert report["test_predictions_read"] is False
+    assert report["optimizer_shared"] is True
+    assert report["independently_restored_arm_checkpoints"] is False
+    assert len(report["ranking"]) == len(CONFIGURATIONS)
+    assert len(report["effects"]) == len(OPTIONS)
+    assert report["ranking"][0]["configuration"] == "baseline"

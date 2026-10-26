@@ -147,7 +147,8 @@ class EnhancedCfCRULHead(LayerDefinition):
             or context.input_sizes.get("previous_rul_history") != (30, sensors)
             or context.input_sizes.get("pair_mask") != (1,)
             or context.keys_in != ["rul_history"]
-            or context.keys_out != ["predicted_rul", "previous_predicted_rul"]
+            or len(context.keys_out) != 2
+            or context.keys_out[0] == context.keys_out[1]
         ):
             raise ValueError("Enhanced CfC requires aligned 30-cycle sensor pairs")
         with torch.random.fork_rng(devices=[]):
@@ -311,10 +312,11 @@ class _EnhancedCfCRuntime(PipelineLayer):
         if not isinstance(x, TensorDict):
             raise TypeError("Enhanced CfC requires TensorDict input")
         current = cast(Tensor, x["rul_history"])
-        x["predicted_rul"] = self.forward_tensor(current)
-        previous = cast(Tensor, x["previous_rul_history"])
+        prediction_key, predecessor_key = self.keys_out
+        x[prediction_key] = self.forward_tensor(current)
         if self.trajectory and self.training and y is not None:
-            x["previous_predicted_rul"] = self.forward_tensor(previous)
+            previous = cast(Tensor, x["previous_rul_history"])
+            x[predecessor_key] = self.forward_tensor(previous)
         else:
-            x["previous_predicted_rul"] = cast(Tensor, x["predicted_rul"]).detach()
+            x[predecessor_key] = cast(Tensor, x[prediction_key]).detach()
         return x, y
