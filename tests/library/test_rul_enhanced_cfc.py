@@ -199,6 +199,30 @@ def test_enhanced_head_uses_pretrained_encoder_and_backward(
     cast(Tensor, result["predicted_rul"]).sum().backward()
     assert any(parameter.grad is not None for parameter in head.encoder.parameters())
 
+    # Optional additions must never change the common readout initialization.
+    reference = EnhancedCfCRULHead(initialization_seed=42).build(_context())
+    graph_only = EnhancedCfCRULHead(
+        initialization_seed=42, sensor_graph=True
+    ).build(_context())
+    assert isinstance(reference, _EnhancedCfCRuntime)
+    assert isinstance(graph_only, _EnhancedCfCRuntime)
+    for key in (
+        "input_projection.weight",
+        "input_projection.bias",
+        "temporal.cells.0.first.weight",
+        "regressor.0.weight",
+    ):
+        assert torch.equal(
+            reference.state_dict()[key], graph_only.state_dict()[key]
+        )
+        assert torch.equal(
+            reference.state_dict()[key], head.state_dict()[key]
+        )
+    assert graph_only.sensor_graph is not None
+    assert head.sensor_graph is not None
+    for key, parameter in graph_only.sensor_graph.state_dict().items():
+        assert torch.equal(parameter, head.sensor_graph.state_dict()[key])
+
 
 def test_trajectory_objective_uses_true_pairs_only_and_train_only() -> None:
     """Penalty cannot contaminate validation loss or nonexistent engine pairs."""
