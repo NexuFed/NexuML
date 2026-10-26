@@ -135,3 +135,89 @@ failures were already inspected, results on this dataset must be
 labeled exploratory; do not tune model configurations using its test
 performance. Independent FD003 validation and final test evaluation
 are needed to assess transferability.
+
+
+## FD003 replication: fixed protocol, separate upstream weights
+
+The FD001 architecture study selected CfC as the lowest-mean-validation-MSE
+Flow readout, with Transformer close behind. FD003 repeats the **entire
+predeclared three-backbone comparison**, rather than selecting only one
+FD001 winner or changing its training settings.
+
+It uses the identical head architectures, widths, dropout, Adam learning
+rate, window MSE, epoch budget, patience and seeds. Differences from FD001
+are only the **dataset-specific** sensor protocol, native FD003 asset splits
+and correspondingly trained FD003 upstream weights. No FD001 pretrained
+encoder/Flow checkpoints or feature-normalization statistics are carried
+into FD003.
+
+The FD003 run dependencies are:
+
+1. The previously registered native
+   `maintenance-rul-controlled-fd003-patchformer-s42` scenario, which
+   trains the FD003 PatchFormer and writes its best checkpoint manifest.
+2. The previously registered native
+   `maintenance-rul-patchformer-sequence-cfc-fd003-s42` scenario, which
+   prepares FD003 healthy/faulty sequence endpoints and learns the
+   FD003 CfC Flow, selected using validation transport SWD.
+
+The FD003 launcher checks for these artifacts and runs the corresponding
+`nexuml resolve` / `nexuml train` commands **only when absent**. The
+scenarios enforce checkpoint identity, train-only feature normalization
+and official engine-disjoint splits. Existing valid upstream artifacts
+are reused across all 18 supervised-head trials.
+
+### Execute the FD003 comparison
+
+```bash
+git pull
+ruff check .
+ruff format --check .
+ty check
+pytest tests/library/test_rul_head_architectures.py -v
+
+set -o pipefail
+bash scripts/launch_cfc_rul_head_architectures_fd003.sh \
+  2>&1 | tee .experiments-cfc-rul-heads-fd003.log
+```
+
+All 18 registered FD003 scenarios use the form
+`maintenance-rul-cfc-head-<transformer|mamba|cfc>-<encoder|flow>-fd003-s<42|43|44>`.
+A single run can be invoked with the native CLI:
+
+```bash
+nexuml resolve maintenance-rul-cfc-head-cfc-flow-fd003-s42 \
+  --output .experiments/rul/head-architectures/fd003/cfc-flow-s42.yaml
+nexuml train --config .experiments/rul/head-architectures/fd003/cfc-flow-s42.yaml
+```
+
+The latter requires the two FD003 seed-42 upstream runs already described.
+
+You can also restrict the full launcher with `HEAD_SEEDS`, `HEADS`, or
+`ARMS`. On a complete grid, it writes a strictly **validation-only**
+summary to:
+
+```text
+.experiments/rul/head-architectures/fd003/summary.json
+```
+
+To recalculate without training, use:
+
+```bash
+python -m nexuml_library.evaluation.maintenance.rul_head_architecture_summary \
+  --subset FD003 --head-seeds 42 43 44
+```
+
+The report checks that every readout uses exactly the same FD003 frozen
+encoder, endpoints and Flow checkpoint; it rejects mismatched validation
+assets, missing run cells and best-checkpoint epoch differences.
+
+**Test-set safeguard:** the summary never reads held-out test predictions.
+Native NexuML `train` currently evaluates the official test split after
+fitting. Treat those audits as unavailable for model selection; review
+held-out FD003 performance only *after* the head configuration has been
+selected using FD003 validation. FD001's already inspected test failures
+are exploratory and cannot be used for selecting a FD003 checkpoint.
+
+The FD001 summary and scenarios remain unchanged and accessible at
+`.experiments/rul/head-architectures/summary.json`.
