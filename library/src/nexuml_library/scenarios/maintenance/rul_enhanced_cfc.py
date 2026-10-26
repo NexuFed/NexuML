@@ -753,7 +753,9 @@ def enhanced_cfc_native_comparison(
         Native composite ScenarioSpec with disjoint head parameters and losses.
 
     Raises:
-        ValueError: If the requested seed is not a predeclared comparison seed.
+        ValueError: If the requested seed is not a declared comparison seed.
+        TypeError: If a comparison variant does not provide the expected
+            enhanced CfC head or trajectory MSE loss.
     """
     if head_seed not in (42, 43, 44):
         raise ValueError("Enhanced CfC composite seed must be 42, 43 or 44")
