@@ -19,6 +19,7 @@ class RULTrajectoryConsistencyLoss(LayerDefinition):
     """Add a training-only consecutive-cycle penalty to the native RUL MSE."""
 
     consistency_weight: float = Field(default=0.0, ge=0.0, le=10.0)
+    previous_key: str = "previous_predicted_rul"
 
     def build(self, context: LayerBuildContext) -> PipelineLayer:
         """Build supervised sequence-consistency objective.
@@ -28,6 +29,7 @@ class RULTrajectoryConsistencyLoss(LayerDefinition):
         """
         return _RULTrajectoryConsistencyRuntime(
             consistency_weight=self.consistency_weight,
+            previous_key=self.previous_key,
             **context.runtime_kwargs(),
         )
 
@@ -42,12 +44,14 @@ class _RULTrajectoryConsistencyRuntime(PipelineLayer):
         keys_in: list[str],
         keys_out: list[str],
         consistency_weight: float,
+        previous_key: str,
         **kwargs: Any,
     ) -> None:
         super().__init__(
             input_sizes=input_sizes, keys_in=keys_in, keys_out=keys_out, **kwargs
         )
         self.consistency_weight = consistency_weight
+        self.previous_key = previous_key
 
     def forward(
         self,
@@ -65,7 +69,7 @@ class _RULTrajectoryConsistencyRuntime(PipelineLayer):
         """
         if not isinstance(x, TensorDict):
             raise TypeError("Trajectory consistency requires TensorDict")
-        current = cast(Tensor, x["predicted_rul"])
+        current = cast(Tensor, x[cast(list[str], self.keys_in)[0]])
         if y is None:
             loss = current.square().mean() * 0.0
         else:
@@ -74,7 +78,7 @@ class _RULTrajectoryConsistencyRuntime(PipelineLayer):
                 raise ValueError("Trajectory loss requires aligned [batch,1] RUL")
             loss = (current - label).square().mean()
             if self.training and self.consistency_weight > 0:
-                previous = cast(Tensor, x["previous_predicted_rul"])
+                previous = cast(Tensor, x[self.previous_key])
                 mask = cast(Tensor, x["pair_mask"])
                 if previous.shape != current.shape or mask.shape != current.shape:
                     raise ValueError("Trajectory loss requires aligned real predecessor pairs")
