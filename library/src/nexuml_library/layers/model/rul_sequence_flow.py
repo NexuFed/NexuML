@@ -1,4 +1,4 @@
-"""Temporal-attention RUL readout for complete frozen PatchFormer sequences.
+"""Temporal sequence RUL readouts for complete frozen PatchFormer embeddings.
 
 Both the standalone sequence-flow and encoder-only control use this identical
 trainable readout. No pretrained PatchFormer RUL prediction enters the model.
@@ -21,7 +21,7 @@ from nexuml_library.layers.model.rul_selective_ssm import SelectiveSSMBlock
 
 @layer("PatchFormerSequenceFlowRULHead")
 class PatchFormerSequenceFlowRULHead(LayerDefinition):
-    """Learn RUL with global token attention and a learned attentive pooling."""
+    """Select a temporal backbone while retaining shared attentive RUL pooling."""
 
     architecture: Literal["transformer", "mamba", "cfc"] = "transformer"
     hidden_dim: int = Field(default=128, gt=0)
@@ -52,7 +52,7 @@ class PatchFormerSequenceFlowRULHead(LayerDefinition):
 
 
 class _SequenceFlowRULHeadRuntime(PipelineLayer):
-    """Token self-attention and learned pooling; never temporal mean-pooling."""
+    """Architecture-specific temporal encoding with identical attentive pooling."""
 
     def __init__(
         self,
