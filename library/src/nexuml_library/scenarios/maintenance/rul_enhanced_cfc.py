@@ -9,8 +9,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Literal
 
-from nexuml import callback
 from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint
+
+from nexuml import callback
 from nexuml.core.discovery import scenario
 from nexuml.core.types import DatasetSpec, LayerSpec, PipelineSpec, ScenarioSpec
 from nexuml_library.data.maintenance.rul_enhanced import (
