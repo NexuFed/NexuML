@@ -86,11 +86,12 @@ labels are read by this diagnostic. Rigorous prediction-interval
 coverage would require a disjoint calibration split not used to train or
 select either the encoder or RUL estimator.
 
-## Ablation matrix: 16 configurations × 3 seeds = 48 trainings
+## Ablation matrix: 16 configurations × 3 seeds = 48 model branches
 
 A 7-binary-factor complete factorial would require 128 configurations
-per seed (384 runs). This experiment instead uses a compact, **controlled
-16-cell effect study** for each seed:
+per seed (384 independent trainings). This experiment instead uses a compact,
+**controlled 16-cell effect study** per seed (48 separately registered models
+or three simultaneous native composite training runs):
 
 - `baseline`: all seven options disabled.
 - Seven **single-on** configurations, named `finetune`, `graph`,
@@ -205,11 +206,6 @@ nexuml resolve maintenance-rul-enhanced-cfc-fd003-all-s42 \
   --output .experiments/rul/enhanced-cfc/fd003/all-s42.yaml
 nexuml train --config .experiments/rul/enhanced-cfc/fd003/all-s42.yaml
 ```
-
-Individual full-grid validation-only reports can still be constructed
-from their native training records using
-`python -m nexuml_library.evaluation.maintenance.rul_enhanced_summary`,
-but this is *reporting*, not a training launcher.
 
 ### Uncertainty is a post-fit diagnostic, not a point-estimation head
 
