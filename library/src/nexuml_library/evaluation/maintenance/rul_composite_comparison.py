@@ -77,6 +77,7 @@ class RULCompositeAblationComparison(L.Callback):
             ValueError: If no complete fitting validation epoch was observed.
         """
         from nexuml_library.scenarios.maintenance.rul_enhanced_cfc import (
+            Ablation,
             CONFIGURATIONS,
             OPTIONS,
             enabled_options,
@@ -84,7 +85,7 @@ class RULCompositeAblationComparison(L.Callback):
 
         if not self._rows:
             raise ValueError("No fitting-epoch composite CfC validation metrics")
-        best: dict[str, dict[str, float | int]] = {}
+        best: dict[Ablation, dict[str, float | int]] = {}
         for configuration in CONFIGURATIONS:
             record = min(
                 self._rows, key=lambda row: float(row[configuration])
@@ -105,17 +106,18 @@ class RULCompositeAblationComparison(L.Callback):
                     - float(best[f"all_no_{option}"]["best_observed_val_mse"])
                 ),
             }
-        ranking = sorted(
-            (
-                {
-                    "configuration": name,
-                    "enabled": sorted(enabled_options(name)),
-                    **metrics,
-                }
-                for name, metrics in best.items()
-            ),
-            key=lambda item: float(item["best_observed_val_mse"]),
+        ranked = sorted(
+            CONFIGURATIONS,
+            key=lambda name: float(best[name]["best_observed_val_mse"]),
         )
+        ranking: list[dict[str, Any]] = [
+            {
+                "configuration": name,
+                "enabled": sorted(enabled_options(name)),
+                **best[name],
+            }
+            for name in ranked
+        ]
         report: dict[str, Any] = {
             "study": "NEX-233 NexuML native composite CfC enhancement comparison",
             "subset": "FD003",
