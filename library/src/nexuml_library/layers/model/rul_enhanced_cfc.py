@@ -224,6 +224,8 @@ class _EnhancedCfCRuntime(PipelineLayer):
         self.register_buffer("reference_mean", mean, persistent=True)
         self.register_buffer("reference_std", std, persistent=True)
         self.encoder.requires_grad_(train_encoder)
+        # The pretrained FAN is unused; train only the DPAN when enabled.
+        self.encoder.fan.requires_grad_(False)
         self.sensor_graph = _SensorGraphAttention(sensors) if sensor_graph else None
         self.input_projection = nn.Linear(256, 64)
         self.positions = nn.Parameter(torch.zeros(1, 30, 64))
