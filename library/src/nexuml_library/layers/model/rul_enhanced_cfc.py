@@ -219,6 +219,8 @@ class _EnhancedCfCRuntime(PipelineLayer):
         std = torch.as_tensor(settings["feature_std"], dtype=torch.float32)
         if mean.shape != (30, 128) or std.shape != (30, 128) or not bool((std > 0).all()):
             raise ValueError("Enhanced CfC expects normalized [30,128] DPAN features")
+        self.reference_mean: Tensor
+        self.reference_std: Tensor
         self.register_buffer("reference_mean", mean, persistent=True)
         self.register_buffer("reference_std", std, persistent=True)
         self.encoder.requires_grad_(train_encoder)
@@ -259,7 +261,7 @@ class _EnhancedCfCRuntime(PipelineLayer):
         """
         if (
             x.ndim != 3 or x.shape[1] != 30
-            or x.shape[2] != self.encoder.embedding.__len__()
+            or x.shape[2] != len(self.encoder.embedding)
         ):
             raise ValueError("Enhanced CfC requires [batch,30,sensors]")
         raw = self.sensor_graph(x) if self.sensor_graph is not None else x
@@ -302,5 +304,5 @@ class _EnhancedCfCRuntime(PipelineLayer):
         if self.trajectory and self.training and y is not None:
             x["previous_predicted_rul"] = self.forward_tensor(previous)
         else:
-            x["previous_predicted_rul"] = x["predicted_rul"].detach()
+            x["previous_predicted_rul"] = cast(Tensor, x["predicted_rul"]).detach()
         return x, y
