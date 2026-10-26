@@ -53,15 +53,11 @@ def cfc_rul_head_architecture_study(
     if head_seed not in (42, 43, 44):
         raise ValueError("RUL head comparison requires seed 42, 43 or 44")
     if subset == "FD001":
-        base = cfc_rul_optimization_study(
-            arm, "d010", "adam_1e3", "window", head_seed
-        )
+        base = cfc_rul_optimization_study(arm, "d010", "adam_1e3", "window", head_seed)
     else:
         # FD003 must load FD003-specific, validation-selected upstream
         # PatchFormer and CfC Flow weights rather than reuse FD001 features.
-        base = patchformer_sequence_flow_rul(
-            "FD003", 42, "cfc", arm == "flow"
-        )
+        base = patchformer_sequence_flow_rul("FD003", 42, "cfc", arm == "flow")
     run = f"rul-{subset}-cfc-head-{architecture}-{arm}-s{head_seed}"
     stages = dict(base.pipeline.stages)
     stages["RULModel"] = [
@@ -96,15 +92,12 @@ def cfc_rul_head_architecture_study(
     )
     callbacks = list(base.callbacks)
     curve_file = (
-        f".experiments/rul/head-architectures/{subset.lower()}/"
-        f"{run}.curves.csv"
+        f".experiments/rul/head-architectures/{subset.lower()}/{run}.curves.csv"
         if subset == "FD003"
         else f".experiments/rul/head-architectures/{run}.curves.csv"
     )
     if subset == "FD003":
-        callbacks[0] = callbacks[0].model_copy(
-            update={"kwargs": {"seed": head_seed}}
-        )
+        callbacks[0] = callbacks[0].model_copy(update={"kwargs": {"seed": head_seed}})
         callbacks.insert(
             1,
             callback(
@@ -113,9 +106,7 @@ def cfc_rul_head_architecture_study(
             ),
         )
     else:
-        callbacks[1] = callbacks[1].model_copy(
-            update={"kwargs": {"output_file": curve_file}}
-        )
+        callbacks[1] = callbacks[1].model_copy(update={"kwargs": {"output_file": curve_file}})
     callbacks[2] = callbacks[2].model_copy(
         update={
             "kwargs": {
@@ -334,6 +325,7 @@ def cfc_head_cfc_flow_s44() -> ScenarioSpec:
     """
     return cfc_rul_head_architecture_study("cfc", "flow", 44)
 
+
 @scenario("maintenance-rul-cfc-head-transformer-encoder-fd003-s42")
 def cfc_head_transformer_encoder_fd003_s42() -> ScenarioSpec:
     """Compare the transformer encoder RUL readout on FD003, head seed 42.
@@ -341,9 +333,7 @@ def cfc_head_transformer_encoder_fd003_s42() -> ScenarioSpec:
     Returns:
         Independent FD003 frozen-upstream RUL head architecture trial.
     """
-    return cfc_rul_head_architecture_study(
-        "transformer", "encoder", 42, "FD003"
-    )
+    return cfc_rul_head_architecture_study("transformer", "encoder", 42, "FD003")
 
 
 @scenario("maintenance-rul-cfc-head-transformer-flow-fd003-s42")
@@ -353,9 +343,7 @@ def cfc_head_transformer_flow_fd003_s42() -> ScenarioSpec:
     Returns:
         Independent FD003 frozen-upstream RUL head architecture trial.
     """
-    return cfc_rul_head_architecture_study(
-        "transformer", "flow", 42, "FD003"
-    )
+    return cfc_rul_head_architecture_study("transformer", "flow", 42, "FD003")
 
 
 @scenario("maintenance-rul-cfc-head-mamba-encoder-fd003-s42")
@@ -365,9 +353,7 @@ def cfc_head_mamba_encoder_fd003_s42() -> ScenarioSpec:
     Returns:
         Independent FD003 frozen-upstream RUL head architecture trial.
     """
-    return cfc_rul_head_architecture_study(
-        "mamba", "encoder", 42, "FD003"
-    )
+    return cfc_rul_head_architecture_study("mamba", "encoder", 42, "FD003")
 
 
 @scenario("maintenance-rul-cfc-head-mamba-flow-fd003-s42")
@@ -377,9 +363,7 @@ def cfc_head_mamba_flow_fd003_s42() -> ScenarioSpec:
     Returns:
         Independent FD003 frozen-upstream RUL head architecture trial.
     """
-    return cfc_rul_head_architecture_study(
-        "mamba", "flow", 42, "FD003"
-    )
+    return cfc_rul_head_architecture_study("mamba", "flow", 42, "FD003")
 
 
 @scenario("maintenance-rul-cfc-head-cfc-encoder-fd003-s42")
@@ -389,9 +373,7 @@ def cfc_head_cfc_encoder_fd003_s42() -> ScenarioSpec:
     Returns:
         Independent FD003 frozen-upstream RUL head architecture trial.
     """
-    return cfc_rul_head_architecture_study(
-        "cfc", "encoder", 42, "FD003"
-    )
+    return cfc_rul_head_architecture_study("cfc", "encoder", 42, "FD003")
 
 
 @scenario("maintenance-rul-cfc-head-cfc-flow-fd003-s42")
@@ -401,9 +383,7 @@ def cfc_head_cfc_flow_fd003_s42() -> ScenarioSpec:
     Returns:
         Independent FD003 frozen-upstream RUL head architecture trial.
     """
-    return cfc_rul_head_architecture_study(
-        "cfc", "flow", 42, "FD003"
-    )
+    return cfc_rul_head_architecture_study("cfc", "flow", 42, "FD003")
 
 
 @scenario("maintenance-rul-cfc-head-transformer-encoder-fd003-s43")
@@ -413,9 +393,7 @@ def cfc_head_transformer_encoder_fd003_s43() -> ScenarioSpec:
     Returns:
         Independent FD003 frozen-upstream RUL head architecture trial.
     """
-    return cfc_rul_head_architecture_study(
-        "transformer", "encoder", 43, "FD003"
-    )
+    return cfc_rul_head_architecture_study("transformer", "encoder", 43, "FD003")
 
 
 @scenario("maintenance-rul-cfc-head-transformer-flow-fd003-s43")
@@ -425,9 +403,7 @@ def cfc_head_transformer_flow_fd003_s43() -> ScenarioSpec:
     Returns:
         Independent FD003 frozen-upstream RUL head architecture trial.
     """
-    return cfc_rul_head_architecture_study(
-        "transformer", "flow", 43, "FD003"
-    )
+    return cfc_rul_head_architecture_study("transformer", "flow", 43, "FD003")
 
 
 @scenario("maintenance-rul-cfc-head-mamba-encoder-fd003-s43")
@@ -437,9 +413,7 @@ def cfc_head_mamba_encoder_fd003_s43() -> ScenarioSpec:
     Returns:
         Independent FD003 frozen-upstream RUL head architecture trial.
     """
-    return cfc_rul_head_architecture_study(
-        "mamba", "encoder", 43, "FD003"
-    )
+    return cfc_rul_head_architecture_study("mamba", "encoder", 43, "FD003")
 
 
 @scenario("maintenance-rul-cfc-head-mamba-flow-fd003-s43")
@@ -449,9 +423,7 @@ def cfc_head_mamba_flow_fd003_s43() -> ScenarioSpec:
     Returns:
         Independent FD003 frozen-upstream RUL head architecture trial.
     """
-    return cfc_rul_head_architecture_study(
-        "mamba", "flow", 43, "FD003"
-    )
+    return cfc_rul_head_architecture_study("mamba", "flow", 43, "FD003")
 
 
 @scenario("maintenance-rul-cfc-head-cfc-encoder-fd003-s43")
@@ -461,9 +433,7 @@ def cfc_head_cfc_encoder_fd003_s43() -> ScenarioSpec:
     Returns:
         Independent FD003 frozen-upstream RUL head architecture trial.
     """
-    return cfc_rul_head_architecture_study(
-        "cfc", "encoder", 43, "FD003"
-    )
+    return cfc_rul_head_architecture_study("cfc", "encoder", 43, "FD003")
 
 
 @scenario("maintenance-rul-cfc-head-cfc-flow-fd003-s43")
@@ -473,9 +443,7 @@ def cfc_head_cfc_flow_fd003_s43() -> ScenarioSpec:
     Returns:
         Independent FD003 frozen-upstream RUL head architecture trial.
     """
-    return cfc_rul_head_architecture_study(
-        "cfc", "flow", 43, "FD003"
-    )
+    return cfc_rul_head_architecture_study("cfc", "flow", 43, "FD003")
 
 
 @scenario("maintenance-rul-cfc-head-transformer-encoder-fd003-s44")
@@ -485,9 +453,7 @@ def cfc_head_transformer_encoder_fd003_s44() -> ScenarioSpec:
     Returns:
         Independent FD003 frozen-upstream RUL head architecture trial.
     """
-    return cfc_rul_head_architecture_study(
-        "transformer", "encoder", 44, "FD003"
-    )
+    return cfc_rul_head_architecture_study("transformer", "encoder", 44, "FD003")
 
 
 @scenario("maintenance-rul-cfc-head-transformer-flow-fd003-s44")
@@ -497,9 +463,7 @@ def cfc_head_transformer_flow_fd003_s44() -> ScenarioSpec:
     Returns:
         Independent FD003 frozen-upstream RUL head architecture trial.
     """
-    return cfc_rul_head_architecture_study(
-        "transformer", "flow", 44, "FD003"
-    )
+    return cfc_rul_head_architecture_study("transformer", "flow", 44, "FD003")
 
 
 @scenario("maintenance-rul-cfc-head-mamba-encoder-fd003-s44")
@@ -509,9 +473,7 @@ def cfc_head_mamba_encoder_fd003_s44() -> ScenarioSpec:
     Returns:
         Independent FD003 frozen-upstream RUL head architecture trial.
     """
-    return cfc_rul_head_architecture_study(
-        "mamba", "encoder", 44, "FD003"
-    )
+    return cfc_rul_head_architecture_study("mamba", "encoder", 44, "FD003")
 
 
 @scenario("maintenance-rul-cfc-head-mamba-flow-fd003-s44")
@@ -521,9 +483,7 @@ def cfc_head_mamba_flow_fd003_s44() -> ScenarioSpec:
     Returns:
         Independent FD003 frozen-upstream RUL head architecture trial.
     """
-    return cfc_rul_head_architecture_study(
-        "mamba", "flow", 44, "FD003"
-    )
+    return cfc_rul_head_architecture_study("mamba", "flow", 44, "FD003")
 
 
 @scenario("maintenance-rul-cfc-head-cfc-encoder-fd003-s44")
@@ -533,9 +493,7 @@ def cfc_head_cfc_encoder_fd003_s44() -> ScenarioSpec:
     Returns:
         Independent FD003 frozen-upstream RUL head architecture trial.
     """
-    return cfc_rul_head_architecture_study(
-        "cfc", "encoder", 44, "FD003"
-    )
+    return cfc_rul_head_architecture_study("cfc", "encoder", 44, "FD003")
 
 
 @scenario("maintenance-rul-cfc-head-cfc-flow-fd003-s44")
@@ -545,8 +503,4 @@ def cfc_head_cfc_flow_fd003_s44() -> ScenarioSpec:
     Returns:
         Independent FD003 frozen-upstream RUL head architecture trial.
     """
-    return cfc_rul_head_architecture_study(
-        "cfc", "flow", 44, "FD003"
-    )
-
-
+    return cfc_rul_head_architecture_study("cfc", "flow", 44, "FD003")

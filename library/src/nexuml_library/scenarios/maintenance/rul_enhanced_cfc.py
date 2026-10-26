@@ -18,11 +18,11 @@ from nexuml_library.data.maintenance.rul_enhanced import (
 from nexuml_library.data.maintenance.rul_sequence_flow import (
     AutoPatchFormerSequenceFlowRULFeatures,
 )
-from nexuml_library.evaluation.maintenance.rul_mc_conformal import (
-    RULMCConformalDiagnostics,
-)
 from nexuml_library.evaluation.maintenance.rul_generalization_diagnostics import (
     SequenceRULGeneralizationDiagnostics,
+)
+from nexuml_library.evaluation.maintenance.rul_mc_conformal import (
+    RULMCConformalDiagnostics,
 )
 from nexuml_library.layers.model.rul_enhanced_cfc import EnhancedCfCRULHead
 from nexuml_library.layers.model.rul_trajectory_loss import (
@@ -33,28 +33,60 @@ from nexuml_library.scenarios.maintenance.rul_sequence_flow import (
 )
 
 Option = Literal[
-    "finetune", "graph", "trend", "multiscale", "segmentation", "trajectory",
+    "finetune",
+    "graph",
+    "trend",
+    "multiscale",
+    "segmentation",
+    "trajectory",
     "uncertainty",
 ]
 OPTIONS: tuple[Option, ...] = (
-    "finetune", "graph", "trend", "multiscale", "segmentation", "trajectory",
+    "finetune",
+    "graph",
+    "trend",
+    "multiscale",
+    "segmentation",
+    "trajectory",
     "uncertainty",
 )
 Ablation = Literal[
     "baseline",
-    "finetune", "graph", "trend", "multiscale", "segmentation", "trajectory",
-    "uncertainty", "all",
-    "all_no_finetune", "all_no_graph", "all_no_trend",
-    "all_no_multiscale", "all_no_segmentation", "all_no_trajectory",
+    "finetune",
+    "graph",
+    "trend",
+    "multiscale",
+    "segmentation",
+    "trajectory",
+    "uncertainty",
+    "all",
+    "all_no_finetune",
+    "all_no_graph",
+    "all_no_trend",
+    "all_no_multiscale",
+    "all_no_segmentation",
+    "all_no_trajectory",
     "all_no_uncertainty",
 ]
 CONFIGURATIONS: tuple[Ablation, ...] = (
-    "baseline", "finetune", "graph", "trend", "multiscale", "segmentation",
-    "trajectory", "uncertainty", "all",
-    "all_no_finetune", "all_no_graph", "all_no_trend",
-    "all_no_multiscale", "all_no_segmentation", "all_no_trajectory",
+    "baseline",
+    "finetune",
+    "graph",
+    "trend",
+    "multiscale",
+    "segmentation",
+    "trajectory",
+    "uncertainty",
+    "all",
+    "all_no_finetune",
+    "all_no_graph",
+    "all_no_trend",
+    "all_no_multiscale",
+    "all_no_segmentation",
+    "all_no_trajectory",
     "all_no_uncertainty",
 )
+
 
 def enabled_options(configuration: Ablation) -> frozenset[Option]:
     """Resolve one-factor and leave-one-out enhancement comparisons.
@@ -64,6 +96,9 @@ def enabled_options(configuration: Ablation) -> frozenset[Option]:
 
     Returns:
         Enabled optional mechanisms, independent of head seed.
+
+    Raises:
+        ValueError: If the configuration is unknown.
     """
     if configuration == "baseline":
         return frozenset()
@@ -115,9 +150,7 @@ def enhanced_cfc_rul_study(
     channels = 15 if subset == "FD003" else 14
     data = base.data.model_copy(
         update={
-            "datasets": [
-                DatasetSpec(source=raw, modality="sensor", split_type="keep")
-            ],
+            "datasets": [DatasetSpec(source=raw, modality="sensor", split_type="keep")],
             "input_shapes": {
                 "rul_history": [30, channels],
                 "previous_rul_history": [30, channels],
@@ -158,9 +191,7 @@ def enhanced_cfc_rul_study(
         ],
     }
     callbacks = list(base.callbacks)
-    callbacks[0] = callbacks[0].model_copy(
-        update={"kwargs": {"seed": head_seed}}
-    )
+    callbacks[0] = callbacks[0].model_copy(update={"kwargs": {"seed": head_seed}})
     curves = f".experiments/rul/enhanced-cfc/{subset.lower()}/{run}.curves.csv"
     callbacks.insert(
         1,
@@ -169,9 +200,7 @@ def enhanced_cfc_rul_study(
     callbacks[2] = callbacks[2].model_copy(
         update={
             "kwargs": {
-                "dirpath": str(
-                    Path(".experiments/rul/checkpoints").resolve() / run
-                ),
+                "dirpath": str(Path(".experiments/rul/checkpoints").resolve() / run),
                 "monitor": "val/loss",
                 "mode": "min",
                 "save_top_k": 1,
@@ -180,19 +209,14 @@ def enhanced_cfc_rul_study(
         }
     )
     callbacks[-1] = callbacks[-1].model_copy(
-        update={
-            "kwargs": {
-                "output_file": f".experiments/rul/audits/{run}.checkpoint.json"
-            }
-        }
+        update={"kwargs": {"output_file": f".experiments/rul/audits/{run}.checkpoint.json"}}
     )
     if "uncertainty" in options:
         callbacks.append(
             callback(
                 RULMCConformalDiagnostics,
                 output_file=(
-                    f".experiments/rul/enhanced-cfc/{subset.lower()}/"
-                    f"{run}.uncertainty.json"
+                    f".experiments/rul/enhanced-cfc/{subset.lower()}/{run}.uncertainty.json"
                 ),
                 stochastic_samples=20,
                 alpha=0.1,
@@ -212,12 +236,11 @@ def enhanced_cfc_rul_study(
             "data": data,
             "pipeline": PipelineSpec(stages=stages),
             "training": base.training.model_copy(update={"lr": 1e-3}),
-            "evaluation": base.evaluation.model_copy(
-                update={"algorithms": evaluations}
-            ),
+            "evaluation": base.evaluation.model_copy(update={"algorithms": evaluations}),
             "logging": (
                 base.logging.model_copy(update={"run_name": run})
-                if base.logging is not None else None
+                if base.logging is not None
+                else None
             ),
             "callbacks": callbacks,
         }
@@ -702,5 +725,3 @@ def enhanced_cfc_all_no_uncertainty_s44() -> ScenarioSpec:
         Native ablation with optional post-fit uncertainty diagnostics.
     """
     return enhanced_cfc_rul_study("all_no_uncertainty", 44, "FD003")
-
-

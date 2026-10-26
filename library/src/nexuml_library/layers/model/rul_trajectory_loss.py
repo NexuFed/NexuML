@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import Any, cast
 
-import torch
 from pydantic import Field
 from tensordict import TensorDict
 from torch import Tensor
@@ -44,9 +43,7 @@ class _RULTrajectoryConsistencyRuntime(PipelineLayer):
         consistency_weight: float,
         **kwargs: Any,
     ) -> None:
-        super().__init__(
-            input_sizes=input_sizes, keys_in=keys_in, keys_out=keys_out, **kwargs
-        )
+        super().__init__(input_sizes=input_sizes, keys_in=keys_in, keys_out=keys_out, **kwargs)
         self.consistency_weight = consistency_weight
 
     def forward(

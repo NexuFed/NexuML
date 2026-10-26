@@ -36,9 +36,7 @@ class _SensorGraphAttention(nn.Module):
         super().__init__()
         self.values = nn.Linear(1, hidden_dim)
         self.identities = nn.Parameter(torch.zeros(1, sensors, hidden_dim))
-        self.attention = nn.MultiheadAttention(
-            hidden_dim, num_heads=2, batch_first=True
-        )
+        self.attention = nn.MultiheadAttention(hidden_dim, num_heads=2, batch_first=True)
         self.output = nn.Linear(hidden_dim, 1)
         self.residual_gain = nn.Parameter(torch.zeros(()))
         self.sensors = sensors
@@ -48,15 +46,16 @@ class _SensorGraphAttention(nn.Module):
 
         Returns:
             Residual sensor values with the original [B,T,S] shape.
+
+        Raises:
+            ValueError: If the input sensor count differs from the configured count.
         """
         b, length, sensors = samples.shape
         if sensors != self.sensors:
             raise ValueError("Sensor graph expects the configured sensor count")
         x = samples.reshape(b * length, sensors, 1)
         embedded = self.values(x) + self.identities
-        attended, _ = self.attention(
-            embedded, embedded, embedded, need_weights=False
-        )
+        attended, _ = self.attention(embedded, embedded, embedded, need_weights=False)
         residual = self.output(attended).reshape(b, length, sensors)
         return samples + self.residual_gain.tanh() * residual
 
@@ -191,10 +190,7 @@ class _EnhancedCfCRuntime(PipelineLayer):
         dropout: float,
         **kwargs: Any,
     ) -> None:
-        super().__init__(
-            input_sizes=input_sizes, keys_in=keys_in,
-            keys_out=keys_out, **kwargs
-        )
+        super().__init__(input_sizes=input_sizes, keys_in=keys_in, keys_out=keys_out, **kwargs)
         sensors = 15 if subset == "FD003" else 14
         self.encoder = _PatchFormerModel(30, sensors, 64, 5, 2, 0.1)
         self.train_encoder = train_encoder
@@ -250,14 +246,10 @@ class _EnhancedCfCRuntime(PipelineLayer):
             self.trend_projection = nn.Linear(128, 64) if trend else None
         with torch.random.fork_rng(devices=[]):
             torch.manual_seed(initialization_seed + 1003)
-            self.multiscale = (
-                _MultiscaleTemporalFeatures(64, dropout) if multiscale else None
-            )
+            self.multiscale = _MultiscaleTemporalFeatures(64, dropout) if multiscale else None
         with torch.random.fork_rng(devices=[]):
             torch.manual_seed(initialization_seed + 1004)
-            self.segmentation = (
-                _AdaptiveSoftSegments(64, dropout) if segmentation else None
-            )
+            self.segmentation = _AdaptiveSoftSegments(64, dropout) if segmentation else None
         if not train_encoder:
             self.encoder.eval()
 
@@ -281,17 +273,15 @@ class _EnhancedCfCRuntime(PipelineLayer):
         Raises:
             ValueError: If the sensor history dimensionality is incorrect.
         """
-        if (
-            x.ndim != 3 or x.shape[1] != 30
-            or x.shape[2] != len(self.encoder.embedding)
-        ):
+        if x.ndim != 3 or x.shape[1] != 30 or x.shape[2] != len(self.encoder.embedding):
             raise ValueError("Enhanced CfC requires [batch,30,sensors]")
         raw = self.sensor_graph(x) if self.sensor_graph is not None else x
         features = self.encoder.forward_features(raw)
         normalized = (features - self.reference_mean) / self.reference_std
-        encoded = self.input_projection(
-            torch.cat((normalized, torch.zeros_like(normalized)), dim=-1)
-        ) + self.positions
+        encoded = (
+            self.input_projection(torch.cat((normalized, torch.zeros_like(normalized)), dim=-1))
+            + self.positions
+        )
         if self.trend_projection is not None:
             velocity = torch.cat(
                 (torch.zeros_like(normalized[:, :1]), normalized[:, 1:] - normalized[:, :-1]),
