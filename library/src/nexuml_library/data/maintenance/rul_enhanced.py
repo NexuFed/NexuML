@@ -97,6 +97,8 @@ class _PairedRULRuntime(NexuDataset):
         self._target = targets
         self._raw = raw
         self._predecessors = torch.tensor(predecessors, dtype=torch.long)
+        self._previous = features[self._predecessors.clamp_min(0)].clone()
+        self._mask = (self._predecessors >= 0).float().unsqueeze(-1)
         super().__init__(
             meta=pd.DataFrame.from_records(rows),
             data=features,
@@ -113,13 +115,10 @@ class _PairedRULRuntime(NexuDataset):
         """
         selected = list(indices)
         subset = super().take(selected)
-        # Predecessor tensors refer to full-source indices. For split datasets
-        # materialize the corresponding previous window before indexing.
-        full_features = cast(Tensor, self.data)
-        previous = full_features[self._predecessors.clamp_min(0)].clone()
-        mask = (self._predecessors >= 0).float().unsqueeze(-1)
-        subset._previous = previous[selected]
-        subset._mask = mask[selected]
+        # Materialized predecessor features remain aligned even when taking
+        # further subsets, e.g. one validation window per calibration engine.
+        subset._previous = self._previous[selected]
+        subset._mask = self._mask[selected]
         subset._target = self._target[selected]
         subset._raw = self._raw[selected]
         subset._predecessors = self._predecessors[selected]
@@ -132,15 +131,8 @@ class _PairedRULRuntime(NexuDataset):
             Sensor window, preceding window and availability indicator.
         """
         data = cast(Tensor, self.data)
-        previous = getattr(self, "_previous", None)
-        mask = getattr(self, "_mask", None)
-        if previous is None or mask is None:
-            predecessor = int(self._predecessors[idx])
-            previous_sample = data[predecessor if predecessor >= 0 else idx]
-            is_paired = float(predecessor >= 0)
-        else:
-            previous_sample = cast(Tensor, previous)[idx]
-            is_paired = float(cast(Tensor, mask)[idx, 0])
+        previous_sample = self._previous[idx]
+        is_paired = float(self._mask[idx, 0])
         return TensorDict(
             {
                 "rul_history": data[idx],
