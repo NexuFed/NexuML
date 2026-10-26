@@ -199,9 +199,10 @@ class _EnhancedCfCRuntime(PipelineLayer):
         self.encoder = _PatchFormerModel(30, sensors, 64, 5, 2, 0.1)
         self.train_encoder = train_encoder
         self.trajectory = trajectory
-        if pretrained_encoder:
-            checkpoint = resolve_patchformer_checkpoint(subset, upstream_seed)
-            _trusted_patchformer_weights(self.encoder, checkpoint)
+        if not pretrained_encoder:
+            raise ValueError("Matched CfC ablation requires pretrained PatchFormer")
+        checkpoint = resolve_patchformer_checkpoint(subset, upstream_seed)
+        encoder_hash = _trusted_patchformer_weights(self.encoder, checkpoint)
         # Normalization is fitted exclusively on the frozen upstream
         # training engine endpoints, never on validation or official test.
         endpoint = (
@@ -214,6 +215,7 @@ class _EnhancedCfCRuntime(PipelineLayer):
             settings.get("subset") != subset
             or settings.get("seed") != upstream_seed
             or settings.get("feature_normalization") != "train_endpoints_only"
+            or settings.get("frozen_patchformer_checkpoint_sha256") != encoder_hash
             or settings.get("held_out_test_engine_labels_used") is not False
         ):
             raise ValueError("Enhanced CfC normalization has incompatible provenance")
