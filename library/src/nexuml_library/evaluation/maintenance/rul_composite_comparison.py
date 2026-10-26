@@ -10,18 +10,11 @@ from __future__ import annotations
 import csv
 import json
 import math
-import statistics
 from pathlib import Path
 from typing import Any
 
 import lightning as L
 from lightning.pytorch.trainer.states import TrainerFn
-
-from nexuml_library.scenarios.maintenance.rul_enhanced_cfc import (
-    CONFIGURATIONS,
-    OPTIONS,
-    enabled_options,
-)
 
 
 class RULCompositeAblationComparison(L.Callback):
@@ -52,6 +45,10 @@ class RULCompositeAblationComparison(L.Callback):
         """
         if trainer.sanity_checking or trainer.state.fn != TrainerFn.FITTING:
             return
+        from nexuml_library.scenarios.maintenance.rul_enhanced_cfc import (
+            CONFIGURATIONS,
+        )
+
         values: dict[str, float | int] = {"epoch": int(trainer.current_epoch)}
         for configuration in CONFIGURATIONS:
             key = f"val/rul_loss_{configuration}"
@@ -79,6 +76,12 @@ class RULCompositeAblationComparison(L.Callback):
         Raises:
             ValueError: If no complete fitting validation epoch was observed.
         """
+        from nexuml_library.scenarios.maintenance.rul_enhanced_cfc import (
+            CONFIGURATIONS,
+            OPTIONS,
+            enabled_options,
+        )
+
         if not self._rows:
             raise ValueError("No fitting-epoch composite CfC validation metrics")
         best: dict[str, dict[str, float | int]] = {}
