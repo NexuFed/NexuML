@@ -321,10 +321,11 @@ class _EnhancedCfCRuntime(PipelineLayer):
         if not isinstance(x, TensorDict):
             raise TypeError("Enhanced CfC requires TensorDict input")
         current = cast(Tensor, x["rul_history"])
-        x["predicted_rul"] = self.forward_tensor(current)
-        previous = cast(Tensor, x["previous_rul_history"])
+        prediction_key, predecessor_key = self.keys_out
+        x[prediction_key] = self.forward_tensor(current)
         if self.trajectory and self.training and y is not None:
-            x["previous_predicted_rul"] = self.forward_tensor(previous)
+            previous = cast(Tensor, x["previous_rul_history"])
+            x[predecessor_key] = self.forward_tensor(previous)
         else:
-            x["previous_predicted_rul"] = cast(Tensor, x["predicted_rul"]).detach()
+            x[predecessor_key] = cast(Tensor, x[prediction_key]).detach()
         return x, y
