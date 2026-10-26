@@ -15,6 +15,7 @@ from nexuml.core.components import LayerBuildContext
 from nexuml_library.data.maintenance.rul_sequence_flow import (
     AutoPatchFormerSequenceFlowRULFeatures,
 )
+from nexuml_library.evaluation.maintenance.rul_engine_audit import RULPerEngineAudit
 from nexuml_library.evaluation.maintenance.rul_head_architecture_summary import (
     summarize_rul_head_architectures,
 )
@@ -97,7 +98,9 @@ def test_head_study_keeps_upstream_and_native_training_protocol(
     assert study.training.loss_keys == {"rul_loss": 1.0}
     assert study.name == f"rul-{subset}-cfc-head-{architecture}-{arm}-s{seed}"
     assert study.callbacks[0].kwargs["seed"] == seed
-    assert f"rul-{subset}" in study.callbacks[2].kwargs["dirpath"]
+    checkpoint_dir = study.callbacks[2].kwargs["dirpath"]
+    assert isinstance(checkpoint_dir, str)
+    assert f"rul-{subset}" in checkpoint_dir
     assert study.callbacks[2].kwargs["monitor"] == "val/loss"
     assert study.data.input_shapes == {"sequence_rul_features": [30, 256]}
     if seed == 42:
@@ -215,8 +218,14 @@ def test_fd003_scenarios_do_not_reuse_fd001_upstream(
     assert isinstance(source003, AutoPatchFormerSequenceFlowRULFeatures)
     assert source001.prepared_rul_path != source003.prepared_rul_path
     assert source001.endpoint_artifact != source003.endpoint_artifact
-    assert fd001.evaluation.algorithms[-1].algorithm.output_file != (
-        fd003.evaluation.algorithms[-1].algorithm.output_file
-    )
-    assert "fd003" in fd003.callbacks[1].kwargs["output_file"]
-    assert "fd003" not in fd001.callbacks[1].kwargs["output_file"]
+    audit001 = fd001.evaluation.algorithms[-1].algorithm
+    audit003 = fd003.evaluation.algorithms[-1].algorithm
+    assert isinstance(audit001, RULPerEngineAudit)
+    assert isinstance(audit003, RULPerEngineAudit)
+    assert audit001.output_file != audit003.output_file
+    curve001 = fd001.callbacks[1].kwargs["output_file"]
+    curve003 = fd003.callbacks[1].kwargs["output_file"]
+    assert isinstance(curve001, str)
+    assert isinstance(curve003, str)
+    assert "fd003" in curve003
+    assert "fd003" not in curve001
