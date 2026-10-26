@@ -191,9 +191,10 @@ def test_enhanced_head_uses_pretrained_encoder_and_backward(
     )
     y = TensorDict({"rul": torch.tensor([[70.0], [30.0]])}, batch_size=[2])
     result, _ = head(x, y)
-    assert result["predicted_rul"].shape == (2, 1)
-    assert result["previous_predicted_rul"].shape == (2, 1)
-    result["predicted_rul"].sum().backward()
+    assert isinstance(result, TensorDict)
+    assert cast(Tensor, result["predicted_rul"]).shape == (2, 1)
+    assert cast(Tensor, result["previous_predicted_rul"]).shape == (2, 1)
+    cast(Tensor, result["predicted_rul"]).sum().backward()
     assert any(parameter.grad is not None for parameter in head.encoder.parameters())
 
 
@@ -219,10 +220,12 @@ def test_trajectory_objective_uses_true_pairs_only_and_train_only() -> None:
     y = TensorDict({"rul": torch.tensor([[70.0], [80.0]])}, batch_size=[2])
     layer.train()
     trained, _ = layer(x.clone(), y)
-    assert trained["rul_loss"].mean().item() == pytest.approx(2.0)
+    assert isinstance(trained, TensorDict)
+    assert cast(Tensor, trained["rul_loss"]).mean().item() == pytest.approx(2.0)
     layer.eval()
     validated, _ = layer(x.clone(), y)
-    assert validated["rul_loss"].mean().item() == pytest.approx(0.0)
+    assert isinstance(validated, TensorDict)
+    assert cast(Tensor, validated["rul_loss"]).mean().item() == pytest.approx(0.0)
 
 
 def test_uncertainty_quantile_is_engine_level_and_finite_sample() -> None:
