@@ -166,6 +166,7 @@ def test_enhanced_head_uses_pretrained_encoder_and_backward(
                 "subset": "FD003",
                 "seed": 42,
                 "feature_normalization": "train_endpoints_only",
+                "frozen_patchformer_checkpoint_sha256": "digest",
                 "held_out_test_engine_labels_used": False,
                 "feature_mean": torch.zeros(30, 128).tolist(),
                 "feature_std": torch.ones(30, 128).tolist(),
