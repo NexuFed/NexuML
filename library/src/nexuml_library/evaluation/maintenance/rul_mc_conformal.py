@@ -109,8 +109,14 @@ class RULMCConformalDiagnostics(L.Callback):
         scales: list[float] = []
         targets: list[float] = []
         try:
-            with torch.random.fork_rng(devices=[]):
+            devices = (
+                [pl_module.device.index or torch.cuda.current_device()]
+                if pl_module.device.type == "cuda" else []
+            )
+            with torch.random.fork_rng(devices=devices):
                 torch.manual_seed(1987)
+                if devices:
+                    torch.cuda.manual_seed_all(1987)
                 for x, y in loader:
                     if y is None:
                         raise ValueError("MC conformal diagnostics require RUL labels")
@@ -137,9 +143,18 @@ class RULMCConformalDiagnostics(L.Callback):
         if len(means) != len(indices) or len(scales) != len(targets):
             raise ValueError("MC RUL calibration engine count does not match metadata")
         residuals = [abs(pred - target) for pred, target in zip(means, targets)]
-        threshold = _quantile(residuals, self.alpha)
+        # Normalized split-style conformal score makes MC uncertainty part
+        # of the interval itself, not only a descriptive side statistic.
+        scale_floor = 1.0
+        normalized = [
+            residual / (std + scale_floor)
+            for residual, std in zip(residuals, scales)
+        ]
+        threshold = _quantile(normalized, self.alpha)
+        widths = [2.0 * threshold * (std + scale_floor) for std in scales]
         coverage = statistics.mean(
-            float(residual <= threshold) for residual in residuals
+            float(residual <= width / 2.0)
+            for residual, width in zip(residuals, widths)
         )
         report = {
             "study": "Exploratory MC dropout and calibration diagnostic",
@@ -152,12 +167,13 @@ class RULMCConformalDiagnostics(L.Callback):
             "calibration_engines": len(indices),
             "dropout_predictive_std_mean": statistics.mean(scales),
             "mean_absolute_calibration_residual": statistics.mean(residuals),
-            "symmetric_absolute_residual_quantile": (
+            "mc_dropout_scale_floor_cycles": scale_floor,
+            "normalized_residual_quantile": (
                 threshold if math.isfinite(threshold) else None
             ),
             "empirical_in_sample_coverage": coverage,
-            "interval_full_width": (
-                2.0 * threshold if math.isfinite(threshold) else None
+            "mean_interval_full_width": (
+                statistics.mean(widths) if math.isfinite(threshold) else None
             ),
         }
         self.output_file.parent.mkdir(parents=True, exist_ok=True)
