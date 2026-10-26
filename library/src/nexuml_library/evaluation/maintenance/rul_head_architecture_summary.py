@@ -47,6 +47,7 @@ def summarize_rul_head_architectures(
     root: Path,
     audit_root: Path,
     seeds: tuple[int, ...] = (42, 43, 44),
+    subset: Literal["FD001", "FD003"] = "FD001",
 ) -> dict[str, Any]:
     """Evaluate all six matched head/feature cells using validation only.
 
@@ -54,6 +55,7 @@ def summarize_rul_head_architectures(
         root: Per-epoch full-split training/validation diagnostics.
         audit_root: Frozen-feature provenance and best-checkpoint manifests.
         seeds: Predeclared head-only initialization seeds.
+        subset: Official C-MAPSS subset with separately frozen upstream checkpoints.
 
     Returns:
         Paired head architecture comparison, with frozen-source verification.
@@ -73,7 +75,7 @@ def summarize_rul_head_architectures(
     for seed in seeds:
         for architecture in _ARCHITECTURES:
             for arm in _ARMS:
-                name = f"rul-FD001-cfc-head-{architecture}-{arm}-s{seed}"
+                name = f"rul-{subset}-cfc-head-{architecture}-{arm}-s{seed}"
                 history, legacy = _read_history(
                     root / f"{name}.curves.csv"
                 )
@@ -110,7 +112,7 @@ def summarize_rul_head_architectures(
                     )
                 )
                 if (
-                    provenance.get("subset") != "FD001"
+                    provenance.get("subset") != subset
                     or provenance.get("seed") != 42
                     or provenance.get("architecture") != "cfc"
                     or provenance.get("use_flow") is not (arm == "flow")
@@ -195,7 +197,7 @@ def summarize_rul_head_architectures(
     ranking.sort(key=lambda entry: entry["flow_val_mse_mean"])
     return {
         "study": "NEX-233 frozen CfC Flow RUL estimator architecture comparison",
-        "subset": "FD001",
+        "subset": subset,
         "frozen_upstream_seed": 42,
         "head_seeds": list(seeds),
         "architectures": list(_ARCHITECTURES),
@@ -222,8 +224,9 @@ def main() -> None:
     """Write the complete matched head comparison without reading test CSVs."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--head-seeds", type=int, nargs="+", default=[42, 43, 44])
+    parser.add_argument("--subset", choices=("FD001", "FD003"), default="FD001")
     parser.add_argument(
-        "--root", type=Path, default=Path(".experiments/rul/head-architectures")
+        "--root", type=Path, default=None
     )
     parser.add_argument(
         "--audit-root", type=Path, default=Path(".experiments/rul/audits")
@@ -231,18 +234,24 @@ def main() -> None:
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path(".experiments/rul/head-architectures/summary.json"),
+        default=None,
     )
     args = parser.parse_args()
-    report = summarize_rul_head_architectures(
-        args.root, args.audit_root, tuple(args.head_seeds)
+    subset: Literal["FD001", "FD003"] = args.subset
+    root = args.root or (
+        Path(".experiments/rul/head-architectures")
+        / ("fd003" if subset == "FD003" else "")
     )
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(
+    output = args.output or root / "summary.json"
+    report = summarize_rul_head_architectures(
+        root, args.audit_root, tuple(args.head_seeds), subset
+    )
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(
         json.dumps(report, indent=2, allow_nan=False) + "\n",
         encoding="utf-8",
     )
-    print(f"RUL head architecture comparison written to {args.output}")
+    print(f"RUL head architecture comparison written to {output}")
 
 
 if __name__ == "__main__":
