@@ -15,6 +15,9 @@ from nexuml.core.types import DatasetSpec, LayerSpec, PipelineSpec, ScenarioSpec
 from nexuml_library.data.maintenance.rul_enhanced import (
     AutoPairedCMapSSRULWindows,
 )
+from nexuml_library.data.maintenance.rul_sequence_flow import (
+    AutoPatchFormerSequenceFlowRULFeatures,
+)
 from nexuml_library.evaluation.maintenance.rul_mc_conformal import (
     RULMCConformalDiagnostics,
 )
@@ -101,6 +104,8 @@ def enhanced_cfc_rul_study(
     base = patchformer_sequence_flow_rul(subset, 42, "cfc", False)
     run = f"rul-{subset}-enhanced-cfc-{configuration}-s{head_seed}"
     original = base.data.datasets[0].source
+    if not isinstance(original, AutoPatchFormerSequenceFlowRULFeatures):
+        raise ValueError("Enhanced CfC requires controlled native PatchFormer source")
     raw = AutoPairedCMapSSRULWindows(
         subset=subset,
         seed=42,
