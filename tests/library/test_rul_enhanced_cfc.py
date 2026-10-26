@@ -76,16 +76,16 @@ def test_paired_windows_observe_exact_engine_and_split_boundaries() -> None:
     test = dataset.get_split("test")
     first, _ = train[0]
     second, labels = train[1]
-    assert first["pair_mask"].item() == 0
-    assert second["pair_mask"].item() == 1
-    assert second["previous_rul_history"][0, 0].item() == 0
-    assert second["rul_history"][0, 0].item() == 1
+    assert cast(Tensor, first["pair_mask"]).item() == 0
+    assert cast(Tensor, second["pair_mask"]).item() == 1
+    assert cast(Tensor, second["previous_rul_history"])[0, 0].item() == 0
+    assert cast(Tensor, second["rul_history"])[0, 0].item() == 1
     assert labels is not None
-    assert labels["rul_raw"].item() == 21
+    assert cast(Tensor, labels["rul_raw"]).item() == 21
     prev_val, _ = val[1]
-    assert prev_val["previous_rul_history"][0, 0].item() == 2
+    assert cast(Tensor, prev_val["previous_rul_history"])[0, 0].item() == 2
     one_test, _ = test[0]
-    assert one_test["pair_mask"].item() == 0
+    assert cast(Tensor, one_test["pair_mask"]).item() == 0
 
 
 @pytest.mark.parametrize("configuration", CONFIGURATIONS)
