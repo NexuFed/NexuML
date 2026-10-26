@@ -97,7 +97,11 @@ class _PairedRULRuntime(NexuDataset):
         self._target = targets
         self._raw = raw
         self._predecessors = torch.tensor(predecessors, dtype=torch.long)
-        self._previous = features[self._predecessors.clamp_min(0)].clone()
+        fallback = torch.arange(len(features), dtype=torch.long)
+        previous_positions = torch.where(
+            self._predecessors >= 0, self._predecessors, fallback
+        )
+        self._previous = features[previous_positions].clone()
         self._mask = (self._predecessors >= 0).float().unsqueeze(-1)
         super().__init__(
             meta=pd.DataFrame.from_records(rows),
