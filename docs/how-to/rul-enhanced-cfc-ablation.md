@@ -40,7 +40,8 @@ Learned attention pooling → 64→32→1 → sigmoid × 130 cycles
 ```
 
 All controls use identical training settings: Adam at 0.001,
-head dropout 0.1, batch size 64, 150-epoch maximum,
+head dropout 0.1, batch size 64 for independent runs (16 for the
+native simultaneous comparison), 150-epoch maximum,
 20-epoch validation early stopping and **validation point MSE**
 for checkpoint selection. All experiments use readout seeds 42–44,
 while the pretrained upstream PatchFormer is fixed at seed 42.
@@ -105,9 +106,21 @@ The leave-one-out comparison measures each component's marginal value
 *within the combined system*. These are different estimands; the
 16-config design does not identify all high-order interactions.
 
-## Run the native NexuML study
+## Native NexuML workflow: no runners or environment variables
 
-From the NEX-233 branch:
+The primary comparison is registered as a **NexuML composite scenario**,
+following the existing `maintenance-rul-all` pattern. Every composite
+contains 16 independent CfC heads with disjoint trainable parameters,
+loss keys and per-head validation metrics, all in one typed
+`ScenarioSpec`. There are three independently initialized composite
+scenarios (seeds 42, 43 and 44).
+
+**Prerequisites:** FD003 seed-42 pretrained PatchFormer checkpoint and
+train-endpoint feature normalization must already be available. These
+can be produced with their existing native NexuML scenarios. No
+shell-runner script or environment-variable configuration is needed.
+
+From the repository root, for a fresh installation:
 
 ```bash
 git pull
@@ -116,49 +129,102 @@ ruff format --check .
 ty check
 pytest tests/library/test_rul_enhanced_cfc.py -v
 
-set -o pipefail
-bash scripts/launch_enhanced_cfc_fd003.sh \
-  2>&1 | tee .experiments-enhanced-cfc-fd003.log
+nexuml resolve maintenance-rul-controlled-fd003-patchformer-s42 \
+  --output .experiments/rul/controlled-patchformer-fd003.yaml
+nexuml train --config .experiments/rul/controlled-patchformer-fd003.yaml
+
+nexuml resolve maintenance-rul-patchformer-sequence-cfc-fd003-s42 \
+  --output .experiments/rul/sequence-cfc-fd003.yaml
+nexuml train --config .experiments/rul/sequence-cfc-fd003.yaml
 ```
 
-The launcher uses only `nexuml resolve` and `nexuml train` for every
-model. It prepares the FD003 seed-42 PatchFormer and CfC endpoint
-normalizer via existing registered scenarios when absent. It requires
-no ZIP downloads or external Python files.
+The second prerequisite currently produces the original train-endpoint
+normalization artifact; **Flow displacement is never used by this CfC
+RUL comparison**. If the upstream FD003 artifacts are already present,
+these prerequisite runs can be omitted.
 
-You can first run a four-cell smoke test:
+### One `resolve` + `train` pair to compare all toggles
 
 ```bash
-HEAD_SEEDS="42" VARIANTS="baseline trend graph all" \
-  bash scripts/launch_enhanced_cfc_fd003.sh
+nexuml resolve maintenance-rul-enhanced-cfc-fd003-compare \
+  --output .experiments/rul/enhanced-cfc/fd003/compare-s42.yaml
+nexuml train --config .experiments/rul/enhanced-cfc/fd003/compare-s42.yaml
 ```
 
-Example native single scenario:
+Repeat for the other two head seeds without any custom runner:
 
 ```bash
+nexuml resolve maintenance-rul-enhanced-cfc-fd003-compare-s43 \
+  --output .experiments/rul/enhanced-cfc/fd003/compare-s43.yaml
+nexuml train --config .experiments/rul/enhanced-cfc/fd003/compare-s43.yaml
+
+nexuml resolve maintenance-rul-enhanced-cfc-fd003-compare-s44 \
+  --output .experiments/rul/enhanced-cfc/fd003/compare-s44.yaml
+nexuml train --config .experiments/rul/enhanced-cfc/fd003/compare-s44.yaml
+```
+
+Every composite run automatically records its own validation-only
+comparison (from each branch's native `val/rul_loss_<configuration>`
+metric) in:
+
+```text
+.experiments/rul/enhanced-cfc/fd003/
+    rul-FD003-enhanced-cfc-compare-s42.validation.csv
+    rul-FD003-enhanced-cfc-compare-s42.validation.json
+```
+
+Corresponding paths exist for `s43` and `s44`. The JSON report
+contains per-arm best-observed fitting-epoch validation MSE, best epoch,
+single-on versus baseline and all-on versus leave-one-out comparisons.
+Test predictions are not inspected by the comparison callback.
+
+### Crucial difference: composite versus independent training
+
+The composite scenario uses a **shared Adam optimizer**, an aggregate
+validation loss and shared early stopping. Although the heads do not
+share learned parameters, their gradients flow through a common optimizer
+and they train for a common number of epochs. The comparator records
+individual best *observed* validation scores, but does not restore an
+individually optimal checkpoint for each arm. The composite sets
+batch size 16 rather than 64 to limit memory use with 16 simultaneous
+heads. Therefore it is an economical on/off **screening study**, **not**
+the same experiment as 16 individually trained and independently
+selected models. Its official test evaluations should not be treated as
+per-arm optimal benchmark scores.
+
+For exact, independently checkpoint-selected training, the 48 existing
+registered scenarios remain available using the same NexuML interface,
+without a script. For example:
+
+```bash
+nexuml resolve maintenance-rul-enhanced-cfc-fd003-baseline-s42 \
+  --output .experiments/rul/enhanced-cfc/fd003/baseline-s42.yaml
+nexuml train --config .experiments/rul/enhanced-cfc/fd003/baseline-s42.yaml
+
 nexuml resolve maintenance-rul-enhanced-cfc-fd003-all-s42 \
   --output .experiments/rul/enhanced-cfc/fd003/all-s42.yaml
 nexuml train --config .experiments/rul/enhanced-cfc/fd003/all-s42.yaml
 ```
 
-All complete-grid validation summaries are stored at:
+Individual full-grid validation-only reports can still be constructed
+from their native training records using
+`python -m nexuml_library.evaluation.maintenance.rul_enhanced_summary`,
+but this is *reporting*, not a training launcher.
 
-```text
-.experiments/rul/enhanced-cfc/fd003/summary.json
-```
+### Uncertainty is a post-fit diagnostic, not a point-estimation head
 
-The output reports best fitting-epoch validation MSE per seed, head
-variance, baseline-versus-single effects, and all-versus-leave-one-out
-effects. Negative MSE differences mean enabling the technique helps.
+Enabling `uncertainty` in individual scenarios activates the MC-dropout
+and descriptive conformal diagnostic. The composite scenario compares
+all 16 configurations' point-estimation errors, including both
+`uncertainty` on/off controls. Because this feature only affects
+post-training intervals, it is expected to have no systematic effect on
+training or validation point MSE; interval-quality analyses must use
+the individual uncertainty-enabled scenarios.
 
-MC/conformal reports are saved alongside the training curves as
-`<run>.uncertainty.json` for configurations with `uncertainty`
-enabled. **Do not interpret an in-sample empirical calibration coverage
-number as held-out coverage**.
+The calibration data are drawn from validation engines also used for
+checkpoint selection; coverage is descriptive only.
 
-The native NexuML lifecycle may still write official FD003 test audits.
-Do not use them to choose architecture settings. FD003 was already
-inspected in the earlier readout comparison, so this ablation is now
-an **exploratory architecture-development study** rather than an
-untouched confirmatory experiment. An additional held-out dataset
-or fully frozen evaluation protocol is required for new SOTA claims.
+FD003 test results were already inspected in earlier experiments.
+This is therefore exploratory architecture development, not an
+untouched confirmatory test. A new held-out dataset or fully frozen
+protocol is required for SOTA claims.
