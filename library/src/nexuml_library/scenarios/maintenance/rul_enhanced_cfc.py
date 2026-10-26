@@ -15,6 +15,9 @@ from nexuml.core.types import DatasetSpec, LayerSpec, PipelineSpec, ScenarioSpec
 from nexuml_library.data.maintenance.rul_enhanced import (
     AutoPairedCMapSSRULWindows,
 )
+from nexuml_library.evaluation.maintenance.rul_mc_conformal import (
+    RULMCConformalDiagnostics,
+)
 from nexuml_library.evaluation.maintenance.rul_generalization_diagnostics import (
     SequenceRULGeneralizationDiagnostics,
 )
@@ -26,23 +29,29 @@ from nexuml_library.scenarios.maintenance.rul_sequence_flow import (
     patchformer_sequence_flow_rul,
 )
 
-Option = Literal["finetune", "graph", "trend", "multiscale", "segmentation", "trajectory"]
+Option = Literal[
+    "finetune", "graph", "trend", "multiscale", "segmentation", "trajectory",
+    "uncertainty",
+]
 OPTIONS: tuple[Option, ...] = (
-    "finetune", "graph", "trend", "multiscale", "segmentation", "trajectory"
+    "finetune", "graph", "trend", "multiscale", "segmentation", "trajectory",
+    "uncertainty",
 )
 Ablation = Literal[
     "baseline",
     "finetune", "graph", "trend", "multiscale", "segmentation", "trajectory",
-    "all",
+    "uncertainty", "all",
     "all_no_finetune", "all_no_graph", "all_no_trend",
     "all_no_multiscale", "all_no_segmentation", "all_no_trajectory",
+    "all_no_uncertainty",
 ]
 CONFIGURATIONS: tuple[Ablation, ...] = (
     "baseline", "finetune", "graph", "trend", "multiscale", "segmentation",
-    "trajectory", "all", "all_no_finetune", "all_no_graph", "all_no_trend",
+    "trajectory", "uncertainty", "all",
+    "all_no_finetune", "all_no_graph", "all_no_trend",
     "all_no_multiscale", "all_no_segmentation", "all_no_trajectory",
+    "all_no_uncertainty",
 )
-
 
 def enabled_options(configuration: Ablation) -> frozenset[Option]:
     """Resolve one-factor and leave-one-out enhancement comparisons.
@@ -169,6 +178,18 @@ def enhanced_cfc_rul_study(
             }
         }
     )
+    if "uncertainty" in options:
+        callbacks.append(
+            callback(
+                RULMCConformalDiagnostics,
+                output_file=(
+                    f".experiments/rul/enhanced-cfc/{subset.lower()}/"
+                    f"{run}.uncertainty.json"
+                ),
+                stochastic_samples=20,
+                alpha=0.1,
+            )
+        )
     evaluations = list(base.evaluation.algorithms)
     evaluations[-1] = evaluations[-1].model_copy(
         update={
@@ -613,5 +634,65 @@ def enhanced_cfc_all_no_trajectory_s44() -> ScenarioSpec:
         Native benchmark for one registered architectural intervention.
     """
     return enhanced_cfc_rul_study("all_no_trajectory", 44, "FD003")
+
+
+@scenario("maintenance-rul-enhanced-cfc-fd003-uncertainty-s42")
+def enhanced_cfc_uncertainty_s42() -> ScenarioSpec:
+    """Train FD003 CfC with uncertainty enhancements, readout seed 42.
+
+    Returns:
+        Native ablation with optional post-fit uncertainty diagnostics.
+    """
+    return enhanced_cfc_rul_study("uncertainty", 42, "FD003")
+
+
+@scenario("maintenance-rul-enhanced-cfc-fd003-all_no_uncertainty-s42")
+def enhanced_cfc_all_no_uncertainty_s42() -> ScenarioSpec:
+    """Train FD003 CfC with all_no_uncertainty enhancements, readout seed 42.
+
+    Returns:
+        Native ablation with optional post-fit uncertainty diagnostics.
+    """
+    return enhanced_cfc_rul_study("all_no_uncertainty", 42, "FD003")
+
+
+@scenario("maintenance-rul-enhanced-cfc-fd003-uncertainty-s43")
+def enhanced_cfc_uncertainty_s43() -> ScenarioSpec:
+    """Train FD003 CfC with uncertainty enhancements, readout seed 43.
+
+    Returns:
+        Native ablation with optional post-fit uncertainty diagnostics.
+    """
+    return enhanced_cfc_rul_study("uncertainty", 43, "FD003")
+
+
+@scenario("maintenance-rul-enhanced-cfc-fd003-all_no_uncertainty-s43")
+def enhanced_cfc_all_no_uncertainty_s43() -> ScenarioSpec:
+    """Train FD003 CfC with all_no_uncertainty enhancements, readout seed 43.
+
+    Returns:
+        Native ablation with optional post-fit uncertainty diagnostics.
+    """
+    return enhanced_cfc_rul_study("all_no_uncertainty", 43, "FD003")
+
+
+@scenario("maintenance-rul-enhanced-cfc-fd003-uncertainty-s44")
+def enhanced_cfc_uncertainty_s44() -> ScenarioSpec:
+    """Train FD003 CfC with uncertainty enhancements, readout seed 44.
+
+    Returns:
+        Native ablation with optional post-fit uncertainty diagnostics.
+    """
+    return enhanced_cfc_rul_study("uncertainty", 44, "FD003")
+
+
+@scenario("maintenance-rul-enhanced-cfc-fd003-all_no_uncertainty-s44")
+def enhanced_cfc_all_no_uncertainty_s44() -> ScenarioSpec:
+    """Train FD003 CfC with all_no_uncertainty enhancements, readout seed 44.
+
+    Returns:
+        Native ablation with optional post-fit uncertainty diagnostics.
+    """
+    return enhanced_cfc_rul_study("all_no_uncertainty", 44, "FD003")
 
 
