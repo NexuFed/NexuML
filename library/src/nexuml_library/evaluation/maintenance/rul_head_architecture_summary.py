@@ -6,7 +6,7 @@ import argparse
 import json
 import statistics
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from nexuml.core.components import LayerBuildContext
 from nexuml_library.evaluation.maintenance.rul_generalization_summary import (
@@ -16,11 +16,12 @@ from nexuml_library.layers.model.rul_sequence_flow import (
     PatchFormerSequenceFlowRULHead,
 )
 
-_ARCHITECTURES = ("transformer", "mamba", "cfc")
+HeadArchitecture = Literal["transformer", "mamba", "cfc"]
+_ARCHITECTURES: tuple[HeadArchitecture, ...] = ("transformer", "mamba", "cfc")
 _ARMS = ("encoder", "flow")
 
 
-def _parameter_count(architecture: str) -> int:
+def _parameter_count(architecture: HeadArchitecture) -> int:
     """Count trainable readout parameters, including shared pooling and MLP.
 
     Returns:
