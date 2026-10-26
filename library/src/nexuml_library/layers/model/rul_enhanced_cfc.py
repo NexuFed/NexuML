@@ -148,7 +148,8 @@ class EnhancedCfCRULHead(LayerDefinition):
             or context.input_sizes.get("previous_rul_history") != (30, sensors)
             or context.input_sizes.get("pair_mask") != (1,)
             or context.keys_in != ["rul_history"]
-            or context.keys_out != ["predicted_rul", "previous_predicted_rul"]
+            or len(context.keys_out) != 2
+            or context.keys_out[0] == context.keys_out[1]
         ):
             raise ValueError("Enhanced CfC requires aligned 30-cycle sensor pairs")
         with torch.random.fork_rng(devices=[]):
