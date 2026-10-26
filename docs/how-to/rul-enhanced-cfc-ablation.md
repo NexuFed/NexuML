@@ -77,7 +77,7 @@ Nonexistent preceding windows are excluded by a mask.
 
 The `uncertainty` option **does not train a different point estimator**;
 it calculates post-hoc MC-dropout spread and a 90% nominal
-absolute-residual calibration interval using one predetermined hash-selected
+MC-variance-scaled absolute-residual calibration interval (with fixed\n1-cycle scale floor) using one predetermined hash-selected
 window per validation engine. These validation engines were also used
 for checkpoint selection. Therefore the interval is **descriptive only**
 and has **no finite-sample coverage guarantee**. No official test
