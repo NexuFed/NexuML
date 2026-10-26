@@ -43,9 +43,7 @@ def cfc_rul_head_architecture_study(
     """
     if head_seed not in (42, 43, 44):
         raise ValueError("RUL head comparison requires seed 42, 43 or 44")
-    base = cfc_rul_optimization_study(
-        arm, "d010", "adam_1e3", "window", head_seed
-    )
+    base = cfc_rul_optimization_study(arm, "d010", "adam_1e3", "window", head_seed)
     run = f"rul-FD001-cfc-head-{architecture}-{arm}-s{head_seed}"
     stages = dict(base.pipeline.stages)
     stages["RULModel"] = [
@@ -69,9 +67,7 @@ def cfc_rul_head_architecture_study(
                     update={
                         "source": source.model_copy(
                             update={
-                                "diagnostics_file": (
-                                    f".experiments/rul/audits/{run}.geometry.json"
-                                )
+                                "diagnostics_file": (f".experiments/rul/audits/{run}.geometry.json")
                             }
                         )
                     }
@@ -82,18 +78,12 @@ def cfc_rul_head_architecture_study(
     )
     callbacks = list(base.callbacks)
     callbacks[1] = callbacks[1].model_copy(
-        update={
-            "kwargs": {
-                "output_file": f".experiments/rul/head-architectures/{run}.curves.csv"
-            }
-        }
+        update={"kwargs": {"output_file": f".experiments/rul/head-architectures/{run}.curves.csv"}}
     )
     callbacks[2] = callbacks[2].model_copy(
         update={
             "kwargs": {
-                "dirpath": str(
-                    Path(".experiments/rul/checkpoints").resolve() / run
-                ),
+                "dirpath": str(Path(".experiments/rul/checkpoints").resolve() / run),
                 "monitor": "val/loss",
                 "mode": "min",
                 "save_top_k": 1,
@@ -102,19 +92,13 @@ def cfc_rul_head_architecture_study(
         }
     )
     callbacks[-1] = callbacks[-1].model_copy(
-        update={
-            "kwargs": {
-                "output_file": f".experiments/rul/audits/{run}.checkpoint.json"
-            }
-        }
+        update={"kwargs": {"output_file": f".experiments/rul/audits/{run}.checkpoint.json"}}
     )
     audits = list(base.evaluation.algorithms)
     audits[-1] = audits[-1].model_copy(
         update={
             "algorithm": audits[-1].algorithm.model_copy(
-                update={
-                    "output_file": f".experiments/rul/audits/{run}.csv"
-                }
+                update={"output_file": f".experiments/rul/audits/{run}.csv"}
             )
         }
     )
@@ -123,12 +107,11 @@ def cfc_rul_head_architecture_study(
             "name": run,
             "data": data,
             "pipeline": PipelineSpec(stages=stages),
-            "evaluation": base.evaluation.model_copy(
-                update={"algorithms": audits}
-            ),
+            "evaluation": base.evaluation.model_copy(update={"algorithms": audits}),
             "logging": (
                 base.logging.model_copy(update={"run_name": run})
-                if base.logging is not None else None
+                if base.logging is not None
+                else None
             ),
             "callbacks": callbacks,
         }
@@ -313,5 +296,3 @@ def cfc_head_cfc_flow_s44() -> ScenarioSpec:
         Matched frozen-upstream RUL head comparison scenario.
     """
     return cfc_rul_head_architecture_study("cfc", "flow", 44)
-
-

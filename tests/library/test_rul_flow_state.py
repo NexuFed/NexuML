@@ -92,8 +92,7 @@ def test_standalone_flow_state_rul_head_is_trainable() -> None:
 def _synthetic_cmapss(root: Path) -> None:
     """Supply a local official-format C-MAPSS subset with valid health phases."""
     train = [
-        [engine, cycle, *([float(engine) + cycle * 0.01 * sensor
-                          for sensor in range(1, 25)])]
+        [engine, cycle, *([float(engine) + cycle * 0.01 * sensor for sensor in range(1, 25)])]
         for engine in range(1, 9)
         for cycle in range(1, 91)
     ]
@@ -109,7 +108,8 @@ def _synthetic_cmapss(root: Path) -> None:
 
 @pytest.mark.parametrize("mode", ["encoder_only", "flow_only"])
 def test_no_patchformer_rul_predictor_is_called_during_feature_preparation(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
     mode: Literal["encoder_only", "flow_only"],
 ) -> None:
     """Even a deliberately failing FAN/RUL head cannot affect these features."""
@@ -137,8 +137,12 @@ def test_no_patchformer_rul_predictor_is_called_during_feature_preparation(
     assert read_rul_artifact(prepared)["settings"]["target_unit"] == "cycles"
 
     def construct_encoder(
-        length: int, channels: int, width: int, patch_size: int,
-        heads: int, dropout: float,
+        length: int,
+        channels: int,
+        width: int,
+        patch_size: int,
+        heads: int,
+        dropout: float,
     ) -> _PatchFormerModel:
         """Disable FAN regression inference while retaining original DPAN.
 
@@ -189,6 +193,7 @@ def test_no_patchformer_rul_predictor_is_called_during_feature_preparation(
             },
             endpoint_file,
         )
+
         class _ToyFlow:
             """Small frozen flow substitute to test the feature isolation contract."""
 
@@ -203,9 +208,7 @@ def test_no_patchformer_rul_predictor_is_called_during_feature_preparation(
         monkeypatch.setattr(
             data_module, "load_frozen_latent_flow", lambda *_a, **_kw: (_ToyFlow(), "flow")
         )
-        monkeypatch.setattr(
-            data_module, "resolve_latent_flow_checkpoint", lambda *_a: checkpoint
-        )
+        monkeypatch.setattr(data_module, "resolve_latent_flow_checkpoint", lambda *_a: checkpoint)
         monkeypatch.setattr(
             data_module,
             "healthy_reference_trajectories",
@@ -214,7 +217,8 @@ def test_no_patchformer_rul_predictor_is_called_during_feature_preparation(
     else:
         # The encoder-only baseline must succeed without any trained Flow.
         monkeypatch.setattr(
-            data_module, "resolve_patchformer_checkpoint",
+            data_module,
+            "resolve_patchformer_checkpoint",
             lambda *_a, **_kw: checkpoint,
         )
     source = AutoPatchFormerFlowRULFeatures(
@@ -277,22 +281,14 @@ def test_permutations_do_not_change_supervised_patchformer_inputs() -> None:
     assert report["results"]["capped"]["shuffled_mean"]["rmse"] >= 0
 
 
-def _fake_engine_audit(
-    directory: Path, run: str, *, systematic_error: float
-) -> None:
+def _fake_engine_audit(directory: Path, run: str, *, systematic_error: float) -> None:
     """Generate matched official-engine predictions for uncertainty tests."""
-    with (directory / f"{run}.csv").open(
-        "w", newline="", encoding="utf-8"
-    ) as handle:
+    with (directory / f"{run}.csv").open("w", newline="", encoding="utf-8") as handle:
         writer = csv.writer(handle)
-        writer.writerow(
-            ["asset_id", "true_rul_capped", "true_rul_raw", "predicted_rul"]
-        )
+        writer.writerow(["asset_id", "true_rul_capped", "true_rul_raw", "predicted_rul"])
         for engine in range(1, 101):
             truth = float(40 + engine % 30)
-            writer.writerow(
-                [f"test:FD003:{engine}", truth, truth, truth + systematic_error]
-            )
+            writer.writerow([f"test:FD003:{engine}", truth, truth, truth + systematic_error])
 
 
 def test_per_engine_flow_state_uncertainty_rejects_mismatched_backbone(
@@ -316,22 +312,14 @@ def test_per_engine_flow_state_uncertainty_rejects_mismatched_backbone(
                         "uses_patchformer_regression_head": False,
                         "patchformer_upstream_run": runs["baseline"],
                         "patchformer_checkpoint_sha256": "fixed-patchformer",
-                        "flow_checkpoint_sha256": (
-                            "fixed-flow" if arm == "flow_state" else None
-                        ),
+                        "flow_checkpoint_sha256": ("fixed-flow" if arm == "flow_state" else None),
                     }
                 )
             )
-    result = paired_flow_state_summary(
-        tmp_path, "FD003", 42, bootstrap_repeats=50
-    )
+    result = paired_flow_state_summary(tmp_path, "FD003", 42, bootstrap_repeats=50)
     assert result["official_test_engine_count"] == 100
-    assert len(result["results"]["capped"][
-        "per_engine_delta_squared_error_vs_encoder"
-    ]) == 100
-    comparison = result["results"]["capped"][
-        "flow_state_minus_controls"
-    ]["encoder_only"]["rmse"]
+    assert len(result["results"]["capped"]["per_engine_delta_squared_error_vs_encoder"]) == 100
+    comparison = result["results"]["capped"]["flow_state_minus_controls"]["encoder_only"]["rmse"]
     assert comparison["observed_delta"] == pytest.approx(-1.0)
     assert comparison["paired_engine_bootstrap_95"] == pytest.approx([-1.0, -1.0])
     path = tmp_path / f"{runs['flow_state']}.geometry.json"
@@ -339,6 +327,4 @@ def test_per_engine_flow_state_uncertainty_rejects_mismatched_backbone(
     bad["patchformer_checkpoint_sha256"] = "wrong"
     path.write_text(json.dumps(bad))
     with pytest.raises(ValueError, match="identical pretrained encoder"):
-        paired_flow_state_summary(
-            tmp_path, "FD003", 42, bootstrap_repeats=10
-        )
+        paired_flow_state_summary(tmp_path, "FD003", 42, bootstrap_repeats=10)
