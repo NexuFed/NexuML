@@ -96,6 +96,12 @@ class RULCompositeAblationComparison(L.Callback):
             }
         effects = {}
         for option in OPTIONS:
+            omitted = next(
+                (name for name in CONFIGURATIONS if name == f"all_no_{option}"),
+                None,
+            )
+            if omitted is None:
+                raise ValueError(f"Missing leave-one-out CfC configuration: {option}")
             effects[option] = {
                 "single_minus_baseline_mse": (
                     float(best[option]["best_observed_val_mse"])
@@ -103,7 +109,7 @@ class RULCompositeAblationComparison(L.Callback):
                 ),
                 "all_minus_leave_one_out_mse": (
                     float(best["all"]["best_observed_val_mse"])
-                    - float(best[f"all_no_{option}"]["best_observed_val_mse"])
+                    - float(best[omitted]["best_observed_val_mse"])
                 ),
             }
         ranked = sorted(
