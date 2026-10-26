@@ -23,6 +23,9 @@ from nexuml_library.evaluation.maintenance.rul_composite_comparison import (
     RULCompositeAblationComparison,
 )
 from nexuml_library.evaluation.maintenance.rul_seed import RULSeedOnFitStart
+from nexuml_library.evaluation.maintenance.rul_paper_callbacks import (
+    Goel2026RestoreBestWeights,
+)
 from nexuml_library.evaluation.maintenance.rul_mc_conformal import (
     RULMCConformalDiagnostics,
 )
@@ -790,6 +793,10 @@ def enhanced_cfc_native_comparison(
         ),
         callback(
             EarlyStopping, monitor="val/loss", mode="min", patience=20
+        ),
+        callback(
+            Goel2026RestoreBestWeights,
+            output_file=f".experiments/rul/audits/{run}.checkpoint.json",
         ),
     ]
     return base.model_copy(
