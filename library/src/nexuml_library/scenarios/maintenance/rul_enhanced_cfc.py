@@ -69,7 +69,10 @@ def enabled_options(configuration: Ablation) -> frozenset[Option]:
     if configuration.startswith("all_no_"):
         omitted = configuration.removeprefix("all_no_")
         return frozenset(option for option in OPTIONS if option != omitted)
-    return frozenset((configuration,))
+    for option in OPTIONS:
+        if configuration == option:
+            return frozenset((option,))
+    raise ValueError(f"Unknown CfC enhancement configuration: {configuration}")
 
 
 def enhanced_cfc_rul_study(
