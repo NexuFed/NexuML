@@ -156,6 +156,7 @@ class EnhancedCfCRULHead(LayerDefinition):
             return _EnhancedCfCRuntime(
                 subset=self.subset,
                 upstream_seed=self.upstream_seed,
+                initialization_seed=self.initialization_seed,
                 pretrained_encoder=self.pretrained_encoder,
                 train_encoder=self.train_encoder,
                 sensor_graph=self.sensor_graph,
@@ -179,6 +180,7 @@ class _EnhancedCfCRuntime(PipelineLayer):
         keys_out: list[str],
         subset: Literal["FD001", "FD003"],
         upstream_seed: int,
+        initialization_seed: int,
         pretrained_encoder: bool,
         train_encoder: bool,
         sensor_graph: bool,
@@ -226,18 +228,34 @@ class _EnhancedCfCRuntime(PipelineLayer):
         self.encoder.requires_grad_(train_encoder)
         # The pretrained FAN is unused; train only the DPAN when enabled.
         self.encoder.fan.requires_grad_(False)
-        self.sensor_graph = _SensorGraphAttention(sensors) if sensor_graph else None
+        # Initialize the *common* head before any optional component.
+        # Every matched head seed now has identical common starting weights.
         self.input_projection = nn.Linear(256, 64)
         self.positions = nn.Parameter(torch.zeros(1, 30, 64))
-        self.trend_projection = nn.Linear(128, 64) if trend else None
-        self.multiscale = _MultiscaleTemporalFeatures(64, dropout) if multiscale else None
-        self.segmentation = _AdaptiveSoftSegments(64, dropout) if segmentation else None
         self.temporal = _CfCSequence(64, depth=1, dropout=dropout)
         self.norm = nn.LayerNorm(64)
         self.token_scores = nn.Linear(64, 1)
         self.regressor = nn.Sequential(
             nn.Linear(64, 32), nn.GELU(), nn.Dropout(dropout), nn.Linear(32, 1)
         )
+        # Each optional branch has its own reproducible sub-seed so its
+        # initialization agrees in single-on, all-on, and leave-one-out arms.
+        with torch.random.fork_rng(devices=[]):
+            torch.manual_seed(initialization_seed + 1001)
+            self.sensor_graph = _SensorGraphAttention(sensors) if sensor_graph else None
+        with torch.random.fork_rng(devices=[]):
+            torch.manual_seed(initialization_seed + 1002)
+            self.trend_projection = nn.Linear(128, 64) if trend else None
+        with torch.random.fork_rng(devices=[]):
+            torch.manual_seed(initialization_seed + 1003)
+            self.multiscale = (
+                _MultiscaleTemporalFeatures(64, dropout) if multiscale else None
+            )
+        with torch.random.fork_rng(devices=[]):
+            torch.manual_seed(initialization_seed + 1004)
+            self.segmentation = (
+                _AdaptiveSoftSegments(64, dropout) if segmentation else None
+            )
         if not train_encoder:
             self.encoder.eval()
 
