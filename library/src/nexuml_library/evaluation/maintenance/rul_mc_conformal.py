@@ -16,6 +16,7 @@ from typing import Any, cast
 
 import lightning as L
 import torch
+from tensordict import TensorDict
 from torch import Tensor, nn
 
 from nexuml.data.module import NexuDataModule
@@ -91,11 +92,13 @@ class RULMCConformalDiagnostics(L.Callback):
         if not isinstance(pl_module, NexuLightningModule):
             raise TypeError("MC RUL diagnostic expects a native NexuML model")
         data = trainer.datamodule
-        if not isinstance(data, NexuDataModule) or data._val_ds is None:
-            raise TypeError("MC RUL diagnostic requires a prepared validation dataset")
-        meta = data._val_ds.meta
-        indices = _selected_calibration_windows(meta)
-        subset = data._val_ds.take(indices)
+        if not isinstance(data, NexuDataModule):
+            raise TypeError("MC RUL diagnostic requires a NexuDataModule")
+        validation = data._val_ds
+        if validation is None:
+            raise TypeError("MC RUL diagnostic requires prepared validation engines")
+        indices = _selected_calibration_windows(validation.meta)
+        subset = validation.take(indices)
         loader = data._loader(subset, split="val", shuffle=False)
         was_training = pl_module.training
         pl_module.eval()
@@ -118,6 +121,8 @@ class RULMCConformalDiagnostics(L.Callback):
                         module.train()
                     for _ in range(self.stochastic_samples):
                         result, _ = pl_module.pipeline(x.clone(), y)
+                        if not isinstance(result, TensorDict):
+                            raise TypeError("MC RUL inference expects TensorDict outputs")
                         batch_means.append(
                             cast(Tensor, result["predicted_rul"]).detach()
                         )
