@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Literal
 
 from nexuml import callback
+from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint
 from nexuml.core.discovery import scenario
 from nexuml.core.types import DatasetSpec, LayerSpec, PipelineSpec, ScenarioSpec
 from nexuml_library.data.maintenance.rul_enhanced import (
@@ -18,6 +19,10 @@ from nexuml_library.data.maintenance.rul_enhanced import (
 from nexuml_library.data.maintenance.rul_sequence_flow import (
     AutoPatchFormerSequenceFlowRULFeatures,
 )
+from nexuml_library.evaluation.maintenance.rul_composite_comparison import (
+    RULCompositeAblationComparison,
+)
+from nexuml_library.evaluation.maintenance.rul_seed import RULSeedOnFitStart
 from nexuml_library.evaluation.maintenance.rul_mc_conformal import (
     RULMCConformalDiagnostics,
 )
@@ -704,3 +709,138 @@ def enhanced_cfc_all_no_uncertainty_s44() -> ScenarioSpec:
     return enhanced_cfc_rul_study("all_no_uncertainty", 44, "FD003")
 
 
+
+
+def enhanced_cfc_native_comparison(
+    head_seed: int = 42,
+) -> ScenarioSpec:
+    """Compare all 16 FD003 CfC on/off variants inside one NexuML pipeline.
+
+    Like `maintenance-rul-all`, this composite runs all branches under
+    one optimizer and aggregate validation checkpoint. It exposes an
+    individual validation MSE for every branch but is **not** equivalent
+    to 16 independently restored model training runs.
+
+    Args:
+        head_seed: Seed of matched CfC readout initializations and data loading.
+
+    Returns:
+        Native composite ScenarioSpec with disjoint head parameters and losses.
+
+    Raises:
+        ValueError: If the requested seed is not a predeclared comparison seed.
+    """
+    if head_seed not in (42, 43, 44):
+        raise ValueError("Enhanced CfC composite seed must be 42, 43 or 44")
+    base = enhanced_cfc_rul_study("baseline", head_seed)
+    run = f"rul-FD003-enhanced-cfc-compare-s{head_seed}"
+    heads: list[LayerSpec] = []
+    objectives: list[LayerSpec] = []
+    loss_weights: dict[str, float] = {}
+    for configuration in CONFIGURATIONS:
+        variant = enhanced_cfc_rul_study(configuration, head_seed)
+        head = variant.pipeline.stages["RULModel"][0].component
+        objective = variant.pipeline.stages["RULLoss"][0].component
+        if not isinstance(head, EnhancedCfCRULHead):
+            raise TypeError("Composite comparison requires an enhanced CfC head")
+        if not isinstance(objective, RULTrajectoryConsistencyLoss):
+            raise TypeError("Composite comparison requires trajectory MSE loss")
+        current_key = f"predicted_rul_{configuration}"
+        previous_key = f"previous_predicted_rul_{configuration}"
+        loss_key = f"rul_loss_{configuration}"
+        heads.append(
+            LayerSpec(
+                component=head,
+                keys_in=["rul_history"],
+                keys_out=[current_key, previous_key],
+            )
+        )
+        objectives.append(
+            LayerSpec(
+                component=objective.model_copy(
+                    update={"previous_key": previous_key}
+                ),
+                keys_in=[current_key],
+                keys_out=[loss_key],
+                label_key="rul",
+            )
+        )
+        loss_weights[loss_key] = 1.0 / len(CONFIGURATIONS)
+    curves = (
+        f".experiments/rul/enhanced-cfc/fd003/"
+        f"{run}.validation.csv"
+    )
+    checkpoint_dir = (
+        Path(".experiments/rul/checkpoints").resolve() / run
+    )
+    callbacks = [
+        callback(RULSeedOnFitStart, seed=head_seed),
+        callback(
+            RULCompositeAblationComparison,
+            output_file=curves,
+            seed=head_seed,
+        ),
+        callback(
+            ModelCheckpoint,
+            dirpath=str(checkpoint_dir),
+            monitor="val/loss",
+            mode="min",
+            save_top_k=1,
+            save_last=True,
+        ),
+        callback(
+            EarlyStopping, monitor="val/loss", mode="min", patience=20
+        ),
+    ]
+    return base.model_copy(
+        update={
+            "name": run,
+            "pipeline": PipelineSpec(
+                stages={"RULModels": heads, "RULLoss": objectives}
+            ),
+            "training": base.training.model_copy(
+                update={
+                    "loss_keys": loss_weights,
+                    "batch_size": 16,
+                }
+            ),
+            "evaluation": base.evaluation.model_copy(
+                update={"algorithms": []}
+            ),
+            "logging": (
+                base.logging.model_copy(update={"run_name": run})
+                if base.logging is not None else None
+            ),
+            "callbacks": callbacks,
+        }
+    )
+
+
+@scenario("maintenance-rul-enhanced-cfc-fd003-compare")
+def enhanced_cfc_compare() -> ScenarioSpec:
+    """Train and compare all FD003 on/off variants in one native run.
+
+    Returns:
+        Simultaneous matched-ablation scenario for head seed 42.
+    """
+    return enhanced_cfc_native_comparison(42)
+
+
+@scenario("maintenance-rul-enhanced-cfc-fd003-compare-s43")
+def enhanced_cfc_compare_s43() -> ScenarioSpec:
+    """Compare FD003 enhanced CfC branches with readout seed 43.
+
+    Returns:
+        Second native matched-ablation seed.
+    """
+    return enhanced_cfc_native_comparison(43)
+
+
+@scenario("maintenance-rul-enhanced-cfc-fd003-compare-s44")
+def enhanced_cfc_compare_s44() -> ScenarioSpec:
+    """Compare FD003 enhanced CfC branches with readout seed 44.
+
+    Returns:
+        Third native matched-ablation seed.
+    """
+    return enhanced_cfc_native_comparison(44)
