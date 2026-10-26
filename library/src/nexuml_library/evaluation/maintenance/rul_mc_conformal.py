@@ -91,7 +91,7 @@ class RULMCConformalDiagnostics(L.Callback):
         """
         if not isinstance(pl_module, NexuLightningModule):
             raise TypeError("MC RUL diagnostic expects a native NexuML model")
-        data = trainer.datamodule
+        data = getattr(trainer, "datamodule", None)
         if not isinstance(data, NexuDataModule):
             raise TypeError("MC RUL diagnostic requires a NexuDataModule")
         validation = data._val_ds
