@@ -397,6 +397,16 @@ def test_uncertainty_not_a_point_estimator_factor() -> None:
         assert len(calibration) == int(configuration == "all")
         if calibration:
             assert "uncertainty.json" in str(calibration[0].kwargs["output_file"])
+            factories = [cb.factory for cb in spec.callbacks]
+            calibrator_index = next(
+                i for i, factory in enumerate(factories)
+                if "RULMCConformalDiagnostics" in factory
+            )
+            restoration_index = next(
+                i for i, factory in enumerate(factories)
+                if "Goel2026RestoreBestWeights" in factory
+            )
+            assert calibrator_index > restoration_index
     assert all("uncertainty" not in opt for opt in OPTIONS)
 
 
