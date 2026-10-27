@@ -23,6 +23,7 @@ from nexuml_library.data.maintenance.rul_enhanced import (
 )
 from nexuml_library.evaluation.maintenance.rul_composite_comparison import (
     RULCompositeAblationComparison,
+    summarize_composite_seeds,
 )
 from nexuml_library.evaluation.maintenance.rul_enhanced_summary import (
     summarize_enhanced_cfc,
@@ -39,6 +40,7 @@ from nexuml_library.layers.model.rul_trajectory_loss import (
     RULTrajectoryConsistencyLoss,
 )
 from nexuml_library.scenarios.maintenance.rul_enhanced_cfc import (
+    Ablation,
     CONFIGURATIONS,
     OPTIONS,
     enabled_options,
@@ -102,16 +104,7 @@ def test_enhanced_scenarios_expose_each_predeclared_option(
 ) -> None:
     """On/off configurations keep seed and upstream data exactly fixed."""
     monkeypatch.chdir(tmp_path)
-    variant = cast(
-        Literal[
-            "baseline", "finetune", "graph", "trend", "multiscale",
-            "segmentation", "trajectory", "uncertainty", "all",
-            "all_no_finetune", "all_no_graph", "all_no_trend",
-            "all_no_multiscale", "all_no_segmentation",
-            "all_no_trajectory", "all_no_uncertainty",
-        ],
-        configuration,
-    )
+    variant = cast(Ablation, configuration)
     scenario = enhanced_cfc_rul_study(variant, 43)
     assert scenario.name == f"rul-FD003-enhanced-cfc-{variant}-s43"
     source = scenario.data.datasets[0].source
@@ -134,7 +127,7 @@ def test_enhanced_scenarios_expose_each_predeclared_option(
     assert any(
         "RULMCConformalDiagnostics" in str(item.factory)
         for item in scenario.callbacks
-    ) is ("uncertainty" in options)
+    ) is (configuration == "all")
 
 
 def test_every_effect_has_a_single_and_leave_one_out() -> None:
@@ -149,7 +142,7 @@ def test_every_effect_has_a_single_and_leave_one_out() -> None:
             Literal[
                 "all_no_finetune", "all_no_graph", "all_no_trend",
                 "all_no_multiscale", "all_no_segmentation",
-                "all_no_trajectory", "all_no_uncertainty",
+                "all_no_trajectory",
             ],
             f"all_no_{option}",
         )
@@ -316,8 +309,8 @@ def test_enhanced_summary_never_reads_test_audits(tmp_path: Path) -> None:
         )
     report = summarize_enhanced_cfc(root, audit, (42,))
     assert report["test_predictions_read"] is False
-    assert len(report["ranking"]) == 16
-    assert len(report["effects"]) == 7
+    assert len(report["ranking"]) == 14
+    assert len(report["effects"]) == 6
     assert report["effects"]["finetune"]["single_minus_baseline_mean"] == 1
 
 
@@ -325,7 +318,7 @@ def test_enhanced_summary_never_reads_test_audits(tmp_path: Path) -> None:
 def test_native_composite_trains_independent_named_heads(seed: int) -> None:
     """One ordinary scenario carries all 16 on/off RUL model/loss branches."""
     scenario = enhanced_cfc_native_comparison(seed)
-    assert scenario.name == f"rul-FD003-enhanced-cfc-compare-s{seed}"
+    assert scenario.name == f"rul-FD003-enhanced-cfc-compare-six-s{seed}"
     assert scenario.training.batch_size == 16
     assert len(scenario.pipeline.stages["RULModels"]) == len(CONFIGURATIONS)
     assert len(scenario.pipeline.stages["RULLoss"]) == len(CONFIGURATIONS)
@@ -387,3 +380,65 @@ def test_native_comparison_records_only_fitting_validation(
     assert len(report["ranking"]) == len(CONFIGURATIONS)
     assert len(report["effects"]) == len(OPTIONS)
     assert report["ranking"][0]["configuration"] == "baseline"
+
+
+def test_uncertainty_not_a_point_estimator_factor() -> None:
+    """Calibration observes existing fitted all-on weights; it is not an arm."""
+    assert len(OPTIONS) == 6
+    assert len(CONFIGURATIONS) == 14
+    assert "uncertainty" not in CONFIGURATIONS
+    assert "all_no_uncertainty" not in CONFIGURATIONS
+    for configuration in CONFIGURATIONS:
+        spec = enhanced_cfc_rul_study(configuration, 42)
+        calibration = [
+            cb for cb in spec.callbacks
+            if "RULMCConformalDiagnostics" in cb.factory
+        ]
+        assert len(calibration) == int(configuration == "all")
+        if calibration:
+            assert "uncertainty.json" in str(calibration[0].kwargs["output_file"])
+    assert all("uncertainty" not in opt for opt in OPTIONS)
+
+
+def test_three_seed_composite_summary_ignores_legacy_and_test(
+    tmp_path: Path,
+) -> None:
+    """Only matching six-factor v2 seed reports may be pooled."""
+    for seed in (42, 43, 44):
+        ranking = [
+            {
+                "configuration": configuration,
+                "best_observed_val_mse": float(100 + index + seed),
+                "best_epoch": 7,
+            }
+            for index, configuration in enumerate(CONFIGURATIONS)
+        ]
+        report = {
+            "study_version": "six-model-factors-v2",
+            "subset": "FD003",
+            "head_seed": seed,
+            "configurations": list(CONFIGURATIONS),
+            "optimizer_shared": True,
+            "test_predictions_read": False,
+            "ranking": ranking,
+        }
+        file = (
+            tmp_path / f"rul-FD003-enhanced-cfc-compare-six-s{seed}.validation.json"
+        )
+        file.write_text(json.dumps(report), encoding="utf-8")
+    summary = summarize_composite_seeds(tmp_path)
+    assert summary["test_predictions_read"] is False
+    assert summary["head_seeds"] == [42, 43, 44]
+    assert len(summary["ranking"]) == 14
+    assert len(summary["paired_effects"]) == 6
+    assert summary["ranking"][0]["configuration"] == "baseline"
+    assert summary["ranking"][0]["validation_mse_std"] == pytest.approx(1.0)
+    assert summary["paired_effects"]["finetune"][
+        "single_minus_baseline_mean"
+    ] == pytest.approx(1.0)
+    bad = tmp_path / "rul-FD003-enhanced-cfc-compare-six-s42.validation.json"
+    invalid = json.loads(bad.read_text(encoding="utf-8"))
+    invalid["configurations"].append("uncertainty")
+    bad.write_text(json.dumps(invalid), encoding="utf-8")
+    with pytest.raises(ValueError, match="Incompatible"):
+        summarize_composite_seeds(tmp_path)
