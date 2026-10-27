@@ -10,11 +10,120 @@ from __future__ import annotations
 import csv
 import json
 import math
+import statistics
 from pathlib import Path
 from typing import Any
 
 import lightning as L
 from lightning.pytorch.trainer.states import TrainerFn
+
+
+def summarize_composite_seeds(root: Path) -> dict[str, Any]:
+    """Aggregate three comparable six-factor composite runs without test data.
+
+    Args:
+        root: Directory with the three native per-seed comparison JSON files.
+
+    Returns:
+        Validation-only per-arm statistics and paired seed-level effects.
+
+    Raises:
+        ValueError: If seeds, configurations or metric provenance disagree.
+        FileNotFoundError: If any predeclared seed report is absent.
+    """
+    from nexuml_library.scenarios.maintenance.rul_enhanced_cfc import (
+        CONFIGURATIONS,
+        OPTIONS,
+    )
+
+    seeds = (42, 43, 44)
+    scores: dict[str, dict[int, float]] = {
+        name: {} for name in CONFIGURATIONS
+    }
+    for seed in seeds:
+        file = root / f"rul-FD003-enhanced-cfc-compare-six-s{seed}.validation.json"
+        report = json.loads(file.read_text(encoding="utf-8"))
+        if not isinstance(report, dict):
+            raise ValueError(f"Malformed composite report for seed {seed}")
+        if (
+            report.get("study_version") != "six-model-factors-v2"
+            or report.get("subset") != "FD003"
+            or report.get("head_seed") != seed
+            or report.get("configurations") != list(CONFIGURATIONS)
+            or report.get("test_predictions_read") is not False
+            or report.get("optimizer_shared") is not True
+        ):
+            raise ValueError(f"Incompatible six-factor composite report: {file}")
+        ranking = report.get("ranking")
+        if not isinstance(ranking, list) or len(ranking) != len(CONFIGURATIONS):
+            raise ValueError(f"Incomplete composite ranking for seed {seed}")
+        for entry in ranking:
+            if not isinstance(entry, dict):
+                raise ValueError(f"Malformed ranked entry for seed {seed}")
+            name = entry.get("configuration")
+            if not isinstance(name, str) or name not in scores:
+                raise ValueError(f"Unknown composite configuration for seed {seed}")
+            if seed in scores[name]:
+                raise ValueError(f"Duplicate composite configuration {name}")
+            value = entry.get("best_observed_val_mse")
+            if not isinstance(value, (int, float)) or not math.isfinite(value):
+                raise ValueError(f"Invalid validation MSE for {name}, seed {seed}")
+            scores[name][seed] = float(value)
+    if any(len(per_seed) != len(seeds) for per_seed in scores.values()):
+        raise ValueError("Missing composite configuration scores")
+    mean_scores: dict[str, float] = {
+        name: statistics.mean(per_seed.values())
+        for name, per_seed in scores.items()
+    }
+    effects: dict[str, dict[str, Any]] = {}
+    for option in OPTIONS:
+        omitted = next(
+            (name for name in CONFIGURATIONS if name == f"all_no_{option}"),
+            None,
+        )
+        if omitted is None:
+            raise ValueError(f"Missing leave-one-out configuration: {option}")
+        standalone = [
+            scores[option][seed] - scores["baseline"][seed]
+            for seed in seeds
+        ]
+        full = [
+            scores["all"][seed] - scores[omitted][seed]
+            for seed in seeds
+        ]
+        effects[option] = {
+            "single_minus_baseline_mean": statistics.mean(standalone),
+            "single_minus_baseline_by_seed": dict(zip(seeds, standalone)),
+            "all_minus_leave_one_out_mean": statistics.mean(full),
+            "all_minus_leave_one_out_by_seed": dict(zip(seeds, full)),
+        }
+    return {
+        "study": "NEX-233 six-factor native composite CfC comparison across seeds",
+        "study_version": "six-model-factors-v2",
+        "subset": "FD003",
+        "head_seeds": list(seeds),
+        "optimizer_shared_within_each_seed": True,
+        "independently_restored_arm_checkpoints": False,
+        "point_estimation_only": True,
+        "test_predictions_read": False,
+        "ranking": [
+            {
+                "configuration": name,
+                "validation_mse_mean": mean_scores[name],
+                "validation_mse_std": statistics.stdev(scores[name].values()),
+                "validation_mse_by_seed": {
+                    str(seed): scores[name][seed] for seed in seeds
+                },
+            }
+            for name in sorted(CONFIGURATIONS, key=lambda name: mean_scores[name])
+        ],
+        "paired_effects": effects,
+        "caveat": (
+            "Scores are each branch's best observed fitting-epoch validation MSE "
+            "within one shared-optimizer composite, not independent model selection. "
+            "FD003 has previously been inspected, so this is exploratory."
+        ),
+    }
 
 
 class RULCompositeAblationComparison(L.Callback):
@@ -126,6 +235,8 @@ class RULCompositeAblationComparison(L.Callback):
         ]
         report: dict[str, Any] = {
             "study": "NEX-233 NexuML native composite CfC enhancement comparison",
+            "study_version": "six-model-factors-v2",
+            "point_estimation_only": True,
             "subset": "FD003",
             "head_seed": self.seed,
             "configurations": list(CONFIGURATIONS),
@@ -138,7 +249,7 @@ class RULCompositeAblationComparison(L.Callback):
             "ranking": ranking,
             "effects": effects,
             "caveat": (
-                "The 16 branches share one optimizer and aggregate early stopping. "
+                "The 14 branches share one optimizer and aggregate early stopping. "
                 "Their individual minima can occur at different epochs. "
                 "This is an economical matched simultaneous ablation, not a "
                 "replacement for separately trained and checkpoint-selected runs."
@@ -148,3 +259,15 @@ class RULCompositeAblationComparison(L.Callback):
             json.dumps(report, indent=2, allow_nan=False) + "\n",
             encoding="utf-8",
         )
+        # Produce a cross-seed report as soon as all three native runs exist.
+        root = self.output_file.parent
+        paths = [
+            root / f"rul-FD003-enhanced-cfc-compare-six-s{seed}.validation.json"
+            for seed in (42, 43, 44)
+        ]
+        if all(path.is_file() for path in paths):
+            combined = summarize_composite_seeds(root)
+            (root / "compare-six-seeds-42-43-44.summary.json").write_text(
+                json.dumps(combined, indent=2, allow_nan=False) + "\\n",
+                encoding="utf-8",
+            )
