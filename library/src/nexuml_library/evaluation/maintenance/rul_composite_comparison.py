@@ -268,6 +268,6 @@ class RULCompositeAblationComparison(L.Callback):
         if all(path.is_file() for path in paths):
             combined = summarize_composite_seeds(root)
             (root / "compare-six-seeds-42-43-44.summary.json").write_text(
-                json.dumps(combined, indent=2, allow_nan=False) + "\\n",
+                json.dumps(combined, indent=2, allow_nan=False) + "\n",
                 encoding="utf-8",
             )
