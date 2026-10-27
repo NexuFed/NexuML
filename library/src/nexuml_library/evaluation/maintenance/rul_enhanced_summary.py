@@ -126,7 +126,7 @@ def summarize_enhanced_cfc(
             "single_minus_baseline_by_seed": one_delta,
             "all_minus_leave_one_out_mean": statistics.mean(omit_delta),
             "all_minus_leave_one_out_by_seed": omit_delta,
-            "point_estimate_changes_expected": option != "uncertainty",
+            "point_estimate_changes_expected": True,
         }
     ranking = sorted(comparison, key=lambda row: float(row["val_mse_mean"]))
     return {
@@ -136,11 +136,12 @@ def summarize_enhanced_cfc(
         "head_seeds": list(seeds),
         "selection": "best fitting-epoch validation-window MSE",
         "test_predictions_read": False,
-        "modes": "baseline + 7 singles + all-on + 7 leave-one-out",
+        "modes": "baseline + 6 singles + all-on + 6 leave-one-out",
         "calibration_note": (
-            "MC dropout and conformal intervals are post-fit descriptive diagnostics; "
-            "the same validation engines participated in checkpoint selection, "
-            "so nominal conformal coverage is not guaranteed."
+            "MC dropout and conformal intervals are separate post-fit diagnostics "
+            "on the all-on model, excluded from point-estimator ablations. "
+            "Calibration uses validation engines also used for checkpoint "
+            "selection, so nominal conformal coverage is not guaranteed."
         ),
         "ranking": ranking,
         "effects": effects,
