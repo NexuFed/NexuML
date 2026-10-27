@@ -41,59 +41,25 @@ from nexuml_library.scenarios.maintenance.rul_sequence_flow import (
     patchformer_sequence_flow_rul,
 )
 
+# Only mechanisms that change point estimation belong in this matrix.
+# MC dropout/conformal calibration is evaluated on the SAME fitted model.
 Option = Literal[
-    "finetune",
-    "graph",
-    "trend",
-    "multiscale",
-    "segmentation",
-    "trajectory",
-    "uncertainty",
+    "finetune", "graph", "trend", "multiscale", "segmentation", "trajectory",
 ]
 OPTIONS: tuple[Option, ...] = (
-    "finetune",
-    "graph",
-    "trend",
-    "multiscale",
-    "segmentation",
-    "trajectory",
-    "uncertainty",
+    "finetune", "graph", "trend", "multiscale", "segmentation", "trajectory",
 )
 Ablation = Literal[
     "baseline",
-    "finetune",
-    "graph",
-    "trend",
-    "multiscale",
-    "segmentation",
-    "trajectory",
-    "uncertainty",
-    "all",
-    "all_no_finetune",
-    "all_no_graph",
-    "all_no_trend",
-    "all_no_multiscale",
-    "all_no_segmentation",
-    "all_no_trajectory",
-    "all_no_uncertainty",
+    "finetune", "graph", "trend", "multiscale", "segmentation", "trajectory",
+    "all", "all_no_finetune", "all_no_graph", "all_no_trend",
+    "all_no_multiscale", "all_no_segmentation", "all_no_trajectory",
 ]
 CONFIGURATIONS: tuple[Ablation, ...] = (
-    "baseline",
-    "finetune",
-    "graph",
-    "trend",
-    "multiscale",
-    "segmentation",
-    "trajectory",
-    "uncertainty",
-    "all",
-    "all_no_finetune",
-    "all_no_graph",
-    "all_no_trend",
-    "all_no_multiscale",
-    "all_no_segmentation",
+    "baseline", "finetune", "graph", "trend", "multiscale", "segmentation",
+    "trajectory", "all", "all_no_finetune", "all_no_graph",
+    "all_no_trend", "all_no_multiscale", "all_no_segmentation",
     "all_no_trajectory",
-    "all_no_uncertainty",
 )
 
 
@@ -220,7 +186,9 @@ def enhanced_cfc_rul_study(
     callbacks[-1] = callbacks[-1].model_copy(
         update={"kwargs": {"output_file": f".experiments/rul/audits/{run}.checkpoint.json"}}
     )
-    if "uncertainty" in options:
+    if configuration == "all":
+        # Calibration observes the SAME all-on fitted model. It changes no
+        # loss, head, training randomness or checkpoint selection.
         callbacks.append(
             callback(
                 RULMCConformalDiagnostics,
@@ -676,70 +644,10 @@ def enhanced_cfc_all_no_trajectory_s44() -> ScenarioSpec:
     return enhanced_cfc_rul_study("all_no_trajectory", 44, "FD003")
 
 
-@scenario("maintenance-rul-enhanced-cfc-fd003-uncertainty-s42")
-def enhanced_cfc_uncertainty_s42() -> ScenarioSpec:
-    """Train FD003 CfC with uncertainty enhancements, readout seed 42.
-
-    Returns:
-        Native ablation with optional post-fit uncertainty diagnostics.
-    """
-    return enhanced_cfc_rul_study("uncertainty", 42, "FD003")
-
-
-@scenario("maintenance-rul-enhanced-cfc-fd003-all_no_uncertainty-s42")
-def enhanced_cfc_all_no_uncertainty_s42() -> ScenarioSpec:
-    """Train FD003 CfC with all_no_uncertainty enhancements, readout seed 42.
-
-    Returns:
-        Native ablation with optional post-fit uncertainty diagnostics.
-    """
-    return enhanced_cfc_rul_study("all_no_uncertainty", 42, "FD003")
-
-
-@scenario("maintenance-rul-enhanced-cfc-fd003-uncertainty-s43")
-def enhanced_cfc_uncertainty_s43() -> ScenarioSpec:
-    """Train FD003 CfC with uncertainty enhancements, readout seed 43.
-
-    Returns:
-        Native ablation with optional post-fit uncertainty diagnostics.
-    """
-    return enhanced_cfc_rul_study("uncertainty", 43, "FD003")
-
-
-@scenario("maintenance-rul-enhanced-cfc-fd003-all_no_uncertainty-s43")
-def enhanced_cfc_all_no_uncertainty_s43() -> ScenarioSpec:
-    """Train FD003 CfC with all_no_uncertainty enhancements, readout seed 43.
-
-    Returns:
-        Native ablation with optional post-fit uncertainty diagnostics.
-    """
-    return enhanced_cfc_rul_study("all_no_uncertainty", 43, "FD003")
-
-
-@scenario("maintenance-rul-enhanced-cfc-fd003-uncertainty-s44")
-def enhanced_cfc_uncertainty_s44() -> ScenarioSpec:
-    """Train FD003 CfC with uncertainty enhancements, readout seed 44.
-
-    Returns:
-        Native ablation with optional post-fit uncertainty diagnostics.
-    """
-    return enhanced_cfc_rul_study("uncertainty", 44, "FD003")
-
-
-@scenario("maintenance-rul-enhanced-cfc-fd003-all_no_uncertainty-s44")
-def enhanced_cfc_all_no_uncertainty_s44() -> ScenarioSpec:
-    """Train FD003 CfC with all_no_uncertainty enhancements, readout seed 44.
-
-    Returns:
-        Native ablation with optional post-fit uncertainty diagnostics.
-    """
-    return enhanced_cfc_rul_study("all_no_uncertainty", 44, "FD003")
-
-
 def enhanced_cfc_native_comparison(
     head_seed: int = 42,
 ) -> ScenarioSpec:
-    """Compare all 16 FD003 CfC on/off variants inside one NexuML pipeline.
+    """Compare all 14 FD003 CfC modeling variants inside one NexuML pipeline.
 
     Like `maintenance-rul-all`, this composite runs all branches under
     one optimizer and aggregate validation checkpoint. It exposes an
@@ -760,7 +668,7 @@ def enhanced_cfc_native_comparison(
     if head_seed not in (42, 43, 44):
         raise ValueError("Enhanced CfC composite seed must be 42, 43 or 44")
     base = enhanced_cfc_rul_study("baseline", head_seed)
-    run = f"rul-FD003-enhanced-cfc-compare-s{head_seed}"
+    run = f"rul-FD003-enhanced-cfc-compare-six-s{head_seed}"
     heads: list[LayerSpec] = []
     objectives: list[LayerSpec] = []
     loss_weights: dict[str, float] = {}
@@ -835,9 +743,9 @@ def enhanced_cfc_native_comparison(
     )
 
 
-@scenario("maintenance-rul-enhanced-cfc-fd003-compare")
+@scenario("maintenance-rul-enhanced-cfc-fd003-compare-six")
 def enhanced_cfc_compare() -> ScenarioSpec:
-    """Train and compare all FD003 on/off variants in one native run.
+    """Train and compare the six modeling interventions in one native run.
 
     Returns:
         Simultaneous matched-ablation scenario for head seed 42.
@@ -845,9 +753,9 @@ def enhanced_cfc_compare() -> ScenarioSpec:
     return enhanced_cfc_native_comparison(42)
 
 
-@scenario("maintenance-rul-enhanced-cfc-fd003-compare-s43")
+@scenario("maintenance-rul-enhanced-cfc-fd003-compare-six-s43")
 def enhanced_cfc_compare_s43() -> ScenarioSpec:
-    """Compare FD003 enhanced CfC branches with readout seed 43.
+    """Compare the six FD003 modeling interventions with readout seed 43.
 
     Returns:
         Second native matched-ablation seed.
@@ -855,9 +763,9 @@ def enhanced_cfc_compare_s43() -> ScenarioSpec:
     return enhanced_cfc_native_comparison(43)
 
 
-@scenario("maintenance-rul-enhanced-cfc-fd003-compare-s44")
+@scenario("maintenance-rul-enhanced-cfc-fd003-compare-six-s44")
 def enhanced_cfc_compare_s44() -> ScenarioSpec:
-    """Compare FD003 enhanced CfC branches with readout seed 44.
+    """Compare the six FD003 modeling interventions with readout seed 44.
 
     Returns:
         Third native matched-ablation seed.
