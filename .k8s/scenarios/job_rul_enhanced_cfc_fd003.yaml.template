@@ -10,7 +10,9 @@ metadata:
     app.kubernetes.io/name: nexuml
     nexuml-study: rul-fd003-cfc-six
     nexuml-seed: "__SEED__"
-    nexuml-source-digest: "__SOURCE_DIGEST__"
+    nexuml-source-digest: "__SOURCE_SHORT__"
+  annotations:
+    nexuml.ika.rub.de/source-sha256: "__SOURCE_DIGEST__"
 spec:
   backoffLimit: 0
   template:
