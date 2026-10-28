@@ -156,6 +156,85 @@ interpreting small differences as definitive causal effects. The official
 FD003 test split has been inspected in prior work, so this ablation is
 exploratory and must not be used to select the final model on test errors.
 
+## Temporary Kubernetes placement (NEX-233 branch only)
+
+The existing site-specific Kubernetes `batch/v1 Job` template has an
+experiment-only adaptation at
+`.k8s/scenarios/job_rul_enhanced_cfc_fd003.yaml`. It consists of
+**three ordinary Kubernetes Jobs**, one per native `compare-six` seed.
+This is **not** a NexuML Kubernetes executor, not a core feature and
+**not intended to be merged into `main`**. The AudioSet templates are
+unchanged.
+
+Each job directly executes the standard resolved NexuML command:
+
+```text
+nexuml train --config .experiments/rul/enhanced-cfc/fd003/compare-six-s42.yaml
+```
+
+The other jobs use the corresponding `s43` and `s44` YAML files.
+There are no additional launch scripts or experiment environment
+variables. Kubernetes controls GPU placement and the job lifecycle.
+
+### Preconditions before applying the manifest
+
+1. The cluster's existing `juicefs` and `juicefs-prisma` PVCs and
+   `regcred` image pull secret must be available in the target namespace,
+   matching the original AudioSet manifest.
+2. The existing `juicefs` subpath `code/nexuml`, mounted at
+   `/workspace`, must contain the **NEX-233 feature-branch code**.
+   The `harbor.ika.rub.de/library/nexuml:latest` image is inherited from
+   the existing template; verify its installed editable environment is
+   compatible with this working tree. The normal image publishing workflow
+   only builds `main` and release revisions, so **do not assume `latest`
+   contains NEX-233**. If necessary, build a separate image from the feature
+   branch and change only the image tag in the temporary manifest.
+3. Required FD003 seed-42 upstream PatchFormer checkpoint, train-endpoint
+   normalizer, and prepared RUL data must already be available under the
+   paths resolved relative to `/workspace`. Prepare or copy them
+   **before launching multiple seeds**, to avoid simultaneous writes to
+   the same prepared-data file.
+4. Resolve all three scenario YAML files **from `/workspace` on the same
+   mounted filesystem**. The scenarios contain checkpoint callbacks with
+   absolute paths produced by `Path.resolve()`. A YAML file resolved on a
+   laptop under a different filesystem root is not portable unchanged.
+
+Prepare the three configs in that mounted branch workspace:
+
+```bash
+nexuml resolve maintenance-rul-enhanced-cfc-fd003-compare-six \
+  --output .experiments/rul/enhanced-cfc/fd003/compare-six-s42.yaml
+nexuml resolve maintenance-rul-enhanced-cfc-fd003-compare-six-s43 \
+  --output .experiments/rul/enhanced-cfc/fd003/compare-six-s43.yaml
+nexuml resolve maintenance-rul-enhanced-cfc-fd003-compare-six-s44 \
+  --output .experiments/rul/enhanced-cfc/fd003/compare-six-s44.yaml
+```
+
+Submit the three existing-style Kubernetes Jobs (from a machine with
+cluster access and the intended Kubernetes namespace):
+
+```bash
+kubectl -n YOUR_NAMESPACE apply \
+  -f .k8s/scenarios/job_rul_enhanced_cfc_fd003.yaml
+kubectl -n YOUR_NAMESPACE get jobs -l nexuml-study=rul-fd003-cfc-six
+kubectl -n YOUR_NAMESPACE logs -f job/nexuml-rul-fd003-cfc-six-s42
+```
+
+The jobs can run concurrently if three suitable GPUs are available; they
+otherwise remain pending until scheduled. Their checkpoints, TensorBoard
+logs, validation JSON files and three-seed summary persist on the shared
+workspace. Jobs have no automatic time-to-live or restart retries, so
+failed pods can be inspected without inadvertently restarting long fits.
+
+**Hardware compatibility:** The inherited CUDA image publishing workflow
+builds `linux/amd64`. The temporary manifest explicitly restricts
+scheduling to amd64 GPU nodes. In particular it will **not** schedule
+onto an ARM64 Grace Hopper GH200 node without an arm64-compatible image
+and a corresponding manifest adjustment.
+
+This workflow is limited to the NEX-233 experiment branch. It does not
+alter the public NexuML training/CLI contracts.
+
 ## Check locally
 
 ```bash
