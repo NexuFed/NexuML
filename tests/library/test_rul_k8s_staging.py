@@ -103,11 +103,18 @@ def test_render_uses_unique_native_seed_scenarios() -> None:
         # source snapshot; staged source and persistent data stay separate.
         assert "mountPath: /mnt/nexuml-source" in manifest
         assert "mountPath: /mnt/nexuml-experiments" in manifest
-        assert "mountPath: /mnt/nexuml-data" in manifest
+        assert "mountPath: /mnt/data" in manifest
+        assert "mountPath: /mnt/models" in manifest
+        assert "mountPath: /mnt/logs" in manifest
+        assert "NEXUML_DATA_ROOT" in manifest
+        assert "NEXUML_LOGS_ROOT" in manifest
+        assert "NEXUML_RUL_CHECKPOINT_ROOT" in manifest
+        assert "value: /mnt/models/rul/checkpoints" in manifest
+        assert "best_model_path" in manifest
         assert "mkdir -p /tmp/nexuml-run" in manifest
         assert "cp -R /mnt/nexuml-source/. /tmp/nexuml-run/" in manifest
         assert "ln -s /mnt/nexuml-experiments /tmp/nexuml-run/.experiments" in manifest
-        assert "ln -s /mnt/nexuml-data /tmp/nexuml-run/data" in manifest
+        assert "ln -s /mnt/data /tmp/nexuml-run/data" in manifest
         assert "mountPath: /workspace/.experiments" not in manifest
         assert "mountPath: /workspace/data" not in manifest
         assert "mountPath: /workspace\n" not in manifest
