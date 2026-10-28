@@ -156,84 +156,107 @@ interpreting small differences as definitive causal effects. The official
 FD003 test split has been inspected in prior work, so this ablation is
 exploratory and must not be used to select the final model on test errors.
 
-## Temporary Kubernetes placement (NEX-233 branch only)
+## Temporary Kubernetes execution — feature branch only
 
-The existing site-specific Kubernetes `batch/v1 Job` template has an
-experiment-only adaptation at
-`.k8s/scenarios/job_rul_enhanced_cfc_fd003.yaml`. It consists of
-**three ordinary Kubernetes Jobs**, one per native `compare-six` seed.
-This is **not** a NexuML Kubernetes executor, not a core feature and
-**not intended to be merged into `main`**. The AudioSet templates are
-unchanged.
+The three experimental Kubernetes Jobs in
+`.k8s/scenarios/job_rul_enhanced_cfc_fd003.yaml` are adaptations of the
+existing site-specific AudioSet `batch/v1 Job` template. They remain **only
+on NEX-233** and are **not intended for a merge into `main`**. No new
+NexuML execution backend, custom experiment environment variables or
+shell-based training runners were introduced.
 
-Each job directly executes the standard resolved NexuML command:
+### Avoid shadowing NexuML's editable installation
+
+The repository's Dockerfile uses `uv sync` inside `/workspace` and
+installs NexuML and its library from their workspace source directories.
+The original Kubernetes Job mounted the full JuiceFS `code/nexuml`
+subpath onto `/workspace`, hiding the source tree from the image.
+This could leave `/env/bin/nexuml` installed but make
+`import nexuml` fail.
+
+The corrected Jobs **retain the image's `/workspace/src` and
+`/workspace/library/src`** and mount only these shared JuiceFS paths:
+
+| PVC subpath | Container mount | Purpose |
+| --- | --- | --- |
+| `code/nexuml/.experiments` | `/workspace/.experiments` | Prepared models, checkpoints, resolved YAML, results |
+| `code/nexuml/data` | `/workspace/data` | Original NASA C-MAPSS data |
+
+The original `juicefs-prisma` data/log volume mounts are unchanged.
+The upstream seed-42 PatchFormer and endpoint-normalization artifacts
+must already be present at the paths expected by the scenarios.
+**Do not launch three simultaneous upstream preparation attempts.**
+
+### Build the NEX-233 image once
+
+The inherited Harbor `latest` image is not guaranteed to contain this
+feature branch. The Jobs now reference a dedicated tag:
+
+`harbor.ika.rub.de/library/nexuml:nex233-k8s`
+
+Build and push it from the **NEX-233 branch** (using a machine with Docker
+and permission to push to this registry):
+
+```bash
+git pull
+docker build \
+  -t harbor.ika.rub.de/library/nexuml:nex233-k8s .
+docker run --rm --entrypoint /env/bin/python \
+  harbor.ika.rub.de/library/nexuml:nex233-k8s \
+  -c "import nexuml, nexuml_library; print(nexuml.__file__)"
+docker push harbor.ika.rub.de/library/nexuml:nex233-k8s
+```
+
+The `docker run` command checks the installed package in the *unmounted
+image* before submitting Kubernetes work. Use `docker login
+harbor.ika.rub.de` if registry authentication is required. A digest-pinned
+image is preferable for final experiment provenance; the temporary tag
+here is intentionally separate from the `main` image.
+
+### Resolve and train using NexuML itself
+
+Each Job has a native NexuML **init container** which runs
+`nexuml resolve` against the same `/workspace` used by its training
+container. This avoids the nonportable absolute paths that would result
+from resolving a YAML on a developer's local `/workspaces/...` tree.
+
+The main container then runs exactly:
 
 ```text
 nexuml train --config .experiments/rul/enhanced-cfc/fd003/compare-six-s42.yaml
 ```
 
-The other jobs use the corresponding `s43` and `s44` YAML files.
-There are no additional launch scripts or experiment environment
-variables. Kubernetes controls GPU placement and the job lifecycle.
+The two other Jobs use seeds 43 and 44. All three share persistent output
+storage and can run concurrently if GPU capacity permits. Each requests
+one GPU, with no explicit CPU or RAM requests or limits, no GPU memory or
+model allowlists, and the original CUDA runtime major-version constraint.
+The jobs retain the `amd64` architecture restriction because the
+standard image is built for `linux/amd64`.
 
-### Preconditions before applying the manifest
-
-1. The cluster's existing `juicefs` and `juicefs-prisma` PVCs and
-   `regcred` image pull secret must be available in the target namespace,
-   matching the original AudioSet manifest.
-2. The existing `juicefs` subpath `code/nexuml`, mounted at
-   `/workspace`, must contain the **NEX-233 feature-branch code**.
-   The `harbor.ika.rub.de/library/nexuml:latest` image is inherited from
-   the existing template; verify its installed editable environment is
-   compatible with this working tree. The normal image publishing workflow
-   only builds `main` and release revisions, so **do not assume `latest`
-   contains NEX-233**. If necessary, build a separate image from the feature
-   branch and change only the image tag in the temporary manifest.
-3. Required FD003 seed-42 upstream PatchFormer checkpoint, train-endpoint
-   normalizer, and prepared RUL data must already be available under the
-   paths resolved relative to `/workspace`. Prepare or copy them
-   **before launching multiple seeds**, to avoid simultaneous writes to
-   the same prepared-data file.
-4. Resolve all three scenario YAML files **from `/workspace` on the same
-   mounted filesystem**. The scenarios contain checkpoint callbacks with
-   absolute paths produced by `Path.resolve()`. A YAML file resolved on a
-   laptop under a different filesystem root is not portable unchanged.
-
-Prepare the three configs in that mounted branch workspace:
+### Redeploy failed or previously pending Jobs
 
 ```bash
-nexuml resolve maintenance-rul-enhanced-cfc-fd003-compare-six \
-  --output .experiments/rul/enhanced-cfc/fd003/compare-six-s42.yaml
-nexuml resolve maintenance-rul-enhanced-cfc-fd003-compare-six-s43 \
-  --output .experiments/rul/enhanced-cfc/fd003/compare-six-s43.yaml
-nexuml resolve maintenance-rul-enhanced-cfc-fd003-compare-six-s44 \
-  --output .experiments/rul/enhanced-cfc/fd003/compare-six-s44.yaml
-```
+kubectl -n lbecker delete jobs \
+  -l nexuml-study=rul-fd003-cfc-six \
+  --cascade=foreground --wait=true
 
-Submit the three existing-style Kubernetes Jobs (from a machine with
-cluster access and the intended Kubernetes namespace):
-
-```bash
-kubectl -n YOUR_NAMESPACE apply \
+kubectl -n lbecker apply \
   -f .k8s/scenarios/job_rul_enhanced_cfc_fd003.yaml
-kubectl -n YOUR_NAMESPACE get jobs -l nexuml-study=rul-fd003-cfc-six
-kubectl -n YOUR_NAMESPACE logs -f job/nexuml-rul-fd003-cfc-six-s42
+
+kubectl -n lbecker get pods \
+  -l nexuml-study=rul-fd003-cfc-six -o wide
+
+kubectl -n lbecker logs job/nexuml-rul-fd003-cfc-six-s42 \
+  -c resolve-config
+
+kubectl -n lbecker logs -f \
+  job/nexuml-rul-fd003-cfc-six-s42 -c nexuml
 ```
 
-The jobs can run concurrently if three suitable GPUs are available; they
-otherwise remain pending until scheduled. Their checkpoints, TensorBoard
-logs, validation JSON files and three-seed summary persist on the shared
-workspace. Jobs have no automatic time-to-live or restart retries, so
-failed pods can be inspected without inadvertently restarting long fits.
-
-**Hardware compatibility:** The inherited CUDA image publishing workflow
-builds `linux/amd64`. The temporary manifest explicitly restricts
-scheduling to amd64 GPU nodes. In particular it will **not** schedule
-onto an ARM64 Grace Hopper GH200 node without an arm64-compatible image
-and a corresponding manifest adjustment.
-
-This workflow is limited to the NEX-233 experiment branch. It does not
-alter the public NexuML training/CLI contracts.
+The validation-only per-seed and combined three-seed summary JSON files
+are written to the persistent `.experiments/rul/enhanced-cfc/fd003`
+directory. Kubernetes cluster credentials, PVC contents, image-push
+permissions, and real hardware availability must be verified on-site.
 
 ## Check locally
 
