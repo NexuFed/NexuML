@@ -115,7 +115,7 @@ def stage_snapshot(staging_root: Path, digest: str, *, dry_run: bool) -> Path:
     return target
 
 
-def render_manifest(seed: int, digest: str, source_subpath: str) -> str:
+def render_manifest(seed: int, digest: str, source_subpath: str, namespace: str = NAMESPACE) -> str:
     """Render one standard Kubernetes Job with the immutable source path."""
     if seed not in SEEDS:
         raise ValueError(f"unexpected RUL comparison seed: {seed}")
@@ -125,6 +125,7 @@ def render_manifest(seed: int, digest: str, source_subpath: str) -> str:
     )
     replacements = {
         "__SEED__": str(seed),
+        "__NAMESPACE__": namespace,
         "__SCENARIO__": scenario,
         "__SOURCE_DIGEST__": digest,
         "__STAGE_SUBPATH__": source_subpath,
@@ -179,7 +180,7 @@ def main() -> None:
     for seed in args.seeds:
         job = f"nexuml-rul-fd003-cfc-six-s{seed}"
         manifest = RENDERED / f"{job}.yaml"
-        manifest.write_text(render_manifest(seed, digest, subpath), encoding="utf-8")
+        manifest.write_text(render_manifest(seed, digest, subpath, args.namespace), encoding="utf-8")
         if args.dry_run:
             print(f"[dry-run] {job}: {manifest} (no source copy or cluster changes)")
             continue
