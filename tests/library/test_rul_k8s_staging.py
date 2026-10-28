@@ -92,7 +92,10 @@ def test_render_uses_unique_native_seed_scenarios() -> None:
         assert "nvidia.com/gpu: \"1\"" in manifest
         assert "namespace: lbecker" in manifest
         assert f"subPath: {source}" in manifest
+        assert 'nexuml-source-digest: "aaaaaaaaaaaa"' in manifest
+        assert 'nexuml.ika.rub.de/source-sha256: "' + digest + '"' in manifest
         assert "__SOURCE_DIGEST__" not in manifest
+        assert "__SOURCE_SHORT__" not in manifest
         assert "nvidia.com/gpu.memory" not in manifest
         assert "nvidia.com/gpu.product" not in manifest
         assert "mountPath: /tmp/nexuml-job-venv" in manifest
