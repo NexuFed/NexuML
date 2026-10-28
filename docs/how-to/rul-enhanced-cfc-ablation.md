@@ -167,49 +167,62 @@ shell-based training runners were introduced.
 
 ### Use the existing `latest` image without hiding its installation
 
-The experimental Jobs use the existing
-`harbor.ika.rub.de/library/nexuml:latest` image. No special
-feature-branch image is built or pushed.
+The Jobs use `harbor.ika.rub.de/library/nexuml:latest`. We do not
+publish a separate feature-branch image.
 
-The image's `/env/bin/nexuml` entry point uses a workspace-installed
-NexuML package. Mounting the entire `code/nexuml` JuiceFS tree over
-`/workspace` hid the installed source and caused
-`ModuleNotFoundError: No module named 'nexuml'`.
+The image's `/env/bin/nexuml` entrypoint uses a workspace-installed
+Python package. Mounting the JuiceFS project tree onto `/workspace`
+can hide the installed source, producing `No module named 'nexuml'`.
+Mounting an incomplete source directory onto `/workspace/src/nexuml`
+can likewise hide its `cli` package, producing
+`No module named 'nexuml.cli'`.
 
-To avoid that failure, the Jobs now mount **only the NEX-233 source
-packages** at the image's existing editable package directories,
-while preserving the rest of `/workspace` and `/env`:
+The corrected Jobs instead mount the **complete existing feature-branch
+checkout** from the JuiceFS `code/nexuml` subpath at
+`/mnt/nexuml-source` (read-only). Both the resolver and training
+containers set `PYTHONPATH` to:
 
-| Existing JuiceFS PVC subpath | Container mount | Purpose |
+```text
+/mnt/nexuml-source/src:/mnt/nexuml-source/library/src
+```
+
+This uses the shared NEX-233 source without obscuring the installed
+`/workspace` or the image's `/env` environment.
+
+| JuiceFS subpath | Container mount | Purpose |
 | --- | --- | --- |
-| `code/nexuml/src/nexuml` | `/workspace/src/nexuml` | NexuML Python package |
-| `code/nexuml/library/src/nexuml_library` | `/workspace/library/src/nexuml_library` | NEX-233 component/scenario definitions |
-| `code/nexuml/.experiments` | `/workspace/.experiments` | Configs, checkpoints, and output |
-| `code/nexuml/data` | `/workspace/data` | Dataset files |
+| `code/nexuml` | `/mnt/nexuml-source` | Feature-branch source (read-only) |
+| `code/nexuml/.experiments` | `/workspace/.experiments` | Configs, checkpoints, reports |
+| `code/nexuml/data` | `/workspace/data` | NASA C-MAPSS data |
 
-**Before running:** The two source-package paths in JuiceFS must
-contain the actual **NEX-233 feature-branch code**. The `latest`
-image supplies Python packages and their dependencies, but it may
-contain older `main` code. The mounted source paths override that
-code. The container cannot use the developer's local worktree unless
-its files have actually been copied/synced into these shared JuiceFS
-paths. Do not overwrite a shared `code/nexuml` checkout being used
-by another workload without coordinating access.
+A lightweight `verify-source` init container checks for the expected
+core CLI, NEX-233 scenario and comparison callback modules. If the
+shared checkout is absent, stale or incomplete, the Job fails with
+an explicit file-path error instead of a misleading Python import
+failure. It does not automatically clone, overwrite or upgrade code
+on the shared PVC.
 
-The `latest` image must also have compatible installed dependencies
-and editable workspace installation paths; it cannot be guaranteed
-from the repository Dockerfile alone that a previously published
-`latest` image matches those expectations. The first init-container
-`nexuml resolve` validates Python package discovery before training
-starts.
+**The checkout at JuiceFS `code/nexuml` must already contain the
+NEX-233 feature-branch source.** An unrelated local Git worktree does
+not automatically populate that volume. The `latest` image still
+supplies the Python environment; verify it has dependencies compatible
+with the feature-branch source.
 
-The upstream FD003 seed-42 PatchFormer checkpoint, endpoint
-normalization, and prepared RUL data must already exist under the
-shared paths. Do not launch three simultaneous preparation attempts.
+The Jobs retain `imagePullPolicy: IfNotPresent` to avoid re-downloading
+the multi-gigabyte `latest` image on nodes where it is already cached.
+A node without the image still has to pull it. An interrupted image
+download (`short read ... unexpected EOF`) is an independent
+registry/network/container-runtime issue: it cannot be fixed through
+the Python source mounts. Also note that cached `latest` images may
+be older than the remote tag.
+
+The upstream FD003 seed-42 PatchFormer checkpoint, endpoint normalization
+and prepared RUL data must already exist on shared storage. Do not
+launch three simultaneous preparation attempts.
 
 ### Resolve and train using NexuML itself
 
-Each Job has a native NexuML **init container** which runs
+After the source-validation init container, each Job has a native NexuML **init container** which runs
 `nexuml resolve` against the same `/workspace` used by its training
 container. This avoids the nonportable absolute paths that would result
 from resolving a YAML on a developer's local `/workspaces/...` tree.
@@ -239,6 +252,9 @@ kubectl -n lbecker apply \
 
 kubectl -n lbecker get pods \
   -l nexuml-study=rul-fd003-cfc-six -o wide
+
+kubectl -n lbecker logs job/nexuml-rul-fd003-cfc-six-s42 \
+  -c verify-source
 
 kubectl -n lbecker logs job/nexuml-rul-fd003-cfc-six-s42 \
   -c resolve-config
