@@ -80,7 +80,8 @@ spec:
               test ! -e /tmp/nexuml-run/.experiments
               test ! -e /tmp/nexuml-run/data
               ln -s /mnt/nexuml-experiments /tmp/nexuml-run/.experiments
-              ln -s /mnt/nexuml-data /tmp/nexuml-run/data
+              # RUL's literal data/cmapss path must reach the Prisma data mount.
+              ln -s /mnt/data /tmp/nexuml-run/data
               cd /tmp/nexuml-run
               test "$(cat NEX233_SOURCE_DIGEST.txt)" = "__SOURCE_DIGEST__"
               test -f src/nexuml/cli/main.py
@@ -157,9 +158,6 @@ spec:
             - name: juicefs
               mountPath: /mnt/nexuml-experiments
               subPath: code/nexuml/.experiments
-            - name: juicefs
-              mountPath: /mnt/nexuml-data
-              subPath: code/nexuml/data
             - name: juicefs-prisma
               mountPath: /mnt/data
               subPath: data
