@@ -37,6 +37,8 @@ spec:
         - name: juicefs-prisma
           persistentVolumeClaim:
             claimName: juicefs-prisma
+        - name: runtime-workspace
+          emptyDir: {}
         - name: runtime-venv
           emptyDir: {}
         - name: shared-mem
@@ -65,6 +67,11 @@ spec:
           args:
             - |
               set -euo pipefail
+              # Copy only the immutable, verified source snapshot to the
+              # ephemeral writable workspace. Persistent data mounts already
+              # exist here and must not be copied into or erased.
+              test "$(cat /mnt/nexuml-source/NEX233_SOURCE_DIGEST.txt)" = "__SOURCE_DIGEST__"
+              cp -a /mnt/nexuml-source/. /workspace/
               cd /workspace
               test "$(cat NEX233_SOURCE_DIGEST.txt)" = "__SOURCE_DIGEST__"
               test -f src/nexuml/cli/main.py
@@ -95,8 +102,10 @@ spec:
             limits:
               nvidia.com/gpu: "1"
           volumeMounts:
-            - name: juicefs
+            - name: runtime-workspace
               mountPath: /workspace
+            - name: juicefs
+              mountPath: /mnt/nexuml-source
               subPath: __STAGE_SUBPATH__
               readOnly: true
             - name: juicefs
