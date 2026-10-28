@@ -31,6 +31,7 @@ class PhysicalAICasesTest(unittest.TestCase):
         self.source_admission = self.g["_require_current_source"]
         self.module_inventory = self.g["_module_inventory"]
         self.source_identity = self.g["_source_identity"]
+        self.graphics_inventory = self.g["_graphics_inventory"]
         scratch = tempfile.TemporaryDirectory(prefix="physical-ai-cases-")
         self.addCleanup(scratch.cleanup)
         self.base = Path(scratch.name)
@@ -41,6 +42,7 @@ class PhysicalAICasesTest(unittest.TestCase):
             ATTEMPT_BASE=self.base,
             _source_identity=lambda: "tree-sha",
             _module_inventory=lambda: {},
+            _graphics_inventory=lambda: {"scope": "inert test inventory"},
             _object_store_observations=lambda: [
                 {
                     "pid": 79,
@@ -146,20 +148,38 @@ class PhysicalAICasesTest(unittest.TestCase):
             (source / filename).write_text(filename)
         (source / "src/module").mkdir()
         (source / "src/module/nested.py").write_text("sort by relative string, not Path components")
+        for name in ("tests/browser.cjs", "scripts/browser.js"):
+            (source / name).write_text("fixed browser source")
         expected = hashlib.sha256()
         names = [
             f"{directory}/module.py" for directory in ("src", "library/src", "tests", "scripts")
         ]
-        names += ["src/module/nested.py", "pyproject.toml", "library/pyproject.toml", "uv.lock"]
+        names += [
+            "src/module/nested.py",
+            "tests/browser.cjs",
+            "scripts/browser.js",
+            "pyproject.toml",
+            "library/pyproject.toml",
+            "uv.lock",
+        ]
         for name in sorted(names):
             expected.update(name.encode() + b"\0" + (source / name).read_bytes() + b"\0")
         with contextlib.chdir(source):
             initial = identity()
             self.assertEqual(initial, expected.hexdigest())
+            driver_identity = runpy.run_path(
+                str(SCRIPT.parents[2] / "scripts/physical_ai_acceptance.py")
+            )["source_identity"]
+            self.assertEqual(driver_identity(source), initial)
             (source / "README.md").write_text("not executable source")
             self.assertEqual(initial, identity())
             (source / "tests/module.py").write_text("changed fixture")
             self.assertNotEqual(initial, identity())
+            for name in ("tests/browser.cjs", "scripts/browser.js"):
+                previous = identity()
+                (source / name).write_text("changed executed browser fixture")
+                self.assertNotEqual(previous, identity())
+                self.assertEqual(driver_identity(source), identity())
         self.assertEqual(len(initial), 64)
 
     def test_unknown_case_and_arbitrary_options_block_without_subprocess(self):
@@ -239,7 +259,7 @@ class PhysicalAICasesTest(unittest.TestCase):
         self.patch_globals(**stages, _gpu_inventory=mock.Mock())
         with contextlib.chdir(source):
             expected_hash = self.source_identity()
-            for case in ("preflight", "regression", "recipe"):
+            for case in ("preflight", "regression", "recipe", "learning", "logging"):
                 for module in valid:
                     with self.subTest(case=case, module=module):
                         origins.update(valid)
@@ -362,6 +382,140 @@ class PhysicalAICasesTest(unittest.TestCase):
             self.assertEqual(receipt["stages"], [])
             self.assertIsNone(receipt.get("training_frames"))
 
+    def test_prepared_browser_dispatch_keeps_visual_gate_unverified(self):
+        self.guarded_root()
+        venv = self.base / "private-venv"
+        setup = venv / "browser-runtime/setup.json"
+        setup.parent.mkdir(parents=True)
+        setup.write_text('{"status":"success"}')
+        producer = {
+            "source_attempt": "/retained/producer",
+            "source_case_sha256": "a" * 64,
+            "source_guard_sha256": "b" * 64,
+            "logger_mode": "both",
+        }
+        profile = mock.Mock(
+            side_effect=lambda record, *args: record["checks"].update(
+                logger_ui_reconnaissance="PASS"
+            )
+        )
+        with (
+            mock.patch.object(sys, "prefix", str(venv)),
+            mock.patch("runpy.run_path", return_value={"run_browser": profile}),
+        ):
+            code, receipt = self.run_case("browser", producer)
+        self.assertEqual((code, receipt["status"]), (0, "PASS"))
+        self.assertTrue(all(value == "UNVERIFIED" for value in receipt["gates"].values()))
+        self.assertEqual(profile.call_args.args[2], producer)
+        self.assertEqual(
+            profile.call_args.args[4:],
+            tuple(self.g[name] for name in ("_stage", "_recovery", "_group_members")),
+        )
+
+    def test_prepared_browser_missing_identity_never_loads_probe(self):
+        self.guarded_root()
+        venv = self.base / "private-venv"
+        setup = venv / "browser-runtime/setup.json"
+        setup.parent.mkdir(parents=True)
+        setup.write_text('{"status":"success"}')
+        with (
+            mock.patch.object(sys, "prefix", str(venv)),
+            mock.patch("runpy.run_path") as load,
+        ):
+            code, receipt = self.run_case("browser")
+        self.assertEqual((code, receipt["status"]), (2, "BLOCKED"))
+        load.assert_not_called()
+        self.assertIn("producer", receipt["reason"])
+
+    def test_logging_failure_requires_qualified_source_and_prepared_browser(self):
+        self.guarded_root()
+        with mock.patch("runpy.run_path") as load:
+            code, receipt = self.run_case("logging-failure")
+        self.assertEqual((code, receipt["status"]), (2, "BLOCKED"))
+        load.assert_not_called()
+        self.assertEqual(receipt["stages"], [])
+
+    def test_logging_failure_observer_checks_cannot_promote_failed_job(self):
+        venv = self.base / "private-venv"
+        setup = venv / "browser-runtime/setup.json"
+        setup.parent.mkdir(parents=True)
+        setup.write_text('{"status":"success"}')
+        producer = {
+            "source_attempt": "/retained/producer",
+            "source_case_sha256": "a" * 64,
+            "source_guard_sha256": "b" * 64,
+        }
+        original = RuntimeError("original partial delivery CLI failed")
+
+        def observe(*args):
+            record, root, options = args[:3]
+            self.assertEqual(options, producer)
+            self.assertEqual(len(args), 8)
+            (root / "original-cli.log").write_text("MLFlowLogger failed after TensorBoard delivery")
+            record["stages"].append(
+                {"name": "logging-partial-delivery-evaluate", "status": "FAIL", "exit_code": 1}
+            )
+            record["checks"]["partial_delivery_native_failed_ui"] = "PASS"
+            raise original
+
+        self.guarded_root()
+        with (
+            mock.patch.object(sys, "prefix", str(venv)),
+            mock.patch("runpy.run_path", return_value={"run_logging_failure": observe}),
+        ):
+            code, receipt = self.run_case("logging-failure", producer)
+        self.assertEqual((code, receipt["status"]), (1, "FAIL"))
+        self.assertEqual(receipt["stages"][0]["exit_code"], 1)
+        self.assertEqual(receipt["checks"]["partial_delivery_native_failed_ui"], "PASS")
+        self.assertEqual(set(receipt["gates"].values()), {"UNVERIFIED"})
+        self.assertIn(
+            "original partial delivery CLI failed",
+            (self.root / "logging-failure-controller.log").read_text(),
+        )
+
+    def test_recorded_recipe_rejects_other_backends_before_any_cli_stage(self):
+        for recipe, selection, renderer in (
+            ("cartpole-ppo", "both", "egl"),
+            ("mujoco-reacher-ppo", "both", "osmesa"),
+            ("mujoco-humanoid-ppo", "gif", "egl"),
+            ("mujoco-reacher-ppo", "both", None),
+        ):
+            with self.subTest(recipe=recipe, renderer=renderer):
+                prepare = mock.Mock(return_value=SimpleNamespace(name=recipe))
+                stage = mock.Mock(side_effect=AssertionError("must not launch"))
+                with mock.patch.dict(self.g, _prepare_recipe=prepare, _stage=stage):
+                    with self.assertRaisesRegex(self.g["Blocked"], "explicitly selected"):
+                        self.g["_recipe"](
+                            {},
+                            self.root,
+                            self.config,
+                            {"recording": selection},
+                            {"MUJOCO_GL": renderer},
+                        )
+                stage.assert_not_called()
+
+    def test_browser_controller_failure_has_private_traceback_and_preserves_primary(self):
+        self.root.mkdir()
+        original = RuntimeError("original private server readiness failure")
+        options = {
+            key: "fixed" for key in ("source_attempt", "source_case_sha256", "source_guard_sha256")
+        }
+        profile = mock.Mock(side_effect=original)
+        with mock.patch("runpy.run_path", return_value={"run_browser": profile}):
+            with self.assertRaises(RuntimeError) as caught:
+                self.g["_browser"]({}, self.root, options, {})
+            self.assertIs(caught.exception, original)
+            log = self.root / "browser-controller-failure.log"
+            self.assertIn(
+                "RuntimeError: original private server readiness failure", log.read_text()
+            )
+            log.unlink()
+            with mock.patch.object(Path, "open", side_effect=OSError("diagnostic storage failed")):
+                with self.assertRaises(RuntimeError) as caught:
+                    self.g["_browser"]({}, self.root, options, {})
+            self.assertIs(caught.exception, original)
+            self.assertTrue(any("diagnostic also failed" in note for note in original.__notes__))
+
     def test_root_absolute_contained_not_symlink_escape_and_never_reused(self):
         for bad in (Path("relative"), self.base, self.base.parent / "outside"):
             with self.assertRaises(ValueError):
@@ -457,7 +611,8 @@ class PhysicalAICasesTest(unittest.TestCase):
         ):
             code, receipt = self.run_case("regression", {"suite": "focused"})
         self.assertEqual((code, receipt["status"]), (1, "FAIL"))
-        self.assertEqual(calls[0][0][3:6], list(self.g["FOCUSED_TESTS"]))
+        selected = self.g["FOCUSED_TESTS"]
+        self.assertEqual(calls[0][0][3 : 3 + len(selected)], list(selected))
         self.assertEqual(receipt["stages"][0]["exit_code"], 9)
         self.assertEqual(receipt["regression"]["full_suite_gate"], "UNVERIFIED")
         self.assertEqual(
@@ -492,6 +647,79 @@ class PhysicalAICasesTest(unittest.TestCase):
         )
         self.assertEqual(receipt["checks"]["static"], "PASS")
         self.assertEqual(receipt["regression"]["full_suite_gate"], "UNVERIFIED")
+        self.assertTrue(all(value == "UNVERIFIED" for value in receipt["gates"].values()))
+
+    def test_native_state_suite_keeps_gpu_and_requires_each_real_oracle(self):
+        self.guarded_root()
+
+        def stage(record, name, argv, env):
+            self.assertEqual(name, "native-state")
+            self.assertEqual(env["CUDA_VISIBLE_DEVICES"], "0")
+            self.assertEqual(env["NEXUML_RUN_SIMULATOR_TESTS"], "1")
+            self.assertEqual(env["NEXUML_RUN_SYSTEM_TESTS"], "0")
+            self.assertEqual(argv[3:9], list(self.g["NATIVE_STATE_TESTS"]))
+            names = [selector.rsplit("::", 1)[1] for selector in self.g["NATIVE_STATE_TESTS"]]
+            (self.root / "native-state-junit.xml").write_text(
+                "<testsuites><testsuite>"
+                + "".join(f'<testcase name="{name}"/>' for name in names)
+                + "</testsuite></testsuites>"
+            )
+
+        self.patch_globals(_stage=stage)
+        with mock.patch.dict(os.environ, CUDA_VISIBLE_DEVICES="0"):
+            code, receipt = self.run_case("regression", {"suite": "native-state"})
+        self.assertEqual(code, 0)
+        self.assertTrue(receipt["regression"]["native_proof"])
+        self.assertEqual(receipt["checks"]["native_state_oracles"], "PASS")
+        self.assertEqual(receipt["regression"]["full_suite_gate"], "UNVERIFIED")
+        self.assertTrue(all(value == "UNVERIFIED" for value in receipt["gates"].values()))
+
+    def test_native_state_suite_never_counts_skipped_or_missing_tests(self):
+        for skipped in (False, True):
+            with self.subTest(skipped=skipped):
+                self.root = self.base / f"native-state-{skipped}"
+                self.guarded_root()
+
+                def stage(*args):
+                    names = [s.rsplit("::", 1)[1] for s in self.g["NATIVE_STATE_TESTS"]]
+                    bodies = (
+                        [f'<testcase name="{name}"><skipped/></testcase>' for name in names]
+                        if skipped
+                        else []
+                    )
+                    (self.root / "native-state-junit.xml").write_text(
+                        "<testsuites><testsuite>" + "".join(bodies) + "</testsuite></testsuites>"
+                    )
+
+                self.patch_globals(_stage=stage)
+                code, receipt = self.run_case("regression", {"suite": "native-state"})
+                self.assertEqual((code, receipt["status"]), (1, "FAIL"))
+                self.assertFalse(receipt["regression"]["native_proof"])
+                self.assertNotIn("native_state_oracles", receipt["checks"])
+
+    def test_native_sensor_suite_requires_exact_executed_owner_and_scene_oracles(self):
+        self.guarded_root()
+
+        def stage(record, name, argv, env):
+            self.assertEqual(name, "native-sensors")
+            self.assertEqual(env["NEXUML_RUN_SIMULATOR_TESTS"], "1")
+            selected = self.g["NATIVE_SENSOR_TESTS"]
+            self.assertEqual(argv[3 : 3 + len(selected)], list(selected))
+            self.assertEqual(len(selected), 13)
+            self.assertIn("--maxfail=1", argv)
+            names = [selector.rsplit("::", 1)[1] for selector in self.g["NATIVE_SENSOR_TESTS"]]
+            (self.root / "native-sensors-junit.xml").write_text(
+                "<testsuites><testsuite>"
+                + "".join(f'<testcase name="{name}"/>' for name in names)
+                + "</testsuite></testsuites>"
+            )
+
+        self.patch_globals(_stage=stage)
+        code, receipt = self.run_case("regression", {"suite": "native-sensors"})
+        self.assertEqual(code, 0)
+        self.assertTrue(receipt["regression"]["native_proof"])
+        self.assertEqual(receipt["checks"]["native_sensor_oracles"], "PASS")
+        self.assertNotIn("native_state_oracles", receipt["checks"])
         self.assertTrue(all(value == "UNVERIFIED" for value in receipt["gates"].values()))
 
     def test_declared_python_suites_reuse_guarded_profile_and_preserve_gpu_visibility(self):
@@ -631,6 +859,88 @@ class PhysicalAICasesTest(unittest.TestCase):
         self.assertEqual((code, receipt["gates"]["C"]), (1, "FAIL"))
         stage.assert_called_once()
 
+    def test_learning_reuses_fixed_profile_after_worker_admission_and_preserves_failures(self):
+        self.guarded_root()
+        profile = mock.Mock(side_effect=AssertionError("controlled learning failure"))
+        with mock.patch("runpy.run_path", return_value={"run_learning": profile}):
+            code, receipt = self.run_case("learning")
+        self.assertEqual((code, receipt["status"], receipt["gates"]["L"]), (1, "FAIL", "FAIL"))
+        self.assertEqual(receipt["gates"]["C"], "UNVERIFIED")
+        self.g["_require_current_source"].assert_called_once()
+        args = profile.call_args.args
+        self.assertEqual(args[1], self.root)
+        self.assertEqual(args[2]["TMPDIR"], "/tmp/ray")
+        self.assertEqual(
+            args[3:],
+            tuple(
+                self.g[name]
+                for name in (
+                    "_prepare_recipe",
+                    "_stage",
+                    "_checkpoint",
+                    "_validate_policy",
+                    "_evaluation_metrics",
+                )
+            ),
+        )
+
+    def test_learning_rejects_arbitrary_options_before_loading_fixed_profile(self):
+        with mock.patch("runpy.run_path") as load:
+            code, receipt = self.run_case("learning", {"frames": "128"})
+        self.assertEqual((code, receipt["status"]), (2, "BLOCKED"))
+        load.assert_not_called()
+
+    def test_private_dependency_setup_receipt_is_retained_and_hashed(self):
+        self.guarded_root()
+        venv = self.base / "private-venv"
+        setup = venv / "native-runtime/setup.json"
+        setup.parent.mkdir(parents=True)
+        setup.write_text('{"status": "success", "packages": []}')
+        browser = venv / "browser-runtime/setup.json"
+        browser.parent.mkdir()
+        browser.write_text('{"status": "success", "assets": []}')
+        self.patch_globals(_preflight=mock.Mock())
+        with mock.patch.object(sys, "prefix", str(venv)):
+            code, receipt = self.run_case("preflight")
+        self.assertEqual(code, 0)
+        retained = self.root / "native-setup.json"
+        self.assertEqual(retained.read_bytes(), setup.read_bytes())
+        self.assertEqual(receipt["native_setup_sha256"], self.g["_sha256"](retained))
+        self.assertIn(str(retained), [artifact["path"] for artifact in receipt["artifacts"]])
+        browser_retained = self.root / "browser-setup.json"
+        self.assertEqual(browser_retained.read_bytes(), browser.read_bytes())
+        self.assertEqual(receipt["browser_setup_sha256"], self.g["_sha256"](browser_retained))
+
+    def test_logging_fixed_profile_failure_preserves_unqualified_gates(self):
+        self.guarded_root()
+        profile = mock.Mock(side_effect=RuntimeError("controlled logger failure"))
+        with mock.patch("runpy.run_path", return_value={"run_logging": profile}):
+            code, receipt = self.run_case("logging")
+        self.assertEqual((code, receipt["status"]), (1, "FAIL"))
+        self.assertTrue(all(value == "UNVERIFIED" for value in receipt["gates"].values()))
+        self.assertNotIn("logger_payloads", receipt["checks"])
+        args = profile.call_args.args
+        self.assertEqual(args[1], self.root)
+        self.assertEqual(
+            args[3:],
+            tuple(
+                self.g[name]
+                for name in (
+                    "_prepare_recipe",
+                    "_stage",
+                    "_checkpoint",
+                    "_validate_policy",
+                    "_evaluation_metrics",
+                )
+            ),
+        )
+
+    def test_logging_rejects_options_before_loading_profile(self):
+        with mock.patch("runpy.run_path") as load:
+            code, receipt = self.run_case("logging", {"command": "arbitrary"})
+        self.assertEqual((code, receipt["status"]), (2, "BLOCKED"))
+        load.assert_not_called()
+
     def test_metrics_require_observed_finite_values(self):
         log = self.base / "evaluation.log"
         for text in ("Evaluation complete!", "Policy evaluation (frame step 64): {}"):
@@ -641,6 +951,40 @@ class PhysicalAICasesTest(unittest.TestCase):
         self.assertEqual(self.g["_evaluation_metrics"](log), {"return": 2.0, "length": 3})
         with self.assertRaisesRegex(AssertionError, "frame label"):
             self.g["_evaluation_metrics"](log, expected_frames=128)
+
+    def test_graphics_inventory_reads_only_bounded_metadata_without_loading_driver(self):
+        icds = self.base / "usr/share/vulkan/icd.d"
+        icds.mkdir(parents=True)
+        manifest = {
+            "ICD": {"library_path": "libGLX_nvidia.so.0", "api_version": "1.3.0"},
+            "ignored": "not-retained",
+        }
+        (icds / "nvidia_icd.json").write_text(json.dumps(manifest))
+        libraries = self.base / "usr/lib/x86_64-linux-gnu"
+        libraries.mkdir(parents=True)
+        (libraries / "libGLX_nvidia.so.0").write_bytes(b"inert metadata fixture, never loaded")
+        with (
+            mock.patch.dict(os.environ, {"NVIDIA_DRIVER_CAPABILITIES": "compute,utility"}),
+            mock.patch.object(self.g["subprocess"], "run") as launch,
+        ):
+            result = self.graphics_inventory(self.base)
+        self.assertIn("UNVERIFIED", result["scope"])
+        self.assertEqual(result["driver_capabilities"], "compute,utility")
+        self.assertEqual(result["manifests"][0]["library_path"], "libGLX_nvidia.so.0")
+        self.assertEqual(len(result["libraries"]), 1)
+        self.assertNotIn("not-retained", str(result))
+        launch.assert_not_called()
+
+    def test_graphics_inventory_retains_manifest_errors_and_caps_entries(self):
+        icds = self.base / "etc/vulkan/icd.d"
+        icds.mkdir(parents=True)
+        for index in range(35):
+            (icds / f"bad-{index}.json").write_text("{" * 65537 if index == 0 else "[]")
+        result = self.graphics_inventory(self.base)
+        self.assertTrue(result["truncated"])
+        self.assertEqual(len(result["manifests"]), 32)
+        self.assertTrue(all(entry["observation"] == "ValueError" for entry in result["manifests"]))
+        self.assertFalse(result["libraries"])
 
     def test_preflight_base_pass_keeps_native_and_private_data_blocked(self):
         self.guarded_root()
@@ -676,6 +1020,44 @@ class PhysicalAICasesTest(unittest.TestCase):
         self.assertTrue(receipt["durable_output"]["writable"])
         self.assertEqual(receipt["gpu"]["nvidia_smi_rows"], ["GPU-mocked-uuid, mock-driver"])
         self.assertTrue(all(state == "UNVERIFIED" for state in receipt["gates"].values()))
+
+    def test_preflight_public_s3_reader_is_fixed_offline_and_does_not_pass_frozen_so101(self):
+        self.guarded_root()
+        invocations = []
+
+        def stage(record, name, argv, env):
+            invocations.append((name, argv, env))
+            if name == "gpu-driver":
+                (self.root / "gpu-driver.log").write_text("GPU-mocked-uuid, mock-driver\n")
+            elif name == "public-so101-s3-reader":
+                Path(argv[-1]).write_text(json.dumps({"files_sha256_verified": 15}))
+            else:
+                self.fail("unexpected preflight stage")
+
+        self.patch_globals(
+            _module_inventory=lambda: {
+                name: {"available": True} for name in ("nexuml", "nexuml_library", "torch")
+            },
+            _gpu_inventory=lambda: {"visible_count": 1},
+            _stage=stage,
+        )
+        probe = runpy.run_path(str(SCRIPT.with_name("physical_ai_public_data.py")))
+        with (
+            mock.patch.object(self.g["shutil"], "which", return_value="/mock/nvidia-smi"),
+            mock.patch.object(
+                self.g["os"],
+                "statvfs",
+                return_value=SimpleNamespace(f_blocks=100, f_bavail=90, f_bfree=90, f_frsize=4096),
+            ),
+        ):
+            code, receipt = self.run_case("preflight", {"data_root": probe["SOURCE_URI"]})
+        self.assertEqual((code, receipt["status"]), (0, "PASS"))
+        self.assertEqual(receipt["external_data"]["files_sha256_verified"], 15)
+        self.assertEqual(receipt["family_prerequisites"]["so101"]["state"], "BLOCKED")
+        self.assertTrue(all(state == "UNVERIFIED" for state in receipt["gates"].values()))
+        self.assertEqual(invocations[-1][0], "public-so101-s3-reader")
+        self.assertEqual(invocations[-1][2]["CUDA_VISIBLE_DEVICES"], "")
+        self.assertEqual(invocations[-1][2]["HF_HUB_OFFLINE"], "1")
 
     def test_preflight_gpu_block_does_not_drop_family_rows_or_probe_private_data_implicitly(self):
         self.guarded_root()
@@ -1008,7 +1390,7 @@ class PhysicalAICasesTest(unittest.TestCase):
                 "dirpath": str(self.root / "checkpoints"),
                 "every_n_train_steps": 1,
                 "save_top_k": -1,
-                "save_last": True,
+                "save_last": False,
                 "filename": "step-{step}",
             },
         )

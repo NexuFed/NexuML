@@ -89,6 +89,157 @@ class Client:
         self.stopped.append(identity)
 
 
+@pytest.mark.parametrize("native_status", ["SUCCEEDED", "FAILED", "STOPPED"])
+def test_console_links_case_attempt_candidate_and_terminal_files_without_inventing_phase(
+    driver, monkeypatch, tmp_path, capsys, native_status
+):
+    functions, _ = driver
+    client = Client(outcome=native_status)
+    monkeypatch.setattr("nexuml.execution.run", client.submit)
+    case = attempts(1)[0]
+    case["scenario"].execution.runtime_env = {"env_vars": {"TOKEN": "never-print-secret"}}
+    case["options"]["unrelated"] = "never-print-option"
+    output = tmp_path / "result"
+    summary = functions["run_campaign"]([case], client, output)
+    text = capsys.readouterr().out
+    submitted = [
+        json.loads(line.partition("=")[2])
+        for line in text.splitlines()
+        if line.startswith("NEXUML_CASE_SUBMITTED=")
+    ]
+    terminal = [
+        json.loads(line.partition("=")[2])
+        for line in text.splitlines()
+        if line.startswith("NEXUML_CASE_TERMINAL=")
+    ]
+    assert len(submitted) == len(terminal) == 1
+    for record in (submitted[0], terminal[0]):
+        assert record["job_id"] == summary["results"][0]["job_id"]
+        assert record["case"] == case["case"]
+        assert record["attempt_root"] == case["attempt_root"]
+        assert record["source_tree_sha256"] == "tree"
+    assert submitted[0]["execution_phase"] == "unknown until observed in worker logs"
+    assert submitted[0]["requested_pool"] == "pool_gpu_workers"
+    assert submitted[0]["requested_gpus"] == 1
+    assert submitted[0]["wall_seconds"] == 10
+    assert "native_status" not in submitted[0]
+    assert terminal[0]["native_status"] == native_status
+    assert terminal[0]["status"] == ("passed" if native_status == "SUCCEEDED" else "failed")
+    assert json.loads(Path(terminal[0]["receipt_path"]).read_text()) == summary["results"][0]
+    assert Path(terminal[0]["log_path"]).read_text() == client.get_job_logs(terminal[0]["job_id"])
+    assert "never-print" not in text and "TOKEN" not in text
+
+
+@pytest.mark.parametrize("logger_mode", [None, "separate", "both"])
+def test_browser_forwards_only_qualified_producer_identity(
+    driver, monkeypatch, tmp_path, logger_mode
+):
+    functions, _ = driver
+    client = Client()
+    monkeypatch.setattr("nexuml.execution.run", client.submit)
+    case = attempts(1)[0]
+    case["case"] = "browser"
+    producer = {
+        "source_attempt": "/approved/producer",
+        "source_case_sha256": "a" * 64,
+        "source_guard_sha256": "b" * 64,
+    }
+    if logger_mode is not None:
+        producer["logger_mode"] = logger_mode
+    case["options"].update(**producer, command="must never reach the worker")
+    functions["run_campaign"]([case], client, tmp_path / "result")
+    assert client.requests[0]["case_options"] == producer
+
+
+@pytest.mark.parametrize("mode", ["separate", "both"])
+def test_browser_mode_cli_is_explicit_and_dry_run_stays_inert(
+    driver, monkeypatch, tmp_path, capsys, mode
+):
+    from nexuml.execution.definitions import RayJobsSDKExecution
+
+    functions, _ = driver
+    certificate = tmp_path / "ca.pem"
+    certificate.write_text("inert CA fixture")
+    output = tmp_path / "not-created"
+    monkeypatch.setattr("nexuml.execution.load_ray_job_profile", lambda _: RayJobsSDKExecution())
+    monkeypatch.setitem(functions["main"].__globals__, "source_identity", lambda _: "tree")
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "physical_ai_acceptance.py",
+            "--case",
+            "browser",
+            "--browser-mode",
+            mode,
+            "--ca",
+            str(certificate),
+            "--output",
+            str(output),
+        ],
+    )
+    functions["main"]()
+    plan = json.loads(capsys.readouterr().out)
+    assert plan["attempts"][0]["options"]["logger_mode"] == mode
+    assert not output.exists()
+
+
+def test_browser_mode_cli_cannot_select_other_cases(driver, monkeypatch, tmp_path, capsys):
+    functions, _ = driver
+    certificate = tmp_path / "ca.pem"
+    certificate.write_text("inert CA fixture")
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "physical_ai_acceptance.py",
+            "--case",
+            "preflight",
+            "--browser-mode",
+            "both",
+            "--ca",
+            str(certificate),
+            "--output",
+            str(tmp_path / "output"),
+        ],
+    )
+    with pytest.raises(SystemExit) as result:
+        functions["main"]()
+    assert result.value.code == 2
+    assert "requires a browser case" in capsys.readouterr().err
+
+
+def test_logging_failure_forwards_only_authenticated_source_inputs(driver, monkeypatch, tmp_path):
+    functions, _ = driver
+    client = Client()
+    monkeypatch.setattr("nexuml.execution.run", client.submit)
+    case = attempts(1)[0]
+    case["case"] = "logging-failure"
+    producer = {
+        "source_attempt": "/approved/producer",
+        "source_case_sha256": "a" * 64,
+        "source_guard_sha256": "b" * 64,
+    }
+    case["options"].update(**producer, command="never forward", logger_mode="both")
+    functions["run_campaign"]([case], client, tmp_path / "result")
+    assert client.requests[0]["case"] == "logging-failure"
+    assert client.requests[0]["case_options"] == producer
+
+
+def test_recipe_forwards_only_fixed_recording_selection(driver, monkeypatch, tmp_path):
+    functions, _ = driver
+    client = Client()
+    monkeypatch.setattr("nexuml.execution.run", client.submit)
+    case = attempts(1)[0]
+    case["case"] = "recipe"
+    case["options"].update(recipe="mujoco-reacher-ppo", recording="both", command="forbidden")
+    functions["run_campaign"]([case], client, tmp_path / "result")
+    assert client.requests[0]["case_options"] == {
+        "recipe": "mujoco-reacher-ppo",
+        "recording": "both",
+    }
+
+
 def test_pending_jobs_occupy_slots_and_success_requires_terminal_receipt(
     driver, monkeypatch, tmp_path
 ):

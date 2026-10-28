@@ -12,6 +12,7 @@ import hashlib
 import importlib.metadata
 import importlib.util
 import json
+from itertools import islice
 import math
 import os
 from pathlib import Path
@@ -26,7 +27,20 @@ import tempfile
 import time
 
 ATTEMPT_BASE = Path("/mnt/data/nexuml-qualification")
-CASES = frozenset({"preflight", "regression", "package", "recipe", "so101", "browser", "recovery"})
+CASES = frozenset(
+    {
+        "preflight",
+        "regression",
+        "package",
+        "recipe",
+        "so101",
+        "browser",
+        "recovery",
+        "learning",
+        "logging",
+        "logging-failure",
+    }
+)
 RECIPES = frozenset(
     {
         "cartpole-ppo",
@@ -56,6 +70,44 @@ FOCUSED_TESTS = (
     "tests/execution/test_definitions.py",
     "tests/execution/test_service.py",
     "tests/execution/test_physical_ai_cases.py",
+    "tests/execution/test_checkpoint_json_metadata.py",
+    "tests/execution/test_physical_ai_logging.py",
+    "tests/execution/test_physical_ai_browser_setup.py",
+    "tests/execution/test_physical_ai_browser.py",
+    "tests/execution/test_physical_ai_browser_cancel.py",
+    "tests/execution/test_physical_ai_mujoco_recording.py",
+    "tests/execution/test_physical_ai_guard.py",
+    "tests/execution/test_sensor_probe_diagnostics.py",
+    "tests/core/test_export.py",
+    "tests/core/test_policy_evaluation_cli.py",
+    "tests/core/test_legacy_policy_provenance.py",
+    "tests/core/test_rl_evaluation.py",
+)
+NATIVE_STATE_TESTS = (
+    "tests/core/test_isaaclab_integration.py::test_native_manager_and_direct_transition_oracle[isaacsim_physx-Isaac-Cartpole]",
+    "tests/core/test_isaaclab_integration.py::test_native_manager_and_direct_transition_oracle[newton_mjwarp-Isaac-Cartpole]",
+    "tests/core/test_isaaclab_integration.py::test_native_so101_signed_controls_and_held_outcomes",
+    "tests/core/test_isaaclab_integration.py::test_native_checkpoint_remaining_budget_export_and_scalar_replay[custom]",
+    "tests/core/test_isaaclab_integration.py::test_native_checkpoint_remaining_budget_export_and_scalar_replay[franka]",
+    "tests/core/test_isaaclab_integration.py::test_native_checkpoint_remaining_budget_export_and_scalar_replay[so101]",
+)
+NATIVE_SENSOR_TESTS = (
+    "tests/core/test_isaaclab_integration.py::test_native_categorical_class_force_and_signed_motion",
+    "tests/core/test_isaaclab_integration.py::test_native_multimodal_values_terminal_scene_and_history[package]",
+    "tests/core/test_isaaclab_integration.py::test_native_multimodal_values_terminal_scene_and_history[external]",
+    "tests/core/test_isaaclab_integration.py::test_native_terminal_pixels_match_the_ending_scene_not_reset_scene",
+    *(
+        "tests/core/test_isaaclab_integration.py::test_native_checkpoint_remaining_budget_export_and_scalar_replay"
+        f"[{reference}]"
+        for reference in (
+            "categorical",
+            *(
+                f"{family}-{owner}"
+                for family in ("rgb", "depth", "segmentation", "mixed")
+                for owner in ("package", "external")
+            ),
+        )
+    ),
 )
 _CLI = (sys.executable, "-m", "nexuml.cli.main")
 
@@ -73,7 +125,8 @@ def _source_identity():
     paths = {
         path
         for directory in ("src", "library/src", "tests", "scripts")
-        for path in Path(directory).rglob("*.py")
+        for pattern in ("*.py", "*.js", "*.cjs")
+        for path in Path(directory).rglob(pattern)
         if path.is_file() and "__pycache__" not in path.parts
     }
     paths.update(Path(name) for name in ("pyproject.toml", "library/pyproject.toml", "uv.lock"))
@@ -450,7 +503,63 @@ def _object_store_observations(proc=Path("/proc")):
     return observations
 
 
+def _graphics_inventory(root=Path("/")):
+    result = {
+        "scope": "file metadata only; Vulkan/RTX startup UNVERIFIED",
+        "driver_capabilities": os.environ.get("NVIDIA_DRIVER_CAPABILITIES"),
+        "icd_override_configured": bool(
+            os.environ.get("VK_DRIVER_FILES") or os.environ.get("VK_ICD_FILENAMES")
+        ),
+        "manifests": [],
+        "libraries": [],
+        "truncated": False,
+    }
+    for directory in ("etc/vulkan/icd.d", "usr/share/vulkan/icd.d", "usr/local/share/vulkan/icd.d"):
+        files = list(islice((root / directory).glob("*.json"), 33))
+        result["truncated"] |= len(files) > 32
+        for path in files[:32]:
+            entry = {"path": str(path)}
+            try:
+                with path.open("rb") as stream:
+                    payload = stream.read(65537)
+                if len(payload) > 65536:
+                    raise ValueError("oversized ICD manifest")
+                data = json.loads(payload)
+                if not isinstance(data, dict) or not isinstance(data.get("ICD"), dict):
+                    raise ValueError("unsupported ICD manifest")
+                entry.update(sha256=hashlib.sha256(payload).hexdigest())
+                for key in ("library_path", "api_version"):
+                    value = data["ICD"].get(key)
+                    entry[key] = value if isinstance(value, str) and len(value) <= 4096 else None
+            except (OSError, ValueError) as error:
+                entry["observation"] = type(error).__name__
+            result["manifests"].append(entry)
+    for directory in (
+        "usr/lib/x86_64-linux-gnu",
+        "lib/x86_64-linux-gnu",
+        "usr/local/nvidia/lib64",
+        "usr/lib64",
+    ):
+        for pattern in (
+            "libGLX_nvidia.so*",
+            "libEGL_nvidia.so*",
+            "libvulkan.so*",
+            "libnvidia-glvkspirv.so*",
+        ):
+            files = list(islice((root / directory).glob(pattern), 33))
+            result["truncated"] |= len(files) > 32
+            for path in files[:32]:
+                entry = {"path": str(path)}
+                try:
+                    entry.update(resolved=str(path.resolve(strict=True)), bytes=path.stat().st_size)
+                except (OSError, RuntimeError) as error:
+                    entry["observation"] = type(error).__name__
+                result["libraries"].append(entry)
+    return result
+
+
 def _preflight(record, root, options, env):
+    record["graphics_inventory"] = _graphics_inventory()
     record["licenses"] = {
         name: os.environ.get(name) in {"Y", "YES", "1"}
         for name in ("ACCEPT_EULA", "OMNI_KIT_ACCEPT_EULA")
@@ -556,6 +665,21 @@ def _preflight(record, root, options, env):
     )
     # nvidia-smi can enumerate host GPUs: retain its rows without claiming allocation mapping.
     record["gpu"]["nvidia_smi_rows"] = (root / "gpu-driver.log").read_text().splitlines()
+    if data is not None and data.startswith("s3://"):
+        import runpy
+
+        probe = Path(__file__).with_name("physical_ai_public_data.py")
+        profile = runpy.run_path(str(probe))
+        if data != profile["SOURCE_URI"]:
+            raise Blocked("S3 preflight accepts only the pinned public SO-101 snapshot")
+        result = root / "public-data.json"
+        _stage(
+            record,
+            "public-so101-s3-reader",
+            [sys.executable, str(probe), str(result)],
+            {**env, "CUDA_VISIBLE_DEVICES": "", "HF_HUB_OFFLINE": "1", "HF_DATASETS_OFFLINE": "1"},
+        )
+        record["external_data"] = json.loads(result.read_text())
 
 
 def _package(record, root, options, env):
@@ -592,7 +716,9 @@ def _recovery(record, root, options, env):
         not source.is_absolute()
         or source.parent.parent != ATTEMPT_BASE
         or not re.fullmatch(r"[0-9a-f]{32}", source.parent.name)
-        or not re.fullmatch(r"(?:recipe|package|preflight|regression)-[0-9a-f]{32}", source.name)
+        or not re.fullmatch(
+            r"(?:recipe|package|preflight|regression|logging)-[0-9a-f]{32}", source.name
+        )
         or source == root
     ):
         raise Blocked("recovery requires a distinct previous qualification attempt")
@@ -662,10 +788,69 @@ def _recovery(record, root, options, env):
 
 def _regression(record, root, options, env):
     suite = options.get("suite", "full")
-    if suite not in {"full", "focused", "static", "python313", "python314"}:
-        raise Blocked("suite must be a fixed full, focused, static or declared-Python inventory")
+    if suite not in {
+        "full",
+        "focused",
+        "static",
+        "python313",
+        "python314",
+        "native-state",
+        "native-sensors",
+        "public-so101-cli",
+    }:
+        raise Blocked("suite must select a fixed regression or native oracle inventory")
     for tier in ("SIMULATOR", "SYSTEM", "HARDWARE", "DATA"):
         env[f"NEXUML_RUN_{tier}_TESTS"] = "0"
+    if suite == "public-so101-cli":
+        import runpy
+
+        _preflight(record, root, {}, env)
+        profile = runpy.run_path(str(Path(__file__).with_name("physical_ai_public_training.py")))
+        profile["run_workflow"](record, root, env, _stage)
+        return
+    if suite in {"native-state", "native-sensors"}:
+        from xml.etree import ElementTree
+
+        env["NEXUML_RUN_SIMULATOR_TESTS"] = "1"
+        selected = NATIVE_STATE_TESTS if suite == "native-state" else NATIVE_SENSOR_TESTS
+        report = root / f"{suite}-junit.xml"
+        record["regression"] = {
+            "suite": suite,
+            "full_suite_gate": "UNVERIFIED",
+            "native_proof": False,
+            "scope": "fixed native oracles; separate from CLI, viewing and learning proof",
+        }
+        _stage(
+            record,
+            suite,
+            [
+                sys.executable,
+                "-m",
+                "pytest",
+                *selected,
+                "-q",
+                *(["--maxfail=1"] if suite == "native-sensors" else []),
+                "--tb=short",
+                "-p",
+                "no:cacheprovider",
+                "--basetemp",
+                str(root / f"{suite}-tests"),
+                "--junitxml",
+                str(report),
+            ],
+            env,
+        )
+        cases = ElementTree.parse(report).findall(".//testcase")
+        expected = sorted(selector.rsplit("::", 1)[1] for selector in selected)
+        if sorted(case.attrib.get("name", "") for case in cases) != expected or any(
+            case.find(tag) is not None for case in cases for tag in ("skipped", "failure", "error")
+        ):
+            raise AssertionError("every fixed native oracle must execute and pass; no skips")
+        record["regression"]["native_proof"] = True
+        record["checks"][
+            "native_state_oracles" if suite == "native-state" else "native_sensor_oracles"
+        ] = "PASS"
+        return
     if suite in {"python313", "python314"}:
         import runpy
 
@@ -770,7 +955,8 @@ def _prepare_recipe(config_path, root, options):
                 "dirpath": str(root / "checkpoints"),
                 "every_n_train_steps": 1,
                 "save_top_k": -1,
-                "save_last": True,
+                # Resume uses the validated per-step copy, not a second interruptible alias write.
+                "save_last": False,
                 "filename": "step-{step}",
             },
         )
@@ -883,8 +1069,143 @@ def _evaluation_metrics(log, expected_frames=None):
     return metrics
 
 
+def _validate_grouped_continuation(partial, final):
+    import torch
+
+    before, before_frames, before_steps = _checkpoint(partial)
+    after, after_frames, after_steps = _checkpoint(final)
+    if not (0 < before_frames < after_frames and before_steps < after_steps):
+        raise AssertionError("grouped continuation did not advance physical frames and steps")
+    owners = {}
+    for kind in ("actor_modules", "critics"):
+        prefix = "algorithm." + kind + "."
+        names = {
+            key[len(prefix) :].split(".", 1)[0]
+            for key in after["state_dict"]
+            if key.startswith(prefix)
+        }
+        if not names:
+            raise AssertionError("grouped checkpoint lacks actor/critic owners")
+        owners[kind] = sorted(names)
+        for name in names:
+            owner_prefix = prefix + name + "."
+            first = {
+                key: value
+                for key, value in before["state_dict"].items()
+                if key.startswith(owner_prefix)
+            }
+            last = {
+                key: value
+                for key, value in after["state_dict"].items()
+                if key.startswith(owner_prefix)
+            }
+            if first.keys() != last.keys() or not first:
+                raise AssertionError("grouped continuation changed parameter ownership")
+            if any(
+                not torch.isfinite(value).all() for value in (*first.values(), *last.values())
+            ) or not any(not torch.equal(first[key], value) for key, value in last.items()):
+                raise AssertionError("grouped actor/critic did not change finitely after resume")
+    expected = sum(len(names) for names in owners.values())
+    for checkpoint in (before, after):
+        optimizers = checkpoint.get("optimizer_states", [])
+        if len(optimizers) != expected or any(not state.get("state") for state in optimizers):
+            raise AssertionError("grouped checkpoint lacks one populated optimizer per owner")
+    if not after["state_dict"]["algorithm.updates"] > before["state_dict"]["algorithm.updates"]:
+        raise AssertionError("grouped algorithm update counter did not advance")
+    return {
+        "grouped_owners": owners,
+        "optimizer_owners": expected,
+        "all_actors_critics_changed_after_resume": True,
+        "grouped_updates": int(after["state_dict"]["algorithm.updates"]),
+    }
+
+
+def _browser(record, root, options, env):
+    import runpy
+    import traceback
+
+    if not {"source_attempt", "source_case_sha256", "source_guard_sha256"} <= options.keys():
+        raise Blocked(
+            "browser reconnaissance requires the qualified producer path and receipt hashes"
+        )
+    profile = runpy.run_path(str(Path(__file__).with_name("physical_ai_browser.py")))
+    try:
+        profile["run_browser"](record, root, options, env, _stage, _recovery, _group_members)
+    except Exception as primary:
+        try:
+            with (root / "browser-controller-failure.log").open("x") as output:
+                traceback.print_exc(file=output)
+        except Exception as error:
+            primary.add_note(f"Private browser diagnostic also failed: {error}")
+        raise
+
+
+def _logging(record, root, env):
+    import runpy
+
+    profile = runpy.run_path(str(Path(__file__).with_name("physical_ai_logging.py")))
+    profile["run_logging"](
+        record,
+        root,
+        env,
+        _prepare_recipe,
+        _stage,
+        _checkpoint,
+        _validate_policy,
+        _evaluation_metrics,
+    )
+
+
+def _logging_failure(record, root, options, env):
+    import runpy
+    import traceback
+
+    if not {"source_attempt", "source_case_sha256", "source_guard_sha256"} <= options.keys():
+        raise Blocked("logging-failure requires qualified logger producer receipt hashes")
+    if not (root / "browser-setup.json").is_file():
+        raise Blocked("logging-failure requires the prepared private browser profile")
+    profile = runpy.run_path(str(Path(__file__).with_name("physical_ai_logging_failure.py")))
+    try:
+        profile["run_logging_failure"](
+            record, root, options, env, _stage, _recovery, _evaluation_metrics, _group_members
+        )
+    except BaseException as primary:
+        try:
+            with (root / "logging-failure-controller.log").open("x") as output:
+                traceback.print_exc(file=output)
+        except OSError as diagnostic:
+            primary.add_note(f"Partial-delivery controller diagnostic also failed: {diagnostic}")
+        raise
+
+
+def _learning(record, root, env):
+    import runpy
+
+    profile = runpy.run_path(str(Path(__file__).with_name("physical_ai_learning.py")))
+    profile["run_learning"](
+        record,
+        root,
+        env,
+        _prepare_recipe,
+        _stage,
+        _checkpoint,
+        _validate_policy,
+        _evaluation_metrics,
+    )
+
+
 def _recipe(record, root, config_path, options, env):
     config = _prepare_recipe(config_path, root, options)
+    recording = options.get("recording")
+    if recording is not None and (
+        recording != "both"
+        or config.name not in {"mujoco-humanoid-ppo", "mujoco-reacher-ppo", "isaac-cartpole-ppo"}
+        or (config.name.startswith("mujoco-") and env.get("MUJOCO_GL") != "egl")
+    ):
+        raise Blocked(
+            "recorded replay requires fixed PhysX Cartpole "
+            "or M1 with explicitly selected MUJOCO_GL=egl"
+        )
     total = config.training.total_frames
     record["recipe"] = config.name
     record["config_sha256"] = _sha256(root / "case.yaml")
@@ -948,6 +1269,13 @@ def _recipe(record, root, config_path, options, env):
         env,
     )
     record["assertions"] = _validate_policy(root, final, total)
+    if config.name in {
+        "isaac-pendulum-ippo",
+        "isaac-pendulum-mappo",
+        "isaac-handover-ippo",
+        "isaac-handover-mappo",
+    }:
+        record["assertions"].update(_validate_grouped_continuation(root / "partial.ckpt", final))
     device = "cpu" if config.training.accelerator == "cpu" else "cuda:0"
     _stage(
         record,
@@ -974,6 +1302,12 @@ def _recipe(record, root, config_path, options, env):
     record["gate_scope"]["R"] = (
         "partial SIGTERM continuation passed; full recovery matrix UNVERIFIED"
     )
+    if recording == "both":
+        import runpy
+
+        name = "isaac" if config.name == "isaac-cartpole-ppo" else "mujoco"
+        profile = runpy.run_path(str(Path(__file__).with_name(f"physical_ai_{name}_recording.py")))
+        profile[f"run_recorded_{name}"](record, root, env, _stage, _evaluation_metrics)
 
 
 def run_case(case: str, attempt_root: Path, config_path: Path, options: dict) -> int:
@@ -1008,8 +1342,15 @@ def run_case(case: str, attempt_root: Path, config_path: Path, options: dict) ->
         allowed_options = {
             "preflight": {"data_root"},
             "regression": {"suite"},
-            "recipe": {"recipe"},
+            "recipe": {"recipe", "recording"},
             "recovery": {"source_attempt", "source_case_sha256", "source_guard_sha256"},
+            "browser": {
+                "source_attempt",
+                "source_case_sha256",
+                "source_guard_sha256",
+                "logger_mode",
+            },
+            "logging-failure": {"source_attempt", "source_case_sha256", "source_guard_sha256"},
         }
         if case not in CASES:
             raise Blocked("unsupported case; only the fixed case inventory is executable")
@@ -1017,7 +1358,9 @@ def run_case(case: str, attempt_root: Path, config_path: Path, options: dict) ->
             raise Blocked("unknown options; arbitrary commands/scripts/modules are forbidden")
         if any(not isinstance(value, str) or "\0" in value for value in options.values()):
             raise Blocked("case option values must be literal strings without NUL")
-        if case in {"so101", "browser"}:
+        if case == "so101" or (
+            case == "browser" and not (Path(sys.prefix) / "browser-runtime/setup.json").is_file()
+        ):
             gate = {"so101": "L", "browser": "V"}[case]
             record["gates"][gate] = "BLOCKED"
             raise Blocked(
@@ -1025,6 +1368,14 @@ def run_case(case: str, attempt_root: Path, config_path: Path, options: dict) ->
             )
         _require_worker(record)
         _require_current_source(record)
+        for runtime in ("native", "browser"):
+            setup = Path(sys.prefix) / f"{runtime}-runtime" / "setup.json"
+            if setup.is_file():
+                if setup.resolve(strict=True) != setup:
+                    raise Blocked("private runtime setup receipt must not contain symlinks")
+                retained = root / f"{runtime}-setup.json"
+                shutil.copyfile(setup, retained)
+                record[f"{runtime}_setup_sha256"] = _sha256(retained)
         env = {**os.environ, "NEXUML_LOGS_ROOT": str(root / "logs"), "TMPDIR": "/tmp/ray"}
         if case == "preflight":
             _preflight(record, root, options, env)
@@ -1034,6 +1385,14 @@ def run_case(case: str, attempt_root: Path, config_path: Path, options: dict) ->
             _package(record, root, options, env)
         elif case == "recovery":
             _recovery(record, root, options, env)
+        elif case == "learning":
+            _learning(record, root, env)
+        elif case == "logging":
+            _logging(record, root, env)
+        elif case == "logging-failure":
+            _logging_failure(record, root, options, env)
+        elif case == "browser":
+            _browser(record, root, options, env)
         else:
             _recipe(record, root, Path(config_path), options, env)
         record["status"], code = "PASS", 0
@@ -1048,6 +1407,8 @@ def run_case(case: str, attempt_root: Path, config_path: Path, options: dict) ->
         )
         if case == "recipe":
             record["gates"]["C"] = "FAIL"
+        if case == "learning":
+            record["gates"]["L"] = "FAIL"
         if case == "regression" and "regression" in record:
             record["regression"]["full_suite_gate"] = (
                 "FAIL" if record["regression"]["suite"] == "full" else "UNVERIFIED"

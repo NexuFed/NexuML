@@ -1,10 +1,12 @@
-"""Linux worker subprocess guard; deliberately usable before dependency setup."""
+"""Linux amd64 worker subprocess guard, usable before dependency setup."""
 
 from __future__ import annotations
 
 import argparse
+import ctypes
 import datetime
 import json
+from itertools import islice
 import math
 import os
 from pathlib import Path
@@ -22,6 +24,8 @@ LOG_CAP_BYTES = 32 * 1024**2
 ATTEMPT_BASE = Path("/mnt/data/nexuml-qualification")
 _TERM_SECONDS = 1.0
 _KILL_SECONDS = 2.0
+_WAIT_ALL = 0x40000000  # Linux __WALL also waits for non-SIGCHLD clone children.
+_SUPERVISE_DESCENDANTS = False
 _QUOTA_FILESYSTEMS = {"fuse.juicefs", "nfs", "nfs4", "ceph", "fuse.ceph", "fuse.ceph-fuse"}
 _DISK_FILESYSTEMS = {
     "ext2",
@@ -41,6 +45,20 @@ _DISK_FILESYSTEMS = {
 
 def _timestamp():
     return datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+
+def _memory_observations(root=Path("/sys/fs/cgroup")):
+    """Retain visible cgroup counters, never reset them or claim app-only peaks."""
+    files = {}
+    for name in ("memory.peak", "memory.max", "memory.current", "memory.events"):
+        try:
+            files[name] = (root / name).read_text(encoding="ascii").strip()
+        except (OSError, UnicodeError):
+            files[name] = None
+    return {
+        "scope": "visible cgroup v2; includes Ray/setup/workload, not application-only",
+        "files": files,
+    }
 
 
 def _unescape_mount(value):
@@ -175,8 +193,169 @@ def _group_exists(pgid):
         return False
 
 
+def _pidfd_call(number, *arguments):
+    # Standalone Python builds can omit pidfd wrappers even on capable Linux kernels.
+    if sys.platform != "linux" or os.uname().machine != "x86_64":
+        raise RuntimeError("dedicated guard requires Linux amd64 pidfd syscalls")
+    libc = ctypes.CDLL(None, use_errno=True)
+    libc.syscall.restype = ctypes.c_long
+    result = libc.syscall(ctypes.c_long(number), *(ctypes.c_long(value) for value in arguments))
+    if result == -1:
+        error = ctypes.get_errno()
+        raise OSError(error, os.strerror(error))
+    return result
+
+
+def _enable_descendant_supervision():
+    if signal.getsignal(signal.SIGCHLD) != signal.SIG_DFL:
+        raise RuntimeError("dedicated guard requires default SIGCHLD ownership")
+    try:
+        os.waitid(os.P_ALL, 0, os.WEXITED | os.WNOHANG | os.WNOWAIT | _WAIT_ALL)
+    except ChildProcessError:
+        pass
+    else:
+        raise RuntimeError("dedicated guard must have no pre-existing children")
+    children = Path(f"/proc/self/task/{os.getpid()}/children")
+    if children.read_text().strip():
+        raise RuntimeError("dedicated guard must have no pre-existing children")
+    descriptor = _pidfd_call(434, os.getpid(), 0)  # pidfd_open
+    try:
+        _pidfd_call(424, descriptor, 0, 0, 0)  # pidfd_send_signal
+    finally:
+        os.close(descriptor)
+    libc = ctypes.CDLL(None, use_errno=True)
+    libc.prctl.argtypes = [
+        ctypes.c_int,
+        ctypes.c_ulong,
+        ctypes.c_ulong,
+        ctypes.c_ulong,
+        ctypes.c_ulong,
+    ]
+    libc.prctl.restype = ctypes.c_int
+    if libc.prctl(36, 1, 0, 0, 0) != 0:  # PR_SET_CHILD_SUBREAPER affects only this guard.
+        error = ctypes.get_errno()
+        raise OSError(error, os.strerror(error))
+
+
+def _children_gone(process, observation=None):
+    # Fork churn must not keep zombie draining ahead of TERM-to-KILL escalation.
+    for _ in range(64):
+        process.poll()  # Only Popen may reap the workload leader and set its return code.
+        try:
+            status = os.waitid(os.P_ALL, 0, os.WEXITED | os.WNOHANG | os.WNOWAIT | _WAIT_ALL)
+        except ChildProcessError:
+            if observation is not None:
+                observation["waitid"] = "ECHILD"
+            return True
+        if observation is not None:
+            observation["waitid"] = None if status is None else {"pid": status.si_pid}
+        if status is None:
+            return False
+        if status.si_pid != process.pid or process.returncode is not None:
+            result = os.waitpid(status.si_pid, os.WNOHANG | _WAIT_ALL)
+            if observation is not None:
+                observation["last_waitpid"] = {"pid": status.si_pid, "result": list(result)}
+    return False
+
+
+def _descendant_snapshot(pid):
+    info: dict[str, Any] = {"pid": pid}
+    try:
+        base = Path(f"/proc/{pid}")
+        fields = (base / "stat").read_text().rpartition(")")[2].split()
+        info.update(
+            state=fields[0],
+            ppid=int(fields[1]),
+            start_ticks=int(fields[19]),
+            exit_signal=int(fields[35]),
+        )
+        status = {}
+        for line in (base / "status").read_text().splitlines():
+            key, _, value = line.partition(":")
+            if key in {"Threads", "TracerPid"}:
+                status[key] = int(value)
+        info.update(threads=status["Threads"], tracer_pid=status["TracerPid"])
+        descriptor = _pidfd_call(434, pid, 0)
+        try:
+            info["pidfd_ready"] = bool(select.select([descriptor], [], [], 0)[0])
+        finally:
+            os.close(descriptor)
+        if info["threads"] > 1:
+            tasks = list(islice((base / "task").iterdir(), 65))
+            states = []
+            for task in sorted(tasks[:64], key=lambda path: int(path.name)):
+                entry: dict[str, Any] = {"tid": int(task.name)}
+                try:
+                    entry["state"] = (task / "stat").read_text().rpartition(")")[2].split()[0]
+                except (OSError, IndexError) as error:
+                    entry["observation"] = type(error).__name__
+                if entry.get("state") == "D":
+                    try:
+                        entry["wchan"] = (task / "wchan").read_text().strip()[:128]
+                    except OSError as error:
+                        entry["wchan_observation"] = type(error).__name__
+                    try:
+                        # Retain only the syscall number, never argument values or addresses.
+                        entry["syscall"] = int((task / "syscall").read_text().split()[0])
+                    except (OSError, ValueError, IndexError) as error:
+                        entry["syscall_observation"] = type(error).__name__
+                states.append(entry)
+            info.update(thread_states=states, thread_states_truncated=len(tasks) > 64)
+    except (OSError, ValueError, IndexError, KeyError) as error:
+        info["observation"] = type(error).__name__
+    return info
+
+
+def _stop_descendants(process):
+    children = Path(f"/proc/self/task/{os.getpid()}/children")
+    observation: dict[str, Any] = {}
+    for sig, grace in ((signal.SIGTERM, _TERM_SECONDS), (signal.SIGKILL, _KILL_SECONDS)):
+        held = {}
+        try:
+            until = time.monotonic() + grace
+            while True:
+                process.poll()
+                # A direct child cannot be reused until this dedicated parent reaps it.
+                for pid in map(int, children.read_text().split()):
+                    if pid in held:
+                        if not select.select([held[pid]], [], [], 0)[0]:
+                            continue
+                        os.close(held.pop(pid))
+                    try:
+                        descriptor = _pidfd_call(434, pid, 0)
+                        held[pid] = descriptor
+                        _pidfd_call(424, descriptor, sig, 0, 0)
+                    except ProcessLookupError:
+                        pass
+                if _children_gone(process, observation):
+                    return
+                if time.monotonic() >= until:
+                    break
+                time.sleep(0.02)
+        finally:
+            for descriptor in held.values():
+                os.close(descriptor)
+    pids = [int(pid) for pid in children.read_text().split()]
+    remaining = [_descendant_snapshot(pid) for pid in pids[:64]]
+    raise RuntimeError(
+        "owned descendants survived bounded cleanup: "
+        + json.dumps(
+            {
+                "direct_children": remaining,
+                "term_seconds": _TERM_SECONDS,
+                "kill_seconds": _KILL_SECONDS,
+                "direct_children_truncated": len(pids) > 64,
+                "wait_observation": observation,
+            }
+        )
+    )
+
+
 def _stop_group(process):
-    """Signal only our fresh session, including descendants after its leader exits."""
+    """Stop only the owned group, or the dedicated CLI's adopted descendants."""
+    if _SUPERVISE_DESCENDANTS:
+        _stop_descendants(process)
+        return
     for sig, grace in ((signal.SIGTERM, _TERM_SECONDS), (signal.SIGKILL, _KILL_SECONDS)):
         try:
             os.killpg(process.pid, sig)
@@ -228,8 +407,9 @@ def run_guarded(
 ) -> int:
     """Run one argv under a combined wall/disk budget and retain its exit receipt.
 
-    Must run on the main thread (owns SIGINT/SIGTERM handlers). Children that leave
-    the owned process group cannot be cleaned up without broader PID ownership.
+    Must run on the main thread (owns SIGINT/SIGTERM handlers). The dedicated CLI
+    additionally owns detached descendants; direct in-process calls own only the
+    fresh process group, without adopting unrelated children of their caller.
     """
     started = time.monotonic()
     started_at = _timestamp()
@@ -304,6 +484,7 @@ def run_guarded(
         "log_truncated": False,
         "output_incomplete": False,
         "errors": [],
+        "process_ownership": "fresh-process-group",
     }
     process = log = selector = None
     old_handlers = {}
@@ -395,6 +576,9 @@ def run_guarded(
     try:
         for sig in (signal.SIGTERM, signal.SIGINT):
             old_handlers[sig] = signal.signal(sig, cancel)
+        if _SUPERVISE_DESCENDANTS:
+            _enable_descendant_supervision()
+            record["process_ownership"] = "dedicated-linux-child-subreaper-pidfds"
         if os.path.lexists(receipt):
             raise FileExistsError(f"receipt already exists: {receipt}")
         if log_path is not None:
@@ -537,7 +721,10 @@ def run_guarded(
         if cancelled is not None:
             record["reason"], code = "cancelled", 128 + cancelled
         record.update(
-            ended_at=_timestamp(), elapsed_seconds=time.monotonic() - started, exit_code=code
+            ended_at=_timestamp(),
+            elapsed_seconds=time.monotonic() - started,
+            exit_code=code,
+            memory_observations=_memory_observations(),
         )
         try:
             _write_receipt(receipt, record)
@@ -569,6 +756,8 @@ def run_guarded(
 
 
 def main():
+    global _SUPERVISE_DESCENDANTS
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--receipt", required=True, type=Path)
     parser.add_argument("--deadline-seconds", required=True, type=float)
@@ -579,6 +768,7 @@ def main():
     parser.add_argument("command", nargs=argparse.REMAINDER)
     args = parser.parse_args()
     command = args.command[1:] if args.command[:1] == ["--"] else args.command
+    _SUPERVISE_DESCENDANTS = True
     try:
         return run_guarded(
             command,

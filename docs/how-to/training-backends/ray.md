@@ -217,6 +217,16 @@ Printed resume/evaluation commands quote the produced worker paths and are label
 `--config` as above; those paths are not uploaded. A missing fit-device observation
 is not evidence of GPU training (for example, an already exhausted checkpoint).
 
+The test-owned acceptance driver also prints `NEXUML_CASE_SUBMITTED` and
+`NEXUML_CASE_TERMINAL` JSON lines. They link the case, unique attempt root, Ray
+submission ID and candidate source-tree hash without dumping runtime variables
+or arbitrary case options. Submission records label GPU/pool/wall budgets as
+requested and leave the execution phase unknown until worker logs observe it.
+Terminal records identify the already-written local job receipt and log, preserving
+both the native Ray status and the campaign result. A failed or stopped job is not
+made successful by a receipt claiming PASS. These reporting additions have
+hermetic coverage; they are not fresh remote qualification of a changed candidate.
+
 Remote export requires an explicit `--output` worker path; omitted output remains
 `exported_model` only for local execution. Use an absolute durable destination.
 For policy evaluation, configure top-level `policy_evaluation` and override, for example,

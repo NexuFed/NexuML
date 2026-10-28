@@ -10,6 +10,7 @@ import importlib
 import importlib.metadata
 import json
 import logging
+import math
 import pkgutil
 import sys
 from dataclasses import dataclass, field, is_dataclass
@@ -176,12 +177,15 @@ def _make_json_safe(value: Any) -> Any:
     Returns:
         A JSON-serializable representation of *value*.
     """
+    # Lightning callback sentinels are provenance, not finite metric measurements.
+    if isinstance(value, float) and not math.isfinite(value):
+        return str(value)
     if isinstance(value, (str, int, float, bool, type(None))):
         return value
     if isinstance(value, bytes):
         return value.decode("utf-8", errors="replace")
     if isinstance(value, torch.Tensor):
-        return value.detach().cpu().tolist()
+        return _make_json_safe(value.detach().cpu().tolist())
     if isinstance(value, Path):
         return str(value)
     # Pydantic v2 models

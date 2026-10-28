@@ -587,6 +587,57 @@ def native_launch(monkeypatch, tmp_path):
     return state
 
 
+@pytest.mark.parametrize("physics", ["isaacsim_physx", "newton_mjwarp", "ovphysx", None])
+def test_native_startup_disables_telemetry_and_crash_uploads_before_launch(native_launch, physics):
+    with _isaaclab_runtime.isaaclab_process():
+        native_launch.build(physics=physics)
+        assert native_launch.args[0]["kit_args"].split() == [
+            "--/crashreporter/enabled=false",
+            "--/crashreporter/skipOldDumpUpload=true",
+            "--/app/uploadDumpsOnStartup=false",
+            "--/telemetry/enableAnonymousData=false",
+            "--/telemetry/enableAnonymousAppName=false",
+            "--/telemetry/enableSentry=false",
+            "--/structuredLog/enable=false",
+        ]
+        assert native_launch.args[0]["headless"] is True
+        assert native_launch.args[0]["visualizer"] == ["none"]
+
+
+@pytest.mark.parametrize(
+    "name,value",
+    [("OMNI_CRASHREPORTER_ENABLED", value) for value in ("1", "t", "Y", "true", "")]
+    + [("OMNI_CRASHREPORTER_SKIPOLDDUMPUPLOAD", value) for value in ("0", "f", "N", "false", "")],
+)
+def test_conflicting_crash_upload_environment_rejected_without_mutation(
+    native_launch, monkeypatch, name, value
+):
+    import os
+
+    monkeypatch.setenv(name, value)
+    before = dict(os.environ)
+    with _isaaclab_runtime.isaaclab_process(), pytest.raises(ValueError, match=name):
+        native_launch.build()
+    assert dict(os.environ) == before
+    assert native_launch.args == []
+    assert native_launch.launchers == []
+
+
+@pytest.mark.parametrize(
+    "disabled,skip", [("0", "1"), ("n", "y"), ("N", "Y"), ("f", "t"), ("F", "T")]
+)
+def test_safe_crash_upload_environment_preserved(native_launch, monkeypatch, disabled, skip):
+    import os
+
+    monkeypatch.setenv("OMNI_CRASHREPORTER_ENABLED", disabled)
+    monkeypatch.setenv("OMNI_CRASHREPORTER_SKIPOLDDUMPUPLOAD", skip)
+    before = dict(os.environ)
+    with _isaaclab_runtime.isaaclab_process():
+        native_launch.build()
+    assert dict(os.environ) == before
+    assert len(native_launch.args) == 1
+
+
 @pytest.mark.parametrize("purpose", ["train", "eval"])
 def test_viewer_requires_a_separate_purpose_opt_in_without_importing_viser(native_launch, purpose):
     from nexuml_library.environments.isaaclab_config import ViserSpec

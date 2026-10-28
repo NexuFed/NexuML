@@ -82,6 +82,9 @@ def _ray_job_argv(
             "so101",
             "browser",
             "recovery",
+            "learning",
+            "logging",
+            "logging-failure",
         }:
             raise ValueError("acceptance requires a fixed case name")
         if (

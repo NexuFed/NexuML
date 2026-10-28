@@ -11,6 +11,58 @@ two environments, 64 physical frames and an explicitly saved 0.1-second test
 horizon; it is not a convergence or universal-backend claim. Owned jobs monitor
 the maintainer-revised **4 GiB stop threshold**.
 
+## Registered remote CLI qualification
+
+Use the registered SDK campaign to exercise all four references through public
+CLI subprocesses: untrained export, interrupted training, current checkpoint
+resume, checkpoint export, fresh grouped evaluation and exhausted resume. The
+commands below select two environments and **128 physical frames** each, without
+shortening native episode horizons. These are smoke protocols, not convergence
+tests or substitutes for the earlier 64-frame/0.1-second fixture protocol above.
+
+Use a trusted qualified worker profile with the existing private locked setup:
+
+```yaml
+type: ray-jobs-sdk
+version: "1"
+params:
+  setup_command: [uv, sync, --locked, --python, "3.12", --all-packages, --all-extras]
+  entrypoint_resources:
+    pool_gpu_workers: 1
+```
+
+Save it as `QUALIFIED_PROFILE.yaml`. With the approved Jobs endpoint, CA and durable
+worker mount already available, the campaign shape is:
+
+```bash
+export RAY_API_SERVER_ADDRESS=https://ray.ika.rub.de
+for recipe in isaac-pendulum-ippo isaac-pendulum-mappo isaac-handover-ippo isaac-handover-mappo; do
+  CUDA_VISIBLE_DEVICES='' python scripts/physical_ai_acceptance.py \
+    --case recipe --recipe "$recipe" --frames 128 --batch 32 --envs 2 \
+    --profile QUALIFIED_PROFILE.yaml --ca "$RAY_CA_BUNDLE" \
+    --output "$EVIDENCE_ROOT/$recipe" --wall-seconds 1800 \
+    --queue-seconds 900 --concurrency 1 --submit || break
+done
+```
+
+Choose a new submitter `EVIDENCE_ROOT`; each attempt also gets a new durable worker
+root under `/mnt/data/nexuml-qualification`. The receipt retains the literal CLI
+commands, configuration, original source identity, partial/final counters and
+checkpoint/export hashes. Retrieve the private stage logs and check their receipt
+hashes after termination; do not equate submission with a pass. No private inputs
+are uploaded automatically. Setup changes only the owned environment, not an image
+or driver; unavailable native dependencies still fail visibly.
+
+The grouped acceptance check compares every named actor and critic owner between
+the actual partial and final checkpoints, requires finite changed weights and an
+advancing algorithm-update count, and checks populated optimizer states for all
+owners. Native optimizer construction separately enforces unique parameter
+ownership. Pendulum has two actors with two IPPO critics or one MAPPO central
+critic; Handover shares one actor between its two hands, with two IPPO critics or
+one MAPPO central critic. Physical frames are not multiplied by agent count.
+These checks do not expand native grouped-sensor support or establish learning
+quality, live viewing, parallel capacity or the complete recovery matrix.
+
 ## Authoring
 
 The bounded reference definitions are:

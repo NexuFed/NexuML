@@ -198,6 +198,42 @@ def test_worker_completion_does_not_relabel_post_teardown_cpu_as_training_device
     assert "Ray job submitted" not in result.output
 
 
+@pytest.mark.parametrize("purposes", [("train",), ("eval",), ()])
+@pytest.mark.parametrize("frames", [0, 64])
+def test_finished_viewer_notice_uses_completed_scenario_without_enabling_replay(
+    monkeypatch, purposes, frames
+):
+    from types import SimpleNamespace
+    import nexuml.execution as execution
+
+    scenario = ScenarioSpec(name="finished", logging=None)
+    viewer = SimpleNamespace(purposes=purposes)
+    completed = SimpleNamespace(
+        interaction=SimpleNamespace(environment=SimpleNamespace(viewer=viewer))
+    )
+    module = SimpleNamespace(frames=frames, scenario=completed, device="cpu")
+    result = SimpleNamespace(lightning_module=module)
+    monkeypatch.setattr(main, "_get_scenario_fn", lambda _: lambda: scenario)
+    calls = []
+    monkeypatch.setattr(
+        execution, "run", lambda *args, **kwargs: calls.append((args, kwargs)) or result
+    )
+    output = runner.invoke(main.app, ["train", "finished"])
+    assert output.exit_code == 0, (output.output, output.exception)
+    text = " ".join(output.output.split())
+    assert ("Configured training viewer: run finished" in text) == ("train" in purposes)
+    if "train" in purposes:
+        assert "not stalled training" in text
+        assert "separate evaluation" in text and "explicit evaluation-viewer opt-in" in text
+        assert "approved private worker route" in text
+    assert len(calls) == 1
+    assert viewer.purposes == purposes
+    assert "http://" not in text and "port-forward" not in text
+    assert (
+        "Worker-local evaluation:" not in text
+    )  # No produced package means no invented replay path.
+
+
 @pytest.mark.parametrize("operation", ["train", "evaluate", "export"])
 def test_worker_identity_uses_ray_metadata_without_printing_runtime_secrets(
     operation, monkeypatch, capsys

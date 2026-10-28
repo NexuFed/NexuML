@@ -16,7 +16,18 @@ from uuid import uuid4
 from urllib.parse import urlsplit
 
 
-CASES = ("preflight", "regression", "package", "recipe", "so101", "browser", "recovery")
+CASES = (
+    "preflight",
+    "regression",
+    "package",
+    "recipe",
+    "so101",
+    "browser",
+    "recovery",
+    "learning",
+    "logging",
+    "logging-failure",
+)
 TERMINAL = {"SUCCEEDED", "FAILED", "STOPPED"}
 KNOWN_STATES = TERMINAL | {"PENDING", "RUNNING"}
 
@@ -54,8 +65,9 @@ def source_identity(root: Path) -> str:
     paths = {
         path
         for directory in ("src", "library/src", "tests", "scripts")
-        for path in (root / directory).rglob("*.py")
-        if "__pycache__" not in path.parts
+        for pattern in ("*.py", "*.js", "*.cjs")
+        for path in (root / directory).rglob(pattern)
+        if path.is_file() and "__pycache__" not in path.parts
     }
     paths.update(root / name for name in ("pyproject.toml", "library/pyproject.toml", "uv.lock"))
     digest = hashlib.sha256()
@@ -158,8 +170,19 @@ def run_campaign(
                 option_names = {
                     "preflight": {"data_root"},
                     "regression": {"suite"},
-                    "recipe": {"recipe"},
+                    "recipe": {"recipe", "recording"},
                     "recovery": {"source_attempt", "source_case_sha256", "source_guard_sha256"},
+                    "browser": {
+                        "source_attempt",
+                        "source_case_sha256",
+                        "source_guard_sha256",
+                        "logger_mode",
+                    },
+                    "logging-failure": {
+                        "source_attempt",
+                        "source_case_sha256",
+                        "source_guard_sha256",
+                    },
                 }.get(attempt["case"], set())
                 worker_options = {
                     key: value
@@ -202,6 +225,19 @@ def run_campaign(
                     if returned_id != job_id:
                         raise ValueError("Submission returned a different ID than the owned UUID")
                 print(f"Submitted {attempt['case']}: {job_id}", flush=True)
+                print(
+                    "NEXUML_CASE_SUBMITTED="
+                    + json.dumps(
+                        {
+                            **metadata(job_id, attempt),
+                            "requested_pool": "pool_gpu_workers",
+                            "requested_gpus": 1,
+                            "wall_seconds": attempt["wall_seconds"],
+                            "execution_phase": "unknown until observed in worker logs",
+                        }
+                    ),
+                    flush=True,
+                )
                 save()
             for job_id, attempt in list(active.items()):
                 status = str(_bounded_rpc(client.get_job_status, job_id)).upper()
@@ -254,6 +290,19 @@ def run_campaign(
                 results.append(row)
                 del active[job_id]
                 print(f"{job_id}: {row['status']} ({status})", flush=True)
+                print(
+                    "NEXUML_CASE_TERMINAL="
+                    + json.dumps(
+                        {
+                            **metadata(job_id, attempt),
+                            "native_status": status,
+                            "status": row["status"],
+                            "receipt_path": str(output / f"{job_id}.json"),
+                            "log_path": str(output / f"{job_id}.log"),
+                        }
+                    ),
+                    flush=True,
+                )
                 save()
             if active:
                 time.sleep(poll_seconds)
@@ -295,6 +344,11 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--case", action="append", choices=CASES, required=True)
     parser.add_argument("--recipe", help="Registered matrix recipe; required for recipe cases")
+    parser.add_argument(
+        "--recorded",
+        action="store_true",
+        help="Fixed PhysX Cartpole or M1 EGL GIF/MP4 replay after scalar CLI proof",
+    )
     parser.add_argument("--profile", type=Path, default=Path("configs/execution/ray.yaml"))
     parser.add_argument("--address", default="https://ray.ika.rub.de")
     parser.add_argument("--ca", type=Path, required=True)
@@ -311,8 +365,20 @@ def main() -> None:
     parser.add_argument("--source-attempt", type=str)
     parser.add_argument("--source-case-sha256", type=str)
     parser.add_argument("--source-guard-sha256", type=str)
+    parser.add_argument("--browser-mode", choices=("separate", "both"), default="separate")
     parser.add_argument(
-        "--suite", choices=("full", "focused", "static", "python313", "python314"), default="full"
+        "--suite",
+        choices=(
+            "full",
+            "focused",
+            "static",
+            "python313",
+            "python314",
+            "native-state",
+            "native-sensors",
+            "public-so101-cli",
+        ),
+        default="full",
     )
     parser.add_argument("--submit", action="store_true")
     args = parser.parse_args()
@@ -332,6 +398,13 @@ def main() -> None:
         parser.error("Recipe budgets must be positive")
     if "recipe" in args.case and not args.recipe:
         parser.error("recipe cases require --recipe")
+    if args.browser_mode != "separate" and "browser" not in args.case:
+        parser.error("--browser-mode requires a browser case")
+    if args.recorded and (
+        args.case != ["recipe"]
+        or args.recipe not in {"mujoco-humanoid-ppo", "mujoco-reacher-ppo", "isaac-cartpole-ppo"}
+    ):
+        parser.error("--recorded requires one fixed PhysX Cartpole or MuJoCo recipe case")
     from nexuml.core.types import ReinforcementLearningSpec, ScenarioSpec
     from nexuml.execution import load_ray_job_profile
     from nexuml.execution.definitions import RayJobsSDKExecution
@@ -400,9 +473,11 @@ def main() -> None:
                     "data_root": args.data_root,
                     "suite": args.suite,
                     "recipe": args.recipe,
+                    "recording": "both" if args.recorded else None,
                     "source_attempt": args.source_attempt,
                     "source_case_sha256": args.source_case_sha256,
                     "source_guard_sha256": args.source_guard_sha256,
+                    "logger_mode": args.browser_mode if case == "browser" else None,
                     "budgets": {
                         "cpu_threads": 1,
                         "gpus": 1,
