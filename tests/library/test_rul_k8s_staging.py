@@ -109,7 +109,13 @@ def test_render_uses_unique_native_seed_scenarios() -> None:
         assert "NEXUML_DATA_ROOT" in manifest
         assert "NEXUML_LOGS_ROOT" in manifest
         assert "NEXUML_RUL_CHECKPOINT_ROOT" in manifest
-        assert "value: /mnt/models/rul/checkpoints" in manifest
+        assert "value: /mnt/nexuml-experiments/rul/checkpoints" in manifest
+        assert "subPath: models/nexuml/.experiments" in manifest
+        assert (
+            "- name: juicefs-prisma\n"
+            "              mountPath: /mnt/nexuml-experiments"
+        ) in manifest
+        assert "subPath: code/nexuml/.experiments" not in manifest
         assert "best_model_path" in manifest
         assert "mkdir -p /tmp/nexuml-run" in manifest
         assert "cp -R /mnt/nexuml-source/. /tmp/nexuml-run/" in manifest
