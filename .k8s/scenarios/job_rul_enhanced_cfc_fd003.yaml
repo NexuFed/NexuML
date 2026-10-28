@@ -1,0 +1,308 @@
+# NEX-233 experiment ONLY: branch-specific, not intended for main.
+# Based on .k8s/scenarios/job_audioset.yaml (existing cluster PVCs and GPU).
+# Before applying, the mounted /workspace must contain:
+#  - NEX-233 working-tree source, compatible with the image's installed environment
+#  - resolved .experiments/rul/enhanced-cfc/fd003/compare-six-s42.yaml
+# All three jobs share read-only upstream *data/checkpoint contents* and write
+# distinct run-specific checkpoint/report paths. Prepare upstream artifacts first.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: nexuml-rul-fd003-cfc-six-s42
+  labels:
+    app.kubernetes.io/name: nexuml
+    nexuml-study: rul-fd003-cfc-six
+    nexuml-seed: "42"
+spec:
+  # Keep finished Jobs/logs for inspection; checkpoints live on JuiceFS.
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: nexuml
+        nexuml-study: rul-fd003-cfc-six
+        nexuml-seed: "42"
+      annotations:
+        sidecar.istio.io/inject: "false"
+    spec:
+      restartPolicy: Never
+      runtimeClassName: nvidia
+      imagePullSecrets:
+        - name: regcred
+      # The existing NexuML training image is built for linux/amd64 in CI.
+      # Do not schedule this pod on ARM64 GH200 without a compatible image.
+      nodeSelector:
+        kubernetes.io/arch: amd64
+      volumes:
+        - name: shared-mem
+          emptyDir:
+            medium: Memory
+            sizeLimit: 4Gi
+        - name: local-storage
+          emptyDir: {}
+        - name: juicefs
+          persistentVolumeClaim:
+            claimName: juicefs
+        - name: juicefs-prisma
+          persistentVolumeClaim:
+            claimName: juicefs-prisma
+      containers:
+        - name: nexuml
+          image: harbor.ika.rub.de/library/nexuml:latest
+          imagePullPolicy: Always
+          workingDir: /workspace
+          # No shell orchestration, auxiliary scripts, or custom environment.
+          command: ["nexuml"]
+          args:
+            - train
+            - --config
+            - .experiments/rul/enhanced-cfc/fd003/compare-six-s42.yaml
+          resources:
+            requests:
+              cpu: "8"
+              memory: 32Gi
+              nvidia.com/gpu: "1"
+            limits:
+              memory: 64Gi
+              nvidia.com/gpu: "1"
+          volumeMounts:
+            - name: shared-mem
+              mountPath: /dev/shm
+            - name: local-storage
+              mountPath: /mnt/local
+            - name: juicefs-prisma
+              subPathExpr: data
+              mountPath: /mnt/data
+            - name: juicefs-prisma
+              subPathExpr: logs
+              mountPath: /mnt/logs
+            - name: juicefs
+              subPathExpr: code/nexuml
+              mountPath: /workspace
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: nvidia.com/gpu.memory
+                    operator: Gt
+                    values: ["12000"]
+                  - key: nvidia.com/cuda.runtime.major
+                    operator: Gt
+                    values: ["11"]
+                  - key: nvidia.com/gpu.product
+                    operator: In
+                    values:
+                      - Tesla-V100-SXM2-32GB
+                      - NVIDIA-GeForce-RTX-4000-Ada-Generation
+                      - NVIDIA-GeForce-RTX-5080
+                      - NVIDIA-GeForce-RTX-5070
+                      - NVIDIA-GeForce-RTX-4090
+                      - NVIDIA-GeForce-RTX-4070-SUPER
+                      - NVIDIA-GeForce-RTX-4070
+---
+# NEX-233 experiment ONLY: branch-specific, not intended for main.
+# Based on .k8s/scenarios/job_audioset.yaml (existing cluster PVCs and GPU).
+# Before applying, the mounted /workspace must contain:
+#  - NEX-233 working-tree source, compatible with the image's installed environment
+#  - resolved .experiments/rul/enhanced-cfc/fd003/compare-six-s43.yaml
+# All three jobs share read-only upstream *data/checkpoint contents* and write
+# distinct run-specific checkpoint/report paths. Prepare upstream artifacts first.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: nexuml-rul-fd003-cfc-six-s43
+  labels:
+    app.kubernetes.io/name: nexuml
+    nexuml-study: rul-fd003-cfc-six
+    nexuml-seed: "43"
+spec:
+  # Keep finished Jobs/logs for inspection; checkpoints live on JuiceFS.
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: nexuml
+        nexuml-study: rul-fd003-cfc-six
+        nexuml-seed: "43"
+      annotations:
+        sidecar.istio.io/inject: "false"
+    spec:
+      restartPolicy: Never
+      runtimeClassName: nvidia
+      imagePullSecrets:
+        - name: regcred
+      # The existing NexuML training image is built for linux/amd64 in CI.
+      # Do not schedule this pod on ARM64 GH200 without a compatible image.
+      nodeSelector:
+        kubernetes.io/arch: amd64
+      volumes:
+        - name: shared-mem
+          emptyDir:
+            medium: Memory
+            sizeLimit: 4Gi
+        - name: local-storage
+          emptyDir: {}
+        - name: juicefs
+          persistentVolumeClaim:
+            claimName: juicefs
+        - name: juicefs-prisma
+          persistentVolumeClaim:
+            claimName: juicefs-prisma
+      containers:
+        - name: nexuml
+          image: harbor.ika.rub.de/library/nexuml:latest
+          imagePullPolicy: Always
+          workingDir: /workspace
+          # No shell orchestration, auxiliary scripts, or custom environment.
+          command: ["nexuml"]
+          args:
+            - train
+            - --config
+            - .experiments/rul/enhanced-cfc/fd003/compare-six-s43.yaml
+          resources:
+            requests:
+              cpu: "8"
+              memory: 32Gi
+              nvidia.com/gpu: "1"
+            limits:
+              memory: 64Gi
+              nvidia.com/gpu: "1"
+          volumeMounts:
+            - name: shared-mem
+              mountPath: /dev/shm
+            - name: local-storage
+              mountPath: /mnt/local
+            - name: juicefs-prisma
+              subPathExpr: data
+              mountPath: /mnt/data
+            - name: juicefs-prisma
+              subPathExpr: logs
+              mountPath: /mnt/logs
+            - name: juicefs
+              subPathExpr: code/nexuml
+              mountPath: /workspace
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: nvidia.com/gpu.memory
+                    operator: Gt
+                    values: ["12000"]
+                  - key: nvidia.com/cuda.runtime.major
+                    operator: Gt
+                    values: ["11"]
+                  - key: nvidia.com/gpu.product
+                    operator: In
+                    values:
+                      - Tesla-V100-SXM2-32GB
+                      - NVIDIA-GeForce-RTX-4000-Ada-Generation
+                      - NVIDIA-GeForce-RTX-5080
+                      - NVIDIA-GeForce-RTX-5070
+                      - NVIDIA-GeForce-RTX-4090
+                      - NVIDIA-GeForce-RTX-4070-SUPER
+                      - NVIDIA-GeForce-RTX-4070
+---
+# NEX-233 experiment ONLY: branch-specific, not intended for main.
+# Based on .k8s/scenarios/job_audioset.yaml (existing cluster PVCs and GPU).
+# Before applying, the mounted /workspace must contain:
+#  - NEX-233 working-tree source, compatible with the image's installed environment
+#  - resolved .experiments/rul/enhanced-cfc/fd003/compare-six-s44.yaml
+# All three jobs share read-only upstream *data/checkpoint contents* and write
+# distinct run-specific checkpoint/report paths. Prepare upstream artifacts first.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: nexuml-rul-fd003-cfc-six-s44
+  labels:
+    app.kubernetes.io/name: nexuml
+    nexuml-study: rul-fd003-cfc-six
+    nexuml-seed: "44"
+spec:
+  # Keep finished Jobs/logs for inspection; checkpoints live on JuiceFS.
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: nexuml
+        nexuml-study: rul-fd003-cfc-six
+        nexuml-seed: "44"
+      annotations:
+        sidecar.istio.io/inject: "false"
+    spec:
+      restartPolicy: Never
+      runtimeClassName: nvidia
+      imagePullSecrets:
+        - name: regcred
+      # The existing NexuML training image is built for linux/amd64 in CI.
+      # Do not schedule this pod on ARM64 GH200 without a compatible image.
+      nodeSelector:
+        kubernetes.io/arch: amd64
+      volumes:
+        - name: shared-mem
+          emptyDir:
+            medium: Memory
+            sizeLimit: 4Gi
+        - name: local-storage
+          emptyDir: {}
+        - name: juicefs
+          persistentVolumeClaim:
+            claimName: juicefs
+        - name: juicefs-prisma
+          persistentVolumeClaim:
+            claimName: juicefs-prisma
+      containers:
+        - name: nexuml
+          image: harbor.ika.rub.de/library/nexuml:latest
+          imagePullPolicy: Always
+          workingDir: /workspace
+          # No shell orchestration, auxiliary scripts, or custom environment.
+          command: ["nexuml"]
+          args:
+            - train
+            - --config
+            - .experiments/rul/enhanced-cfc/fd003/compare-six-s44.yaml
+          resources:
+            requests:
+              cpu: "8"
+              memory: 32Gi
+              nvidia.com/gpu: "1"
+            limits:
+              memory: 64Gi
+              nvidia.com/gpu: "1"
+          volumeMounts:
+            - name: shared-mem
+              mountPath: /dev/shm
+            - name: local-storage
+              mountPath: /mnt/local
+            - name: juicefs-prisma
+              subPathExpr: data
+              mountPath: /mnt/data
+            - name: juicefs-prisma
+              subPathExpr: logs
+              mountPath: /mnt/logs
+            - name: juicefs
+              subPathExpr: code/nexuml
+              mountPath: /workspace
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: nvidia.com/gpu.memory
+                    operator: Gt
+                    values: ["12000"]
+                  - key: nvidia.com/cuda.runtime.major
+                    operator: Gt
+                    values: ["11"]
+                  - key: nvidia.com/gpu.product
+                    operator: In
+                    values:
+                      - Tesla-V100-SXM2-32GB
+                      - NVIDIA-GeForce-RTX-4000-Ada-Generation
+                      - NVIDIA-GeForce-RTX-5080
+                      - NVIDIA-GeForce-RTX-5070
+                      - NVIDIA-GeForce-RTX-4090
+                      - NVIDIA-GeForce-RTX-4070-SUPER
+                      - NVIDIA-GeForce-RTX-4070
