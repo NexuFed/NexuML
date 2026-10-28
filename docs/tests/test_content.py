@@ -30,3 +30,25 @@ def test_editorial_frontmatter_and_missing_routes_fail(tmp_path):
     page.write_text("No frontmatter\n")
     with pytest.raises(ValueError, match="frontmatter"):
         module.check_content(tmp_path)
+
+
+def test_physical_ai_guides_are_in_the_starlight_site():
+    module.check_content(ROOT / "docs")
+    sidebar = (ROOT / "docs/astro.config.mjs").read_text()
+    for route in (
+        "how-to/reinforcement-learning",
+        "how-to/isaac-cartpole",
+        "how-to/isaac-native-configuration",
+        "how-to/isaac-read-only-viser",
+        "how-to/isaac-sensors-and-policy-state",
+        "how-to/isaac-multi-agent-learning",
+        "how-to/lerobot-data",
+        "how-to/so101-local-fit",
+        "explanation/physical-contracts",
+        "explanation/physical-ai-architecture",
+        "explanation/isaac-spectator-boundary",
+    ):
+        assert (ROOT / f"docs/src/content/docs/{route}.mdx").is_file()
+        assert f"slug: '{route}'" in sidebar
+        assert not (ROOT / f"docs/{route}.md").exists()
+    assert not (ROOT / "mkdocs.yml").exists()

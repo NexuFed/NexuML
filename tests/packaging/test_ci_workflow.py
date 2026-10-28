@@ -39,7 +39,7 @@ def test_only_package_publishers_use_hosted_runners():
             runner = job["runs-on"]
             if runner == "ubuntu-latest":
                 hosted.add(identity)
-            elif identity == ("ci.yml", "test"):
+            elif identity in {("ci.yml", "test"), ("ci.yml", "isaaclab")}:
                 assert runner == "ika-runner-gpu"
             elif identity == ("ci.yml", "studio-package"):
                 assert runner == "${{ matrix.os }}"
@@ -333,7 +333,12 @@ def test_robotics_discovery_runs_in_original_and_rebuilt_installed_library_smoke
     for name in ("Smoke test core and library wheels", "Smoke test rebuilt wheels"):
         command = next(step["run"] for step in steps if step.get("name") == name)
         assert "NEXUML_INSTALLED_DIST_TEST=1" in command
-        assert "test_installed_distributions.py -k library" in command
+        library_check = next(
+            line
+            for line in command.splitlines()
+            if "test_installed_distributions.py" in line and "library" in line.rsplit("-k ", 1)[-1]
+        )
+        assert "library" in library_check.rsplit("-k ", 1)[1].strip().strip('"').split(" or ")
     source = (Path(__file__).with_name("test_installed_distributions.py")).read_text()
     assert "def test_library_discovery_does_not_import_robotics(" in source
     metadata = Path(__file__).with_name("test_distribution_artifacts.py").read_text()

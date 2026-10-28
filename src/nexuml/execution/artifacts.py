@@ -19,7 +19,7 @@ def export_requests(
         output = Path(request.output or "exported_model")
         if request.kind == "train_package":
             path = export_package(
-                source.pipeline,
+                source.policy if getattr(source, "policy", None) is not None else source.pipeline,
                 output,
                 lightning_module=source.lightning_module,
                 trainer=source.trainer if checkpoint is None else None,

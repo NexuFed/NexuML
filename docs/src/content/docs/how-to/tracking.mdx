@@ -68,6 +68,33 @@ logging = LoggingSpec(dvclive=DVCLiveSpec(dir=".experiments/dvclive"))
 
 Inspect that directory after the run for actual DVCLive outputs.
 
+## Requested tracking failures
+
+An explicitly selected backend is required, not best-effort. Missing dependencies,
+invalid destinations and initialization errors fail the run with the backend and
+original diagnostic, including requested MLflow system metrics. This applies to
+supervised/reinforcement sessions and standalone evaluation.
+
+If a later backend fails initialization, previous loggers are finalized as failed.
+A newly created MLflow child is marked failed if its Lightning logger cannot start;
+a supplied existing run is not terminated by that construction failure. Cleanup
+retains the original error and created run ID. Failed owned auto-parent finalization
+also attempts to mark that parent failed, never a pre-existing parent.
+
+Artifact delivery is not transactional: earlier successful destinations retain
+their files when a later one fails. The error identifies both; NexuML does not
+delete prior uploads or retry silently. Use `logging=None` or no selected backends
+to intentionally disable tracking.
+
+## Private monitoring access
+
+The banner suggests shell-quoted loopback-only commands: TensorBoard port 6007,
+MLflow 5000, distinct from Viser 8080. Run them on the worker with the store and use
+an approved private tunnel. These are suggestions, not started services/reserved
+ports; select unused ports for concurrent jobs. HTTP(S) tracking uses the existing
+service instead of another `mlflow ui`; the banner includes the actual run ID when
+available. Do not expose credentials in logs or URLs.
+
 ## Diagrams and no external logger
 
 `LoggingSpec.diagram` controls Mermaid export independently of scalar loggers. See

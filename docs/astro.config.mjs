@@ -63,6 +63,12 @@ export default defineConfig({
           { label: 'Export and reuse', collapsed: true, items: [
             { slug: 'how-to/export-dataset' }, { slug: 'how-to/export' },
           ] },
+          { label: 'Physical AI', collapsed: true, items: [
+            { slug: 'how-to/reinforcement-learning' }, { slug: 'how-to/isaac-cartpole' },
+            { slug: 'how-to/isaac-native-configuration' }, { slug: 'how-to/isaac-read-only-viser' },
+            { slug: 'how-to/isaac-sensors-and-policy-state' }, { slug: 'how-to/isaac-multi-agent-learning' },
+            { slug: 'how-to/lerobot-data' }, { slug: 'how-to/so101-local-fit' },
+          ] },
           { label: 'Extend NexuML', collapsed: true, items: [
             { slug: 'how-to/custom-library' }, { slug: 'how-to/custom-layer' },
             { slug: 'how-to/custom-data-source' }, { slug: 'how-to/custom-eval-algorithm' },
@@ -76,6 +82,8 @@ export default defineConfig({
         ] },
         { label: 'Understand NexuML', collapsed: true, items: [
           { slug: 'explanation/why-nexuml' }, { slug: 'explanation/architecture' },
+          { slug: 'explanation/physical-contracts' }, { slug: 'explanation/physical-ai-architecture' },
+          { slug: 'explanation/isaac-spectator-boundary' },
         ] },
         { label: 'Reference', collapsed: true, items: [
           { slug: 'reference/cli' }, { slug: 'reference/scenario-spec' },

@@ -1,10 +1,13 @@
-# Reinforcement learning and Physical AI
+---
+title: Reinforcement learning and Physical AI
+description: Run finite rollouts, complete policy export, native replay, media and tracking workflows.
+---
 
 RL uses the ordinary `NexuSession` and Lightning trainer. TorchRL supplies collection,
 GAE and clipped PPO losses; NexuML does not add another trainer.
 
 For a state-only native GPU learning example rather than a wiring smoke test, use
-[Train state-only Isaac Cartpole](isaac-cartpole.md): one declarative scenario file,
+[Train state-only Isaac Cartpole](/how-to/isaac-cartpole/): one declarative scenario file,
 private read-only Viser, automatic policy export and fresh-process evaluation.
 
 ## Ownership and mental model
@@ -84,10 +87,10 @@ and recording are off by default. The commands produce training events/checkpoin
 complete policy packages, scalar replay results and replay provenance in a separate native
 evaluation run. The last command demonstrates checkpoint restoration: this completed
 32-frame checkpoint has no remaining learning budget. For interruption recovery, pass an
-intermediate checkpoint instead; see [Checkpoints](checkpoints.md) for batch-level saving.
+intermediate checkpoint instead; see [Checkpoints](/how-to/checkpoints/) for batch-level saving.
 These tiny runs test updates and artifact wiring, not task convergence or policy quality.
 
-Use [resolved YAML](run-scenarios.md) and ordinary repeatable `-O` overrides, not user
+Use [resolved YAML](/how-to/run-scenarios/) and ordinary repeatable `-O` overrides, not user
 source edits. For Python exports, deploy `export_package(result.policy, path)`, not
 `result.pipeline`: raw Gaussian parameters are not environment actions. The existing
 dataset-oriented `smoke` command is not an RL acceptance path.
@@ -558,7 +561,7 @@ Small dense heads intentionally establish the I/O path, not a vision benchmark.
 Exercise both references through the registered `ray-jobs-sdk` CLI lifecycle on a
 qualified Ubuntu 22.04 amd64 worker profile with the pinned MuJoCo/Gymnasium stack,
 Python 3.12 and a CPU learner inside a whole-GPU `pool_gpu_workers` job. Use the existing locked
-private-venv profile shown in [native configuration](isaac-native-configuration.md),
+private-venv profile shown in [native configuration](/how-to/isaac-native-configuration/),
 with `MUJOCO_GL: "egl"` in its `runtime_env.env_vars`. MuJoCo does not require
 Kit licence acceptance. The private helper supplies thirteen hash-verified client
 archives, including GLVND's EGL dispatcher; it installs no renderer, driver or
@@ -628,12 +631,12 @@ supply its current root; job scratch is not a persistent data location. The
 fixed public gateway path uses unsigned requests and does not qualify private
 bucket access controls. This smoke does not establish convergence, hardware
 calibration, native block-stacking success or the distinct frozen joint-reach
-protocol in [SO-101 local fit](so101-local-fit.md).
+protocol in [SO-101 local fit](/how-to/so101-local-fit/).
 
 ### Native PhysX recorded CLI replay
 
 Use the approved private client-library profile from
-[native configuration](isaac-native-configuration.md), with separate operator
+[native configuration](/how-to/isaac-native-configuration/), with separate operator
 licence acceptance, one GPU and `pool_gpu_workers`:
 
 ```bash
@@ -908,5 +911,5 @@ training modes and adds no speculative trainer hierarchy for them.
 
 Visual/MuJoCo CPU smokes have run locally. ROS/Gazebo and live CARLA tests require an
 external testbench/server and remain unverified until those integration runs succeed.
-Normal CI does not download or boot those systems. See [Development setup](development.md)
+Normal CI does not download or boot those systems. See [Development setup](/development/install/)
 for the repository's lint, type, docs and package gates.

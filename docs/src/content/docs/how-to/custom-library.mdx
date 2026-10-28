@@ -3,6 +3,11 @@ title: Build and discover a library
 description: Package reusable definitions and recipes, register installed packages or local roots, and verify discovery.
 ---
 
+Local roots can be a package directory containing `__init__.py`, a directory
+containing packages, or a project with packages under `src/`. A registered package
+preserves qualified names and relative imports: `library/config/` is imported as
+`library.config`, not top-level `config`. Registration does not install dependencies.
+
 **Goal:** make reusable components and scenarios available to Python, CLI inspection,
 and persisted YAML restoration. **Prerequisites:** installed NexuML, an importable Python
 package, and its runtime dependencies installed in the selected environment.

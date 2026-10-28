@@ -39,7 +39,7 @@ operator-bound on-disk episode source with preserved splits and a fixed Torch
 loader. `local_data` must exactly match the installed recipe's `data` binding.
 Model manifests preserve executable stage order and pin source/schema/base-state
 identity; never use a received manifest to resolve code or authorize a dataset.
-See `docs/how-to/so101-local-fit.md` for runnable capture/fit/replay commands and
+See `docs/src/content/docs/how-to/so101-local-fit.mdx` for runnable capture/fit/replay commands and
 `tests/fixtures/so101_local_fit_contract.json` for the authored portable schema.
 Commit/wheel pins and execution receipts stay with the local PR handoff artifacts,
 outside Git; the entire unfinished feature branch is not a release dependency.

@@ -2,10 +2,10 @@
 
 For declarative state-only Cartpole training, use
 `nexuml train --scenario-file scripts/isaaclab/cartpole.py` in the prepared venv.
-The [Cartpole guide](../../docs/how-to/isaac-cartpole.md) covers the learning
+The [Cartpole guide](../../docs/src/content/docs/how-to/isaac-cartpole.mdx) covers the learning
 settings, private viewer, complete-policy export and held-out evaluation.
 For remote submission without a custom image, see
-[Ray Jobs setup, log snapshots and private forwarding](../../docs/how-to/isaac-cartpole.md#run-remotely-with-ray-jobs).
+[Ray Jobs setup, log snapshots and private forwarding](../../docs/src/content/docs/how-to/isaac-cartpole.mdx#run-remotely-with-ray-jobs).
 Use `RayJobsSDKExecution.setup_command` (`nexuml.execution.definitions`,
 registered `ray-jobs-sdk`, not KubeRay `ray-job`) for explicit remote dependency setup,
 followed by the project's venv Python. Ordinary `run.sh` never installs anything.
@@ -21,7 +21,7 @@ Sim 6.2 and Lab source `70ab24fec3eabf51222817db0cdb5a4e7133bd7e` through
 the upstream aggregate-wheel builder. Published `nexuml[robots]` forwards to
 `nexuml-library[robots]`; `all` does not enable it. Consumer tool configuration
 and temporary dependency exceptions are not propagated to downstream users.
-See the [RL guide](../../docs/how-to/reinforcement-learning.md#optional-robotics-dependencies)
+See the [RL guide](../../docs/src/content/docs/how-to/reinforcement-learning.mdx#optional-robotics-dependencies)
 for dependency ownership and the Requests security floor.
 
 Use the single worktree venv, not the active shared `/env`. No DevContainer

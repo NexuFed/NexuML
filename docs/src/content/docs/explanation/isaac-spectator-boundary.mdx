@@ -1,4 +1,7 @@
-# Native spectator construction boundary
+---
+title: Native spectator construction boundary
+description: Separate trusted native task construction from the private read-only spectator.
+---
 
 The Library spectator adapter reuses Isaac/Newton geometry and Viser transport.
 It bypasses Isaac's constructor that temporarily reassigns the global server
@@ -39,4 +42,4 @@ CUDA_VISIBLE_DEVICES='' NEXUML_RUN_SYSTEM_TESTS=1 OMP_NUM_THREADS=1 \
 These are constructor-safety checks, not training, replay, sensor or browser
 acceptance. Job activation, environment selection, markers, supported plots and
 actual training/replay browsers have separate required integration gates; see
-[the viewing guide](../how-to/isaac-read-only-viser.md).
+[the viewing guide](/how-to/isaac-read-only-viser/).
