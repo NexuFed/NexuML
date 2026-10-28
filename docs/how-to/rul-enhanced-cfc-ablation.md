@@ -232,18 +232,23 @@ read-only source mount:
 | JuiceFS PVC subpath | Container mount | Purpose |
 | --- | --- | --- |
 | content-hashed source snapshot | `/mnt/nexuml-source` (read-only) | Executable source files |
-| `code/nexuml/.experiments` | `/mnt/nexuml-experiments` | Upstream models, configs, checkpoints and reports |
+| `juicefs-prisma:models/nexuml/.experiments` | `/mnt/nexuml-experiments` | Upstream models, configs, checkpoints and reports |
 | `juicefs-prisma:data` | `/mnt/data` | NASA C-MAPSS `data/cmapss` and other datasets |
 | `juicefs-prisma:logs` | `/mnt/logs` | NexuML log-root outputs |
 | `juicefs-prisma:models` | `/mnt/models` | Model/checkpoint-root outputs |
 
 Environment variables for the existing NexuML root helpers are
 `NEXUML_DATA_ROOT=/mnt/data`, `NEXUML_LOGS_ROOT=/mnt/logs`, and
-`NEXUML_RUL_CHECKPOINT_ROOT=/mnt/models/rul/checkpoints`. These values
+`NEXUML_RUL_CHECKPOINT_ROOT=/mnt/nexuml-experiments/rul/checkpoints`. These values
 refer to **container** paths. The host paths may instead be
 `/mnt/juicefs_prisma/data`, `/mnt/juicefs_prisma/logs`, and
 `/mnt/juicefs_prisma/models`. The RUL scenario has some literal
 relative paths, which are not automatically rewritten by the root helpers.
+
+The persistent host destination for these artifacts is
+`/mnt/juicefs_prisma/models/nexuml/.experiments`. The existing JuiceFS
+source snapshots remain at `/mnt/juicefs/job-staging/nexuml-nex233`;
+code staging and experiment storage intentionally use different PVCs.
 
 **Important:** EnhancedCfCRULHead uses the existing
 `resolve_patchformer_checkpoint()` convention, not an environment-variable
