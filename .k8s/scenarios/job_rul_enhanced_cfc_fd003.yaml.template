@@ -61,6 +61,13 @@ spec:
               value: /tmp/nexuml-job-venv/uv-python
             - name: UV_LINK_MODE
               value: copy
+            # These refer to mountpoints INSIDE the pod, not host paths.
+            - name: NEXUML_DATA_ROOT
+              value: /mnt/data
+            - name: NEXUML_LOGS_ROOT
+              value: /mnt/logs
+            - name: NEXUML_RUL_CHECKPOINT_ROOT
+              value: /mnt/models/rul/checkpoints
           command: ["/bin/bash", "-c"]
           args:
             - |
@@ -120,6 +127,9 @@ spec:
             - name: juicefs-prisma
               mountPath: /mnt/logs
               subPath: logs
+            - name: juicefs-prisma
+              mountPath: /mnt/models
+              subPath: models
             - name: runtime-venv
               mountPath: /tmp/nexuml-job-venv
             - name: shared-mem
