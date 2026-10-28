@@ -99,5 +99,17 @@ def test_render_uses_unique_native_seed_scenarios() -> None:
         assert "nvidia.com/gpu.memory" not in manifest
         assert "nvidia.com/gpu.product" not in manifest
         assert "mountPath: /tmp/nexuml-job-venv" in manifest
+        # OCI runtime mountpoints must not be nested beneath the read-only
+        # source snapshot; staged source and persistent data stay separate.
+        assert "mountPath: /mnt/nexuml-source" in manifest
+        assert "mountPath: /mnt/nexuml-experiments" in manifest
+        assert "mountPath: /mnt/nexuml-data" in manifest
+        assert "mkdir -p /tmp/nexuml-run" in manifest
+        assert "cp -R /mnt/nexuml-source/. /tmp/nexuml-run/" in manifest
+        assert "ln -s /mnt/nexuml-experiments /tmp/nexuml-run/.experiments" in manifest
+        assert "ln -s /mnt/nexuml-data /tmp/nexuml-run/data" in manifest
+        assert "mountPath: /workspace/.experiments" not in manifest
+        assert "mountPath: /workspace/data" not in manifest
+        assert "mountPath: /workspace\n" not in manifest
     with pytest.raises(ValueError, match="unexpected"):
         module.render_manifest(45, "a" * 64, "job-staging/example")
