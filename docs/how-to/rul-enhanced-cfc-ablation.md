@@ -156,117 +156,130 @@ interpreting small differences as definitive causal effects. The official
 FD003 test split has been inspected in prior work, so this ablation is
 exploratory and must not be used to select the final model on test errors.
 
-## Temporary Kubernetes execution — feature branch only
+## Temporary Kubernetes campaign: immutable JuiceFS snapshot and pod-local venv
 
-The three experimental Kubernetes Jobs in
-`.k8s/scenarios/job_rul_enhanced_cfc_fd003.yaml` are adaptations of the
-existing site-specific AudioSet `batch/v1 Job` template. They remain **only
-on NEX-233** and are **not intended for a merge into `main`**. No new
-NexuML execution backend, custom experiment environment variables or
-shell-based training runners were introduced.
+This experiment-only deployment **remains on NEX-233 and must not be merged
+into `main`**. The regular NexuML Kubernetes templates, core training
+infrastructure, and scenario APIs are unchanged.
 
-### Use the existing `latest` image without hiding its installation
+It follows the established
+[`privacy_measure_theory/generative-trajectory-toys`](https://github.com/LucaBeckerICA/privacy_measure_theory/tree/generative-trajectory-toys/.kube_ot)
+pattern: compute a SHA-256 digest over actual source files, stage one
+immutable and independently verified copy under JuiceFS, submit one
+Kubernetes Job per seed, and construct the Python virtual environment on
+**ephemeral pod storage**. Neither the staged source nor the pod requires
+a Git checkout or `.git` metadata.
 
-The Jobs use `harbor.ika.rub.de/library/nexuml:latest`. We do not
-publish a separate feature-branch image.
+### What is staged
 
-The image's `/env/bin/nexuml` entrypoint uses a workspace-installed
-Python package. Mounting the JuiceFS project tree onto `/workspace`
-can hide the installed source, producing `No module named 'nexuml'`.
-Mounting an incomplete source directory onto `/workspace/src/nexuml`
-can likewise hide its `cli` package, producing
-`No module named 'nexuml.cli'`.
+The launcher at
+`.k8s/scenarios/submit_rul_enhanced_cfc_fd003.py`
+stages only runtime source and dependency metadata:
 
-The corrected Jobs instead mount the **complete existing feature-branch
-checkout** from the JuiceFS `code/nexuml` subpath at
-`/mnt/nexuml-source` (read-only). Both the resolver and training
-containers set `PYTHONPATH` to:
+- `src/`, `library/src/`, `scripts/`: Python and Bash files, plus
+  required JSON/TOML/YAML/TXT package metadata; no model weights or data
+- `pyproject.toml`, `uv.lock`, `README.md`, `LICENSE`,
+  `library/pyproject.toml`, `library/README.md`, `library/LICENSE`
 
-```text
-/mnt/nexuml-source/src:/mnt/nexuml-source/library/src
-```
+The launcher rejects source symlinks and hashes relative file names and
+file contents. The same digest is checked after `rsync` and before the
+snapshot is published. Subsequent submissions reuse the immutable staged
+snapshot, and fail if the contents no longer match.
 
-This uses the shared NEX-233 source without obscuring the installed
-`/workspace` or the image's `/env` environment.
+By default, a digest-addressed snapshot is stored at
+`/mnt/juicefs/job-staging/nexuml-nex233/<source-sha256>`.
+The rendered Kubernetes `batch/v1 Job` manifests live only under
+`.k8s/scenarios/rendered/` (ignored by Git); do **not** apply the deleted
+legacy static `job_rul_enhanced_cfc_fd003.yaml`.
 
-| JuiceFS subpath | Container mount | Purpose |
+### Pod runtime
+
+Each Job uses the existing
+`harbor.ika.rub.de/library/nexuml:latest` image—**no dedicated image**.
+Its contents are not used as the experiment's Python package source.
+The staged snapshot is mounted read-only at `/workspace` through the
+existing `juicefs` PVC.
+
+Each Job then runs the following in order in the **same container**:
+
+1. Validate the staged source-content digest and required files.
+2. Create a fresh `uv` venv at `/tmp/nexuml-job-venv/.venv` on an
+   `emptyDir` volume and install the pinned workspace packages with
+   `uv sync --locked --no-dev --all-packages --all-extras`.
+3. Verify that both NexuML packages import and that PyTorch sees CUDA.
+4. Run `nexuml resolve` for the selected `compare-six` scenario and
+   then `nexuml train --config ...`.
+
+This intentionally uses the existing NexuML CLI rather than introducing
+a separate training implementation. The ephemeral venv and wheel cache
+are not copied to JuiceFS; they disappear when the Pod is deleted.
+The first start requires the target worker to download any missing locked
+dependencies, potentially including large CUDA wheels. The launcher does
+not silently reuse an incompatible `/env` installation.
+
+The following persistent JuiceFS paths are mounted separately under
+the staged workspace:
+
+| JuiceFS subpath | Job path | Meaning |
 | --- | --- | --- |
-| `code/nexuml` | `/mnt/nexuml-source` | Feature-branch source (read-only) |
-| `code/nexuml/.experiments` | `/workspace/.experiments` | Configs, checkpoints, reports |
-| `code/nexuml/data` | `/workspace/data` | NASA C-MAPSS data |
+| `code/nexuml/.experiments` | `/workspace/.experiments` | Upstream weights/normalizer, resolved YAML, new checkpoints and reports |
+| `code/nexuml/data` | `/workspace/data` | Cached NASA C-MAPSS data |
+| `juicefs-prisma:data` | `/mnt/data` | Existing cluster dataset mount |
+| `juicefs-prisma:logs` | `/mnt/logs` | Existing cluster logging mount |
 
-A lightweight `verify-source` init container checks for the expected
-core CLI, NEX-233 scenario and comparison callback modules. If the
-shared checkout is absent, stale or incomplete, the Job fails with
-an explicit file-path error instead of a misleading Python import
-failure. It does not automatically clone, overwrite or upgrade code
-on the shared PVC.
+**Prepare the upstream FD003 PatchFormer checkpoint and train-endpoint
+normalizer in the shared `.experiments` tree before launching the three
+seeds.** These Jobs do not recompute their upstream models.
 
-**The checkout at JuiceFS `code/nexuml` must already contain the
-NEX-233 feature-branch source.** An unrelated local Git worktree does
-not automatically populate that volume. The `latest` image still
-supplies the Python environment; verify it has dependencies compatible
-with the feature-branch source.
+The Job template retains the established Kueue `jobs` queue,
+`lbecker` namespace, `normal` priority, NVIDIA runtime, `regcred`,
+one GPU per Job, and AMD64/CUDA runtime constraints. The GPU model and
+memory filters and explicit CPU/RAM requests/limits remain omitted.
+Removing CPU/RAM constraints does **not** reserve a node exclusively.
 
-The Jobs retain `imagePullPolicy: IfNotPresent` to avoid re-downloading
-the multi-gigabyte `latest` image on nodes where it is already cached.
-A node without the image still has to pull it. An interrupted image
-download (`short read ... unexpected EOF`) is an independent
-registry/network/container-runtime issue: it cannot be fixed through
-the Python source mounts. Also note that cached `latest` images may
-be older than the remote tag.
+### Launch from the NEX-233 checkout
 
-The upstream FD003 seed-42 PatchFormer checkpoint, endpoint normalization
-and prepared RUL data must already exist on shared storage. Do not
-launch three simultaneous preparation attempts.
-
-### Resolve and train using NexuML itself
-
-After the source-validation init container, each Job has a native NexuML **init container** which runs
-`nexuml resolve` against the same `/workspace` used by its training
-container. This avoids the nonportable absolute paths that would result
-from resolving a YAML on a developer's local `/workspaces/...` tree.
-
-The main container then runs exactly:
-
-```text
-nexuml train --config .experiments/rul/enhanced-cfc/fd003/compare-six-s42.yaml
-```
-
-The two other Jobs use seeds 43 and 44. All three share persistent output
-storage and can run concurrently if GPU capacity permits. Each requests
-one GPU, with no explicit CPU or RAM requests or limits, no GPU memory or
-model allowlists, and the original CUDA runtime major-version constraint.
-The jobs retain the `amd64` architecture restriction because the
-standard image is built for `linux/amd64`.
-
-### Redeploy failed or previously pending Jobs
+The machine running the launcher must have `rsync`, `kubectl`, access
+to `/mnt/juicefs`, and an active kubeconfig for the `lbecker` namespace.
 
 ```bash
+cd /workspaces/NexuFed/NexuML-predictive
+git pull --ff-only
+
+# First inspect the three rendered manifests (no upload or submission).
+python .k8s/scenarios/submit_rul_enhanced_cfc_fd003.py --dry-run
+
+# Clear ONLY the previous obsolete FD003 Jobs; persistent output is untouched.
 kubectl -n lbecker delete jobs \
   -l nexuml-study=rul-fd003-cfc-six \
   --cascade=foreground --wait=true
 
-kubectl -n lbecker apply \
-  -f .k8s/scenarios/job_rul_enhanced_cfc_fd003.yaml
+# Stage one content-hashed source snapshot and submit all three Jobs.
+python .k8s/scenarios/submit_rul_enhanced_cfc_fd003.py
 
 kubectl -n lbecker get pods \
   -l nexuml-study=rul-fd003-cfc-six -o wide
-
-kubectl -n lbecker logs job/nexuml-rul-fd003-cfc-six-s42 \
-  -c verify-source
-
-kubectl -n lbecker logs job/nexuml-rul-fd003-cfc-six-s42 \
-  -c resolve-config
-
-kubectl -n lbecker logs -f \
-  job/nexuml-rul-fd003-cfc-six-s42 -c nexuml
+kubectl -n lbecker logs -f job/nexuml-rul-fd003-cfc-six-s42
 ```
 
-The validation-only per-seed and combined three-seed summary JSON files
-are written to the persistent `.experiments/rul/enhanced-cfc/fd003`
-directory. Kubernetes cluster credentials, PVC contents, image-push
-permissions, and real hardware availability must be verified on-site.
+To submit a single pilot first:
+
+```bash
+python .k8s/scenarios/submit_rul_enhanced_cfc_fd003.py --seeds 42
+```
+
+The launcher never deletes a Job on its own. It skips already existing
+Jobs and never removes staged sources or persistent outputs; if replacing
+a failed Job, inspect its logs before deleting it explicitly. The source
+snapshot is shared by all three seeds, with independent output and
+checkpoint names. The existing validation-only cross-seed aggregation
+runs when all three compatible results are present.
+
+**Image caveat:** The inherited image's `latest` tag is mutable and
+`IfNotPresent` may reuse a cached image. Its CUDA/Python tools still need
+to be compatible with this branch's lockfile. A truncated image pull
+(`unexpected EOF`) is a separate registry/node issue and cannot be
+fixed through JuiceFS snapshots or Python dependency installation.
 
 ## Check locally
 
@@ -275,5 +288,5 @@ git pull
 ruff check .
 ruff format --check .
 ty check
-pytest tests/library/test_rul_enhanced_cfc.py -v
+pytest tests/library/test_rul_enhanced_cfc.py tests/library/test_rul_k8s_staging.py -v
 ```
