@@ -14,6 +14,11 @@ Placement does not introduce a second model/training API.
 | RayJob | KubeRay template | RayCluster execution in remote driver |
 | Kubernetes Job | one template-owned training pod | same session |
 | PyTorchJob | Training Operator replicas | same lifecycle, native distributed launch |
+| Ray Jobs SDK (`ray-jobs-sdk`) | normal remote CLI process | asynchronous submission returning a job ID |
+
+`RayJobsSDKExecution` is distinct from KubeRay `RayJobExecution` (`ray-job`) and
+Ray Train `RayClusterExecution` (`ray-cluster`). See
+[SDK defaults and remote lifecycle](/how-to/training-backends/ray/#ray-jobs-sdk-ray-jobs-sdk).
 
 ## Start locally
 

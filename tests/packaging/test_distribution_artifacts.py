@@ -2,10 +2,14 @@ import os
 import tarfile
 import tomllib
 import zipfile
+import subprocess
+import sys
 from email.parser import BytesParser
 from pathlib import Path
 
 import pytest
+from packaging.requirements import Requirement
+from packaging.utils import canonicalize_name
 
 
 def _project_version(path: Path) -> str:
@@ -158,10 +162,115 @@ def test_distribution_artifacts() -> None:
     )
 
     all_requires = [
-        requirement.lower() for requirement in core_requires if "extra == 'all'" in requirement
+        Requirement(requirement) for requirement in core_requires if "extra == 'all'" in requirement
     ]
-    assert not any(
-        requirement.startswith(("pytest", "ruff", "ty;", "nvidia-dali"))
-        for requirement in all_requires
+    core_extras = tomllib.loads(Path("pyproject.toml").read_text())["project"][
+        "optional-dependencies"
+    ]
+    expected_all = [
+        Requirement(requirement)
+        for extra, requirements in core_extras.items()
+        if extra not in {"dev", "all", "robots", "isaac", "lerobot", "mujoco"}
+        for requirement in requirements
+        if Requirement(requirement).name != "nexuml"
+    ]
+    # Hatch expands self-referencing extras into their concrete published requirements.
+    assert {
+        (canonicalize_name(req.name), frozenset(req.extras), req.specifier) for req in all_requires
+    } == {
+        (canonicalize_name(req.name), frozenset(req.extras), req.specifier) for req in expected_all
+    }
+    dali = next(req for req in all_requires if req.name == "nvidia-dali-cuda120")
+    assert dali.marker is not None
+    assert dali.marker.evaluate({"extra": "all", "sys_platform": "linux"})
+    assert not dali.marker.evaluate({"extra": "all", "sys_platform": "win32"})
+    for requirements in (core_requires, library_requires):
+        parsed = [Requirement(value) for value in requirements]
+        native = [req for req in parsed if req.name in {"isaaclab", "lerobot"}]
+        assert not any(
+            req.marker is None or req.marker.evaluate({"extra": "all"}) for req in native
+        )
+    assert any(
+        req.name == "nexuml-library"
+        and req.extras == {"robots"}
+        and req.marker is not None
+        and req.marker.evaluate({"extra": "robots"})
+        for req in map(Requirement, core_requires)
     )
+    for name in ("isaaclab", "lerobot"):
+        assert any(
+            req.name == name and req.marker is not None and req.marker.evaluate({"extra": "robots"})
+            for req in map(Requirement, library_requires)
+        )
     assert "ray[default,train]<2.59,>=2.57; extra == 'ray'" in core_requires
+
+
+@pytest.mark.skipif(
+    os.environ.get("NEXUML_RUN_RESOLVER_TESTS") != "1",
+    reason="explicit opt-in required for network-backed consumer resolution",
+)
+@pytest.mark.parametrize("source_kind", ["wheel", "editable"])
+def test_external_consumer_owns_backend_versions_and_overrides(tmp_path, source_kind):
+    root = Path(os.environ["NEXUML_DIST_ROOT"]).resolve()
+    core = _only(root / "nexuml", f"nexuml-{CORE_VERSION}-*.whl")
+    library = _only(root / "nexuml-library", f"nexuml_library-{LIBRARY_VERSION}-*.whl")
+    core_source, library_source = core, library
+    editable = ""
+    if source_kind == "editable":
+        core_source = Path(__file__).resolve().parents[2]
+        library_source = core_source / "library"
+        editable = ", editable=true"
+    manifest = tmp_path / "pyproject.toml"
+    manifest.write_text(
+        '[project]\nname="external-consumer"\nversion="0.0.0"\n'
+        'requires-python=">=3.12,<3.13"\n'
+        f'dependencies=["nexuml[library]=={CORE_VERSION}", "torch==2.10.0+cpu"]\n'
+        '[tool.uv]\noverride-dependencies=["numpy==2.4.6", "packaging==26.0"]\n'
+        "[tool.uv.sources]\n"
+        f"nexuml={{path={str(core_source)!r}{editable}}}\n"
+        f"nexuml-library={{path={str(library_source)!r}{editable}}}\n"
+        'torch={index="cpu"}\ntorchaudio={index="cpu"}\ntorchvision={index="cpu"}\n'
+        '[[tool.uv.index]]\nname="cpu"\nurl="https://download.pytorch.org/whl/cpu"\n'
+        "explicit=true\n"
+    )
+    env = {key: value for key, value in os.environ.items() if not key.startswith("UV_")}
+    env["UV_PYTHON_DOWNLOADS"] = "never"
+    command = ["uv", "lock", "--project", str(tmp_path), "--python", sys.executable]
+    result = subprocess.run(command, env=env, capture_output=True, text=True, timeout=180)
+    assert result.returncode == 0, result.stdout + result.stderr
+    locked = tomllib.loads((tmp_path / "uv.lock").read_text())
+    packages = {package["name"]: package for package in locked["package"]}
+    assert packages["torch"]["version"] == "2.10.0+cpu"
+    assert packages["torch"]["source"]["registry"] == "https://download.pytorch.org/whl/cpu"
+    assert packages["numpy"]["version"] == "2.4.6"
+    assert packages["packaging"]["version"] == "26.0"
+    assert not set(packages).intersection({"isaaclab", "isaacsim", "lerobot", "newton"})
+
+    manifest.write_text(manifest.read_text().replace("torch==2.10.0+cpu", "torch==1.13.1+cpu"))
+    rejected = subprocess.run(command, env=env, capture_output=True, text=True, timeout=180)
+    assert rejected.returncode != 0
+    assert "torch>=2.0" in rejected.stderr and "unsatisfiable" in rejected.stderr
+
+    requirements = tmp_path / "requirements.in"
+    requirements.write_text(str(core) + "\n")
+    rejected = subprocess.run(
+        [
+            "uv",
+            "--no-config",
+            "pip",
+            "compile",
+            str(requirements),
+            "--python",
+            sys.executable,
+            "--python-version",
+            "3.11",
+            "--no-build",
+        ],
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=180,
+    )
+    assert rejected.returncode != 0
+    assert "requested Python version (>=3.11)" in rejected.stderr
+    assert f"nexuml=={CORE_VERSION} only supports >=3.12" in rejected.stderr

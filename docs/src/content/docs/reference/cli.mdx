@@ -11,4 +11,10 @@ Generated from the current Typer command tree. Use `nexuml --help` or
 
 For a working experiment, start with [create and run a scenario](/how-to/run-scenarios/).
 
+`evaluate <model-or-policy-package>` uses trusted exported computation on a dataset
+test split or complete policy in its environment, without training. Both `train`
+and `evaluate` accept `--scenario-file`; evaluation keeps the saved architecture
+and weights. See [evaluation](/how-to/evaluate/), [policy/media settings](/how-to/reinforcement-learning/)
+and the separate [training-resume path](/how-to/checkpoints/).
+
 <CliReference />

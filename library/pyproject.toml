@@ -57,8 +57,34 @@ eval = [
     "scikit-learn>=1.4",
     "umap-learn>=0.5",
 ]
+reinforcement = [
+    "nexuml[reinforcement]>=0.2,<0.3",
+]
+rendering = [
+    "nexuml[rendering]>=0.2,<0.3",
+    "nexuml-library[reinforcement]",
+    "gymnasium[classic-control]>=1,<2",
+]
+video = [
+    "nexuml-library[rendering]",
+    "nexuml[video]>=0.2,<0.3",
+]
+mujoco = [
+    "nexuml-library[reinforcement]",
+    "gymnasium[mujoco]>=1,<2",
+]
+isaac = [
+    "nexuml-library[reinforcement,video]",
+    "isaaclab[isaacsim,ov,viser]>=3.0.0",
+]
+lerobot = [
+    "lerobot[dataset,diffusion]>=0.6",
+]
+robots = [
+    "nexuml-library[isaac,lerobot,mujoco]",
+]
 all = [
-    "nexuml-library[audio,data,pretrained,eval]",
+    "nexuml-library[audio,data,pretrained,eval,reinforcement]",
 ]
 
 [project.entry-points."nexuml.libraries"]

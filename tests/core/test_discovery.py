@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import sys
+
+import pytest
 
 from nexuml.core.discovery import (
     LibraryConfig,
     Scanner,
     discover_entry_point_packages,
     discover_library_packages,
+    discover_local_packages,
     scan_all,
 )
 from nexuml.core.registry import ComponentRegistry, get_component_registry
@@ -140,3 +144,59 @@ def test_entry_point_component_identity_round_trip(
 
     assert type(restored) is definition_type
     assert restored.model_dump()["scale"] == 3.0
+
+
+@pytest.mark.parametrize("layout", ["package", "flat", "src"])
+def test_local_discovery_preserves_package_relative_imports(
+    tmp_path, monkeypatch, minimal_local_library, layout
+):
+    package_name = minimal_local_library.package_name
+    package = minimal_local_library.root / package_name
+    if layout == "src":
+        source = tmp_path / "project" / "src"
+        source.mkdir(parents=True)
+        package = package.rename(source / package_name)
+        root = source.parent
+    else:
+        root = package if layout == "package" else package.parent
+    (package / "values.py").write_text("VALUE = 7\n")
+    nested = package / "config"
+    nested.mkdir()
+    (nested / "__init__.py").write_text("from .recipes import nested_scenario\n")
+    key = f"{package_name}.relative"
+    (nested / "recipes.py").write_text(
+        "from ..values import VALUE\n"
+        "from nexuml.core.discovery import scenario\n"
+        f"@scenario({key!r})\n"
+        "def nested_scenario():\n"
+        "    return VALUE\n"
+    )
+    # Local-root discovery adjusts the import path; keep that change inside this test.
+    monkeypatch.setattr(sys, "path", sys.path.copy())
+    packages = discover_local_packages(LibraryConfig(roots=[str(root)]))
+    assert package_name in packages
+    assert "config" not in packages
+    scanner = Scanner()
+    scanner.scan_packages(packages)
+    assert not scanner.errors
+    item = next(item for item in scanner.by_kind("scenario") if item.key == key)
+    assert item.obj() == 7
+    assert item.obj.__module__ == f"{package_name}.config.recipes"
+
+
+def test_local_package_root_discovers_definitions_in_its_init(minimal_local_library, monkeypatch):
+    package_name = minimal_local_library.package_name
+    package = minimal_local_library.root / package_name
+    key = f"{package_name}.root"
+    (package / "__init__.py").write_text(
+        "from nexuml.core.discovery import scenario\n"
+        f"@scenario({key!r})\n"
+        "def root_scenario():\n"
+        "    return 5\n"
+    )
+    monkeypatch.setattr(sys, "path", sys.path.copy())
+    packages = discover_local_packages(LibraryConfig(roots=[str(package)]))
+    scanner = Scanner()
+    scanner.scan_packages(packages)
+    assert not scanner.errors
+    assert next(item.obj() for item in scanner.by_kind("scenario") if item.key == key) == 5

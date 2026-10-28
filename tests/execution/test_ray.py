@@ -242,7 +242,7 @@ def test_initialized_ray_cannot_reuse_an_unverified_target(monkeypatch, address)
         ray, "init", lambda **kwargs: pytest.fail("Must not change caller-owned connection")
     )
     with pytest.raises(ray_execution.RayExecutionError, match="unverified target"):
-        ray_execution._connect(RayClusterExecution(target={"address": address}))
+        ray_execution._connect(RayClusterExecution.model_validate({"target": {"address": address}}))
 
 
 def test_unsupported_typed_strategy_fails_before_connection(monkeypatch):

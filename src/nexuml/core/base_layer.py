@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from enum import Enum
+from typing import cast
 
 import torch
 from tensordict import TensorDict
@@ -83,9 +84,9 @@ class PipelineLayer(torch.nn.Module):
         if isinstance(keys, dict):
             keys = list(keys.keys())
         if isinstance(x, TensorDict) and len(keys) > 1:
-            return torch.cat([x[k] for k in keys], dim=1)
+            return torch.cat([cast(torch.Tensor, x[k]) for k in keys], dim=1)
         elif isinstance(x, TensorDict):
-            return x[keys[0]]
+            return cast(torch.Tensor, x[keys[0]])
         return x
 
     def check_update(self) -> bool:
@@ -108,7 +109,7 @@ class PipelineLayer(torch.nn.Module):
         else:
             return None if y is None else y[self.label_key]  # ty: ignore[invalid-return-type]
 
-    def forward(  # ty: ignore[invalid-mutable-override]
+    def forward(
         self,
         x: TensorDict | torch.Tensor,
         y: TensorDict | None = None,
@@ -129,7 +130,7 @@ class PipelineLayer(torch.nn.Module):
             keys_out = [None] * len(keys_in_list)
 
         for key_in, key_out in zip(keys_in_list, keys_out):
-            x_mod = x[key_in] if isinstance(x, TensorDict) else x
+            x_mod = cast(torch.Tensor, x[key_in]) if isinstance(x, TensorDict) else x
 
             if self.label_key is not None:
                 y_input = self.get_label(x, y)

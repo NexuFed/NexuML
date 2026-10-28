@@ -2,8 +2,14 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import torch
 from tensordict import TensorDict
+
+if TYPE_CHECKING:
+    from tensordict.base import CompatibleType
+    from tensordict.utils import NestedKey
 from torch.utils.data import DataLoader, WeightedRandomSampler
 
 
@@ -14,11 +20,15 @@ def _collate_tensordict(batch):
         Tuple of batched feature and label ``TensorDict``.
     """
     xs, ys = zip(*batch)
-    x_td = {key: torch.stack([x[key] for x in xs]) for key in xs[0].keys()}
+    x_td: dict[NestedKey, CompatibleType] = {
+        key: torch.stack([x[key] for x in xs]) for key in xs[0].keys()
+    }
     x_out = TensorDict(x_td, batch_size=[len(xs)])
 
     if ys[0] is not None:
-        y_td = {key: torch.stack([y[key] for y in ys]) for key in ys[0].keys()}
+        y_td: dict[NestedKey, CompatibleType] = {
+            key: torch.stack([y[key] for y in ys]) for key in ys[0].keys()
+        }
         y_out = TensorDict(y_td, batch_size=[len(ys)])
     else:
         y_out = None

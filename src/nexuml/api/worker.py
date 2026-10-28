@@ -10,6 +10,7 @@ from pathlib import Path
 from pydantic import ValidationError
 from ruamel.yaml.error import YAMLError
 
+from nexuml.api.errors import validation_fields
 from nexuml.core.config import ResolvedConfig
 from nexuml.core.serialization import lower_model, restore_model_data
 
@@ -59,6 +60,19 @@ def document(config: ResolvedConfig) -> dict:
         "yaml": text,
         "semantic_revision": hashlib.sha256(text.encode()).hexdigest(),
     }
+
+
+def _authorize_execution_paths(execution, root: Path) -> None:
+    """Reject selected transport paths before dependency checks or discovery probes."""
+    from nexuml.execution.definitions import KubernetesExecution
+
+    if isinstance(execution, KubernetesExecution):
+        from nexuml.execution.templates import authorized_path
+
+        if execution.template:
+            authorized_path(execution.template, root)
+        if execution.handoff and not execution.handoff.destination.startswith("s3://"):
+            authorized_path(execution.handoff.destination, root)
 
 
 def catalog() -> dict:
@@ -135,14 +149,17 @@ def dispatch(action: str, payload: dict) -> dict:
     if action == "validate":
         return document(configuration(payload))
     if action == "prepare_train":
-        from nexuml.training.lightning import load_scenario_from_trainer_checkpoint
         from nexuml.execution import preflight
         from nexuml.execution.semantics import ExecutionError
 
         config = configuration(payload)
         if not config.execution.capabilities.get("resume") and payload.get("trainer_checkpoint"):
             raise ValueError("Trainer checkpoint resume is local-only; Ray owns its recovery.")
-        if payload.get("trainer_checkpoint"):
+        if payload.get("trainer_checkpoint") and config.execution.capabilities.get(
+            "process_ownership", False
+        ):
+            from nexuml.training.lightning import load_scenario_from_trainer_checkpoint
+
             config = ResolvedConfig.from_scenario(
                 load_scenario_from_trainer_checkpoint(
                     payload["trainer_checkpoint"],
@@ -188,6 +205,7 @@ def dispatch(action: str, payload: dict) -> dict:
         from nexuml.execution import discover
 
         config = configuration(payload)
+        _authorize_execution_paths(config.execution, Path.cwd())
         return discover(
             config.execution,
             timeout=payload.get("timeout", 10),
@@ -231,17 +249,19 @@ def execute(action: str, payload: dict) -> dict:
     Returns:
         Actual results and existing-format artifact references.
 
-    Raises:
-        ValueError: When an unsupported backend/export combination is requested.
     """
     from nexuml.api.observation import Observation
     from nexuml.execution import run
-    from nexuml.execution.artifacts import export_requests
 
     config = configuration(payload)
     observer = Observation(Path(payload["observations"])) if action == "train" else None
     if observer is not None:
-        observer.record("progress", phase="preparation / data setup")
+        observer.record(
+            "progress",
+            phase="preparation / data setup"
+            if config.execution.capabilities.get("process_ownership", False)
+            else "submission; remote phase unknown",
+        )
     if action == "train":
         result = run(
             config.to_scenario(),
@@ -253,6 +273,12 @@ def execute(action: str, payload: dict) -> dict:
         )
         if isinstance(result, dict):
             return result
+        if isinstance(result, str):
+            return {
+                "status": "submitted",
+                "submission_id": result,
+                "message": "Submission only; inspect terminal status with Ray Jobs tools.",
+            }
         artifacts = list(getattr(result, "artifacts", []))
         callback = getattr(getattr(result, "trainer", None), "checkpoint_callback", None)
         for source in (
@@ -269,21 +295,16 @@ def execute(action: str, payload: dict) -> dict:
             "evaluation_results": getattr(result, "eval_algorithm_results", {}),
             "artifacts": artifacts,
         }
-    if not config.execution.capabilities.get("artifacts") or not config.execution.capabilities.get(
-        "resume"
-    ):
-        raise ValueError("Model export from a Trainer checkpoint is local-only.")
-    from nexuml.training.lightning import NexuSession
-    from nexuml.core.types import ExportSpec
-
-    session = NexuSession(
+    result = run(
         config.to_scenario(),
-        trainer_checkpoint=payload.get("trainer_checkpoint"),
-        enable_progress_bar=False,
+        operation="export",
+        checkpoint=payload.get("trainer_checkpoint"),
+        output=payload["output"],
+        export_kind=payload["export_kind"],
     )
-    session.setup()
-    requests = [ExportSpec(kind=payload["export_kind"], output=payload["output"])]
-    return {"artifacts": export_requests(session, requests, payload.get("trainer_checkpoint"))}
+    if isinstance(result, str):
+        return {"status": "submitted", "submission_id": result}
+    return result
 
 
 def main() -> None:
@@ -292,16 +313,12 @@ def main() -> None:
     try:
         result = dispatch(action, json.loads(Path(request).read_text(encoding="utf-8")))
     except ValidationError as exc:
-        fields = [
-            {"loc": list(e["loc"]), "message": e["msg"], "type": e["type"]}
-            for e in exc.errors(include_input=False, include_context=False)
-        ]
         result = {
             "error": {
                 "status": 422,
                 "code": "validation",
                 "message": "NexuML rejected the configuration.",
-                "fields": fields,
+                "fields": validation_fields(exc),
             }
         }
     except (ValueError, TypeError, KeyError, YAMLError) as exc:

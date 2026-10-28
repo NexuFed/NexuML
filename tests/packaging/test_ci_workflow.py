@@ -1,9 +1,13 @@
 import os
 import json
+import io
+import runpy
 import shutil
 import subprocess
 import sys
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import MagicMock, Mock
 
 import pytest
 from ruamel.yaml import YAML
@@ -35,7 +39,7 @@ def test_only_package_publishers_use_hosted_runners():
             runner = job["runs-on"]
             if runner == "ubuntu-latest":
                 hosted.add(identity)
-            elif identity == ("ci.yml", "test"):
+            elif identity in {("ci.yml", "test"), ("ci.yml", "isaaclab")}:
                 assert runner == "ika-runner-gpu"
             elif identity == ("ci.yml", "studio-package"):
                 assert runner == "${{ matrix.os }}"
@@ -43,6 +47,59 @@ def test_only_package_publishers_use_hosted_runners():
             else:
                 assert runner == "ika-runner", identity
     assert hosted == publishers
+
+
+@pytest.mark.parametrize("mode", ["tool", "project"])
+@pytest.mark.parametrize("platform", ["Linux", "Darwin"])
+def test_studio_setup_scopes_cpu_index_to_torch(mode, platform, tmp_path, monkeypatch):
+    setup = Path(__file__).resolve().parents[2] / "scripts/studio-test-runtime.py"
+    root = tmp_path / "private runtime"
+    executable = root / "installed interpreter" / "bin/python"
+    identity = {
+        "interface_version": 3,
+        "working_directory": str(root),
+        "python_executable": str(executable),
+    }
+    run = Mock()
+    process = Mock()
+    process.poll.return_value = None
+    listener = MagicMock()
+    listener.__enter__.return_value.getsockname.return_value = ("127.0.0.1", 9000)
+    monkeypatch.setattr(subprocess, "run", run)
+    monkeypatch.setattr(subprocess, "Popen", Mock(return_value=process))
+    monkeypatch.setattr("socket.socket", Mock(return_value=listener))
+    monkeypatch.setattr(
+        "urllib.request.urlopen", lambda *args, **kwargs: io.BytesIO(json.dumps(identity).encode())
+    )
+    monkeypatch.setattr(os, "uname", lambda: SimpleNamespace(sysname=platform))
+    monkeypatch.delenv("GITHUB_ENV", raising=False)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            str(setup),
+            "--wheel",
+            str(tmp_path / "core.whl"),
+            "--library-wheel",
+            str(tmp_path / "library.whl"),
+            "--output",
+            str(root),
+            "--mode",
+            mode,
+        ],
+    )
+    runpy.run_path(str(setup), run_name="__main__")
+    install = next(call.args[0] for call in run.call_args_list if "install" in call.args[0])
+    assert "--index" not in install and "--index-strategy" not in install
+    if platform == "Linux":
+        assert install[install.index("--torch-backend") + 1] == "cpu"
+    else:
+        assert "--torch-backend" not in install
+    assert str((tmp_path / "core.whl").resolve()) + "[api]" in install
+    assert str((tmp_path / "library.whl").resolve()) in install
+    assert json.loads((root / "runtime.json").read_text())["STUDIO_TEST_PYTHON"] == str(executable)
+    process.terminate.assert_called_once()
+    process.wait.assert_called_once_with(timeout=15)
 
 
 def test_studio_ci_builds_once_and_tests_both_trusted_linux_installations(tmp_path):
@@ -57,6 +114,8 @@ def test_studio_ci_builds_once_and_tests_both_trusted_linux_installations(tmp_pa
     assert "UV_TOOL_DIR=$RUNNER_TEMP/" in tool_paths
     assert "UV_TOOL_BIN_DIR=$RUNNER_TEMP/" in tool_paths
     assert WORKFLOW["jobs"]["test"]["runs-on"] == "ika-runner-gpu"
+    assert WORKFLOW["jobs"]["test"]["env"]["UV_HTTP_TIMEOUT"] == "600"
+    assert WORKFLOW["jobs"]["test"]["env"]["UV_CONCURRENT_DOWNLOADS"] == "4"
     assert any(
         "assert torch.cuda.is_available()" in step.get("run", "")
         for step in WORKFLOW["jobs"]["test"]["steps"]
@@ -269,6 +328,23 @@ def test_studio_promotion_requires_the_tested_registry_integrity(tmp_path, regis
         assert len(commands) == 1
 
 
+def test_robotics_discovery_runs_in_original_and_rebuilt_installed_library_smokes():
+    steps = WORKFLOW["jobs"]["package"]["steps"]
+    for name in ("Smoke test core and library wheels", "Smoke test rebuilt wheels"):
+        command = next(step["run"] for step in steps if step.get("name") == name)
+        assert "NEXUML_INSTALLED_DIST_TEST=1" in command
+        library_check = next(
+            line
+            for line in command.splitlines()
+            if "test_installed_distributions.py" in line and "library" in line.rsplit("-k ", 1)[-1]
+        )
+        assert "library" in library_check.rsplit("-k ", 1)[1].strip().strip('"').split(" or ")
+    source = (Path(__file__).with_name("test_installed_distributions.py")).read_text()
+    assert "def test_library_discovery_does_not_import_robotics(" in source
+    metadata = Path(__file__).with_name("test_distribution_artifacts.py").read_text()
+    assert "def test_wheel_discovery_does_not_import_robotics(" not in metadata
+
+
 def test_required_ci_checks_every_job_and_fails_closed(tmp_path):
     if not shutil.which("bash"):
         pytest.skip("CI gate uses bash")
@@ -278,10 +354,12 @@ def test_required_ci_checks_every_job_and_fails_closed(tmp_path):
     assert gate["if"] == "${{ always() }}"
     assert gate["runs-on"] == "ika-runner"
     step = gate["steps"][0]
-    assert set(step["env"].values()) == {
-        f"${{{{ needs.{name}.result }}}}" for name in gate["needs"]
-    }
-    results = dict.fromkeys(step["env"], "success")
+    result_env = {key: value for key, value in step["env"].items() if key.endswith("_RESULT")}
+    assert set(result_env.values()) == {f"${{{{ needs.{name}.result }}}}" for name in gate["needs"]}
+    optional = {"RL_SIMULATORS_REQUESTED": "rl-simulators", "ISAACLAB_REQUESTED": "isaaclab"}
+    for key, job in optional.items():
+        assert step["env"][key] == jobs[job]["if"]
+    results = {**dict.fromkeys(result_env, "success"), **dict.fromkeys(optional, "true")}
     env = {**os.environ, "GITHUB_STEP_SUMMARY": str(tmp_path / "summary.md")}
 
     def run(values):
@@ -294,9 +372,15 @@ def test_required_ci_checks_every_job_and_fails_closed(tmp_path):
         ).returncode
 
     assert run(results) == 0
-    for name in results:
+    for name in result_env:
         for outcome in ("failure", "skipped", "cancelled"):
             assert run({**results, name: outcome}) == 1, (name, outcome)
+    for requested in optional:
+        result_key = requested.removesuffix("_REQUESTED") + "_RESULT"
+        assert run({**results, requested: "false", result_key: "skipped"}) == 0
+        for outcome in ("failure", "cancelled", "unknown"):
+            assert run({**results, requested: "false", result_key: outcome}) == 1
+        assert run({**results, requested: "unknown"}) == 1
 
 
 def test_ci_identity_checks_tags_before_builds_and_tests():
