@@ -86,6 +86,45 @@ spec:
               test -f src/nexuml/cli/main.py
               test -f library/src/nexuml_library/scenarios/maintenance/rul_enhanced_cfc.py
               test -f uv.lock
+              # This RUL loader does NOT use NEXUML_RUL_CHECKPOINT_ROOT for
+              # discovery. It requires the validated upstream audit manifest,
+              # whose best_model_path must exist inside the pod.
+              python3 - <<'PY'
+              import json
+              from pathlib import Path
+
+              run = "rul-FD003-controlled-patchformer-seed42"
+              audit = Path(".experiments/rul/audits") / f"{run}.checkpoint.json"
+              endpoint = (
+                  Path(".experiments/rul/prepared")
+                  / "rul-FD003-patchformer-sequence-cfc-flow-seed42-endpoints.pt"
+              )
+              if not audit.is_file():
+                  raise SystemExit(
+                      f"Missing upstream PatchFormer audit: {audit}. "
+                      "The mounted /mnt/models folder alone is insufficient. "
+                      "Find the validation-selected checkpoint and its native audit "
+                      "manifest on the host and make them available to this job, "
+                      "or train maintenance-rul-controlled-fd003-patchformer-s42 first."
+                  )
+              payload = json.loads(audit.read_text(encoding="utf-8"))
+              best = payload.get("best_model_path")
+              checkpoint = Path(best).expanduser().resolve() if isinstance(best, str) and best else None
+              if checkpoint is None or checkpoint.parent.name != run or not checkpoint.is_file():
+                  raise SystemExit(
+                      f"Invalid upstream best_model_path={best!r} in {audit}. "
+                      "Its path must resolve inside the pod, and the checkpoint "
+                      f"must belong to the exact upstream run {run}."
+                  )
+              if not endpoint.is_file():
+                  raise SystemExit(
+                      f"Missing train-only endpoint normalizer: {endpoint}. "
+                      "Prepare the matching FD003 seed-42 endpoint artifact "
+                      "before the six-factor comparison."
+                  )
+              print(f"Validated upstream checkpoint: {checkpoint}", flush=True)
+              print(f"Validated upstream endpoint artifact: {endpoint}", flush=True)
+              PY
               # Build the runtime environment per Pod; never use the image's
               # editable /env installation or persist a venv on JuiceFS.
               uv venv "$UV_PROJECT_ENVIRONMENT" --python 3.13
