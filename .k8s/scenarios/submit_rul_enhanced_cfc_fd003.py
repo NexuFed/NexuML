@@ -41,7 +41,17 @@ NAME_PATTERN = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 
 
 def source_files(root: Path = ROOT) -> list[Path]:
-    """Return the exact executable/source metadata file set to transfer."""
+    """Return the exact executable/source metadata file set to transfer.
+
+    Args:
+        root: Local repository or staged snapshot root.
+
+    Returns:
+        Sorted eligible source and workspace metadata files.
+
+    Raises:
+        ValueError: If a required directory/file is missing or symlinked.
+    """
     files: list[Path] = []
     for name in SOURCE_DIRS:
         directory = root / name
@@ -64,7 +74,14 @@ def source_files(root: Path = ROOT) -> list[Path]:
 
 
 def digest_source(root: Path = ROOT) -> str:
-    """Fingerprint file paths and actual bytes without using Git metadata."""
+    """Fingerprint file paths and actual bytes without using Git metadata.
+
+    Args:
+        root: Local repository or staged snapshot root.
+
+    Returns:
+        SHA-256 hexadecimal source-content fingerprint.
+    """
     digest = hashlib.sha256()
     for file in source_files(root):
         relative = file.relative_to(root).as_posix().encode("utf-8")
@@ -77,7 +94,19 @@ def digest_source(root: Path = ROOT) -> str:
 
 
 def stage_snapshot(staging_root: Path, digest: str, *, dry_run: bool) -> Path:
-    """Copy and verify the source exactly once, with an atomic publication."""
+    """Copy and verify the source exactly once, with an atomic publication.
+
+    Args:
+        staging_root: Persistent JuiceFS directory for immutable snapshots.
+        digest: Expected local source-content digest.
+        dry_run: Do not create or modify JuiceFS files when true.
+
+    Returns:
+        The content-addressed snapshot directory.
+
+    Raises:
+        ValueError: If a staged snapshot is inconsistent or source bytes changed.
+    """
     target = staging_root / digest
     sentinel = target / "NEX233_SOURCE_DIGEST.txt"
     if target.exists():
@@ -107,7 +136,9 @@ def stage_snapshot(staging_root: Path, digest: str, *, dry_run: bool) -> Path:
         )
         if digest_source(temporary) != digest or digest_source() != digest:
             raise ValueError("source changed during staging or copy verification failed")
-        (temporary / "NEX233_SOURCE_DIGEST.txt").write_text(digest + "\n", encoding="utf-8")
+        (temporary / "NEX233_SOURCE_DIGEST.txt").write_text(
+            digest + "\n", encoding="utf-8"
+        )
         temporary.rename(target)
     finally:
         if temporary.exists():
@@ -115,14 +146,31 @@ def stage_snapshot(staging_root: Path, digest: str, *, dry_run: bool) -> Path:
     return target
 
 
-def render_manifest(seed: int, digest: str, source_subpath: str, namespace: str = NAMESPACE) -> str:
-    """Render one standard Kubernetes Job with the immutable source path."""
+def render_manifest(
+    seed: int,
+    digest: str,
+    source_subpath: str,
+    namespace: str = NAMESPACE,
+) -> str:
+    """Render one standard Kubernetes Job with the immutable source path.
+
+    Args:
+        seed: One of the registered FD003 comparison seeds.
+        digest: Verified source-content fingerprint.
+        source_subpath: Source snapshot path relative to the JuiceFS PVC.
+        namespace: Target Kubernetes namespace.
+
+    Returns:
+        Rendered Kubernetes Job manifest.
+
+    Raises:
+        ValueError: If the seed or template is invalid.
+    """
     if seed not in SEEDS:
         raise ValueError(f"unexpected RUL comparison seed: {seed}")
-    scenario = (
-        "maintenance-rul-enhanced-cfc-fd003-compare-six"
-        + (f"-s{seed}" if seed != 42 else "")
-    )
+    scenario = "maintenance-rul-enhanced-cfc-fd003-compare-six"
+    if seed != 42:
+        scenario += f"-s{seed}"
     replacements = {
         "__SEED__": str(seed),
         "__NAMESPACE__": namespace,
@@ -139,7 +187,18 @@ def render_manifest(seed: int, digest: str, source_subpath: str, namespace: str 
 
 
 def existing_job(name: str, namespace: str) -> bool:
-    """Return whether a Job already exists without touching it."""
+    """Return whether a Job already exists without touching it.
+
+    Args:
+        name: Kubernetes Job name.
+        namespace: Target Kubernetes namespace.
+
+    Returns:
+        True for existing jobs and false for missing jobs.
+
+    Raises:
+        RuntimeError: If the Job query fails for reasons other than absence.
+    """
     process = subprocess.run(
         ["kubectl", "-n", namespace, "get", "job", name, "-o", "json"],
         capture_output=True,
@@ -180,7 +239,10 @@ def main() -> None:
     for seed in args.seeds:
         job = f"nexuml-rul-fd003-cfc-six-s{seed}"
         manifest = RENDERED / f"{job}.yaml"
-        manifest.write_text(render_manifest(seed, digest, subpath, args.namespace), encoding="utf-8")
+        manifest.write_text(
+            render_manifest(seed, digest, subpath, args.namespace),
+            encoding="utf-8",
+        )
         if args.dry_run:
             print(f"[dry-run] {job}: {manifest} (no source copy or cluster changes)")
             continue
