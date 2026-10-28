@@ -5,6 +5,7 @@ from importlib import import_module
 from importlib.metadata import distribution
 import json
 import math
+import os
 from pathlib import Path
 import signal
 import subprocess
@@ -104,6 +105,13 @@ def _create_environment(owner, definition, context):
         )
     if _process_definition is not None and definition != _process_definition:
         raise RuntimeError("Native environment conflicts with the active Isaac job definition")
+    for name, permitted in (
+        ("OMNI_CRASHREPORTER_ENABLED", {"0", "n", "N", "f", "F"}),
+        ("OMNI_CRASHREPORTER_SKIPOLDDUMPUPLOAD", {"1", "y", "Y", "t", "T"}),
+    ):
+        value = os.environ.get(name)
+        if value is not None and value not in permitted:
+            raise ValueError(f"{name} conflicts with Isaac crash-upload protection; unset it")
     _process_definition = definition
     device = owner.device
     viewing = definition.viewer is not None and context.purpose in definition.viewer.purposes
@@ -234,6 +242,13 @@ def _create_environment(owner, definition, context):
         "visualizer": ["viser"] if viewing else ["none"],
         "visualizer_explicit": True,
         "enable_cameras": owner._rendering,
+        # Kit's anonymous-data defaults also enable crash-dump upload consent.
+        "kit_args": (
+            "--/crashreporter/enabled=false --/crashreporter/skipOldDumpUpload=true "
+            "--/app/uploadDumpsOnStartup=false --/telemetry/enableAnonymousData=false "
+            "--/telemetry/enableAnonymousAppName=false --/telemetry/enableSentry=false "
+            "--/structuredLog/enable=false"
+        ),
     }
     launcher = launch_simulation(cfg, args)
     launcher.__enter__()

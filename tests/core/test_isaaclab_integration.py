@@ -141,9 +141,65 @@ def test_native_terminal_pixels_match_the_ending_scene_not_reset_scene(tmp_path)
 
 @pytest.mark.parametrize("owner", ["package", "external"])
 def test_native_multimodal_values_terminal_scene_and_history(tmp_path, owner):
-    log = _run([ROOT / "tests/fixtures/isaaclab_sensors_probe.py", owner], tmp_path, "sensors")
+    import numpy as np
+
+    output = tmp_path / "sensor-diagnostics"
+    log = _run(
+        [ROOT / "tests/fixtures/isaaclab_sensors_probe.py", owner, output], tmp_path, "sensors"
+    )
     assert "NATIVE_RGB_METRE_DEPTH_AND_EXACT_CLASS_LABELS_VERIFIED" in log
     assert "NATIVE_FINAL_SCENE_HISTORY_AND_CACHED_SELECTED_RESET_VERIFIED" in log
+    metadata = json.loads((output / "sensor-metadata.json").read_text())
+    assert metadata["scope"] == (
+        "controlled native sensor oracle; not policy behavior/learning/viewer proof"
+    )
+    assert metadata["owner"] == owner
+    assert metadata["task"] == "NexuML-Cartpole-Sensors"
+    assert metadata["physics"] == "newton_mjwarp"
+    assert metadata["seed"] == 0 and metadata["num_envs"] == 2
+    assert metadata["selected_reset_mask"] == [True, False]
+    assert metadata["source_size"] == metadata["captured_size"] == [32, 32]
+    specs = metadata["observation_specs"]
+    assert set(specs) == {"rgb", "depth", "segmentation", "state"}
+    assert specs["rgb"]["sensor"]["units"] == "uint8_sRGB"
+    assert specs["depth"]["sensor"]["units"] == "m"
+    assert specs["depth"]["sensor"]["invalid_depth"] == "mask_zero"
+    assert specs["segmentation"]["sensor"]["units"] == "class_id"
+    assert specs["segmentation"]["sensor"]["labels"] == [
+        [0, "BACKGROUND"],
+        [1, "UNLABELLED"],
+        [2, "cartpole"],
+    ]
+    for key in ("rgb", "depth", "segmentation"):
+        assert specs[key]["sensor"]["owner"] == owner
+        assert specs[key]["sensor"]["history_order"] == "oldest_first"
+        assert specs[key]["sensor"]["history_length"] == 2
+        assert specs[key]["sensor"]["initialization"] == "repeat_first"
+    expected = {
+        f"{stage}_{kind}__{key}"
+        for stage in ("initial", "final", "reset")
+        for kind in ("raw", "processed")
+        for key in specs
+    }
+    with np.load(output / "sensor-snapshots.npz", allow_pickle=False) as arrays:
+        assert set(arrays.files) == set(metadata["arrays"]) == expected
+        assert sum(arrays[name].nbytes for name in arrays.files) == metadata["array_bytes"] <= 2**20
+        for name in arrays.files:
+            array = arrays[name]
+            kind, key = name.split("__")
+            raw = kind.endswith("_raw") and key != "state"
+            spec = specs[key]["sensor"] if raw else specs[key]
+            assert array.dtype == spec["raw_dtype" if raw else "dtype"]
+            assert array.shape == (2, *spec["raw_shape" if raw else "shape"])
+            assert metadata["arrays"][name] == {
+                "dtype": str(array.dtype),
+                "shape": list(array.shape),
+                "nbytes": array.nbytes,
+            }
+    assert set(metadata["stage_labels"]) == {"initial", "final", "reset"}
+    assert "offscreen" in metadata["stage_labels"]["final"]
+    for stage in ("initial", "final", "reset"):
+        assert (output / f"{stage}-rgb-env0.png").is_file()
 
 
 def test_native_categorical_class_force_and_signed_motion(tmp_path):
@@ -347,7 +403,7 @@ def test_native_checkpoint_remaining_budget_export_and_scalar_replay(tmp_path, r
         tmp_path,
         "scalar-replay",
     )
-    assert "Evaluation complete!" in log and "frame step 0" in log
+    assert "Evaluation complete!" in log and "frame step 256" in log
     if reference == "so101":
         assert "task_success_rate" in log and "final_joint_error_rad_mean" in log
 

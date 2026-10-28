@@ -262,3 +262,31 @@ def test_remote_tracking_banner_does_not_suggest_starting_another_server(caplog)
     logger_module.print_service_info([mlflow], "test")
     assert "https://tracking.example" in caplog.text and "remote-run" in caplog.text
     assert "mlflow ui" not in caplog.text
+
+
+@pytest.mark.parametrize(
+    "uri,display",
+    [
+        (
+            "https://alice:password-secret@tracking.example:8443/base?token=query-secret#fragment-secret",
+            "https://tracking.example:8443/base",
+        ),
+        (
+            "postgresql://alice:password-secret@tracking.example/db?token=query-secret#fragment-secret",
+            "postgresql://tracking.example/db",
+        ),
+        ("https://[bad-host?token=query-secret", "<invalid tracking URI>"),
+    ],
+)
+def test_tracking_banner_omits_uri_credentials_and_options_without_mutating_backend(
+    uri, display, caplog
+):
+    mlflow = type("MLFlowLogger", (), {"_tracking_uri": uri, "run_id": "actual-run"})()
+    logger_module.print_service_info([mlflow], "test")
+    assert display in caplog.text and "actual-run" in caplog.text
+    assert not any(
+        secret in caplog.text
+        for secret in ("alice", "password-secret", "query-secret", "fragment-secret")
+    )
+    assert "mlflow ui" not in caplog.text
+    assert mlflow._tracking_uri == uri

@@ -16,6 +16,7 @@ import tempfile
 from contextlib import ExitStack, closing, contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Generator, cast
+from urllib.parse import urlsplit
 
 if TYPE_CHECKING:
     import numpy as np
@@ -41,6 +42,18 @@ def _cyan(text: str) -> str:
 
 def _dim(text: str) -> str:
     return f"\033[2m{text}\033[0m" if _USE_COLOR else text
+
+
+def _display_tracking_uri(uri: str) -> str:
+    if "://" not in uri:
+        return uri
+    try:
+        parsed = urlsplit(uri)
+    except ValueError:
+        return "<invalid tracking URI>"
+    if not ("@" in parsed.netloc or parsed.query or parsed.fragment):
+        return uri
+    return parsed._replace(netloc=parsed.netloc.rsplit("@", 1)[-1], query="", fragment="").geturl()
 
 
 def get_temp_artifact_root() -> Path:
@@ -407,7 +420,10 @@ def _create_mlflow_logger(
             except BaseException as cleanup_error:
                 error.add_note(f"MLflow run {resolved_run_id} cleanup also failed: {cleanup_error}")
         raise
-    logger.info(f"MLflow: {tracking_uri} | experiment={experiment_name} | run={resolved_run_name}")
+    logger.info(
+        f"MLflow: {_display_tracking_uri(tracking_uri)} | "
+        f"experiment={experiment_name} | run={resolved_run_name}"
+    )
     return ml_logger
 
 
@@ -1037,12 +1053,18 @@ def print_service_info(
         if "MLFlow" in cls_name or "MLflow" in cls_name:
             has_any = True
             tracking_uri = getattr(lg, "_tracking_uri", None) or "mlruns"
-            lines.append(f"  MLflow       {_dim(tracking_uri)}")
+            display_uri = _display_tracking_uri(tracking_uri)
+            lines.append(f"  MLflow       {_dim(display_uri)}")
             run_id = getattr(lg, "run_id", None)
             if run_id is not None:
                 lines.append(f"    Run ID: {run_id}")
             if tracking_uri.startswith(("http://", "https://")):
                 lines.append("    Use the existing tracking service; no second server is needed.")
+            elif display_uri != tracking_uri:
+                lines.append(
+                    "    URI credentials/options omitted; start the worker UI using your "
+                    "trusted configuration, not the displayed URI."
+                )
             else:
                 mlflow_cmd = (
                     f"mlflow ui --backend-store-uri {shlex.quote(tracking_uri)} "

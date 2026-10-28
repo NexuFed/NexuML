@@ -298,14 +298,121 @@ Media JSON includes metrics, seed/horizon/mode, environment/config/contract prov
 FPS, capture limits and encoder/dimension information. Native relative paths are prefixed
 by `NEXUML_LOGS_ROOT` (including the default `.experiments/tensorboard` path):
 
+In **Images**, choose the exact run and `eval/rl/episode` card. Focus its step
+slider: **Home** selects the first retained event and **Right Arrow** advances to
+the next event, not the next physical frame. Check the displayed **Step** label;
+for a retained 0/32/64 sequence the slider positions are 0/1/2. Reopen the retained
+log directory after training exits; reopening does not retrain the policy.
+
 ```bash
-tensorboard --logdir "$NEXUML_LOGS_ROOT/.experiments/tensorboard" --port 6007
+tensorboard --logdir "$NEXUML_LOGS_ROOT/.experiments/tensorboard" --host 127.0.0.1 --port 6007
 find "$NEXUML_LOGS_ROOT" -path '*/evaluation/*' -type f -print
 ```
 
+For remote jobs, run the UI on the prepared worker and use the existing approved
+private access route; `127.0.0.1` above is the worker, not the client. Do not expose
+the service through a wildcard listener.
+
+In **Scalars**, expand the ordinary `train` or `eval` category and use its native
+pagination if the metric is not on the first page. TensorBoard tag search can add
+a **Tags matching…** category without removing the ordinary cards, so duplicate
+metric names do not necessarily mean duplicate logging. Under **Show data download
+links**, choose the exact native run in the card's **run to download** menu, then
+select **CSV**. This chooses the downloaded history, not the plotted run selection;
+check the chart separately rather than treating a correct CSV as a rendered plot.
+For a raw two-point smoke history, first set **Smoothing** to 0, then turn off
+**Ignore outliers in chart scaling** so bounds reset using the raw values.
+Use the card's **Fit domain to data** control if its old smoothed bounds remain.
+The native percentile filter can otherwise exclude both
+distinct points and leave an empty default axis. These are viewing controls only;
+the underlying events and downloaded CSV are unchanged.
+
+Keep the axes distinct: `train/rl/frames` values count physical training frames,
+but their horizontal coordinates are native logger steps. For example, values
+32/64 may occur at steps 0/1. Evaluation previews and returns use known source
+physical-frame steps such as 0/32/64. Do not rewrite either history to align them;
+old packages with unavailable frame provenance retain the distinction below.
+The **Images** preview is an animated GIF, not an inline MP4 player. Retrieve the
+separate MP4 and its JSON from the run's `artifacts/evaluation` directory through
+the deployment's approved artifact route; retain both identities when comparing.
+
+#### Remote browser and artifact verification
+
+The fixed G1 browser case runs **inside the registered GPU-worker job**, not
+through a client port-forward. Select an operator-supplied private browser
+profile with its pinned browser dependencies and sandbox prerequisites. Supply
+the approved producer root and its immutable case/guard receipt hashes:
+
+```bash
+CUDA_VISIBLE_DEVICES='' TMPDIR=/tmp/opencode \
+  python scripts/physical_ai_acceptance.py --case browser \
+  --profile "$QUALIFIED_BROWSER_PROFILE" --ca "$RAY_CA_BUNDLE" \
+  --source-attempt "$SOURCE" \
+  --source-case-sha256 "$PRODUCER_CASE_SHA256" \
+  --source-guard-sha256 "$PRODUCER_GUARD_SHA256" \
+  --output "$OUTPUT" --wall-seconds 2400 --queue-seconds 900 --concurrency 1 --submit
+```
+
+Choose a fresh `OUTPUT` and matching approved producer receipts/profile. Existing
+outputs must not be overwritten. Submission alone is not acceptance: inspect the
+native terminal status, worker case/guard receipts and actual browser artifacts.
+The browser opens TensorBoard Images and Scalars on worker loopback, selects
+native controls and closes the owned UI servers/browser afterward. This does not
+establish an external interactive tunnel or client port-forward.
+
+Retrieve only receipt-allowlisted regular files through the deployment's approved
+artifact route. Match exact membership, relative paths without traversal, bounded
+total size and every recorded SHA256 before accepting local copies. If a worker
+has gone, use the registered recovery journey against the persistent source rather
+than provisioning a replacement. Keep run-specific identities, stage logs, CSVs,
+screenshots and generated media in the private evidence store, not source commits.
+
+Browser output under `ui/tensorboard-previews` covers native event selection,
+reopening and animation samples; `ui/tensorboard-scalars` holds downloaded histories
+and chart images. Compare separately retained producer MP4/JSON files at each
+physical-frame label with the unchanged native media blob actually played through
+`ended`. A correct download alone is not proof of what a browser played, and
+TensorBoard's animated Images preview is not an inline MP4 player.
+
 ### Native TensorBoard, MLflow-only, both, or disabled
 
+The exercised browser case defaults to separate TB-only and MLflow-only stores.
+`--browser-mode both` selects the existing both-backend stores instead; it does
+not enable a missing writer or fall back to a separate run. In native MLflow
+**Overview**, inspect **Status** and the full run ID, then scroll to the metrics
+and parameter tables. Compare the selected training-frame count, evaluation
+return, configured frame budget, environment name and experiment name with the
+effective configuration and source events. Selected-row checks are not validation
+of every parameter. Keep the native logger-step/physical-frame distinction
+described above when opening metric history.
+
+In **Artifacts**, expand `evaluation` and select the exact frame-64 GIF, MP4 and
+JSON files. The exercised native title includes the full
+`evaluation/frame_000000000064` path, not just the basename. Downloaded hashes
+were compared with the producer and the unchanged native player blob; an
+unrelated correct download is not proof of what a browser played. The pinned
+MLflow UI played its native MP4 through the end; this does not promise inline
+MP4 support for every UI version or TensorBoard's Images tab.
+
+Retain `ui/mlflow-overview` row/viewport images alongside native media proof.
+Treat forced-parent-death cleanup, Overview interaction and media playback as
+separate checks: a failed cleanup must not become a pass merely because another
+attempt opens the UI successfully.
+
+Checkpoint provenance can include Lightning callback sentinels such as an unset
+`kth_value`. Nonfinite metadata values are encoded as explicit `"inf"`, `"-inf"`
+or `"nan"` strings so strict JSON media receipts remain readable. They are not
+finite metric measurements; actor weights, resume state and metric checks are
+unchanged.
+
 `scenario.logging` remains authoritative; no media logger or extra tracking run is needed.
+MLflow's service banner and successful logger-creation message omit URI userinfo,
+query and fragment values. The URI passed to the backend is unchanged. When a
+local-store URI contains credentials/options, the banner does not print a broken
+sanitized launch command: use your trusted configuration instead of copying the
+displayed URI. This is display redaction, not sanitization of exported configs or
+arbitrary third-party exception messages.
+
 For training, use this block in resolved YAML for MLflow-only (install `nexuml[tracking]`):
 
 ```yaml
@@ -336,6 +443,27 @@ selected media/JSON belong to its existing native run ID. Find them under that r
 **Artifacts → evaluation** in MLflow. With both configured, each backend receives each
 selected artifact once. Delivery errors remain visible; already uploaded remote artifacts
 cannot be transactionally rolled back.
+
+#### Partial-delivery failure diagnostic
+
+Run `--case logging-failure` with the same approved producer/profile/receipt
+arguments as the browser procedure and a fresh output directory. The case first
+evaluates with logging disabled, then changes only logging for another evaluation
+of the same saved policy. A regular-file blocker at its fresh MLflow `evaluation`
+destination causes a real delivery failure after TensorBoard receives the GIF.
+The worker never manually marks a run failed or rolls back earlier files.
+
+Verify original CLI exit1 and native FAILED status, animated GIF identity,
+prior-file parity and empty staging. Separately observe the failed-run artifact
+tree in the real UI and require clean browser cancellation. A nonzero job is the
+required application failure, but an additional cancellation/UI failure means
+the overall observation is incomplete. Keep native status, stage logs and guard
+diagnostics from `OUTPUT/summary.json` and the allowlisted worker artifacts.
+
+If browser cleanup is blocked in filesystem I/O, request operator storage/profile
+qualification rather than increase cleanup grace, disable fsync or the sandbox,
+switch scratch silently, or retry until a pass. Preserve the original failure;
+successful observations of unrelated checks cannot waive the cleanup requirement.
 
 ### Replay, prerequisites and trust boundaries
 
@@ -424,6 +552,110 @@ NEXUML_RUN_SIMULATOR_TESTS=1 SDL_VIDEODRIVER=dummy \
 Humanoid uses Gymnasium v5 with optional inertial/contact-force observations disabled;
 Reacher also uses v5. The visual reference consumes resized rendered pixels directly.
 Small dense heads intentionally establish the I/O path, not a vision benchmark.
+
+### Remote MuJoCo recording smokes
+
+Exercise both references through the registered `ray-jobs-sdk` CLI lifecycle on a
+qualified Ubuntu 22.04 amd64 worker profile with the pinned MuJoCo/Gymnasium stack,
+Python 3.12 and a CPU learner inside a whole-GPU `pool_gpu_workers` job. Use the existing locked
+private-venv profile shown in [native configuration](isaac-native-configuration.md),
+with `MUJOCO_GL: "egl"` in its `runtime_env.env_vars`. MuJoCo does not require
+Kit licence acceptance. The private helper supplies thirteen hash-verified client
+archives, including GLVND's EGL dispatcher; it installs no renderer, driver or
+system packages. Missing EGL/vendor support fails without a renderer fallback.
+
+The bounded protocol is:
+
+```bash
+export RAY_API_SERVER_ADDRESS=https://ray.ika.rub.de
+for recipe in mujoco-humanoid-ppo mujoco-reacher-ppo; do
+  CUDA_VISIBLE_DEVICES='' python scripts/physical_ai_acceptance.py \
+    --case recipe --recipe "$recipe" --recorded \
+    --frames 1024 --batch 128 --envs 2 \
+    --profile "$MUJOCO_EGL_PROFILE" --ca "$RAY_CA_BUNDLE" \
+    --output "$EVIDENCE_ROOT/$recipe-recorded" \
+    --wall-seconds 2400 --queue-seconds 900 --concurrency 1 --submit || break
+done
+```
+
+Require the requested physical-frame budget, real optimizer steps, changed finite
+actor weights, interrupted continuation, checkpoint export, fresh scalar/recorded
+replay and exhausted resume. Recording keeps the original state/action contracts
+and native horizon. Validate GIF and H.264 MP4 with up to sixteen changing frames
+bounded to128px, from only the first episode. Metrics cover two complete native
+episodes (seeds10000/10001) and must exactly match scalar-only replay.
+
+This short CLI/media protocol does **not** establish learned locomotion/reaching,
+live human viewing or universal EGL support. Keep the separate Reacher native-GUI/
+private-display gate and retain run-specific evidence outside source commits.
+
+### Public SO-101 behavior-cloning workflow
+
+`scripts/so101_public_bc.py` declares an ordinary supervised state-to-command fit
+for the public [ArmnetBench block-stacking dataset](https://huggingface.co/datasets/villekuosmanen/armnetbench_block_stack).
+It uses the existing LeRobot v3 data source, regression head/loss and normal CLI;
+there is no separate trainer or fabricated simulator task. Its explicit episode
+partitions are40 train/5 validation/5 test, with six state/action channels and a
+bounded64-step GPU fit. Do not use random frame-level splits.
+
+On the prepared worker, first stage the pinned snapshot into owned disk scratch.
+Set absolute roots, keeping outputs outside the original dataset:
+
+```bash
+export NEXUML_SO101_DATA_ROOT=/absolute/path/to/staged-dataset
+export NEXUML_SO101_OUTPUT_ROOT=/absolute/path/to/new-fit
+nexuml train --scenario-file scripts/so101_public_bc.py
+nexuml export --scenario-file scripts/so101_public_bc.py \
+  --checkpoint "$NEXUML_SO101_OUTPUT_ROOT/checkpoints/last.ckpt" \
+  --output "$NEXUML_SO101_OUTPUT_ROOT/checkpoint-model"
+nexuml evaluate "$NEXUML_SO101_OUTPUT_ROOT/checkpoint-model" \
+  --scenario-file scripts/so101_public_bc.py --device cuda:0
+```
+
+For a guarded remote S3 lifecycle check, use the fixed `--case regression --suite
+public-so101-cli` with a qualified `ray-jobs-sdk` profile. Its pinned public S3
+source and manifest identity are declared in `tests/fixtures/physical_ai_public_data.py`.
+The profile must supply the trusted public CA certificate in
+`runtime_env.env_vars.NEXUML_PUBLIC_DATA_CA_PEM`. The case performs exclusive
+worker-local staging, verifies every file hash, disables HF fallback, then runs
+untrained export/evaluation, training, checkpoint export and held-out evaluation
+through the same CLI. It checks finite changed weights and complete checkpoint/
+export tensor identity. No private data or credentials are uploaded.
+
+This is explicit S3 staging followed by a **local-root** LeRobot reader, not a
+direct-S3-root API. Later dataset evaluation must stage the source again and
+supply its current root; job scratch is not a persistent data location. The
+fixed public gateway path uses unsigned requests and does not qualify private
+bucket access controls. This smoke does not establish convergence, hardware
+calibration, native block-stacking success or the distinct frozen joint-reach
+protocol in [SO-101 local fit](so101-local-fit.md).
+
+### Native PhysX recorded CLI replay
+
+Use the approved private client-library profile from
+[native configuration](isaac-native-configuration.md), with separate operator
+licence acceptance, one GPU and `pool_gpu_workers`:
+
+```bash
+CUDA_VISIBLE_DEVICES='' python scripts/physical_ai_acceptance.py \
+  --case recipe --recipe isaac-cartpole-ppo --recorded \
+  --frames 1024 --batch 128 --envs 2 \
+  --profile "$QUALIFIED_ISAAC_PROFILE" --ca "$RAY_CA_BUNDLE" \
+  --output "$OUTPUT" --wall-seconds 3600 --queue-seconds 900 --concurrency 1 --submit
+```
+
+The fixture exercises real CLI train/resume/checkpoint-export/scalar evaluation,
+exhausted resume and fresh Isaac RTX GIF/MP4 replay. It keeps every named per-step
+checkpoint and resumes the validated immutable partial copy, not a redundant
+`last.ckpt` write racing the deliberate interruption. Recorded replay must retain
+the original PhysX task, source policy/checkpoint identity, full native episode
+budget and exact scalar metrics. The first episode's capture is bounded to120
+frames and320px; metadata and decoded GIF/H.264 content must agree. The small
+TensorBoard-preview checks retain their separate128px default.
+
+These are recorded-rendering checks, not a live GUI, convergence qualification or
+a rollout of the separately trained public SO-101 block-stacking model. Keep
+run-specific outputs, receipts and measurements in the private evidence store.
 
 ## Isaac Lab 3.0 EA candidate
 

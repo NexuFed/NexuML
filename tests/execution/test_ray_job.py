@@ -704,7 +704,19 @@ def test_profile_rejects_legacy_and_other_backends_with_migration_diagnostic(tmp
 
 
 @pytest.mark.parametrize(
-    "case", ["preflight", "regression", "package", "recipe", "so101", "browser", "recovery"]
+    "case",
+    [
+        "preflight",
+        "regression",
+        "package",
+        "recipe",
+        "so101",
+        "browser",
+        "recovery",
+        "learning",
+        "logging",
+        "logging-failure",
+    ],
 )
 def test_acceptance_preflight_allowlists_fixed_cases(case):
     from nexuml.execution.service import preflight
@@ -874,9 +886,10 @@ def test_private_acceptance_passes_owned_uuid_without_reusing_environment_uuid(j
 
 
 @pytest.mark.parametrize("with_setup", [False, True])
-@pytest.mark.parametrize("exit_code", [0, 7])
+@pytest.mark.parametrize("exit_code", [0, 1, 7])
+@pytest.mark.parametrize("case_name", ["recipe", "logging-failure"])
 def test_acceptance_uses_shared_guarded_transport_and_fixed_fixture(
-    jobs_client, monkeypatch, with_setup, exit_code
+    jobs_client, monkeypatch, with_setup, exit_code, case_name
 ):
     from nexuml.execution import service
 
@@ -917,7 +930,7 @@ def test_acceptance_uses_shared_guarded_transport_and_fixed_fixture(
         service.run(
             scenario,
             operation="acceptance",
-            case="recipe",
+            case=case_name,
             attempt_root=attempt_root,
             wall_seconds=120.5,
             case_options=options,
@@ -961,7 +974,7 @@ def test_acceptance_uses_shared_guarded_transport_and_fixed_fixture(
     with pytest.raises(SystemExit) as error:
         exec(compile(bootstrap, "<mock-acceptance-worker>", "exec"), {})
     assert error.value.code == exit_code
-    assert fixture_calls == [("recipe", Path(attempt_root), options)]
+    assert fixture_calls == [(case_name, Path(attempt_root), options)]
     assert config_paths and not config_paths[0].parent.exists()
     assert submission["entrypoint_num_cpus"] == 2
     assert submission["entrypoint_num_gpus"] == 1

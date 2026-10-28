@@ -69,6 +69,109 @@ class PhysicalAIGuardTest(unittest.TestCase):
         with mock.patch.object(guard, "ATTEMPT_BASE", base):
             return self.run_child(code, attempt_root=root, **options)
 
+    def test_failed_descendant_cleanup_records_only_owned_kernel_state(self):
+        original_read = Path.read_text
+
+        def read(path, *args, **kwargs):
+            if str(path).startswith("/proc/self/task/") and path.name == "children":
+                return "321"
+            if path == Path("/proc/321/stat"):
+                return "321 (chrome worker) " + " ".join(["D", "123", *(["0"] * 17), "999"])
+            return original_read(path, *args, **kwargs)
+
+        process = mock.Mock(pid=123)
+        with (
+            mock.patch.object(Path, "read_text", read),
+            mock.patch.object(guard, "_pidfd_call", return_value=11),
+            mock.patch.object(guard, "_children_gone", return_value=False),
+            mock.patch.object(
+                guard,
+                "_descendant_snapshot",
+                return_value={"pid": 321, "state": "D", "ppid": 123, "start_ticks": 999},
+            ),
+            mock.patch.object(guard.select, "select", return_value=([], [], [])),
+            mock.patch.object(guard.os, "close"),
+            mock.patch.object(guard.time, "monotonic", side_effect=[0, 1, 2, 4]),
+        ):
+            with self.assertRaisesRegex(
+                RuntimeError, "owned descendants survived bounded cleanup"
+            ) as caught:
+                guard._stop_descendants(process)
+        detail = json.loads(str(caught.exception).split(": ", 1)[1])
+        self.assertEqual(
+            detail["direct_children"], [{"pid": 321, "state": "D", "ppid": 123, "start_ticks": 999}]
+        )
+        self.assertEqual(detail["term_seconds"], 1.0)
+        self.assertEqual(detail["kill_seconds"], 2.0)
+        self.assertNotIn("cmdline", str(caught.exception))
+
+    @unittest.skipUnless(
+        sys.platform == "linux" and os.uname().machine == "x86_64", "dedicated Linux amd64 guard"
+    )
+    def test_owned_nonsigchld_clone_is_reaped_before_absence_is_reported(self):
+        code = f"""
+import ctypes, os, runpy, signal, time, types
+from pathlib import Path
+guard = runpy.run_path({str(SCRIPT)!r})
+libc = ctypes.CDLL(None, use_errno=True)
+libc.syscall.restype = ctypes.c_long
+child = libc.syscall(
+    ctypes.c_long(56), ctypes.c_ulong(0), ctypes.c_void_p(),
+    ctypes.c_void_p(), ctypes.c_void_p(), ctypes.c_ulong(0))
+if child == -1:
+    raise OSError(ctypes.get_errno(), os.strerror(ctypes.get_errno()))
+if child == 0:
+    os._exit(0)
+try:
+    until = time.monotonic() + 2
+    while time.monotonic() < until:
+        state = Path(f"/proc/{{child}}/stat").read_text().rpartition(")")[2].split()[0]
+        if state == "Z": break
+        time.sleep(0.005)
+    assert state == "Z"
+    leader = types.SimpleNamespace(pid=0, returncode=0, poll=lambda: 0)
+    assert guard["_children_gone"](leader)
+    assert not Path(f"/proc/{{child}}").exists(), "guard falsely declared a clone zombie absent"
+    assert leader.returncode == 0
+finally:
+    try:
+        waited, status = os.waitpid(child, 0x40000000 | os.WNOHANG)
+        if waited == 0:
+            os.kill(child, signal.SIGKILL)
+            os.waitpid(child, 0x40000000)
+    except ChildProcessError:
+        pass
+"""
+        result = subprocess.run(python(code), capture_output=True, timeout=8)
+        self.assertEqual(result.returncode, 0, (result.stdout, result.stderr))
+
+    def test_memory_receipt_preserves_worker_scope_and_missing_counters(self):
+        base = self.root / "cgroup"
+        base.mkdir()
+        (base / "memory.peak").write_text("123456\n")
+        (base / "memory.max").write_text("max\n")
+        (base / "memory.events").write_text("oom 0\noom_kill 0\n")
+        observed = guard._memory_observations(base)
+        self.assertIn("not application-only", observed["scope"])
+        self.assertEqual(
+            observed["files"],
+            {
+                "memory.peak": "123456",
+                "memory.max": "max",
+                "memory.current": None,
+                "memory.events": "oom 0\noom_kill 0",
+            },
+        )
+        self.assertEqual((base / "memory.peak").read_text(), "123456\n")
+
+    def test_unavailable_memory_counters_do_not_hide_primary_failure(self):
+        observed = guard._memory_observations(self.root / "absent")
+        self.assertTrue(all(value is None for value in observed["files"].values()))
+        with mock.patch.object(guard, "_memory_observations", return_value=observed):
+            code, _, receipt = self.run_child("raise SystemExit(7)")
+        self.assertEqual((code, receipt["child_returncode"], receipt["reason"]), (7, 7, "nonzero"))
+        self.assertEqual(receipt["memory_observations"], observed)
+
     def assert_campaign_rejected(self, root, *, base=None, receipt=None, log_path=None):
         marker = self.root / "setup-marker"
         before = sorted(str(path.relative_to(self.root)) for path in self.root.rglob("*"))
@@ -663,10 +766,15 @@ class PhysicalAIGuardTest(unittest.TestCase):
     def test_cli_cancellation_kills_owned_descendant_not_unrelated_sentinel(self):
         sentinel = subprocess.Popen(python("import time; time.sleep(30)"), start_new_session=True)
         self.addCleanup(lambda: self.stop_process(sentinel))
-        for sig in (signal.SIGTERM, signal.SIGINT):
-            with self.subTest(signal=sig):
+        for sig, detached in (
+            (signal.SIGTERM, False),
+            (signal.SIGINT, False),
+            (signal.SIGTERM, True),
+            (signal.SIGINT, True),
+        ):
+            with self.subTest(signal=sig, detached=detached):
                 self.receipt.unlink(missing_ok=True)
-                ready = self.root / f"ready-{sig}.json"
+                ready = self.root / f"ready-{sig}-{detached}.json"
                 descendant = (
                     "import signal,time; signal.signal(signal.SIGTERM,signal.SIG_IGN); "
                     "print('ready',flush=True); time.sleep(30)"
@@ -674,7 +782,8 @@ class PhysicalAIGuardTest(unittest.TestCase):
                 child = (
                     "import subprocess,sys,os,json,signal,time; "
                     "signal.signal(signal.SIGTERM,signal.SIG_IGN); "
-                    f"p=subprocess.Popen({python(descendant)!r},stdout=subprocess.PIPE); "
+                    f"p=subprocess.Popen({python(descendant)!r},stdout=subprocess.PIPE,"
+                    f"start_new_session={detached!r}); "
                     "p.stdout.readline(); "
                     f"open({str(ready)!r},'w').write(json.dumps([os.getpid(),p.pid])); "
                     "time.sleep(30)"
@@ -712,23 +821,272 @@ class PhysicalAIGuardTest(unittest.TestCase):
                     self.assertEqual(receipt["reason"], "cancelled")
                     self.assertEqual(receipt["exit_code"], 128 + sig)
                     self.assertEqual(receipt["pid"], pids[0])
+                    self.assertEqual(receipt["errors"], [])
                     self.assertTrue(all(not running(pid) for pid in pids))
                     self.assertIsNone(sentinel.poll())
                 finally:
                     self.stop_process(process)
                     # Only these exact test-owned groups are eligible for cleanup.
                     if ready.exists():
-                        pgid = json.loads(ready.read_text())[0]
-                        try:
-                            os.killpg(pgid, signal.SIGKILL)
-                        except ProcessLookupError:
-                            pass
+                        pids = json.loads(ready.read_text())
+                        for pgid in pids if detached else pids[:1]:
+                            try:
+                                os.killpg(pgid, signal.SIGKILL)
+                            except ProcessLookupError:
+                                pass
+
+    def test_child_absence_requires_kernel_confirmation_and_only_reaps_adopted_children(self):
+        process = mock.Mock(pid=77, returncode=None)
+        observation = {}
+        with mock.patch.object(guard.os, "waitid", return_value=None):
+            self.assertFalse(guard._children_gone(process, observation))
+        self.assertIsNone(observation["waitid"])
+        with (
+            mock.patch.object(
+                guard.os,
+                "waitid",
+                side_effect=[types.SimpleNamespace(si_pid=88), ChildProcessError()],
+            ),
+            mock.patch.object(guard.os, "waitpid", return_value=(88, 0)) as reap,
+        ):
+            self.assertTrue(guard._children_gone(process, observation))
+        reap.assert_called_once_with(88, os.WNOHANG | guard._WAIT_ALL)
+        self.assertEqual(
+            observation, {"waitid": "ECHILD", "last_waitpid": {"pid": 88, "result": [88, 0]}}
+        )
+        self.assertIsNone(process.returncode)
+
+    def test_zombie_snapshot_distinguishes_live_threads_without_command_lines(self):
+        fields = ["0"] * 36
+        fields[0], fields[1], fields[19], fields[35] = "Z", "123", "999", "17"
+        texts = {
+            "/proc/321/stat": "321 (private name) " + " ".join(fields),
+            "/proc/321/status": "Name:\tprivate name\nThreads:\t2\nTracerPid:\t0\n",
+            "/proc/321/task/321/stat": "321 (private name) Z",
+            "/proc/321/task/322/stat": "322 (private name) D",
+            "/proc/321/task/322/wchan": "wait_on_page_bit_common\n",
+            "/proc/321/task/322/syscall": "0 0x1234 0x5678 99 0x9012\n",
+        }
+        with (
+            mock.patch.object(Path, "read_text", lambda path, **_: texts[str(path)]),
+            mock.patch.object(
+                Path,
+                "iterdir",
+                return_value=iter([Path("/proc/321/task/321"), Path("/proc/321/task/322")]),
+            ),
+            mock.patch.object(guard, "_pidfd_call", return_value=11),
+            mock.patch.object(guard.select, "select", return_value=([], [], [])),
+            mock.patch.object(guard.os, "close") as close,
+        ):
+            snapshot = guard._descendant_snapshot(321)
+        self.assertEqual(snapshot["state"], "Z")
+        self.assertEqual(snapshot["threads"], 2)
+        self.assertEqual(snapshot["tracer_pid"], 0)
+        self.assertEqual(snapshot["exit_signal"], 17)
+        self.assertFalse(snapshot["pidfd_ready"])
+        self.assertEqual(
+            snapshot["thread_states"],
+            [
+                {"tid": 321, "state": "Z"},
+                {"tid": 322, "state": "D", "wchan": "wait_on_page_bit_common", "syscall": 0},
+            ],
+        )
+        self.assertNotIn("private name", str(snapshot))
+        self.assertNotIn("0x", str(snapshot))
+        close.assert_called_once_with(11)
+
+    def test_d_thread_diagnostics_preserve_state_on_denial_exit_and_syscall_races(self):
+        fields = ["0"] * 36
+        fields[0], fields[1], fields[19], fields[35] = "Z", "123", "999", "17"
+        texts = {
+            "/proc/321/stat": "321 (not retained) " + " ".join(fields),
+            "/proc/321/status": "Threads:\t2\nTracerPid:\t0\n",
+            "/proc/321/task/321/stat": "321 (not retained) Z",
+            "/proc/321/task/322/stat": "322 (not retained) D",
+        }
+        for wchan, syscall, expected in (
+            ("x" * 200, "16 0xprivate secret-arguments", {"wchan": "x" * 128, "syscall": 16}),
+            (
+                PermissionError("private error"),
+                "-1 0xprivate",
+                {"wchan_observation": "PermissionError", "syscall": -1},
+            ),
+            (
+                "0",
+                PermissionError("private error"),
+                {"wchan": "0", "syscall_observation": "PermissionError"},
+            ),
+            (
+                FileNotFoundError("private path"),
+                FileNotFoundError("private path"),
+                {
+                    "wchan_observation": "FileNotFoundError",
+                    "syscall_observation": "FileNotFoundError",
+                },
+            ),
+            (
+                "kernel_wait",
+                "running",
+                {"wchan": "kernel_wait", "syscall_observation": "ValueError"},
+            ),
+            ("kernel_wait", "", {"wchan": "kernel_wait", "syscall_observation": "IndexError"}),
+        ):
+            with self.subTest(expected=expected):
+                values = {
+                    **texts,
+                    "/proc/321/task/322/wchan": wchan,
+                    "/proc/321/task/322/syscall": syscall,
+                }
+
+                def read(path, **_):
+                    value = values[str(path)]
+                    if isinstance(value, OSError):
+                        raise value
+                    return value
+
+                with (
+                    mock.patch.object(Path, "read_text", read),
+                    mock.patch.object(
+                        Path,
+                        "iterdir",
+                        return_value=iter([Path("/proc/321/task/321"), Path("/proc/321/task/322")]),
+                    ),
+                    mock.patch.object(guard, "_pidfd_call", return_value=11),
+                    mock.patch.object(guard.select, "select", return_value=([], [], [])),
+                    mock.patch.object(guard.os, "close") as close,
+                ):
+                    snapshot = guard._descendant_snapshot(321)
+                self.assertEqual(
+                    snapshot["thread_states"],
+                    [{"tid": 321, "state": "Z"}, {"tid": 322, "state": "D", **expected}],
+                )
+                self.assertFalse(snapshot["pidfd_ready"])
+                self.assertNotIn("private", str(snapshot))
+                self.assertNotIn("secret-arguments", str(snapshot))
+                self.assertNotIn("0x", str(snapshot))
+                close.assert_called_once_with(11)
+
+    def test_thread_failure_snapshot_is_capped_and_process_races_are_retained(self):
+        fields = ["0"] * 36
+        fields[0], fields[1], fields[19], fields[35] = "Z", "123", "999", "17"
+        scanned = []
+
+        def tasks(_):
+            for tid in range(100, 200):
+                scanned.append(tid)
+                yield Path(f"/proc/321/task/{tid}")
+
+        def read(path, **_):
+            if path.name == "status":
+                return "Threads:\t100\nTracerPid:\t0\n"
+            return "321 (not retained) " + " ".join(fields)
+
+        with (
+            mock.patch.object(Path, "read_text", read),
+            mock.patch.object(Path, "iterdir", tasks),
+            mock.patch.object(guard, "_pidfd_call", return_value=11),
+            mock.patch.object(guard.select, "select", return_value=([11], [], [])),
+            mock.patch.object(guard.os, "close"),
+        ):
+            snapshot = guard._descendant_snapshot(321)
+        self.assertEqual(len(scanned), 65)
+        self.assertEqual(len(snapshot["thread_states"]), 64)
+        self.assertTrue(snapshot["thread_states_truncated"])
+        self.assertTrue(snapshot["pidfd_ready"])
+        with mock.patch.object(Path, "read_text", side_effect=FileNotFoundError("exited")):
+            self.assertEqual(
+                guard._descendant_snapshot(321), {"pid": 321, "observation": "FileNotFoundError"}
+            )
+
+    def test_unsupported_descendant_supervision_fails_before_workload(self):
+        with (
+            mock.patch.object(guard, "_SUPERVISE_DESCENDANTS", True),
+            mock.patch.object(
+                guard, "_enable_descendant_supervision", side_effect=OSError("pidfd unavailable")
+            ),
+            mock.patch.object(guard.subprocess, "Popen") as launch,
+        ):
+            code, _, receipt = self.run_child("raise AssertionError('must not execute')")
+        self.assertEqual(code, 70)
+        self.assertIsNone(receipt["pid"])
+        self.assertIn("pidfd unavailable", receipt["errors"][0])
+        launch.assert_not_called()
+
+    def test_dedicated_supervisor_refuses_preexisting_children(self):
+        with mock.patch.object(guard.os, "waitid", return_value=None):
+            with self.assertRaisesRegex(RuntimeError, "no pre-existing children"):
+                guard._enable_descendant_supervision()
+
+    def test_continuously_ready_zombies_cannot_defer_cleanup_escalation(self):
+        process = mock.Mock(pid=77, returncode=None)
+        ready = types.SimpleNamespace(si_pid=88)
+        with (
+            mock.patch.object(
+                guard.os, "waitid", side_effect=[ready] * 64 + [AssertionError("unbounded reaping")]
+            ) as wait,
+            mock.patch.object(guard.os, "waitpid") as reap,
+        ):
+            self.assertFalse(guard._children_gone(process))
+        self.assertEqual(wait.call_count, 64)
+        self.assertEqual(reap.call_count, 64)
 
     @staticmethod
     def stop_process(process):
         if process.poll() is None:
             process.kill()
         process.communicate(timeout=5)
+
+    def test_cli_forced_parent_death_cleans_detached_descendant_without_touching_sentinel(self):
+        sentinel = subprocess.Popen(python("import time; time.sleep(30)"), start_new_session=True)
+        self.addCleanup(lambda: self.stop_process(sentinel))
+        ready = self.root / "detached-ready.json"
+        descendant = (
+            "import signal,time; signal.signal(signal.SIGTERM,signal.SIG_IGN); "
+            "print('ready',flush=True); time.sleep(30)"
+        )
+        child = (
+            "import subprocess,os,json,signal; "
+            f"p=subprocess.Popen({python(descendant)!r},stdout=subprocess.PIPE,"
+            "stderr=subprocess.DEVNULL,start_new_session=True); "
+            "p.stdout.readline(); "
+            f"open({str(ready)!r},'w').write(json.dumps([os.getpid(),p.pid])); "
+            "os.kill(os.getpid(),signal.SIGKILL)"
+        )
+        invocation = [
+            sys.executable,
+            "-I",
+            "-S",
+            str(SCRIPT),
+            "--receipt",
+            str(self.receipt),
+            "--deadline-seconds",
+            "10",
+            "--disk-floor-bytes",
+            "1",
+            "--disk-path",
+            str(self.root),
+            "--",
+            *python(child),
+        ]
+        process = subprocess.Popen(invocation, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        try:
+            stdout, stderr = process.communicate(timeout=8)
+            self.assertEqual(process.returncode, 137, (stdout, stderr))
+            self.assertTrue(ready.is_file())
+            pids = json.loads(ready.read_text())
+            receipt = json.loads(self.receipt.read_text())
+            self.assertEqual((receipt["exit_code"], receipt["child_returncode"]), (137, -9))
+            self.assertEqual(receipt["errors"], [])
+            self.assertTrue(all(not running(pid) for pid in pids), "detached owned child survived")
+            self.assertIsNone(sentinel.poll())
+        finally:
+            self.stop_process(process)
+            if ready.is_file():
+                for pid in json.loads(ready.read_text()):
+                    try:
+                        os.killpg(pid, signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
 
 
 if __name__ == "__main__":

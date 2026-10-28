@@ -351,6 +351,14 @@ def train_cmd(
     completed_device = getattr(module, "device", None)
     if completed_device is not None:
         console.print(f"  Module device after completion: {completed_device}", markup=False)
+    interaction = getattr(getattr(module, "scenario", None), "interaction", None)
+    viewer = getattr(getattr(interaction, "environment", None), "viewer", None)
+    if frames is not None and "train" in getattr(viewer, "purposes", ()):
+        console.print("  Configured training viewer: run finished, not stalled training.")
+        console.print(
+            "  Viewing again requires a separate evaluation with an explicit "
+            "evaluation-viewer opt-in and an approved private worker route."
+        )
     checkpoints = {
         Path(path)
         for callback in getattr(trainer, "checkpoint_callbacks", [])

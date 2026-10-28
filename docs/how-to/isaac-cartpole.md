@@ -162,6 +162,13 @@ development host, privately forward that host's port to your browser machine too
 No public ingress or `0.0.0.0` bind is needed. The viewer closes when the job ends;
 a healthy Ray worker alone does not mean a viewer or training loop is running.
 
+For a completed RL result with a training viewer configured, CLI completion now
+labels the **configured training viewer** as belonging to a finished run. This is
+not proof that a viewer actually opened (an exhausted resume can allocate none),
+and it does not keep physics running or start replay automatically. The exact
+produced-policy evaluation command remains separate; watching requires the
+explicit replay viewer opt-in below and an approved private worker route.
+
 ## Evaluate the exported policy
 
 In a fresh process, replace the placeholder with the path printed by training:
@@ -203,3 +210,34 @@ operator's monitored **4 GiB free-disk stop** during native jobs.
 This reference must be assessed against an untrained policy on identical held-out
 seeds. A single training seed does not establish robustness across seeds, backend
 equivalence, or learning from mixed sensor inputs.
+
+## Frozen remote learning qualification
+
+The fixed acceptance case uses the existing **2,097,152-frame / 512-environment /
+8,192-frame-batch / seed-0** recipe unchanged. Use a trusted registered SDK worker
+profile with locked Python 3.12 all-workspace/all-extras setup, one GPU and
+`pool_gpu_workers`, plus a new evidence directory:
+
+```bash
+CUDA_VISIBLE_DEVICES='' python scripts/physical_ai_acceptance.py \
+  --case learning --profile QUALIFIED_PROFILE.yaml --ca "$RAY_CA_BUNDLE" \
+  --output "$EVIDENCE_ROOT" --wall-seconds 3600 --queue-seconds 900 \
+  --concurrency 1 --submit
+```
+
+This case has no shortened-budget option. Before training, it freezes checkpoint
+selection at 8,192, 1,048,576 and 2,097,152 physical frames. After native training
+exits, it copies the actual saved checkpoints, exports them and evaluates each
+plus the matched untrained policy in fresh sequential processes: 32 reset seeds
+10000–10031, deterministic actions, native five-second/300-step horizon and no
+evaluator step cap. The retained protocol, configuration, checkpoint/policy hashes,
+commands and logs identify the run; check terminal status and retrieval hashes.
+
+The frozen final thresholds are mean return ≥4.0, mean length ≥285, at most one
+native early termination and improvement over the matched untrained return.
+Check native episode endings rather than treating evaluator caps as full-horizon
+success. This is a single-training-seed **scalar learning protocol**, not multi-seed
+robustness, camera learning, RGB recording, browser playback or live-view qualification. This Newton
+case does not enable the adapter's unsupported Newton `rgb_array` replay or switch
+to PhysX to obtain pictures. Keep run-specific receipts, measurements and artifacts
+in the campaign's private evidence store, outside source commits.

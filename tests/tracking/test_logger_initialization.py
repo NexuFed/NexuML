@@ -81,6 +81,29 @@ def test_only_selected_backends_are_initialized(backends, selection, tmp_path):
     assert tracking.create_loggers(None) == [] and backends.events == []
 
 
+def test_logger_creation_reports_safe_uri_but_passes_original_to_client(
+    backends, monkeypatch, caplog
+):
+    import lightning.pytorch.loggers as native
+
+    uri = "https://alice:password-secret@tracking.example:8443/base?token=query-secret#fragment-secret"
+    supplied = []
+
+    def create(**kwargs):
+        supplied.append(kwargs["tracking_uri"])
+        return SimpleNamespace(experiment=object())
+
+    monkeypatch.setattr(native, "MLFlowLogger", create)
+    with caplog.at_level("INFO", logger=tracking.__name__):
+        tracking.create_loggers(LoggingSpec(mlflow=MLflowSpec(tracking_uri=uri)))
+    assert supplied == [uri]
+    assert "https://tracking.example:8443/base" in caplog.text
+    assert not any(
+        secret in caplog.text
+        for secret in ("alice", "password-secret", "query-secret", "fragment-secret")
+    )
+
+
 @pytest.mark.parametrize("backend", ["TensorBoard", "MLflow", "DVCLive"])
 @pytest.mark.parametrize("stage", ["construct", "experiment"])
 @pytest.mark.parametrize("error_type", [ImportError, OSError])

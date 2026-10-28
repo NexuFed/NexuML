@@ -14,6 +14,92 @@ available CUDA device. Do not replace an active environment or install another
 stack to run these examples. Monitor native runs and stop owned work at
 **4 GiB free disk**, the maintainer-revised resource threshold.
 
+The adapter passes startup settings that disable Kit crash-report uploads and
+structured, anonymous and Sentry telemetry before native initialization. Conflicting
+crash-reporter environment overrides fail without changing the environment.
+Licence acceptance stays
+an explicit operator decision; it is not inferred from telemetry preferences.
+Ordinary failure logs remain available. These settings neither supply missing
+graphics libraries nor qualify a renderer or display.
+
+## Recorded remote qualification profile
+
+For Ubuntu 22.04 amd64 workers, the private setup helper supplies missing
+GL/Xt/XRandR client libraries from thirteen pinned Ubuntu archives, including the
+GLVND EGL dispatcher required for `libEGL.so.1`. It verifies every hash before
+extraction and runs no package maintainer scripts, installs no Mesa or driver
+packages and changes no global package database. Its client-library `ldd` checks
+must pass before application execution. This is a source-checkout dependency
+profile, not a general system installer or proof of renderer/display support.
+
+An equivalent trusted profile is:
+
+```yaml
+type: ray-jobs-sdk
+version: "1"
+params:
+  setup_command:
+    - sh
+    - -c
+    - 'uv sync --locked --python 3.12 --all-packages --all-extras && "$UV_PROJECT_ENVIRONMENT/bin/python" tests/fixtures/physical_ai_native_setup.py'
+  py_executable: >-
+    sh -c 'export LD_LIBRARY_PATH="$UV_PROJECT_ENVIRONMENT/native-runtime/usr/lib/x86_64-linux-gnu${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"; exec "$UV_PROJECT_ENVIRONMENT/bin/python" -u -X faulthandler "$@"' nexuml-private-python
+  entrypoint_resources:
+    pool_gpu_workers: 1
+  runtime_env:
+    env_vars:
+      OMNI_CRASHREPORTER_ENABLED: "0"
+      OMNI_CRASHREPORTER_SKIPOLDDUMPUPLOAD: "1"
+```
+
+Before selecting Kit, the operator must separately review and accept NVIDIA's
+licence; only then add `OMNI_KIT_ACCEPT_EULA: "YES"` to that job's environment.
+The recorded campaign had explicit approval. The profile deliberately does not
+grant licence acceptance to another user. Save the approved profile as
+`QUALIFIED_PROFILE.yaml`, then use fresh submitter evidence directories:
+
+```bash
+export RAY_API_SERVER_ADDRESS=https://ray.ika.rub.de
+for recipe in isaac-cartpole-ppo isaac-custom-cartpole-ppo isaac-franka-reach-ppo isaac-so101-joint-reach-ppo; do
+  CUDA_VISIBLE_DEVICES='' python scripts/physical_ai_acceptance.py \
+    --case recipe --recipe "$recipe" --frames 2048 --batch 256 --envs 4 \
+    --profile QUALIFIED_PROFILE.yaml --ca "$RAY_CA_BUNDLE" \
+    --output "$EVIDENCE_ROOT/$recipe" --wall-seconds 1800 \
+    --queue-seconds 900 --concurrency 1 --submit || break
+done
+```
+
+These wiring smokes require changed finite actors, the requested physical-frame
+budget, real interrupted continuation, checkpoint export and fresh replay on the
+declared PhysX backend. Native task horizons stay unchanged; these checks are not
+convergence or SO-101 behavior-cloning proof. The separate declared
+Newton learning recipe and its frozen protocol are documented in
+[Train state-only Isaac Cartpole](isaac-cartpole.md#frozen-remote-learning-qualification).
+
+The same profile can separately execute six fixed native transition/control and
+checkpoint fixtures; these are not public-CLI training proof:
+
+```bash
+CUDA_VISIBLE_DEVICES='' python scripts/physical_ai_acceptance.py \
+  --case regression --suite native-state --profile QUALIFIED_PROFILE.yaml \
+  --ca "$RAY_CA_BUNDLE" --output "$EVIDENCE_ROOT/native-state" \
+  --wall-seconds 3600 --queue-seconds 900 --concurrency 1 --submit
+```
+
+All six must execute and pass; missing/skipped cases do not qualify. They check
+manager final/reset/GAE semantics on PhysX and Newton, genuine SO-101 signed
+controls/held-success/timeouts, custom native configuration, exact current
+actor/critic/optimizer continuation, portable actor inference and scalar replay.
+Their bounded fixture counters remain separate from the 2,048-frame CLI runs.
+
+Record the source/profile hashes and retrieve case/guard/setup receipts, configs
+and stage logs before worker cleanup. Guards retain visible-cgroup peak/current/
+limit/events, including Ray, setup and cache—not application-only RAM peaks. The
+campaign must measure application-only RAM separately and cannot infer parallel
+capacity from a nominal envelope or a visible-cgroup peak. Do not silently increase
+RAM/plasma allocations. Keep the 4 GiB disk stop and independent viewer/renderer/
+resource gates. Store run-specific receipts and measurements outside source commits.
+
 ## Typed functions, not override strings
 
 Put customization in an importable operator-owned module, not a script's

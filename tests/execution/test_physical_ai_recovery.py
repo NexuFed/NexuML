@@ -9,12 +9,12 @@ import runpy
 import pytest
 
 
-@pytest.fixture
-def recovery(tmp_path):
+@pytest.fixture(params=["recipe", "logging"])
+def recovery(tmp_path, request):
     script = Path(__file__).resolve().parents[1] / "fixtures/physical_ai_acceptance.py"
     function = runpy.run_path(str(script))["_recovery"]
     function.__globals__["ATTEMPT_BASE"] = tmp_path
-    source = tmp_path / ("a" * 32) / ("recipe-" + "b" * 32)
+    source = tmp_path / ("a" * 32) / (request.param + "-" + "b" * 32)
     source.mkdir(parents=True)
     artifact = source / "policy.pt"
     artifact.write_bytes(b"retained actor")
