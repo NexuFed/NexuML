@@ -1,8 +1,8 @@
 # NEX-233 experiment ONLY: branch-specific, not intended for main.
 # Based on .k8s/scenarios/job_audioset.yaml (existing cluster PVCs and GPU).
 # Before applying, the mounted /workspace must contain:
-#  - NEX-233 src/nexuml and library/src/nexuml_library on JuiceFS
-#  - a writable .experiments tree (init containers resolve configs) for seed 42.yaml
+#  - a complete NEX-233 feature-branch checkout on JuiceFS at code/nexuml
+#  - a writable .experiments tree for generated seed-42 configs
 # All three jobs share upstream *data/checkpoint contents* and write
 # distinct run-specific checkpoint/report paths. Prepare upstream artifacts first.
 apiVersion: batch/v1
@@ -46,12 +46,42 @@ spec:
         - name: juicefs-prisma
           persistentVolumeClaim:
             claimName: juicefs-prisma
-      # Resolve using the image's /workspace root, not a local-machine path.
+      # Reject missing/stale shared checkouts before resolving or training.
       initContainers:
+        - name: verify-source
+          image: harbor.ika.rub.de/library/nexuml:latest
+          imagePullPolicy: IfNotPresent
+          workingDir: /workspace
+          command: ["/env/bin/python", "-c"]
+          args:
+            - |
+              from pathlib import Path
+              root = Path("/mnt/nexuml-source")
+              required = (
+                  root / "src/nexuml/cli/main.py",
+                  root / "library/src/nexuml_library/scenarios/maintenance/rul_enhanced_cfc.py",
+                  root / "library/src/nexuml_library/evaluation/maintenance/rul_composite_comparison.py",
+              )
+              missing = [str(path) for path in required if not path.is_file()]
+              if missing:
+                  raise SystemExit(
+                      "NEX-233 shared checkout incomplete at code/nexuml: "
+                      + ", ".join(missing)
+                      + ". Sync the feature branch into the JuiceFS source tree."
+                  )
+              print("NEX-233 shared checkout paths verified", flush=True)
+          volumeMounts:
+            - name: juicefs
+              subPathExpr: code/nexuml
+              mountPath: /mnt/nexuml-source
+              readOnly: true
         - name: resolve-config
           image: harbor.ika.rub.de/library/nexuml:latest
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           workingDir: /workspace
+          env:
+            - name: PYTHONPATH
+              value: /mnt/nexuml-source/src:/mnt/nexuml-source/library/src
           command: ["nexuml"]
           args:
             - resolve
@@ -65,20 +95,21 @@ spec:
             - name: juicefs
               subPathExpr: code/nexuml/data
               mountPath: /workspace/data
-            # Overlay ONLY the two packages from the NEX-233 workspace.
-            # Do not hide /workspace or /env from the latest image.
+            # Keep the image installation intact; import branch code from
+            # this separate, complete repository mount.
             - name: juicefs
-              subPathExpr: code/nexuml/src/nexuml
-              mountPath: /workspace/src/nexuml
-            - name: juicefs
-              subPathExpr: code/nexuml/library/src/nexuml_library
-              mountPath: /workspace/library/src/nexuml_library
+              subPathExpr: code/nexuml
+              mountPath: /mnt/nexuml-source
+              readOnly: true
       containers:
         - name: nexuml
           image: harbor.ika.rub.de/library/nexuml:latest
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           workingDir: /workspace
-          # Keep the latest image's installed Python dependencies and entrypoint.
+          env:
+            - name: PYTHONPATH
+              value: /mnt/nexuml-source/src:/mnt/nexuml-source/library/src
+          # Keep the latest image's Python dependencies and NexuML entrypoint.
           command: ["nexuml"]
           args:
             - train
@@ -107,14 +138,12 @@ spec:
             - name: juicefs
               subPathExpr: code/nexuml/data
               mountPath: /workspace/data
-            # Overlay ONLY the two packages from the NEX-233 workspace.
-            # Do not hide /workspace or /env from the latest image.
+            # Keep the image installation intact; import branch code from
+            # this separate, complete repository mount.
             - name: juicefs
-              subPathExpr: code/nexuml/src/nexuml
-              mountPath: /workspace/src/nexuml
-            - name: juicefs
-              subPathExpr: code/nexuml/library/src/nexuml_library
-              mountPath: /workspace/library/src/nexuml_library
+              subPathExpr: code/nexuml
+              mountPath: /mnt/nexuml-source
+              readOnly: true
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -126,11 +155,12 @@ spec:
 ---
 
 
+
 # NEX-233 experiment ONLY: branch-specific, not intended for main.
 # Based on .k8s/scenarios/job_audioset.yaml (existing cluster PVCs and GPU).
 # Before applying, the mounted /workspace must contain:
-#  - NEX-233 src/nexuml and library/src/nexuml_library on JuiceFS
-#  - a writable .experiments tree (init containers resolve configs) for seed 43.yaml
+#  - a complete NEX-233 feature-branch checkout on JuiceFS at code/nexuml
+#  - a writable .experiments tree for generated seed-43 configs
 # All three jobs share upstream *data/checkpoint contents* and write
 # distinct run-specific checkpoint/report paths. Prepare upstream artifacts first.
 apiVersion: batch/v1
@@ -174,12 +204,42 @@ spec:
         - name: juicefs-prisma
           persistentVolumeClaim:
             claimName: juicefs-prisma
-      # Resolve using the image's /workspace root, not a local-machine path.
+      # Reject missing/stale shared checkouts before resolving or training.
       initContainers:
+        - name: verify-source
+          image: harbor.ika.rub.de/library/nexuml:latest
+          imagePullPolicy: IfNotPresent
+          workingDir: /workspace
+          command: ["/env/bin/python", "-c"]
+          args:
+            - |
+              from pathlib import Path
+              root = Path("/mnt/nexuml-source")
+              required = (
+                  root / "src/nexuml/cli/main.py",
+                  root / "library/src/nexuml_library/scenarios/maintenance/rul_enhanced_cfc.py",
+                  root / "library/src/nexuml_library/evaluation/maintenance/rul_composite_comparison.py",
+              )
+              missing = [str(path) for path in required if not path.is_file()]
+              if missing:
+                  raise SystemExit(
+                      "NEX-233 shared checkout incomplete at code/nexuml: "
+                      + ", ".join(missing)
+                      + ". Sync the feature branch into the JuiceFS source tree."
+                  )
+              print("NEX-233 shared checkout paths verified", flush=True)
+          volumeMounts:
+            - name: juicefs
+              subPathExpr: code/nexuml
+              mountPath: /mnt/nexuml-source
+              readOnly: true
         - name: resolve-config
           image: harbor.ika.rub.de/library/nexuml:latest
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           workingDir: /workspace
+          env:
+            - name: PYTHONPATH
+              value: /mnt/nexuml-source/src:/mnt/nexuml-source/library/src
           command: ["nexuml"]
           args:
             - resolve
@@ -193,20 +253,21 @@ spec:
             - name: juicefs
               subPathExpr: code/nexuml/data
               mountPath: /workspace/data
-            # Overlay ONLY the two packages from the NEX-233 workspace.
-            # Do not hide /workspace or /env from the latest image.
+            # Keep the image installation intact; import branch code from
+            # this separate, complete repository mount.
             - name: juicefs
-              subPathExpr: code/nexuml/src/nexuml
-              mountPath: /workspace/src/nexuml
-            - name: juicefs
-              subPathExpr: code/nexuml/library/src/nexuml_library
-              mountPath: /workspace/library/src/nexuml_library
+              subPathExpr: code/nexuml
+              mountPath: /mnt/nexuml-source
+              readOnly: true
       containers:
         - name: nexuml
           image: harbor.ika.rub.de/library/nexuml:latest
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           workingDir: /workspace
-          # Keep the latest image's installed Python dependencies and entrypoint.
+          env:
+            - name: PYTHONPATH
+              value: /mnt/nexuml-source/src:/mnt/nexuml-source/library/src
+          # Keep the latest image's Python dependencies and NexuML entrypoint.
           command: ["nexuml"]
           args:
             - train
@@ -235,14 +296,12 @@ spec:
             - name: juicefs
               subPathExpr: code/nexuml/data
               mountPath: /workspace/data
-            # Overlay ONLY the two packages from the NEX-233 workspace.
-            # Do not hide /workspace or /env from the latest image.
+            # Keep the image installation intact; import branch code from
+            # this separate, complete repository mount.
             - name: juicefs
-              subPathExpr: code/nexuml/src/nexuml
-              mountPath: /workspace/src/nexuml
-            - name: juicefs
-              subPathExpr: code/nexuml/library/src/nexuml_library
-              mountPath: /workspace/library/src/nexuml_library
+              subPathExpr: code/nexuml
+              mountPath: /mnt/nexuml-source
+              readOnly: true
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -254,11 +313,12 @@ spec:
 ---
 
 
+
 # NEX-233 experiment ONLY: branch-specific, not intended for main.
 # Based on .k8s/scenarios/job_audioset.yaml (existing cluster PVCs and GPU).
 # Before applying, the mounted /workspace must contain:
-#  - NEX-233 src/nexuml and library/src/nexuml_library on JuiceFS
-#  - a writable .experiments tree (init containers resolve configs) for seed 44.yaml
+#  - a complete NEX-233 feature-branch checkout on JuiceFS at code/nexuml
+#  - a writable .experiments tree for generated seed-44 configs
 # All three jobs share upstream *data/checkpoint contents* and write
 # distinct run-specific checkpoint/report paths. Prepare upstream artifacts first.
 apiVersion: batch/v1
@@ -302,12 +362,42 @@ spec:
         - name: juicefs-prisma
           persistentVolumeClaim:
             claimName: juicefs-prisma
-      # Resolve using the image's /workspace root, not a local-machine path.
+      # Reject missing/stale shared checkouts before resolving or training.
       initContainers:
+        - name: verify-source
+          image: harbor.ika.rub.de/library/nexuml:latest
+          imagePullPolicy: IfNotPresent
+          workingDir: /workspace
+          command: ["/env/bin/python", "-c"]
+          args:
+            - |
+              from pathlib import Path
+              root = Path("/mnt/nexuml-source")
+              required = (
+                  root / "src/nexuml/cli/main.py",
+                  root / "library/src/nexuml_library/scenarios/maintenance/rul_enhanced_cfc.py",
+                  root / "library/src/nexuml_library/evaluation/maintenance/rul_composite_comparison.py",
+              )
+              missing = [str(path) for path in required if not path.is_file()]
+              if missing:
+                  raise SystemExit(
+                      "NEX-233 shared checkout incomplete at code/nexuml: "
+                      + ", ".join(missing)
+                      + ". Sync the feature branch into the JuiceFS source tree."
+                  )
+              print("NEX-233 shared checkout paths verified", flush=True)
+          volumeMounts:
+            - name: juicefs
+              subPathExpr: code/nexuml
+              mountPath: /mnt/nexuml-source
+              readOnly: true
         - name: resolve-config
           image: harbor.ika.rub.de/library/nexuml:latest
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           workingDir: /workspace
+          env:
+            - name: PYTHONPATH
+              value: /mnt/nexuml-source/src:/mnt/nexuml-source/library/src
           command: ["nexuml"]
           args:
             - resolve
@@ -321,20 +411,21 @@ spec:
             - name: juicefs
               subPathExpr: code/nexuml/data
               mountPath: /workspace/data
-            # Overlay ONLY the two packages from the NEX-233 workspace.
-            # Do not hide /workspace or /env from the latest image.
+            # Keep the image installation intact; import branch code from
+            # this separate, complete repository mount.
             - name: juicefs
-              subPathExpr: code/nexuml/src/nexuml
-              mountPath: /workspace/src/nexuml
-            - name: juicefs
-              subPathExpr: code/nexuml/library/src/nexuml_library
-              mountPath: /workspace/library/src/nexuml_library
+              subPathExpr: code/nexuml
+              mountPath: /mnt/nexuml-source
+              readOnly: true
       containers:
         - name: nexuml
           image: harbor.ika.rub.de/library/nexuml:latest
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           workingDir: /workspace
-          # Keep the latest image's installed Python dependencies and entrypoint.
+          env:
+            - name: PYTHONPATH
+              value: /mnt/nexuml-source/src:/mnt/nexuml-source/library/src
+          # Keep the latest image's Python dependencies and NexuML entrypoint.
           command: ["nexuml"]
           args:
             - train
@@ -363,14 +454,12 @@ spec:
             - name: juicefs
               subPathExpr: code/nexuml/data
               mountPath: /workspace/data
-            # Overlay ONLY the two packages from the NEX-233 workspace.
-            # Do not hide /workspace or /env from the latest image.
+            # Keep the image installation intact; import branch code from
+            # this separate, complete repository mount.
             - name: juicefs
-              subPathExpr: code/nexuml/src/nexuml
-              mountPath: /workspace/src/nexuml
-            - name: juicefs
-              subPathExpr: code/nexuml/library/src/nexuml_library
-              mountPath: /workspace/library/src/nexuml_library
+              subPathExpr: code/nexuml
+              mountPath: /mnt/nexuml-source
+              readOnly: true
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
