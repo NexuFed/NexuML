@@ -4,7 +4,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: nexuml-rul-fd003-cfc-six-s__SEED__
-  namespace: lbecker
+  namespace: __NAMESPACE__
   labels:
     kueue.x-k8s.io/queue-name: jobs
     app.kubernetes.io/name: nexuml
