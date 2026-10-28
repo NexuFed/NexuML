@@ -196,46 +196,53 @@ legacy static `job_rul_enhanced_cfc_fd003.yaml`.
 
 Each Job uses the existing
 `harbor.ika.rub.de/library/nexuml:latest` image—**no dedicated image**.
-Its contents are not used as the experiment's Python package source.
-The staged snapshot is mounted read-only at `/workspace` through the
-existing `juicefs` PVC.
+Its installed `/env` is deliberately not used for the NEX-233
+workspace packages.
 
-Each Job then runs the following in order in the **same container**:
+The source snapshot is mounted read-only under
+`/mnt/nexuml-source`. We do **not** mount it at `/workspace` or nest
+writable volumes beneath it: OCI cannot create absent mountpoint
+directories in a read-only parent filesystem, which previously caused
+`error mounting ... /workspace/.experiments ... read-only file system`.
 
-1. Validate the staged source-content digest and required files.
-2. Create a fresh `uv` venv at `/tmp/nexuml-job-venv/.venv` on an
-   `emptyDir` volume and install the pinned workspace packages with
+The main container follows these stages:
+
+1. Check the source SHA-256 sentinel, then copy the small staged runtime
+   source into `/tmp/nexuml-run` (pod-local writable filesystem).
+2. Symlink `/tmp/nexuml-run/.experiments` to the separate persistent
+   JuiceFS mount `/mnt/nexuml-experiments`, and `data` to
+   `/mnt/nexuml-data`. These paths are never copied into the snapshot.
+3. Create a fresh virtual environment under
+   `/tmp/nexuml-job-venv/.venv` (`emptyDir`), then run
    `uv sync --locked --no-dev --all-packages --all-extras`.
-3. Verify that both NexuML packages import and that PyTorch sees CUDA.
-4. Run `nexuml resolve` for the selected `compare-six` scenario and
-   then `nexuml train --config ...`.
+4. Verify both NexuML packages import and CUDA is available. Run native
+   `nexuml resolve` and `nexuml train --config` for the selected seed.
 
-This intentionally uses the existing NexuML CLI rather than introducing
-a separate training implementation. The ephemeral venv and wheel cache
-are not copied to JuiceFS; they disappear when the Pod is deleted.
+The temporary source and virtual environment disappear with the Pod.
+The immutable JuiceFS source snapshot remains reusable and unchanged.
 The first start requires the target worker to download any missing locked
-dependencies, potentially including large CUDA wheels. The launcher does
-not silently reuse an incompatible `/env` installation.
+dependencies, potentially including large CUDA wheels.
 
-The following persistent JuiceFS paths are mounted separately under
-the staged workspace:
+Persistent volumes are **independent mountpoints**, not children of the
+read-only source mount:
 
-| JuiceFS subpath | Job path | Meaning |
+| JuiceFS PVC subpath | Container mount | Purpose |
 | --- | --- | --- |
-| `code/nexuml/.experiments` | `/workspace/.experiments` | Upstream weights/normalizer, resolved YAML, new checkpoints and reports |
-| `code/nexuml/data` | `/workspace/data` | Cached NASA C-MAPSS data |
+| content-hashed source snapshot | `/mnt/nexuml-source` (read-only) | Executable source files |
+| `code/nexuml/.experiments` | `/mnt/nexuml-experiments` | Upstream models, configs, checkpoints and reports |
+| `code/nexuml/data` | `/mnt/nexuml-data` | Cached NASA C-MAPSS data |
 | `juicefs-prisma:data` | `/mnt/data` | Existing cluster dataset mount |
 | `juicefs-prisma:logs` | `/mnt/logs` | Existing cluster logging mount |
 
 **Prepare the upstream FD003 PatchFormer checkpoint and train-endpoint
-normalizer in the shared `.experiments` tree before launching the three
+normalizer in the shared `.experiments` tree before launching all three
 seeds.** These Jobs do not recompute their upstream models.
 
 The Job template retains the established Kueue `jobs` queue,
 `lbecker` namespace, `normal` priority, NVIDIA runtime, `regcred`,
-one GPU per Job, and AMD64/CUDA runtime constraints. The GPU model and
-memory filters and explicit CPU/RAM requests/limits remain omitted.
-Removing CPU/RAM constraints does **not** reserve a node exclusively.
+one GPU per Job, and AMD64/CUDA runtime constraints. GPU model/memory
+filters and explicit CPU/RAM requests/limits remain omitted. Removing
+CPU/RAM constraints does **not** reserve a node exclusively.
 
 ### Launch from the NEX-233 checkout
 
