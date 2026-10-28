@@ -72,6 +72,30 @@ openspec validate <change> --strict
 `ruff format .` writes formatting; `--check` does not. Use the relevant source/test subset
 during iteration, then the required gate set before requesting review.
 
+## Optional simulator and system tests
+
+`requires_simulator` needs `NEXUML_RUN_SIMULATOR_TESTS=1`; `requires_system` needs
+`NEXUML_RUN_SYSTEM_TESTS=1` and configured middleware/server. Hardware tests remain
+manual and require `NEXUML_RUN_HARDWARE_TESTS=1` plus operator review.
+
+The CI `rl-simulators` dispatch input runs scoped CPU visual/MuJoCo and real
+headless GIF/MP4 tests with library `video,mujoco` extras. Normal CI does not install
+these media/simulator extras or start ROS/Gazebo, CARLA or hardware. These checks
+need no tracking server, GPU renderer or stochastic reward threshold:
+
+```bash
+uv pip install -e ".[dev,reinforcement]" -e "./library[video,mujoco]"
+NEXUML_RUN_SIMULATOR_TESTS=1 SDL_VIDEODRIVER=dummy CUDA_VISIBLE_DEVICES='' \
+  OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 python -m pytest \
+  tests/core/test_simulation_scenarios.py tests/core/test_rl_evaluation.py \
+  tests/tracking/test_evaluation_media.py -q
+gh workflow run ci.yml --ref <branch> -f rl-simulators=true
+```
+
+Optional MLflow tests use temporary local stores and skip when absent; install
+`nexuml[tracking]` to run them. Ordinary CPU/config tests use fake RGB without
+graphics/codecs. See [system prerequisites](/how-to/reinforcement-learning/).
+
 ## Studio and skills
 
 ```bash

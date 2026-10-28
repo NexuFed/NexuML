@@ -1,4 +1,7 @@
-# SO-101 local behavior cloning and Python handoff
+---
+title: SO-101 local behavior cloning and Python handoff
+description: Fit local demonstrations and preserve trusted checkpoint, calibration and deployment contracts.
+---
 
 This is the narrow NEX-234 Gate 0 reference, not federation, vial placement,
 ACT/VLA, real-hardware readiness or the full Physical AI backend.
@@ -164,7 +167,7 @@ unchanged. Source/schema/recipe changes still require independent consumer-pin
 review: producer validation is not proof of NexuFL compatibility.
 
 Native lifecycle and typed authoring use
-[whole-job environment scopes](isaac-native-configuration.md). Ordinary CLI
+[whole-job environment scopes](/how-to/isaac-native-configuration/). Ordinary CLI
 train/evaluate own these scopes automatically. Python native collect/replay
 must keep export, evidence writes and explicit logger cleanup inside
 `with definition.job_scope():`; offline fitting does not launch Isaac.

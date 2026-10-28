@@ -38,6 +38,21 @@ The required contract is `scenario() -> ScenarioSpec`; no decorator is required.
 The example uses the same synthetic implementation as the first run with explicit local
 settings, without changing the installed recipe defaults.
 
+The file declares configuration, not a training loop. It needs no `NexuSession`,
+`job_scope()` or `if __name__ == "__main__"` runner: the CLI owns session/native
+lifetime, logger cleanup and outputs. Declare `ExportSpec` entries to save the
+trained model or complete policy.
+
+Standalone evaluation selects test data or a different environment through the
+same file contract, retaining the exported architecture and weights:
+
+```bash
+nexuml evaluate /approved/export --scenario-file experiment.py
+```
+
+See [model/test-split versus policy/environment evaluation](/how-to/evaluate/)
+for allowed overrides.
+
 ## Run and save provenance
 
 ```bash

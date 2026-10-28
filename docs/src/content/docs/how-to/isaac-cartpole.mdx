@@ -1,4 +1,7 @@
-# Train state-only Isaac Cartpole
+---
+title: Train state-only Isaac Cartpole
+description: Train, checkpoint, export and evaluate a native GPU policy with private viewing.
+---
 
 Use the prepared robotics environment. This example needs one CUDA GPU and the
 pinned Isaac stack; it does not install packages, start a public server or use a
@@ -40,14 +43,14 @@ not a replacement for this learning reference.
 
 ## Run remotely with Ray Jobs
 
-Submit the normal CLI through [Ray Jobs SDK](training-backends/ray.md#ray-jobs-sdk-ray-jobs-sdk),
+Submit the normal CLI through [Ray Jobs SDK](/how-to/training-backends/ray/#ray-jobs-sdk-ray-jobs-sdk),
 not distributed RL. The backend installs locked dependencies into a private
 worker-local venv, then runs training; no custom image or submitter-venv change
-is needed. The [optional IKA profile](training-backends/ray.md#reuse-a-project-execution-profile)
+is needed. The [optional IKA profile](/how-to/training-backends/ray/#reuse-a-project-execution-profile)
 selects `gpu-workers`. Override its extras for Isaac and set durable per-run paths.
 This is the migration target, not evidence that the migrated code or remote runtime
 is qualified. Planned remote resume/export/evaluate routes are listed in the
-[SDK lifecycle recipe](training-backends/ray.md#submission-and-paths); implementation
+[SDK lifecycle recipe](/how-to/training-backends/ray/#submission-and-paths); implementation
 and qualification remain pending.
 
 From the repository root, with the local Ray CLI and `nexuml[ray]` installed:
@@ -92,7 +95,7 @@ budget, append `-O training.total_frames=32768` and
 This is not a convergence or held-out-quality test. A short smoke may finish
 before you connect a browser.
 
-The [class defaults](training-backends/ray.md#python-defaults-no-profile-file-required)
+The [class defaults](/how-to/training-backends/ray/#python-defaults-no-profile-file-required)
 keep the unpacked cache and venv local, avoiding JuiceFS metadata stalls. Only
 logs/exports belong on mounted storage. Setup followed by direct Python execution
 also avoids the `uv run` SIGPIPE handoff; `run.sh` stays installer-free.
@@ -104,11 +107,12 @@ limits stalled reads, not total transfer time or Ray supervisor startup. At
 other dependencies. Budget overall setup using worker throughput, not the
 submitter's network speed; quiet logs are not proof of a hang.
 
-!!! warning "Keep both logs and exports durable"
-    The command explicitly sets `NEXUML_LOGS_ROOT` for relative logs and a unique
-    absolute `exports[].output` for the policy. The logs-root setting alone does
-    not redirect exports. Driver output stays in Ray Jobs logs; retain it with the
-    log snapshots below before cluster cleanup.
+:::caution[Keep both logs and exports durable]
+The command explicitly sets `NEXUML_LOGS_ROOT` for relative logs and a unique
+absolute `exports[].output` for the policy. The logs-root setting alone does
+not redirect exports. Driver output stays in Ray Jobs logs; retain it with the
+log snapshots below before cluster cleanup.
+:::
 
 ### Status, logs and progress
 
@@ -203,8 +207,8 @@ nexuml evaluate rl-runs/cartpole-<id>/policy --device cuda:0 \
 Simulation runs faster than real time; 128 episodes leave time to open the browser.
 The server still closes at the end of this finite replay.
 
-See [private Viser ownership](isaac-read-only-viser.md) and
-[native configuration](isaac-native-configuration.md) for customization. Keep the
+See [private Viser ownership](/how-to/isaac-read-only-viser/) and
+[native configuration](/how-to/isaac-native-configuration/) for customization. Keep the
 operator's monitored **4 GiB free-disk stop** during native jobs.
 
 This reference must be assessed against an untrained policy on identical held-out

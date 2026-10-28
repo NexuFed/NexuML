@@ -67,11 +67,11 @@ training = TrainingSpec(strategy=strategy(RayFSDPStrategy, state_dict_type="full
 The class/arguments remain navigable and statically checkable; required strategy packages
 must exist in workers.
 
-## Ray Jobs
+## KubeRay: `ray-job`
 
 NexuML `RayJobExecution` means the **KubeRay RayJob resource**, not Ray Jobs API.
 Its infrastructure-owned template chooses a new job-scoped or existing cluster.
-For generic Ray Jobs API submission, use native tooling:
+For generic Ray Jobs API submission, native tooling remains available:
 
 ```bash
 ray job submit --working-dir . -- \
@@ -80,6 +80,222 @@ ray job submit --working-dir . -- \
 
 Use Ray's own status/log/stop tooling. See [native templates](/how-to/training-backends/jobs/)
 for KubeRay handoff and ownership/cleanup rules.
+
+## Ray Jobs SDK: `ray-jobs-sdk`
+
+Select `RayJobsSDKExecution` to submit the **whole normal CLI process** remotely
+through Ray's `JobSubmissionClient`. Unlike `RayClusterExecution`, this is an
+asynchronous submission backend, not a Ray Train worker group. It supports the
+single-process RL/Isaac lifecycle without enabling distributed RL. Submission
+alone does not qualify native simulators, graphics, viewers or convergence.
+
+### Python defaults: no profile file required
+
+```python
+from nexuml.execution.definitions import RayJobsSDKExecution
+
+spec.execution = RayJobsSDKExecution()
+```
+
+This defaults to `uv sync --locked`, a fresh worker-local venv **per submission**,
+direct venv Python execution, one GPU, and these environment settings:
+
+```text
+UV_PROJECT_ENVIRONMENT=/tmp/ray/nexuml-envs/{run_id}
+UV_CACHE_DIR=/tmp/ray/uv-cache
+UV_LINK_MODE=hardlink
+UV_HTTP_TIMEOUT=600
+UV_CONCURRENT_DOWNLOADS=4
+```
+
+`{run_id}` is resolved in the Python command and environment values for each
+submission, even when reusing a spec. The caller's spec is not mutated.
+Source upload defaults to `working_dir="."`; relative paths use the submission
+directory, not a profile file's directory. Address, CA and pool are not hardcoded.
+
+The project's lockfile owns dependencies and Python compatibility. Select extras
+through `setup_command`; the optional profile below supplies this checkout's values.
+
+For an already-prepared environment use
+`RayJobsSDKExecution(setup_command=None)`; the implicit interpreter is `python`
+and no uv environment settings are added. An explicit `py_executable` may select
+another prepared interpreter. For CPU jobs set
+`entrypoint_num_gpus=0` and choose CPU training settings in the scenario.
+Explicit interpreter and environment values take precedence over generated
+defaults. If you override the venv path, keep setup and Python paths aligned.
+`LocalExecution` remains the default for scenarios that do not select a backend.
+
+### Reuse a project execution profile
+
+For repeated CLI submissions, the optional `configs/execution/ray.yaml` adds
+this checkout's Python 3.12, `library`/`ray` extras and IKA `pool_gpu_workers` tag.
+It does not duplicate the class's cache, venv or GPU defaults. From the repo root:
+
+```bash
+export RAY_API_SERVER_ADDRESS=https://ray.example.org
+nexuml train --scenario-file my_scenario.py \
+  --execution-profile configs/execution/ray.yaml
+```
+
+Profiles use the same registered representation as persisted execution:
+
+```yaml
+type: ray-jobs-sdk
+version: "1"
+params:
+  setup_command: [uv, sync, --locked, --python, "3.12", --extra, library, --extra, ray]
+  entrypoint_resources: {pool_gpu_workers: 1}
+```
+
+The old `kind` schema is rejected. Only use trusted files: their setup commands
+execute remotely. YAML does not expand shell/environment variables. Keep secrets
+out of uploaded files.
+
+Precedence is **scenario → profile replaces execution → `-O` overrides**;
+other scenario settings are unchanged. Copy the profile for different dependency
+extras or pools, or override fields per run. For example:
+
+- `-O 'execution.entrypoint_resources={"pool_gpu_workers":1}'` sets the pool reservation.
+- `-O execution.verify=/path/to/ca-bundle.pem` selects a private CA.
+- `-O 'execution.setup_command=["uv","sync","--locked","--extra","isaac","--extra","ray"]'`
+  selects Isaac dependencies. Extras are project-owned, not inferred from components.
+
+Field overrides address Python model attributes (`execution.entrypoint_resources`),
+not `execution.params`. Replacing the whole execution with `-O` requires a registered
+dictionary, e.g. `-O 'execution={"type":"ray-jobs-sdk","version":"1","params":{}}'`.
+
+For CPU use, clear both the GPU reservation and the profile's pool tag:
+`-O execution.entrypoint_num_gpus=0 -O 'execution.entrypoint_resources={}'`.
+Also select CPU training in the scenario; reservations do not rewrite its devices.
+
+Python callers can assign `load_ray_job_profile(Path("configs/execution/ray.yaml"))`
+from `nexuml.execution` to `spec.execution` before calling `run(spec)`.
+Profiles are neither selected automatically nor reloaded remotely.
+
+### Submission and paths
+
+For a scenario that already sets its execution, use the normal command:
+
+```bash
+nexuml train --scenario-file scenario_job.py
+```
+
+Shared `nexuml.execution.run(spec)` dispatch and the public default-training
+convenience `submit_ray_job(spec)` return a **submission ID**, not a training result.
+Neither starts a local learner/simulator, waits, tails logs or retries. Use Ray's
+native status/log/stop tools afterwards.
+
+The CLI reports requested logical CPU/GPU/RAM reservations and resource tags, not
+measured utilization or hard memory limits. Training submissions also label the
+configured frame/epoch budget and requested device. Worker inputs and explicit
+export outputs remain requested paths until a terminal result proves they exist.
+The actual worker allocation and setup-versus-learning phase are unknown at
+submission; inspect the job logs rather than infer learning from a running status.
+
+The backend sends the resolved scenario after overrides, resets execution to
+`LocalExecution`, and invokes the normal remote CLI. It does not rerun the factory,
+compile locally, write local staging files or recursively submit.
+`--artifact-dir` snapshots remain local and include the submission ID.
+
+Datasets, importable components, trainer checkpoints and selective
+`scenario.checkpoint.source` must be worker-accessible; they are not implicitly
+transported. Set unique absolute `exports[].output` paths on durable storage.
+`NEXUML_LOGS_ROOT` redirects relative logs, **not policy exports**. Nothing infers
+persistent output storage.
+
+Public lifecycle routes use trusted submitter configs selecting `ray-jobs-sdk`
+and worker-accessible paths:
+
+```bash
+nexuml train --config CASE_JOB.yaml
+nexuml train --config CASE_JOB.yaml --trainer-checkpoint /mnt/data/run/model.ckpt
+nexuml export --config CASE_JOB.yaml --checkpoint /mnt/data/run/model.ckpt --output /mnt/data/run/policy
+nexuml evaluate /mnt/data/run/policy --config EVALUATION_JOB.yaml --device cuda:0
+```
+
+Remote resume needs an explicit scenario/config; checkpoint-only local resume is
+unchanged. Evaluation `--config` supplies only allowed evaluation/data/logging/
+environment settings, never replacement packaged weights. Dependent native stages
+run sequentially in fresh processes; submission alone does not establish completion.
+
+Worker completion reports the Ray submission ID, host and PID when Ray supplies
+its job metadata. `Fit device observed at start` records placement before training;
+`Module device after completion` may instead be CPU after Lightning teardown.
+Printed resume/evaluation commands quote the produced worker paths and are labelled
+**worker-local**. To run them from the submitter, add the appropriate trusted
+`--config` as above; those paths are not uploaded. A missing fit-device observation
+is not evidence of GPU training (for example, an already exhausted checkpoint).
+
+The test-owned acceptance driver prints `NEXUML_CASE_SUBMITTED` and
+`NEXUML_CASE_TERMINAL` JSON lines. They link the case, unique attempt root, Ray
+submission ID and candidate source-tree hash without dumping runtime variables
+or arbitrary case options. Submission labels GPU/pool/wall budgets as requested
+and leaves the execution phase unknown until worker logs observe it. Terminal
+records identify local job receipts/logs and preserve both native Ray status and
+campaign result. A failed or stopped job is not made successful by a receipt
+claiming PASS. Hermetic reporting checks are not remote qualification.
+
+Remote export requires an explicit `--output` worker path; omitted output remains
+a local-only default. Monitoring, cleanup and artifact access still require
+the approved deployment's native routes and ownership checks.
+
+For policy evaluation, configure top-level `policy_evaluation` and override,
+for example, `-O policy_evaluation.episodes=2`. Older configurations without that
+setting use `-O training.evaluation.episodes=2`. `evaluation.episodes` is invalid.
+Remote continuation checks requested pipeline, learner, task, policy and evaluation
+semantics against the checkpoint on the worker before native allocation. Changes
+fail rather than silently replacing the saved run. Saved scenario metadata remains
+authoritative, including output paths: choose isolated durable paths before original
+training. A resume does not implicitly relocate them.
+
+### Non-graphics lifecycle control
+
+For a vector-only CPU control, keep `training.accelerator=cpu`, CPU collector
+devices and recording disabled. The qualification campaign still reserves **one
+whole GPU on `pool_gpu_workers`**, including CPU controls; generic zero-GPU examples
+above are not permitted for that campaign. Run dependent stages serially. Locked
+worker setup needs `library`, `ray` and `reinforcement`; test-owned profiles may also
+require `dev` and `api`. No display/graphics extras are required by the vector task.
+
+Use separate trusted execution configs for each job's private guard/log root while
+keeping saved training, policy and evaluation semantics identical for resume.
+Continuation still writes to original checkpoint destinations. Export gets a new
+durable output directory, not a reused policy directory:
+
+```bash
+export RAY_API_SERVER_ADDRESS=https://ray.example.org
+nexuml train --config TRAIN_JOB.yaml
+# After an intentional partial stop and confirmed terminal status:
+nexuml train --config RESUME_JOB.yaml --trainer-checkpoint "$WORKER_PARTIAL_CHECKPOINT"
+# Wait for continuation to succeed before exporting its final checkpoint.
+nexuml export --config EXPORT_JOB.yaml --checkpoint "$WORKER_FINAL_CHECKPOINT" --output "$WORKER_POLICY"
+# EVALUATE_JOB.yaml sets policy_evaluation.episodes=2 and disables video.
+nexuml evaluate "$WORKER_POLICY" --config EVALUATE_JOB.yaml --device cpu
+```
+
+For each asynchronous submission, use the same approved endpoint and CA to observe
+terminal status and retain logs before starting the dependent command:
+
+```python
+from ray.job_submission import JobSubmissionClient
+
+client = JobSubmissionClient("https://ray.example.org", verify="/path/to/ca.pem")
+status = client.get_job_status(job_id)
+logs = client.get_job_logs(job_id)
+# Only cancel an ID owned by this attempt:
+# client.stop_job(job_id)
+```
+
+`STOPPED` after intentional interruption is not training success. Confirm that the
+partial checkpoint is readable on the worker and preserve its bytes across resume.
+Match exported checkpoint hash and source physical frames to the actual final
+checkpoint, then require fresh evaluation's frame count and full episode denominator.
+Worker paths need not exist on the submitter; they are not automatically uploaded
+or redirected locally. Omitting remote selection uses existing local commands.
+
+The test-owned stock-Python acceptance guard surrounds locked setup and CLI execution
+through a trusted `py_executable` override. Its `setup_command=None` prevents extra
+unguarded setup; the guard runs the same locked sync with private uv settings.
 
 ## Distributed semantic restrictions
 

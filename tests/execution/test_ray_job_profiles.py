@@ -387,7 +387,7 @@ def test_documented_cartpole_submission_keeps_setup_and_outputs_explicit(monkeyp
     import nexuml.core.compiler as compiler
     import nexuml.training.lightning as lightning
 
-    guide = Path("docs/how-to/isaac-cartpole.md").read_text()
+    guide = Path("docs/src/content/docs/how-to/isaac-cartpole.mdx").read_text()
     remote = guide.split("## Run remotely with Ray Jobs\n", 1)[1].split(
         "## Evaluate the exported policy\n", 1
     )[0]
