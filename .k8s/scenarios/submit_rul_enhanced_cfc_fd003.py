@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
 import shutil
@@ -88,7 +89,7 @@ def stage_snapshot(staging_root: Path, digest: str, *, dry_run: bool) -> Path:
     if dry_run:
         return target
     staging_root.mkdir(parents=True, exist_ok=True)
-    temporary = staging_root / f".{digest}.partial-{__import__('os').getpid()}"
+    temporary = staging_root / f".{digest}.partial-{os.getpid()}"
     temporary.mkdir(exist_ok=False)
     try:
         names = [file.relative_to(ROOT).as_posix() for file in source_files()]
@@ -101,12 +102,12 @@ def stage_snapshot(staging_root: Path, digest: str, *, dry_run: bool) -> Path:
                 str(ROOT) + "/",
                 str(temporary) + "/",
             ],
-            input=("\\0".join(names) + "\\0").encode("utf-8"),
+            input=("\0".join(names) + "\0").encode("utf-8"),
             check=True,
         )
         if digest_source(temporary) != digest or digest_source() != digest:
             raise ValueError("source changed during staging or copy verification failed")
-        (temporary / "NEX233_SOURCE_DIGEST.txt").write_text(digest + "\\n", encoding="utf-8")
+        (temporary / "NEX233_SOURCE_DIGEST.txt").write_text(digest + "\n", encoding="utf-8")
         temporary.rename(target)
     finally:
         if temporary.exists():
