@@ -296,15 +296,69 @@ or redirected locally. Omitting remote selection uses existing local commands.
 The test-owned stock-Python acceptance guard surrounds locked setup and CLI execution
 through a trusted `py_executable` override. Its `setup_command=None` prevents extra
 unguarded setup; the guard runs the same locked sync with private uv settings.
+It retains the 4 GiB physical-disk stop and wall-time deadline. The SDK backend
+itself does not add those limits to ordinary submissions.
+
+Graphics qualification requires a separately qualified Ray worker image and
+display/browser routes; a submitter devcontainer rebuild does not satisfy them.
+Do not switch renderers to turn a deferred gate green. An inert review is available:
+
+```bash
+python scripts/physical_ai_acceptance.py --case preflight \
+  --ca /path/to/ca.pem --output /path/to/new-control-records
+```
+
+Without `--submit`, this prints approved target/CA paths, durable root, budgets and
+missing/unqualified prerequisites without creating a client, installing dependencies
+or initializing a workload. A private-data path is neither approval nor admission.
+Initial qualification remains serial; the four-job ceiling does not prove capacity.
+
+### Remote dependency setup
+
+`setup_command` is a nonempty **argv list**, or `None` to skip setup. It runs once
+remotely before Python, with shell-quoted arguments and `runtime_env` variables.
+A nonzero exit prevents training and preserves failure; success is followed by
+`exec` of `py_executable`. Custom installers must create the selected environment
+or supply a matching Python command. A POSIX shell is required.
+
+Separate setup/direct Python execution avoids the cold `uv run` SIGPIPE handoff in
+[uv #21935](https://github.com/astral-sh/uv/issues/21935), without signal masking,
+worker-image rebuilds or arbitrary `uv run` rewriting.
+
+The cache is shared only within a worker; mutable venvs are private. Hardlinks need
+cache and venv on the same filesystem. Both disappear on worker cleanup and consume
+local disk until then. Avoid unpacked caches on shared FUSE storage such as JuiceFS:
+per-file metadata can stall cached installs; copy mode or shared hardlinked venvs do
+not solve that cost. Use mounted result storage. Explicit environment paths/values
+and SDK packaging/exclusions are preserved; only missing uv settings are filled
+when setup is enabled.
+
+Workers need uv, Git, compatible Python/Ray, host drivers/system libraries and
+physical disk. The backend does not enforce wall-time/free-disk limits or guarantee
+GPU capacity. Resource fields are logical reservations, not utilization limits or
+Ray Train worker resources.
+
+`address=None` uses native endpoint selection. `RAY_API_SERVER_ADDRESS`/`RAY_ADDRESS`
+can override even an explicit address under SDK rules: clear ingress settings when
+switching to forwarded localhost. TLS defaults to verification; supply a private CA
+bundle where required. Connection/runtime-env values are not embedded in the remote
+scenario, but setup/Python commands and scenario content are visible in the job
+entrypoint: never put secrets there.
+
+See [the single-GPU Isaac example](/how-to/isaac-cartpole/#run-remotely-with-ray-jobs)
+for TLS, worker-pool selection, detached submission and private viewer forwarding.
+It launches one remote local-execution CLI job, not distributed RL.
 
 ## Distributed semantic restrictions
 
-Ray rejects scenarios containing `evaluation.algorithms` or definitions declaring
+These restrictions apply to Ray Train (`ray-cluster`), not whole-process SDK Jobs
+(`ray-jobs-sdk`). Ray Train rejects `evaluation.algorithms` or definitions declaring
 `requires_post_train_fit`. Both require global state across rank-sharded data.
 Until correct cross-worker finalization exists, keep those scenarios local instead of
 accepting changed semantics. Ordinary Lightning validation/test metrics can still reduce
 through the distributed trainer. The synthetic first-run recipe includes an evaluation
-algorithm, so do not send it unchanged to Ray.
+algorithm, so do not send it unchanged to Ray Train. Local execution and SDK Jobs
+retain their existing global-state semantics.
 
 ## Shared datasets and S3 WebDataset
 
