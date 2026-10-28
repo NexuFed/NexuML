@@ -59,11 +59,8 @@ spec:
             - .experiments/rul/enhanced-cfc/fd003/compare-six-s42.yaml
           resources:
             requests:
-              cpu: "8"
-              memory: 32Gi
               nvidia.com/gpu: "1"
             limits:
-              memory: 64Gi
               nvidia.com/gpu: "1"
           volumeMounts:
             - name: shared-mem
@@ -84,23 +81,11 @@ spec:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
               - matchExpressions:
-                  - key: nvidia.com/gpu.memory
-                    operator: Gt
-                    values: ["12000"]
                   - key: nvidia.com/cuda.runtime.major
                     operator: Gt
                     values: ["11"]
-                  - key: nvidia.com/gpu.product
-                    operator: In
-                    values:
-                      - Tesla-V100-SXM2-32GB
-                      - NVIDIA-GeForce-RTX-4000-Ada-Generation
-                      - NVIDIA-GeForce-RTX-5080
-                      - NVIDIA-GeForce-RTX-5070
-                      - NVIDIA-GeForce-RTX-4090
-                      - NVIDIA-GeForce-RTX-4070-SUPER
-                      - NVIDIA-GeForce-RTX-4070
 ---
+
 # NEX-233 experiment ONLY: branch-specific, not intended for main.
 # Based on .k8s/scenarios/job_audioset.yaml (existing cluster PVCs and GPU).
 # Before applying, the mounted /workspace must contain:
@@ -162,11 +147,8 @@ spec:
             - .experiments/rul/enhanced-cfc/fd003/compare-six-s43.yaml
           resources:
             requests:
-              cpu: "8"
-              memory: 32Gi
               nvidia.com/gpu: "1"
             limits:
-              memory: 64Gi
               nvidia.com/gpu: "1"
           volumeMounts:
             - name: shared-mem
@@ -187,23 +169,11 @@ spec:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
               - matchExpressions:
-                  - key: nvidia.com/gpu.memory
-                    operator: Gt
-                    values: ["12000"]
                   - key: nvidia.com/cuda.runtime.major
                     operator: Gt
                     values: ["11"]
-                  - key: nvidia.com/gpu.product
-                    operator: In
-                    values:
-                      - Tesla-V100-SXM2-32GB
-                      - NVIDIA-GeForce-RTX-4000-Ada-Generation
-                      - NVIDIA-GeForce-RTX-5080
-                      - NVIDIA-GeForce-RTX-5070
-                      - NVIDIA-GeForce-RTX-4090
-                      - NVIDIA-GeForce-RTX-4070-SUPER
-                      - NVIDIA-GeForce-RTX-4070
 ---
+
 # NEX-233 experiment ONLY: branch-specific, not intended for main.
 # Based on .k8s/scenarios/job_audioset.yaml (existing cluster PVCs and GPU).
 # Before applying, the mounted /workspace must contain:
@@ -265,11 +235,8 @@ spec:
             - .experiments/rul/enhanced-cfc/fd003/compare-six-s44.yaml
           resources:
             requests:
-              cpu: "8"
-              memory: 32Gi
               nvidia.com/gpu: "1"
             limits:
-              memory: 64Gi
               nvidia.com/gpu: "1"
           volumeMounts:
             - name: shared-mem
@@ -290,19 +257,6 @@ spec:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
               - matchExpressions:
-                  - key: nvidia.com/gpu.memory
-                    operator: Gt
-                    values: ["12000"]
                   - key: nvidia.com/cuda.runtime.major
                     operator: Gt
                     values: ["11"]
-                  - key: nvidia.com/gpu.product
-                    operator: In
-                    values:
-                      - Tesla-V100-SXM2-32GB
-                      - NVIDIA-GeForce-RTX-4000-Ada-Generation
-                      - NVIDIA-GeForce-RTX-5080
-                      - NVIDIA-GeForce-RTX-5070
-                      - NVIDIA-GeForce-RTX-4090
-                      - NVIDIA-GeForce-RTX-4070-SUPER
-                      - NVIDIA-GeForce-RTX-4070
