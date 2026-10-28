@@ -1,9 +1,9 @@
 # NEX-233 experiment ONLY: branch-specific, not intended for main.
 # Based on .k8s/scenarios/job_audioset.yaml (existing cluster PVCs and GPU).
 # Before applying, the mounted /workspace must contain:
-#  - NEX-233 working-tree source, compatible with the image's installed environment
+#  - NEX-233 source bundled into the dedicated feature-branch image
 #  - resolved .experiments/rul/enhanced-cfc/fd003/compare-six-s42.yaml
-# All three jobs share read-only upstream *data/checkpoint contents* and write
+# All three jobs share upstream *data/checkpoint contents* and write
 # distinct run-specific checkpoint/report paths. Prepare upstream artifacts first.
 apiVersion: batch/v1
 kind: Job
@@ -48,10 +48,10 @@ spec:
             claimName: juicefs-prisma
       containers:
         - name: nexuml
-          image: harbor.ika.rub.de/library/nexuml:latest
+          image: harbor.ika.rub.de/library/nexuml:nex233-k8s
           imagePullPolicy: Always
           workingDir: /workspace
-          # No shell orchestration, auxiliary scripts, or custom environment.
+          # Entrypoint uses the verified branch image's native NexuML install.
           command: ["nexuml"]
           args:
             - train
@@ -73,9 +73,15 @@ spec:
             - name: juicefs-prisma
               subPathExpr: logs
               mountPath: /mnt/logs
+            # Keep /workspace/src and /workspace/library/src from the
+            # image: uv installs both project packages editable there.
+            # Mount only the shared experiment outputs and raw data.
             - name: juicefs
-              subPathExpr: code/nexuml
-              mountPath: /workspace
+              subPathExpr: code/nexuml/.experiments
+              mountPath: /workspace/.experiments
+            - name: juicefs
+              subPathExpr: code/nexuml/data
+              mountPath: /workspace/data
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -89,9 +95,9 @@ spec:
 # NEX-233 experiment ONLY: branch-specific, not intended for main.
 # Based on .k8s/scenarios/job_audioset.yaml (existing cluster PVCs and GPU).
 # Before applying, the mounted /workspace must contain:
-#  - NEX-233 working-tree source, compatible with the image's installed environment
+#  - NEX-233 source bundled into the dedicated feature-branch image
 #  - resolved .experiments/rul/enhanced-cfc/fd003/compare-six-s43.yaml
-# All three jobs share read-only upstream *data/checkpoint contents* and write
+# All three jobs share upstream *data/checkpoint contents* and write
 # distinct run-specific checkpoint/report paths. Prepare upstream artifacts first.
 apiVersion: batch/v1
 kind: Job
@@ -136,10 +142,10 @@ spec:
             claimName: juicefs-prisma
       containers:
         - name: nexuml
-          image: harbor.ika.rub.de/library/nexuml:latest
+          image: harbor.ika.rub.de/library/nexuml:nex233-k8s
           imagePullPolicy: Always
           workingDir: /workspace
-          # No shell orchestration, auxiliary scripts, or custom environment.
+          # Entrypoint uses the verified branch image's native NexuML install.
           command: ["nexuml"]
           args:
             - train
@@ -161,9 +167,15 @@ spec:
             - name: juicefs-prisma
               subPathExpr: logs
               mountPath: /mnt/logs
+            # Keep /workspace/src and /workspace/library/src from the
+            # image: uv installs both project packages editable there.
+            # Mount only the shared experiment outputs and raw data.
             - name: juicefs
-              subPathExpr: code/nexuml
-              mountPath: /workspace
+              subPathExpr: code/nexuml/.experiments
+              mountPath: /workspace/.experiments
+            - name: juicefs
+              subPathExpr: code/nexuml/data
+              mountPath: /workspace/data
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -177,9 +189,9 @@ spec:
 # NEX-233 experiment ONLY: branch-specific, not intended for main.
 # Based on .k8s/scenarios/job_audioset.yaml (existing cluster PVCs and GPU).
 # Before applying, the mounted /workspace must contain:
-#  - NEX-233 working-tree source, compatible with the image's installed environment
+#  - NEX-233 source bundled into the dedicated feature-branch image
 #  - resolved .experiments/rul/enhanced-cfc/fd003/compare-six-s44.yaml
-# All three jobs share read-only upstream *data/checkpoint contents* and write
+# All three jobs share upstream *data/checkpoint contents* and write
 # distinct run-specific checkpoint/report paths. Prepare upstream artifacts first.
 apiVersion: batch/v1
 kind: Job
@@ -224,10 +236,10 @@ spec:
             claimName: juicefs-prisma
       containers:
         - name: nexuml
-          image: harbor.ika.rub.de/library/nexuml:latest
+          image: harbor.ika.rub.de/library/nexuml:nex233-k8s
           imagePullPolicy: Always
           workingDir: /workspace
-          # No shell orchestration, auxiliary scripts, or custom environment.
+          # Entrypoint uses the verified branch image's native NexuML install.
           command: ["nexuml"]
           args:
             - train
@@ -249,9 +261,15 @@ spec:
             - name: juicefs-prisma
               subPathExpr: logs
               mountPath: /mnt/logs
+            # Keep /workspace/src and /workspace/library/src from the
+            # image: uv installs both project packages editable there.
+            # Mount only the shared experiment outputs and raw data.
             - name: juicefs
-              subPathExpr: code/nexuml
-              mountPath: /workspace
+              subPathExpr: code/nexuml/.experiments
+              mountPath: /workspace/.experiments
+            - name: juicefs
+              subPathExpr: code/nexuml/data
+              mountPath: /workspace/data
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
