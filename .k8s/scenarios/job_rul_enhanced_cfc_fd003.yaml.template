@@ -37,8 +37,6 @@ spec:
         - name: juicefs-prisma
           persistentVolumeClaim:
             claimName: juicefs-prisma
-        - name: runtime-workspace
-          emptyDir: {}
         - name: runtime-venv
           emptyDir: {}
         - name: shared-mem
@@ -49,7 +47,7 @@ spec:
         - name: nexuml
           image: harbor.ika.rub.de/library/nexuml:latest
           imagePullPolicy: IfNotPresent
-          workingDir: /workspace
+          workingDir: /tmp
           env:
             - name: PYTHONDONTWRITEBYTECODE
               value: "1"
@@ -67,12 +65,16 @@ spec:
           args:
             - |
               set -euo pipefail
-              # Copy only the immutable, verified source snapshot to the
-              # ephemeral writable workspace. Persistent data mounts already
-              # exist here and must not be copied into or erased.
+              # All source files and the runtime environment are pod-local.
+              # Persistent experiment/data mounts remain independent of source.
               test "$(cat /mnt/nexuml-source/NEX233_SOURCE_DIGEST.txt)" = "__SOURCE_DIGEST__"
-              cp -a /mnt/nexuml-source/. /workspace/
-              cd /workspace
+              mkdir -p /tmp/nexuml-run
+              cp -R /mnt/nexuml-source/. /tmp/nexuml-run/
+              test ! -e /tmp/nexuml-run/.experiments
+              test ! -e /tmp/nexuml-run/data
+              ln -s /mnt/nexuml-experiments /tmp/nexuml-run/.experiments
+              ln -s /mnt/nexuml-data /tmp/nexuml-run/data
+              cd /tmp/nexuml-run
               test "$(cat NEX233_SOURCE_DIGEST.txt)" = "__SOURCE_DIGEST__"
               test -f src/nexuml/cli/main.py
               test -f library/src/nexuml_library/scenarios/maintenance/rul_enhanced_cfc.py
@@ -102,17 +104,15 @@ spec:
             limits:
               nvidia.com/gpu: "1"
           volumeMounts:
-            - name: runtime-workspace
-              mountPath: /workspace
             - name: juicefs
               mountPath: /mnt/nexuml-source
               subPath: __STAGE_SUBPATH__
               readOnly: true
             - name: juicefs
-              mountPath: /workspace/.experiments
+              mountPath: /mnt/nexuml-experiments
               subPath: code/nexuml/.experiments
             - name: juicefs
-              mountPath: /workspace/data
+              mountPath: /mnt/nexuml-data
               subPath: code/nexuml/data
             - name: juicefs-prisma
               mountPath: /mnt/data
