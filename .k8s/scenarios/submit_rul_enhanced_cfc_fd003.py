@@ -176,6 +176,7 @@ def render_manifest(
         "__NAMESPACE__": namespace,
         "__SCENARIO__": scenario,
         "__SOURCE_DIGEST__": digest,
+        "__SOURCE_SHORT__": digest[:12],
         "__STAGE_SUBPATH__": source_subpath,
     }
     rendered = TEMPLATE.read_text(encoding="utf-8")
