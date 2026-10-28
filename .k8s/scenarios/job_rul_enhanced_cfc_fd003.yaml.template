@@ -67,7 +67,7 @@ spec:
             - name: NEXUML_LOGS_ROOT
               value: /mnt/logs
             - name: NEXUML_RUL_CHECKPOINT_ROOT
-              value: /mnt/models/rul/checkpoints
+              value: /mnt/nexuml-experiments/rul/checkpoints
           command: ["/bin/bash", "-c"]
           args:
             - |
@@ -155,9 +155,10 @@ spec:
               mountPath: /mnt/nexuml-source
               subPath: __STAGE_SUBPATH__
               readOnly: true
-            - name: juicefs
+            # Persist all NEX-233 artifacts on juicefs_prisma/models.
+            - name: juicefs-prisma
               mountPath: /mnt/nexuml-experiments
-              subPath: code/nexuml/.experiments
+              subPath: models/nexuml/.experiments
             - name: juicefs-prisma
               mountPath: /mnt/data
               subPath: data
