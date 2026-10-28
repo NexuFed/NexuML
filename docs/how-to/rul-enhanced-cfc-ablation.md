@@ -165,53 +165,47 @@ on NEX-233** and are **not intended for a merge into `main`**. No new
 NexuML execution backend, custom experiment environment variables or
 shell-based training runners were introduced.
 
-### Avoid shadowing NexuML's editable installation
+### Use the existing `latest` image without hiding its installation
 
-The repository's Dockerfile uses `uv sync` inside `/workspace` and
-installs NexuML and its library from their workspace source directories.
-The original Kubernetes Job mounted the full JuiceFS `code/nexuml`
-subpath onto `/workspace`, hiding the source tree from the image.
-This could leave `/env/bin/nexuml` installed but make
-`import nexuml` fail.
+The experimental Jobs use the existing
+`harbor.ika.rub.de/library/nexuml:latest` image. No special
+feature-branch image is built or pushed.
 
-The corrected Jobs **retain the image's `/workspace/src` and
-`/workspace/library/src`** and mount only these shared JuiceFS paths:
+The image's `/env/bin/nexuml` entry point uses a workspace-installed
+NexuML package. Mounting the entire `code/nexuml` JuiceFS tree over
+`/workspace` hid the installed source and caused
+`ModuleNotFoundError: No module named 'nexuml'`.
 
-| PVC subpath | Container mount | Purpose |
+To avoid that failure, the Jobs now mount **only the NEX-233 source
+packages** at the image's existing editable package directories,
+while preserving the rest of `/workspace` and `/env`:
+
+| Existing JuiceFS PVC subpath | Container mount | Purpose |
 | --- | --- | --- |
-| `code/nexuml/.experiments` | `/workspace/.experiments` | Prepared models, checkpoints, resolved YAML, results |
-| `code/nexuml/data` | `/workspace/data` | Original NASA C-MAPSS data |
+| `code/nexuml/src/nexuml` | `/workspace/src/nexuml` | NexuML Python package |
+| `code/nexuml/library/src/nexuml_library` | `/workspace/library/src/nexuml_library` | NEX-233 component/scenario definitions |
+| `code/nexuml/.experiments` | `/workspace/.experiments` | Configs, checkpoints, and output |
+| `code/nexuml/data` | `/workspace/data` | Dataset files |
 
-The original `juicefs-prisma` data/log volume mounts are unchanged.
-The upstream seed-42 PatchFormer and endpoint-normalization artifacts
-must already be present at the paths expected by the scenarios.
-**Do not launch three simultaneous upstream preparation attempts.**
+**Before running:** The two source-package paths in JuiceFS must
+contain the actual **NEX-233 feature-branch code**. The `latest`
+image supplies Python packages and their dependencies, but it may
+contain older `main` code. The mounted source paths override that
+code. The container cannot use the developer's local worktree unless
+its files have actually been copied/synced into these shared JuiceFS
+paths. Do not overwrite a shared `code/nexuml` checkout being used
+by another workload without coordinating access.
 
-### Build the NEX-233 image once
+The `latest` image must also have compatible installed dependencies
+and editable workspace installation paths; it cannot be guaranteed
+from the repository Dockerfile alone that a previously published
+`latest` image matches those expectations. The first init-container
+`nexuml resolve` validates Python package discovery before training
+starts.
 
-The inherited Harbor `latest` image is not guaranteed to contain this
-feature branch. The Jobs now reference a dedicated tag:
-
-`harbor.ika.rub.de/library/nexuml:nex233-k8s`
-
-Build and push it from the **NEX-233 branch** (using a machine with Docker
-and permission to push to this registry):
-
-```bash
-git pull
-docker build \
-  -t harbor.ika.rub.de/library/nexuml:nex233-k8s .
-docker run --rm --entrypoint /env/bin/python \
-  harbor.ika.rub.de/library/nexuml:nex233-k8s \
-  -c "import nexuml, nexuml_library; print(nexuml.__file__)"
-docker push harbor.ika.rub.de/library/nexuml:nex233-k8s
-```
-
-The `docker run` command checks the installed package in the *unmounted
-image* before submitting Kubernetes work. Use `docker login
-harbor.ika.rub.de` if registry authentication is required. A digest-pinned
-image is preferable for final experiment provenance; the temporary tag
-here is intentionally separate from the `main` image.
+The upstream FD003 seed-42 PatchFormer checkpoint, endpoint
+normalization, and prepared RUL data must already exist under the
+shared paths. Do not launch three simultaneous preparation attempts.
 
 ### Resolve and train using NexuML itself
 
