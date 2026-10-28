@@ -209,13 +209,16 @@ The main container follows these stages:
 
 1. Check the source SHA-256 sentinel, then copy the small staged runtime
    source into `/tmp/nexuml-run` (pod-local writable filesystem).
-2. Symlink `/tmp/nexuml-run/.experiments` to the separate persistent
-   JuiceFS mount `/mnt/nexuml-experiments`, and `data` to
-   `/mnt/nexuml-data`. These paths are never copied into the snapshot.
-3. Create a fresh virtual environment under
+2. Symlink `/tmp/nexuml-run/.experiments` to the persistent
+   JuiceFS mount `/mnt/nexuml-experiments`, and the scenario's literal
+   `data/cmapss` parent to the Prisma data mount `/mnt/data`.
+3. Validate the upstream controlled FD003 PatchFormer audit manifest,
+   its recorded best checkpoint, and the matching train-only endpoint
+   normalizer. Fail with an actionable diagnostic if any are missing.
+4. Create a fresh virtual environment under
    `/tmp/nexuml-job-venv/.venv` (`emptyDir`), then run
    `uv sync --locked --no-dev --all-packages --all-extras`.
-4. Verify both NexuML packages import and CUDA is available. Run native
+5. Verify both NexuML packages import and CUDA is available. Run native
    `nexuml resolve` and `nexuml train --config` for the selected seed.
 
 The temporary source and virtual environment disappear with the Pod.
@@ -230,13 +233,45 @@ read-only source mount:
 | --- | --- | --- |
 | content-hashed source snapshot | `/mnt/nexuml-source` (read-only) | Executable source files |
 | `code/nexuml/.experiments` | `/mnt/nexuml-experiments` | Upstream models, configs, checkpoints and reports |
-| `code/nexuml/data` | `/mnt/nexuml-data` | Cached NASA C-MAPSS data |
-| `juicefs-prisma:data` | `/mnt/data` | Existing cluster dataset mount |
-| `juicefs-prisma:logs` | `/mnt/logs` | Existing cluster logging mount |
+| `juicefs-prisma:data` | `/mnt/data` | NASA C-MAPSS `data/cmapss` and other datasets |
+| `juicefs-prisma:logs` | `/mnt/logs` | NexuML log-root outputs |
+| `juicefs-prisma:models` | `/mnt/models` | Model/checkpoint-root outputs |
 
-**Prepare the upstream FD003 PatchFormer checkpoint and train-endpoint
-normalizer in the shared `.experiments` tree before launching all three
-seeds.** These Jobs do not recompute their upstream models.
+Environment variables for the existing NexuML root helpers are
+`NEXUML_DATA_ROOT=/mnt/data`, `NEXUML_LOGS_ROOT=/mnt/logs`, and
+`NEXUML_RUL_CHECKPOINT_ROOT=/mnt/models/rul/checkpoints`. These values
+refer to **container** paths. The host paths may instead be
+`/mnt/juicefs_prisma/data`, `/mnt/juicefs_prisma/logs`, and
+`/mnt/juicefs_prisma/models`. The RUL scenario has some literal
+relative paths, which are not automatically rewritten by the root helpers.
+
+**Important:** EnhancedCfCRULHead uses the existing
+`resolve_patchformer_checkpoint()` convention, not an environment-variable
+lookup. The upstream selection manifest must still be accessible at
+
+```text
+.experiments/rul/audits/rul-FD003-controlled-patchformer-seed42.checkpoint.json
+```
+
+relative to the pod-local runtime. Its `best_model_path` must resolve
+to an **existing** file, with parent directory
+`rul-FD003-controlled-patchformer-seed42`. Merely mounting
+`/mnt/models` does not create that manifest or repair any absolute
+paths stored inside it. The endpoint normalizer must also exist:
+
+```text
+.experiments/rul/prepared/rul-FD003-patchformer-sequence-cfc-flow-seed42-endpoints.pt
+```
+
+Inspect the original files and validation-selected checkpoint on the host
+before copying or relocating them; do not select an arbitrary `.ckpt` or
+fabricate the audit manifest. If these artifacts have not been created,
+train the upstream `maintenance-rul-controlled-fd003-patchformer-s42`
+scenario and prepare its matching endpoint-normalization artifact first.
+These three CfC Jobs do **not** recompute the upstream models.
+
+The preflight reads this native audit record before downloading dependencies
+so an absent or stale checkpoint produces a concise, actionable error.
 
 The Job template retains the established Kueue `jobs` queue,
 `lbecker` namespace, `normal` priority, NVIDIA runtime, `regcred`,
