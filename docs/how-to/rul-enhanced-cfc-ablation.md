@@ -280,9 +280,11 @@ so an absent or stale checkpoint produces a concise, actionable error.
 
 The Job template retains the established Kueue `jobs` queue,
 `lbecker` namespace, `normal` priority, NVIDIA runtime, `regcred`,
-one GPU per Job, and AMD64/CUDA runtime constraints. GPU model/memory
-filters and explicit CPU/RAM requests/limits remain omitted. Removing
-CPU/RAM constraints does **not** reserve a node exclusively.
+one GPU per Job, and AMD64/CUDA runtime constraints. The
+required node affinity explicitly excludes `student-worker-1` while
+allowing the remaining eligible GPU nodes. GPU model/memory filters and
+explicit CPU/RAM requests/limits remain omitted. Removing CPU/RAM
+constraints does **not** reserve a node exclusively.
 
 ### Launch from the NEX-233 checkout
 
