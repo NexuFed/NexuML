@@ -98,6 +98,9 @@ def test_render_uses_unique_native_seed_scenarios() -> None:
         assert "__SOURCE_SHORT__" not in manifest
         assert "nvidia.com/gpu.memory" not in manifest
         assert "nvidia.com/gpu.product" not in manifest
+        assert "key: kubernetes.io/hostname" in manifest
+        assert "operator: NotIn" in manifest
+        assert "values: [student-worker-1]" in manifest
         assert "mountPath: /tmp/nexuml-job-venv" in manifest
         # OCI runtime mountpoints must not be nested beneath the read-only
         # source snapshot; staged source and persistent data stay separate.
