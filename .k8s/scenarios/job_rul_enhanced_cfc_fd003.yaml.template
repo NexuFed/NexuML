@@ -177,6 +177,10 @@ spec:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
               - matchExpressions:
+                  # Never schedule this NEX-233 campaign on the weakest node.
+                  - key: kubernetes.io/hostname
+                    operator: NotIn
+                    values: [student-worker-1]
                   - key: nvidia.com/cuda.runtime.major
                     operator: Gt
                     values: ["11"]
