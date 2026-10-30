@@ -211,14 +211,18 @@ def summarize_independent_confirmation(root: Path) -> dict[str, Any]:
         "independent_optimizers": True,
         "independent_best_validation_checkpoints": True,
         "test_predictions_read": False,
-        "metric": "evaluation-mode validation window MSE at each own val/loss-best checkpoint",
+        "metric": (
+            "evaluation-mode validation window MSE "
+            "at each run's own val/loss-best checkpoint"
+        ),
         "ranking": ranking,
         "paired_effects": differences,
         "runs": runs,
         "caveat": (
             "Exploratory: FD003 test metrics were previously inspected. "
             "All readout seeds share one upstream encoder and engine split. "
-            "Job timing includes fit, final validate and test and depends on node hardware; "
+            "Job timing includes fit, final validate and test and "
+            "depends on node hardware; "
             "do not interpret three seeds as independent test populations."
         ),
     }
