@@ -11,8 +11,8 @@ import argparse
 import csv
 import json
 import math
-from pathlib import Path
 import statistics
+from pathlib import Path
 from typing import Any
 
 CONFIGURATIONS = ("baseline", "finetune", "all_no_trend")
@@ -39,9 +39,7 @@ def _finite_float(value: object, *, label: str) -> float:
     return result
 
 
-def _read_run(
-    root: Path, configuration: str, seed: int
-) -> dict[str, Any]:
+def _read_run(root: Path, configuration: str, seed: int) -> dict[str, Any]:
     """Read the epoch at which this run's own val/loss checkpoint was saved.
 
     Returns:
@@ -76,25 +74,19 @@ def _read_run(
     epoch = audit.get("checkpoint_epoch")
     if not isinstance(epoch, int) or isinstance(epoch, bool) or epoch < 0:
         raise ValueError(f"Invalid selected checkpoint epoch for {run}: {epoch!r}")
-    checkpoint_loss = _finite_float(
-        audit.get("best_model_score"), label=f"{run} best val/loss"
-    )
+    checkpoint_loss = _finite_float(audit.get("best_model_score"), label=f"{run} best val/loss")
     with curve_path.open(newline="", encoding="utf-8") as handle:
         rows = list(csv.DictReader(handle))
     matches = [row for row in rows if row.get("epoch") == str(epoch)]
     if len(matches) != 1:
-        raise ValueError(
-            f"{run}: expected one evaluation-mode record at checkpoint epoch {epoch}"
-        )
+        raise ValueError(f"{run}: expected one evaluation-mode record at checkpoint epoch {epoch}")
     row = matches[0]
     for field in ("train_windows", "val_windows", "val_engine_count"):
         value = row.get(field)
         if value is None or not value.isdigit() or int(value) <= 0:
             raise ValueError(f"{run}: missing {field} in selected validation curve")
     score = _finite_float(row.get("val_eval_mse"), label=f"{run} val_eval_mse")
-    train_score = _finite_float(
-        row.get("train_eval_mse"), label=f"{run} train_eval_mse"
-    )
+    train_score = _finite_float(row.get("train_eval_mse"), label=f"{run} train_eval_mse")
     timing_file = root / f"{configuration.replace('_', '-')}-s{seed}.execution.json"
     # This marker is written only after the native train command succeeds.
     # Missing metadata means a Job is still training, failed, or was rerun.
@@ -147,24 +139,16 @@ def summarize_independent_confirmation(root: Path) -> dict[str, Any]:
         Per-seed validation scores, paired effects and engineering diagnostics.
 
     Raises:
-        FileNotFoundError: If any run has not completed successfully.
         ValueError: If evidence is inconsistent or nonfinite.
     """
     runs: list[dict[str, Any]] = [
-        _read_run(root, configuration, seed)
-        for configuration in CONFIGURATIONS
-        for seed in SEEDS
+        _read_run(root, configuration, seed) for configuration in CONFIGURATIONS for seed in SEEDS
     ]
     shapes = {
-        (
-            run["training_windows"], run["validation_windows"],
-            run["validation_engines"]
-        )
+        (run["training_windows"], run["validation_windows"], run["validation_engines"])
         for run in runs
     }
-    digests = {
-        run["execution"]["source_sha256"] for run in runs
-    }
+    digests = {run["execution"]["source_sha256"] for run in runs}
     if len(digests) != 1:
         raise ValueError("Confirmation runs used different staged source snapshots")
     if len(shapes) != 1:
@@ -172,7 +156,8 @@ def summarize_independent_confirmation(root: Path) -> dict[str, Any]:
     scores = {
         configuration: {
             seed: next(
-                float(run["selected_val_eval_mse"]) for run in runs
+                float(run["selected_val_eval_mse"])
+                for run in runs
                 if run["configuration"] == configuration and run["seed"] == seed
             )
             for seed in SEEDS
@@ -180,9 +165,7 @@ def summarize_independent_confirmation(root: Path) -> dict[str, Any]:
         for configuration in CONFIGURATIONS
     }
     ranked = sorted(
-        CONFIGURATIONS, key=lambda configuration: statistics.mean(
-            scores[configuration].values()
-        )
+        CONFIGURATIONS, key=lambda configuration: statistics.mean(scores[configuration].values())
     )
     ranking = [
         {
@@ -200,12 +183,10 @@ def summarize_independent_confirmation(root: Path) -> dict[str, Any]:
     differences = {
         configuration: {
             "vs_baseline_mean": statistics.mean(
-                scores[configuration][seed] - scores["baseline"][seed]
-                for seed in SEEDS
+                scores[configuration][seed] - scores["baseline"][seed] for seed in SEEDS
             ),
             "vs_baseline_by_seed": {
-                str(seed): scores[configuration][seed] - scores["baseline"][seed]
-                for seed in SEEDS
+                str(seed): scores[configuration][seed] - scores["baseline"][seed] for seed in SEEDS
             },
         }
         for configuration in CONFIGURATIONS
@@ -222,8 +203,7 @@ def summarize_independent_confirmation(root: Path) -> dict[str, Any]:
         "independent_best_validation_checkpoints": True,
         "test_predictions_read": False,
         "metric": (
-            "evaluation-mode validation window MSE "
-            "at each run's own val/loss-best checkpoint"
+            "evaluation-mode validation window MSE at each run's own val/loss-best checkpoint"
         ),
         "ranking": ranking,
         "paired_effects": differences,
@@ -242,7 +222,8 @@ def main() -> None:
     """Generate an auditable JSON report after all nine runs finish."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--root", type=Path,
+        "--root",
+        type=Path,
         default=Path(".experiments/rul/enhanced-cfc/fd003/confirmation"),
     )
     parser.add_argument("--output", type=Path, default=None)

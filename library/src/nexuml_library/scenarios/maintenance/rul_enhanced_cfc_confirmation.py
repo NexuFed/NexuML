@@ -27,15 +27,15 @@ from nexuml_library.scenarios.maintenance.rul_enhanced_cfc import (
 
 Confirmation = Literal["baseline", "finetune", "all_no_trend"]
 CONFIRMATIONS: tuple[Confirmation, ...] = (
-    "baseline", "finetune", "all_no_trend",
+    "baseline",
+    "finetune",
+    "all_no_trend",
 )
 CONFIRMATION_SEEDS = (42, 43, 44)
 CONFIRMATION_ROOT = ".experiments/rul/enhanced-cfc/fd003/confirmation"
 
 
-def independent_cfc_confirmation(
-    configuration: Confirmation, seed: int
-) -> ScenarioSpec:
+def independent_cfc_confirmation(configuration: Confirmation, seed: int) -> ScenarioSpec:
     """Build an isolated, individually selected training run for one variant.
 
     Args:
@@ -68,7 +68,10 @@ def independent_cfc_confirmation(
         save_last=True,
     )
     callbacks[3] = callback(
-        EarlyStopping, monitor="val/loss", mode="min", patience=20,
+        EarlyStopping,
+        monitor="val/loss",
+        mode="min",
+        patience=20,
     )
     callbacks[4] = callback(
         Goel2026RestoreBestWeights,
@@ -185,5 +188,3 @@ def independent_all_no_trend_s44() -> ScenarioSpec:
         One validation-selected native NexuML RUL experiment.
     """
     return independent_cfc_confirmation("all_no_trend", 44)
-
-
