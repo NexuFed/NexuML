@@ -36,7 +36,7 @@ class HealthySetEncoder(nn.Module):
             nn.Linear(context_dim, context_dim),
         )
 
-    def forward(self, reference: Tensor) -> Tensor:
+    def forward(self, reference: Tensor) -> Tensor:  # ty: ignore[invalid-mutable-override]
         """Encode [B,K,D] healthy reference embeddings to [B,C].
 
         Returns:
