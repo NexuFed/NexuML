@@ -136,6 +136,15 @@ reports per-configuration mean/SD across seeds and paired single-on and
 leave-one-out effects. No custom runner, environment variable or
 post-processing command is required.
 
+## Independent confirmation
+
+After the three-seed composite screening, run the prespecified standalone
+baseline, finetune and all-without-trend confirmation experiments with their
+own optimizers and validation-selected checkpoints. See the
+[independent FD003 confirmation](rul-independent-confirmation-fd003.md)
+runbook for nine Kubernetes Jobs, Prisma artifact paths and the validation-only
+summary command.
+
 ## Native composite limitations
 
 The comparison is analogous to the repository's `maintenance-rul-all`
