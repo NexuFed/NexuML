@@ -415,7 +415,7 @@ def _one_seed(
         evaluations: dict[str, tuple[FloatArray, IntArray]] = {
             f"{split}_{state_name}": (
                 cast(FloatArray, latent[partition[split], state]),
-                cast(IntArray, y[partition[split]]),
+                y[partition[split]],
             )
             for split in ("validation", "assessment")
             for state, state_name in ((0, "healthy"), (1, "faulty"))
