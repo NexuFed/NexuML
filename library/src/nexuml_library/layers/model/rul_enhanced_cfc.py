@@ -41,7 +41,7 @@ class _SensorGraphAttention(nn.Module):
         self.residual_gain = nn.Parameter(torch.zeros(()))
         self.sensors = sensors
 
-    def forward(self, samples: Tensor) -> Tensor:
+    def forward(self, samples: Tensor) -> Tensor:  # ty: ignore[invalid-mutable-override]
         """Enrich each cycle with content-dependent cross-sensor interactions.
 
         Returns:
@@ -72,7 +72,7 @@ class _MultiscaleTemporalFeatures(nn.Module):
         self.fuse = nn.Linear(3 * width, width)
         self.dropout = nn.Dropout(dropout)
 
-    def forward(self, tokens: Tensor) -> Tensor:
+    def forward(self, tokens: Tensor) -> Tensor:  # ty: ignore[invalid-mutable-override]
         """Add learned multiscale temporal features.
 
         Returns:
@@ -98,7 +98,7 @@ class _AdaptiveSoftSegments(nn.Module):
             nn.Dropout(dropout),
         )
 
-    def forward(self, tokens: Tensor) -> Tensor:
+    def forward(self, tokens: Tensor) -> Tensor:  # ty: ignore[invalid-mutable-override]
         """Blend tokens within learned soft segments and preserve their order.
 
         Returns:
