@@ -57,7 +57,7 @@ class _JumpAwareFusion(nn.Module):
         self.jump_threshold = jump_threshold
         self.length = length
 
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, x: Tensor) -> Tensor:  # ty: ignore[invalid-mutable-override]
         """Return one scalar RUL from multimodal sensor-history windows.
 
         Returns:
@@ -110,7 +110,7 @@ class _PatchCSE(nn.Module):
             nn.ReLU(), nn.Linear(max(1, count // 2), count), nn.Sigmoid(),
         )
 
-    def forward(self, pooled: Tensor) -> Tensor:
+    def forward(self, pooled: Tensor) -> Tensor:  # ty: ignore[invalid-mutable-override]
         """Normalize learned token excitations with softmax.
 
         Returns:
@@ -133,7 +133,7 @@ class _DualPatchAttention(nn.Module):
         self.expand_local = nn.Linear(self.patches, self.patches * self.size)
         self.fusion_cse = _PatchCSE(2 * self.patches * self.size)
 
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, x: Tensor) -> Tensor:  # ty: ignore[invalid-mutable-override]
         """Fuse short-range details and global patch correlations.
 
         Returns:
@@ -178,7 +178,7 @@ class _FeatureAttention(nn.Module):
         )
         self.out = nn.Sequential(nn.Flatten(), nn.Linear(width * length, 1))
 
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, x: Tensor) -> Tensor:  # ty: ignore[invalid-mutable-override]
         """Mix feature tokens with temporal projections and predict scalar RUL.
 
         Returns:
@@ -221,7 +221,7 @@ class _PatchFormerModel(nn.Module):
         patched = self.dpan(variable_streams)
         return patched.reshape(batch, channels, length, -1).sum(dim=1)
 
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, x: Tensor) -> Tensor:  # ty: ignore[invalid-mutable-override]
         """Regress RUL from dual patch-wise/feature-wise attention.
 
         Returns:
@@ -240,7 +240,7 @@ class _FeatureSE(nn.Module):
             nn.Linear(max(1, width // 2), width), nn.Sigmoid(),
         )
 
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, x: Tensor) -> Tensor:  # ty: ignore[invalid-mutable-override]
         """Select useful learned feature channels before Mamba encoding.
 
         Returns:
@@ -262,7 +262,7 @@ class _GatedResidual(nn.Module):
         self.glu = nn.GLU(dim=-1)
         self.norm = nn.LayerNorm(width)
 
-    def forward(self, x: Tensor, context: Tensor) -> Tensor:
+    def forward(self, x: Tensor, context: Tensor) -> Tensor:  # ty: ignore[invalid-mutable-override]
         """Apply context-conditioned nonlinear gated residual correction.
 
         Returns:
@@ -290,7 +290,7 @@ class _RULMambaModel(nn.Module):
         self.grn = nn.ModuleList(_GatedResidual(width, dropout) for _ in range(depth))
         self.head = nn.Linear(width, 1)
 
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, x: Tensor) -> Tensor:  # ty: ignore[invalid-mutable-override]
         """Regress scalar RUL using the FAN-Mamba-GRN encoder-decoder.
 
         Returns:
