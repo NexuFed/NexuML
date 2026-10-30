@@ -36,7 +36,7 @@ class _TimeEmbedding(nn.Module):
             nn.Linear(output_dim, output_dim),
         )
 
-    def forward(self, time: torch.Tensor) -> torch.Tensor:
+    def forward(self, time: torch.Tensor) -> torch.Tensor:  # ty: ignore[invalid-mutable-override]
         angles = time.reshape(time.shape[0], 1) * cast(torch.Tensor, self.frequencies)
         embedding = torch.cat((angles.sin(), angles.cos()), dim=1)
         return self.mlp(embedding)
@@ -56,7 +56,9 @@ class _ResidualBlock(nn.Module):
             else nn.Conv2d(in_channels, out_channels, kernel_size=1)
         )
 
-    def forward(self, x: torch.Tensor, time: torch.Tensor) -> torch.Tensor:
+    def forward(  # ty: ignore[invalid-mutable-override]
+        self, x: torch.Tensor, time: torch.Tensor
+    ) -> torch.Tensor:
         residual = self.skip(x)
         x = self.conv1(torch.nn.functional.silu(self.norm1(x)))
         x = x + self.time(time)[:, :, None, None]
