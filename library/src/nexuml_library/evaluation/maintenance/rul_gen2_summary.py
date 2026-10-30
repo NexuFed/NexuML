@@ -6,7 +6,7 @@ import argparse
 import json
 import statistics
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from nexuml_library.evaluation.maintenance.rul_generalization_summary import (
     _read_history,
@@ -164,7 +164,7 @@ def summarize_cfc_gen2(
                         float(row["val_increase_after_best"]) for row in flow
                     ),
                 })
-    ranking.sort(key=lambda row: float(row["flow_val_mse_mean"]))
+    ranking.sort(key=lambda row: cast(float, row["flow_val_mse_mean"]))
     return {
         "study": "NEX-233 frozen CfC RUL: AdamW and engine-equal supervision",
         "subset": "FD001",
