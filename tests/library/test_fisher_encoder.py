@@ -32,7 +32,7 @@ class _FakeFISHER(nn.Module):
         signal = spec.mean(dim=(2, 3))
         return torch.cat((signal, signal * self.weight), dim=1)
 
-    def forward(
+    def forward(  # ty: ignore[invalid-mutable-override]
         self,
         spec: torch.Tensor,
         *,
