@@ -174,6 +174,16 @@ def populate_runs(root: Path) -> None:
                         ),
                         "val_group_max_mse": 240,
                     })
+            slug = configuration.replace("_", "-")
+            marker = root / f"{slug}-s{seed}.execution.json"
+            marker.write_text(json.dumps({
+                "configuration": configuration,
+                "seed": seed,
+                "source_sha256": "a" * 64,
+                "train_command_wall_seconds": 120,
+                "kubernetes_node": "student-worker-2",
+                "timing_includes_fit_validate_test": True,
+            }))
 
 
 def test_summary_uses_own_checkpoint_epoch_not_best_observed(
@@ -197,4 +207,25 @@ def test_summary_refuses_partial_campaign(tmp_path: Path) -> None:
     run = "rul-FD003-enhanced-cfc-confirm-finetune-s44"
     (root.parents[2] / "audits" / f"{run}.checkpoint.json").unlink()
     with pytest.raises(FileNotFoundError):
+        summarize_independent_confirmation(root)
+
+
+def test_summary_refuses_stale_completion_marker(tmp_path: Path) -> None:
+    """A missing success marker blocks accidental use of an interrupted run."""
+    root = tmp_path / ".experiments/rul/enhanced-cfc/fd003/confirmation"
+    populate_runs(root)
+    (root / "finetune-s44.execution.json").unlink()
+    with pytest.raises(FileNotFoundError):
+        summarize_independent_confirmation(root)
+
+
+def test_summary_refuses_inconsistent_source_digest(tmp_path: Path) -> None:
+    """Never pool replicas trained from different source snapshots."""
+    root = tmp_path / ".experiments/rul/enhanced-cfc/fd003/confirmation"
+    populate_runs(root)
+    marker = root / "finetune-s44.execution.json"
+    data = json.loads(marker.read_text(encoding="utf-8"))
+    data["source_sha256"] = "b" * 64
+    marker.write_text(json.dumps(data))
+    with pytest.raises(ValueError, match="source snapshots"):
         summarize_independent_confirmation(root)
