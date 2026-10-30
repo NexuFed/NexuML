@@ -29,7 +29,6 @@ def summarize_composite_seeds(root: Path) -> dict[str, Any]:
 
     Raises:
         ValueError: If seeds, configurations or metric provenance disagree.
-        FileNotFoundError: If any predeclared seed report is absent.
     """
     from nexuml_library.scenarios.maintenance.rul_enhanced_cfc import (
         CONFIGURATIONS,
@@ -37,9 +36,7 @@ def summarize_composite_seeds(root: Path) -> dict[str, Any]:
     )
 
     seeds = (42, 43, 44)
-    scores: dict[str, dict[int, float]] = {
-        name: {} for name in CONFIGURATIONS
-    }
+    scores: dict[str, dict[int, float]] = {name: {} for name in CONFIGURATIONS}
     for seed in seeds:
         file = root / f"rul-FD003-enhanced-cfc-compare-six-s{seed}.validation.json"
         report = json.loads(file.read_text(encoding="utf-8"))
@@ -72,8 +69,7 @@ def summarize_composite_seeds(root: Path) -> dict[str, Any]:
     if any(len(per_seed) != len(seeds) for per_seed in scores.values()):
         raise ValueError("Missing composite configuration scores")
     mean_scores: dict[str, float] = {
-        name: statistics.mean(per_seed.values())
-        for name, per_seed in scores.items()
+        name: statistics.mean(per_seed.values()) for name, per_seed in scores.items()
     }
     effects: dict[str, dict[str, Any]] = {}
     for option in OPTIONS:
@@ -83,14 +79,8 @@ def summarize_composite_seeds(root: Path) -> dict[str, Any]:
         )
         if omitted is None:
             raise ValueError(f"Missing leave-one-out configuration: {option}")
-        standalone = [
-            scores[option][seed] - scores["baseline"][seed]
-            for seed in seeds
-        ]
-        full = [
-            scores["all"][seed] - scores[omitted][seed]
-            for seed in seeds
-        ]
+        standalone = [scores[option][seed] - scores["baseline"][seed] for seed in seeds]
+        full = [scores["all"][seed] - scores[omitted][seed] for seed in seeds]
         effects[option] = {
             "single_minus_baseline_mean": statistics.mean(standalone),
             "single_minus_baseline_by_seed": dict(zip(seeds, standalone)),
@@ -111,9 +101,7 @@ def summarize_composite_seeds(root: Path) -> dict[str, Any]:
                 "configuration": name,
                 "validation_mse_mean": mean_scores[name],
                 "validation_mse_std": statistics.stdev(scores[name].values()),
-                "validation_mse_by_seed": {
-                    str(seed): scores[name][seed] for seed in seeds
-                },
+                "validation_mse_by_seed": {str(seed): scores[name][seed] for seed in seeds},
             }
             for name in sorted(CONFIGURATIONS, key=lambda name: mean_scores[name])
         ],
@@ -135,18 +123,14 @@ class RULCompositeAblationComparison(L.Callback):
         self.seed = seed
         self._rows: list[dict[str, float | int]] = []
 
-    def on_fit_start(
-        self, trainer: L.Trainer, pl_module: L.LightningModule
-    ) -> None:
+    def on_fit_start(self, trainer: L.Trainer, pl_module: L.LightningModule) -> None:
         """Clear old validation results when a new NexuML fitting run starts."""
         self._rows.clear()
         self.output_file.parent.mkdir(parents=True, exist_ok=True)
         self.output_file.unlink(missing_ok=True)
         self.output_file.with_suffix(".json").unlink(missing_ok=True)
 
-    def on_validation_end(
-        self, trainer: L.Trainer, pl_module: L.LightningModule
-    ) -> None:
+    def on_validation_end(self, trainer: L.Trainer, pl_module: L.LightningModule) -> None:
         """Record all per-arm validation losses for a fitting epoch.
 
         Raises:
@@ -170,25 +154,21 @@ class RULCompositeAblationComparison(L.Callback):
             values[configuration] = value
         self._rows.append(values)
         with self.output_file.open("a", newline="", encoding="utf-8") as handle:
-            writer = csv.DictWriter(
-                handle, fieldnames=("epoch", *CONFIGURATIONS)
-            )
+            writer = csv.DictWriter(handle, fieldnames=("epoch", *CONFIGURATIONS))
             if handle.tell() == 0:
                 writer.writeheader()
             writer.writerow(values)
 
-    def on_fit_end(
-        self, trainer: L.Trainer, pl_module: L.LightningModule
-    ) -> None:
+    def on_fit_end(self, trainer: L.Trainer, pl_module: L.LightningModule) -> None:
         """Summarize per-arm best observed validation MSE, never test labels.
 
         Raises:
             ValueError: If no complete fitting validation epoch was observed.
         """
         from nexuml_library.scenarios.maintenance.rul_enhanced_cfc import (
-            Ablation,
             CONFIGURATIONS,
             OPTIONS,
+            Ablation,
             enabled_options,
         )
 
@@ -196,9 +176,7 @@ class RULCompositeAblationComparison(L.Callback):
             raise ValueError("No fitting-epoch composite CfC validation metrics")
         best: dict[Ablation, dict[str, float | int]] = {}
         for configuration in CONFIGURATIONS:
-            record = min(
-                self._rows, key=lambda row: float(row[configuration])
-            )
+            record = min(self._rows, key=lambda row: float(row[configuration]))
             best[configuration] = {
                 "best_observed_val_mse": float(record[configuration]),
                 "best_epoch": int(record["epoch"]),
