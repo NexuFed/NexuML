@@ -7,6 +7,7 @@ import importlib.util
 import json
 from pathlib import Path
 import sys
+from typing import cast
 
 import pytest
 
@@ -16,7 +17,9 @@ from nexuml_library.evaluation.maintenance.rul_independent_confirmation import (
     summarize_independent_confirmation,
 )
 from nexuml_library.layers.model.rul_enhanced_cfc import EnhancedCfCRULHead
-from nexuml_library.scenarios.maintenance import rul_enhanced_cfc_confirmation as confirm
+from nexuml_library.scenarios.maintenance import (
+    rul_enhanced_cfc_confirmation as confirm,
+)
 
 
 LAUNCHER = (
@@ -46,7 +49,9 @@ def test_independent_scenario_is_separately_selected(
 ) -> None:
     """Each trial has its own checkpoint, optimizer and output artifacts."""
     monkeypatch.chdir(tmp_path)
-    scenario = confirm.independent_cfc_confirmation(configuration, seed)  # type: ignore[arg-type]
+    scenario = confirm.independent_cfc_confirmation(
+        cast(confirm.Confirmation, configuration), seed
+    )
     run = f"rul-FD003-enhanced-cfc-confirm-{configuration}-s{seed}"
     assert scenario.name == run
     assert len(scenario.pipeline.stages["RULModel"]) == 1
@@ -113,9 +118,13 @@ def test_k8s_render_isolated_jobs_and_forbidden_worker(
             assert "mountPath: /mnt/nexuml-source" in manifest
             assert "mountPath: /tmp/nexuml-job-venv" in manifest
             assert "harbor.ika.rub.de/library/nexuml:latest" in manifest
-            assert f"maintenance-rul-enhanced-cfc-confirm-fd003-{configuration}-s{seed}" in manifest
-            assert f"confirmation/{configuration.replace('_', '-')}-s{seed}.yaml" in manifest
-            assert f"confirmation/{configuration.replace('_', '-')}-s{seed}.execution.json" in manifest
+            expected = (
+                f"maintenance-rul-enhanced-cfc-confirm-fd003-{configuration}-s{seed}"
+            )
+            assert expected in manifest
+            slug = configuration.replace("_", "-")
+            assert f"confirmation/{slug}-s{seed}.yaml" in manifest
+            assert f"confirmation/{slug}-s{seed}.execution.json" in manifest
             assert "__SCENARIO__" not in manifest
             assert "rul-fd003-cfc-six" not in manifest
     assert len(seen) == 9
@@ -136,7 +145,9 @@ def populate_runs(root: Path) -> None:
             audit.parent.mkdir(parents=True, exist_ok=True)
             audit.write_text(json.dumps({
                 "selection": "best minimum val/loss",
-                "best_model_path": f"/mnt/nexuml-experiments/rul/checkpoints/{run}/epoch=1.ckpt",
+                "best_model_path": (
+                    f"/mnt/nexuml-experiments/rul/checkpoints/{run}/epoch=1.ckpt"
+                ),
                 "checkpoint_epoch": 1,
                 "best_model_score": 200,
                 "loaded_strict_model_state": True,
