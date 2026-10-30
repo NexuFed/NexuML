@@ -29,7 +29,7 @@ class _CausalTCNBlock(nn.Module):
         self.drop = nn.Dropout(dropout)
         self.act = nn.GELU()
 
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, x: Tensor) -> Tensor:  # ty: ignore[invalid-mutable-override]
         """Use left-only padding so output at t never sees future samples.
 
         Returns:
@@ -54,7 +54,7 @@ class _MixerBlock(nn.Module):
         self.norm1 = nn.LayerNorm(width)
         self.norm2 = nn.LayerNorm(width)
 
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, x: Tensor) -> Tensor:  # ty: ignore[invalid-mutable-override]
         """Mix time and channels without adding learnable positional encoding.
 
         Returns:
