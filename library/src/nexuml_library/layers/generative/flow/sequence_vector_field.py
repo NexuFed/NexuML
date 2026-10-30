@@ -34,7 +34,7 @@ class _ConformerFeedForward(nn.Module):
             nn.Dropout(dropout),
         )
 
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, x: Tensor) -> Tensor:  # ty: ignore[invalid-mutable-override]
         """Apply position-wise transformation.
 
         Returns:
@@ -67,7 +67,7 @@ class _ConformerBlock(nn.Module):
         self.ff_out = _ConformerFeedForward(width, dropout)
         self.norm = nn.LayerNorm(width)
 
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, x: Tensor) -> Tensor:  # ty: ignore[invalid-mutable-override]
         """Encode local and global temporal dependencies.
 
         Returns:
@@ -105,7 +105,9 @@ class _CfCCell(nn.Module):
         self.time_a = nn.Linear(width, width)
         self.time_b = nn.Linear(width, width)
 
-    def forward(self, x: Tensor, state: Tensor, dt: float) -> Tensor:
+    def forward(  # ty: ignore[invalid-mutable-override]
+        self, x: Tensor, state: Tensor, dt: float
+    ) -> Tensor:
         """Advance a hidden state by one elapsed sequence interval.
 
         Returns:
@@ -130,7 +132,7 @@ class _CfCSequence(nn.Module):
         self.dropout = nn.Dropout(dropout)
         self.norm = nn.LayerNorm(width)
 
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, x: Tensor) -> Tensor:  # ty: ignore[invalid-mutable-override]
         """Propagate contextual hidden states across sequence positions.
 
         Returns:
