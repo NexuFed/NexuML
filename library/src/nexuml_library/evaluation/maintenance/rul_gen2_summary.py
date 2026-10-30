@@ -164,7 +164,7 @@ def summarize_cfc_gen2(
                         float(row["val_increase_after_best"]) for row in flow
                     ),
                 })
-    ranking.sort(key=lambda row: row["flow_val_mse_mean"])
+    ranking.sort(key=lambda row: float(row["flow_val_mse_mean"]))
     return {
         "study": "NEX-233 frozen CfC RUL: AdamW and engine-equal supervision",
         "subset": "FD001",
