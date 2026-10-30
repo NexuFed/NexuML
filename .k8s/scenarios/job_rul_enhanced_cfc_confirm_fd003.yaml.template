@@ -93,6 +93,9 @@ spec:
               test -f src/nexuml/cli/main.py
               test -f library/src/nexuml_library/scenarios/maintenance/rul_enhanced_cfc_confirmation.py
               test -f uv.lock
+              # Remove only this run's old success marker, so failed retries
+              # cannot masquerade as completed confirmations.
+              rm -f .experiments/rul/enhanced-cfc/fd003/confirmation/__CONFIG_SLUG__-s__SEED__.execution.json
               # This RUL loader does NOT use NEXUML_RUL_CHECKPOINT_ROOT for
               # discovery. It requires the validated upstream audit manifest,
               # whose best_model_path must exist inside the pod.
@@ -167,6 +170,7 @@ spec:
               report = {
                   "configuration": "__CONFIGURATION__",
                   "seed": __SEED__,
+                  "source_sha256": "__SOURCE_DIGEST__",
                   "train_command_wall_seconds": int(os.environ["NEX233_TRAIN_WALL_SECONDS"]),
                   "kubernetes_node": os.environ.get("K8S_NODE_NAME", ""),
                   "timing_includes_fit_validate_test": True,
