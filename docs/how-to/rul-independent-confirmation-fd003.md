@@ -100,9 +100,13 @@ and may replace its old checkpoints, so archive results first if needed.
 The composite screening Jobs use a **different label** and are never touched.
 
 The Job also writes one small `<configuration>-s<seed>.execution.json`
-containing the worker name and wall time of the `nexuml train` command.
-Wall time includes fit, validate and test and is **hardware-dependent**;
-it is not a comparable GPU benchmark when Kueue schedules different nodes.
+containing the worker name, source SHA-256 and wall time of the
+`nexuml train` command. This **completion marker is written only after
+training, final validation and testing return successfully**. Retries clear
+their own old marker before starting, and the summary rejects an incomplete
+or mixed-source campaign. Wall time includes fit, validate and test and is
+**hardware-dependent**; it is not a comparable GPU benchmark when Kueue
+schedules different nodes.
 
 ## Validation-only final report
 
