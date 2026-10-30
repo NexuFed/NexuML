@@ -176,7 +176,9 @@ class FISHEREncoder(nn.Module):
             features = F.pad(features, (0, self.band_width - features.shape[-1]))
         return features.unsqueeze(1)
 
-    def forward(self, waveform: torch.Tensor) -> torch.Tensor:
+    def forward(  # ty: ignore[invalid-mutable-override]
+        self, waveform: torch.Tensor
+    ) -> torch.Tensor:
         """Extract one FISHER embedding for each waveform.
 
         Args:
