@@ -16,6 +16,8 @@ from nexuml_library.evaluation.maintenance.rul_independent_confirmation import (
     SEEDS,
     summarize_independent_confirmation,
 )
+from nexuml_library.data.maintenance.rul_enhanced import AutoPairedCMapSSRULWindows
+from nexuml_library.evaluation.maintenance.rul_engine_audit import RULPerEngineAudit
 from nexuml_library.layers.model.rul_enhanced_cfc import EnhancedCfCRULHead
 from nexuml_library.scenarios.maintenance import (
     rul_enhanced_cfc_confirmation as confirm,
@@ -62,23 +64,27 @@ def test_independent_scenario_is_separately_selected(
     assert head.train_encoder == (configuration != "baseline")
     assert head.trend is False
     assert head.sensor_graph == (configuration == "all_no_trend")
-    assert scenario.data.datasets[0].source.seed == 42
+    source = scenario.data.datasets[0].source
+    assert isinstance(source, AutoPairedCMapSSRULWindows)
+    assert source.seed == 42
     assert scenario.training.max_epochs == 150
     assert scenario.training.batch_size == 64
     assert scenario.training.loss_keys == {"rul_loss": 1.0}
     assert len(scenario.callbacks) == 5
-    assert str(Path(scenario.callbacks[2].kwargs["dirpath"])).endswith(run)
+    checkpoint_dir = scenario.callbacks[2].kwargs["dirpath"]
+    assert isinstance(checkpoint_dir, str)
+    assert Path(checkpoint_dir).name == run
     assert scenario.callbacks[2].kwargs["monitor"] == "val/loss"
     assert scenario.callbacks[3].kwargs["patience"] == 20
-    assert scenario.callbacks[4].kwargs["output_file"].endswith(
-        f"/{run}.checkpoint.json"
-    )
-    assert scenario.callbacks[1].kwargs["output_file"].endswith(
-        f"/{run}.curves.csv"
-    )
-    assert scenario.evaluation.algorithms[-1].algorithm.output_file.endswith(
-        f"/{run}.csv"
-    )
+    audit_file = scenario.callbacks[4].kwargs["output_file"]
+    curves_file = scenario.callbacks[1].kwargs["output_file"]
+    assert isinstance(audit_file, str)
+    assert isinstance(curves_file, str)
+    assert audit_file.endswith(f"/{run}.checkpoint.json")
+    assert curves_file.endswith(f"/{run}.curves.csv")
+    evaluator = scenario.evaluation.algorithms[-1].algorithm
+    assert isinstance(evaluator, RULPerEngineAudit)
+    assert evaluator.output_file.endswith(f"/{run}.csv")
     assert scenario.logging is not None and scenario.logging.run_name == run
 
 
