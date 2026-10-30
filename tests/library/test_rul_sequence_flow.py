@@ -186,7 +186,7 @@ class _TestEncoder(nn.Module):
         """
         return x[:, :, :1].expand(-1, -1, 128)
 
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, x: Tensor) -> Tensor:  # ty: ignore[invalid-mutable-override]
         """Forbid use of the original PatchFormer prediction.
 
         Raises:
