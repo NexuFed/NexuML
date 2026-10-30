@@ -92,7 +92,7 @@ def test_one_frozen_fisher_extracts_all_sixteen_groups(
             super().__init__()
             FakeFisher.initialized += 1
 
-        def forward(self, x: Tensor) -> Tensor:
+        def forward(self, x: Tensor) -> Tensor:  # ty: ignore[invalid-mutable-override]
             return x[:, :8]
 
     class FakeDataset:
