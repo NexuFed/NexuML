@@ -55,7 +55,7 @@ class SelectiveSSMBlock(nn.Module):
         self.dropout = nn.Dropout(dropout)
         self.conv_kernel = conv_kernel
 
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, x: Tensor) -> Tensor:  # ty: ignore[invalid-mutable-override]
         """Run causal input-dependent discretization and selective recurrence.
 
         Args:
