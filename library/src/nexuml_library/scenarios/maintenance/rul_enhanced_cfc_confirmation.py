@@ -52,9 +52,7 @@ def independent_cfc_confirmation(
         raise ValueError("Unexpected independent CfC confirmation configuration/seed")
     base = enhanced_cfc_rul_study(configuration, seed, "FD003")
     run = f"rul-FD003-enhanced-cfc-confirm-{configuration}-s{seed}"
-    callbacks = [
-        callback_type for callback_type in base.callbacks
-    ]
+    callbacks = list(base.callbacks)
     # Replace only artifact-related callbacks; retain the existing seed,
     # optimizer, early stopping, dataset, head and loss definitions.
     callbacks[1] = callback(
