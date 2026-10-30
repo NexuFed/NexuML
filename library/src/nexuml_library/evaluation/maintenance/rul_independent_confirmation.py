@@ -96,22 +96,27 @@ def _read_run(
         row.get("train_eval_mse"), label=f"{run} train_eval_mse"
     )
     timing_file = root / f"{configuration.replace('_', '-')}-s{seed}.execution.json"
-    timing: dict[str, Any] | None = None
-    if timing_file.is_file():
-        loaded = json.loads(timing_file.read_text(encoding="utf-8"))
-        if (
-            not isinstance(loaded, dict)
-            or loaded.get("configuration") != configuration
-            or loaded.get("seed") != seed
-            or loaded.get("timing_includes_fit_validate_test") is not True
-        ):
-            raise ValueError(f"Incompatible execution metadata: {timing_file}")
-        timing = {
-            "train_command_wall_seconds": _finite_float(
-                loaded.get("train_command_wall_seconds"), label=str(timing_file)
-            ),
-            "kubernetes_node": loaded.get("kubernetes_node"),
-        }
+    # This marker is written only after the native train command succeeds.
+    # Missing metadata means a Job is still training, failed, or was rerun.
+    loaded = json.loads(timing_file.read_text(encoding="utf-8"))
+    source_digest = loaded.get("source_sha256") if isinstance(loaded, dict) else None
+    if (
+        not isinstance(loaded, dict)
+        or loaded.get("configuration") != configuration
+        or loaded.get("seed") != seed
+        or loaded.get("timing_includes_fit_validate_test") is not True
+        or not isinstance(source_digest, str)
+        or len(source_digest) != 64
+        or any(char not in "0123456789abcdef" for char in source_digest)
+    ):
+        raise ValueError(f"Incompatible execution metadata: {timing_file}")
+    timing = {
+        "train_command_wall_seconds": _finite_float(
+            loaded.get("train_command_wall_seconds"), label=str(timing_file)
+        ),
+        "kubernetes_node": loaded.get("kubernetes_node"),
+        "source_sha256": source_digest,
+    }
     return {
         "run": run,
         "configuration": configuration,
@@ -157,6 +162,11 @@ def summarize_independent_confirmation(root: Path) -> dict[str, Any]:
         )
         for run in runs
     }
+    digests = {
+        run["execution"]["source_sha256"] for run in runs
+    }
+    if len(digests) != 1:
+        raise ValueError("Confirmation runs used different staged source snapshots")
     if len(shapes) != 1:
         raise ValueError("Independent confirmation runs do not share data split sizes")
     scores = {
