@@ -28,8 +28,10 @@ def _finite_float(value: object, *, label: str) -> float:
     Raises:
         ValueError: If the value is missing, malformed or negative.
     """
+    if isinstance(value, bool) or not isinstance(value, (int, float, str)):
+        raise ValueError(f"Invalid {label}: {value!r}")
     try:
-        result = float(value)  # type: ignore[arg-type]
+        result = float(value)
     except (TypeError, ValueError, OverflowError) as exc:
         raise ValueError(f"Invalid {label}: {value!r}") from exc
     if not math.isfinite(result) or result < 0:
