@@ -100,7 +100,7 @@ def test_all_independent_scenarios_are_registered(
     )
 
 
-def test_k8s_render_isolated_jobs_and_forbidden_worker(
+def test_k8s_render_isolated_jobs_and_cached_gpu_pool(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Keep all Job paths distinct without overwriting composite artifacts."""
@@ -117,8 +117,10 @@ def test_k8s_render_isolated_jobs_and_forbidden_worker(
             )
             assert f"name: {name}" in manifest
             assert f"subPath: {source}" in manifest
-            assert "student-worker-1" in manifest
-            assert "operator: NotIn" in manifest
+            assert "operator: In" in manifest
+            assert "values: [cip-gpu-4, cip-gpu-9, cip-gpu-14]" in manifest
+            assert "student-worker-1" not in manifest
+            assert "operator: NotIn" not in manifest
             assert 'nvidia.com/gpu: "1"' in manifest
             assert "subPath: models/nexuml/.experiments" in manifest
             assert "mountPath: /mnt/nexuml-source" in manifest
