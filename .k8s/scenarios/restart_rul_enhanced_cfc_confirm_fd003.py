@@ -36,7 +36,7 @@ DEFAULT_RESULTS = Path(
     "rul/enhanced-cfc/fd003/confirmation"
 )
 _HOSTNAME = re.compile(
-    r"(?P<indent>^\s*)- key: kubernetes\.io/hostname\n"
+    r"(?P<indent>^[ \t]*)- key: kubernetes\.io/hostname\n"
     r"(?P=indent)  operator: (?:NotIn|In)\n"
     r"(?P=indent)  values: \[[^\]\n]+\]",
     flags=re.MULTILINE,
