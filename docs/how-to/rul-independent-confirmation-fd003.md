@@ -116,7 +116,9 @@ with access to the mounted Prisma artifacts:
 ```bash
 ROOT=/mnt/juicefs_prisma/models/nexuml/.experiments/rul/enhanced-cfc/fd003/confirmation
 
-python -m nexuml_library.evaluation.maintenance.rul_independent_confirmation \
+# Runs directly from this worktree even when the active virtualenv
+# was created for a different NexuML checkout.
+python library/src/nexuml_library/evaluation/maintenance/rul_independent_confirmation.py \
   --root "$ROOT"
 
 python -m json.tool "$ROOT/independent-confirmation-summary.json"
