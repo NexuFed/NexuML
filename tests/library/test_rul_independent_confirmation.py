@@ -237,3 +237,77 @@ def test_summary_refuses_inconsistent_source_digest(tmp_path: Path) -> None:
     marker.write_text(json.dumps(data))
     with pytest.raises(ValueError, match="source snapshots"):
         summarize_independent_confirmation(root)
+
+
+def load_recovery_helper(monkeypatch: pytest.MonkeyPatch):
+    """Load the optional image-pull restart tool without contacting Kubernetes."""
+    path = LAUNCHER.with_name("restart_rul_enhanced_cfc_confirm_fd003.py")
+    monkeypatch.syspath_prepend(str(path.parent))
+    spec = importlib.util.spec_from_file_location("nex233_confirm_restart", path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_image_pull_restart_keeps_original_source_and_other_job_fields(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The recovery operation changes only the hostname node-affinity."""
+    launcher = load_launcher(monkeypatch)
+    recovery = load_recovery_helper(monkeypatch)
+    digest = "a" * 64
+    name = recovery.FAILED_JOBS[0]
+    manifest = launcher.render_confirmation_manifest(
+        "baseline", 44, digest, f"job-staging/nexuml-nex233/{digest}"
+    )
+    old = manifest.replace(
+        "                    operator: In\\n"
+        "                    values: [cip-gpu-4, cip-gpu-9, cip-gpu-14]",
+        "                    operator: NotIn\\n"
+        "                    values: [student-worker-1]",
+    )
+    assert old != manifest
+    assert recovery.pin_original_manifest(old, job=name, digest=digest) == manifest
+    assert recovery.pin_original_manifest(manifest, job=name, digest=digest) == manifest
+    with pytest.raises(ValueError, match="inconsistent"):
+        recovery.pin_original_manifest(old, job=name, digest="b" * 64)
+    with pytest.raises(ValueError, match="Unexpected retry"):
+        recovery.pin_original_manifest(old, job="other-job", digest=digest)
+
+
+def test_image_pull_restart_requires_consistent_completed_source(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A retry must not mix source versions with the four completed trials."""
+    recovery = load_recovery_helper(monkeypatch)
+    for marker in recovery.COMPLETE_RUN_MARKERS:
+        (tmp_path / marker).write_text(json.dumps({
+            "source_sha256": "a" * 64,
+            "timing_includes_fit_validate_test": True,
+        }))
+    assert recovery.confirmed_source_digest(tmp_path) == "a" * 64
+    (tmp_path / recovery.COMPLETE_RUN_MARKERS[-1]).write_text(json.dumps({
+        "source_sha256": "b" * 64,
+        "timing_includes_fit_validate_test": True,
+    }))
+    with pytest.raises(ValueError, match="different source digests"):
+        recovery.confirmed_source_digest(tmp_path)
+
+
+def test_image_pull_restart_refuses_completed_job(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The restart helper cannot delete a previously successful Job."""
+    recovery = load_recovery_helper(monkeypatch)
+    monkeypatch.setattr(recovery, "_kubectl_json", lambda *_: {
+        "metadata": {
+            "annotations": {"nexuml.ika.rub.de/source-sha256": "a" * 64},
+        },
+        "status": {"succeeded": 1},
+    })
+    with pytest.raises(ValueError, match="Refusing to restart completed"):
+        recovery.verify_image_pull_blocked(
+            "lbecker", recovery.FAILED_JOBS[0], "a" * 64
+        )
