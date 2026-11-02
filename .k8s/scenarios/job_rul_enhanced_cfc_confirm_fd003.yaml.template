@@ -210,10 +210,11 @@ spec:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
               - matchExpressions:
-                  # Never schedule this NEX-233 campaign on the weakest node.
+                  # Reuse GPU workers that completed this confirmation campaign.
+                  # Avoid the interrupted multi-GB image pulls on other nodes.
                   - key: kubernetes.io/hostname
-                    operator: NotIn
-                    values: [student-worker-1]
+                    operator: In
+                    values: [cip-gpu-4, cip-gpu-9, cip-gpu-14]
                   - key: nvidia.com/cuda.runtime.major
                     operator: Gt
                     values: ["11"]
