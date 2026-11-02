@@ -47,8 +47,13 @@ results remain unchanged.
 
 The existing `harbor.ika.rub.de/library/nexuml:latest` image, Kueue `jobs`
 queue, `lbecker` namespace, source digest staging and ephemeral Python
-environment are retained. Each Job requests one NVIDIA GPU; worker
-`student-worker-1` is explicitly excluded via required node affinity.
+environment are retained. Each Job requests one NVIDIA GPU. After repeated
+incomplete 3 GB Harbor image pulls on other GPU workers, **new** confirmation
+Jobs require hostname affinity to the three workers that successfully completed
+the previous runs: `cip-gpu-4`, `cip-gpu-9` and `cip-gpu-14`.
+CUDA runtime major > 11 and AMD64 constraints remain. This allowlist
+also excludes `student-worker-1`. Kubernetes may still queue Jobs if
+these three workers have no free GPU; cache availability is not guaranteed.
 
 Source staging stays on `/mnt/juicefs/job-staging/nexuml-nex233/`,
 while checkpoints and prepared data are stored on
@@ -107,6 +112,50 @@ their own old marker before starting, and the summary rejects an incomplete
 or mixed-source campaign. Wall time includes fit, validate and test and is
 **hardware-dependent**; it is not a comparable GPU benchmark when Kueue
 schedules different nodes.
+
+## Recover the five image-pull-blocked Jobs without changing source
+
+These five independent confirmation Jobs did not run due to `ErrImagePull`
+or `ImagePullBackOff` (incomplete Harbor layer downloads): baseline seed 44,
+finetune seeds 43 and 44, and all-no-trend seeds 42 and 43.
+The four complete Jobs must not be restarted. Kubernetes Job pod affinity
+cannot be changed in place, so the failed Jobs need to be recreated.
+
+**Do not rerun the standard submit launcher for recovery.** It stages a
+snapshot from the current local worktree, which may now differ from the
+source used by completed seeds. Instead, use this guarded recovery helper:
+
+```bash
+cd /workspaces/NexuFed/NexuML-predictive
+git pull --ff-only
+pytest tests/library/test_rul_independent_confirmation.py -q
+
+# Preflight: validate original rendered YAML, source digest of all four
+# completed runs, live image-pull-failed Pod statuses and new manifests.
+python .k8s/scenarios/restart_rul_enhanced_cfc_confirm_fd003.py
+
+# Recreate ONLY the five still image-pull-blocked Jobs.
+python .k8s/scenarios/restart_rul_enhanced_cfc_confirm_fd003.py --apply
+
+kubectl -n lbecker get pods \
+  -l nexuml-study=rul-fd003-cfc-confirm -o wide
+```
+
+The helper reads the five original files from
+`.k8s/scenarios/rendered/<job>.yaml` and outputs the pinned versions to
+`.k8s/scenarios/rendered/cached-pool-retries/<job>.yaml`. It changes only
+the hostname affinity, leaving the original immutable source digest,
+source PVC subPath, container image, run name and storage paths untouched.
+Before deletion it checks each live Job's source annotation and Pod
+image-pull failure state; it refuses to delete a completed or actively
+training Job. If a Job has already recovered or original rendered manifests
+are missing, stop and inspect instead of manually replacing artifacts.
+
+`imagePullPolicy: IfNotPresent` permits reuse of already cached images.
+For a strict image identity check, compare the actual completed Pods'
+`imageID` values with the cached image digest on each worker. Because
+the `:latest` tag is mutable, an image-cache match by tag alone is not
+a cryptographic identity guarantee.
 
 ## Validation-only final report
 
