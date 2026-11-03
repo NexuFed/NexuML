@@ -27,7 +27,7 @@ spec:
       runtimeClassName: nvidia
       imagePullSecrets:
         - name: regcred
-      # The version-pinned CUDA NexuML image runs on linux/amd64.
+      # NexuML GHCR CUDA image for linux/amd64; latest is a mutable tag.
       nodeSelector:
         kubernetes.io/arch: amd64
       volumes:
