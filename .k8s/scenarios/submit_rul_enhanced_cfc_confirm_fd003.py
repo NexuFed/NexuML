@@ -12,6 +12,7 @@ from pathlib import Path
 import re
 import subprocess
 
+from rul_confirm_gpu_pool import discover_excluded_hostnames
 from submit_rul_enhanced_cfc_fd003 import (
     DEFAULT_STAGE,
     NAME_PATTERN,
@@ -49,6 +50,7 @@ def render_confirmation_manifest(
     digest: str,
     source_subpath: str,
     namespace: str = NAMESPACE,
+    excluded_hosts: tuple[str, ...] | None = None,
 ) -> str:
     """Render a single-GPU Job for an individually selected scenario.
 
@@ -58,6 +60,7 @@ def render_confirmation_manifest(
         digest: Verified source snapshot digest.
         source_subpath: Path relative to the JuiceFS source PVC.
         namespace: Namespace for the submitted Job.
+        excluded_hosts: GH200 and student-worker-1 Kubernetes hostname labels.
 
     Returns:
         Rendered manifest with no unresolved variable placeholders.
@@ -65,6 +68,10 @@ def render_confirmation_manifest(
     Raises:
         ValueError: For unsupported configuration/seed or invalid template.
     """
+    if not excluded_hosts or "student-worker-1" not in excluded_hosts:
+        raise ValueError("Missing mandatory global GPU pool exclusion list")
+    if any(re.fullmatch(r"[A-Za-z0-9.-]+", item) is None for item in excluded_hosts):
+        raise ValueError("Invalid node hostname in exclusion list")
     job = confirmation_job_name(configuration, seed)
     scenario = f"maintenance-rul-enhanced-cfc-confirm-fd003-{configuration}-s{seed}"
     replacements = {
@@ -77,6 +84,7 @@ def render_confirmation_manifest(
         "__SOURCE_DIGEST__": digest,
         "__SOURCE_SHORT__": digest[:12],
         "__STAGE_SUBPATH__": source_subpath,
+        "__EXCLUDED_NODES__": ", ".join(sorted(set(excluded_hosts))),
     }
     rendered = TEMPLATE.read_text(encoding="utf-8")
     for old, new in replacements.items():
@@ -112,6 +120,8 @@ def main() -> None:
         or not staging_root.is_relative_to(Path("/mnt/juicefs"))
     ):
         parser.error("Staging root must be under the JuiceFS source PVC")
+    excluded_hosts = discover_excluded_hostnames()
+    print(f"Excluded Kubernetes node hostnames: {', '.join(excluded_hosts)}")
     digest = digest_source()
     target = stage_snapshot(staging_root, digest, dry_run=args.dry_run)
     source_subpath = target.relative_to("/mnt/juicefs").as_posix()
@@ -123,7 +133,8 @@ def main() -> None:
             manifest = RENDERED / f"{name}.yaml"
             manifest.write_text(
                 render_confirmation_manifest(
-                    configuration, seed, digest, source_subpath, args.namespace
+                    configuration, seed, digest, source_subpath, args.namespace,
+                    excluded_hosts=excluded_hosts,
                 ),
                 encoding="utf-8",
             )
