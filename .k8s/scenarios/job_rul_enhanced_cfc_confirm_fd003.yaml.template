@@ -47,7 +47,7 @@ spec:
             sizeLimit: 4Gi
       containers:
         - name: nexuml
-          image: ghcr.io/nexufed/nexuml:0.2.0-cuda12.8.1
+          image: ghcr.io/nexufed/nexuml:latest
           imagePullPolicy: IfNotPresent
           workingDir: /tmp
           env:
