@@ -46,7 +46,7 @@ results remain unchanged.
 ## GPU launch on Kubernetes
 
 The CUDA container image is
-`ghcr.io/nexufed/nexuml:0.2.0-cuda12.8.1`, replacing the broken
+`ghcr.io/nexufed/nexuml:latest`, replacing the broken
 `harbor.ika.rub.de/library/nexuml:latest` transfer. The Kueue `jobs`
 queue, `lbecker` namespace, immutable source-digest staging and ephemeral
 Python environment are retained. Each Job requests one NVIDIA GPU and
@@ -164,7 +164,7 @@ If a Job has already started training or an original manifest is missing,
 inspect it rather than forcing a replacement.
 
 The four completed trials used the original Harbor image; the recovered
-five use GHCR version `0.2.0-cuda12.8.1`. Although the source snapshot
+five use the mutable GHCR `latest` tag. Although the source snapshot
 and experiments remain fixed, **the container environments are not identical**.
 Record this provenance difference when interpreting the final confirmation
 comparison, and verify the new image is accessible to worker nodes.
