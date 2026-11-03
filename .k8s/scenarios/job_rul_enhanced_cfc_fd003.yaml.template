@@ -27,7 +27,7 @@ spec:
       runtimeClassName: nvidia
       imagePullSecrets:
         - name: regcred
-      # The existing NexuML latest image is published for linux/amd64.
+      # The version-pinned CUDA NexuML image runs on linux/amd64.
       nodeSelector:
         kubernetes.io/arch: amd64
       volumes:
@@ -45,7 +45,7 @@ spec:
             sizeLimit: 4Gi
       containers:
         - name: nexuml
-          image: harbor.ika.rub.de/library/nexuml:latest
+          image: ghcr.io/nexufed/nexuml:0.2.0-cuda12.8.1
           imagePullPolicy: IfNotPresent
           workingDir: /tmp
           env:
