@@ -100,7 +100,7 @@ def test_all_independent_scenarios_are_registered(
     )
 
 
-def test_k8s_render_isolated_jobs_and_cached_gpu_pool(
+def test_k8s_render_isolated_jobs_and_global_gpu_pool(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Keep all Job paths distinct without overwriting composite artifacts."""
@@ -269,7 +269,8 @@ def test_image_pull_restart_preserves_source_and_switches_image_and_pool(
     old = manifest.replace(
         "operator: NotIn\n                    values: [gh200-1, student-worker-1]",
         "operator: In\n                    values: [cip-gpu-4, cip-gpu-9, cip-gpu-14]",
-    ).replace(
+    )
+    old = old.replace(
         "image: ghcr.io/nexufed/nexuml:0.2.0-cuda12.8.1",
         "image: harbor.ika.rub.de/library/nexuml:latest",
     )
@@ -304,19 +305,34 @@ def test_global_gpu_pool_discovers_gh200_hostnames(
     load_launcher(monkeypatch)
     from rul_confirm_gpu_pool import excluded_hostnames
 
-    nodes = {"items": [
-        {"metadata": {"name": "student-worker-1", "labels": {
-            "kubernetes.io/hostname": "student-worker-1",
-        }}},
-        {"metadata": {"name": "gh200-server", "labels": {
-            "kubernetes.io/hostname": "gh200-hostname",
-            "nvidia.com/gpu.product": "NVIDIA-GH200-480GB",
-        }}},
-        {"metadata": {"name": "cip-gpu-4", "labels": {
-            "kubernetes.io/hostname": "cip-gpu-4",
-            "nvidia.com/gpu.product": "NVIDIA-A100",
-        }}},
-    ]}
+    nodes = {
+        "items": [
+            {
+                "metadata": {
+                    "name": "student-worker-1",
+                    "labels": {"kubernetes.io/hostname": "student-worker-1"},
+                }
+            },
+            {
+                "metadata": {
+                    "name": "gh200-server",
+                    "labels": {
+                        "kubernetes.io/hostname": "gh200-hostname",
+                        "nvidia.com/gpu.product": "NVIDIA-GH200-480GB",
+                    },
+                }
+            },
+            {
+                "metadata": {
+                    "name": "cip-gpu-4",
+                    "labels": {
+                        "kubernetes.io/hostname": "cip-gpu-4",
+                        "nvidia.com/gpu.product": "NVIDIA-A100",
+                    },
+                }
+            },
+        ]
+    }
     assert excluded_hostnames(nodes) == ("gh200-hostname", "student-worker-1")
     with pytest.raises(ValueError, match="No GH200"):
         excluded_hostnames({"items": nodes["items"][2:]})
