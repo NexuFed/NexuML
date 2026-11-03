@@ -127,7 +127,7 @@ def test_k8s_render_isolated_jobs_and_global_gpu_pool(
             assert "subPath: models/nexuml/.experiments" in manifest
             assert "mountPath: /mnt/nexuml-source" in manifest
             assert "mountPath: /tmp/nexuml-job-venv" in manifest
-            assert "ghcr.io/nexufed/nexuml:0.2.0-cuda12.8.1" in manifest
+            assert "ghcr.io/nexufed/nexuml:latest" in manifest
             assert "harbor.ika.rub.de/library/nexuml:latest" not in manifest
             expected = (
                 f"maintenance-rul-enhanced-cfc-confirm-fd003-{configuration}-s{seed}"
@@ -272,7 +272,7 @@ def test_image_pull_restart_preserves_source_and_switches_image_and_pool(
         "operator: In\n                    values: [cip-gpu-4, cip-gpu-9, cip-gpu-14]",
     )
     old = old.replace(
-        "image: ghcr.io/nexufed/nexuml:0.2.0-cuda12.8.1",
+        "image: ghcr.io/nexufed/nexuml:latest",
         "image: harbor.ika.rub.de/library/nexuml:latest",
     )
     old = old.replace(
