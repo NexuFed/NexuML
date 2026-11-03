@@ -19,7 +19,10 @@ from rul_confirm_gpu_pool import discover_excluded_hostnames
 from submit_rul_enhanced_cfc_fd003 import NAMESPACE, RENDERED
 
 IMAGE = "ghcr.io/nexufed/nexuml:latest"
-OLD_IMAGE = "harbor.ika.rub.de/library/nexuml:latest"
+OLD_IMAGES = (
+    "harbor.ika.rub.de/library/nexuml:latest",
+    "ghcr.io/nexufed/nexuml:0.2.0-cuda12.8.1",
+)
 FAILED_JOBS = (
     "nexuml-rul-fd003-cfc-confirm-baseline-s44",
     "nexuml-rul-fd003-cfc-confirm-finetune-s43",
@@ -124,10 +127,12 @@ def pin_original_manifest(
         '                    values: ["11"]\n'
     )
     rewritten = rewritten.replace(old_cuda_affinity, "")
-    count = sum(rewritten.count(f"image: {image}") for image in (OLD_IMAGE, IMAGE))
+    images = (*OLD_IMAGES, IMAGE)
+    count = sum(rewritten.count(f"image: {image}\n") for image in images)
     if count != 1:
         raise ValueError(f"Missing or ambiguous original NexuML image: {job}")
-    rewritten = rewritten.replace(f"image: {OLD_IMAGE}", f"image: {IMAGE}")
+    for old in OLD_IMAGES:
+        rewritten = rewritten.replace(f"image: {old}\n", f"image: {IMAGE}\n")
     return rewritten
 
 
