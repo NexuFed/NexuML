@@ -45,15 +45,18 @@ results remain unchanged.
 
 ## GPU launch on Kubernetes
 
-The existing `harbor.ika.rub.de/library/nexuml:latest` image, Kueue `jobs`
-queue, `lbecker` namespace, source digest staging and ephemeral Python
-environment are retained. Each Job requests one NVIDIA GPU. After repeated
-incomplete 3 GB Harbor image pulls on other GPU workers, **new** confirmation
-Jobs require hostname affinity to the three workers that successfully completed
-the previous runs: `cip-gpu-4`, `cip-gpu-9` and `cip-gpu-14`.
-CUDA runtime major > 11 and AMD64 constraints remain. This allowlist
-also excludes `student-worker-1`. Kubernetes may still queue Jobs if
-these three workers have no free GPU; cache availability is not guaranteed.
+The CUDA container image is
+`ghcr.io/nexufed/nexuml:0.2.0-cuda12.8.1`, replacing the broken
+`harbor.ika.rub.de/library/nexuml:latest` transfer. The Kueue `jobs`
+queue, `lbecker` namespace, immutable source-digest staging and ephemeral
+Python environment are retained. Each Job requests one NVIDIA GPU and
+requires AMD64. Scheduling uses the global GPU pool with required hostname
+`NotIn` affinity excluding `student-worker-1` and GH200 nodes.
+The launcher discovers GH200 nodes from Kubernetes Node names and NVIDIA
+GPU labels, rather than hardcoding guessed GH200 hostnames; if none
+are identifiable, it stops without submitting Jobs. The previous CUDA
+runtime-major node-label restriction was removed; nodes must nevertheless
+have drivers compatible with this CUDA image.
 
 Source staging stays on `/mnt/juicefs/job-staging/nexuml-nex233/`,
 while checkpoints and prepared data are stored on
@@ -113,13 +116,15 @@ or mixed-source campaign. Wall time includes fit, validate and test and is
 **hardware-dependent**; it is not a comparable GPU benchmark when Kueue
 schedules different nodes.
 
-## Recover the five image-pull-blocked Jobs without changing source
+## Recover five incomplete Jobs using GHCR and the global GPU pool
 
-These five independent confirmation Jobs did not run due to `ErrImagePull`
-or `ImagePullBackOff` (incomplete Harbor layer downloads): baseline seed 44,
-finetune seeds 43 and 44, and all-no-trend seeds 42 and 43.
-The four complete Jobs must not be restarted. Kubernetes Job pod affinity
-cannot be changed in place, so the failed Jobs need to be recreated.
+Five independent confirmation Jobs originally failed to pull the Harbor image:
+baseline seed 44, finetune seeds 43 and 44, and all-no-trend seeds 42 and 43.
+The four completed Jobs must not be restarted. Kubernetes does not permit
+in-place changes to a Job's Pod container image or affinity, so the five
+incomplete Jobs must be recreated. The helper accepts Pending Pods
+(either unscheduled or stuck pulling) but refuses to delete completed or
+actively training Jobs.
 
 **Do not rerun the standard submit launcher for recovery.** It stages a
 snapshot from the current local worktree, which may now differ from the
@@ -130,8 +135,8 @@ cd /workspaces/NexuFed/NexuML-predictive
 git pull --ff-only
 pytest tests/library/test_rul_independent_confirmation.py -q
 
-# Preflight: validate original rendered YAML, source digest of all four
-# completed runs, live image-pull-failed Pod statuses and new manifests.
+# Preflight: verify the four completed source digests, preserve the original
+# manifests and validate the five pending Jobs against the live node pool.
 python .k8s/scenarios/restart_rul_enhanced_cfc_confirm_fd003.py
 
 # Recreate ONLY the five still image-pull-blocked Jobs.
@@ -142,20 +147,25 @@ kubectl -n lbecker get pods \
 ```
 
 The helper reads the five original files from
-`.k8s/scenarios/rendered/<job>.yaml` and outputs the pinned versions to
-`.k8s/scenarios/rendered/cached-pool-retries/<job>.yaml`. It changes only
-the hostname affinity, leaving the original immutable source digest,
-source PVC subPath, container image, run name and storage paths untouched.
-Before deletion it checks each live Job's source annotation and Pod
-image-pull failure state; it refuses to delete a completed or actively
-training Job. If a Job has already recovered or original rendered manifests
-are missing, stop and inspect instead of manually replacing artifacts.
+`.k8s/scenarios/rendered/<job>.yaml` and generates
+`.k8s/scenarios/rendered/global-ghcr-retries/<job>.yaml`. It changes
+the image to the explicit GHCR CUDA version and sets a required hostname
+`NotIn` affinity for the discovered GH200 nodes plus
+`student-worker-1`. It removes the old CUDA runtime-major label
+requirement. It **does not** restage or change the original immutable
+experiment source digest, JuiceFS source PVC subPath, run name,
+checkpoint paths, datasets, or training configuration.
 
-`imagePullPolicy: IfNotPresent` permits reuse of already cached images.
-For a strict image identity check, compare the actual completed Pods'
-`imageID` values with the cached image digest on each worker. Because
-the `:latest` tag is mutable, an image-cache match by tag alone is not
-a cryptographic identity guarantee.
+Before deleting a Job, the helper checks its original source annotation,
+its Pod state, the four completed runs' source digests, and the new manifest.
+If a Job has already started training or an original manifest is missing,
+inspect it rather than forcing a replacement.
+
+The four completed trials used the original Harbor image; the recovered
+five use GHCR version `0.2.0-cuda12.8.1`. Although the source snapshot
+and experiments remain fixed, **the container environments are not identical**.
+Record this provenance difference when interpreting the final confirmation
+comparison, and verify the new image is accessible to worker nodes.
 
 ## Validation-only final report
 
