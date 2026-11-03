@@ -3,7 +3,7 @@
 
 Reuse the ORIGINAL rendered manifests and immutable staged source, rather
 than regenerating from a possibly changed local repository. Preview by
-default; --apply deletes and recreates the five specified failed Jobs.
+default; --apply creates or safely replaces the five specified Jobs.
 """
 
 from __future__ import annotations
@@ -151,14 +151,22 @@ def _kubectl_json(namespace: str, resource: str, name: str) -> dict[str, Any]:
     return payload
 
 
-def verify_image_pull_blocked(namespace: str, job: str, digest: str) -> None:
-    """Refuse to delete a completed or actively training Job.
+def verify_image_pull_blocked(namespace: str, job: str, digest: str) -> bool:
+    """Verify an absent Job or an existing Pending Job is safe to recreate.
+
+    Returns:
+        False for an already deleted Job; True for an existing Pending Job.
 
     Raises:
         ValueError: If the Job or its Pod is not safely pending for replacement.
-        subprocess.CalledProcessError: If Kubernetes cannot be inspected.
+        subprocess.CalledProcessError: For Kubernetes errors other than NotFound.
     """
-    obj = _kubectl_json(namespace, "job", job)
+    try:
+        obj = _kubectl_json(namespace, "job", job)
+    except subprocess.CalledProcessError as exc:
+        if exc.stderr is not None and "(NotFound)" in exc.stderr:
+            return False
+        raise
     annotations = obj.get("metadata", {}).get("annotations", {})
     if annotations.get("nexuml.ika.rub.de/source-sha256") != digest:
         raise ValueError(f"Live Job has different source snapshot: {job}")
@@ -189,6 +197,7 @@ def verify_image_pull_blocked(namespace: str, job: str, digest: str) -> None:
                 "ContainerCreating", "PodInitializing",
             }:
                 raise ValueError(f"Unexpected Pod waiting reason for {job}: {reason}")
+    return True
 
 
 
@@ -213,31 +222,33 @@ def main() -> None:
         )
         output = previews / f"{job}.yaml"
         output.write_text(pinned, encoding="utf-8")
-        verify_image_pull_blocked(args.namespace, job, digest)
+        exists = verify_image_pull_blocked(args.namespace, job, digest)
         subprocess.run(
             ["kubectl", "-n", args.namespace, "create",
              "--dry-run=client", "-f", str(output)],
             check=True,
         )
-        print(f"[verified] {job}: {IMAGE}", flush=True)
+        state = "pending (replace)" if exists else "deleted (create)"
+        print(f"[verified] {job}: {state}, {IMAGE}", flush=True)
 
     if not args.apply:
         print("Preview only: pass --apply to delete and recreate these five Jobs.")
         return
 
     for job in FAILED_JOBS:
-        verify_image_pull_blocked(args.namespace, job, digest)
-        subprocess.run(
-            ["kubectl", "-n", args.namespace, "delete", "job", job,
-             "--cascade=foreground", "--wait=true"],
-            check=True,
-        )
+        exists = verify_image_pull_blocked(args.namespace, job, digest)
+        if exists:
+            subprocess.run(
+                ["kubectl", "-n", args.namespace, "delete", "job", job,
+                 "--cascade=foreground", "--wait=true"],
+                check=True,
+            )
         subprocess.run(
             ["kubectl", "-n", args.namespace, "create",
              "-f", str(previews / f"{job}.yaml")],
             check=True,
         )
-        print(f"[recreated] {job}", flush=True)
+        print(f"[created] {job}", flush=True)
 
 
 if __name__ == "__main__":
