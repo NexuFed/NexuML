@@ -7,6 +7,7 @@ import importlib.util
 import json
 from pathlib import Path
 import sys
+import subprocess
 from typing import cast
 
 import pytest
@@ -356,6 +357,42 @@ def test_image_pull_restart_requires_consistent_completed_source(
     with pytest.raises(ValueError, match="different source digests"):
         recovery.confirmed_source_digest(tmp_path)
 
+
+
+def test_image_pull_restart_accepts_deleted_job(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An already-deleted Job can be recreated without a second deletion."""
+    recovery = load_recovery_helper(monkeypatch)
+
+    def missing_job(*_args: str):
+        raise subprocess.CalledProcessError(
+            1, ["kubectl", "get", "job"],
+            stderr='Error from server (NotFound): jobs.batch "missing" not found',
+        )
+
+    monkeypatch.setattr(recovery, "_kubectl_json", missing_job)
+    assert recovery.verify_image_pull_blocked(
+        "lbecker", recovery.FAILED_JOBS[0], "a" * 64
+    ) is False
+
+
+def test_image_pull_restart_fails_closed_on_kubectl_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Connection or RBAC errors must not be mistaken for a deleted Job."""
+    recovery = load_recovery_helper(monkeypatch)
+
+    def failed_get(*_args: str):
+        raise subprocess.CalledProcessError(
+            1, ["kubectl", "get", "job"], stderr="Forbidden: insufficient privileges",
+        )
+
+    monkeypatch.setattr(recovery, "_kubectl_json", failed_get)
+    with pytest.raises(subprocess.CalledProcessError):
+        recovery.verify_image_pull_blocked(
+            "lbecker", recovery.FAILED_JOBS[0], "a" * 64
+        )
 
 def test_image_pull_restart_refuses_completed_job(
     monkeypatch: pytest.MonkeyPatch,
