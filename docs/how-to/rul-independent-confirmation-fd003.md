@@ -122,9 +122,11 @@ Five independent confirmation Jobs originally failed to pull the Harbor image:
 baseline seed 44, finetune seeds 43 and 44, and all-no-trend seeds 42 and 43.
 The four completed Jobs must not be restarted. Kubernetes does not permit
 in-place changes to a Job's Pod container image or affinity, so the five
-incomplete Jobs must be recreated. The helper accepts Pending Pods
-(either unscheduled or stuck pulling) but refuses to delete completed or
-actively training Jobs.
+incomplete Jobs must be recreated. The helper supports Jobs already manually
+deleted (Kubernetes NotFound) as well as still-Pending Pods (unscheduled or
+stuck pulling). It only deletes an existing Job after verifying Pending
+status; it refuses to delete completed or actively training Jobs. RBAC
+or API-server errors are never treated as a missing Job.
 
 **Do not rerun the standard submit launcher for recovery.** It stages a
 snapshot from the current local worktree, which may now differ from the
