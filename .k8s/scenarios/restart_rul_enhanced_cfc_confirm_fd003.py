@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Recreate only image-pull-blocked FD003 confirmation Jobs on cached GPU nodes.
+"""Recreate incomplete FD003 confirmation Jobs using the GHCR CUDA image.
 
 Reuse the ORIGINAL rendered manifests and immutable staged source, rather
 than regenerating from a possibly changed local repository. Preview by
@@ -15,9 +15,11 @@ import re
 import subprocess
 from typing import Any
 
+from rul_confirm_gpu_pool import discover_excluded_hostnames
 from submit_rul_enhanced_cfc_fd003 import NAMESPACE, RENDERED
 
-NODE_POOL = ("cip-gpu-4", "cip-gpu-9", "cip-gpu-14")
+IMAGE = "ghcr.io/nexufed/nexuml:0.2.0-cuda12.8.1"
+OLD_IMAGE = "harbor.ika.rub.de/library/nexuml:latest"
 FAILED_JOBS = (
     "nexuml-rul-fd003-cfc-confirm-baseline-s44",
     "nexuml-rul-fd003-cfc-confirm-finetune-s43",
@@ -68,13 +70,16 @@ def confirmed_source_digest(results: Path) -> str:
     return digests.pop()
 
 
-def pin_original_manifest(text: str, *, job: str, digest: str) -> str:
-    """Change only the hostname node-affinity allowlist.
+def pin_original_manifest(
+    text: str, *, job: str, digest: str, excluded_hosts: tuple[str, ...]
+) -> str:
+    """Change only the container image and node-affinity exclusions.
 
     Args:
         text: Original immutable-source Job manifest.
         job: Expected Kubernetes Job name.
         digest: Source digest attested by the four completed runs.
+        excluded_hosts: Student and GH200 hostnames discovered from the cluster.
 
     Returns:
         Rewritten manifest retaining the original source and job identity.
@@ -84,16 +89,19 @@ def pin_original_manifest(text: str, *, job: str, digest: str) -> str:
     """
     if job not in FAILED_JOBS:
         raise ValueError(f"Unexpected retry Job: {job}")
+    if not excluded_hosts or "student-worker-1" not in excluded_hosts:
+        raise ValueError("Missing mandatory global GPU node exclusions")
+    if any(re.fullmatch(r"[A-Za-z0-9.-]+", item) is None for item in excluded_hosts):
+        raise ValueError("Invalid excluded Kubernetes hostname")
     checks = (
         f"name: {job}\n",
         "nexuml-study: rul-fd003-cfc-confirm",
         f'nexuml.ika.rub.de/source-sha256: "{digest}"',
         f"subPath: job-staging/nexuml-nex233/{digest}",
         'nvidia.com/gpu: "1"',
-        "nvidia.com/cuda.runtime.major",
-        "kubernetes.io/arch: amd64",
+         "kubernetes.io/arch: amd64",
         "imagePullPolicy: IfNotPresent",
-        "harbor.ika.rub.de/library/nexuml:latest",
+        "image: ",
     )
     if any(value not in text for value in checks):
         raise ValueError(f"Untrusted or inconsistent original manifest: {job}")
@@ -104,10 +112,23 @@ def pin_original_manifest(text: str, *, job: str, digest: str) -> str:
     indent = match.group("indent")
     new = (
         f"{indent}- key: kubernetes.io/hostname\n"
-        f"{indent}  operator: In\n"
-        f"{indent}  values: [{', '.join(NODE_POOL)}]"
+        f"{indent}  operator: NotIn\n"
+        f"{indent}  values: [{', '.join(sorted(set(excluded_hosts)))}]"
     )
-    return text[:match.start()] + new + text[match.end():]
+    rewritten = text[:match.start()] + new + text[match.end():]
+    # Old manifests had a separate CUDA-label requirement. The new global
+    # pool must not depend on a label that many otherwise valid nodes lack.
+    cuda = re.compile(
+        r"(?m)^[ \t]*- key: nvidia\\.com/cuda\\.runtime\\.major\n"
+        r"^[ \t]*operator: Gt\n"
+        r"^[ \t]*values: \\[\\\"11\\\"\\]\n?"
+    )
+    rewritten = cuda.sub("", rewritten)
+    count = sum(rewritten.count(f"image: {image}") for image in (OLD_IMAGE, IMAGE))
+    if count != 1:
+        raise ValueError(f"Missing or ambiguous original NexuML image: {job}")
+    rewritten = rewritten.replace(f"image: {OLD_IMAGE}", f"image: {IMAGE}")
+    return rewritten
 
 
 def _kubectl_json(namespace: str, resource: str, name: str) -> dict[str, Any]:
@@ -134,7 +155,7 @@ def verify_image_pull_blocked(namespace: str, job: str, digest: str) -> None:
     """Refuse to delete a completed or actively training Job.
 
     Raises:
-        ValueError: If the Job or its Pod is not image-pull-blocked.
+        ValueError: If the Job or its Pod is not safely pending for replacement.
         subprocess.CalledProcessError: If Kubernetes cannot be inspected.
     """
     obj = _kubectl_json(namespace, "job", job)
@@ -154,15 +175,21 @@ def verify_image_pull_blocked(namespace: str, job: str, digest: str) -> None:
     items = payload.get("items", [])
     if not items:
         raise ValueError(f"No image-pull-blocked Pod found for {job}")
-    reasons = [
-        status.get("state", {}).get("waiting", {}).get("reason")
-        for item in items
-        for status in item.get("status", {}).get("containerStatuses", [])
-    ]
-    if not reasons or any(
-        reason not in {"ErrImagePull", "ImagePullBackOff"} for reason in reasons
-    ):
-        raise ValueError(f"Job is no longer exclusively image-pull-blocked: {job}")
+    for item in items:
+        status = item.get("status", {})
+        if status.get("phase") != "Pending":
+            raise ValueError(f"Job Pod is no longer Pending: {job}")
+        for container in status.get("containerStatuses", []):
+            state = container.get("state", {})
+            if "running" in state or "terminated" in state:
+                raise ValueError(f"Job container already ran: {job}")
+            reason = state.get("waiting", {}).get("reason")
+            if reason not in {
+                None, "ErrImagePull", "ImagePullBackOff",
+                "ContainerCreating", "PodInitializing",
+            }:
+                raise ValueError(f"Unexpected Pod waiting reason for {job}: {reason}")
+
 
 
 def main() -> None:
@@ -173,13 +200,17 @@ def main() -> None:
     parser.add_argument("--apply", action="store_true")
     args = parser.parse_args()
     digest = confirmed_source_digest(args.results)
-    previews = RENDERED / "cached-pool-retries"
+    excluded_hosts = discover_excluded_hostnames()
+    print(f"Excluding Kubernetes hostnames: {', '.join(excluded_hosts)}", flush=True)
+    previews = RENDERED / "global-ghcr-retries"
     previews.mkdir(parents=True, exist_ok=True)
 
     # Preflight all jobs before deleting even one.
     for job in FAILED_JOBS:
         original = (RENDERED / f"{job}.yaml").read_text(encoding="utf-8")
-        pinned = pin_original_manifest(original, job=job, digest=digest)
+        pinned = pin_original_manifest(
+            original, job=job, digest=digest, excluded_hosts=excluded_hosts
+        )
         output = previews / f"{job}.yaml"
         output.write_text(pinned, encoding="utf-8")
         verify_image_pull_blocked(args.namespace, job, digest)
@@ -188,7 +219,7 @@ def main() -> None:
              "--dry-run=client", "-f", str(output)],
             check=True,
         )
-        print(f"[verified] {job}: {', '.join(NODE_POOL)}", flush=True)
+        print(f"[verified] {job}: {IMAGE}", flush=True)
 
     if not args.apply:
         print("Preview only: pass --apply to delete and recreate these five Jobs.")
