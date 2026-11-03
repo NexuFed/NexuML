@@ -151,7 +151,7 @@ kubectl -n lbecker get pods \
 The helper reads the five original files from
 `.k8s/scenarios/rendered/<job>.yaml` and generates
 `.k8s/scenarios/rendered/global-ghcr-retries/<job>.yaml`. It changes
-the image to the explicit GHCR CUDA version and sets a required hostname
+the image to the GHCR `latest` tag and sets a required hostname
 `NotIn` affinity for the discovered GH200 nodes plus
 `student-worker-1`. It removes the old CUDA runtime-major label
 requirement. It **does not** restage or change the original immutable
