@@ -99,7 +99,7 @@ def pin_original_manifest(
         f'nexuml.ika.rub.de/source-sha256: "{digest}"',
         f"subPath: job-staging/nexuml-nex233/{digest}",
         'nvidia.com/gpu: "1"',
-         "kubernetes.io/arch: amd64",
+        "kubernetes.io/arch: amd64",
         "imagePullPolicy: IfNotPresent",
         "image: ",
     )
@@ -118,12 +118,12 @@ def pin_original_manifest(
     rewritten = text[:match.start()] + new + text[match.end():]
     # Old manifests had a separate CUDA-label requirement. The new global
     # pool must not depend on a label that many otherwise valid nodes lack.
-    cuda = re.compile(
-        r"(?m)^[ \t]*- key: nvidia\\.com/cuda\\.runtime\\.major\n"
-        r"^[ \t]*operator: Gt\n"
-        r"^[ \t]*values: \\[\\\"11\\\"\\]\n?"
+    old_cuda_affinity = (
+        "                  - key: nvidia.com/cuda.runtime.major\n"
+        "                    operator: Gt\n"
+        '                    values: ["11"]\n'
     )
-    rewritten = cuda.sub("", rewritten)
+    rewritten = rewritten.replace(old_cuda_affinity, "")
     count = sum(rewritten.count(f"image: {image}") for image in (OLD_IMAGE, IMAGE))
     if count != 1:
         raise ValueError(f"Missing or ambiguous original NexuML image: {job}")
