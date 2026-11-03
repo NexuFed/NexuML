@@ -113,19 +113,21 @@ def test_k8s_render_isolated_jobs_and_cached_gpu_pool(
             seen.add(name)
             source = "job-staging/nexuml-nex233/" + "a" * 64
             manifest = launcher.render_confirmation_manifest(
-                configuration, seed, "a" * 64, source
+                configuration, seed, "a" * 64, source,
+                excluded_hosts=("student-worker-1", "gh200-1", "gh200-2"),
             )
             assert f"name: {name}" in manifest
             assert f"subPath: {source}" in manifest
-            assert "operator: In" in manifest
-            assert "values: [cip-gpu-4, cip-gpu-9, cip-gpu-14]" in manifest
-            assert "student-worker-1" not in manifest
-            assert "operator: NotIn" not in manifest
+            assert "operator: NotIn" in manifest
+            assert "values: [gh200-1, gh200-2, student-worker-1]" in manifest
+            assert "cip-gpu-4" not in manifest
+            assert "nvidia.com/cuda.runtime.major" not in manifest
             assert 'nvidia.com/gpu: "1"' in manifest
             assert "subPath: models/nexuml/.experiments" in manifest
             assert "mountPath: /mnt/nexuml-source" in manifest
             assert "mountPath: /tmp/nexuml-job-venv" in manifest
-            assert "harbor.ika.rub.de/library/nexuml:latest" in manifest
+            assert "ghcr.io/nexufed/nexuml:0.2.0-cuda12.8.1" in manifest
+            assert "harbor.ika.rub.de/library/nexuml:latest" not in manifest
             expected = (
                 f"maintenance-rul-enhanced-cfc-confirm-fd003-{configuration}-s{seed}"
             )
@@ -251,30 +253,73 @@ def load_recovery_helper(monkeypatch: pytest.MonkeyPatch):
     return module
 
 
-def test_image_pull_restart_keeps_original_source_and_other_job_fields(
+def test_image_pull_restart_preserves_source_and_switches_image_and_pool(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """The recovery operation changes only the hostname node-affinity."""
+    """Recover original Harbor manifests without restaging experiment source."""
     launcher = load_launcher(monkeypatch)
     recovery = load_recovery_helper(monkeypatch)
     digest = "a" * 64
     name = recovery.FAILED_JOBS[0]
+    excluded_hosts = ("gh200-1", "student-worker-1")
     manifest = launcher.render_confirmation_manifest(
-        "baseline", 44, digest, f"job-staging/nexuml-nex233/{digest}"
+        "baseline", 44, digest, f"job-staging/nexuml-nex233/{digest}",
+        excluded_hosts=excluded_hosts,
     )
     old = manifest.replace(
-        "                    operator: In\\n"
-        "                    values: [cip-gpu-4, cip-gpu-9, cip-gpu-14]",
-        "                    operator: NotIn\\n"
-        "                    values: [student-worker-1]",
+        "operator: NotIn\n                    values: [gh200-1, student-worker-1]",
+        "operator: In\n                    values: [cip-gpu-4, cip-gpu-9, cip-gpu-14]",
+    ).replace(
+        "image: ghcr.io/nexufed/nexuml:0.2.0-cuda12.8.1",
+        "image: harbor.ika.rub.de/library/nexuml:latest",
+    )
+    old = old.replace(
+        "                    values: [cip-gpu-4, cip-gpu-9, cip-gpu-14]\n",
+        "                    values: [cip-gpu-4, cip-gpu-9, cip-gpu-14]\n"
+        "                  - key: nvidia.com/cuda.runtime.major\n"
+        "                    operator: Gt\n"
+        '                    values: ["11"]\n',
     )
     assert old != manifest
-    assert recovery.pin_original_manifest(old, job=name, digest=digest) == manifest
-    assert recovery.pin_original_manifest(manifest, job=name, digest=digest) == manifest
+    assert recovery.pin_original_manifest(
+        old, job=name, digest=digest, excluded_hosts=excluded_hosts
+    ) == manifest
+    assert recovery.pin_original_manifest(
+        manifest, job=name, digest=digest, excluded_hosts=excluded_hosts
+    ) == manifest
     with pytest.raises(ValueError, match="inconsistent"):
-        recovery.pin_original_manifest(old, job=name, digest="b" * 64)
+        recovery.pin_original_manifest(
+            old, job=name, digest="b" * 64, excluded_hosts=excluded_hosts
+        )
     with pytest.raises(ValueError, match="Unexpected retry"):
-        recovery.pin_original_manifest(old, job="other-job", digest=digest)
+        recovery.pin_original_manifest(
+            old, job="other-job", digest=digest, excluded_hosts=excluded_hosts
+        )
+
+
+def test_global_gpu_pool_discovers_gh200_hostnames(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Exclude actual GH200 hostname labels, not unrelated idle GPU nodes."""
+    load_launcher(monkeypatch)
+    from rul_confirm_gpu_pool import excluded_hostnames
+
+    nodes = {"items": [
+        {"metadata": {"name": "student-worker-1", "labels": {
+            "kubernetes.io/hostname": "student-worker-1",
+        }}},
+        {"metadata": {"name": "gh200-server", "labels": {
+            "kubernetes.io/hostname": "gh200-hostname",
+            "nvidia.com/gpu.product": "NVIDIA-GH200-480GB",
+        }}},
+        {"metadata": {"name": "cip-gpu-4", "labels": {
+            "kubernetes.io/hostname": "cip-gpu-4",
+            "nvidia.com/gpu.product": "NVIDIA-A100",
+        }}},
+    ]}
+    assert excluded_hostnames(nodes) == ("gh200-hostname", "student-worker-1")
+    with pytest.raises(ValueError, match="No GH200"):
+        excluded_hostnames({"items": nodes["items"][2:]})
 
 
 def test_image_pull_restart_requires_consistent_completed_source(
