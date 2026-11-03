@@ -215,6 +215,3 @@ spec:
                   - key: kubernetes.io/hostname
                     operator: NotIn
                     values: [__EXCLUDED_NODES__]
-                  - key: nvidia.com/cuda.runtime.major
-                    operator: Gt
-                    values: ["11"]
