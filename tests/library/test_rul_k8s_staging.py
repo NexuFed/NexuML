@@ -86,7 +86,7 @@ def test_render_uses_unique_native_seed_scenarios() -> None:
             expected += f"-s{seed}"
         assert expected in manifest
         assert f"compare-six-s{seed}.yaml" in manifest
-        assert "ghcr.io/nexufed/nexuml:latest" in manifest
+        assert "ghcr.io/nexufed/nexuml:sha-f8d5490-cuda12.8.1" in manifest
         assert "uv venv" in manifest and "uv sync --locked" in manifest
         assert "kueue.x-k8s.io/queue-name: jobs" in manifest
         assert "nvidia.com/gpu: \"1\"" in manifest
