@@ -59,14 +59,16 @@ read -r -p "GHCR tag: " NEXUML_IMAGE_TAG
 test -n "$NEXUML_IMAGE_TAG" && docker run --rm -it --gpus all "ghcr.io/nexufed/nexuml:$NEXUML_IMAGE_TAG"
 ```
 
-CI uses these tags for the CUDA 12.8.1 image after building and verifying it:
+CI uses these tag patterns after building and verifying an image:
 
-- `<nexuml-version>-cuda12.8.1` selects an exact release version.
-- `latest-cuda12.8.1` points to the most recently published stable-tag image.
-- `edge-cuda12.8.1` tracks the most recently verified image from `main`, not a stable release.
+- `<nexuml-version>-cuda<cuda-version>` selects an exact release version.
+- `latest-cuda<cuda-version>` advances only for the newest stable tag integrated into `main`.
+- `edge-cuda<cuda-version>` tracks the most recently verified image from `main`, not a stable release.
 
-The version and `latest-cuda12.8.1` tags refer to the same image; aliases do not
-require separate builds. CI no longer generates SHA or release-series tags;
+The latest selected version and its `latest-cuda<cuda-version>` alias refer to the
+same image; aliases do not require separate builds. Older release runs publish
+their exact-version tag without moving `latest` backward. CI no longer generates
+SHA or release-series tags;
 existing registry tags are not deleted. Manual workflow dispatch builds and verifies
 without publishing. Images are available only after a successful publishing run.
 GPU execution needs a matching NVIDIA driver and [Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html).

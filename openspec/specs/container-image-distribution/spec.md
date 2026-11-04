@@ -80,10 +80,16 @@ Successful trusted push runs SHALL publish to `ghcr.io/nexufed/nexuml` using rep
 
 #### Scenario: Stable release image is published
 
-- **WHEN** verified tag `v0.2.0` is pushed with CUDA `12.8.1`
+- **WHEN** verified tag `v0.2.0` is pushed with CUDA `12.8.1` and is the newest stable tag integrated into `main`
 - **THEN** the workflow prepares the shared package versions from the existing tag before building
 - **AND** it publishes `0.2.0-cuda12.8.1` and `latest-cuda12.8.1` for the same verified image
 - **AND** it does not update the main-tracking alias or publish release-series or SHA tags.
+
+#### Scenario: Older stable release is built after a newer tag
+
+- **WHEN** an older stable-tag workflow publishes after a newer stable tag is integrated into `main`
+- **THEN** it publishes only its exact-version tag and leaves the stable latest alias unchanged
+- **AND** the workflow serializes runs across refs and refreshes integrated tags immediately before publication so concurrent release runs cannot roll the alias backward.
 
 #### Scenario: Earlier registry tags exist
 

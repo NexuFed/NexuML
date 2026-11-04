@@ -3,6 +3,7 @@
 import importlib.util
 import json
 from pathlib import Path
+import re
 
 import pytest
 
@@ -13,6 +14,18 @@ spec = importlib.util.spec_from_file_location(
 assert spec is not None and spec.loader is not None
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
+
+
+def test_install_container_tags_use_runtime_placeholders():
+    page = (ROOT / "docs/src/content/docs/start/install.mdx").read_text()
+    container = page.split("## Container image\n", 1)[1].split("\n## ", 1)[0]
+    assert re.search(r"(?:CUDA\s+|cuda)[0-9]", container) is None
+    for tag in (
+        "<nexuml-version>-cuda<cuda-version>",
+        "latest-cuda<cuda-version>",
+        "edge-cuda<cuda-version>",
+    ):
+        assert f"`{tag}`" in container
 
 
 def test_editorial_frontmatter_and_missing_routes_fail(tmp_path):

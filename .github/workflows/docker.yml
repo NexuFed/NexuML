@@ -7,8 +7,10 @@ on:
     tags: ["v*.*.*"]
 
 concurrency:
-  group: docker-${{ github.event_name }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Serialize publication across refs without discarding queued release builds.
+  group: docker-image
+  cancel-in-progress: false
+  queue: max
 
 permissions:
   contents: read
@@ -147,8 +149,35 @@ jobs:
         env:
           TAGS: ${{ steps.meta.outputs.tags }}
         run: |
+          latest_tag=""
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            git fetch --tags origin main:refs/remotes/origin/main
+            latest_tag=$(python3 - <<'PY'
+          import subprocess
+
+          from scripts.release_versions import stable_version
+
+          tags = subprocess.check_output(
+              ["git", "tag", "--merged", "origin/main", "--list", "v*"], text=True
+          ).splitlines()
+          versions = []
+          for tag in tags:
+              try:
+                  version = stable_version(tag)
+              except ValueError:
+                  continue
+              versions.append((tuple(map(int, version.split("."))), tag))
+          print(max(versions)[1])
+          PY
+            )
+          fi
+
           while IFS= read -r tag; do
             [ -z "$tag" ] && continue
+            if [ "$tag" = "$IMAGE_NAME:latest-cuda$CUDA_VERSION" ] && [ "$GITHUB_REF_NAME" != "$latest_tag" ]; then
+              echo "Skip latest promotion: $GITHUB_REF_NAME is older than $latest_tag"
+              continue
+            fi
             docker tag "$LOCAL_IMAGE" "$tag"
             docker push "$tag"
           done <<< "$TAGS"
