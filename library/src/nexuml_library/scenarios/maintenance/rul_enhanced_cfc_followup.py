@@ -41,7 +41,8 @@ FollowupConfiguration = Literal[
     "without_trajectory",
 ]
 VALIDATION_ARMS: tuple[FollowupConfiguration, ...] = (
-    "baseline", "all_no_trend",
+    "baseline",
+    "all_no_trend",
 )
 LEAVE_ONE_OUT: tuple[FollowupConfiguration, ...] = (
     "without_finetune",
