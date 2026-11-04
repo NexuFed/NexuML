@@ -18,10 +18,11 @@ from typing import Any
 from rul_confirm_gpu_pool import discover_excluded_hostnames
 from submit_rul_enhanced_cfc_fd003 import NAMESPACE, RENDERED
 
-IMAGE = "ghcr.io/nexufed/nexuml:latest"
+IMAGE = "ghcr.io/nexufed/nexuml:sha-f8d5490-cuda12.8.1"
 OLD_IMAGES = (
     "harbor.ika.rub.de/library/nexuml:latest",
     "ghcr.io/nexufed/nexuml:0.2.0-cuda12.8.1",
+    "ghcr.io/nexufed/nexuml:latest",
 )
 FAILED_JOBS = (
     "nexuml-rul-fd003-cfc-confirm-baseline-s44",
