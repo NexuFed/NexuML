@@ -796,11 +796,23 @@ def _regression(record, root, options, env):
         "python314",
         "native-state",
         "native-sensors",
+        "native-viewer",
         "public-so101-cli",
     }:
         raise Blocked("suite must select a fixed regression or native oracle inventory")
     for tier in ("SIMULATOR", "SYSTEM", "HARDWARE", "DATA"):
         env[f"NEXUML_RUN_{tier}_TESTS"] = "0"
+    if suite == "native-viewer":
+        import runpy
+
+        _preflight(record, root, {}, env)
+        profile = runpy.run_path(str(Path(__file__).with_name("physical_ai_cli_viewer.py")))
+        try:
+            profile["run_viewer"](record, root, env, _stage)
+        except profile["MissingViewerRuntime"] as error:
+            record["gates"]["V"] = "BLOCKED"
+            raise Blocked(str(error)) from error
+        return
     if suite == "public-so101-cli":
         import runpy
 
@@ -940,6 +952,28 @@ def _prepare_recipe(config_path, root, options):
         raise Blocked("worker configuration must use registered LocalExecution")
     if config.checkpoint is not None or config.tuning is not None:
         raise Blocked("fresh baseline requires no selective checkpoint or tuning")
+    owner = options.get("processing_owner")
+    if owner is not None:
+        cameras = {
+            f"isaac-{family}-cartpole-ppo" for family in ("rgb", "depth", "segmentation", "mixed")
+        }
+        if config.name not in cameras or owner not in {"package", "external"}:
+            raise Blocked("processing owner requires a fixed I2 camera recipe")
+        assert config.interaction is not None
+        sensors = [
+            field.sensor
+            for field in config.interaction.environment.describe().observations.values()
+            if field.sensor is not None
+        ]
+        if (
+            not sensors
+            or any(sensor.owner != owner for sensor in sensors)
+            or config.policy is None
+            or (config.policy.processor is not None) != (owner == "package")
+        ):
+            raise Blocked(
+                "requested processing owner differs from the resolved sensor/policy contract"
+            )
     total = getattr(config.training, "total_frames", None)
     batch = getattr(config.training, "frames_per_batch", None)
     if type(total) is not int or type(batch) is not int or not 0 < batch < total:
@@ -976,8 +1010,11 @@ def _prepare_recipe(config_path, root, options):
             if writer is not None:
                 setattr(writer, field, str(root / "logs" / directory))
         if logging.mlflow is not None:
-            logging.mlflow.tracking_uri = (root / "logs" / "mlflow").as_uri()
-            logging.mlflow.artifact_location = (root / "logs" / "mlflow-artifacts").as_uri()
+            (root / "logs").mkdir(exist_ok=True)
+            logging.mlflow.tracking_uri = f"sqlite:///{root / 'logs/mlflow.db'}"
+            logging.mlflow.artifact_location = (
+                f"s3://rglitza/logs/physical-ai/{root.parent.name}/{root.name}"
+            )
             logging.mlflow.run_id = logging.mlflow.parent_run_id = None
     config.save(root / "case.yaml")
     evaluation = config.model_copy(deep=True)
@@ -1208,6 +1245,8 @@ def _recipe(record, root, config_path, options, env):
         )
     total = config.training.total_frames
     record["recipe"] = config.name
+    if options.get("processing_owner") is not None:
+        record["processing_owner"] = options["processing_owner"]
     record["config_sha256"] = _sha256(root / "case.yaml")
     if config.name == "visual-cartpole-ppo":
         _stage(
@@ -1342,7 +1381,7 @@ def run_case(case: str, attempt_root: Path, config_path: Path, options: dict) ->
         allowed_options = {
             "preflight": {"data_root"},
             "regression": {"suite"},
-            "recipe": {"recipe", "recording"},
+            "recipe": {"recipe", "recording", "processing_owner"},
             "recovery": {"source_attempt", "source_case_sha256", "source_guard_sha256"},
             "browser": {
                 "source_attempt",

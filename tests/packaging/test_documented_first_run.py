@@ -29,7 +29,7 @@ def test_documented_synthetic_cpu_first_run(tmp_path):
     train = commands[-1]
     assert train[train.index("--max-epochs") + 1] == "1"
     assert "training.accelerator=cpu" in train and "training.devices=1" in train
-    env = {
+    env: dict[str, str] = {
         **os.environ,
         "HOME": str(tmp_path),
         "XDG_CONFIG_HOME": str(tmp_path / ".config"),

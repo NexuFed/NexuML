@@ -246,6 +246,10 @@ class PhysicalAIDistributionTest(unittest.TestCase):
         self.assertIn("test_registered_marl_actor_packages_run_cleanly", actor)
         self.assertIn("test_preserved_batch_layout", actor)
         self.assertIn("test_model_evaluation_cli.py", " ".join(commands["installed-supervised"]))
+        self.assertIn(
+            "tests/packaging/test_documented_first_run.py",
+            commands["installed-supervised"],
+        )
         for artifact in self.record["package"]["artifacts"]:
             path = Path(artifact["path"])
             self.assertEqual(artifact["sha256"], hashlib.sha256(path.read_bytes()).hexdigest())

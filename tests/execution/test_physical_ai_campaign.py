@@ -54,6 +54,7 @@ class Client:
         self.peak = 0
         self.stopped = []
         self.requests = []
+        self.info_requests = []
         self.submission_error = submission_error
 
     def submit(self, scenario, **kwargs):
@@ -87,6 +88,150 @@ class Client:
     def stop_job(self, identity):
         assert identity in self.jobs
         self.stopped.append(identity)
+
+    def get_job_info(self, identity):
+        self.info_requests.append(identity)
+        raise AssertionError("Unexpected diagnostic lookup")
+
+
+@pytest.mark.parametrize(
+    "error_type,summary",
+    [
+        ("RUNTIME_ENV_SETUP_FAILURE", "Ray runtime environment setup failed."),
+        (
+            "JOB_SUPERVISOR_ACTOR_START_TIMEOUT",
+            "Ray job start timed out before the workload started.",
+        ),
+        ("JOB_SUPERVISOR_ACTOR_START_FAILURE", "Ray job supervisor failed to start."),
+        ("JOB_SUPERVISOR_ACTOR_UNSCHEDULABLE", "Ray job supervisor could not be scheduled."),
+        ("JOB_SUPERVISOR_ACTOR_UNKNOWN_FAILURE", "Ray job supervisor failed unexpectedly."),
+        ("JOB_SUPERVISOR_ACTOR_DIED", "Ray job supervisor died."),
+        ("JOB_ENTRYPOINT_COMMAND_START_ERROR", "Ray job entrypoint could not be started."),
+        ("JOB_ENTRYPOINT_COMMAND_ERROR", "Ray job entrypoint exited with an error."),
+    ],
+)
+def test_failed_without_worker_receipt_reports_only_safe_native_cause(
+    driver, monkeypatch, tmp_path, capsys, error_type, summary
+):
+    functions, _ = driver
+    client = Client(outcome="FAILED", pending_polls=0)
+    logs = "original private worker log: private-log-token\n"
+
+    def info(identity):
+        client.info_requests.append(identity)
+        assert 0 < signal.getitimer(signal.ITIMER_REAL)[0] <= 30
+        return SimpleNamespace(error_type=error_type, message="secret-SDK-message")
+
+    monkeypatch.setattr(client, "get_job_info", info)
+    monkeypatch.setattr(client, "get_job_logs", lambda _: logs)
+    monkeypatch.setattr("nexuml.execution.run", client.submit)
+    output = tmp_path / "out"
+    result = functions["run_campaign"](attempts(1), client, output)
+    row = result["results"][0]
+    cause = {"type": error_type, "summary": summary}
+    assert row["native_failure"] == cause
+    assert row["status"] == "failed" and row["native_status"] == "FAILED"
+    assert row["receipt"] is None
+    assert client.info_requests == [row["job_id"]]
+    assert len(client.requests) == 1 and not client.stopped
+    assert (output / f"{row['job_id']}.log").read_text() == logs
+    assert json.loads((output / f"{row['job_id']}.json").read_text()) == row
+    assert json.loads((output / "summary.json").read_text()) == result
+    text = capsys.readouterr().out
+    terminal = next(
+        json.loads(line.partition("=")[2])
+        for line in text.splitlines()
+        if line.startswith("NEXUML_CASE_TERMINAL=")
+    )
+    assert terminal["native_failure"] == cause
+    assert f"{row['job_id']}: failed (FAILED): {error_type}: {summary}" in text
+    for secret in ("secret-SDK-message", "private-log-token"):
+        assert secret not in text + json.dumps(result)
+
+
+@pytest.mark.parametrize(
+    "details",
+    [
+        None,
+        {},
+        SimpleNamespace(),
+        SimpleNamespace(error_type=None),
+        SimpleNamespace(error_type="secret-unknown-code"),
+        SimpleNamespace(error_type=["secret-malformed-code"]),
+        SimpleNamespace(error_type={"secret-malformed-code": True}),
+        SimpleNamespace(error_type=42),
+        SimpleNamespace(error_type="UNAVAILABLE"),
+    ],
+)
+def test_unknown_or_malformed_native_code_is_not_echoed(
+    driver, monkeypatch, tmp_path, capsys, details
+):
+    functions, _ = driver
+    client = Client(outcome="FAILED", pending_polls=0)
+    monkeypatch.setattr(client, "get_job_logs", lambda _: "no worker receipt\n")
+    monkeypatch.setattr(client, "get_job_info", lambda _: details)
+    monkeypatch.setattr("nexuml.execution.run", client.submit)
+    output = tmp_path / "out"
+    result = functions["run_campaign"](attempts(1), client, output)
+    assert result["results"][0]["native_failure"] == {
+        "type": "UNKNOWN",
+        "summary": "Ray failure cause is unknown; no worker receipt was available.",
+    }
+    text = capsys.readouterr().out + "".join(path.read_text() for path in output.glob("*.json"))
+    assert "secret-" not in text
+    assert "before the workload started" not in text
+
+
+def test_native_diagnostic_exception_cannot_replace_failed_status_or_leak(
+    driver, monkeypatch, tmp_path, capsys
+):
+    functions, _ = driver
+    client = Client(outcome="FAILED", pending_polls=0)
+
+    def unavailable(identity):
+        client.info_requests.append(identity)
+        raise type("secret-exception-type", (RuntimeError,), {})("secret-exception-message")
+
+    monkeypatch.setattr(client, "get_job_info", unavailable)
+    monkeypatch.setattr(client, "get_job_logs", lambda _: "original private log\n")
+    monkeypatch.setattr("nexuml.execution.run", client.submit)
+    output = tmp_path / "out"
+    result = functions["run_campaign"](attempts(1), client, output)
+    row = result["results"][0]
+    assert row["status"] == "failed" and row["native_status"] == "FAILED"
+    assert row["native_failure"] == {
+        "type": "UNAVAILABLE",
+        "summary": "Ray failure details unavailable; no worker receipt was available.",
+    }
+    assert client.info_requests == [row["job_id"]]
+    assert not client.stopped and len(client.requests) == 1
+    assert (output / f"{row['job_id']}.log").read_text() == "original private log\n"
+    text = capsys.readouterr().out + "".join(path.read_text() for path in output.glob("*.json"))
+    assert "secret-" not in text
+    assert "before the workload started" not in text
+
+
+@pytest.mark.parametrize(
+    "native_status,logs",
+    [
+        ("SUCCEEDED", 'NEXUML_CASE_RESULT={"status":"PASS","source_tree_sha256":"tree"}\n'),
+        ("FAILED", 'NEXUML_CASE_RESULT={"status":"FAIL"}\n'),
+        ("FAILED", 'NEXUML_CASE_RESULT={"status":"PASS","source_tree_sha256":"tree"}\n'),
+        ("SUCCEEDED", "no worker receipt\n"),
+        ("STOPPED", "no worker receipt\n"),
+    ],
+)
+def test_other_terminal_cases_make_no_diagnostic_lookup(
+    driver, monkeypatch, tmp_path, capsys, native_status, logs
+):
+    functions, _ = driver
+    client = Client(outcome=native_status, pending_polls=0)
+    monkeypatch.setattr(client, "get_job_logs", lambda _: logs)
+    monkeypatch.setattr("nexuml.execution.run", client.submit)
+    result = functions["run_campaign"](attempts(1), client, tmp_path / "out")
+    assert client.info_requests == []
+    assert "native_failure" not in result["results"][0]
+    assert "native_failure" not in capsys.readouterr().out
 
 
 @pytest.mark.parametrize("native_status", ["SUCCEEDED", "FAILED", "STOPPED"])
@@ -237,6 +382,116 @@ def test_recipe_forwards_only_fixed_recording_selection(driver, monkeypatch, tmp
     assert client.requests[0]["case_options"] == {
         "recipe": "mujoco-reacher-ppo",
         "recording": "both",
+    }
+
+
+@pytest.mark.parametrize("owner", ["package", "external"])
+@pytest.mark.parametrize("family", ["rgb", "depth", "segmentation", "mixed"])
+def test_sensor_owner_cli_resolves_the_existing_recipe_without_launch(
+    driver, monkeypatch, tmp_path, capsys, family, owner
+):
+    from nexuml.execution.definitions import RayJobsSDKExecution
+    from nexuml.core.scenario_registry import get_scenario_registry
+
+    functions, _ = driver
+    name = f"isaac-{family}-cartpole-ppo"
+    factory = get_scenario_registry().get(name)
+    selected = []
+
+    def build(**kwargs):
+        selected.append(kwargs)
+        return factory(**kwargs)
+
+    monkeypatch.setattr(
+        "nexuml.core.scenario_registry.get_scenario_registry",
+        lambda: SimpleNamespace(get=lambda recipe: build if recipe == name else None),
+    )
+    certificate = tmp_path / "ca.pem"
+    certificate.write_text("inert fixture")
+    output = tmp_path / "not-created"
+    monkeypatch.setattr("nexuml.execution.load_ray_job_profile", lambda _: RayJobsSDKExecution())
+    monkeypatch.setitem(functions["main"].__globals__, "source_identity", lambda _: "tree")
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "physical_ai_acceptance.py",
+            "--case",
+            "recipe",
+            "--recipe",
+            f"isaac-{family}-cartpole-ppo",
+            "--processing-owner",
+            owner,
+            "--ca",
+            str(certificate),
+            "--output",
+            str(output),
+        ],
+    )
+    functions["main"]()
+    plan = json.loads(capsys.readouterr().out)
+    assert plan["attempts"][0]["options"]["processing_owner"] == owner
+    assert selected == [{"processing_owner": owner}]
+    assert not output.exists()
+    assert "isaaclab" not in sys.modules and "isaacsim" not in sys.modules
+
+
+@pytest.mark.parametrize(
+    "case,recipe",
+    [
+        ("preflight", "isaac-rgb-cartpole-ppo"),
+        ("recipe", "isaac-categorical-cartpole-ppo"),
+        ("recipe", "cartpole-ppo"),
+    ],
+)
+def test_sensor_owner_rejects_other_cases_before_profile_loading(
+    driver, monkeypatch, tmp_path, capsys, case, recipe
+):
+    functions, _ = driver
+    certificate = tmp_path / "ca.pem"
+    certificate.write_text("inert fixture")
+    monkeypatch.setattr(
+        "nexuml.execution.load_ray_job_profile", lambda _: pytest.fail("loaded profile")
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "physical_ai_acceptance.py",
+            "--case",
+            case,
+            "--recipe",
+            recipe,
+            "--processing-owner",
+            "external",
+            "--ca",
+            str(certificate),
+            "--output",
+            str(tmp_path / "not-created"),
+        ],
+    )
+    with pytest.raises(SystemExit) as result:
+        functions["main"]()
+    assert result.value.code == 2
+    assert "requires one fixed I2 camera recipe" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("owner", ["package", "external"])
+def test_sensor_owner_is_the_only_additional_recipe_option_forwarded(
+    driver, monkeypatch, tmp_path, owner
+):
+    functions, _ = driver
+    client = Client()
+    monkeypatch.setattr("nexuml.execution.run", client.submit)
+    case = attempts(1)[0]
+    case["case"] = "recipe"
+    case["options"].update(
+        recipe="isaac-mixed-cartpole-ppo", processing_owner=owner, command="forbidden"
+    )
+    functions["run_campaign"]([case], client, tmp_path / "result")
+    assert client.requests[0]["case_options"] == {
+        "recipe": "isaac-mixed-cartpole-ppo",
+        "processing_owner": owner,
     }
 
 

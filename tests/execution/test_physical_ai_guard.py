@@ -966,6 +966,207 @@ finally:
                 self.assertNotIn("0x", str(snapshot))
                 close.assert_called_once_with(11)
 
+    def make_sync_proc(self, syscall):
+        base = self.root / "proc321"
+        fields = ["0"] * 36
+        fields[0], fields[1], fields[19], fields[35] = "Z", "123", "999", "17"
+        for directory in ("task/321", "task/322/fd", "task/322/fdinfo"):
+            (base / directory).mkdir(parents=True, exist_ok=True)
+        (base / "stat").write_text("321 (private name) " + " ".join(fields))
+        (base / "status").write_text("Threads:\t2\nTracerPid:\t0\n")
+        (base / "task/321/stat").write_text("321 (private name) Z")
+        (base / "task/322/stat").write_text("322 (private name) D")
+        (base / "task/322/wchan").write_text("wait_on_page_bit_common\n")
+        (base / "task/322/syscall").write_text(syscall)
+        blocked = base / "task/322"
+        (blocked / "fd/7").unlink(missing_ok=True)
+        (blocked / "fd/7").symlink_to("/data/checkpoint")
+        (blocked / "fdinfo/7").write_text(
+            "pos:\t123\nflags:\t0100001\nmnt_id:\t44\nino:\t987\nsecret:\tpassword\n"
+        )
+        (blocked / "mountinfo").write_text(
+            "43 1 8:2 / /other rw - ext4 private-source rw\n"
+            r"44 1 8:3 / /data\040disk rw,password=secret shared:1"
+            r" - fuse.juicefs volume\040name rw,token=secret" + "\n"
+        )
+        return base
+
+    def snapshot_proc(self, base):
+        with (
+            mock.patch.object(guard, "Path", return_value=base) as path,
+            mock.patch.object(guard, "_pidfd_call", return_value=11),
+            mock.patch.object(guard.select, "select", return_value=([], [], [])),
+            mock.patch.object(guard.os, "close"),
+        ):
+            snapshot = guard._descendant_snapshot(321)
+        path.assert_called_once_with("/proc/321")
+        self.assertNotIn("observation", snapshot)
+        return snapshot
+
+    def test_sync_syscalls_capture_only_owned_fd_and_allowlisted_mount_evidence(self):
+        for number, argument in ((74, "0x7"), (75, "7")):
+            with self.subTest(number=number):
+                base = self.make_sync_proc(f"{number} {argument} 0xdeadbeef secret-args 0xcafe\n")
+                with mock.patch.object(guard.os, "readlink", wraps=os.readlink) as readlink:
+                    snapshot = self.snapshot_proc(base)
+                readlink.assert_called_once_with(base / "task/322/fd/7")
+                self.assertFalse((base / "fd").exists(), "zombie leader has no descriptor table")
+                self.assertEqual(
+                    snapshot["thread_states"][1],
+                    {
+                        "tid": 322,
+                        "state": "D",
+                        "wchan": "wait_on_page_bit_common",
+                        "syscall": number,
+                        "fd": 7,
+                        "fd_target": "/data/checkpoint",
+                        "fdinfo": {"pos": "123", "flags": "0100001", "mnt_id": "44", "ino": "987"},
+                        "fd_mount": {
+                            "id": "44",
+                            "device": "8:3",
+                            "mountpoint": "/data disk",
+                            "filesystem": "fuse.juicefs",
+                            "source": "volume name",
+                        },
+                    },
+                )
+                for excluded in ("0x", "secret", "private", "password", "token", "shared"):
+                    self.assertNotIn(excluded, json.dumps(snapshot))
+
+    def test_nonsync_syscalls_never_inspect_descriptors(self):
+        for number in (0, 16, 73, 76, -1):
+            with self.subTest(number=number):
+                base = self.make_sync_proc(f"{number} 7 0xprivate secret-args\n")
+                with (
+                    mock.patch.object(guard.os, "readlink") as readlink,
+                    mock.patch.object(guard, "_bounded_proc_text") as read,
+                ):
+                    entry = self.snapshot_proc(base)["thread_states"][1]
+                self.assertEqual(set(entry), {"tid", "state", "wchan", "syscall"})
+                readlink.assert_not_called()
+                read.assert_not_called()
+
+    def test_sync_fd_validation_is_bounded_without_losing_syscall(self):
+        for argument in ("", "-1", "1048577", "0x100001", "0xdeadbeef", "7.0", "7_0", "9" * 5000):
+            with self.subTest(argument=argument[:20]):
+                base = self.make_sync_proc(f"75 {argument}")
+                with mock.patch.object(guard.os, "readlink") as readlink:
+                    entry = self.snapshot_proc(base)["thread_states"][1]
+                self.assertEqual(entry["syscall"], 75)
+                self.assertEqual(entry["fd_observation"], "ValueError")
+                self.assertNotIn("fd", entry)
+                readlink.assert_not_called()
+        for argument, expected in (
+            ("0", 0),
+            ("1048576", 1048576),
+            ("0x100000", 1048576),
+            ("0000007", 7),
+        ):
+            with self.subTest(argument=argument):
+                base = self.make_sync_proc(f"74 {argument}")
+                entry = self.snapshot_proc(base)["thread_states"][1]
+                self.assertEqual(entry["fd"], expected)
+
+    def test_sync_fd_disappearance_and_denial_remain_optional_observations(self):
+        original_open, original_readlink = Path.open, os.readlink
+        for error_type in (FileNotFoundError, PermissionError):
+            for stage in ("fd_target", "fdinfo", "fd_mount"):
+                with self.subTest(error=error_type, stage=stage):
+                    base = self.make_sync_proc("75 7 0xprivate secret-args")
+                    failed = base / "task/322" / ("fdinfo/7" if stage == "fdinfo" else "mountinfo")
+
+                    def open_file(path, *args, **kwargs):
+                        if stage != "fd_target" and path == failed:
+                            raise error_type("private error with credentials")
+                        return original_open(path, *args, **kwargs)
+
+                    def readlink(path):
+                        if stage == "fd_target":
+                            raise error_type("private error with credentials")
+                        return original_readlink(path)
+
+                    with (
+                        mock.patch.object(Path, "open", open_file),
+                        mock.patch.object(guard.os, "readlink", readlink),
+                    ):
+                        snapshot = self.snapshot_proc(base)
+                    entry = snapshot["thread_states"][1]
+                    self.assertEqual((entry["state"], entry["syscall"], entry["fd"]), ("D", 75, 7))
+                    self.assertEqual(entry[f"{stage}_observation"], error_type.__name__)
+                    self.assertNotIn("private", json.dumps(snapshot))
+                    if stage == "fd_target":
+                        self.assertIn("fd_mount", entry)
+
+    def test_sync_fd_malformed_metadata_does_not_escape_diagnostics(self):
+        for fdinfo, mountinfo, observation in (
+            (b"pos: secret\nflags: 089\nmnt_id: -1\nino: " + b"9" * 21 + b"\n", None, "fdinfo"),
+            (b"\xff", None, "fdinfo"),
+            (None, b"44 1\n", "fd_mount"),
+            (None, b"44 1 private-device / /data rw - ext4 source rw\n", "fd_mount"),
+            (None, b"\xff", "fd_mount"),
+        ):
+            with self.subTest(fdinfo=fdinfo, mountinfo=mountinfo):
+                base = self.make_sync_proc("75 7 secret-args")
+                if fdinfo is not None:
+                    (base / "task/322/fdinfo/7").write_bytes(fdinfo)
+                if mountinfo is not None:
+                    (base / "task/322/mountinfo").write_bytes(mountinfo)
+                entry = self.snapshot_proc(base)["thread_states"][1]
+                self.assertEqual((entry["syscall"], entry["fd_target"]), (75, "/data/checkpoint"))
+                self.assertIn(f"{observation}_observation", entry)
+                self.assertNotIn("secret", json.dumps(entry))
+                self.assertNotIn("fd_mount", entry)
+
+    def test_sync_fd_targets_mount_fields_and_numeric_values_are_bounded(self):
+        base = self.make_sync_proc("75 7")
+        target = "/" + "target/" * 100
+        (base / "task/322/fd/7").unlink()
+        (base / "task/322/fd/7").symlink_to(target)
+        (base / "task/322/fdinfo/7").write_text(
+            "pos: " + "9" * 20 + "\nflags: " + "7" * 24 + "\nmnt_id: 44\nino: " + "9" * 21 + "\n"
+        )
+        (base / "task/322/mountinfo").write_text(
+            "44 1 8:3 / /" + "m" * 600 + " rw - ext4 " + "s" * 600 + " rw\n"
+        )
+        entry = self.snapshot_proc(base)["thread_states"][1]
+        self.assertEqual(entry["fd_target"], target[:512])
+        self.assertEqual(entry["fd_mount"]["mountpoint"], "/" + "m" * 511)
+        self.assertEqual(entry["fd_mount"]["source"], "s" * 512)
+        self.assertEqual(entry["fdinfo"], {"pos": "9" * 20, "flags": "7" * 24, "mnt_id": "44"})
+
+    def test_sync_proc_reads_are_capped_and_partial_final_records_are_not_used(self):
+        original_open = Path.open
+        for stage, cap in (("fdinfo", 4096), ("fd_mount", 65536)):
+            with self.subTest(stage=stage):
+                base = self.make_sync_proc("75 7")
+                path = base / "task/322" / ("fdinfo/7" if stage == "fdinfo" else "mountinfo")
+                # A valid-looking record crossing the cap must not be used as complete evidence.
+                prefix = b"pos: 123\n" if stage == "fdinfo" else b""
+                crossing = (
+                    b"mnt_id: 44" if stage == "fdinfo" else b"44 1 8:3 / /data rw - ext4 source "
+                )
+                payload = prefix + b"\n" * (cap - len(prefix) - len(crossing)) + crossing
+                payload += b"999\nsecret: not-retained\n"
+                source = mock.MagicMock(wraps=io.BytesIO(payload))
+                source.__enter__.return_value = source
+
+                def open_file(opened, *args, **kwargs):
+                    if opened == path:
+                        self.assertEqual(args, ("rb",))
+                        return source
+                    return original_open(opened, *args, **kwargs)
+
+                with mock.patch.object(Path, "open", open_file):
+                    entry = self.snapshot_proc(base)["thread_states"][1]
+                source.read.assert_called_once_with(cap)
+                if stage == "fdinfo":
+                    self.assertEqual(entry["fdinfo"], {"pos": "123"})
+                    self.assertNotIn("fd_mount_observation", entry)
+                else:
+                    self.assertEqual(entry["fd_mount_observation"], "not_found")
+                self.assertNotIn("fd_mount", entry)
+                self.assertNotIn("secret", json.dumps(entry))
+
     def test_thread_failure_snapshot_is_capped_and_process_races_are_retained(self):
         fields = ["0"] * 36
         fields[0], fields[1], fields[19], fields[35] = "Z", "123", "999", "17"

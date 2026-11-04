@@ -56,6 +56,40 @@ URIs are passed through; credentials and service deployment are external to Nexu
 Do not persist secrets in scenarios. `log_model=False` does not request MLflow model logging;
 use the [NexuML package export](/how-to/export/) when you need a portable artifact.
 
+### Local SQLite metadata, S3 artifacts
+
+Keep SQLite on the worker's local filesystem; S3 is the artifact store, not a
+live SQLite filesystem. Configure both destinations explicitly:
+
+```yaml
+logging:
+  mlflow:
+    tracking_uri: sqlite:////approved/run/logs/mlflow.db
+    artifact_location: s3://rglitza/logs/my-unique-run
+    experiment_name: my-unique-run
+    auto_nested_runs: false
+    log_model: false
+```
+
+For the IKA S3-compatible endpoint, the worker and any later artifact reader need
+`MLFLOW_S3_ENDPOINT_URL=https://s3.ika.rub.de`, `AWS_CA_BUNDLE` pointing to the
+approved CA bundle, and the storage's approved authentication configuration.
+Keep credentials out of scenario files and use the standard AWS provider chain.
+Do not disable TLS verification. Install the `tracking` and `s3` extras in the
+prepared environment; the endpoint is independent of the SQLite tracking URI.
+
+Use a fresh experiment/database for a changed artifact location: an existing
+experiment retains its original artifact root. Preserve existing stores rather
+than deleting them to redirect new runs. Retain the local database after writers
+finish so the metadata can be reopened; putting artifacts in S3 does not back up
+the SQLite database automatically.
+
+The fixed Physical AI acceptance cases use a private SQLite database per attempt
+and distinct `s3://rglitza/logs/physical-ai/` artifact prefixes, then download and
+validate the produced media through MLflow. Their intentional **local destination
+obstruction** negative case stays local to prove partial-delivery failure; it is
+not an S3 availability test or an alternative normal artifact store.
+
 ## DVCLive
 
 Install `dvclive` in the consuming environment, then use:
@@ -94,6 +128,10 @@ an approved private tunnel. These are suggestions, not started services/reserved
 ports; select unused ports for concurrent jobs. HTTP(S) tracking uses the existing
 service instead of another `mlflow ui`; the banner includes the actual run ID when
 available. Do not expose credentials in logs or URLs.
+
+On KubeRay, metrics already occupies 8080: explicitly choose Viser 8081 and use
+the [private worker forwarding route](/how-to/isaac-read-only-viser/#kuberay-worker-access).
+This does not change the standalone viewer's generic default or start a UI service.
 
 ## Diagrams and no external logger
 

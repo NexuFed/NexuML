@@ -95,6 +95,54 @@ An occupied port, silent port reassignment, unsupported source identity or start
 failure rejects the viewer-requested job; there is no silent headless fallback.
 TCP `TIME_WAIT` from a closed connection does not constitute a live listener.
 
+### KubeRay worker access
+
+KubeRay already uses **8080 for worker metrics**. Select `ViserSpec(port=8081)`
+explicitly for training and for the separately enabled evaluation viewer; the
+generic 8080 example above is not the KubeRay profile. Keep TensorBoard (6007) and
+MLflow (5000) separate when those UIs are started. These are requested ports, not
+reservations: an occupied port must fail rather than select another endpoint.
+
+While the viewer job is running, use the actual worker pod from its receipt and
+the existing authorized Kubernetes connection:
+
+```bash
+kubectl -n ray-cluster port-forward "pod/$WORKER_POD" 8081:8081 --address 127.0.0.1
+```
+
+Open `http://127.0.0.1:8081` locally. Stop the forwarding process when finished;
+neither this command nor enabling the viewer starts a public service. A finished
+short job has no live viewer to forward: run a separate explicitly viewer-enabled
+evaluation instead of restarting or delaying training.
+
+### Fixed remote CLI qualification
+
+The acceptance runner has a fixed public-CLI spectator suite:
+
+```bash
+CUDA_VISIBLE_DEVICES='' python scripts/physical_ai_acceptance.py \
+  --case regression --suite native-viewer \
+  --profile "$QUALIFIED_NATIVE_BROWSER_PROFILE" --ca "$RAY_CA_BUNDLE" \
+  --output "$FRESH_OUTPUT" --wall-seconds 3600 --queue-seconds 900 \
+  --concurrency 1 --submit
+```
+
+The trusted profile must prepare the existing private native/browser runtimes and
+approved licenses; missing prerequisites block the suite. It uses the worker's
+actual interpreter, sandboxed Chromium and browser-only SwiftShader libraries,
+not a guessed checkout `.venv` or a server RTX claim. Its test-owned instance probe
+observes ordinary CLI training and fresh CLI evaluation, with separate headless
+comparisons, failure/cancellation checks and fixed loopback port 8081. The bounded
+32-episode/four-step replay is a browser lifecycle comparison, not a learning test.
+Eight exact native tests, including real WebSocket mutation-denial checks, must
+execute without skips; a suite receipt alone does not establish reviewed visual
+quality or successful access through the private route. The fixed CLI fixture uses
+an exclusive `/tmp/ray` disk directory for transient browser readiness/progress IPC,
+not distributed artifact storage or shared memory. Final snapshots, complete
+trajectories and cleanup receipts remain in the durable attempt; the fixture removes
+only its own IPC directory after the native child has terminated. This separation
+does not establish the cause of a historical distributed-filesystem lookup failure.
+
 ## Display controls and boundaries
 
 - Move/zoom the browser camera or use **Reset Camera**. This never moves a policy

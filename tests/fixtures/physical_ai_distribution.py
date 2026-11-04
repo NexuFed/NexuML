@@ -316,6 +316,7 @@ def run_package(record: dict, root: Path, env: dict, stage):
             python,
             *pytest,
             "tests/core/test_model_evaluation_cli.py",
+            "tests/packaging/test_documented_first_run.py",
             "-k",
             "not policy and not explicit_cuda",
             "--basetemp",

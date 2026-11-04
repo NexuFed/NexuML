@@ -258,6 +258,73 @@ def _children_gone(process, observation=None):
     return False
 
 
+def _bounded_proc_text(path, limit):
+    with path.open("rb") as source:
+        data = source.read(limit)
+    # At the cap, discard a possibly partial final record rather than infer its value.
+    if len(data) == limit:
+        data = data.rpartition(b"\n")[0]
+    return data.decode("utf-8")
+
+
+def _sync_fd_observations(base, argument):
+    info: dict[str, Any] = {}
+    try:
+        if not re.fullmatch(r"(?:0[xX][0-9a-fA-F]{1,16}|[0-9]{1,7})", argument):
+            raise ValueError
+        fd = int(argument, 16 if argument.lower().startswith("0x") else 10)
+        if fd > 1048576:
+            raise ValueError
+        info["fd"] = fd
+    except ValueError:
+        return {"fd_observation": "ValueError"}
+    try:
+        info["fd_target"] = os.readlink(base / "fd" / str(fd))[:512]
+    except OSError as error:
+        info["fd_target_observation"] = type(error).__name__
+    fdinfo = {}
+    try:
+        for line in _bounded_proc_text(base / "fdinfo" / str(fd), 4096).splitlines():
+            key, _, value = line.partition(":")
+            if key in {"pos", "flags", "mnt_id", "ino"}:
+                value = value.strip()
+                if re.fullmatch(r"[0-7]{1,24}" if key == "flags" else r"[0-9]{1,20}", value):
+                    fdinfo[key] = value
+                else:
+                    info["fdinfo_observation"] = "ValueError"
+        info["fdinfo"] = fdinfo
+    except (OSError, UnicodeError) as error:
+        info["fdinfo_observation"] = type(error).__name__
+    if "mnt_id" in fdinfo:
+        try:
+            for line in _bounded_proc_text(base / "mountinfo", 65536).splitlines():
+                left, _, right = line.partition(" - ")
+                fields, filesystem = left.split(), right.split()
+                if not fields or fields[0] != fdinfo["mnt_id"]:
+                    continue
+                if (
+                    len(fields) < 6
+                    or len(filesystem) < 3
+                    or not re.fullmatch(r"[0-9]{1,10}:[0-9]{1,10}", fields[2])
+                    or not fields[4].startswith("/")
+                    or not re.fullmatch(r"[a-zA-Z0-9_.-]{1,128}", filesystem[0])
+                ):
+                    raise ValueError
+                info["fd_mount"] = {
+                    "id": fields[0],
+                    "device": fields[2],
+                    "mountpoint": _unescape_mount(fields[4])[:512],
+                    "filesystem": filesystem[0],
+                    "source": _unescape_mount(filesystem[1])[:512],
+                }
+                break
+            else:
+                info["fd_mount_observation"] = "not_found"
+        except (OSError, UnicodeError, ValueError) as error:
+            info["fd_mount_observation"] = type(error).__name__
+    return info
+
+
 def _descendant_snapshot(pid):
     info: dict[str, Any] = {"pid": pid}
     try:
@@ -295,8 +362,13 @@ def _descendant_snapshot(pid):
                     except OSError as error:
                         entry["wchan_observation"] = type(error).__name__
                     try:
-                        # Retain only the syscall number, never argument values or addresses.
-                        entry["syscall"] = int((task / "syscall").read_text().split()[0])
+                        syscall = (task / "syscall").read_text().split(maxsplit=2)
+                        entry["syscall"] = int(syscall[0])
+                        # Linux amd64 sync calls expose only their FD, never other arguments.
+                        if entry["syscall"] in (74, 75):
+                            entry.update(
+                                _sync_fd_observations(task, syscall[1] if len(syscall) > 1 else "")
+                            )
                     except (OSError, ValueError, IndexError) as error:
                         entry["syscall_observation"] = type(error).__name__
                 states.append(entry)

@@ -178,6 +178,7 @@ class LoggingTests(unittest.TestCase):
                     self.assertIsNone(config.logging.diagram)
                     self.assertEqual(config.logging.temp_artifact_dir, str(owned / "staging"))
                     if mode in {"mlflow-only", "both"}:
+                        self.assertTrue((owned / "logs").is_dir())
                         self.assertEqual(
                             config.logging.mlflow.tracking_uri,
                             f"sqlite:///{owned / 'logs/mlflow.db'}",
@@ -185,10 +186,54 @@ class LoggingTests(unittest.TestCase):
                         self.assertFalse(config.logging.mlflow.auto_nested_runs)
                         self.assertEqual(
                             config.logging.mlflow.artifact_location,
-                            (owned / "logs/mlflow-artifacts").as_uri(),
+                            f"s3://rglitza/logs/physical-ai/{owned.parent.name}/{owned.name}",
                         )
+                        self.assertFalse((owned / "logs/mlflow-artifacts").exists())
         with self.assertRaises(ValueError):
             logging._logging_settings("caller-command", self.root)
+
+    def test_s3_runs_are_attested_and_downloaded_through_mlflow(self):
+        settings = logging._logging_settings("both", self.root)["mlflow"]
+        database = self.root / "logs/mlflow.db"
+        database.parent.mkdir()
+        database.touch()
+        expected = settings["artifact_location"]
+        client = Mock()
+        client.get_experiment_by_name.return_value = SimpleNamespace(
+            experiment_id="17", artifact_location=expected
+        )
+        run = SimpleNamespace(
+            info=SimpleNamespace(
+                run_id="owned-run",
+                experiment_id="17",
+                status="FINISHED",
+                artifact_uri=f"{expected}/owned-run/artifacts",
+            ),
+            data=SimpleNamespace(metrics={}),
+        )
+        page = type("Page", (list,), {"token": None})([run])
+        client.search_runs.return_value = page
+        client.list_artifacts.return_value = [SimpleNamespace(path="evaluation", is_dir=True)]
+        client.download_artifacts.return_value = str(self.root / "downloaded-evaluation")
+        module = ModuleType("mlflow.tracking")
+        module.__dict__["MlflowClient"] = Mock(return_value=client)
+        with patch.dict(sys.modules, {"mlflow.tracking": module}):
+            result = logging._mlflow_runs(self.root, settings)
+            self.assertEqual(result[0]["artifact_uri"], f"{expected}/owned-run/artifacts")
+            client.download_artifacts.assert_called_once_with(
+                "owned-run", "evaluation", str(self.root / "mlflow-downloads/owned-run")
+            )
+            for mismatch in ("experiment", "run"):
+                with self.subTest(mismatch=mismatch):
+                    client.list_artifacts.reset_mock()
+                    if mismatch == "experiment":
+                        client.get_experiment_by_name.return_value.artifact_location = "file:///old"
+                    else:
+                        client.get_experiment_by_name.return_value.artifact_location = expected
+                        run.info.artifact_uri = expected + "/another-run/artifacts"
+                    with self.assertRaisesRegex(AssertionError, "artifact location"):
+                        logging._mlflow_runs(self.root, settings)
+                    client.list_artifacts.assert_not_called()
 
     def test_metadata_bounds_and_first_episode_scope(self):
         result = logging._check_metadata("frame_000000000032.json", metadata(), 32)

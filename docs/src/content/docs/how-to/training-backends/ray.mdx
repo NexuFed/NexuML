@@ -235,6 +235,14 @@ records identify local job receipts/logs and preserve both native Ray status and
 campaign result. A failed or stopped job is not made successful by a receipt
 claiming PASS. Hermetic reporting checks are not remote qualification.
 
+If Ray fails before a worker receipt is available, the acceptance terminal record
+includes an allowlisted native failure code and a static explanation. For example,
+`JOB_SUPERVISOR_ACTOR_START_TIMEOUT` means the workload never started; it does not
+diagnose why a worker could not be allocated. Check current worker scheduling events
+and reservations rather than infer a CUDA, setup or training failure. Unknown codes
+and unavailable diagnostics stay explicit. Raw SDK messages are not echoed because
+they may contain credentials; original private job logs remain separate.
+
 Remote export requires an explicit `--output` worker path; omitted output remains
 a local-only default. Monitoring, cleanup and artifact access still require
 the approved deployment's native routes and ownership checks.

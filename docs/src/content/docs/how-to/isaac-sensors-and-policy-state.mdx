@@ -232,3 +232,28 @@ has separate native training/replay browser qualification; unqualified viewer
 selections fail closed. A viewer screenshot is not proof of policy sensor values,
 and sensor probes are not browser acceptance. See [grouped learning](/how-to/isaac-multi-agent-learning/)
 for the distinct limits on native grouped sensors and history.
+
+## Remote processing-owner acceptance
+
+The fixed acceptance driver can select the existing camera recipe's processing
+owner explicitly, without editing the scenario or changing its backend:
+
+```bash
+CUDA_VISIBLE_DEVICES='' python scripts/physical_ai_acceptance.py \
+  --case recipe --recipe isaac-mixed-cartpole-ppo --processing-owner external \
+  --frames 1024 --batch 128 --envs 2 \
+  --profile "$QUALIFIED_ISAAC_PROFILE" --ca "$RAY_CA_BUNDLE" \
+  --output "$FRESH_OUTPUT" --wall-seconds 3600 --queue-seconds 900 \
+  --concurrency 1 --submit
+```
+
+Use `package` and `external` separately for each RGB/depth/segmentation/mixed
+recipe. The worker rejects a requested owner that differs from the resolved sensor
+and policy contract; it never rewrites that contract to make the request pass.
+The categorical recipe has no camera-processing owner and rejects this flag.
+
+The same public CLI train/resume/export/evaluate stages and immutable checkpoint
+checks apply to every selected owner. Run the separate fixed `native-sensors`
+regression suite for raw units/class labels, terminal/reset/history and portable
+actor oracles. Neither a dry-run plan nor hermetic tests qualify native execution:
+all required CLI and oracle cases must pass on the identified remote candidate.

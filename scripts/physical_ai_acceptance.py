@@ -30,6 +30,19 @@ CASES = (
 )
 TERMINAL = {"SUCCEEDED", "FAILED", "STOPPED"}
 KNOWN_STATES = TERMINAL | {"PENDING", "RUNNING"}
+SENSOR_RECIPES = frozenset(
+    f"isaac-{family}-cartpole-ppo" for family in ("rgb", "depth", "segmentation", "mixed")
+)
+NATIVE_FAILURE_SUMMARIES = {
+    "RUNTIME_ENV_SETUP_FAILURE": "Ray runtime environment setup failed.",
+    "JOB_SUPERVISOR_ACTOR_START_TIMEOUT": "Ray job start timed out before the workload started.",
+    "JOB_SUPERVISOR_ACTOR_START_FAILURE": "Ray job supervisor failed to start.",
+    "JOB_SUPERVISOR_ACTOR_UNSCHEDULABLE": "Ray job supervisor could not be scheduled.",
+    "JOB_SUPERVISOR_ACTOR_UNKNOWN_FAILURE": "Ray job supervisor failed unexpectedly.",
+    "JOB_SUPERVISOR_ACTOR_DIED": "Ray job supervisor died.",
+    "JOB_ENTRYPOINT_COMMAND_START_ERROR": "Ray job entrypoint could not be started.",
+    "JOB_ENTRYPOINT_COMMAND_ERROR": "Ray job entrypoint exited with an error.",
+}
 
 
 def _bounded_rpc(function, *args, timeout_seconds=30, **kwargs):
@@ -54,6 +67,28 @@ def _bounded_rpc(function, *args, timeout_seconds=30, **kwargs):
     finally:
         signal.setitimer(signal.ITIMER_REAL, 0)
         signal.signal(signal.SIGALRM, previous)
+
+
+def _native_failure(client, job_id) -> dict:
+    """Read only the allowlisted error code; SDK messages can contain credentials.
+
+    Returns:
+        Static safe diagnostics without changing the observed terminal status.
+    """
+    try:
+        details = _bounded_rpc(client.get_job_info, job_id, timeout_seconds=30)
+    except Exception:
+        return {
+            "type": "UNAVAILABLE",
+            "summary": "Ray failure details unavailable; no worker receipt was available.",
+        }
+    error_type = getattr(details, "error_type", None)
+    if type(error_type) is str and error_type in NATIVE_FAILURE_SUMMARIES:
+        return {"type": error_type, "summary": NATIVE_FAILURE_SUMMARIES[error_type]}
+    return {
+        "type": "UNKNOWN",
+        "summary": "Ray failure cause is unknown; no worker receipt was available.",
+    }
 
 
 def source_identity(root: Path) -> str:
@@ -170,7 +205,7 @@ def run_campaign(
                 option_names = {
                     "preflight": {"data_root"},
                     "regression": {"suite"},
-                    "recipe": {"recipe", "recording"},
+                    "recipe": {"recipe", "recording", "processing_owner"},
                     "recovery": {"source_attempt", "source_case_sha256", "source_guard_sha256"},
                     "browser": {
                         "source_attempt",
@@ -255,6 +290,11 @@ def run_campaign(
                 logs = _bounded_rpc(client.get_job_logs, job_id)
                 (output / f"{job_id}.log").write_text(logs)
                 receipt = case_result(logs)
+                native_failure = (
+                    _native_failure(client, job_id)
+                    if status == "FAILED" and receipt is None
+                    else None
+                )
                 identity = attempt["options"]["source_tree_sha256"]
                 passed = (
                     not timed_out
@@ -280,6 +320,7 @@ def run_campaign(
                     "source_tree_sha256": identity,
                     "budgets": attempt["options"].get("budgets"),
                     "receipt": receipt,
+                    **({"native_failure": native_failure} if native_failure else {}),
                     **{
                         key: attempt[key]
                         for key in ("submission_error_type", "reconciliation")
@@ -289,7 +330,12 @@ def run_campaign(
                 (output / f"{job_id}.json").write_text(json.dumps(row, indent=2) + "\n")
                 results.append(row)
                 del active[job_id]
-                print(f"{job_id}: {row['status']} ({status})", flush=True)
+                cause = (
+                    f": {native_failure['type']}: {native_failure['summary']}"
+                    if native_failure
+                    else ""
+                )
+                print(f"{job_id}: {row['status']} ({status}){cause}", flush=True)
                 print(
                     "NEXUML_CASE_TERMINAL="
                     + json.dumps(
@@ -299,6 +345,7 @@ def run_campaign(
                             "status": row["status"],
                             "receipt_path": str(output / f"{job_id}.json"),
                             "log_path": str(output / f"{job_id}.log"),
+                            **({"native_failure": native_failure} if native_failure else {}),
                         }
                     ),
                     flush=True,
@@ -345,6 +392,11 @@ def main() -> None:
     parser.add_argument("--case", action="append", choices=CASES, required=True)
     parser.add_argument("--recipe", help="Registered matrix recipe; required for recipe cases")
     parser.add_argument(
+        "--processing-owner",
+        choices=("package", "external"),
+        help="Explicit processing owner for one fixed I2 camera recipe",
+    )
+    parser.add_argument(
         "--recorded",
         action="store_true",
         help="Fixed PhysX Cartpole or M1 EGL GIF/MP4 replay after scalar CLI proof",
@@ -376,6 +428,7 @@ def main() -> None:
             "python314",
             "native-state",
             "native-sensors",
+            "native-viewer",
             "public-so101-cli",
         ),
         default="full",
@@ -398,6 +451,10 @@ def main() -> None:
         parser.error("Recipe budgets must be positive")
     if "recipe" in args.case and not args.recipe:
         parser.error("recipe cases require --recipe")
+    if args.processing_owner is not None and (
+        args.case != ["recipe"] or args.recipe not in SENSOR_RECIPES
+    ):
+        parser.error("--processing-owner requires one fixed I2 camera recipe")
     if args.browser_mode != "separate" and "browser" not in args.case:
         parser.error("--browser-mode requires a browser case")
     if args.recorded and (
@@ -451,7 +508,13 @@ def main() -> None:
         if case == "recipe":
             from nexuml.core.scenario_registry import get_scenario_registry
 
-            scenario = get_scenario_registry().get(args.recipe)()
+            scenario = get_scenario_registry().get(args.recipe)(
+                **(
+                    {"processing_owner": args.processing_owner}
+                    if args.processing_owner is not None
+                    else {}
+                )
+            )
             if not isinstance(scenario.training, ReinforcementLearningSpec):
                 parser.error("Recipe cases require a registered RL matrix scenario")
             scenario.training.total_frames = args.frames
@@ -474,6 +537,7 @@ def main() -> None:
                     "suite": args.suite,
                     "recipe": args.recipe,
                     "recording": "both" if args.recorded else None,
+                    "processing_owner": args.processing_owner,
                     "source_attempt": args.source_attempt,
                     "source_case_sha256": args.source_case_sha256,
                     "source_guard_sha256": args.source_guard_sha256,

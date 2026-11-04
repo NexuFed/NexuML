@@ -494,6 +494,19 @@ class PhysicalAICasesTest(unittest.TestCase):
                         )
                 stage.assert_not_called()
 
+    def test_run_case_admits_only_fixed_sensor_owner_options_before_recipe_dispatch(self):
+        for owner in ("package", "external"):
+            with self.subTest(owner=owner):
+                self.root = self.base / f"sensor-{owner}"
+                self.guarded_root()
+                options = {"recipe": "isaac-mixed-cartpole-ppo", "processing_owner": owner}
+                recipe = mock.Mock()
+                with mock.patch.dict(self.g, _recipe=recipe):
+                    code, receipt = self.run_case("recipe", options)
+                self.assertEqual((code, receipt["status"]), (0, "PASS"))
+                recipe.assert_called_once()
+                self.assertEqual(recipe.call_args.args[3], options)
+
     def test_browser_controller_failure_has_private_traceback_and_preserves_primary(self):
         self.root.mkdir()
         original = RuntimeError("original private server readiness failure")
@@ -721,6 +734,62 @@ class PhysicalAICasesTest(unittest.TestCase):
         self.assertEqual(receipt["checks"]["native_sensor_oracles"], "PASS")
         self.assertNotIn("native_state_oracles", receipt["checks"])
         self.assertTrue(all(value == "UNVERIFIED" for value in receipt["gates"].values()))
+
+    def test_native_cli_viewer_suite_routes_only_to_fixed_profile(self):
+        self.guarded_root()
+        preflight = mock.Mock()
+        self.patch_globals(_preflight=preflight)
+
+        class MissingViewerRuntime(RuntimeError):
+            pass
+
+        def run_viewer(record, root, env, stage):
+            self.assertEqual(root, self.root)
+            self.assertEqual(env["CUDA_VISIBLE_DEVICES"], "0")
+            record["regression"] = {"native_proof": True, "full_suite_gate": "UNVERIFIED"}
+            record["checks"]["native_cli_viewer"] = "PASS"
+
+        with (
+            mock.patch(
+                "runpy.run_path",
+                return_value={
+                    "run_viewer": run_viewer,
+                    "MissingViewerRuntime": MissingViewerRuntime,
+                },
+            ) as load,
+            mock.patch.dict(os.environ, CUDA_VISIBLE_DEVICES="0"),
+        ):
+            code, receipt = self.run_case("regression", {"suite": "native-viewer"})
+        self.assertEqual(code, 0)
+        preflight.assert_called_once()
+        self.assertEqual(receipt["checks"]["native_cli_viewer"], "PASS")
+        self.assertTrue(all(value == "UNVERIFIED" for value in receipt["gates"].values()))
+        self.assertEqual(Path(load.call_args.args[0]).name, "physical_ai_cli_viewer.py")
+
+    def test_native_cli_viewer_missing_profile_blocks_but_stage_failure_does_not(self):
+        self.patch_globals(_preflight=mock.Mock())
+
+        class MissingViewerRuntime(RuntimeError):
+            pass
+
+        for error, expected in (
+            (MissingViewerRuntime("prepared private viewer runtime is required"), (2, "BLOCKED")),
+            (AssertionError("native CLI stage failed"), (1, "FAIL")),
+        ):
+            with self.subTest(error=type(error).__name__):
+                self.root = self.base / type(error).__name__
+                self.guarded_root()
+                with mock.patch(
+                    "runpy.run_path",
+                    return_value={
+                        "run_viewer": mock.Mock(side_effect=error),
+                        "MissingViewerRuntime": MissingViewerRuntime,
+                    },
+                ):
+                    code, receipt = self.run_case("regression", {"suite": "native-viewer"})
+                self.assertEqual((code, receipt["status"]), expected)
+                self.assertEqual(receipt["gates"]["V"], "BLOCKED" if code == 2 else "UNVERIFIED")
+                self.assertNotEqual(receipt["checks"].get("native_cli_viewer"), "PASS")
 
     def test_declared_python_suites_reuse_guarded_profile_and_preserve_gpu_visibility(self):
         for suite, version in (("python313", "3.13"), ("python314", "3.14")):
@@ -1395,7 +1464,14 @@ class PhysicalAICasesTest(unittest.TestCase):
             },
         )
         self.assertEqual(prepared.exports[0].output, str(self.root / "policy"))
-        self.assertEqual(prepared.logging.mlflow.tracking_uri, (self.root / "logs/mlflow").as_uri())
+        self.assertEqual(
+            prepared.logging.mlflow.tracking_uri, f"sqlite:///{self.root / 'logs/mlflow.db'}"
+        )
+        self.assertEqual(
+            prepared.logging.mlflow.artifact_location,
+            f"s3://rglitza/logs/physical-ai/{self.root.parent.name}/{self.root.name}",
+        )
+        self.assertTrue((self.root / "logs").is_dir())
         self.assertIsNone(prepared.logging.mlflow.run_id)
         self.assertEqual(
             (config.training.total_frames, config.training.frames_per_batch, config.training.seed),

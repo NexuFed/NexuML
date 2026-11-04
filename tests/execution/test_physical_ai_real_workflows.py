@@ -10,6 +10,31 @@ from unittest import mock
 import pytest
 
 
+@pytest.mark.parametrize("owner", ["package", "external"])
+@pytest.mark.parametrize("family", ["rgb", "depth", "segmentation", "mixed"])
+def test_sensor_recipe_admission_checks_requested_processing_owner(tmp_path, family, owner):
+    from nexuml.core.config import ResolvedConfig
+    from nexuml_library.scenarios.reinforcement import isaaclab_sensors
+
+    name = f"isaac-{family}-cartpole-ppo"
+    scenario = getattr(isaaclab_sensors, f"isaac_{family}_cartpole_ppo")(processing_owner=owner)
+    config = tmp_path / "input.yaml"
+    ResolvedConfig.from_scenario(scenario).save(config)
+    root = tmp_path / "attempt"
+    root.mkdir()
+    worker = runpy.run_path("tests/fixtures/physical_ai_acceptance.py")
+    fn = worker["_prepare_recipe"]
+    wrong = "external" if owner == "package" else "package"
+    with pytest.raises(worker["Blocked"], match="processing owner differs"):
+        fn(config, root, {"recipe": name, "processing_owner": wrong})
+    assert not (root / "case.yaml").exists()
+    prepared = fn(config, root, {"recipe": name, "processing_owner": owner})
+    assert prepared.interaction is not None and prepared.policy is not None
+    fields = prepared.interaction.environment.describe().observations.values()
+    assert {field.sensor.owner for field in fields if field.sensor is not None} == {owner}
+    assert (prepared.policy.processor is not None) == (owner == "package")
+
+
 def test_public_scenario_keeps_episode_splits_and_has_no_fake_native_contract(
     monkeypatch, tmp_path
 ):

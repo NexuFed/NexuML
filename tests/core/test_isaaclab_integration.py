@@ -95,10 +95,10 @@ def test_upstream_native_learning_baseline(tmp_path, task):
     assert all(math.isfinite(event.value) for event in losses)
 
 
-def _run(args, output, label, *, expected=0, process_scope=True):
+def _run(args, output, label, *, expected=0, process_scope=True, extra_env=None):
     assert shutil.disk_usage(ROOT).free > 4 * 2**30
     output.mkdir(parents=True, exist_ok=True)
-    env = {**os.environ, "NEXUML_LOGS_ROOT": str(output / "native-logs")}
+    env = {**os.environ, "NEXUML_LOGS_ROOT": str(output / "native-logs"), **(extra_env or {})}
     result = subprocess.run(
         [sys.executable, *([str(ENTRYPOINT)] if process_scope else []), *map(str, args)],
         cwd=ROOT,
@@ -308,6 +308,118 @@ def test_native_spectator_real_browser_train_replay_and_lifecycle(tmp_path):
             finalizations = json.loads((tmp_path / mode / "logger-finalization.json").read_text())
             assert finalizations and finalizations[-1]["status"] == "failed"
             assert all(event["job_scope_active"] for event in finalizations)
+
+
+@pytest.mark.requires_system
+def test_native_spectator_public_cli_browser_train_replay_and_lifecycle(tmp_path):
+    import hashlib
+    import signal
+    import socket
+    import torch
+
+    for key in ("NEXUML_PLAYWRIGHT_MODULE", "NEXUML_CHROMIUM_EXECUTABLE"):
+        if not os.environ.get(key) or not Path(os.environ[key]).exists():
+            pytest.skip(f"{key} must select the prepared private browser runtime")
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("The prepared private Node runtime is required")
+    port = 8081  # KubeRay metrics owns 8080; conflicts fail, never select another port.
+    with socket.socket() as reservation:
+        reservation.bind(("127.0.0.1", port))
+    fixture = ROOT / "tests/fixtures/isaaclab_viser_cli.py"
+
+    def headless(mode):
+        launch = json.loads(
+            _run(
+                [fixture, "prepare", mode, tmp_path / mode, port],
+                tmp_path,
+                f"prepare-{mode}",
+                process_scope=False,
+            )
+        )
+        assert launch["argv"][:3] == [sys.executable, "-m", "nexuml.cli.main"]
+        text = _run(
+            launch["argv"][1:],
+            tmp_path / mode,
+            f"public-cli-{mode}",
+            process_scope=False,
+            extra_env=launch["env"],
+        )
+        assert f"CLI_PROBE_NATIVE_CLOSED_AND_OWNED_THREADS_STOPPED {mode}" in text
+        assert json.loads((tmp_path / mode / "native-cleanup.json").read_text())["status"] == "PASS"
+
+    def trajectory(directory):
+        manifest = json.loads((directory / "trajectory-manifest.json").read_text())
+        values = []
+        for index, part in enumerate(manifest["parts"]):
+            expected = "trajectory.pt" if index == 0 else f"trajectory-{index:04d}.pt"
+            assert part["path"] == expected
+            target = directory / expected
+            assert target.stat().st_size == part["bytes"] <= 32 * 1024**2
+            with target.open("rb") as source:
+                assert hashlib.file_digest(source, "sha256").hexdigest() == part["sha256"]
+            chunk = torch.load(target, weights_only=True)
+            assert len(chunk) == part["steps"]
+            values.extend(chunk)
+        assert len(values) == manifest["steps"]
+        return values
+
+    headless("train")
+    for mode in ("train-viewer", "replay-viewer", "failure-viewer", "cancel-viewer"):
+        assert shutil.disk_usage(ROOT).free > 4 * 2**30
+        log_path = tmp_path / f"{mode}-public-cli-browser.log"
+        with log_path.open("x") as log:
+            process = subprocess.Popen(
+                [
+                    node,
+                    str(ROOT / "tests/fixtures/isaaclab_viser_cli_browser.cjs"),
+                    str(tmp_path / mode),
+                    mode,
+                    str(port),
+                ],
+                cwd=ROOT,
+                env={**os.environ, "NEXUML_SPECTATOR_PYTHON": sys.executable},
+                stdout=log,
+                stderr=subprocess.STDOUT,
+                start_new_session=True,
+            )
+            try:
+                process.wait(timeout=240)
+            finally:
+                if process.poll() is None:
+                    os.killpg(process.pid, signal.SIGTERM)
+                    try:
+                        process.wait(timeout=20)
+                    except subprocess.TimeoutExpired:
+                        os.killpg(process.pid, signal.SIGKILL)
+                process.wait(timeout=5)
+        text = log_path.read_text()
+        assert process.returncode == 0, text
+        assert "PUBLIC_CLI_WITH_TEST_OWNED_INSTANCE_PROBE" in text
+        assert "NATIVE_BROWSER_JOB_STATUS_AND_LISTENER_CLEANUP_VERIFIED" in text
+        if mode == "train-viewer":
+            torch.testing.assert_close(
+                trajectory(tmp_path / "train"), trajectory(tmp_path / mode), rtol=0, atol=0
+            )
+            torch.testing.assert_close(
+                torch.load(tmp_path / "train/training-state.pt", weights_only=True),
+                torch.load(tmp_path / mode / "training-state.pt", weights_only=True),
+                rtol=0,
+                atol=0,
+            )
+            headless("replay")
+        if mode == "replay-viewer":
+            torch.testing.assert_close(
+                trajectory(tmp_path / "replay"),
+                trajectory(tmp_path / "replay-viewer"),
+                rtol=0,
+                atol=0,
+            )
+        if mode in {"failure-viewer", "cancel-viewer"}:
+            finalizations = json.loads((tmp_path / mode / "logger-finalization.json").read_text())
+            assert finalizations and finalizations[-1]["status"] == "failed"
+            assert all(event["job_scope_active"] for event in finalizations)
+            assert all(event["completed"] and event["error"] is None for event in finalizations)
 
 
 @pytest.mark.parametrize("mode", ["port-conflict", "startup-failure"])

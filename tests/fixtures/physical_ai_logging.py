@@ -40,7 +40,7 @@ def _logging_settings(mode, root):
         "tensorboard": {"log_dir": str(root / "logs/tb")} if mode in {"tb-only", "both"} else None,
         "mlflow": {
             "tracking_uri": f"sqlite:///{root / 'logs/mlflow.db'}",
-            "artifact_location": (root / "logs/mlflow-artifacts").as_uri(),
+            "artifact_location": f"s3://rglitza/logs/physical-ai/{root.parent.name}/{root.name}",
             "auto_nested_runs": False,
             "experiment_name": f"physical-ai-logging-{mode}",
         }
@@ -89,6 +89,8 @@ def _prepare_mode(mode, root, prepare_recipe):
     config = prepare_recipe(root / "logging-input.yaml", root, {"recipe": "cartpole-ppo"})
     # prepare_recipe rewrites tracking URIs: override only after it sets owned paths.
     settings = _logging_settings(mode, root)
+    if mode in {"mlflow-only", "both"}:
+        (root / "logs").mkdir(exist_ok=True)
     config.logging = None if settings is None else LoggingSpec.model_validate(settings)
     config.save(root / "case.yaml")
     replay = config.model_copy(deep=True)
@@ -394,10 +396,17 @@ def _mlflow_runs(root, settings):
     experiment = client.get_experiment_by_name(settings["experiment_name"])
     if experiment is None:
         raise AssertionError("configured native MLflow experiment missing")
+    if experiment.artifact_location.rstrip("/") != settings["artifact_location"].rstrip("/"):
+        raise AssertionError("MLflow experiment artifact location differs from the owned S3 prefix")
     runs, token = [], None
     while True:
         page = client.search_runs([experiment.experiment_id], max_results=100, page_token=token)
         for run in page:
+            expected = f"{settings['artifact_location'].rstrip('/')}/{run.info.run_id}/artifacts"
+            if run.info.artifact_uri != expected:
+                raise AssertionError(
+                    "MLflow run artifact location differs from the owned S3 prefix"
+                )
             mirror = root / "mlflow-downloads" / run.info.run_id
             mirror.mkdir(parents=True)
             artifacts = client.list_artifacts(run.info.run_id)
