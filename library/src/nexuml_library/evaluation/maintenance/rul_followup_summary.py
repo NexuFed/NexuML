@@ -18,8 +18,11 @@ from typing import Any
 
 ARMS = ("baseline", "all_no_trend")
 OMISSIONS = (
-    "without_finetune", "without_graph", "without_multiscale",
-    "without_segmentation", "without_trajectory",
+    "without_finetune",
+    "without_graph",
+    "without_multiscale",
+    "without_segmentation",
+    "without_trajectory",
 )
 RELIABILITY_SEEDS = tuple(range(42, 52))
 ABLATION_SEEDS = (42, 43, 44)
