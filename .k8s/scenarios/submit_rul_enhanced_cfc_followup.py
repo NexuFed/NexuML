@@ -85,6 +85,9 @@ def followup_job_name(subset: str, configuration: str, seed: int) -> str:
 
     Returns:
         Job name associated with exactly one NexuML scenario.
+
+    Raises:
+        ValueError: If the Job name would violate Kubernetes DNS limits.
     """
     phase_for(subset, configuration, seed)
     job = (
