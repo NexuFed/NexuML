@@ -41,23 +41,33 @@ def launcher_module(monkeypatch: pytest.MonkeyPatch):
 @pytest.mark.parametrize(
     ("subset", "configuration", "seed"),
     [
-        *[("FD003", c, s) for c in followup.VALIDATION_ARMS
-          for s in followup.RELIABILITY_SEEDS],
-        *[("FD003", c, s) for c in followup.LEAVE_ONE_OUT
-          for s in followup.ABLATION_SEEDS],
-        *[("FD001", c, s) for c in followup.VALIDATION_ARMS
-          for s in followup.FD001_SEEDS],
+        *[
+            ("FD003", c, s)
+            for c in followup.VALIDATION_ARMS
+            for s in followup.RELIABILITY_SEEDS
+        ],
+        *[
+            ("FD003", c, s)
+            for c in followup.LEAVE_ONE_OUT
+            for s in followup.ABLATION_SEEDS
+        ],
+        *[
+            ("FD001", c, s)
+            for c in followup.VALIDATION_ARMS
+            for s in followup.FD001_SEEDS
+        ],
     ],
 )
 def test_independent_run_registration_and_artifacts(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
-    subset: str, configuration: str, seed: int,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    subset: str,
+    configuration: str,
+    seed: int,
 ) -> None:
     """All 41 native scenarios have their own selected checkpoint and seed."""
     monkeypatch.chdir(tmp_path)
-    native = getattr(
-        followup, f"followup_{subset.lower()}_{configuration}_s{seed}"
-    )
+    native = getattr(followup, f"followup_{subset.lower()}_{configuration}_s{seed}")
     assert native.__nexuml_discovered__["key"] == (
         f"maintenance-rul-enhanced-cfc-followup-"
         f"{subset.lower()}-{configuration}-s{seed}"
