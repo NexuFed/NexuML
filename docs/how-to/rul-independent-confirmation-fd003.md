@@ -46,7 +46,7 @@ results remain unchanged.
 ## GPU launch on Kubernetes
 
 The CUDA container image is
-`ghcr.io/nexufed/nexuml:latest`, replacing the broken
+`ghcr.io/nexufed/nexuml:sha-f8d5490-cuda12.8.1`, replacing the broken
 `harbor.ika.rub.de/library/nexuml:latest` transfer. The Kueue `jobs`
 queue, `lbecker` namespace, immutable source-digest staging and ephemeral
 Python environment are retained. Each Job requests one NVIDIA GPU and
@@ -151,7 +151,7 @@ kubectl -n lbecker get pods \
 The helper reads the five original files from
 `.k8s/scenarios/rendered/<job>.yaml` and generates
 `.k8s/scenarios/rendered/global-ghcr-retries/<job>.yaml`. It changes
-the image to the GHCR `latest` tag and sets a required hostname
+the image to the GHCR `sha-f8d5490-cuda12.8.1` tag and sets a required hostname
 `NotIn` affinity for the discovered GH200 nodes plus
 `student-worker-1`. It removes the old CUDA runtime-major label
 requirement. It **does not** restage or change the original immutable
@@ -164,7 +164,7 @@ If a Job has already started training or an original manifest is missing,
 inspect it rather than forcing a replacement.
 
 The four completed trials used the original Harbor image; the recovered
-five use the mutable GHCR `latest` tag. Although the source snapshot
+five use the explicit GHCR `sha-f8d5490-cuda12.8.1` tag. Although the source snapshot
 and experiments remain fixed, **the container environments are not identical**.
 Record this provenance difference when interpreting the final confirmation
 comparison, and verify the new image is accessible to worker nodes.
