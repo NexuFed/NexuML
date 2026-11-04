@@ -202,3 +202,11 @@ Do not claim a statistically definitive architecture winner from only three
 seeds. If the simplified fine-tuning model performs similarly to the more
 complex `all_no_trend` model, prefer further validation and efficiency
 measurement before adding optional factors to a production model.
+
+## Follow-up after independent confirmation
+
+The separate NEX-233 phase-2 campaign adds ten readout seeds per winning
+configuration, five leave-one-out factors and a separately trained FD001
+replication. See [CfC follow-up: reliability, ablation and FD001](rul-enhanced-cfc-followup.md).
+It does **not** replace or alter the nine completed FD003 confirmation Jobs.
+
