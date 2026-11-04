@@ -106,7 +106,8 @@ def followup_study(
     switches: dict[str, bool | int] = {"initialization_seed": seed}
     omitted = configuration.removeprefix("without_")
     if configuration in LEAVE_ONE_OUT:
-        switches[omitted] = False
+        field = "train_encoder" if omitted == "finetune" else omitted
+        switches[field] = False
     new_head = model.model_copy(update=switches)
     new_model_layer = model_layer.model_copy(update={"component": new_head})
 
