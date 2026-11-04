@@ -346,13 +346,13 @@ jobs:
           version: "latest"
 
       - name: Download validated Python distributions
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: python-distributions${{ env.ARTIFACT_SUFFIX }}
           path: dist
 
       - name: Download the single Studio build
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: studio-distribution${{ env.ARTIFACT_SUFFIX }}
           path: dist/studio
@@ -475,12 +475,12 @@ jobs:
           persist-credentials: false
       - uses: ./.github/actions/prepare-release
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
         with:
           artifact-ids: ${{ needs.package.outputs.artifact-id }}
           path: dist
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
         with:
           artifact-ids: ${{ needs.studio-build.outputs.artifact-id }}
