@@ -94,7 +94,7 @@ spec:
               test -f library/src/nexuml_library/scenarios/maintenance/rul_enhanced_cfc_followup.py
               test -f uv.lock
               # Remove only this run's old success marker, so failed retries
-              # cannot masquerade as completed confirmations.
+              # cannot masquerade as completed follow-up runs.
               rm -f .experiments/rul/enhanced-cfc/followup/__SUBSET_LOWER__/__CONFIG_SLUG__-s__SEED__.execution.json
               # This RUL loader does NOT use NEXUML_RUL_CHECKPOINT_ROOT for
               # discovery. It requires the validated upstream audit manifest,
@@ -115,7 +115,7 @@ spec:
                       "The mounted /mnt/models folder alone is insufficient. "
                       "Find the validation-selected checkpoint and its native audit "
                       "manifest on the host and make them available to this job, "
-                      "or train maintenance-rul-controlled-fd003-patchformer-s42 first."
+                      "or train maintenance-rul-controlled-__SUBSET_LOWER__-patchformer-s42 first."
                   )
               payload = json.loads(audit.read_text(encoding="utf-8"))
               best = payload.get("best_model_path")
@@ -129,8 +129,8 @@ spec:
               if not endpoint.is_file():
                   raise SystemExit(
                       f"Missing train-only endpoint normalizer: {endpoint}. "
-                      "Prepare the matching FD003 seed-42 endpoint artifact "
-                      "before the six-factor comparison."
+                      "Prepare the matching __SUBSET__ seed-42 endpoint artifact "
+                      "before this follow-up study."
                   )
               print(f"Validated upstream checkpoint: {checkpoint}", flush=True)
               print(f"Validated upstream endpoint artifact: {endpoint}", flush=True)
