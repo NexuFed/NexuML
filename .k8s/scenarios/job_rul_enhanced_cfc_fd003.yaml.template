@@ -27,7 +27,7 @@ spec:
       runtimeClassName: nvidia
       imagePullSecrets:
         - name: regcred
-      # NexuML GHCR CUDA image for linux/amd64; latest is a mutable tag.
+      # NexuML GHCR CUDA image for linux/amd64; use the explicit build tag.
       nodeSelector:
         kubernetes.io/arch: amd64
       volumes:
@@ -45,7 +45,7 @@ spec:
             sizeLimit: 4Gi
       containers:
         - name: nexuml
-          image: ghcr.io/nexufed/nexuml:latest
+          image: ghcr.io/nexufed/nexuml:sha-f8d5490-cuda12.8.1
           imagePullPolicy: IfNotPresent
           workingDir: /tmp
           env:
