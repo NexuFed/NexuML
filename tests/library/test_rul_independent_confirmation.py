@@ -127,7 +127,7 @@ def test_k8s_render_isolated_jobs_and_global_gpu_pool(
             assert "subPath: models/nexuml/.experiments" in manifest
             assert "mountPath: /mnt/nexuml-source" in manifest
             assert "mountPath: /tmp/nexuml-job-venv" in manifest
-            assert "ghcr.io/nexufed/nexuml:latest" in manifest
+            assert "ghcr.io/nexufed/nexuml:sha-f8d5490-cuda12.8.1" in manifest
             assert "harbor.ika.rub.de/library/nexuml:latest" not in manifest
             expected = (
                 f"maintenance-rul-enhanced-cfc-confirm-fd003-{configuration}-s{seed}"
@@ -272,7 +272,7 @@ def test_image_pull_restart_preserves_source_and_switches_image_and_pool(
         "operator: In\n                    values: [cip-gpu-4, cip-gpu-9, cip-gpu-14]",
     )
     old = old.replace(
-        "image: ghcr.io/nexufed/nexuml:latest",
+        "image: ghcr.io/nexufed/nexuml:sha-f8d5490-cuda12.8.1",
         "image: harbor.ika.rub.de/library/nexuml:latest",
     )
     old = old.replace(
@@ -290,7 +290,7 @@ def test_image_pull_restart_preserves_source_and_switches_image_and_pool(
         manifest, job=name, digest=digest, excluded_hosts=excluded_hosts
     ) == manifest
     previous_tag = manifest.replace(
-        "image: ghcr.io/nexufed/nexuml:latest",
+        "image: ghcr.io/nexufed/nexuml:sha-f8d5490-cuda12.8.1",
         "image: ghcr.io/nexufed/nexuml:0.2.0-cuda12.8.1",
     )
     assert recovery.pin_original_manifest(
