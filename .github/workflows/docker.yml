@@ -7,8 +7,10 @@ on:
     tags: ["v*.*.*"]
 
 concurrency:
-  group: docker-${{ github.event_name }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Serialize publication across refs without discarding queued release builds.
+  group: docker-image
+  cancel-in-progress: false
+  queue: max
 
 permissions:
   contents: read
@@ -39,24 +41,8 @@ jobs:
           git fetch --no-tags origin main:refs/remotes/origin/main
           git merge-base --is-ancestor "$GITHUB_SHA" origin/main
 
-      - name: Validate release tag
+      - uses: ./.github/actions/prepare-release
         if: startsWith(github.ref, 'refs/tags/')
-        env:
-          REF_NAME: ${{ github.ref_name }}
-        run: |
-          python3 - "$REF_NAME" <<'PY'
-          import re
-          import sys
-          import tomllib
-          from pathlib import Path
-
-          tag = sys.argv[1]
-          if re.fullmatch(r"v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)", tag) is None:
-              raise SystemExit(f"Invalid release tag: {tag!r}")
-          version = tomllib.loads(Path("pyproject.toml").read_text())["project"]["version"]
-          if tag != f"v{version}":
-              raise SystemExit(f"Release tag {tag!r} does not match NexuML {version!r}")
-          PY
 
       # Docker Hub mirror (disabled): add docker.io/${{ vars.DOCKERHUB_USERNAME }}/nexuml
       # as a second image below, then enable the login step after configuring its token.
@@ -65,12 +51,12 @@ jobs:
         uses: docker/metadata-action@v6
         with:
           images: ${{ env.IMAGE_NAME }}
-          flavor: latest=false
+          flavor: |
+            latest=auto
+            suffix=-cuda${{ env.CUDA_VERSION }},onlatest=true
           tags: |
-            type=edge,branch=main,suffix=-cuda${{ env.CUDA_VERSION }}
-            type=semver,pattern={{version}},suffix=-cuda${{ env.CUDA_VERSION }}
-            type=semver,pattern={{major}}.{{minor}},suffix=-cuda${{ env.CUDA_VERSION }}
-            type=sha,format=short,prefix=sha-,suffix=-cuda${{ env.CUDA_VERSION }}
+            type=edge,branch=main
+            type=semver,pattern={{version}}
           labels: |
             org.opencontainers.image.title=NexuML
             org.opencontainers.image.description=Complete NexuML CUDA development and training environment
@@ -163,8 +149,35 @@ jobs:
         env:
           TAGS: ${{ steps.meta.outputs.tags }}
         run: |
+          latest_tag=""
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            git fetch --tags origin main:refs/remotes/origin/main
+            latest_tag=$(python3 - <<'PY'
+          import subprocess
+
+          from scripts.release_versions import stable_version
+
+          tags = subprocess.check_output(
+              ["git", "tag", "--merged", "origin/main", "--list", "v*"], text=True
+          ).splitlines()
+          versions = []
+          for tag in tags:
+              try:
+                  version = stable_version(tag)
+              except ValueError:
+                  continue
+              versions.append((tuple(map(int, version.split("."))), tag))
+          print(max(versions)[1])
+          PY
+            )
+          fi
+
           while IFS= read -r tag; do
             [ -z "$tag" ] && continue
+            if [ "$tag" = "$IMAGE_NAME:latest-cuda$CUDA_VERSION" ] && [ "$GITHUB_REF_NAME" != "$latest_tag" ]; then
+              echo "Skip latest promotion: $GITHUB_REF_NAME is older than $latest_tag"
+              continue
+            fi
             docker tag "$LOCAL_IMAGE" "$tag"
             docker push "$tag"
           done <<< "$TAGS"

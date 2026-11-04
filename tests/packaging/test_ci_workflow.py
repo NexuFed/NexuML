@@ -45,6 +45,133 @@ def test_only_package_publishers_use_hosted_runners():
     assert hosted == publishers
 
 
+def test_docker_metadata_keeps_only_exact_releases_latest_and_main():
+    root = Path(__file__).resolve().parents[2]
+    workflow = YAML(typ="safe").load((root / ".github/workflows/docker.yml").read_text())
+    assert workflow["on"] == {
+        "workflow_dispatch": None,
+        "push": {"branches": ["main"], "tags": ["v*.*.*"]},
+    }
+    assert workflow["env"]["CUDA_VERSION"] == "12.8.1"
+    assert workflow["concurrency"] == {
+        "group": "docker-image",
+        "cancel-in-progress": False,
+        "queue": "max",
+    }
+    metadata = next(step for step in workflow["jobs"]["build"]["steps"] if step.get("id") == "meta")
+    assert metadata["uses"] == "docker/metadata-action@v6"
+    assert metadata["with"]["images"] == "${{ env.IMAGE_NAME }}"
+    assert metadata["with"]["tags"].splitlines() == [
+        "type=edge,branch=main",
+        "type=semver,pattern={{version}}",
+    ]
+    assert metadata["with"]["flavor"].splitlines() == [
+        "latest=auto",
+        "suffix=-cuda${{ env.CUDA_VERSION }},onlatest=true",
+    ]
+
+
+def test_docker_prepares_tag_versions_and_verifies_before_push_only_publication():
+    root = Path(__file__).resolve().parents[2]
+    workflow = YAML(typ="safe").load((root / ".github/workflows/docker.yml").read_text())
+    assert workflow["permissions"] == {"contents": "read", "packages": "write"}
+    steps = workflow["jobs"]["build"]["steps"]
+    trusted = next(
+        i for i, step in enumerate(steps) if step.get("name") == "Validate trusted revision"
+    )
+    prepared = next(
+        i for i, step in enumerate(steps) if step.get("uses") == "./.github/actions/prepare-release"
+    )
+    built = next(i for i, step in enumerate(steps) if step.get("name") == "Build local image")
+    verified = next(i for i, step in enumerate(steps) if step.get("name") == "Verify local image")
+    login = next(i for i, step in enumerate(steps) if step.get("name") == "Log in to GHCR")
+    published = next(
+        i for i, step in enumerate(steps) if step.get("name") == "Publish verified image"
+    )
+    assert trusted < prepared < built < verified < login < published
+    assert steps[prepared]["if"] == "startsWith(github.ref, 'refs/tags/')"
+    assert steps[built]["with"]["context"] == "."  # Include the tag-stamped checkout.
+    assert steps[built]["with"]["push"] is False
+    assert not steps[verified].get("continue-on-error", False)
+    assert "assert torch.version.cuda ==" in steps[verified]["run"]
+    assert steps[login]["if"] == steps[published]["if"] == "github.event_name == 'push'"
+    assert steps[published]["env"]["TAGS"] == "${{ steps.meta.outputs.tags }}"
+    assert 'docker tag "$LOCAL_IMAGE" "$tag"' in steps[published]["run"]
+    assert 'docker push "$tag"' in steps[published]["run"]
+
+
+@pytest.mark.parametrize(
+    "ref,tags,promotes",
+    [
+        ("v0.2.2", ["v0.2.1", "v0.2.2"], True),
+        ("v0.2.2", ["v0.2.2", "v0.2.3"], False),
+        ("v0.2.9", ["v0.2.9", "v0.2.10"], False),
+        ("v0.2.10", ["v0.2.9", "v0.2.10"], True),
+        ("v0.2.2", ["v0.2.2", "v1.0.0rc1", "v01.2.3", "v1.2.3+build"], True),
+        ("main", [], False),
+    ],
+)
+def test_docker_publication_never_promotes_an_older_release(tmp_path, ref, tags, promotes):
+    root = Path(__file__).resolve().parents[2]
+    workflow = YAML(typ="safe").load((root / ".github/workflows/docker.yml").read_text())
+    source = next(
+        step["run"]
+        for step in workflow["jobs"]["build"]["steps"]
+        if step.get("name") == "Publish verified image"
+    )
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    calls = tmp_path / "calls.jsonl"
+    for tool in ("git", "docker"):
+        executable = bin_dir / tool
+        executable.write_text(
+            f"#!{sys.executable}\n"
+            "import json, os, sys\n"
+            f"tool = {tool!r}\n"
+            "with open(os.environ['COMMAND_CALLS'], 'a') as log:\n"
+            "    log.write(json.dumps([tool, *sys.argv[1:]]) + '\\n')\n"
+            "if tool == 'git' and sys.argv[1] == 'tag':\n"
+            "    print(os.environ['REMOTE_TAGS'])\n"
+        )
+        executable.chmod(0o755)
+    image = workflow["env"]["IMAGE_NAME"]
+    cuda = workflow["env"]["CUDA_VERSION"]
+    version = ref.removeprefix("v") if ref != "main" else "edge"
+    exact = f"{image}:{version}-cuda{cuda}"
+    latest = f"{image}:latest-cuda{cuda}"
+    result = subprocess.run(
+        ["bash", "-e", "-o", "pipefail", "-c", source],
+        cwd=root,
+        env={
+            **os.environ,
+            "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}",
+            "COMMAND_CALLS": str(calls),
+            "REMOTE_TAGS": "\n".join(tags),
+            "GITHUB_REF": f"refs/{'heads' if ref == 'main' else 'tags'}/{ref}",
+            "GITHUB_REF_NAME": ref,
+            "IMAGE_NAME": image,
+            "CUDA_VERSION": cuda,
+            "LOCAL_IMAGE": workflow["env"]["LOCAL_IMAGE"],
+            "TAGS": exact if ref == "main" else f"{exact}\n{latest}",
+        },
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    commands = [json.loads(line) for line in calls.read_text().splitlines()]
+    pushed = [command[2] for command in commands if command[:2] == ["docker", "push"]]
+    assert pushed == ([exact, latest] if promotes else [exact])
+    git_calls = [command[1:] for command in commands if command[0] == "git"]
+    assert git_calls == (
+        [
+            ["fetch", "--tags", "origin", "main:refs/remotes/origin/main"],
+            ["tag", "--merged", "origin/main", "--list", "v*"],
+        ]
+        if ref != "main"
+        else []
+    )
+
+
 def test_studio_ci_builds_once_and_tests_both_trusted_linux_installations(tmp_path):
     assert "pull_request" not in WORKFLOW["on"]
     assert "pull_request_target" not in WORKFLOW["on"]

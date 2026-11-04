@@ -75,12 +75,26 @@ Successful trusted push runs SHALL publish to `ghcr.io/nexufed/nexuml` using rep
 #### Scenario: Main image is published
 
 - **WHEN** a verified commit is pushed to `main` with CUDA `12.8.1`
-- **THEN** the workflow publishes `edge-cuda12.8.1` and an immutable `sha-<short-sha>-cuda12.8.1` tag for that commit.
+- **THEN** the workflow updates only `edge-cuda12.8.1` to that verified image
+- **AND** it does not update the stable `latest-cuda12.8.1` alias or publish a SHA tag.
 
 #### Scenario: Stable release image is published
 
-- **WHEN** verified tag `v0.2.0` is pushed with CUDA `12.8.1`
-- **THEN** the workflow publishes `0.2.0-cuda12.8.1`, `0.2-cuda12.8.1`, and an immutable commit tag for the same image.
+- **WHEN** verified tag `v0.2.0` is pushed with CUDA `12.8.1` and is the newest stable tag integrated into `main`
+- **THEN** the workflow prepares the shared package versions from the existing tag before building
+- **AND** it publishes `0.2.0-cuda12.8.1` and `latest-cuda12.8.1` for the same verified image
+- **AND** it does not update the main-tracking alias or publish release-series or SHA tags.
+
+#### Scenario: Older stable release is built after a newer tag
+
+- **WHEN** an older stable-tag workflow publishes after a newer stable tag is integrated into `main`
+- **THEN** it publishes only its exact-version tag and leaves the stable latest alias unchanged
+- **AND** the workflow serializes runs across refs and refreshes integrated tags immediately before publication so concurrent release runs cannot roll the alias backward.
+
+#### Scenario: Earlier registry tags exist
+
+- **WHEN** the workflow publishes using this tagging policy
+- **THEN** it leaves existing registry tags untouched rather than deleting package versions or historical tags.
 
 #### Scenario: User omits the image tag
 

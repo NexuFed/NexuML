@@ -59,9 +59,19 @@ read -r -p "GHCR tag: " NEXUML_IMAGE_TAG
 test -n "$NEXUML_IMAGE_TAG" && docker run --rm -it --gpus all "ghcr.io/nexufed/nexuml:$NEXUML_IMAGE_TAG"
 ```
 
-Release tags use `<nexuml-version>-cuda<cuda-version>`; `edge-cuda` and
-`sha-<short-sha>-cuda<cuda-version>` are development tags. GPU execution needs
-a matching NVIDIA driver and [Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html).
+CI uses these tag patterns after building and verifying an image:
+
+- `<nexuml-version>-cuda<cuda-version>` selects an exact release version.
+- `latest-cuda<cuda-version>` advances only for the newest stable tag integrated into `main`.
+- `edge-cuda<cuda-version>` tracks the most recently verified image from `main`, not a stable release.
+
+The latest selected version and its `latest-cuda<cuda-version>` alias refer to the
+same image; aliases do not require separate builds. Older release runs publish
+their exact-version tag without moving `latest` backward. CI no longer generates
+SHA or release-series tags;
+existing registry tags are not deleted. Manual workflow dispatch builds and verifies
+without publishing. Images are available only after a successful publishing run.
+GPU execution needs a matching NVIDIA driver and [Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html).
 Omit `--gpus all` for CPU use; mount directories if outputs must survive `--rm`.
 
 ## CUDA and PyTorch
