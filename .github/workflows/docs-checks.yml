@@ -58,7 +58,7 @@ jobs:
           npm --prefix docs run check
           docs/python/.venv/bin/python docs/scripts/verify_candidate.py --directory docs/.output --revision "$DOCS_REVISION" --version "$DOCS_VERSION"
       - name: Upload exact-revision documentation builds
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: docs-build-${{ github.sha }}-${{ inputs.version || 'dev' }}
           include-hidden-files: true
@@ -69,7 +69,7 @@ jobs:
             docs/.output/changelog/
       - name: Upload acceptance diagnostics
         if: ${{ always() }}
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: docs-evidence-${{ github.sha }}-${{ inputs.version || 'dev' }}
           include-hidden-files: true
