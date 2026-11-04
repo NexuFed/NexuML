@@ -4,7 +4,7 @@
 
 Windowed loader backend for tensor-shard exports.
 
-[View source](https://github.com/NexuFed/NexuML/blob/b9fb6586f015db459cb8881e6feb51b84b3f03e0/src/nexuml/data/loaders/tensor_shards_backend.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/446d626f6712b0ca5963be5d1275ccf1bcd31bdd/src/nexuml/data/loaders/tensor_shards_backend.py#L1-L1)
 
 ## nexuml.data.loaders.tensor_shards_backend.logger
 
@@ -14,7 +14,7 @@ Windowed loader backend for tensor-shard exports.
 logger = logging.getLogger(__name__)
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/b9fb6586f015db459cb8881e6feb51b84b3f03e0/src/nexuml/data/loaders/tensor_shards_backend.py#L21-L21)
+[View source](https://github.com/NexuFed/NexuML/blob/446d626f6712b0ca5963be5d1275ccf1bcd31bdd/src/nexuml/data/loaders/tensor_shards_backend.py#L21-L21)
 
 ## nexuml.data.loaders.tensor_shards_backend.TensorShardWindowLoader
 
@@ -28,7 +28,7 @@ Bases: `DataLoader`
 
 PyTorch DataLoader that receives already-batched shard-window items.
 
-[View source](https://github.com/NexuFed/NexuML/blob/b9fb6586f015db459cb8881e6feb51b84b3f03e0/src/nexuml/data/loaders/tensor_shards_backend.py#L287-L324)
+[View source](https://github.com/NexuFed/NexuML/blob/446d626f6712b0ca5963be5d1275ccf1bcd31bdd/src/nexuml/data/loaders/tensor_shards_backend.py#L287-L324)
 
 ## nexuml.data.loaders.tensor_shards_backend.TensorShardsLoaderBackend
 
@@ -40,7 +40,7 @@ class TensorShardsLoaderBackend
 
 Create split-specific loaders for tensor-shard exports.
 
-[View source](https://github.com/NexuFed/NexuML/blob/b9fb6586f015db459cb8881e6feb51b84b3f03e0/src/nexuml/data/loaders/tensor_shards_backend.py#L327-L367)
+[View source](https://github.com/NexuFed/NexuML/blob/446d626f6712b0ca5963be5d1275ccf1bcd31bdd/src/nexuml/data/loaders/tensor_shards_backend.py#L327-L367)
 
 ### nexuml.data.loaders.tensor_shards_backend.TensorShardsLoaderBackend.definition
 
@@ -50,7 +50,7 @@ Create split-specific loaders for tensor-shard exports.
 definition = definition
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/b9fb6586f015db459cb8881e6feb51b84b3f03e0/src/nexuml/data/loaders/tensor_shards_backend.py#L331-L331)
+[View source](https://github.com/NexuFed/NexuML/blob/446d626f6712b0ca5963be5d1275ccf1bcd31bdd/src/nexuml/data/loaders/tensor_shards_backend.py#L331-L331)
 
 ### nexuml.data.loaders.tensor_shards_backend.TensorShardsLoaderBackend.create_loader
 
@@ -60,4 +60,4 @@ definition = definition
 def create_loader(module: Any, dataset: Any, *, split: str, shuffle: bool = False, sampler: WeightedRandomSampler | None = None) -> TensorShardWindowLoader
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/b9fb6586f015db459cb8881e6feb51b84b3f03e0/src/nexuml/data/loaders/tensor_shards_backend.py#L333-L367)
+[View source](https://github.com/NexuFed/NexuML/blob/446d626f6712b0ca5963be5d1275ccf1bcd31bdd/src/nexuml/data/loaders/tensor_shards_backend.py#L333-L367)

@@ -4,7 +4,7 @@
 
 Canonical remote worker entrypoint; never submit the outer job recursively.
 
-[View source](https://github.com/NexuFed/NexuML/blob/b9fb6586f015db459cb8881e6feb51b84b3f03e0/src/nexuml/execution/worker.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/446d626f6712b0ca5963be5d1275ccf1bcd31bdd/src/nexuml/execution/worker.py#L1-L1)
 
 ## nexuml.execution.worker.launch_options
 
@@ -24,7 +24,7 @@ Validate torchrun rank/world-size rather than run independent replicas.
 
 - `ValueError` — For incomplete or inconsistent native distributed launch settings.
 
-[View source](https://github.com/NexuFed/NexuML/blob/b9fb6586f015db459cb8881e6feb51b84b3f03e0/src/nexuml/execution/worker.py#L14-L47)
+[View source](https://github.com/NexuFed/NexuML/blob/446d626f6712b0ca5963be5d1275ccf1bcd31bdd/src/nexuml/execution/worker.py#L14-L47)
 
 ## nexuml.execution.worker.main
 
@@ -40,4 +40,4 @@ Read one explicit worker config and dispatch the existing lifecycle.
 
 - `ValueError` — If the worker receives an outer job instead of a derived config.
 
-[View source](https://github.com/NexuFed/NexuML/blob/b9fb6586f015db459cb8881e6feb51b84b3f03e0/src/nexuml/execution/worker.py#L50-L70)
+[View source](https://github.com/NexuFed/NexuML/blob/446d626f6712b0ca5963be5d1275ccf1bcd31bdd/src/nexuml/execution/worker.py#L50-L70)

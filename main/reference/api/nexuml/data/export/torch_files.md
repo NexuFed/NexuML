@@ -4,7 +4,7 @@
 
 Torch-file export backend.
 
-[View source](https://github.com/NexuFed/NexuML/blob/b9fb6586f015db459cb8881e6feb51b84b3f03e0/src/nexuml/data/export/torch_files.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/446d626f6712b0ca5963be5d1275ccf1bcd31bdd/src/nexuml/data/export/torch_files.py#L1-L1)
 
 ## nexuml.data.export.torch_files.TorchBackend
 
@@ -18,7 +18,7 @@ Bases: `nexuml.data.export.backend.ExportBackend`
 
 Store one `.pt` file per sample containing all exported keys.
 
-[View source](https://github.com/NexuFed/NexuML/blob/b9fb6586f015db459cb8881e6feb51b84b3f03e0/src/nexuml/data/export/torch_files.py#L17-L91)
+[View source](https://github.com/NexuFed/NexuML/blob/446d626f6712b0ca5963be5d1275ccf1bcd31bdd/src/nexuml/data/export/torch_files.py#L17-L91)
 
 ### nexuml.data.export.torch_files.TorchBackend.finalize
 
@@ -28,7 +28,7 @@ Store one `.pt` file per sample containing all exported keys.
 def finalize() -> dict[str, Any]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/b9fb6586f015db459cb8881e6feb51b84b3f03e0/src/nexuml/data/export/torch_files.py#L67-L84)
+[View source](https://github.com/NexuFed/NexuML/blob/446d626f6712b0ca5963be5d1275ccf1bcd31bdd/src/nexuml/data/export/torch_files.py#L67-L84)
 
 ### nexuml.data.export.torch_files.TorchBackend.initialize
 
@@ -38,7 +38,7 @@ def finalize() -> dict[str, Any]
 def initialize(export_dir: Path, num_samples: int, feature_shapes: dict[str, tuple[int, ...]], dtype: torch.dtype | str | None = None) -> None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/b9fb6586f015db459cb8881e6feb51b84b3f03e0/src/nexuml/data/export/torch_files.py#L28-L43)
+[View source](https://github.com/NexuFed/NexuML/blob/446d626f6712b0ca5963be5d1275ccf1bcd31bdd/src/nexuml/data/export/torch_files.py#L28-L43)
 
 ### nexuml.data.export.torch_files.TorchBackend.load_sample
 
@@ -48,7 +48,7 @@ def initialize(export_dir: Path, num_samples: int, feature_shapes: dict[str, tup
 def load_sample(export_dir: Path, index: int) -> dict[str, torch.Tensor]
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/b9fb6586f015db459cb8881e6feb51b84b3f03e0/src/nexuml/data/export/torch_files.py#L86-L91)
+[View source](https://github.com/NexuFed/NexuML/blob/446d626f6712b0ca5963be5d1275ccf1bcd31bdd/src/nexuml/data/export/torch_files.py#L86-L91)
 
 ### nexuml.data.export.torch_files.TorchBackend.save_sample
 
@@ -58,7 +58,7 @@ def load_sample(export_dir: Path, index: int) -> dict[str, torch.Tensor]
 def save_sample(index: int, features: dict[str, torch.Tensor]) -> None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/b9fb6586f015db459cb8881e6feb51b84b3f03e0/src/nexuml/data/export/torch_files.py#L45-L65)
+[View source](https://github.com/NexuFed/NexuML/blob/446d626f6712b0ca5963be5d1275ccf1bcd31bdd/src/nexuml/data/export/torch_files.py#L45-L65)
 
 ### nexuml.data.export.torch_files.TorchBackend.save_batch
 
@@ -78,4 +78,4 @@ Backends can override this for more efficient contiguous writes.
 
 - `ValueError` — If batch sizes across feature tensors are inconsistent.
 
-[View source](https://github.com/NexuFed/NexuML/blob/b9fb6586f015db459cb8881e6feb51b84b3f03e0/src/nexuml/data/export/backend.py#L65-L80)
+[View source](https://github.com/NexuFed/NexuML/blob/446d626f6712b0ca5963be5d1275ccf1bcd31bdd/src/nexuml/data/export/backend.py#L65-L80)

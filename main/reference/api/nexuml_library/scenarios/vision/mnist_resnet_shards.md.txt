@@ -4,7 +4,7 @@
 
 MNIST ResNet classification using tensor-shard data loading.
 
-[View source](https://github.com/NexuFed/NexuML/blob/b9fb6586f015db459cb8881e6feb51b84b3f03e0/library/src/nexuml_library/scenarios/vision/mnist_resnet_shards.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/446d626f6712b0ca5963be5d1275ccf1bcd31bdd/library/src/nexuml_library/scenarios/vision/mnist_resnet_shards.py#L1-L1)
 
 ## nexuml_library.scenarios.vision.mnist_resnet_shards.mnist_resnet_shards
 
@@ -20,4 +20,4 @@ MNIST ResNet using materialized tensor shards.
 
 - `ScenarioSpec` (`ScenarioSpec`) — Assembled scenario configured for tensor-shard loading.
 
-[View source](https://github.com/NexuFed/NexuML/blob/b9fb6586f015db459cb8881e6feb51b84b3f03e0/library/src/nexuml_library/scenarios/vision/mnist_resnet_shards.py#L15-L86)
+[View source](https://github.com/NexuFed/NexuML/blob/446d626f6712b0ca5963be5d1275ccf1bcd31bdd/library/src/nexuml_library/scenarios/vision/mnist_resnet_shards.py#L15-L86)

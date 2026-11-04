@@ -4,7 +4,7 @@
 
 ResNet classification model scenario fragments.
 
-[View source](https://github.com/NexuFed/NexuML/blob/b9fb6586f015db459cb8881e6feb51b84b3f03e0/library/src/nexuml_library/scenarios/model/resnet_classifier.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/446d626f6712b0ca5963be5d1275ccf1bcd31bdd/library/src/nexuml_library/scenarios/model/resnet_classifier.py#L1-L1)
 
 ## nexuml_library.scenarios.model.resnet_classifier.resnet_classifier
 
@@ -25,4 +25,4 @@ Pipeline stages:
 
 - `PipelineSpec` (`PipelineSpec`) — Pipeline with ResNet encoder, classification head and loss layers.
 
-[View source](https://github.com/NexuFed/NexuML/blob/b9fb6586f015db459cb8881e6feb51b84b3f03e0/library/src/nexuml_library/scenarios/model/resnet_classifier.py#L12-L64)
+[View source](https://github.com/NexuFed/NexuML/blob/446d626f6712b0ca5963be5d1275ccf1bcd31bdd/library/src/nexuml_library/scenarios/model/resnet_classifier.py#L12-L64)
