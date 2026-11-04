@@ -41,9 +41,13 @@ git pull --ff-only
 ruff check .
 ruff format --check .
 ty check
-pytest tests/library/test_rul_enhanced_cfc_followup.py \
-       tests/library/test_rul_independent_confirmation.py \
-       tests/library/test_rul_k8s_staging.py -v
+
+# Prefer the library and NexuML code from THIS worktree even when the
+# active venv was initially created in a sibling checkout.
+PYTHONPATH="$PWD/src:$PWD/library/src" pytest \
+  tests/library/test_rul_enhanced_cfc_followup.py \
+  tests/library/test_rul_independent_confirmation.py \
+  tests/library/test_rul_k8s_staging.py -v
 ```
 
 The FD003 campaign expects the **existing** validated PatchFormer seed-42
