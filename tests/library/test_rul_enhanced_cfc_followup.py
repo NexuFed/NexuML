@@ -7,7 +7,7 @@ import importlib.util
 import json
 from pathlib import Path
 import sys
-from typing import cast
+from typing import Literal, cast
 
 import pytest
 
@@ -63,7 +63,7 @@ def test_independent_run_registration_and_artifacts(
         f"{subset.lower()}-{configuration}-s{seed}"
     )
     scenario = followup.followup_study(
-        cast("followup.LiteralSubset", subset),  # runtime accepts this string
+        cast(Literal["FD001", "FD003"], subset),
         cast(followup.FollowupConfiguration, configuration), seed,
     )
     run = f"rul-{subset}-enhanced-cfc-followup-{configuration}-s{seed}"
