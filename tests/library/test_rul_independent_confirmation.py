@@ -296,6 +296,13 @@ def test_image_pull_restart_preserves_source_and_switches_image_and_pool(
     assert recovery.pin_original_manifest(
         previous_tag, job=name, digest=digest, excluded_hosts=excluded_hosts
     ) == manifest
+    previous_latest = manifest.replace(
+        "image: ghcr.io/nexufed/nexuml:sha-f8d5490-cuda12.8.1",
+        "image: ghcr.io/nexufed/nexuml:latest",
+    )
+    assert recovery.pin_original_manifest(
+        previous_latest, job=name, digest=digest, excluded_hosts=excluded_hosts
+    ) == manifest
     with pytest.raises(ValueError, match="inconsistent"):
         recovery.pin_original_manifest(
             old, job=name, digest="b" * 64, excluded_hosts=excluded_hosts
