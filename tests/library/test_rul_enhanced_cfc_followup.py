@@ -122,7 +122,9 @@ def test_reject_unregistered_followup_combinations() -> None:
     with pytest.raises(ValueError, match="Unsupported"):
         followup.followup_study("FD003", "baseline", 52)
     with pytest.raises(ValueError, match="Unsupported"):
-        followup.followup_study("FD002", "baseline", 42)
+        followup.followup_study(
+            cast(Literal["FD001", "FD003"], "FD002"), "baseline", 42
+        )
 
 
 def test_followup_launcher_matrix_and_immutable_source(
