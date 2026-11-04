@@ -46,7 +46,7 @@ def launcher_module(monkeypatch: pytest.MonkeyPatch):
         *[("FD003", c, s) for c in followup.LEAVE_ONE_OUT
           for s in followup.ABLATION_SEEDS],
         *[("FD001", c, s) for c in followup.VALIDATION_ARMS
-          for s in followup.TRANSFER_SEEDS],
+          for s in followup.FD001_SEEDS],
     ],
 )
 def test_independent_run_registration_and_artifacts(
@@ -121,6 +121,8 @@ def test_reject_unregistered_followup_combinations() -> None:
         followup.followup_study("FD003", "without_graph", 50)
     with pytest.raises(ValueError, match="Unsupported"):
         followup.followup_study("FD003", "baseline", 52)
+    with pytest.raises(ValueError, match="Unsupported"):
+        followup.followup_study("FD002", "baseline", 42)
 
 
 def test_followup_launcher_matrix_and_immutable_source(
