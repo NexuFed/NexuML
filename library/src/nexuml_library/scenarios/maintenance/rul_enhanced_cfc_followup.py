@@ -52,7 +52,7 @@ LEAVE_ONE_OUT: tuple[FollowupConfiguration, ...] = (
 )
 RELIABILITY_SEEDS = tuple(range(42, 52))
 ABLATION_SEEDS = (42, 43, 44)
-TRANSFER_SEEDS = (42, 43, 44)
+FD001_SEEDS = (42, 43, 44)
 ROOT = ".experiments/rul/enhanced-cfc/followup"
 
 
@@ -86,18 +86,22 @@ def followup_study(
         ValueError: If the prespecified experiment matrix is violated.
     """
     if subset == "FD001":
-        valid = configuration in VALIDATION_ARMS and seed in TRANSFER_SEEDS
-    else:
+        valid = configuration in VALIDATION_ARMS and seed in FD001_SEEDS
+    elif subset == "FD003":
         valid = (
             configuration in VALIDATION_ARMS and seed in RELIABILITY_SEEDS
         ) or (configuration in LEAVE_ONE_OUT and seed in ABLATION_SEEDS)
+    else:
+        raise ValueError("Unsupported CfC follow-up subset")
     if not valid:
         raise ValueError("Unsupported CfC follow-up subset/configuration/seed")
 
     # The parent constructor exposes only the original screening seeds.
     # Build an identical definition and replace both reproducibility seeds,
     # without modifying any upstream seed-42 source or split.
-    parent = "baseline" if configuration == "baseline" else "all_no_trend"
+    parent: Literal["baseline", "all_no_trend"] = (
+        "baseline" if configuration == "baseline" else "all_no_trend"
+    )
     base = enhanced_cfc_rul_study(parent, 42, subset)
     model_layer = base.pipeline.stages["RULModel"][0]
     model = model_layer.component
