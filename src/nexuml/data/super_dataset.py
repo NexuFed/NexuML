@@ -6,6 +6,7 @@ import logging
 
 import numpy as np
 import pandas as pd
+import torch
 from tensordict import TensorDict
 
 from nexuml.data.dataset import NexuDataset
@@ -205,6 +206,19 @@ class SuperDataset(NexuDataset):
         if do_split:
             subset_dataset.split_meta(subset_dataset.split_ratio)
         return subset_dataset
+
+    def __getitem__(self, index: int) -> tuple[TensorDict, TensorDict | None]:
+        if self.meta is not None:
+            row = self.meta.iloc[index]
+            source = self.meta_data_list.get(row.get("source_dataset"))
+            if source is not None and not source.label_names:
+                source_index = int(row.get("source_index", index))
+                x, y = source[source_index]
+                x = x.clone()
+                x["sample_index"] = torch.tensor(index, dtype=torch.long)
+                return x, y
+        # Convert metadata labels only after aggregate categorical/label-merging rules.
+        return super().__getitem__(index)
 
     def load_item(self, idx: int, row: pd.Series) -> TensorDict:
         source_name = row.get("source_dataset")

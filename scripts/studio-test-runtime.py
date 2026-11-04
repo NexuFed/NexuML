@@ -32,7 +32,7 @@ def main() -> None:
     root.mkdir(parents=True)
     home = root / "isolated user home"
     home.mkdir(exist_ok=True)
-    env = {
+    env: dict[str, str] = {
         **os.environ,
         "HOME": str(home),
         "USERPROFILE": str(home),
@@ -43,12 +43,12 @@ def main() -> None:
     # Verify packaging, not an editable checkout or its configured GPU index.
     env.pop("PYTHONPATH", None)
     env.pop("PYTHONHOME", None)
-    index = (
+    torch_backend: list[str] = (
         []
         if os.name == "posix" and os.uname().sysname == "Darwin"
         else [
-            "--index",
-            "https://download.pytorch.org/whl/cpu",
+            "--torch-backend",
+            "cpu",
         ]
     )
     wheel = str(args.wheel.resolve()) + "[api]"
@@ -62,7 +62,7 @@ def main() -> None:
                 "--no-config",
                 "--python",
                 args.python,
-                *index,
+                *torch_backend,
                 "--with",
                 library,
                 wheel,
@@ -85,7 +85,7 @@ def main() -> None:
                 "--no-config",
                 "--python",
                 str(python),
-                *index,
+                *torch_backend,
                 wheel,
                 library,
             ],

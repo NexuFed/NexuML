@@ -73,7 +73,7 @@ runtime dependencies are available. Trusted imports/factory calls are not sandbo
 `CheckpointLoadSpec` initializes/reuses selected weights. Full trainer resume uses
 `nexuml train --trainer-checkpoint PATH`; see [checkpoints](/how-to/checkpoints/).
 
-Core execution definitions are `LocalExecution`, `RayClusterExecution`, `RayJobExecution`,
+Core execution definitions are `LocalExecution`, `RayClusterExecution`, `RayJobExecution`, `RayJobsSDKExecution`,
 `KubernetesJobExecution`, and `PyTorchJobExecution` in
 [execution definitions](/reference/api/nexuml/execution/definitions/). Libraries can add
 `ExecutionBackendDefinition` with `@execution_backend(...)`. Each owns schema/behavior;
@@ -89,6 +89,27 @@ execution:
 Legacy `execution.kind` is rejected. Convert to `type: local` or `type: ray-cluster`,
 `version: "1"`, and placement values in `params`; remove old `kind` fields including
 `target.kind`. Historical files are not rewritten. Training semantics remain in `TrainingSpec`.
+
+`RayJobsSDKExecution` (`ray-jobs-sdk`) submits the normal single-process CLI;
+`RayJobExecution` (`ray-job`) remains KubeRay and `RayClusterExecution`
+(`ray-cluster`) remains Ray Train. Its registered representation is:
+
+```yaml
+execution:
+  type: ray-jobs-sdk
+  version: "1"
+  params: {}
+```
+
+SDK defaults are locked uv setup, one GPU, worker-local cache and a private venv
+per submission. Python starts only after setup succeeds. No profile is required;
+`setup_command=None` selects a prepared environment with implicit `python`.
+Dependency versions/extras, cluster address/TLS and pool remain project-owned.
+`train --execution-profile PATH` replaces execution before `-O`; profiles contain
+the registered mapping without the outer `execution` key. Field overrides use
+model attributes such as `execution.entrypoint_resources`, not `execution.params`.
+Whole-execution replacements require `type`/`version`/`params`. See
+[Ray SDK execution](/how-to/training-backends/ray/#ray-jobs-sdk-ray-jobs-sdk).
 
 ## Persistence and source-derived fields
 

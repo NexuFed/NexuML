@@ -44,9 +44,27 @@ Install only what you use: `tracking`, `tuning`, `export`, `ray`, `kubernetes`,
 uv pip install "nexuml[tracking,tuning]"
 ```
 
-`nexuml[all]` includes normal core integrations and the base library, but not
-development tooling or DALI. The library has separate extras such as
+`nexuml[all]` includes general-purpose integrations, rendering/video, DALI on Linux
+and the base library. It excludes `dev` and native robotics selections (`isaac`,
+`lerobot`, `mujoco`, `robots`). This large platform-dependent install still needs
+a compatible DALI environment and does not enable the library's own extras.
+The library has separate extras such as
 `nexuml-library[audio]`, `[data]`, `[pretrained]`, and `[eval]`.
+
+Select robotics through `nexuml[isaac]`, `[lerobot]`, `[mujoco]`, or the matching
+library extras. `[robots]` composes those references, not a promise that every
+native/version combination works. Extras do not download model weights or provision
+drivers, ROS or a CARLA server. Consumers own Python/CUDA, indexes and lockfiles;
+published metadata retains actual compatibility minimums. See
+[Physical AI support boundaries](/explanation/physical-ai-architecture/).
+
+For this source checkout's locked aggregate without development extras:
+
+```bash
+uv sync --locked --extra all
+```
+
+Use `--extra all`, not `--all-extras`: the latter also selects `dev`.
 
 ## Container image
 

@@ -119,6 +119,7 @@ class NexuDataCreator:
         )
 
     def _prepare_dataset(self, dataset: NexuDataset, ds_spec: DatasetSpec) -> NexuDataset:
+        dataset.validate_split_type(ds_spec.split_type)
         meta = getattr(dataset, "meta", None)
         if (
             meta is not None

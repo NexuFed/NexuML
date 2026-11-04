@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "recipe_id": "so101-behavior-cloning",
+  "update_kind": "full",
+  "numeric_format": "safetensors",
+  "optimizer_mode": "reset",
+  "processor": {"name": "identity", "version": "v1"},
+  "task": "NexuML-SO101-Joint-Reach",
+  "isaaclab_revision": "70ab24fec3eabf51222817db0cdb5a4e7133bd7e",
+  "observation": {
+    "key": "observation",
+    "shape": [15],
+    "dtype": "float32",
+    "groups": ["joint_position_rad", "joint_velocity_rad_s", "goal_position_rad"]
+  },
+  "action": {
+    "key": "action",
+    "shape": [5],
+    "dtype": "float32",
+    "joints": ["shoulder_pan", "shoulder_lift", "elbow_flex", "wrist_flex", "wrist_roll"],
+    "low": -1,
+    "high": 1,
+    "control_mode": "absolute_position",
+    "scale_rad": 0.5,
+    "control_period_s": 0.03333333333333333,
+    "fixed_gripper_rad": 0.2555162024919699
+  },
+  "trainable_tensors": {
+    "stages.Actor.00_LatentRegressionHead.head.0.weight": {"shape": [5, 15], "dtype": "float32", "role": "trainable"},
+    "stages.Actor.00_LatentRegressionHead.head.0.bias": {"shape": [5], "dtype": "float32", "role": "trainable"}
+  },
+  "counts": {"train_windows": "distinct eligible one-step training frames", "episodes": "distinct training episode IDs", "consumed_windows": "actual batch examples including repeats"},
+  "never_return": ["raw_episodes", "private_paths", "optimizer_state", "executable_packages"]
+}

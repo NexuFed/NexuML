@@ -14,21 +14,25 @@ test('task navigation follows the workflow without changing routes', async ({ pa
   await expect(use.locator(':scope > ul > li > a')).toHaveCount(0);
   const groups = use.locator(':scope > ul > li > details');
   await expect(groups.locator(':scope > summary')).toHaveText([
-    'Experiments', 'Export and reuse', 'Extend NexuML', 'Execution and Studio',
+    'Experiments', 'Export and reuse', 'Physical AI', 'Extend NexuML', 'Execution and Studio',
   ]);
-  for (let index = 1; index < 4; index++) await expect(groups.nth(index)).not.toHaveAttribute('open');
+  for (let index = 1; index < 5; index++) await expect(groups.nth(index)).not.toHaveAttribute('open');
   const routes = await use.locator('a').evaluateAll(links => links.map(link => link.getAttribute('href')));
   expect(routes).toEqual([
     'how-to/run-scenarios/', 'how-to/data-loading/', 'how-to/auto-batch-size/',
     'how-to/tracking/', 'explanation/diagrams/', 'how-to/checkpoints/',
     'how-to/evaluate/', 'how-to/tune/', 'how-to/autoresearch/',
-    'how-to/export-dataset/', 'how-to/export/', 'how-to/custom-library/',
+    'how-to/export-dataset/', 'how-to/export/',
+    'how-to/reinforcement-learning/', 'how-to/isaac-cartpole/',
+    'how-to/isaac-native-configuration/', 'how-to/isaac-read-only-viser/',
+    'how-to/isaac-sensors-and-policy-state/', 'how-to/isaac-multi-agent-learning/',
+    'how-to/lerobot-data/', 'how-to/so101-local-fit/', 'how-to/custom-library/',
     'how-to/custom-layer/', 'how-to/custom-data-source/', 'how-to/custom-eval-algorithm/',
     'how-to/scenario-file/', 'how-to/training-backends/', 'how-to/training-backends/jobs/',
     'how-to/training-backends/ray/', 'how-to/deploy/', 'how-to/local-api/',
     'how-to/studio-hosting/',
   ].map(route => `${base}${route}`));
-  await groups.nth(3).locator(':scope > summary').click();
+  await groups.nth(4).locator(':scope > summary').click();
   await use.getByRole('link', { name: 'Choose an execution mode', exact: true }).click();
   await expect(page.locator('h1')).toHaveText('Choose an execution mode');
 });

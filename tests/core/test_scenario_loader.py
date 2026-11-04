@@ -35,9 +35,17 @@ def test_project_root_finds_pyproject(tmp_path):
     assert project_root_for(tmp_path) == tmp_path
 
 
-def test_project_root_defaults_to_cwd(tmp_path):
-    # tmp_path has neither .git nor pyproject.toml
+def test_project_root_defaults_to_cwd(tmp_path, monkeypatch):
+    # The runner's scratch ancestors may contain a private qualification pyproject.
+    monkeypatch.setattr(Path, "exists", lambda path: False)
     assert project_root_for(tmp_path) == Path.cwd().resolve()
+
+
+def test_project_root_finds_ancestor_pyproject(tmp_path):
+    (tmp_path / "pyproject.toml").write_text("")
+    nested = tmp_path / "scratch" / "tests"
+    nested.mkdir(parents=True)
+    assert project_root_for(nested) == tmp_path
 
 
 def test_module_name_is_deterministic(tmp_path):

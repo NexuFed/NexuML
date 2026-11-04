@@ -6,6 +6,7 @@ import io
 import json
 import shutil
 import subprocess
+import sysconfig
 import tarfile
 from pathlib import Path
 from typing import Any
@@ -149,7 +150,9 @@ class WebDatasetBackend(ExportBackend):
         index_path = tar_path.with_suffix(".idx")
         if not self.create_index:
             return index_path
-        tool = shutil.which("wds2idx")
+        tool = shutil.which("wds2idx") or shutil.which(
+            "wds2idx", path=sysconfig.get_path("scripts")
+        )
         if tool is None:
             raise RuntimeError(
                 "WebDataset index generation requires DALI's wds2idx utility; "

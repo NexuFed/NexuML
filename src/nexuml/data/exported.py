@@ -286,7 +286,7 @@ class ExportedDataset(NexuDataset):
         root = self._local_root()
         if self._tensordict_memmap is None:
             self._tensordict_memmap = TensorDict.load_memmap(root / "data")
-        sample: TensorDict = self._tensordict_memmap[export_idx]
+        sample = cast(TensorDict, self._tensordict_memmap[export_idx])
         return {str(key): _to_tensor(value) for key, value in sample.items()}
 
     def _webdataset_payload(self, export_idx: int) -> dict[str, torch.Tensor]:

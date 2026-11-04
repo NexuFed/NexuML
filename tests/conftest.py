@@ -21,6 +21,13 @@ from nexuml_library.data.synthetic import SyntheticDataset
 
 def pytest_runtest_setup(item: pytest.Item) -> None:
     """Apply environment/dependency gating markers before each test."""
+    for tier, variable in (
+        ("requires_simulator", "NEXUML_RUN_SIMULATOR_TESTS"),
+        ("requires_system", "NEXUML_RUN_SYSTEM_TESTS"),
+        ("requires_hardware", "NEXUML_RUN_HARDWARE_TESTS"),
+    ):
+        if item.get_closest_marker(tier) and os.environ.get(variable) != "1":
+            pytest.skip(f"{variable}=1 required for explicit opt-in")
     for marker in item.iter_markers("requires_gpu"):
         if not cuda_device_info().get("available"):
             pytest.skip("CUDA not available")

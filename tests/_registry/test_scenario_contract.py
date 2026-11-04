@@ -7,6 +7,7 @@ from typing import Callable, Never
 import pytest
 
 from nexuml.core.compiler import compile
+from nexuml.core.policy import CompiledPolicy
 from nexuml.core.types import ScenarioSpec
 
 # Scenarios known to be untestable with this generic contract.
@@ -44,7 +45,10 @@ def test_scenario_builds_spec(
 
     assert isinstance(scenario, ScenarioSpec)
     assert scenario.name
-    assert scenario.pipeline.stages
+    if scenario.policy is not None and scenario.policy.groups:
+        assert all(group.pipeline.stages for group in scenario.policy.groups.values())
+    else:
+        assert scenario.pipeline.stages
 
 
 @pytest.mark.conformance
@@ -59,7 +63,9 @@ def test_scenario_compiles(
         _scenario_skip_or_fail(scenario_key, exc)
 
     try:
-        compile(scenario)
+        pipeline = compile(scenario)
+        if scenario.policy is not None and scenario.policy.groups:
+            CompiledPolicy.from_pipeline(pipeline)
     except (ValueError, KeyError, TypeError, RuntimeError) as exc:
         _scenario_skip_or_fail(scenario_key, exc)
 

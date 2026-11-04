@@ -10,6 +10,7 @@ pytest.importorskip("httpx")
 from fastapi.testclient import TestClient
 
 from nexuml.api.app import create_app
+from nexuml.api.errors import validation_fields
 from nexuml.api.security import Settings
 from nexuml.core.config import ResolvedConfig
 from nexuml.core.backends import backend_rows
@@ -48,6 +49,42 @@ def payload():
         ),
     )
     return {"data": lower_model(scenario), "stage_order": ["10", "2"]}
+
+
+@pytest.mark.parametrize("branch", ["TrainingSpec", "ReinforcementLearningSpec"])
+def test_validation_fields_hide_training_union_branches_and_private_context(branch):
+    from pydantic import ValidationError
+
+    error = ValidationError.from_exception_data(
+        "ResolvedConfig",
+        [
+            {
+                "type": "greater_than",
+                "loc": ("training", branch, "batch_size"),
+                "input": "private-input",
+                "ctx": {"gt": 0, "private": "private-context"},
+            },
+            {
+                "type": "int_parsing",
+                "loc": ("pipeline", "stages", branch, 0, "component", "params", "output_dim"),
+                "input": "private-input",
+            },
+        ],
+    )
+    fields = validation_fields(error)
+    assert fields[0]["loc"] == ["training", "batch_size"]
+    assert fields[0]["type"] == "greater_than"
+    assert fields[1]["loc"] == [
+        "pipeline",
+        "stages",
+        branch,
+        0,
+        "component",
+        "params",
+        "output_dim",
+    ]
+    assert "private-input" not in json.dumps(fields)
+    assert "private-context" not in json.dumps(fields)
 
 
 def test_config_roundtrip_conflicts_and_invalid_input(client, tmp_path):

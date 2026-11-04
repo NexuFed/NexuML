@@ -12,7 +12,7 @@ from nexuml.core.config import ResolvedConfig
 from nexuml.core.registry import ComponentRegistry
 from nexuml.core.types import ScenarioSpec
 from nexuml.execution import catalog, discover, preflight, run
-from nexuml.execution.definitions import RayClusterExecution
+from nexuml.execution.definitions import RayClusterExecution, RayJobExecution
 from nexuml.execution.schemas import ResourceSnapshot
 
 
@@ -42,7 +42,7 @@ def registry(monkeypatch):
 def test_sixth_definition_uses_shared_review_and_dispatch(registry, tmp_path):
     value = ScenarioSpec(name="shared", execution=SixthExecution(endpoint="chosen"))
     rows = catalog()
-    assert len(rows) == 6
+    assert len(rows) == 7
     selected = next(row for row in rows if row["type"] == "sixth-execution")
     assert selected["schema"]["properties"]["endpoint"]["type"] == "string"
     assert preflight(value) == {"target": "chosen"}
@@ -69,6 +69,7 @@ def test_local_uses_one_session_observer_and_configured_exports(monkeypatch, reg
     class Session:
         def __init__(self, **kwargs):
             calls.append(kwargs)
+            self.scenario = kwargs["scenario"]
             self.trainer = SimpleNamespace(callbacks=[])
 
         def run(self):
@@ -83,7 +84,9 @@ def test_local_uses_one_session_observer_and_configured_exports(monkeypatch, reg
             calls.append("exports") or [{"path": "actual", "kind": "train_package"}]
         ),
     )
-    value = ScenarioSpec(name="local", exports=[{"kind": "train_package", "output": "actual"}])
+    value = ScenarioSpec.model_validate(
+        {"name": "local", "exports": [{"kind": "train_package", "output": "actual"}]}
+    )
     assert run(value, observer=observer, trainer_checkpoint="native.ckpt") is result
     assert calls[0]["trainer_checkpoint"] == "native.ckpt"
     assert calls[1:] == ["canonical lifecycle", "exports"]
@@ -108,3 +111,27 @@ def test_resource_contract_rejects_unknown_fields_and_nonfinite_values():
         ResourceSnapshot.model_validate({"backend": "local", "source": "limits", "token": "secret"})
     with pytest.raises(ValueError):
         ResourceSnapshot(backend="local", source="limits", allocatable={"CPU": float("inf")})
+
+
+@pytest.mark.parametrize(
+    "execution, operation, kwargs, message",
+    [
+        (RayClusterExecution(), "evaluate", {"model_package": "/worker/policy"}, "Evaluation"),
+        (RayClusterExecution(), "export", {"checkpoint": "/worker/checkpoint"}, "export"),
+        (RayJobExecution(), "evaluate", {"model_package": "/worker/policy"}, "Evaluation"),
+        (RayJobExecution(), "export", {"checkpoint": "/worker/checkpoint"}, "export"),
+    ],
+)
+def test_unsupported_operation_never_launches_training(
+    execution, operation, kwargs, message, monkeypatch
+):
+    monkeypatch.setattr("nexuml.execution.service.dependency_diagnostics", lambda _: [])
+    monkeypatch.setattr(
+        type(execution), "run", lambda *_args, **_kwargs: pytest.fail("launched training")
+    )
+    with pytest.raises(ValueError, match=message):
+        run(
+            ScenarioSpec(name="operation-boundary", execution=execution),
+            operation=operation,
+            **kwargs,
+        )

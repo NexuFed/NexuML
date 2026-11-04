@@ -2,7 +2,13 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import torch
+
+if TYPE_CHECKING:
+    from tensordict.base import CompatibleType
+    from tensordict.utils import NestedKey
 from torch.utils.data import DataLoader, random_split
 
 from nexuml.data.dataset import NexuDataset
@@ -32,8 +38,11 @@ def create_dataloaders(
 
     def _collate(batch):
         xs, ys = zip(*batch)
-        x_td = {k: torch.stack([x[k] for x in xs]) for k in xs[0].keys()}
+        x_td: dict[NestedKey, CompatibleType] = {
+            k: torch.stack([x[k] for x in xs]) for k in xs[0].keys()
+        }
 
+        y_td: dict[NestedKey, CompatibleType] | None
         if ys[0] is not None:
             y_td = {k: torch.stack([y[k] for y in ys]) for k in ys[0].keys()}
         else:

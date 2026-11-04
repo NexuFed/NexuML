@@ -46,6 +46,7 @@ def test_gpu_timeout_preserves_known_cpu(monkeypatch):
     monkeypatch.setattr(resources.subprocess, "run", timeout)
     value = resources.local_resources(timeout=1)
     assert value.allocatable == {"CPU": 2}
+    assert value.allocatable is not None
     assert "GPU" not in value.allocatable
     assert "unknown" in " ".join(value.diagnostics)
 
@@ -94,9 +95,14 @@ def test_ray_read_only_live_nodes_are_not_kubernetes_nodes(monkeypatch, timeout)
         )
     )
     monkeypatch.setitem(sys.modules, "ray.util.state", fake)
-    execution = RayClusterExecution(
-        target={"address": "ray://explicit:10001", "dashboard_address": "http://explicit:8265"},
-        resources_per_worker={"CPU": 4, "GPU": 1},
+    execution = RayClusterExecution.model_validate(
+        {
+            "target": {
+                "address": "ray://explicit:10001",
+                "dashboard_address": "http://explicit:8265",
+            },
+            "resources_per_worker": {"CPU": 4, "GPU": 1},
+        }
     )
     value = resources._ray_resources(execution, timeout=timeout, limit=3)
     assert value.visible_nodes == 2 and value.matching_nodes == 1
