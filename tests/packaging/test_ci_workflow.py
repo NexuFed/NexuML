@@ -45,6 +45,56 @@ def test_only_package_publishers_use_hosted_runners():
     assert hosted == publishers
 
 
+def test_docker_metadata_keeps_only_exact_releases_latest_and_main():
+    root = Path(__file__).resolve().parents[2]
+    workflow = YAML(typ="safe").load((root / ".github/workflows/docker.yml").read_text())
+    assert workflow["on"] == {
+        "workflow_dispatch": None,
+        "push": {"branches": ["main"], "tags": ["v*.*.*"]},
+    }
+    assert workflow["env"]["CUDA_VERSION"] == "12.8.1"
+    metadata = next(step for step in workflow["jobs"]["build"]["steps"] if step.get("id") == "meta")
+    assert metadata["uses"] == "docker/metadata-action@v6"
+    assert metadata["with"]["images"] == "${{ env.IMAGE_NAME }}"
+    assert metadata["with"]["tags"].splitlines() == [
+        "type=edge,branch=main",
+        "type=semver,pattern={{version}}",
+    ]
+    assert metadata["with"]["flavor"].splitlines() == [
+        "latest=auto",
+        "suffix=-cuda${{ env.CUDA_VERSION }},onlatest=true",
+    ]
+
+
+def test_docker_prepares_tag_versions_and_verifies_before_push_only_publication():
+    root = Path(__file__).resolve().parents[2]
+    workflow = YAML(typ="safe").load((root / ".github/workflows/docker.yml").read_text())
+    assert workflow["permissions"] == {"contents": "read", "packages": "write"}
+    steps = workflow["jobs"]["build"]["steps"]
+    trusted = next(
+        i for i, step in enumerate(steps) if step.get("name") == "Validate trusted revision"
+    )
+    prepared = next(
+        i for i, step in enumerate(steps) if step.get("uses") == "./.github/actions/prepare-release"
+    )
+    built = next(i for i, step in enumerate(steps) if step.get("name") == "Build local image")
+    verified = next(i for i, step in enumerate(steps) if step.get("name") == "Verify local image")
+    login = next(i for i, step in enumerate(steps) if step.get("name") == "Log in to GHCR")
+    published = next(
+        i for i, step in enumerate(steps) if step.get("name") == "Publish verified image"
+    )
+    assert trusted < prepared < built < verified < login < published
+    assert steps[prepared]["if"] == "startsWith(github.ref, 'refs/tags/')"
+    assert steps[built]["with"]["context"] == "."  # Include the tag-stamped checkout.
+    assert steps[built]["with"]["push"] is False
+    assert not steps[verified].get("continue-on-error", False)
+    assert "assert torch.version.cuda ==" in steps[verified]["run"]
+    assert steps[login]["if"] == steps[published]["if"] == "github.event_name == 'push'"
+    assert steps[published]["env"]["TAGS"] == "${{ steps.meta.outputs.tags }}"
+    assert 'docker tag "$LOCAL_IMAGE" "$tag"' in steps[published]["run"]
+    assert 'docker push "$tag"' in steps[published]["run"]
+
+
 def test_studio_ci_builds_once_and_tests_both_trusted_linux_installations(tmp_path):
     assert "pull_request" not in WORKFLOW["on"]
     assert "pull_request_target" not in WORKFLOW["on"]
