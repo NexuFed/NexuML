@@ -82,6 +82,9 @@ def _evenly_spaced(size: int, maximum: int) -> list[int]:
 
     Returns:
         Ordered unique positions.
+
+    Raises:
+        ValueError: If fewer than two windows are available or requested.
     """
     if maximum < 2 or size < 2:
         raise ValueError("Need at least two windows to balance an engine")
@@ -514,6 +517,9 @@ def _score(values: list[float]) -> tuple[float, float]:
 
     Returns:
         Mean absolute error and root mean squared error in cycles.
+
+    Raises:
+        ValueError: If no machine errors are supplied.
     """
     if not values:
         raise ValueError("Cannot summarize empty machine errors")
@@ -580,6 +586,9 @@ def _evaluate_causal(
 
     Returns:
         Study metadata and window/engine-level descriptive metrics.
+
+    Raises:
+        ValueError: If a validation trajectory or its RUL labels are invalid.
     """
     calibration = fit_rul_calibration(
         train, regularization=ridge, windows_per_engine=calibration_windows
@@ -607,7 +616,7 @@ def _evaluate_causal(
         fit_losses: dict[str, float] = {}
         for method in ("direct_future", "flow"):
             trained, loss = fit_dynamics(
-                method=cast(DynamicMethod, method),
+                method=method,
                 trace=observed_only,
                 prefix_count=len(observed_only.steps),
                 seed=seed + index,
@@ -768,7 +777,7 @@ def _evaluate_retrospective(
         starts, ends, horizons = _transition_pairs(trace.steps)
         for method in ("direct_future", "flow"):
             model, loss = fit_dynamics(
-                method=cast(DynamicMethod, method), trace=trace,
+                method=method, trace=trace,
                 prefix_count=len(trace.steps),
                 seed=seed + index, device=device,
                 train_steps=steps, batch_size=batch_size,
