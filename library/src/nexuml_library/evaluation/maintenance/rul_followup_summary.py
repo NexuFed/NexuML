@@ -65,7 +65,6 @@ def _read_run(
         Audited per-seed training and validation evidence.
 
     Raises:
-        FileNotFoundError: If any mandatory result is missing.
         ValueError: If checkpoint identity, labels or metadata are inconsistent.
     """
     run = _run_name(subset, configuration, seed)
@@ -236,7 +235,6 @@ def summarize_followup(root: Path, campaign: str = "all") -> dict[str, Any]:
 
     Raises:
         ValueError: If campaign selection, artifacts, splits or sources disagree.
-        FileNotFoundError: If an experiment did not complete.
     """
     if campaign not in (*_CAMPAIGNS, "all"):
         raise ValueError(f"Unknown follow-up campaign: {campaign}")
