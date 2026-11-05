@@ -281,5 +281,3 @@ def cluster_fd003_both_s44() -> ScenarioSpec:
         Native leakage-safe soft-conditioning experiment.
     """
     return cluster_conditioning_study("both", 44)
-
-
