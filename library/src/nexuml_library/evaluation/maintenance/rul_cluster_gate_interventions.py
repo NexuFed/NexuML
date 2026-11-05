@@ -757,6 +757,9 @@ def main() -> None:
         "cuda" if args.device == "auto" and torch.cuda.is_available()
         else ("cpu" if args.device == "auto" else args.device)
     )
+    if device.type == "cuda":
+        # Mirror the native Lightning training/evaluation matmul policy.
+        torch.set_float32_matmul_precision("medium")
     result = run_interventions(
         args.experiment_root,
         device=device,
