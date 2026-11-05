@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import dataclasses
+import json
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -20,6 +22,7 @@ from nexuml_library.evaluation.maintenance.rul_machine_flow_study import (
     estimate_rul_from_dynamics,
     fit_dynamics,
     fit_rul_calibration,
+    run_study,
 )
 from nexuml_library.layers.model.rul_machine_flow_dynamics import (
     MachineFutureDynamics,
@@ -211,3 +214,55 @@ def test_sampling_and_metrics_do_not_require_future_labels_in_fit() -> None:
     assert _score([-10.0, 10.0]) == pytest.approx((10.0, 10.0))
     with pytest.raises(ValueError, match="positive|two"):
         _evenly_spaced(1, 64)
+
+
+def test_causal_study_smoke_writes_guarded_outputs(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """End-to-end synthetic prefix adaptation reports no official test results."""
+    from nexuml_library.evaluation.maintenance import rul_machine_flow_study
+
+    train = {
+        f"train:FD003:{i}": _trace(
+            f"train:FD003:{i}", "train", shift=i * 0.02
+        )
+        for i in range(80)
+    }
+    val = {
+        f"val:FD003:{i}": _trace(
+            f"val:FD003:{i}", "val", shift=i * 0.02
+        )
+        for i in range(20)
+    }
+    monkeypatch.setattr(
+        rul_machine_flow_study,
+        "load_trajectories",
+        lambda *args, **kwargs: (
+            train, val, {"test_observations_used": "false", "fixture": "synthetic"}
+        ),
+    )
+    # Avoid excessive CPU threading overhead in this tiny deterministic test.
+    old_threads = torch.get_num_threads()
+    torch.set_num_threads(1)
+    try:
+        output = run_study(
+            tmp_path,
+            device=torch.device("cpu"),
+            mode="causal",
+            train_steps=2,
+            batch_size=8,
+            max_engines=1,
+        )
+    finally:
+        torch.set_num_threads(old_threads)
+    manifest = json.loads(output.read_text(encoding="utf-8"))
+    assert manifest["test_used"] is False
+    assert manifest["results"]["causal"]["machines"] == 1
+    assert manifest["results"]["causal"]["target_val_rul_labels_in_fit"] is False
+    assert manifest["results"]["causal"]["validation_future_windows_in_fit"] is False
+    assert (output.parent / "causal_per_machine.csv").is_file()
+    assert (output.parent / "causal_forecast_horizons.csv").is_file()
+    assert (output.parent / "causal_summary.json").is_file()
+    assert set(manifest["results"]["causal"]["results"]) == {
+        "direct", "nonflow", "flow"
+    }
