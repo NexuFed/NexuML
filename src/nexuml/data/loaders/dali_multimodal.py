@@ -23,8 +23,8 @@ import nvidia.dali.fn as fn
 def _dali_type(name: str) -> Any:
     """Return a DALI type constant by name.
 
-    NVIDIA DALI stubs are incomplete; this single accessor centralises the
-    ``ty: ignore`` and avoids scattering per-constant ignores across the file.
+    NVIDIA DALI stubs are incomplete; this accessor centralises the
+    dynamic type lookup without per-constant suppressions.
     """
     return getattr(_dali_types, name)
 
@@ -110,7 +110,7 @@ class KeyedDaliIterator(DALIGenericIterator):
         self.y_keys = list(y_keys)
         self.metadata_labels = metadata_labels
 
-    def __next__(self) -> tuple[TensorDict, TensorDict | None]:  # ty: ignore[invalid-method-override] — see class comment
+    def __next__(self) -> tuple[TensorDict, TensorDict | None]:
         out = super().__next__()[0]
         x = TensorDict(
             {key: out[key] for key in self.x_keys},
@@ -127,7 +127,7 @@ class KeyedDaliIterator(DALIGenericIterator):
             for key, value in label_batch.items():
                 y_dict[str(key)] = cast(torch.Tensor, value)
 
-        y = TensorDict(y_dict, batch_size=x.batch_size) if y_dict else None  # ty: ignore[invalid-argument-type]
+        y = TensorDict(y_dict, batch_size=x.batch_size) if y_dict else None
         return x, y
 
 

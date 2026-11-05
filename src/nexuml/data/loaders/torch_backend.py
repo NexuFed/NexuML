@@ -15,11 +15,11 @@ def _collate_tensordict(batch):
     """
     xs, ys = zip(*batch)
     x_td = {key: torch.stack([x[key] for x in xs]) for key in xs[0].keys()}
-    x_out = TensorDict(x_td, batch_size=[len(xs)])  # ty: ignore[invalid-argument-type]
+    x_out = TensorDict(x_td, batch_size=[len(xs)])
 
     if ys[0] is not None:
         y_td = {key: torch.stack([y[key] for y in ys]) for key in ys[0].keys()}
-        y_out = TensorDict(y_td, batch_size=[len(ys)])  # ty: ignore[invalid-argument-type]
+        y_out = TensorDict(y_td, batch_size=[len(ys)])
     else:
         y_out = None
 
