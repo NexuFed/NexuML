@@ -144,3 +144,60 @@ but has its own validation-based checkpoint selection. For a new
 paper-quality held-out generalization claim, freeze the architecture and
 experiment protocol first, then evaluate on a dataset or engine population
 not used to choose either model design or hyperparameters.
+
+## Recovering FD001 using a verified local direct-adaptation PatchFormer
+
+The six FD001 Jobs may fail their preflight even when the local
+`.experiments` directory contains a complete, compatible upstream
+PatchFormer and sequence-CfC endpoint normalizer. The model's checkpoint
+resolver accepts both the controlled run
+`rul-FD001-controlled-patchformer-seed42` and the historical
+`rul-cmapss-FD001-patchformer-direct-rul-adaptation-seed42` for seed 42,
+but the **original Kubernetes template preflight checks only the controlled
+name**. Do not retrain or regenerate endpoints before checking local files.
+
+The following recovery requires a local direct-adaptation audit and checkpoint
+whose SHA-256 **exactly matches** the endpoint's
+`frozen_patchformer_checkpoint_sha256`, plus the endpoint's original
+`cmapss-FD001-seed42-controlled-w30-s42.pt` preparation. It copies exactly
+three binary artifacts and one checkpoint audit to Prisma. The copied
+endpoint file is byte-for-byte identical; the audit's `best_model_path`
+is rewritten only in the shared copy to
+`/mnt/nexuml-experiments/rul/checkpoints/...`, where all Pods mount Prisma.
+The endpoint's historical absolute-path settings are kept as original
+provenance; the enhanced CfC RUL runtime uses its normalization statistics
+and checkpoint hash, not those original absolute paths.
+
+```bash
+cd /workspaces/NexuFed/NexuML-predictive
+git pull --ff-only
+export PYTHONPATH="$PWD/src:$PWD/library/src"
+
+pytest tests/library/test_rul_enhanced_cfc_fd001_recovery.py -v
+
+# Read-only preflight; local 3.7 GB directory and all 41 originals unchanged.
+python .k8s/scenarios/recover_rul_enhanced_cfc_followup_fd001.py
+
+# Copy only validated artifacts and generate six additional recovery manifests.
+python .k8s/scenarios/recover_rul_enhanced_cfc_followup_fd001.py --apply
+
+# Once checked, explicitly replace only six Failed/missing FD001 Jobs.
+python .k8s/scenarios/recover_rul_enhanced_cfc_followup_fd001.py \
+  --apply --restart
+
+kubectl -n lbecker get jobs -l nexuml-study=rul-cfc-followup
+```
+
+The recovery utility never changes the source-content hash, original rendered
+Job manifests, original local artifacts, or successful FD003 Jobs. Recovery
+manifests live under
+`.k8s/scenarios/rendered/fd001-direct-adaptation-recovery/`.
+The `--restart` operation preflights all six Kubernetes Job statuses,
+labels, source-digest annotations and manifests before deleting anything.
+It refuses to delete active or completed Jobs.
+
+Keep the original local `.experiments` directory (or any renamed backup)
+intact. If source files are missing, hashes disagree, the Prisma destination
+already contains conflicting versions, or a controlled FD001 audit would
+shadow the compatible direct-adaptation checkpoint, recovery fails rather
+than creating misleading results. Do not rerun the entire 41-Job campaign.
