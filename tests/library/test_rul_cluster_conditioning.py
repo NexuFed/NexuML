@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Literal, cast
 
@@ -13,6 +14,7 @@ from torch import Tensor
 from nexuml.core.components import LayerBuildContext
 from nexuml_library.data.maintenance.rul_cluster_conditions import (
     _ClusterLabeledRULRuntime,
+    _shared_patchformer_checkpoint,
     _kmeans,
     read_cluster_artifact,
 )
@@ -29,6 +31,43 @@ from nexuml_library.scenarios.maintenance.rul_cluster_conditioning import (
     SEEDS,
     cluster_conditioning_study,
 )
+
+
+def test_shared_cluster_checkpoint_uses_explicit_prisma_root(tmp_path: Path) -> None:
+    """Map a Pod-written best checkpoint onto the same native shared storage."""
+    experiments = tmp_path / "models" / "nexuml" / ".experiments"
+    run = "rul-FD003-controlled-patchformer-seed42"
+    selected = experiments / "rul" / "checkpoints" / run / "epoch=12-step=345.ckpt"
+    selected.parent.mkdir(parents=True)
+    selected.write_bytes(b"dummy checkpoint for path resolution")
+    audit = experiments / "rul" / "audits" / f"{run}.checkpoint.json"
+    audit.parent.mkdir(parents=True)
+    audit.write_text(
+        json.dumps(
+            {
+                "selection": "best minimum val/loss",
+                "best_model_path": (
+                    f"/mnt/nexuml-experiments/rul/checkpoints/{run}/{selected.name}"
+                ),
+            }
+        ),
+        encoding="utf-8",
+    )
+    assert _shared_patchformer_checkpoint(experiments, 42) == selected
+
+    audit.write_text(
+        json.dumps(
+            {
+                "best_model_path": (
+                    "/mnt/nexuml-experiments/rul/checkpoints/"
+                    "rul-FD003-controlled-patchformer-seed43/last.ckpt"
+                )
+            }
+        ),
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="unexpected run"):
+        _shared_patchformer_checkpoint(experiments, 42)
 
 
 @pytest.mark.parametrize("seed", (42, 43, 44))
