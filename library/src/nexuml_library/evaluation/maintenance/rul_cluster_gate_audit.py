@@ -134,10 +134,17 @@ def _model_state(checkpoint: Path, arm: Arms, epoch: int) -> dict[str, Tensor]:
     prefix = prefixes[0]
     if "RULModel" not in prefix:
         raise ValueError(f"Unexpected checkpoint model-stage prefix: {prefix}")
-    model = {key[len(prefix) :]: value for key, value in state.items() if key.startswith(prefix)}
+    model = {
+        key[len(prefix) :]: value for key, value in state.items() if key.startswith(prefix)
+    }
     if "reference_mean" not in model or "reference_std" not in model:
         raise ValueError("Missing trained PatchFormer normalization buffers")
-    enabled = {"reference": (), "working": ("working",), "failure": ("failure",), "both": ("working", "failure")}[arm]
+    enabled = {
+        "reference": (),
+        "working": ("working",),
+        "failure": ("failure",),
+        "both": ("working", "failure"),
+    }[arm]
     for kind in ("working", "failure"):
         present = any(key.startswith(f"{kind}_gate.") for key in model)
         if present != (kind in enabled):
@@ -297,6 +304,20 @@ def _summarize(
             sum(int(a == b) for a, b in zip(predicted, truth, strict=True)) / len(truth)
         )
         result["majority_teacher_accuracy"] = majority
+        confidences = means.max(dim=1).values.tolist()
+        ece = 0.0
+        for bucket in range(10):
+            chosen = [
+                i for i, confidence in enumerate(confidences)
+                if min(int(confidence * 10), 9) == bucket
+            ]
+            if chosen:
+                empirical = statistics.mean(
+                    float(predicted[i] == truth[i]) for i in chosen
+                )
+                expected = statistics.mean(confidences[i] for i in chosen)
+                ece += len(chosen) / len(truth) * abs(empirical - expected)
+        result["engine_ece_10bins"] = ece
         result["mean_teacher_nll"] = statistics.mean(
             -math.log(max(float(row[label]), 1e-12))
             for row, label in zip(means, truth, strict=True)
@@ -310,7 +331,11 @@ def _extract_module(state: dict[str, Tensor], prefix: str) -> dict[str, Tensor]:
     Returns:
         Its child-relative state dictionary.
     """
-    return {key[len(prefix) :]: value for key, value in state.items() if key.startswith(prefix)}
+    return {
+        key[len(prefix) :]: value
+        for key, value in state.items()
+        if key.startswith(prefix)
+    }
 
 
 @torch.inference_mode()
@@ -332,6 +357,9 @@ def _inspect_gates(
 
     Returns:
         Per-kind training and validation results.
+
+    Raises:
+        ValueError: If trained weights or their normalization are inconsistent.
     """
     if batch_size < 1:
         raise ValueError("Batch size must be positive")
@@ -496,7 +524,25 @@ def audit_campaign(
                     device=device, batch_size=batch_size,
                 )
             output = destination / f"{arm}-s{seed}.json"
-            output.write_text(json.dumps(report, indent=2, allow_nan=False) + "\n", encoding="utf-8")
+            output.write_text(
+                json.dumps(report, indent=2, allow_nan=False) + "\n",
+                encoding="utf-8",
+            )
+            if arm == "reference":
+                summary_rows.append({
+                    "arm": arm,
+                    "seed": seed,
+                    "gate": "none",
+                    "checkpoint_epoch": epoch,
+                    "val_eval_mse": comparison["val_eval_mse"],
+                    "train_teacher_accuracy": "",
+                    "train_majority_accuracy": "",
+                    "train_engine_ece_10bins": "",
+                    "val_mean_normalized_entropy": "",
+                    "val_mean_top_probability": "",
+                    "val_dominant_engine_fraction": "",
+                    "val_mean_projection_to_base_l2": "",
+                })
             for kind, details in cast(dict[str, Any], report["gates"]).items():
                 train = details["train"]
                 val = details["val"]
@@ -508,6 +554,7 @@ def audit_campaign(
                     "val_eval_mse": comparison["val_eval_mse"],
                     "train_teacher_accuracy": train["engine_teacher_accuracy"],
                     "train_majority_accuracy": train["majority_teacher_accuracy"],
+                    "train_engine_ece_10bins": train["engine_ece_10bins"],
                     "val_mean_normalized_entropy": val["mean_normalized_entropy"],
                     "val_mean_top_probability": val["mean_top_probability"],
                     "val_dominant_engine_fraction": val["dominant_engine_fraction"],
@@ -515,8 +562,8 @@ def audit_campaign(
                 })
             print(f"[audited] {arm}-s{seed}: {output}", flush=True)
     summary = destination / "summary.csv"
-    if len(summary_rows) != 12:
-        raise ValueError("Expected 12 conditioned gate audits (three + three + six)")
+    if len(summary_rows) != 15:
+        raise ValueError("Expected 3 reference rows and 12 conditioned gate audits")
     with summary.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=list(summary_rows[0]))
         writer.writeheader()
