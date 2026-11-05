@@ -176,6 +176,24 @@ def patched_manifest(name: str, original: str) -> str:
     return original.replace(old, new, 1)
 
 
+def _source_digest(manifest: str) -> str:
+    """Return the checked, exact staged-source SHA-256 annotation.
+
+    Returns:
+        Source fingerprint provided by the original Job manifest.
+
+    Raises:
+        ValueError: If the manifest has no uniquely identified digest.
+    """
+    found = re.findall(
+        r'nexuml\.ika\.rub\.de/source-sha256: "([a-f0-9]{64})"',
+        manifest,
+    )
+    if len(found) != 1:
+        raise ValueError("Job has missing or ambiguous source SHA-256 attestation")
+    return found[0]
+
+
 def plan_manifests(rendered_root: Path) -> dict[str, str]:
     """Read and strictly validate all six original rendered Job definitions.
 
@@ -192,14 +210,9 @@ def plan_manifests(rendered_root: Path) -> dict[str, str]:
         )
         for name in job_names()
     }
-    digests = {
-        re.search(r'nexuml\.ika\.rub\.de/source-sha256: "([a-f0-9]{64})"', text).group(1)
-        for text in manifests.values()
-    }
-    if len(digests) != 1:
+    if len({_source_digest(manifest) for manifest in manifests.values()}) != 1:
         raise ValueError("FD001 manifests were not staged from the same source snapshot")
     return manifests
-
 
 def publish_file(source: Path, destination: Path) -> None:
     """Copy a verified file atomically without replacing conflicting content.
@@ -306,6 +319,16 @@ def restart_jobs(namespace: str, manifest_dir: Path) -> None:
                 continue
             raise RuntimeError(f"Cannot check Job {name}: {queried.stderr}")
         record = json.loads(queried.stdout)
+        manifest = (manifest_dir / f"{name}.yaml").read_text(encoding="utf-8")
+        if (
+            record.get("metadata", {}).get("name") != name
+            or record.get("metadata", {}).get("labels", {}).get("nexuml-study")
+            != "rul-cfc-followup"
+            or record.get("metadata", {}).get("annotations", {}).get(
+                "nexuml.ika.rub.de/source-sha256"
+            ) != _source_digest(manifest)
+        ):
+            raise RuntimeError(f"Existing Job identity/source mismatch: {name}")
         failed = any(
             condition.get("type") == "Failed" and condition.get("status") == "True"
             for condition in record.get("status", {}).get("conditions", [])
