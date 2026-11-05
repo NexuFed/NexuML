@@ -201,7 +201,6 @@ def plan_manifests(rendered_root: Path) -> dict[str, str]:
         Authorized Job names mapped to patched YAML content.
 
     Raises:
-        FileNotFoundError: If any original manifest is unavailable.
         ValueError: If source provenance or template shape is inconsistent.
     """
     manifests = {
@@ -213,6 +212,7 @@ def plan_manifests(rendered_root: Path) -> dict[str, str]:
     if len({_source_digest(manifest) for manifest in manifests.values()}) != 1:
         raise ValueError("FD001 manifests were not staged from the same source snapshot")
     return manifests
+
 
 def publish_file(source: Path, destination: Path) -> None:
     """Copy a verified file atomically without replacing conflicting content.
