@@ -27,6 +27,7 @@ from nexuml_library.data.maintenance.rul import read_rul_artifact
 from nexuml_library.data.maintenance.rul_cluster_conditions import (
     read_cluster_artifact,
 )
+from nexuml_library.data.maintenance.prepared_endpoints import read_prepared_artifact
 from nexuml_library.layers.model.rul_advanced import _PatchFormerModel
 from nexuml_library.layers.model.rul_enhanced_cfc import _SensorGraphAttention
 
@@ -478,9 +479,17 @@ def audit_campaign(
     prepared = root / "rul/prepared" / PREPARED_NAME
     cluster_file = root / "rul/prepared" / CLUSTER_NAME
     prepared_hash = _sha256(prepared)
+    endpoint = (
+        root / "rul/prepared/rul-FD003-patchformer-sequence-cfc-flow-seed42-endpoints.pt"
+    )
+    endpoint_settings = read_prepared_artifact(endpoint)["settings"]
     cluster = read_cluster_artifact(
-        cluster_file, prepared_sha256=prepared_hash, seed=42,
-        working_clusters=3, failure_clusters=2,
+        cluster_file,
+        prepared_sha256=prepared_hash,
+        encoder_sha256=str(endpoint_settings["frozen_patchformer_checkpoint_sha256"]),
+        seed=42,
+        working_clusters=3,
+        failure_clusters=2,
     )
     payload = read_rul_artifact(prepared)
     features = cast(Tensor, payload["features"])
@@ -519,6 +528,16 @@ def audit_campaign(
             }
             if arm != "reference":
                 state = _model_state(checkpoint, arm, epoch)
+                for key, expected in (
+                    ("reference_mean", endpoint_settings["feature_mean"]),
+                    ("reference_std", endpoint_settings["feature_std"]),
+                ):
+                    if not torch.equal(
+                        state[key].cpu(), torch.as_tensor(expected, dtype=torch.float32)
+                    ):
+                        raise ValueError(
+                            f"{arm}-s{seed} normalization differs from trusted endpoint artifact"
+                        )
                 report["gates"] = _inspect_gates(
                     state, arm, features, sampled, assignments, cluster,
                     device=device, batch_size=batch_size,
