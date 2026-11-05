@@ -61,6 +61,7 @@ def test_gate_summary_balances_engines_and_masks_validation_teachers() -> None:
     assert train["soft_occupancy_engine_mean"] == pytest.approx([0.525, 0.475])
     assert train["engine_teacher_accuracy"] == 1.0
     assert train["majority_teacher_accuracy"] == 0.5
+    assert 0.0 <= train["engine_ece_10bins"] <= 1.0
     assert train["mean_projection_to_base_l2"] == pytest.approx(0.75)
     val = _summarize(data, None, "working")
     assert "engine_teacher_accuracy" not in val
