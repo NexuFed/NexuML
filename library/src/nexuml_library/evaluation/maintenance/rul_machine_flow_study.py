@@ -578,6 +578,15 @@ def _evaluate_causal(
         trace = val[engine]
         cutoff = _prefix_count(len(trace.steps), fraction)
         observed = trace.latent[cutoff - 1].clone()
+        # Structural leak barrier: dynamics training receives neither the
+        # suffix representations nor ANY target-machine RUL labels.
+        observed_only = MachineTrajectory(
+            engine=trace.engine,
+            split=trace.split,
+            steps=trace.steps[:cutoff].clone(),
+            latent=trace.latent[:cutoff].clone(),
+            rul=torch.zeros_like(trace.rul[:cutoff]),
+        )
         # The RUL label is accessed ONLY after all estimators are fitted.
         selected_step = int(trace.steps[cutoff - 1])
         model_predictions: dict[str, float] = {}
@@ -586,8 +595,8 @@ def _evaluate_causal(
         for method in ("direct_future", "flow"):
             trained, loss = fit_dynamics(
                 method=cast(DynamicMethod, method),
-                trace=trace,
-                prefix_count=cutoff,
+                trace=observed_only,
+                prefix_count=len(observed_only.steps),
                 seed=seed + index,
                 device=device,
                 train_steps=steps,
