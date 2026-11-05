@@ -44,7 +44,11 @@ class _RULClusterAuxiliaryRuntime(_RULTrajectoryConsistencyRuntime):
     """Ignore cluster labels outside TRAIN and keep validation loss pure RUL."""
 
     def __init__(
-        self, *, working_weight: float, failure_weight: float, **kwargs: Any,
+        self,
+        *,
+        working_weight: float,
+        failure_weight: float,
+        **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
         self.working_weight = working_weight
@@ -52,7 +56,9 @@ class _RULClusterAuxiliaryRuntime(_RULTrajectoryConsistencyRuntime):
 
     @staticmethod
     def _auxiliary_loss(
-        x: TensorDict, y: TensorDict, kind: str,
+        x: TensorDict,
+        y: TensorDict,
+        kind: str,
     ) -> Tensor:
         """Compute only labeled training cross-entropy with ignore_index=-1.
 
@@ -69,7 +75,8 @@ class _RULClusterAuxiliaryRuntime(_RULTrajectoryConsistencyRuntime):
         logits = cast(Tensor, x[logits_key])
         targets = cast(Tensor, y[label_key]).view(-1).long()
         if (
-            logits.ndim != 2 or logits.shape[0] != targets.numel()
+            logits.ndim != 2
+            or logits.shape[0] != targets.numel()
             or not bool((targets >= -1).all())
             or not bool((targets < logits.shape[1]).all())
         ):
@@ -80,7 +87,9 @@ class _RULClusterAuxiliaryRuntime(_RULTrajectoryConsistencyRuntime):
         return F.cross_entropy(logits[selected], targets[selected])
 
     def forward(
-        self, x: TensorDict | Tensor, y: TensorDict | None = None,
+        self,
+        x: TensorDict | Tensor,
+        y: TensorDict | None = None,
     ) -> tuple[TensorDict | Tensor, TensorDict | None]:
         """Use predicted probabilities in the CfC; labels only in TRAIN loss.
 

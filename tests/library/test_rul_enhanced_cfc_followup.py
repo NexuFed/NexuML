@@ -22,8 +22,7 @@ from nexuml_library.layers.model.rul_trajectory_loss import (
 from nexuml_library.scenarios.maintenance import rul_enhanced_cfc_followup as followup
 
 LAUNCHER = (
-    Path(__file__).resolve().parents[2]
-    / ".k8s/scenarios/submit_rul_enhanced_cfc_followup.py"
+    Path(__file__).resolve().parents[2] / ".k8s/scenarios/submit_rul_enhanced_cfc_followup.py"
 )
 
 
@@ -41,21 +40,9 @@ def launcher_module(monkeypatch: pytest.MonkeyPatch):
 @pytest.mark.parametrize(
     ("subset", "configuration", "seed"),
     [
-        *[
-            ("FD003", c, s)
-            for c in followup.VALIDATION_ARMS
-            for s in followup.RELIABILITY_SEEDS
-        ],
-        *[
-            ("FD003", c, s)
-            for c in followup.LEAVE_ONE_OUT
-            for s in followup.ABLATION_SEEDS
-        ],
-        *[
-            ("FD001", c, s)
-            for c in followup.VALIDATION_ARMS
-            for s in followup.FD001_SEEDS
-        ],
+        *[("FD003", c, s) for c in followup.VALIDATION_ARMS for s in followup.RELIABILITY_SEEDS],
+        *[("FD003", c, s) for c in followup.LEAVE_ONE_OUT for s in followup.ABLATION_SEEDS],
+        *[("FD001", c, s) for c in followup.VALIDATION_ARMS for s in followup.FD001_SEEDS],
     ],
 )
 def test_independent_run_registration_and_artifacts(
@@ -69,12 +56,12 @@ def test_independent_run_registration_and_artifacts(
     monkeypatch.chdir(tmp_path)
     native = getattr(followup, f"followup_{subset.lower()}_{configuration}_s{seed}")
     assert native.__nexuml_discovered__["key"] == (
-        f"maintenance-rul-enhanced-cfc-followup-"
-        f"{subset.lower()}-{configuration}-s{seed}"
+        f"maintenance-rul-enhanced-cfc-followup-{subset.lower()}-{configuration}-s{seed}"
     )
     scenario = followup.followup_study(
         cast(Literal["FD001", "FD003"], subset),
-        cast(followup.FollowupConfiguration, configuration), seed,
+        cast(followup.FollowupConfiguration, configuration),
+        seed,
     )
     run = f"rul-{subset}-enhanced-cfc-followup-{configuration}-s{seed}"
     assert scenario.name == run
@@ -88,22 +75,12 @@ def test_independent_run_registration_and_artifacts(
     assert isinstance(model, EnhancedCfCRULHead)
     assert model.subset == subset and model.upstream_seed == 42
     assert model.initialization_seed == seed
-    assert model.train_encoder == (
-        configuration not in ("baseline", "without_finetune")
-    )
-    assert model.sensor_graph == (
-        configuration not in ("baseline", "without_graph")
-    )
+    assert model.train_encoder == (configuration not in ("baseline", "without_finetune"))
+    assert model.sensor_graph == (configuration not in ("baseline", "without_graph"))
     assert not model.trend
-    assert model.multiscale == (
-        configuration not in ("baseline", "without_multiscale")
-    )
-    assert model.segmentation == (
-        configuration not in ("baseline", "without_segmentation")
-    )
-    assert model.trajectory == (
-        configuration not in ("baseline", "without_trajectory")
-    )
+    assert model.multiscale == (configuration not in ("baseline", "without_multiscale"))
+    assert model.segmentation == (configuration not in ("baseline", "without_segmentation"))
+    assert model.trajectory == (configuration not in ("baseline", "without_trajectory"))
     loss = scenario.pipeline.stages["RULLoss"][0].component
     assert isinstance(loss, RULTrajectoryConsistencyLoss)
     assert loss.consistency_weight == (0.1 if model.trajectory else 0.0)
@@ -132,9 +109,7 @@ def test_reject_unregistered_followup_combinations() -> None:
     with pytest.raises(ValueError, match="Unsupported"):
         followup.followup_study("FD003", "baseline", 52)
     with pytest.raises(ValueError, match="Unsupported"):
-        followup.followup_study(
-            cast(Literal["FD001", "FD003"], "FD002"), "baseline", 42
-        )
+        followup.followup_study(cast(Literal["FD001", "FD003"], "FD002"), "baseline", 42)
 
 
 def test_followup_launcher_matrix_and_immutable_source(
@@ -162,10 +137,10 @@ def test_followup_launcher_matrix_and_immutable_source(
         assert "ghcr.io/nexufed/nexuml:sha-f8d5490-cuda12.8.1" in manifest
         assert "values: [gh200-1, student-worker-1]" in manifest
         assert "nvidia.com/cuda.runtime.major" not in manifest
-        assert "nvidia.com/gpu: \"1\"" in manifest
+        assert 'nvidia.com/gpu: "1"' in manifest
         assert "kueue.x-k8s.io/queue-name: jobs" in manifest
         assert "subPath: models/nexuml/.experiments" in manifest
-        assert f'rul-{subset}-controlled-patchformer-seed42' in manifest
+        assert f"rul-{subset}-controlled-patchformer-seed42" in manifest
         assert "__SUBSET__" not in manifest
         assert "__EXCLUDED_NODES__" not in manifest
         assert "nexuml-study: rul-cfc-followup" in manifest
@@ -176,14 +151,23 @@ def test_followup_launcher_matrix_and_immutable_source(
 def populate_followup(root: Path) -> None:
     """Create synthetic checkpoint-bound validation observations for 41 runs."""
     specs = [
-        *[("FD003", c, s, "reliability") for c in ("baseline", "all_no_trend")
-          for s in range(42, 52)],
-        *[("FD003", c, s, "ablation") for c in (
-            "without_finetune", "without_graph", "without_multiscale",
-            "without_segmentation", "without_trajectory",
-        ) for s in (42, 43, 44)],
-        *[("FD001", c, s, "fd001") for c in ("baseline", "all_no_trend")
-          for s in (42, 43, 44)],
+        *[
+            ("FD003", c, s, "reliability")
+            for c in ("baseline", "all_no_trend")
+            for s in range(42, 52)
+        ],
+        *[
+            ("FD003", c, s, "ablation")
+            for c in (
+                "without_finetune",
+                "without_graph",
+                "without_multiscale",
+                "without_segmentation",
+                "without_trajectory",
+            )
+            for s in (42, 43, 44)
+        ],
+        *[("FD001", c, s, "fd001") for c in ("baseline", "all_no_trend") for s in (42, 43, 44)],
     ]
     for subset, config, seed, campaign in specs:
         run = f"rul-{subset}-enhanced-cfc-followup-{config}-s{seed}"
@@ -191,53 +175,66 @@ def populate_followup(root: Path) -> None:
         checkpoint = rul_root / "checkpoints" / run / "epoch=1.ckpt"
         checkpoint.parent.mkdir(parents=True, exist_ok=True)
         checkpoint.write_bytes(b"synthetic checkpoint")
-        score = (
-            160.0 if config == "baseline" else
-            150.0 if config == "all_no_trend" else 155.0
-        )
+        score = 160.0 if config == "baseline" else 150.0 if config == "all_no_trend" else 155.0
         if subset == "FD001":
             score -= 40
         score += seed - 42
         audit = rul_root / "audits" / f"{run}.checkpoint.json"
         audit.parent.mkdir(parents=True, exist_ok=True)
-        audit.write_text(json.dumps({
-            "selection": "best minimum val/loss",
-            "loaded_strict_model_state": True,
-            "best_model_path": f"/mnt/nexuml-experiments/rul/checkpoints/{run}/epoch=1.ckpt",
-            "best_model_score": score,
-            "checkpoint_epoch": 1,
-        }))
+        audit.write_text(
+            json.dumps(
+                {
+                    "selection": "best minimum val/loss",
+                    "loaded_strict_model_state": True,
+                    "best_model_path": f"/mnt/nexuml-experiments/rul/checkpoints/{run}/epoch=1.ckpt",
+                    "best_model_score": score,
+                    "checkpoint_epoch": 1,
+                }
+            )
+        )
         split_root = root / subset.lower()
         split_root.mkdir(parents=True, exist_ok=True)
-        with (split_root / f"{run}.curves.csv").open(
-            "w", newline="", encoding="utf-8"
-        ) as handle:
+        with (split_root / f"{run}.curves.csv").open("w", newline="", encoding="utf-8") as handle:
             writer = csv.DictWriter(
                 handle,
                 fieldnames=(
-                    "epoch", "train_windows", "val_windows", "val_engine_count",
-                    "train_eval_mse", "val_eval_mse", "val_group_max_mse",
+                    "epoch",
+                    "train_windows",
+                    "val_windows",
+                    "val_engine_count",
+                    "train_eval_mse",
+                    "val_eval_mse",
+                    "val_group_max_mse",
                 ),
             )
             writer.writeheader()
-            writer.writerow({
-                "epoch": 1,
-                "train_windows": 17785 if subset == "FD003" else 12000,
-                "val_windows": 4035 if subset == "FD003" else 3000,
-                "val_engine_count": 20,
-                "train_eval_mse": score - 20,
-                "val_eval_mse": score,
-                "val_group_max_mse": score + 20,
-            })
+            writer.writerow(
+                {
+                    "epoch": 1,
+                    "train_windows": 17785 if subset == "FD003" else 12000,
+                    "val_windows": 4035 if subset == "FD003" else 3000,
+                    "val_engine_count": 20,
+                    "train_eval_mse": score - 20,
+                    "val_eval_mse": score,
+                    "val_group_max_mse": score + 20,
+                }
+            )
         marker = split_root / f"{config.replace('_', '-')}-s{seed}.execution.json"
-        marker.write_text(json.dumps({
-            "subset": subset, "configuration": config, "campaign": campaign,
-            "seed": seed, "source_sha256": "a" * 64,
-            "container_image": "ghcr.io/nexufed/nexuml:sha-f8d5490-cuda12.8.1",
-            "kubernetes_node": "cip-gpu-9",
-            "train_command_wall_seconds": 600,
-            "timing_includes_fit_validate_test": True,
-        }))
+        marker.write_text(
+            json.dumps(
+                {
+                    "subset": subset,
+                    "configuration": config,
+                    "campaign": campaign,
+                    "seed": seed,
+                    "source_sha256": "a" * 64,
+                    "container_image": "ghcr.io/nexufed/nexuml:sha-f8d5490-cuda12.8.1",
+                    "kubernetes_node": "cip-gpu-9",
+                    "train_command_wall_seconds": 600,
+                    "timing_includes_fit_validate_test": True,
+                }
+            )
+        )
 
 
 def test_validation_only_41_run_summary(tmp_path: Path) -> None:
@@ -258,9 +255,7 @@ def test_validation_only_41_run_summary(tmp_path: Path) -> None:
         effect["candidate_minus_reference_mean"] == 5.0
         for effect in ablation["leave_one_out"].values()
     )
-    assert report["analyses"]["fd001"]["paired_effect"][
-        "candidate_minus_reference_mean"
-    ] == -10
+    assert report["analyses"]["fd001"]["paired_effect"]["candidate_minus_reference_mean"] == -10
 
 
 @pytest.mark.parametrize("campaign", ("reliability", "ablation", "fd001"))

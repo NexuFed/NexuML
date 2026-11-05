@@ -10,8 +10,7 @@ from typing import Any
 import pytest
 
 SCRIPT = (
-    Path(__file__).resolve().parents[2]
-    / ".k8s/scenarios/submit_rul_cfc_cluster_conditioning.py"
+    Path(__file__).resolve().parents[2] / ".k8s/scenarios/submit_rul_cfc_cluster_conditioning.py"
 )
 
 
@@ -69,12 +68,9 @@ def test_cluster_job_rejects_unknown_studies_and_bad_digests(
         module.job_name("both", 45)
     with pytest.raises(ValueError, match="Unsafe"):
         module.render_cluster_job(
-            "both", 42, "invalid", "job-staging/nexuml-nex233/invalid",
-            ("student-worker-1",)
+            "both", 42, "invalid", "job-staging/nexuml-nex233/invalid", ("student-worker-1",)
         )
     with pytest.raises(ValueError, match="Unsafe"):
         module.render_cluster_job(
-            "both", 42, "a" * 64,
-            "job-staging/nexuml-nex233/" + "a" * 64,
-            ("gh200-1",)
+            "both", 42, "a" * 64, "job-staging/nexuml-nex233/" + "a" * 64, ("gh200-1",)
         )

@@ -89,9 +89,9 @@ def followup_study(
     if subset == "FD001":
         valid = configuration in VALIDATION_ARMS and seed in FD001_SEEDS
     elif subset == "FD003":
-        valid = (
-            configuration in VALIDATION_ARMS and seed in RELIABILITY_SEEDS
-        ) or (configuration in LEAVE_ONE_OUT and seed in ABLATION_SEEDS)
+        valid = (configuration in VALIDATION_ARMS and seed in RELIABILITY_SEEDS) or (
+            configuration in LEAVE_ONE_OUT and seed in ABLATION_SEEDS
+        )
     else:
         raise ValueError("Unsupported CfC follow-up subset")
     if not valid:
@@ -144,7 +144,10 @@ def followup_study(
         save_last=True,
     )
     callbacks[3] = callback(
-        EarlyStopping, monitor="val/loss", mode="min", patience=20,
+        EarlyStopping,
+        monitor="val/loss",
+        mode="min",
+        patience=20,
     )
     callbacks[4] = callback(
         Goel2026RestoreBestWeights,

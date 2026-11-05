@@ -99,9 +99,7 @@ def _read_run(
     recorded_loss = _metric(
         checkpoint_audit.get("best_model_score"), description=f"{run} checkpoint loss"
     )
-    with (subset_root / f"{run}.curves.csv").open(
-        newline="", encoding="utf-8"
-    ) as handle:
+    with (subset_root / f"{run}.curves.csv").open(newline="", encoding="utf-8") as handle:
         rows = list(csv.DictReader(handle))
     matching = [row for row in rows if row.get("epoch") == str(epoch)]
     if len(matching) != 1:
@@ -109,9 +107,7 @@ def _read_run(
     selected_row = matching[0]
     val = _metric(selected_row.get("val_eval_mse"), description=f"{run} val MSE")
     train = _metric(selected_row.get("train_eval_mse"), description=f"{run} train MSE")
-    worst = _metric(
-        selected_row.get("val_group_max_mse"), description=f"{run} worst group"
-    )
+    worst = _metric(selected_row.get("val_group_max_mse"), description=f"{run} worst group")
     if abs(recorded_loss - val) > 0.1:
         raise ValueError(f"Selected val/loss disagrees with validation curve: {run}")
     shapes = []
@@ -136,9 +132,7 @@ def _read_run(
         or re.fullmatch(r"[a-f0-9]{64}", digest) is None
     ):
         raise ValueError(f"Inconsistent completion marker: {marker_path}")
-    wall_seconds = _metric(
-        marker.get("train_command_wall_seconds"), description=f"{run} runtime"
-    )
+    wall_seconds = _metric(marker.get("train_command_wall_seconds"), description=f"{run} runtime")
     return {
         "subset": subset,
         "campaign": campaign,
@@ -281,9 +275,7 @@ def summarize_followup(root: Path, campaign: str = "all") -> dict[str, Any]:
                 [_summarize_arm(fd003, config, RELIABILITY_SEEDS) for config in ARMS],
                 key=lambda item: item["validation_mse_mean"],
             ),
-            "paired_effect": _paired(
-                fd003, "baseline", "all_no_trend", RELIABILITY_SEEDS
-            ),
+            "paired_effect": _paired(fd003, "baseline", "all_no_trend", RELIABILITY_SEEDS),
         }
     if "ablation" in selected:
         fd003 = [row for row in rows if row["subset"] == "FD003"]
@@ -307,9 +299,7 @@ def summarize_followup(root: Path, campaign: str = "all") -> dict[str, Any]:
                 [_summarize_arm(fd001, config, FD001_SEEDS) for config in ARMS],
                 key=lambda item: item["validation_mse_mean"],
             ),
-            "paired_effect": _paired(
-                fd001, "baseline", "all_no_trend", FD001_SEEDS
-            ),
+            "paired_effect": _paired(fd001, "baseline", "all_no_trend", FD001_SEEDS),
         }
     return {
         "study": "NEX-233 independent CfC reliability, factor ablation and FD001 replication",
@@ -337,20 +327,21 @@ def main() -> None:
     """Write one machine-readable summary after all requested Jobs complete."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--root", type=Path,
+        "--root",
+        type=Path,
         default=Path(".experiments/rul/enhanced-cfc/followup"),
     )
     parser.add_argument(
-        "--campaign", choices=(*_CAMPAIGNS, "all"), default="all",
+        "--campaign",
+        choices=(*_CAMPAIGNS, "all"),
+        default="all",
     )
     parser.add_argument("--output", type=Path, default=None)
     args = parser.parse_args()
     result = summarize_followup(args.root, args.campaign)
     output = args.output or args.root / f"{args.campaign}-summary.json"
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(
-        json.dumps(result, indent=2, allow_nan=False) + "\n", encoding="utf-8"
-    )
+    output.write_text(json.dumps(result, indent=2, allow_nan=False) + "\n", encoding="utf-8")
     print(f"Validation-only NEX-233 {args.campaign}: {output}")
     for group, details in result["analyses"].items():
         if group == "ablation":

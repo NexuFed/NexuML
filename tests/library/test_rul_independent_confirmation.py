@@ -27,8 +27,7 @@ from nexuml_library.scenarios.maintenance import (
 
 
 LAUNCHER = (
-    Path(__file__).resolve().parents[2]
-    / ".k8s/scenarios/submit_rul_enhanced_cfc_confirm_fd003.py"
+    Path(__file__).resolve().parents[2] / ".k8s/scenarios/submit_rul_enhanced_cfc_confirm_fd003.py"
 )
 
 
@@ -53,9 +52,7 @@ def test_independent_scenario_is_separately_selected(
 ) -> None:
     """Each trial has its own checkpoint, optimizer and output artifacts."""
     monkeypatch.chdir(tmp_path)
-    scenario = confirm.independent_cfc_confirmation(
-        cast(confirm.Confirmation, configuration), seed
-    )
+    scenario = confirm.independent_cfc_confirmation(cast(confirm.Confirmation, configuration), seed)
     run = f"rul-FD003-enhanced-cfc-confirm-{configuration}-s{seed}"
     assert scenario.name == run
     assert len(scenario.pipeline.stages["RULModel"]) == 1
@@ -92,9 +89,7 @@ def test_independent_scenario_is_separately_selected(
 
 @pytest.mark.parametrize("configuration", CONFIGURATIONS)
 @pytest.mark.parametrize("seed", SEEDS)
-def test_all_independent_scenarios_are_registered(
-    configuration: str, seed: int
-) -> None:
+def test_all_independent_scenarios_are_registered(configuration: str, seed: int) -> None:
     """Native resolve must discover nine distinct decorator registrations."""
     function = getattr(confirm, f"independent_{configuration}_s{seed}")
     assert function.__nexuml_discovered__["key"] == (
@@ -115,7 +110,10 @@ def test_k8s_render_isolated_jobs_and_global_gpu_pool(
             seen.add(name)
             source = "job-staging/nexuml-nex233/" + "a" * 64
             manifest = launcher.render_confirmation_manifest(
-                configuration, seed, "a" * 64, source,
+                configuration,
+                seed,
+                "a" * 64,
+                source,
                 excluded_hosts=("student-worker-1", "gh200-1", "gh200-2"),
             )
             assert f"name: {name}" in manifest
@@ -130,9 +128,7 @@ def test_k8s_render_isolated_jobs_and_global_gpu_pool(
             assert "mountPath: /tmp/nexuml-job-venv" in manifest
             assert "ghcr.io/nexufed/nexuml:sha-f8d5490-cuda12.8.1" in manifest
             assert "harbor.ika.rub.de/library/nexuml:latest" not in manifest
-            expected = (
-                f"maintenance-rul-enhanced-cfc-confirm-fd003-{configuration}-s{seed}"
-            )
+            expected = f"maintenance-rul-enhanced-cfc-confirm-fd003-{configuration}-s{seed}"
             assert expected in manifest
             slug = configuration.replace("_", "-")
             assert f"confirmation/{slug}-s{seed}.yaml" in manifest
@@ -155,47 +151,65 @@ def populate_runs(root: Path) -> None:
             checkpoint.write_bytes(b"fake checkpoint for report-only test")
             audit = rul_root / "audits" / f"{run}.checkpoint.json"
             audit.parent.mkdir(parents=True, exist_ok=True)
-            audit.write_text(json.dumps({
-                "selection": "best minimum val/loss",
-                "best_model_path": (
-                    f"/mnt/nexuml-experiments/rul/checkpoints/{run}/epoch=1.ckpt"
-                ),
-                "checkpoint_epoch": 1,
-                "best_model_score": 200,
-                "loaded_strict_model_state": True,
-            }))
+            audit.write_text(
+                json.dumps(
+                    {
+                        "selection": "best minimum val/loss",
+                        "best_model_path": (
+                            f"/mnt/nexuml-experiments/rul/checkpoints/{run}/epoch=1.ckpt"
+                        ),
+                        "checkpoint_epoch": 1,
+                        "best_model_score": 200,
+                        "loaded_strict_model_state": True,
+                    }
+                )
+            )
             curves = root / f"{run}.curves.csv"
             curves.parent.mkdir(parents=True, exist_ok=True)
             with curves.open("w", newline="", encoding="utf-8") as handle:
                 writer = csv.DictWriter(
-                    handle, fieldnames=(
-                        "epoch", "train_windows", "val_windows",
-                        "val_engine_count", "train_eval_mse", "val_eval_mse",
+                    handle,
+                    fieldnames=(
+                        "epoch",
+                        "train_windows",
+                        "val_windows",
+                        "val_engine_count",
+                        "train_eval_mse",
+                        "val_eval_mse",
                         "val_group_max_mse",
                     ),
                 )
                 writer.writeheader()
                 for epoch in (0, 1):
-                    writer.writerow({
-                        "epoch": epoch, "train_windows": 500,
-                        "val_windows": 100, "val_engine_count": 20,
-                        "train_eval_mse": 80,
-                        "val_eval_mse": (
-                            170 if epoch == 0
-                            else 160 + (0 if configuration == "baseline" else -10)
-                        ),
-                        "val_group_max_mse": 240,
-                    })
+                    writer.writerow(
+                        {
+                            "epoch": epoch,
+                            "train_windows": 500,
+                            "val_windows": 100,
+                            "val_engine_count": 20,
+                            "train_eval_mse": 80,
+                            "val_eval_mse": (
+                                170
+                                if epoch == 0
+                                else 160 + (0 if configuration == "baseline" else -10)
+                            ),
+                            "val_group_max_mse": 240,
+                        }
+                    )
             slug = configuration.replace("_", "-")
             marker = root / f"{slug}-s{seed}.execution.json"
-            marker.write_text(json.dumps({
-                "configuration": configuration,
-                "seed": seed,
-                "source_sha256": "a" * 64,
-                "train_command_wall_seconds": 120,
-                "kubernetes_node": "student-worker-2",
-                "timing_includes_fit_validate_test": True,
-            }))
+            marker.write_text(
+                json.dumps(
+                    {
+                        "configuration": configuration,
+                        "seed": seed,
+                        "source_sha256": "a" * 64,
+                        "train_command_wall_seconds": 120,
+                        "kubernetes_node": "student-worker-2",
+                        "timing_includes_fit_validate_test": True,
+                    }
+                )
+            )
 
 
 def test_summary_uses_own_checkpoint_epoch_not_best_observed(
@@ -265,7 +279,10 @@ def test_image_pull_restart_preserves_source_and_switches_image_and_pool(
     name = recovery.FAILED_JOBS[0]
     excluded_hosts = ("gh200-1", "student-worker-1")
     manifest = launcher.render_confirmation_manifest(
-        "baseline", 44, digest, f"job-staging/nexuml-nex233/{digest}",
+        "baseline",
+        44,
+        digest,
+        f"job-staging/nexuml-nex233/{digest}",
         excluded_hosts=excluded_hosts,
     )
     old = manifest.replace(
@@ -284,26 +301,36 @@ def test_image_pull_restart_preserves_source_and_switches_image_and_pool(
         '                    values: ["11"]\n',
     )
     assert old != manifest
-    assert recovery.pin_original_manifest(
-        old, job=name, digest=digest, excluded_hosts=excluded_hosts
-    ) == manifest
-    assert recovery.pin_original_manifest(
-        manifest, job=name, digest=digest, excluded_hosts=excluded_hosts
-    ) == manifest
+    assert (
+        recovery.pin_original_manifest(old, job=name, digest=digest, excluded_hosts=excluded_hosts)
+        == manifest
+    )
+    assert (
+        recovery.pin_original_manifest(
+            manifest, job=name, digest=digest, excluded_hosts=excluded_hosts
+        )
+        == manifest
+    )
     previous_tag = manifest.replace(
         "image: ghcr.io/nexufed/nexuml:sha-f8d5490-cuda12.8.1",
         "image: ghcr.io/nexufed/nexuml:0.2.0-cuda12.8.1",
     )
-    assert recovery.pin_original_manifest(
-        previous_tag, job=name, digest=digest, excluded_hosts=excluded_hosts
-    ) == manifest
+    assert (
+        recovery.pin_original_manifest(
+            previous_tag, job=name, digest=digest, excluded_hosts=excluded_hosts
+        )
+        == manifest
+    )
     previous_latest = manifest.replace(
         "image: ghcr.io/nexufed/nexuml:sha-f8d5490-cuda12.8.1",
         "image: ghcr.io/nexufed/nexuml:latest",
     )
-    assert recovery.pin_original_manifest(
-        previous_latest, job=name, digest=digest, excluded_hosts=excluded_hosts
-    ) == manifest
+    assert (
+        recovery.pin_original_manifest(
+            previous_latest, job=name, digest=digest, excluded_hosts=excluded_hosts
+        )
+        == manifest
+    )
     with pytest.raises(ValueError, match="inconsistent"):
         recovery.pin_original_manifest(
             old, job=name, digest="b" * 64, excluded_hosts=excluded_hosts
@@ -359,23 +386,31 @@ def test_global_gpu_pool_discovers_gh200_hostnames(
 
 
 def test_image_pull_restart_requires_consistent_completed_source(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A retry must not mix source versions with the four completed trials."""
     recovery = load_recovery_helper(monkeypatch)
     for marker in recovery.COMPLETE_RUN_MARKERS:
-        (tmp_path / marker).write_text(json.dumps({
-            "source_sha256": "a" * 64,
-            "timing_includes_fit_validate_test": True,
-        }))
+        (tmp_path / marker).write_text(
+            json.dumps(
+                {
+                    "source_sha256": "a" * 64,
+                    "timing_includes_fit_validate_test": True,
+                }
+            )
+        )
     assert recovery.confirmed_source_digest(tmp_path) == "a" * 64
-    (tmp_path / recovery.COMPLETE_RUN_MARKERS[-1]).write_text(json.dumps({
-        "source_sha256": "b" * 64,
-        "timing_includes_fit_validate_test": True,
-    }))
+    (tmp_path / recovery.COMPLETE_RUN_MARKERS[-1]).write_text(
+        json.dumps(
+            {
+                "source_sha256": "b" * 64,
+                "timing_includes_fit_validate_test": True,
+            }
+        )
+    )
     with pytest.raises(ValueError, match="different source digests"):
         recovery.confirmed_source_digest(tmp_path)
-
 
 def test_image_pull_restart_accepts_deleted_job(
     monkeypatch: pytest.MonkeyPatch,
@@ -385,14 +420,13 @@ def test_image_pull_restart_accepts_deleted_job(
 
     def missing_job(*_args: str):
         raise subprocess.CalledProcessError(
-            1, ["kubectl", "get", "job"],
+            1,
+            ["kubectl", "get", "job"],
             stderr='Error from server (NotFound): jobs.batch "missing" not found',
         )
 
     monkeypatch.setattr(recovery, "_kubectl_json", missing_job)
-    assert recovery.verify_image_pull_blocked(
-        "lbecker", recovery.FAILED_JOBS[0], "a" * 64
-    ) is False
+    assert recovery.verify_image_pull_blocked("lbecker", recovery.FAILED_JOBS[0], "a" * 64) is False
 
 
 def test_image_pull_restart_fails_closed_on_kubectl_error(
@@ -403,14 +437,15 @@ def test_image_pull_restart_fails_closed_on_kubectl_error(
 
     def failed_get(*_args: str):
         raise subprocess.CalledProcessError(
-            1, ["kubectl", "get", "job"], stderr="Forbidden: insufficient privileges",
+            1,
+            ["kubectl", "get", "job"],
+            stderr="Forbidden: insufficient privileges",
         )
 
     monkeypatch.setattr(recovery, "_kubectl_json", failed_get)
     with pytest.raises(subprocess.CalledProcessError):
-        recovery.verify_image_pull_blocked(
-            "lbecker", recovery.FAILED_JOBS[0], "a" * 64
-        )
+        recovery.verify_image_pull_blocked("lbecker", recovery.FAILED_JOBS[0], "a" * 64)
+
 
 
 def test_image_pull_restart_refuses_completed_job(
@@ -418,13 +453,15 @@ def test_image_pull_restart_refuses_completed_job(
 ) -> None:
     """The restart helper cannot delete a previously successful Job."""
     recovery = load_recovery_helper(monkeypatch)
-    monkeypatch.setattr(recovery, "_kubectl_json", lambda *_: {
-        "metadata": {
-            "annotations": {"nexuml.ika.rub.de/source-sha256": "a" * 64},
+    monkeypatch.setattr(
+        recovery,
+        "_kubectl_json",
+        lambda *_: {
+            "metadata": {
+                "annotations": {"nexuml.ika.rub.de/source-sha256": "a" * 64},
+            },
+            "status": {"succeeded": 1},
         },
-        "status": {"succeeded": 1},
-    })
+    )
     with pytest.raises(ValueError, match="Refusing to restart completed"):
-        recovery.verify_image_pull_blocked(
-            "lbecker", recovery.FAILED_JOBS[0], "a" * 64
-        )
+        recovery.verify_image_pull_blocked("lbecker", recovery.FAILED_JOBS[0], "a" * 64)

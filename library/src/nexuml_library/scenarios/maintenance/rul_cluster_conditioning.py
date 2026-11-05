@@ -43,9 +43,7 @@ ClusterArm = Literal["reference", "working", "failure", "both"]
 ARMS: tuple[ClusterArm, ...] = ("reference", "working", "failure", "both")
 SEEDS = (42, 43, 44)
 ROOT = ".experiments/rul/enhanced-cfc/cluster-conditioned/fd003"
-CLUSTER_PATH = (
-    ".experiments/rul/prepared/cmapss-FD003-seed42-cfc-conditional-clusters-v1.pt"
-)
+CLUSTER_PATH = ".experiments/rul/prepared/cmapss-FD003-seed42-cfc-conditional-clusters-v1.pt"
 
 
 def cluster_conditioning_study(arm: ClusterArm, seed: int) -> ScenarioSpec:
@@ -86,11 +84,13 @@ def cluster_conditioning_study(arm: ClusterArm, seed: int) -> ScenarioSpec:
             failure_clusters=2,
             endpoint_windows=4,
         )
-        data = data.model_copy(update={
-            "datasets": [
-                DatasetSpec(source=conditioned_source, modality="sensor", split_type="keep")
-            ],
-        })
+        data = data.model_copy(
+            update={
+                "datasets": [
+                    DatasetSpec(source=conditioned_source, modality="sensor", split_type="keep")
+                ],
+            }
+        )
         conditioned_head = ClusterConditionedCfCRULHead(
             subset="FD003",
             upstream_seed=42,
@@ -109,9 +109,7 @@ def cluster_conditioning_study(arm: ClusterArm, seed: int) -> ScenarioSpec:
             failure_clusters=2,
             temperature=1.0,
         )
-        stages["RULModel"] = [
-            model_layer.model_copy(update={"component": conditioned_head})
-        ]
+        stages["RULModel"] = [model_layer.model_copy(update={"component": conditioned_head})]
         old_loss = stages["RULLoss"][0]
         loss = RULClusterAuxiliaryLoss(
             consistency_weight=0.1,
@@ -137,7 +135,10 @@ def cluster_conditioning_study(arm: ClusterArm, seed: int) -> ScenarioSpec:
         save_last=True,
     )
     callbacks[3] = callback(
-        EarlyStopping, monitor="val/loss", mode="min", patience=20,
+        EarlyStopping,
+        monitor="val/loss",
+        mode="min",
+        patience=20,
     )
     callbacks[4] = callback(
         Goel2026RestoreBestWeights,
@@ -145,22 +146,27 @@ def cluster_conditioning_study(arm: ClusterArm, seed: int) -> ScenarioSpec:
     )
     algorithms = list(parent.evaluation.algorithms)
     engine_audit = algorithms[-1]
-    algorithms[-1] = engine_audit.model_copy(update={
-        "algorithm": engine_audit.algorithm.model_copy(
-            update={"output_file": f".experiments/rul/audits/{run}.csv"}
-        )
-    })
-    return parent.model_copy(update={
-        "name": run,
-        "data": data,
-        "pipeline": PipelineSpec(stages=stages),
-        "callbacks": callbacks,
-        "evaluation": parent.evaluation.model_copy(update={"algorithms": algorithms}),
-        "logging": (
-            parent.logging.model_copy(update={"run_name": run})
-            if parent.logging is not None else None
-        ),
-    })
+    algorithms[-1] = engine_audit.model_copy(
+        update={
+            "algorithm": engine_audit.algorithm.model_copy(
+                update={"output_file": f".experiments/rul/audits/{run}.csv"}
+            )
+        }
+    )
+    return parent.model_copy(
+        update={
+            "name": run,
+            "data": data,
+            "pipeline": PipelineSpec(stages=stages),
+            "callbacks": callbacks,
+            "evaluation": parent.evaluation.model_copy(update={"algorithms": algorithms}),
+            "logging": (
+                parent.logging.model_copy(update={"run_name": run})
+                if parent.logging is not None
+                else None
+            ),
+        }
+    )
 
 
 @scenario("maintenance-rul-cfc-cluster-fd003-reference-s42")

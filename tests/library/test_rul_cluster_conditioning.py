@@ -34,10 +34,16 @@ from nexuml_library.scenarios.maintenance.rul_cluster_conditioning import (
 @pytest.mark.parametrize("seed", (42, 43, 44))
 def test_cluster_kmeans_deterministic(seed: int) -> None:
     """Engine-balanced clusters are reproducible, without data shuffling."""
-    points = torch.tensor([
-        [-4.0, -3.8], [-4.2, -4.0], [-3.7, -4.1],
-        [4.0, 4.1], [4.2, 3.8], [3.7, 4.0],
-    ])
+    points = torch.tensor(
+        [
+            [-4.0, -3.8],
+            [-4.2, -4.0],
+            [-3.7, -4.1],
+            [4.0, 4.1],
+            [4.2, 3.8],
+            [3.7, 4.0],
+        ]
+    )
     centers, indices = _kmeans(points, clusters=2, seed=seed)
     again, labels = _kmeans(points, clusters=2, seed=seed)
     assert torch.equal(centers, again)
@@ -57,12 +63,8 @@ def test_cluster_teacher_labels_not_visible_in_observations() -> None:
     ]
     features = torch.randn(4, 30, 15)
     labels = torch.tensor([[100.0], [99.0], [70.0], [50.0]])
-    base = _PairedRULRuntime(
-        features=features, targets=labels, raw=labels, rows=rows
-    )
-    dataset = _ClusterLabeledRULRuntime(
-        base, work=[1, 1, -1, -1], failure=[0, 0, -1, -1]
-    )
+    base = _PairedRULRuntime(features=features, targets=labels, raw=labels, rows=rows)
+    dataset = _ClusterLabeledRULRuntime(base, work=[1, 1, -1, -1], failure=[0, 0, -1, -1])
     training = dataset.get_split("train")
     validation = dataset.get_split("val")
     testing = dataset.get_split("test")
@@ -98,9 +100,7 @@ def test_cluster_artifact_rejects_wrong_encoder_and_validation_leak(
         "failure_centroids": torch.zeros(2, 128),
         "failure_mean": torch.zeros(128),
         "failure_std": torch.ones(128),
-        "train_engine_assignments": {
-            f"train:FD003:{i}": [i % 3, i % 2] for i in range(1, 81)
-        },
+        "train_engine_assignments": {f"train:FD003:{i}": [i % 3, i % 2] for i in range(1, 81)},
         "settings": {
             "subset": "FD003",
             "seed": 42,
@@ -113,9 +113,12 @@ def test_cluster_artifact_rejects_wrong_encoder_and_validation_leak(
         },
     }
     torch.save(original, path)
-    assert read_cluster_artifact(
-        path, prepared_sha256="a" * 64, encoder_sha256="b" * 64
-    )["settings"]["seed"] == 42
+    assert (
+        read_cluster_artifact(path, prepared_sha256="a" * 64, encoder_sha256="b" * 64)["settings"][
+            "seed"
+        ]
+        == 42
+    )
     with pytest.raises(ValueError, match="provenance"):
         read_cluster_artifact(path, encoder_sha256="c" * 64)
     original["settings"]["uses_test_or_val_endpoints"] = True
@@ -161,11 +164,10 @@ def test_cluster_scenarios_are_native_and_isolated(
 
 def test_masked_auxiliary_loss_is_zero_without_train_targets() -> None:
     """Unknown memberships (-1) must not contribute a validation CE term."""
-    x = TensorDict({
-        "failure_cluster_logits": torch.tensor(
-            [[-1.0, 1.0], [2.0, -2.0]], requires_grad=True
-        )
-    }, batch_size=[2])
+    x = TensorDict(
+        {"failure_cluster_logits": torch.tensor([[-1.0, 1.0], [2.0, -2.0]], requires_grad=True)},
+        batch_size=[2],
+    )
     y = TensorDict({"failure_cluster": torch.tensor([[-1], [-1]])}, batch_size=[2])
     from nexuml_library.layers.model.rul_cluster_auxiliary_loss import (
         _RULClusterAuxiliaryRuntime,

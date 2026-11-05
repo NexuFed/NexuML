@@ -131,10 +131,8 @@ def read_cluster_artifact(
         or settings.get("failure_clusters") != failure_clusters
         or settings.get("training_engines_only") is not True
         or settings.get("uses_test_or_val_endpoints") is not False
-        or (prepared_sha256 is not None
-            and settings.get("prepared_sha256") != prepared_sha256)
-        or (encoder_sha256 is not None
-            and settings.get("encoder_sha256") != encoder_sha256)
+        or (prepared_sha256 is not None and settings.get("prepared_sha256") != prepared_sha256)
+        or (encoder_sha256 is not None and settings.get("encoder_sha256") != encoder_sha256)
     ):
         raise ValueError("Cluster artifact provenance does not match this RUL study")
     for prefix, count in (("working", working_clusters), ("failure", failure_clusters)):
@@ -142,9 +140,12 @@ def read_cluster_artifact(
         offset = payload.get(f"{prefix}_mean")
         scale = payload.get(f"{prefix}_std")
         if (
-            not isinstance(centers, Tensor) or centers.shape != (count, 128)
-            or not isinstance(offset, Tensor) or offset.shape != (128,)
-            or not isinstance(scale, Tensor) or scale.shape != (128,)
+            not isinstance(centers, Tensor)
+            or centers.shape != (count, 128)
+            or not isinstance(offset, Tensor)
+            or offset.shape != (128,)
+            or not isinstance(scale, Tensor)
+            or scale.shape != (128,)
             or not all(bool(torch.isfinite(t).all()) for t in (centers, offset, scale))
             or not bool((scale > 0).all())
         ):
@@ -156,7 +157,8 @@ def read_cluster_artifact(
         if (
             not isinstance(name, str)
             or not name.startswith("train:FD003:")
-            or not isinstance(pair, list) or len(pair) != 2
+            or not isinstance(pair, list)
+            or len(pair) != 2
             or not all(isinstance(i, int) and not isinstance(i, bool) for i in pair)
             or not 0 <= pair[0] < working_clusters
             or not 0 <= pair[1] < failure_clusters
@@ -192,8 +194,11 @@ def prepare_cluster_artifact(
     prepared_sha = _sha256(prepared_file)
     if output.is_file():
         return read_cluster_artifact(
-            output, seed=seed, working_clusters=working_clusters,
-            failure_clusters=failure_clusters, prepared_sha256=prepared_sha,
+            output,
+            seed=seed,
+            working_clusters=working_clusters,
+            failure_clusters=failure_clusters,
+            prepared_sha256=prepared_sha,
         )
     upstream = resolve_patchformer_checkpoint("FD003", seed)
     frozen_encoder = _PatchFormerModel(30, _SENSORS_FD003, 64, 5, 2, 0.1)
@@ -241,7 +246,7 @@ def prepare_cluster_artifact(
     observed = []
     with torch.inference_mode():
         for start in range(0, len(selected_indices), encoding_batch_size):
-            indices = selected_indices[start:start + encoding_batch_size]
+            indices = selected_indices[start : start + encoding_batch_size]
             embeddings = frozen_encoder.forward_features(features[indices])
             pooled = ((embeddings - reference_mean) / reference_std).mean(dim=1)
             observed.append(pooled.cpu())
@@ -250,9 +255,9 @@ def prepare_cluster_artifact(
     terminal = []
     for engine_index in range(len(engines)):
         offset = engine_index * endpoint_windows * 2
-        healthy.append(vectors[offset:offset + endpoint_windows].mean(dim=0))
+        healthy.append(vectors[offset : offset + endpoint_windows].mean(dim=0))
         terminal.append(
-            vectors[offset + endpoint_windows:offset + 2 * endpoint_windows].mean(dim=0)
+            vectors[offset + endpoint_windows : offset + 2 * endpoint_windows].mean(dim=0)
         )
     assignments: dict[str, list[int]] = {}
     result: dict[str, Any] = {}
@@ -268,32 +273,40 @@ def prepare_cluster_artifact(
         result[f"{label}_std"] = std
         for name, cluster in zip(sorted(engines), cluster_ids.tolist(), strict=True):
             assignments.setdefault(name, []).append(int(cluster))
-    result.update({
-        "format": _CLUSTER_FORMAT,
-        "train_engine_assignments": assignments,
-        "settings": {
-            "subset": "FD003",
-            "seed": seed,
-            "working_clusters": working_clusters,
-            "failure_clusters": failure_clusters,
-            "endpoint_windows": endpoint_windows,
-            "prepared_sha256": prepared_sha,
-            "encoder_sha256": encoder_hash,
-            "training_engines_only": True,
-            "uses_test_or_val_endpoints": False,
-        },
-    })
+    result.update(
+        {
+            "format": _CLUSTER_FORMAT,
+            "train_engine_assignments": assignments,
+            "settings": {
+                "subset": "FD003",
+                "seed": seed,
+                "working_clusters": working_clusters,
+                "failure_clusters": failure_clusters,
+                "endpoint_windows": endpoint_windows,
+                "prepared_sha256": prepared_sha,
+                "encoder_sha256": encoder_hash,
+                "training_engines_only": True,
+                "uses_test_or_val_endpoints": False,
+            },
+        }
+    )
     output.parent.mkdir(parents=True, exist_ok=True)
     if output.exists():
         return read_cluster_artifact(
-            output, seed=seed, working_clusters=working_clusters,
-            failure_clusters=failure_clusters, prepared_sha256=prepared_sha,
+            output,
+            seed=seed,
+            working_clusters=working_clusters,
+            failure_clusters=failure_clusters,
+            prepared_sha256=prepared_sha,
             encoder_sha256=encoder_hash,
         )
     torch.save(result, output)
     return read_cluster_artifact(
-        output, seed=seed, working_clusters=working_clusters,
-        failure_clusters=failure_clusters, prepared_sha256=prepared_sha,
+        output,
+        seed=seed,
+        working_clusters=working_clusters,
+        failure_clusters=failure_clusters,
+        prepared_sha256=prepared_sha,
         encoder_sha256=encoder_hash,
     )
 
@@ -354,9 +367,7 @@ class AutoClusterConditionedCMapSSRULWindows(AutoPairedCMapSSRULWindows):
 class _ClusterLabeledRULRuntime(_PairedRULRuntime):
     """Preserve predecessor alignment and per-split auxiliary target masking."""
 
-    def __init__(
-        self, original: _PairedRULRuntime, work: list[int], failure: list[int]
-    ) -> None:
+    def __init__(self, original: _PairedRULRuntime, work: list[int], failure: list[int]) -> None:
         if original.meta is None or len(work) != len(original.meta):
             raise ValueError("Misaligned cluster and RUL source metadata")
         super().__init__(

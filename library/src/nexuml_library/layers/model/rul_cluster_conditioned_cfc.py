@@ -136,7 +136,8 @@ class _ClusterConditionedCfCRuntime(_EnhancedCfCRuntime):
         for prefix in ("working", "failure"):
             for suffix in ("centroids", "mean", "std"):
                 self.register_buffer(
-                    f"{prefix}_{suffix}", cast(Tensor, clusters[f"{prefix}_{suffix}"]),
+                    f"{prefix}_{suffix}",
+                    cast(Tensor, clusters[f"{prefix}_{suffix}"]),
                     persistent=True,
                 )
         self.working_gate: nn.Module | None = None
@@ -147,8 +148,10 @@ class _ClusterConditionedCfCRuntime(_EnhancedCfCRuntime):
             with torch.random.fork_rng(devices=[]):
                 torch.manual_seed(initialization_seed + 2001)
                 self.working_gate = nn.Sequential(
-                    nn.LayerNorm(128), nn.Linear(128, 64),
-                    nn.GELU(), nn.Linear(64, working_clusters),
+                    nn.LayerNorm(128),
+                    nn.Linear(128, 64),
+                    nn.GELU(),
+                    nn.Linear(64, working_clusters),
                 )
                 self.working_projection = nn.Linear(working_clusters, 64, bias=False)
                 nn.init.zeros_(self.working_projection.weight)
@@ -156,15 +159,15 @@ class _ClusterConditionedCfCRuntime(_EnhancedCfCRuntime):
             with torch.random.fork_rng(devices=[]):
                 torch.manual_seed(initialization_seed + 2002)
                 self.failure_gate = nn.Sequential(
-                    nn.LayerNorm(128), nn.Linear(128, 64),
-                    nn.GELU(), nn.Linear(64, failure_clusters),
+                    nn.LayerNorm(128),
+                    nn.Linear(128, 64),
+                    nn.GELU(),
+                    nn.Linear(64, failure_clusters),
                 )
                 self.failure_projection = nn.Linear(failure_clusters, 64, bias=False)
                 nn.init.zeros_(self.failure_projection.weight)
 
-    def _membership(
-        self, embedding: Tensor, kind: Literal["working", "failure"]
-    ) -> Tensor:
+    def _membership(self, embedding: Tensor, kind: Literal["working", "failure"]) -> Tensor:
         """Predict cluster logits from current observables and frozen centroids.
 
         Returns:
@@ -175,13 +178,17 @@ class _ClusterConditionedCfCRuntime(_EnhancedCfCRuntime):
         """
         if kind == "working":
             mean, std, centers, gate = (
-                self.working_mean, self.working_std,
-                self.working_centroids, self.working_gate,
+                self.working_mean,
+                self.working_std,
+                self.working_centroids,
+                self.working_gate,
             )
         else:
             mean, std, centers, gate = (
-                self.failure_mean, self.failure_std,
-                self.failure_centroids, self.failure_gate,
+                self.failure_mean,
+                self.failure_std,
+                self.failure_centroids,
+                self.failure_gate,
             )
         if gate is None:
             raise ValueError("Requested cluster gate is disabled")
@@ -204,9 +211,8 @@ class _ClusterConditionedCfCRuntime(_EnhancedCfCRuntime):
         features = self.encoder.forward_features(raw)
         normalized = (features - self.reference_mean) / self.reference_std
         encoded = (
-            self.input_projection(
-                torch.cat((normalized, torch.zeros_like(normalized)), dim=-1)
-            ) + self.positions
+            self.input_projection(torch.cat((normalized, torch.zeros_like(normalized)), dim=-1))
+            + self.positions
         )
         if self.trend_projection is not None:
             velocity = torch.cat(
@@ -230,9 +236,7 @@ class _ClusterConditionedCfCRuntime(_EnhancedCfCRuntime):
             encoded = self.segmentation(encoded)
         tokens = self.norm(self.temporal(encoded))
         attention = torch.softmax(self.token_scores(tokens), dim=1)
-        prediction = 130.0 * torch.sigmoid(
-            self.regressor((tokens * attention).sum(dim=1))
-        )
+        prediction = 130.0 * torch.sigmoid(self.regressor((tokens * attention).sum(dim=1)))
         return prediction, logits
 
     def forward_tensor(self, x: Tensor, y: Tensor | None = None) -> Tensor:
@@ -244,7 +248,9 @@ class _ClusterConditionedCfCRuntime(_EnhancedCfCRuntime):
         return self._predict(x)[0]
 
     def forward(
-        self, x: TensorDict | Tensor, y: TensorDict | None = None,
+        self,
+        x: TensorDict | Tensor,
+        y: TensorDict | None = None,
     ) -> tuple[TensorDict | Tensor, TensorDict | None]:
         """Expose only predicted memberships, never training oracle IDs.
 
