@@ -136,7 +136,25 @@ def test_replay_strict_checkpoint_and_zero_projection(
         patcher.setattr(_ReplayCfC, "load_state_dict", lambda self, *a, **kw: None)
         prototype = _ReplayCfC(arm, {})
     state = prototype.state_dict()
+    # All conditioned checkpoints persist BOTH cluster-statistic families,
+    # even when the corresponding gate is disabled.
+    for kind, count in (("working", 3), ("failure", 2)):
+        for name in ("centroids", "mean", "std"):
+            key = f"{kind}_{name}"
+            assert (key in state) == (arm != "reference")
+        if arm != "reference":
+            assert state[f"{kind}_centroids"].shape == (count, 128)
+        assert any(key.startswith(f"{kind}_gate.") for key in state) == (
+            kind in _enabled_gates(arm)
+        )
     model = _ReplayCfC(arm, state).eval()
+    if arm != "reference":
+        # An inactive family is still mandatory in a strictly loaded checkpoint.
+        missing = dict(state)
+        inactive = "failure" if arm == "working" else "working"
+        missing.pop(f"{inactive}_centroids")
+        with pytest.raises(RuntimeError, match="Missing key"):
+            _ReplayCfC(arm, missing)
     encoded = torch.randn(2, 30, 64)
     probs: dict[str, torch.Tensor] = {
         kind: torch.full(
