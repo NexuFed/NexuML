@@ -372,7 +372,6 @@ def test_image_pull_restart_requires_consistent_completed_source(
         recovery.confirmed_source_digest(tmp_path)
 
 
-
 def test_image_pull_restart_accepts_deleted_job(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -407,6 +406,7 @@ def test_image_pull_restart_fails_closed_on_kubectl_error(
         recovery.verify_image_pull_blocked(
             "lbecker", recovery.FAILED_JOBS[0], "a" * 64
         )
+
 
 def test_image_pull_restart_refuses_completed_job(
     monkeypatch: pytest.MonkeyPatch,
