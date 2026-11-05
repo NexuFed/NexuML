@@ -11,7 +11,8 @@ from __future__ import annotations
 import hashlib
 from collections import defaultdict
 from pathlib import Path
-from typing import Any, Literal, Self, cast
+from collections.abc import Sequence
+from typing import Any, Self, cast
 
 import torch
 from pydantic import Field
@@ -367,7 +368,7 @@ class _ClusterLabeledRULRuntime(_PairedRULRuntime):
         self._working_cluster = torch.tensor(work, dtype=torch.long)
         self._failure_cluster = torch.tensor(failure, dtype=torch.long)
 
-    def take(self, indices: list[int]) -> Self:
+    def take(self, indices: Sequence[int]) -> Self:
         """Retain pseudo-label alignment after engine-disjoint split selection.
 
         Returns:
