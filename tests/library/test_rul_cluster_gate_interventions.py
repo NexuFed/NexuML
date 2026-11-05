@@ -138,7 +138,7 @@ def test_replay_strict_checkpoint_and_zero_projection(
     state = prototype.state_dict()
     model = _ReplayCfC(arm, state).eval()
     encoded = torch.randn(2, 30, 64)
-    probs = {
+    probs: dict[str, torch.Tensor] = {
         kind: torch.full(
             (2, 3 if kind == "working" else 2),
             1.0 / (3 if kind == "working" else 2),
