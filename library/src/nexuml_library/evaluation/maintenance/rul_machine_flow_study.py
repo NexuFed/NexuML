@@ -230,11 +230,10 @@ def load_trajectories(
     }
     for split, engines in engine_indices.items():
         for engine, ids in sorted(engines.items()):
-            if split == "train":
-                keep = _evenly_spaced(len(ids), calibration_windows)
-                selected = [ids[i] for i in keep]
-            else:
-                selected = ids
+            # Preserve COMPLETE chronological engine trajectories. Balance
+            # training engines only when FITTING shared standardization and
+            # calibration; retrospective reconstruction needs full histories.
+            selected = ids
             # The frozen encoder has no access to evaluation targets.
             encoded = _encode_windows(
                 encoder, raw[selected], mean, std,
@@ -245,7 +244,10 @@ def load_trajectories(
             grouped[split][engine] = (steps, encoded, labels[selected].cpu())
     # Engine-balanced train-only standardization improves numerical stability
     # while ensuring validation dynamics receive no fitted statistics.
-    train_latent = torch.cat([data[1] for data in grouped["train"].values()])
+    train_latent = torch.cat([
+        data[1][_evenly_spaced(len(data[1]), calibration_windows)]
+        for data in grouped["train"].values()
+    ])
     location = train_latent.mean(dim=0)
     scale = train_latent.std(dim=0).clamp_min(1e-4)
     if not bool(torch.isfinite(scale).all()):
@@ -291,7 +293,10 @@ class RULCalibration:
 
 
 def fit_rul_calibration(
-    train: dict[str, MachineTrajectory], *, regularization: float = 10.0
+    train: dict[str, MachineTrajectory],
+    *,
+    regularization: float = 10.0,
+    windows_per_engine: int = 64,
 ) -> RULCalibration:
     """Fit the only supervised RUL mapping on completed TRAIN engines.
 
@@ -304,10 +309,16 @@ def fit_rul_calibration(
     Raises:
         ValueError: If labels or calibration regularization are incompatible.
     """
-    if regularization <= 0 or len(train) != 80:
+    if regularization <= 0 or len(train) != 80 or windows_per_engine < 2:
         raise ValueError("Calibrator requires 80 training engines and positive ridge penalty")
-    x = torch.cat([trace.latent for trace in train.values()]).double()
-    y = torch.cat([trace.rul for trace in train.values()]).double()
+    x = torch.cat([
+        trace.latent[_evenly_spaced(len(trace.steps), windows_per_engine)]
+        for trace in train.values()
+    ]).double()
+    y = torch.cat([
+        trace.rul[_evenly_spaced(len(trace.steps), windows_per_engine)]
+        for trace in train.values()
+    ]).double()
     if x.ndim != 2 or x.shape[1] != 128 or y.shape != (len(x), 1):
         raise ValueError("Training-engine calibration features and labels are misaligned")
     if not bool((y >= 0).all()) or not bool((y <= RUL_CAP).all()):
@@ -559,6 +570,7 @@ def _evaluate_causal(
     max_engines: int,
     integration_steps: int,
     ridge: float,
+    calibration_windows: int,
 ) -> dict[str, Any]:
     """Compare three causally valid RUL estimators on unseen machine suffixes.
 
@@ -570,7 +582,9 @@ def _evaluate_causal(
     Returns:
         Study metadata and window/engine-level descriptive metrics.
     """
-    calibration = fit_rul_calibration(train, regularization=ridge)
+    calibration = fit_rul_calibration(
+        train, regularization=ridge, windows_per_engine=calibration_windows
+    )
     rows: list[dict[str, Any]] = []
     forecasts: list[dict[str, Any]] = []
     names = _select_engine_names(val, max_engines)
@@ -867,6 +881,7 @@ def run_study(
             seed=seed, steps=train_steps, batch_size=batch_size,
             learning_rate=learning_rate, max_engines=max_engines,
             integration_steps=integration_steps, ridge=ridge,
+            calibration_windows=calibration_windows,
         )
     if mode in ("retrospective", "both"):
         results["retrospective"] = _evaluate_retrospective(
