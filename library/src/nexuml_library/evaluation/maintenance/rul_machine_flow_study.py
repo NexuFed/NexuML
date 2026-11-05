@@ -864,6 +864,8 @@ def run_study(
         / (
             f"{mode}-seed{seed}-prefix{round(prefix_fraction * 100):02d}"
             f"-steps{train_steps}-max{max_engines or 'all'}"
+            f"-batch{batch_size}-cal{calibration_windows}-int{integration_steps}"
+            f"-ridge{ridge:g}-lr{learning_rate:g}"
         )
     )
     output.mkdir(parents=True, exist_ok=True)
