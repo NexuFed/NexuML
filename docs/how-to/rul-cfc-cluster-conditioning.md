@@ -219,3 +219,93 @@ poor validation occupancy or no RUL improvement may signal a mismatch
 between pseudo-labels and the RUL objective. A small projection-to-base
 ratio suggests the trained conditioning signal is weak. Treat these as
 diagnostic evidence, not automatic causal conclusions.
+
+
+## Post-training inference interventions and age-stratified gate analysis
+
+After running the gate audit, run the **read-only inference-time intervention
+study**. It replays the frozen validation-selected checkpoints for all 12 runs,
+without any new fitting or Kubernetes Job submission. No `.experiments`
+symlink is required; all artifacts are read from the explicit Prisma root.
+
+```bash
+git pull --ff-only
+export PYTHONPATH="$PWD/src:$PWD/library/src"
+
+ruff check .
+ruff format --check .
+ty check
+pytest tests/library/test_rul_cluster_gate_interventions.py -v
+
+python -m nexuml_library.evaluation.maintenance.rul_cluster_gate_interventions \
+  --experiment-root /mnt/juicefs_prisma/models/nexuml/.experiments \
+  --device auto \
+  --batch-size 64 \
+  --age-windows-per-engine 64
+```
+
+The CLI accepts `--seeds 42` or `--arms both` for targeted diagnostics, but
+the default audits all 12 runs. It uses a single GPU if available, otherwise
+CPU. A partial dry run can verify one selected checkpoint:
+
+```bash
+python -m nexuml_library.evaluation.maintenance.rul_cluster_gate_interventions \
+  --experiment-root /mnt/juicefs_prisma/models/nexuml/.experiments \
+  --device auto --arms working --seeds 42
+```
+
+**Validation replay guard:** each checkpoint is reconstructed by strictly
+loading all saved weights and buffers into the identical `all_no_trend`
+PatchFormer, sensor graph, multiscale, segmentation and CfC architecture.
+The original prediction is evaluated on **every held-out validation window**
+and its window-weighted MSE must match the native selected-checkpoint curve
+(within a small numerical tolerance). The intervention audit fails closed on
+any mismatch, instead of reporting potentially misleading counterfactuals.
+
+**Interventions:** `original` leaves the trained model unchanged.
+`zero_working` and `zero_failure` suppress just the corresponding additive
+projection without altering its weights; `zero_both` suppresses both on the
+combined arm. The deterministic `shuffle_memberships` intervention replaces
+probability trajectories with those of **different validation engines**,
+matched by relative position in each engine's history. It uses a fixed
+derangement of 20 validation engines (seed 2026); in the combined arm the same
+donor is used for both gates, preserving their joint membership distribution.
+RUL labels, raw sensor histories, checkpoints and other representations are
+left unchanged. No official test-engine observations are evaluated.
+
+The metric is \(\Delta\mathrm{MSE} =
+\mathrm{MSE}_{\mathrm{intervention}} -
+\mathrm{MSE}_{\mathrm{original}}\), separately as window-weighted and
+engine-macro MSE. Positive deltas indicate that suppressing/swapping the
+gate **harms this trained head**; it does *not* prove that conditioning is
+better than the separately trained reference. Per-engine deltas reveal whether
+a small mean masks severe or heterogeneous changes.
+
+**Age study:** each training engine contributes up to 64 evenly spaced
+observations, annotated post hoc by its relative lifespan position
+(first/middle/last third). For each gate, report engine-macro agreement with
+its training-only *engine-level terminal pseudo-label*, negative log
+likelihood, mean confidence and normalized entropy, as well as its majority
+pseudo-label baseline. High early-life terminal label agreement could reflect
+persistent engine identity rather than a real early-life failure precursor;
+it is not physical fault-mode accuracy. Validation engines have no
+pseudo-label targets and never enter this supervised diagnostic.
+
+Output is written to:
+
+```text
+/mnt/juicefs_prisma/models/nexuml/.experiments/rul/enhanced-cfc/cluster-conditioned/fd003/gate-interventions-v1/
+  reference-s42.json ... reference-s44.json
+  working-s42.json ... working-s44.json
+  failure-s42.json ... failure-s44.json
+  both-s42.json ... both-s44.json
+  validation_interventions.csv
+  validation_engine_deltas.csv
+  train_age_strata.csv
+```
+
+The three CSV files provide the model/seed-level interventions, exact
+engine-level RUL differences, and training-only age-stage gate diagnostics.
+These are descriptive, exploratory analyses; neither validation-engine
+membership shuffling nor training pseudo-label agreement establishes
+causality or generalization to unseen failure modes.
