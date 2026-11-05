@@ -184,7 +184,7 @@ validation suffix forecasts.
 Files are written to distinct directories under the explicit Prisma root:
 
 ```text
-rul/within-machine-flow/fd003/<mode>-seed42-prefix70-steps300-max{3|all}/
+rul/within-machine-flow/fd003/<mode>-seed42-prefix70-steps300-max{3|all}-batch64-cal64-int8-ridge10-lr0.001/
     manifest.json
     causal_per_machine.csv
     causal_forecast_horizons.csv
