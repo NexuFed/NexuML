@@ -114,10 +114,21 @@ for ARM in reference working failure both; do
 done
 ```
 
-Use the normal immutable-source Kubernetes workflow for cluster jobs when
-running in parallel: pre-stage the cluster artifact on the shared Prisma
-mount, then submit each resolved scenario to a GPU Job. The above commands
-are the native local recipe, not a cluster Job submission.
+For GPU-parallel experiments on the original Kueue pool, use the dedicated
+immutable-source launcher **instead of** running all twelve local commands:
+
+```bash
+# After preparing the cluster artifact on Prisma:
+python .k8s/scenarios/submit_rul_cfc_cluster_conditioning.py --dry-run
+python .k8s/scenarios/submit_rul_cfc_cluster_conditioning.py
+kubectl -n lbecker get jobs -l nexuml-study=rul-cfc-cluster
+```
+
+The launcher creates twelve separate Jobs, preserves all prior 41-run results,
+uses the previous fixed GHCR CUDA image, excludes GH200 and
+`student-worker-1`, requests one GPU per Job, and stages one shared,
+content-addressed source snapshot. A missing cluster artifact prevents
+submission; it is **never** fitted independently by twelve Kubernetes Jobs.
 
 ## Evaluation requirements
 
