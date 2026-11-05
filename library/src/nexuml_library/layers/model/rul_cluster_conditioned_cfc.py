@@ -169,6 +169,9 @@ class _ClusterConditionedCfCRuntime(_EnhancedCfCRuntime):
 
         Returns:
             Differentiable logits of shape [batch, cluster_count].
+
+        Raises:
+            ValueError: If a requested cluster gate is disabled.
         """
         if kind == "working":
             mean, std, centers, gate = (
@@ -191,6 +194,9 @@ class _ClusterConditionedCfCRuntime(_EnhancedCfCRuntime):
 
         Returns:
             Capped RUL [B,1] and enabled cluster logits.
+
+        Raises:
+            ValueError: If the sensor history has an incompatible shape.
         """
         if history.ndim != 3 or history.shape[1:] != (30, 15):
             raise ValueError("Conditional CfC expects [batch,30,15] sensor windows")
