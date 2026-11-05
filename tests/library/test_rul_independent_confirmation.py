@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import importlib
 import importlib.util
 import json
 from pathlib import Path
@@ -318,7 +319,11 @@ def test_global_gpu_pool_discovers_gh200_hostnames(
 ) -> None:
     """Exclude actual GH200 hostname labels, not unrelated idle GPU nodes."""
     load_launcher(monkeypatch)
-    from rul_confirm_gpu_pool import excluded_hostnames
+    # This helper is dynamically loaded from the Kubernetes scripts folder.
+    # Runtime import avoids a first-party import path that ty cannot resolve.
+    excluded_hostnames = getattr(
+        importlib.import_module("rul_confirm_gpu_pool"), "excluded_hostnames"
+    )
 
     nodes = {
         "items": [
