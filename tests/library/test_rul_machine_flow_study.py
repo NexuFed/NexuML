@@ -241,6 +241,18 @@ def test_causal_study_smoke_writes_guarded_outputs(
             train, val, {"test_observations_used": "false", "fixture": "synthetic"}
         ),
     )
+    # The fitting API must receive a genuinely truncated trajectory and
+    # zero real target-machine labels, not merely a cutoff into full data.
+    actual_fit = rul_machine_flow_study.fit_dynamics
+
+    def checked_fit(**kwargs: Any) -> tuple[MachineFutureDynamics, float]:
+        observed = kwargs["trace"]
+        assert len(observed.steps) == kwargs["prefix_count"]
+        assert len(observed.steps) == 49
+        assert bool((observed.rul == 0).all())
+        return actual_fit(**kwargs)
+
+    monkeypatch.setattr(rul_machine_flow_study, "fit_dynamics", checked_fit)
     # Avoid excessive CPU threading overhead in this tiny deterministic test.
     old_threads = torch.get_num_threads()
     torch.set_num_threads(1)
