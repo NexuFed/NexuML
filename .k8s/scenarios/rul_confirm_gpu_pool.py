@@ -65,7 +65,6 @@ def discover_excluded_hostnames() -> tuple[str, ...]:
         Verified exclusion names for the live cluster.
 
     Raises:
-        subprocess.CalledProcessError: If kubectl cannot list Nodes.
         ValueError: If GH200 nodes cannot be identified safely.
     """
     result = subprocess.run(
