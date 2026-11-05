@@ -79,3 +79,29 @@ def test_storage_set_tensordict():
     store.set("td", td)
     got = store.get("td")
     assert isinstance(got, TensorDict)
+
+def test_storage_append_tensordict_preserves_batches():
+    """Concatenate nested TensorDict values without coercing them to tensors."""
+    store = SharedStorage(memory_mapped=False)
+    first = TensorDict({"a": torch.ones(2, 3)}, batch_size=[2])
+    second = TensorDict({"a": torch.zeros(3, 3)}, batch_size=[3])
+    store.append("td", first)
+    store.append("td", second)
+    result = store.get("td")
+    assert isinstance(result, TensorDict)
+    assert result.batch_size == torch.Size([5])
+    assert torch.equal(result["a"], torch.cat([first["a"], second["a"]], dim=0))
+
+
+def test_storage_append_refuses_mixed_tensor_and_tensordict():
+    """A mixed-kind append must fail before overwriting the stored value."""
+    store = SharedStorage(memory_mapped=False)
+    original = torch.ones(2, 1)
+    store.append("x", original)
+    nested = TensorDict({"a": torch.zeros(1, 1)}, batch_size=[1])
+    with pytest.raises(TypeError, match="TensorDict"):
+        store.append("x", nested)
+    stored = store.get("x")
+    assert isinstance(stored, torch.Tensor)
+    assert torch.equal(stored, original)
+
