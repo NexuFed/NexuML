@@ -68,9 +68,6 @@ class ClusterConditionedCfCRULHead(EnhancedCfCRULHead):
         with torch.random.fork_rng(devices=[]):
             torch.manual_seed(self.initialization_seed)
             return _ClusterConditionedCfCRuntime(
-                input_sizes=context.input_sizes,
-                keys_in=context.keys_in,
-                keys_out=context.keys_out,
                 subset=self.subset,
                 upstream_seed=self.upstream_seed,
                 initialization_seed=self.initialization_seed,
@@ -87,6 +84,7 @@ class ClusterConditionedCfCRULHead(EnhancedCfCRULHead):
                 working_clusters=self.working_clusters,
                 failure_clusters=self.failure_clusters,
                 temperature=self.temperature,
+                **context.runtime_kwargs(),
             )
 
 
@@ -102,12 +100,17 @@ class _ClusterConditionedCfCRuntime(_EnhancedCfCRuntime):
         failure_clusters: int,
         temperature: float,
         initialization_seed: int,
+        upstream_seed: int,
         **kwargs: Any,
     ) -> None:
-        super().__init__(initialization_seed=initialization_seed, **kwargs)
+        super().__init__(
+            initialization_seed=initialization_seed,
+            upstream_seed=upstream_seed,
+            **kwargs,
+        )
         endpoint = Path(
             f".experiments/rul/prepared/"
-            f"{sequence_flow_run('FD003', self._upstream_seed, 'cfc')}-endpoints.pt"
+            f"{sequence_flow_run('FD003', upstream_seed, 'cfc')}-endpoints.pt"
         )
         # The parent has already validated this endpoint against the true
         # frozen PatchFormer weights. Bind cluster centroids to the same hash.
