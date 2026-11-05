@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
-from pathlib import Path
+from typing import Any
 
 import pytest
 import torch
 
 from nexuml_library.evaluation.maintenance.rul_cluster_gate_interventions import (
+    Arms,
     _ReplayCfC,
     _age_bucket,
     _counterfactual_predictions,
@@ -22,7 +23,7 @@ from nexuml_library.evaluation.maintenance.rul_cluster_gate_interventions import
 )
 
 
-def _synthetic_rows() -> Iterator[dict[str, object]]:
+def _synthetic_rows() -> Iterator[dict[str, Any]]:
     """Yield interleaved synthetic training, validation and official test metadata.
 
     Yields:
@@ -64,7 +65,7 @@ def test_validation_selection_is_exhaustive_and_test_sealed() -> None:
         original = [selected[position] for position in positions]
         assert [rows[index]["step"] for index in original] == [0, 1, 2, 3]
     with pytest.raises(ValueError, match="20"):
-        _validation_index(rows[:400])
+        _validation_index([row for row in rows if row["asset_id"] != "val:FD003:19"])
 
 
 def test_shuffle_is_deterministic_bijective_and_age_matched() -> None:
@@ -126,7 +127,7 @@ def test_native_checkpoint_reproduction_is_required() -> None:
 
 @pytest.mark.parametrize("arm", ["reference", "working", "failure", "both"])
 def test_replay_strict_checkpoint_and_zero_projection(
-    arm: str, monkeypatch: pytest.MonkeyPatch
+    arm: Arms, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Reconstructed heads honor original, ablated and strictly saved model weights."""
     # Bootstrap an architecture to construct a synthetic, complete checkpoint.
