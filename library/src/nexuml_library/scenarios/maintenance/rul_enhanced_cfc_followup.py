@@ -582,5 +582,3 @@ def followup_fd001_all_no_trend_s44() -> ScenarioSpec:
         Native RUL training and validation scenario.
     """
     return followup_study("FD001", "all_no_trend", 44)
-
-
