@@ -630,6 +630,8 @@ def run_interventions(
             }
             measurements: dict[str, dict[str, Any]] = {}
             original_by_engine: dict[str, float] = {}
+            original_window_mse: float | None = None
+            original_engine_mse: float | None = None
             for variant in _interventions(arm):
                 predictions = _counterfactual_predictions(
                     model, encoded, probabilities, shuffled, variant,
@@ -647,6 +649,8 @@ def run_interventions(
                     original_by_engine = per_engine
                     original_window_mse = scores["window_mse"]
                     original_engine_mse = scores["engine_macro_mse"]
+                if original_window_mse is None or original_engine_mse is None:
+                    raise ValueError("Original replay must precede all interventions")
                 delta_by_engine = {
                     engine: mse - original_by_engine[engine]
                     for engine, mse in per_engine.items()
