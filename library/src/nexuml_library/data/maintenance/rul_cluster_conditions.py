@@ -9,6 +9,7 @@ training and inference, not these oracle labels.
 from __future__ import annotations
 
 import hashlib
+import json
 from collections import defaultdict
 from pathlib import Path
 from collections.abc import Sequence
@@ -167,6 +168,39 @@ def read_cluster_artifact(
     return cast(dict[str, Any], payload)
 
 
+def _shared_patchformer_checkpoint(experiment_root: Path, seed: int) -> Path:
+    """Resolve a native best-checkpoint audit against an explicit shared storage root.
+
+    The audit's absolute path may have been written inside a Kubernetes Pod,
+    which mounts the same Prisma volume at a different location. Resolve the
+    audited checkpoint filename within the shared root instead.
+
+    Returns:
+        The validation-selected checkpoint in shared storage.
+
+    Raises:
+        FileNotFoundError: If the audit or selected checkpoint is missing.
+        ValueError: If the audit selects a different upstream run.
+    """
+    run = f"rul-FD003-controlled-patchformer-seed{seed}"
+    audit = experiment_root / "rul" / "audits" / f"{run}.checkpoint.json"
+    if not audit.is_file():
+        raise FileNotFoundError(f"Missing upstream PatchFormer audit: {audit}")
+    try:
+        payload = json.loads(audit.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"Invalid upstream PatchFormer audit: {audit}") from exc
+    if not isinstance(payload, dict):
+        raise ValueError(f"Invalid upstream PatchFormer audit: {audit}")
+    best = payload.get("best_model_path")
+    if not isinstance(best, str) or not best or Path(best).parent.name != run:
+        raise ValueError(f"Upstream PatchFormer audit selects an unexpected run: {audit}")
+    checkpoint = experiment_root / "rul" / "checkpoints" / run / Path(best).name
+    if checkpoint.suffix != ".ckpt" or not checkpoint.is_file():
+        raise FileNotFoundError(f"Audited PatchFormer checkpoint unavailable: {checkpoint}")
+    return checkpoint
+
+
 def prepare_cluster_artifact(
     *,
     prepared_path: str,
@@ -176,6 +210,7 @@ def prepare_cluster_artifact(
     failure_clusters: int = 2,
     endpoint_windows: int = 4,
     encoding_batch_size: int = 32,
+    experiment_root: str | None = None,
 ) -> dict[str, Any]:
     """Fit engine-balanced cluster prototypes from train-engine endpoints only.
 
@@ -191,7 +226,26 @@ def prepare_cluster_artifact(
     """
     prepared_file = Path(prepared_path).expanduser().resolve()
     output = Path(output_path).expanduser().resolve()
+    shared_root = Path(experiment_root).expanduser().resolve() if experiment_root else None
+    if shared_root is not None and (
+        not prepared_file.is_relative_to(shared_root)
+        or not output.is_relative_to(shared_root)
+    ):
+        raise ValueError(
+            "Explicit cluster preparation requires both artifact paths inside experiment_root"
+        )
     prepared_sha = _sha256(prepared_file)
+    upstream = (
+        resolve_patchformer_checkpoint(
+            "FD003",
+            seed,
+            checkpoint_path=str(_shared_patchformer_checkpoint(shared_root, seed)),
+        )
+        if shared_root is not None
+        else resolve_patchformer_checkpoint("FD003", seed)
+    )
+    frozen_encoder = _PatchFormerModel(30, _SENSORS_FD003, 64, 5, 2, 0.1)
+    encoder_hash = _trusted_patchformer_weights(frozen_encoder, upstream)
     if output.is_file():
         return read_cluster_artifact(
             output,
@@ -199,12 +253,13 @@ def prepare_cluster_artifact(
             working_clusters=working_clusters,
             failure_clusters=failure_clusters,
             prepared_sha256=prepared_sha,
+            encoder_sha256=encoder_hash,
         )
-    upstream = resolve_patchformer_checkpoint("FD003", seed)
-    frozen_encoder = _PatchFormerModel(30, _SENSORS_FD003, 64, 5, 2, 0.1)
-    encoder_hash = _trusted_patchformer_weights(frozen_encoder, upstream)
-    endpoint = Path(
-        f".experiments/rul/prepared/{sequence_flow_run('FD003', seed, 'cfc')}-endpoints.pt"
+    endpoint = (
+        (shared_root if shared_root is not None else Path(".experiments"))
+        / "rul"
+        / "prepared"
+        / f"{sequence_flow_run('FD003', seed, 'cfc')}-endpoints.pt"
     )
     endpoint_settings = read_prepared_artifact(endpoint)["settings"]
     if (
@@ -321,6 +376,7 @@ class AutoClusterConditionedCMapSSRULWindows(AutoPairedCMapSSRULWindows):
     working_clusters: int = Field(default=3, ge=2, le=12)
     failure_clusters: int = Field(default=2, ge=2, le=12)
     endpoint_windows: int = Field(default=4, ge=1, le=20)
+    experiment_root: str | None = None
 
     def build(self) -> NexuDataset:
         """Build the native engine-disjoint dataset with masked pseudo-labels.
@@ -343,6 +399,7 @@ class AutoClusterConditionedCMapSSRULWindows(AutoPairedCMapSSRULWindows):
             working_clusters=self.working_clusters,
             failure_clusters=self.failure_clusters,
             endpoint_windows=self.endpoint_windows,
+            experiment_root=self.experiment_root,
         )
         assignments = cast(dict[str, list[int]], clusters["train_engine_assignments"])
         meta = original.meta
