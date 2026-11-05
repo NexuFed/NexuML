@@ -193,8 +193,9 @@ For each enabled gate and split, the report records:
   occupancy, top-probability confidence and (normalized) entropy.
 - Trained additive gate-projection L2 magnitude and its ratio to the
   unconditioned CfC input representation L2 magnitude.
-- **Training only**: accuracy and negative log-likelihood against
-  train-engine pseudo-labels, label occupancy and majority-label baseline.
+- **Training only**: accuracy, negative log-likelihood and 10-bin expected
+  calibration error against train-engine pseudo-labels, label occupancy
+  and majority-label baseline.
   This agreement is not physical failure-mode classification accuracy.
 - For all 12 runs: the selected-checkpoint epoch, existing validation
   MSE/gap/worst-group metrics, selected checkpoint SHA-256, prepared
@@ -208,7 +209,7 @@ Outputs are written under:
   working-s42.json ... working-s44.json
   failure-s42.json ... failure-s44.json
   both-s42.json ... both-s44.json
-  summary.csv
+  summary.csv (3 reference context rows + 12 individual gate rows)
 ```
 
 A high normalized entropy with nearly uniform probabilities suggests
