@@ -144,7 +144,6 @@ def _kubectl_json(namespace: str, resource: str, name: str) -> dict[str, Any]:
         Kubernetes resource JSON.
 
     Raises:
-        subprocess.CalledProcessError: If the object cannot be read.
         ValueError: If kubectl did not return a JSON object.
     """
     result = subprocess.run(
@@ -204,7 +203,6 @@ def verify_image_pull_blocked(namespace: str, job: str, digest: str) -> bool:
             }:
                 raise ValueError(f"Unexpected Pod waiting reason for {job}: {reason}")
     return True
-
 
 
 def main() -> None:
