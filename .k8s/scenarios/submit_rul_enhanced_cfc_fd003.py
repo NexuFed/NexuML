@@ -136,9 +136,7 @@ def stage_snapshot(staging_root: Path, digest: str, *, dry_run: bool) -> Path:
         )
         if digest_source(temporary) != digest or digest_source() != digest:
             raise ValueError("source changed during staging or copy verification failed")
-        (temporary / "NEX233_SOURCE_DIGEST.txt").write_text(
-            digest + "\n", encoding="utf-8"
-        )
+        (temporary / "NEX233_SOURCE_DIGEST.txt").write_text(digest + "\n", encoding="utf-8")
         temporary.rename(target)
     finally:
         if temporary.exists():
@@ -224,8 +222,10 @@ def main() -> None:
     args = parser.parse_args()
     if not NAME_PATTERN.fullmatch(args.namespace):
         parser.error("invalid Kubernetes namespace")
-    if not args.seeds or len(set(args.seeds)) != len(args.seeds) or any(
-        seed not in SEEDS for seed in args.seeds
+    if (
+        not args.seeds
+        or len(set(args.seeds)) != len(args.seeds)
+        or any(seed not in SEEDS for seed in args.seeds)
     ):
         parser.error("seeds must be unique and drawn from 42, 43, 44")
     staging_root = args.staging_root.expanduser().absolute()

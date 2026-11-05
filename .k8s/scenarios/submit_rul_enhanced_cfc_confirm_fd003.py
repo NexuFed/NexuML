@@ -24,9 +24,7 @@ from submit_rul_enhanced_cfc_fd003 import (
     stage_snapshot,
 )
 
-TEMPLATE = Path(__file__).with_name(
-    "job_rul_enhanced_cfc_confirm_fd003.yaml.template"
-)
+TEMPLATE = Path(__file__).with_name("job_rul_enhanced_cfc_confirm_fd003.yaml.template")
 CONFIGURATIONS = ("baseline", "finetune", "all_no_trend")
 
 
@@ -101,23 +99,22 @@ def main() -> None:
     parser.add_argument("--staging-root", type=Path, default=DEFAULT_STAGE)
     parser.add_argument("--seeds", nargs="+", type=int, default=list(SEEDS))
     parser.add_argument(
-        "--configurations", nargs="+", choices=CONFIGURATIONS,
+        "--configurations",
+        nargs="+",
+        choices=CONFIGURATIONS,
         default=list(CONFIGURATIONS),
     )
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
     if not NAME_PATTERN.fullmatch(args.namespace):
         parser.error("Invalid Kubernetes namespace")
-    if len(args.seeds) != len(set(args.seeds)) or any(
-        seed not in SEEDS for seed in args.seeds
-    ):
+    if len(args.seeds) != len(set(args.seeds)) or any(seed not in SEEDS for seed in args.seeds):
         parser.error("Seeds must be unique and selected from 42, 43, 44")
     if len(args.configurations) != len(set(args.configurations)):
         parser.error("Configurations must be unique")
     staging_root = args.staging_root.expanduser().absolute()
-    if (
-        staging_root == Path("/mnt/juicefs")
-        or not staging_root.is_relative_to(Path("/mnt/juicefs"))
+    if staging_root == Path("/mnt/juicefs") or not staging_root.is_relative_to(
+        Path("/mnt/juicefs")
     ):
         parser.error("Staging root must be under the JuiceFS source PVC")
     excluded_hosts = discover_excluded_hostnames()
@@ -133,7 +130,11 @@ def main() -> None:
             manifest = RENDERED / f"{name}.yaml"
             manifest.write_text(
                 render_confirmation_manifest(
-                    configuration, seed, digest, source_subpath, args.namespace,
+                    configuration,
+                    seed,
+                    digest,
+                    source_subpath,
+                    args.namespace,
                     excluded_hosts=excluded_hosts,
                 ),
                 encoding="utf-8",
@@ -146,8 +147,13 @@ def main() -> None:
                 continue
             subprocess.run(
                 [
-                    "kubectl", "-n", args.namespace, "apply",
-                    "--dry-run=client", "-f", str(manifest),
+                    "kubectl",
+                    "-n",
+                    args.namespace,
+                    "apply",
+                    "--dry-run=client",
+                    "-f",
+                    str(manifest),
                 ],
                 check=True,
             )

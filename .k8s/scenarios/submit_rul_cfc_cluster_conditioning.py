@@ -131,9 +131,7 @@ def main() -> None:
         )
     choices = cluster_trials()
     if args.seeds is not None:
-        if len(set(args.seeds)) != len(args.seeds) or any(
-            seed not in SEEDS for seed in args.seeds
-        ):
+        if len(set(args.seeds)) != len(args.seeds) or any(seed not in SEEDS for seed in args.seeds):
             parser.error(f"Seeds must be a unique subset of {SEEDS}")
         choices = tuple(item for item in choices if item[1] in args.seeds)
     exclusions = discover_excluded_hostnames()
@@ -145,9 +143,7 @@ def main() -> None:
         name = job_name(arm, seed)
         manifest = RENDERED / f"{name}.yaml"
         manifest.write_text(
-            render_cluster_job(
-                arm, seed, digest, source_subpath, exclusions, args.namespace
-            ),
+            render_cluster_job(arm, seed, digest, source_subpath, exclusions, args.namespace),
             encoding="utf-8",
         )
         if args.dry_run:
@@ -157,8 +153,7 @@ def main() -> None:
             print(f"[skip] Existing Job unchanged: {name}")
             continue
         subprocess.run(
-            ["kubectl", "-n", args.namespace, "create",
-             "--dry-run=client", "-f", str(manifest)],
+            ["kubectl", "-n", args.namespace, "create", "--dry-run=client", "-f", str(manifest)],
             check=True,
         )
         subprocess.run(

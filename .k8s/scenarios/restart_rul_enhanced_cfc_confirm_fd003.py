@@ -38,8 +38,7 @@ COMPLETE_RUN_MARKERS = (
     "all-no-trend-s44.execution.json",
 )
 DEFAULT_RESULTS = Path(
-    "/mnt/juicefs_prisma/models/nexuml/.experiments/"
-    "rul/enhanced-cfc/fd003/confirmation"
+    "/mnt/juicefs_prisma/models/nexuml/.experiments/rul/enhanced-cfc/fd003/confirmation"
 )
 _HOSTNAME = re.compile(
     r"(?P<indent>^[ \t]*)- key: kubernetes\.io/hostname\n"
@@ -119,7 +118,7 @@ def pin_original_manifest(
         f"{indent}  operator: NotIn\n"
         f"{indent}  values: [{', '.join(sorted(set(excluded_hosts)))}]"
     )
-    rewritten = text[:match.start()] + new + text[match.end():]
+    rewritten = text[: match.start()] + new + text[match.end() :]
     # Old manifests had a separate CUDA-label requirement. The new global
     # pool must not depend on a label that many otherwise valid nodes lack.
     old_cuda_affinity = (
@@ -148,7 +147,9 @@ def _kubectl_json(namespace: str, resource: str, name: str) -> dict[str, Any]:
     """
     result = subprocess.run(
         ["kubectl", "-n", namespace, "get", resource, name, "-o", "json"],
-        capture_output=True, text=True, check=True,
+        capture_output=True,
+        text=True,
+        check=True,
     )
     payload = json.loads(result.stdout)
     if not isinstance(payload, dict):
@@ -179,10 +180,19 @@ def verify_image_pull_blocked(namespace: str, job: str, digest: str) -> bool:
         raise ValueError(f"Refusing to restart completed Job: {job}")
     pods = subprocess.run(
         [
-            "kubectl", "-n", namespace, "get", "pods",
-            "-l", f"batch.kubernetes.io/job-name={job}", "-o", "json",
+            "kubectl",
+            "-n",
+            namespace,
+            "get",
+            "pods",
+            "-l",
+            f"batch.kubernetes.io/job-name={job}",
+            "-o",
+            "json",
         ],
-        capture_output=True, text=True, check=True,
+        capture_output=True,
+        text=True,
+        check=True,
     )
     payload = json.loads(pods.stdout)
     items = payload.get("items", [])
@@ -198,12 +208,14 @@ def verify_image_pull_blocked(namespace: str, job: str, digest: str) -> bool:
                 raise ValueError(f"Job container already ran: {job}")
             reason = state.get("waiting", {}).get("reason")
             if reason not in {
-                None, "ErrImagePull", "ImagePullBackOff",
-                "ContainerCreating", "PodInitializing",
+                None,
+                "ErrImagePull",
+                "ImagePullBackOff",
+                "ContainerCreating",
+                "PodInitializing",
             }:
                 raise ValueError(f"Unexpected Pod waiting reason for {job}: {reason}")
     return True
-
 
 def main() -> None:
     """Preview or safely recreate the five failed Jobs without restaging code."""
@@ -228,8 +240,7 @@ def main() -> None:
         output.write_text(pinned, encoding="utf-8")
         exists = verify_image_pull_blocked(args.namespace, job, digest)
         subprocess.run(
-            ["kubectl", "-n", args.namespace, "create",
-             "--dry-run=client", "-f", str(output)],
+            ["kubectl", "-n", args.namespace, "create", "--dry-run=client", "-f", str(output)],
             check=True,
         )
         state = "pending (replace)" if exists else "deleted (create)"
@@ -243,13 +254,20 @@ def main() -> None:
         exists = verify_image_pull_blocked(args.namespace, job, digest)
         if exists:
             subprocess.run(
-                ["kubectl", "-n", args.namespace, "delete", "job", job,
-                 "--cascade=foreground", "--wait=true"],
+                [
+                    "kubectl",
+                    "-n",
+                    args.namespace,
+                    "delete",
+                    "job",
+                    job,
+                    "--cascade=foreground",
+                    "--wait=true",
+                ],
                 check=True,
             )
         subprocess.run(
-            ["kubectl", "-n", args.namespace, "create",
-             "-f", str(previews / f"{job}.yaml")],
+            ["kubectl", "-n", args.namespace, "create", "-f", str(previews / f"{job}.yaml")],
             check=True,
         )
         print(f"[created] {job}", flush=True)

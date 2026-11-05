@@ -165,7 +165,7 @@ def patched_manifest(name: str, original: str) -> str:
         or original.count(old) != 1
         or original.count(f"image: {IMAGE}") != 1
         or original.count("nexuml-study: rul-cfc-followup") < 1
-        or "nvidia.com/gpu: \"1\"" not in original
+        or 'nvidia.com/gpu: "1"' not in original
         or "subPath: job-staging/nexuml-nex233/" not in original
         or "NEX233_SOURCE_DIGEST.txt" not in original
     ):
@@ -204,14 +204,13 @@ def plan_manifests(rendered_root: Path) -> dict[str, str]:
         ValueError: If source provenance or template shape is inconsistent.
     """
     manifests = {
-        name: patched_manifest(
-            name, (rendered_root / f"{name}.yaml").read_text(encoding="utf-8")
-        )
+        name: patched_manifest(name, (rendered_root / f"{name}.yaml").read_text(encoding="utf-8"))
         for name in job_names()
     }
     if len({_source_digest(manifest) for manifest in manifests.values()}) != 1:
         raise ValueError("FD001 manifests were not staged from the same source snapshot")
     return manifests
+
 
 
 def publish_file(source: Path, destination: Path) -> None:
@@ -269,7 +268,8 @@ def publish_audit(shared: Path, audit: dict[str, Any]) -> None:
 
 
 def publish_manifests(
-    rendered_root: Path, manifests: dict[str, str],
+    rendered_root: Path,
+    manifests: dict[str, str],
 ) -> Path:
     """Write independent recovery copies, never altering rendered originals.
 
@@ -300,7 +300,9 @@ def _kubectl(namespace: str, *arguments: str) -> subprocess.CompletedProcess[str
     """
     return subprocess.run(
         ["kubectl", "-n", namespace, *arguments],
-        check=False, capture_output=True, text=True,
+        check=False,
+        capture_output=True,
+        text=True,
     )
 
 
@@ -324,9 +326,10 @@ def restart_jobs(namespace: str, manifest_dir: Path) -> None:
             record.get("metadata", {}).get("name") != name
             or record.get("metadata", {}).get("labels", {}).get("nexuml-study")
             != "rul-cfc-followup"
-            or record.get("metadata", {}).get("annotations", {}).get(
-                "nexuml.ika.rub.de/source-sha256"
-            ) != _source_digest(manifest)
+            or record.get("metadata", {})
+            .get("annotations", {})
+            .get("nexuml.ika.rub.de/source-sha256")
+            != _source_digest(manifest)
         ):
             raise RuntimeError(f"Existing Job identity/source mismatch: {name}")
         failed = any(
@@ -379,10 +382,7 @@ def main() -> None:
     print("Six original manifests share the same immutable source snapshot.")
     for source, destination in pairs:
         print(f"[transfer] {source} -> {destination}")
-    print(
-        "[audit] best_model_path -> "
-        f"{audit['best_model_path']} (Pod-visible Prisma mount)"
-    )
+    print(f"[audit] best_model_path -> {audit['best_model_path']} (Pod-visible Prisma mount)")
     output = args.rendered_dir / "fd001-direct-adaptation-recovery"
     print(f"[manifests] {output} (the originals remain untouched)")
     if not args.apply:

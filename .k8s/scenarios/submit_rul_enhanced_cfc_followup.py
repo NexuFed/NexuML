@@ -49,20 +49,11 @@ def trials(campaign: str) -> tuple[tuple[str, str, int], ...]:
         ValueError: If the campaign is not registered.
     """
     if campaign == "reliability":
-        return tuple(
-            ("FD003", config, seed)
-            for config in ARMS for seed in RELIABILITY_SEEDS
-        )
+        return tuple(("FD003", config, seed) for config in ARMS for seed in RELIABILITY_SEEDS)
     if campaign == "ablation":
-        return tuple(
-            ("FD003", config, seed)
-            for config in ABLATIONS for seed in ABLATION_SEEDS
-        )
+        return tuple(("FD003", config, seed) for config in ABLATIONS for seed in ABLATION_SEEDS)
     if campaign == "fd001":
-        return tuple(
-            ("FD001", config, seed)
-            for config in ARMS for seed in FD001_SEEDS
-        )
+        return tuple(("FD001", config, seed) for config in ARMS for seed in FD001_SEEDS)
     if campaign == "all":
         return tuple(item for phase in CAMPAIGNS for item in trials(phase))
     raise ValueError(f"Unknown follow-up campaign: {campaign}")
@@ -93,10 +84,7 @@ def followup_job_name(subset: str, configuration: str, seed: int) -> str:
         ValueError: If the Job name would violate Kubernetes DNS limits.
     """
     phase_for(subset, configuration, seed)
-    job = (
-        f"nexuml-rul-cfc-followup-{subset.lower()}-"
-        f"{configuration.replace('_', '-')}-s{seed}"
-    )
+    job = f"nexuml-rul-cfc-followup-{subset.lower()}-{configuration.replace('_', '-')}-s{seed}"
     if len(job) > 63:
         raise ValueError(f"Kubernetes Job name too long: {job}")
     return job
@@ -142,10 +130,7 @@ def render_followup_manifest(
     if source_subpath != f"job-staging/nexuml-nex233/{digest}":
         raise ValueError("Unexpected immutable source snapshot mount")
     job = followup_job_name(subset, configuration, seed)
-    scenario = (
-        f"maintenance-rul-enhanced-cfc-followup-{subset.lower()}-"
-        f"{configuration}-s{seed}"
-    )
+    scenario = f"maintenance-rul-enhanced-cfc-followup-{subset.lower()}-{configuration}-s{seed}"
     mapping = {
         "__JOB_NAME__": job,
         "__NAMESPACE__": namespace,
@@ -173,12 +158,17 @@ def main() -> None:
     """Render/submit selected native Jobs without modifying other experiments."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--campaign", choices=(*CAMPAIGNS, "all"), default="reliability",
+        "--campaign",
+        choices=(*CAMPAIGNS, "all"),
+        default="reliability",
     )
     parser.add_argument("--namespace", default=NAMESPACE)
     parser.add_argument("--staging-root", type=Path, default=DEFAULT_STAGE)
     parser.add_argument(
-        "--seeds", nargs="+", type=int, default=None,
+        "--seeds",
+        nargs="+",
+        type=int,
+        default=None,
         help="Optional subset of the chosen campaign's prespecified seeds",
     )
     parser.add_argument("--dry-run", action="store_true")
@@ -218,8 +208,7 @@ def main() -> None:
             print(f"[skip] Existing Job is unchanged: {job}")
             continue
         subprocess.run(
-            ["kubectl", "-n", args.namespace, "create",
-             "--dry-run=client", "-f", str(path)],
+            ["kubectl", "-n", args.namespace, "create", "--dry-run=client", "-f", str(path)],
             check=True,
         )
         subprocess.run(

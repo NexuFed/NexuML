@@ -69,7 +69,9 @@ def discover_excluded_hostnames() -> tuple[str, ...]:
     """
     result = subprocess.run(
         ["kubectl", "get", "nodes", "-o", "json"],
-        check=True, capture_output=True, text=True,
+        check=True,
+        capture_output=True,
+        text=True,
     )
     payload = json.loads(result.stdout)
     if not isinstance(payload, dict):
