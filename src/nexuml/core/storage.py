@@ -4,7 +4,25 @@ from __future__ import annotations
 from pathlib import Path
 
 import torch
-from tensordict import MemoryMappedTensor, TensorDict
+from tensordict import MemoryMappedTensor, TensorDict, cat as tensordict_cat
+
+
+def _concatenate_values(
+    existing: torch.Tensor | TensorDict, value: torch.Tensor | TensorDict
+) -> torch.Tensor | TensorDict:
+    """Concatenate compatible tensors or TensorDict batches.
+
+    Returns:
+        Concatenated values of the same type as the two inputs.
+
+    Raises:
+        TypeError: If tensor and TensorDict storage types are mixed.
+    """
+    if isinstance(existing, TensorDict) and isinstance(value, TensorDict):
+        return tensordict_cat([existing, value], dim=0)
+    if isinstance(existing, torch.Tensor) and isinstance(value, torch.Tensor):
+        return torch.cat([existing, value], dim=0)
+    raise TypeError("Cannot append a TensorDict to a Tensor or vice versa")
 
 
 class SharedStorage:
@@ -39,11 +57,9 @@ class SharedStorage:
         if key not in self.data:
             self.set(key, value)
         elif self.memory_mapped:
-            existing = self.data[key]
-            concatenated = torch.cat([existing, value], dim=0)  # ty: ignore[no-matching-overload]
-            self.set(key, concatenated)
+            self.set(key, _concatenate_values(self.data[key], value))
         else:
-            self.data[key] = torch.cat([self.data[key], value], dim=0)  # ty: ignore[no-matching-overload]
+            self.data[key] = _concatenate_values(self.data[key], value)
 
     def set_ring_buffer(self, key: str, value: torch.Tensor | TensorDict, counter: int):
         B = value.shape[0]

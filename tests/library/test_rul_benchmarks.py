@@ -575,13 +575,14 @@ def test_goel_restores_best_val_weights_before_native_testing(tmp_path: Path) ->
     )
 
     model = L.LightningModule()
-    model.linear = torch.nn.Linear(2, 1)
+    linear = torch.nn.Linear(2, 1)
+    model.linear = linear
     best_weights = {name: tensor.clone() for name, tensor in model.state_dict().items()}
     checkpoint = tmp_path / "best.ckpt"
     torch.save({"state_dict": best_weights}, checkpoint)
     with torch.no_grad():
-        model.linear.weight.fill_(3.0)
-        model.linear.bias.fill_(-5.0)
+        linear.weight.fill_(3.0)
+        linear.bias.fill_(-5.0)
     callback_model = ModelCheckpoint(monitor="val/loss", mode="min")
     callback_model.best_model_path = str(checkpoint)
     trainer = L.Trainer(

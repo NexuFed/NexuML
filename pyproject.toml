@@ -154,6 +154,17 @@ convention = "google"
 [tool.ty.environment]
 extra-paths = ["src", "library/src"]
 
+[tool.ty.analysis]
+# These modules belong to declared optional extras. Missing extras must not
+# prevent checking the core and library, but installed modules remain checked.
+allowed-unresolved-imports = [
+    "onnxscript.**",  # nexuml[export]
+    "nvidia.dali.**",  # nexuml[dali]
+    "ray.**",  # nexuml[ray]
+    "mlflow.**",  # nexuml[tracking]
+    "optuna.**",  # nexuml[tuning]
+]
+
 [[tool.uv.index]]
 name = "pytorch-cu128"
 url = "https://download.pytorch.org/whl/cu128"

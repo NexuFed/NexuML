@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 import pytest
 import torch
 from tensordict import TensorDict
@@ -21,7 +23,7 @@ def test_memory_storage_set_get_roundtrip():
     storage = create_temporary_storage("memory", max_samples=4)
 
     for i, row in enumerate(_batch([1.0, 2.0, 3.0])):
-        storage.set(i, row.unsqueeze(0))
+        storage.set(i, cast(TensorDict, row.unsqueeze(0)))
 
     result = storage.get()
     assert result is not None
@@ -92,7 +94,7 @@ def test_memmap_storage_set_get_and_finalize(tmp_path):
     storage = create_temporary_storage("memmap", max_samples=4, storage_path=tmp_path / "storage")
 
     for i, row in enumerate(_batch([1.0, 2.0])):
-        storage.set(i, row.unsqueeze(0))
+        storage.set(i, cast(TensorDict, row.unsqueeze(0)))
 
     result = storage.get()
     assert result is not None
