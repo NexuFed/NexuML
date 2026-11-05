@@ -153,7 +153,9 @@ def test_cluster_scenarios_are_native_and_isolated(
         assert isinstance(loss, RULClusterAuxiliaryLoss)
         assert (loss.working_weight > 0) == (arm in ("working", "both"))
         assert (loss.failure_weight > 0) == (arm in ("failure", "both"))
-    assert Path(scenario.callbacks[2].kwargs["dirpath"]).name == expected
+    dirpath = scenario.callbacks[2].kwargs["dirpath"]
+    assert isinstance(dirpath, str)
+    assert Path(dirpath).name == expected
     assert scenario.callbacks[2].kwargs["monitor"] == "val/loss"
 
 
