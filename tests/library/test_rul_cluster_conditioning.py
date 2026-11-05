@@ -73,7 +73,9 @@ def test_cluster_teacher_labels_not_visible_in_observations() -> None:
     assert "failure_cluster" not in x
     assert cast(Tensor, y["working_cluster"]).item() == 1
     assert cast(Tensor, y["failure_cluster"]).item() == 0
-    assert cast(Tensor, training[1][1]["working_cluster"]).item() == 1
+    _, second_labels = training[1]
+    assert isinstance(second_labels, TensorDict)
+    assert cast(Tensor, second_labels["working_cluster"]).item() == 1
     for split in (validation, testing):
         x_holdout, y_holdout = split[0]
         assert isinstance(x_holdout, TensorDict)
