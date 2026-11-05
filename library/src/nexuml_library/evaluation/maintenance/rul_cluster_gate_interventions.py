@@ -115,6 +115,13 @@ class _ReplayCfC(nn.Module):
         )
         self.multiscale = _MultiscaleTemporalFeatures(64, dropout=0.1)
         self.segmentation = _AdaptiveSoftSegments(64, dropout=0.1)
+        # The trained conditional head persists both prototype families,
+        # including the inactive family in single-gate arms.
+        if arm != "reference":
+            for kind, count in (("working", 3), ("failure", 2)):
+                self.register_buffer(f"{kind}_centroids", torch.zeros(count, 128))
+                self.register_buffer(f"{kind}_mean", torch.zeros(128))
+                self.register_buffer(f"{kind}_std", torch.ones(128))
         if arm in ("working", "both"):
             self.working_gate: nn.Module | None = nn.Sequential(
                 nn.LayerNorm(128),
@@ -123,9 +130,6 @@ class _ReplayCfC(nn.Module):
                 nn.Linear(64, 3),
             )
             self.working_projection: nn.Linear | None = nn.Linear(3, 64, bias=False)
-            self.register_buffer("working_centroids", torch.zeros(3, 128))
-            self.register_buffer("working_mean", torch.zeros(128))
-            self.register_buffer("working_std", torch.ones(128))
         else:
             self.working_gate = None
             self.working_projection = None
@@ -137,9 +141,6 @@ class _ReplayCfC(nn.Module):
                 nn.Linear(64, 2),
             )
             self.failure_projection: nn.Linear | None = nn.Linear(2, 64, bias=False)
-            self.register_buffer("failure_centroids", torch.zeros(2, 128))
-            self.register_buffer("failure_mean", torch.zeros(128))
-            self.register_buffer("failure_std", torch.ones(128))
         else:
             self.failure_gate = None
             self.failure_projection = None
