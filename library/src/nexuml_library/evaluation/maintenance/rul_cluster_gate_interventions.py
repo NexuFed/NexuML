@@ -98,6 +98,8 @@ class _ReplayCfC(nn.Module):
         self.enabled = _enabled_gates(arm)
         self.encoder = _PatchFormerModel(30, 15, 64, 5, 2, 0.1)
         self.sensor_graph = _SensorGraphAttention(15)
+        self.reference_mean: Tensor
+        self.reference_std: Tensor
         self.register_buffer("reference_mean", torch.zeros(30, 128))
         self.register_buffer("reference_std", torch.ones(30, 128))
         self.input_projection = nn.Linear(256, 64)
