@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import Any, cast
 
-import torch
 from pydantic import Field
 from tensordict import TensorDict
 from torch import Tensor
@@ -90,7 +89,6 @@ class _RULClusterAuxiliaryRuntime(_RULTrajectoryConsistencyRuntime):
 
         Raises:
             TypeError: If input lacks native TensorDict routing.
-            ValueError: If auxiliary targets/logits are mismatched.
         """
         processed, labels = super().forward(x, y)
         if not isinstance(processed, TensorDict):
