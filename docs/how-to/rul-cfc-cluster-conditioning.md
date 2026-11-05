@@ -36,35 +36,42 @@ an engine is used only to construct a **training-only** failure pseudo-label.
 
 For conditioned models, the data source prepares the cluster artifact on
 first use. For reproducibility and to avoid concurrent first-writer races,
-prepare it **once before launching parallel training**:
+prepare it **once before launching parallel training**. On the submitting
+workstation, use the absolute Prisma experiment root; **do not assume** the
+worktree's `.experiments` directory is symlinked to persistent storage:
 
 ```bash
 cd /workspaces/NexuFed/NexuML-predictive
 git pull --ff-only
 export PYTHONPATH="$PWD/src:$PWD/library/src"
 
-# Run from the worktree whose .experiments points to the persistent
-# /mnt/juicefs_prisma/models/nexuml/.experiments directory.
-readlink -f .experiments
-
 python - <<'PY'
+from pathlib import Path
 from nexuml_library.data.maintenance.rul_cluster_conditions import (
     AutoClusterConditionedCMapSSRULWindows,
 )
 
+experiments = Path("/mnt/juicefs_prisma/models/nexuml/.experiments")
+prepared = experiments / "rul/prepared"
 source = AutoClusterConditionedCMapSSRULWindows(
     subset="FD003",
     seed=42,
-    root="data/cmapss",
-    artifact_path=(
-        ".experiments/rul/prepared/"
-        "cmapss-FD003-seed42-controlled-w30-s42.pt"
-    ),
+    root="/mnt/juicefs_prisma/data/cmapss",
+    experiment_root=str(experiments),
+    artifact_path=str(prepared / "cmapss-FD003-seed42-controlled-w30-s42.pt"),
+    cluster_artifact=str(prepared / "cmapss-FD003-seed42-cfc-conditional-clusters-v1.pt"),
 )
 source.build()
+assert Path(source.cluster_artifact).is_file()
 print("Train-only FD003 cluster artifact prepared:", source.cluster_artifact)
 PY
 ```
+
+The explicit root is used for the prepared input, cluster output, frozen
+PatchFormer audit/checkpoint, and sequence-flow endpoint normalizer. This
+works with audit manifests created in Pods whose storage mountpoint differs
+from the host; the selected checkpoint is mapped to the corresponding
+run-specific checkpoint directory on Prisma.
 
 The source requires existing FD003 PatchFormer checkpoint and matching
 `rul-FD003-patchformer-sequence-cfc-flow-seed42-endpoints.pt`. It will fail
