@@ -118,7 +118,7 @@ class _ClusterConditionedCfCRuntime(_EnhancedCfCRuntime):
         clusters = read_cluster_artifact(
             cluster_artifact,
             subset="FD003",
-            seed=self._upstream_seed,
+            seed=upstream_seed,
             working_clusters=working_clusters,
             failure_clusters=failure_clusters,
             encoder_sha256=str(settings["frozen_patchformer_checkpoint_sha256"]),
