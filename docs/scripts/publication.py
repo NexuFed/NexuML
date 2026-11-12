@@ -637,6 +637,9 @@ def extract_archive(repository, revision, output):
         process.wait()
     if process.returncode:
         raise ValueError("Git blob extraction failed")
+    # Git records file modes, not directory modes; keep digests independent of runner defaults.
+    for directory, _, _ in os.walk(output):
+        Path(directory).chmod(0o755)
 
 
 def stage(*, repository, remote, branch="gh-pages", attempts=4, **options):
@@ -672,7 +675,12 @@ def stage(*, repository, remote, branch="gh-pages", attempts=4, **options):
             archive = directory / "archive"
             output = directory / "output"
             extract_archive(staging, head, archive)
-            report = compose(repository=repository, archive=archive, output=output, **options)
+            # Generated public files must round-trip through Git regardless of the runner's umask.
+            previous_umask = os.umask(0o022)
+            try:
+                report = compose(repository=repository, archive=archive, output=output, **options)
+            finally:
+                os.umask(previous_umask)
             # Git cannot record arbitrary POSIX permissions. Reject, rather than silently lose them.
             for path, entry in manifest(output).items():
                 if entry[1] not in ({0o755} if entry[0] == "directory" else {0o644, 0o755}):
