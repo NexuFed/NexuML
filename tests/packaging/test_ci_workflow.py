@@ -14,7 +14,7 @@ WORKFLOW = YAML(typ="safe").load(
 )
 
 
-def test_only_package_publishers_use_hosted_runners():
+def test_only_package_publishers_and_docker_use_hosted_runners():
     workflows = Path(__file__).resolve().parents[2] / ".github/workflows"
     publishers = {
         ("release.yml", name)
@@ -24,7 +24,7 @@ def test_only_package_publishers_use_hosted_runners():
             "publish-pypi-core",
             "publish-pypi-library",
         )
-    } | {("publish-studio.yml", "publish")}
+    } | {("publish-studio.yml", "publish"), ("docker.yml", "build")}
     hosted = set()
     for path in workflows.glob("*.yml"):
         workflow = YAML(typ="safe").load(path.read_text())

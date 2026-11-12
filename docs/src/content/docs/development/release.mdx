@@ -27,8 +27,65 @@ version. Python's installed `__version__` and runtime API read distribution meta
 
 Stamping does not rewrite dependency compatibility ranges, Studio's backend/interface
 checks, third-party pins, historical documentation, or versioned examples. A new minor
-or major line requires deliberate compatibility review; today's `0.2` policy rejects
-`v0.3.0`. Matching package versions alone do not establish compatibility.
+or major line requires deliberate review of the declared compatibility ranges.
+Matching package versions alone do not establish compatibility. The package metadata,
+lockfiles, and workflows are the source of truth for concrete version constraints.
+
+## Release order
+
+1. Review and merge the code and release notes into protected main **before tagging
+   or publishing a final package version**. A squash merge creates a new commit SHA;
+   use that merged commit, not the PR branch's SHA.
+2. Wait for successful main-branch CI on the exact commit to release. Verify its
+   image and documentation workflows too when those deliverables are included.
+3. Create an unused shared stable `vX.Y.Z` tag on that validated commit. Tag CI
+   stamps versions in disposable checkouts, then builds and tests the release
+   artifacts. Stamping does not create another Git commit or change the tag's SHA.
+4. Publish the original candidate files to TestPyPI and the tested Studio tarball
+   to npm `next` through the existing protected environments. Verify that exact pair.
+5. Publish the GitHub Release for **the existing tested tag**. Approve production
+   Python publication, then Studio promotion. Do not insert another version-bump
+   commit, merge, moved tag, or replacement build between candidate testing and
+   production publication.
+6. Confirm both registries, GitHub assets, image tags, and documentation. Update any
+   preview changelog wording after publication without moving the released tag or
+   changing the changelog entry's permanent URL.
+
+A GitHub release draft can hold notes before merging. Saving a draft does not
+publish packages or reserve a registry version. Do not let publishing the draft
+create the tag implicitly: push the tag and finish its CI/candidate verification
+first.
+
+## Drafts, release candidates, and prereleases
+
+An unreleased change is not automatically an RC. Before merging, use branch-CI
+artifacts or local builds for testing; do not upload the intended final version.
+A GitHub draft is unpublished release metadata, not a prerelease package.
+
+A published **release candidate (RC)** has its own prerelease version:
+
+- Python uses `X.Y.ZrcN`.
+- npm uses `X.Y.Z-rc.N`; `next` is a distribution channel, not part of the version.
+- GitHub's prerelease flag describes the release; it does not change package versions.
+
+**RC tags are not supported by the current publishing workflows.** The shared
+version validator accepts stable `vX.Y.Z` tags only. Do not push an RC tag or mark
+a release as a prerelease expecting the stable-only publisher to handle it. The
+conventions above explain prerelease naming, not an available RC publishing command.
+Marking a stable-tag GitHub Release as a prerelease does not prevent production
+publication: the current workflows respond to its `published` event too.
+
+The current supported candidate flow stages the **final stable version** on
+TestPyPI and npm `next` after merge. That is not an RC version, even though the
+GitHub Release is still a draft. Once uploaded, the final registry version is
+consumed: fixes require another unused version, not a replacement upload.
+
+If an RC needs fixes, each published iteration must use a new RC number. The final
+release must be built and tested with final-version package metadata from the
+validated merged source. RC and final versions are different artifacts: do not
+rename RC wheels/tarballs or describe an npm channel change as converting an RC
+into a stable version. Reusing the same artifact is valid only when its package
+version stays unchanged, as in the supported stable-candidate flow.
 
 ## One-time Python configuration
 
@@ -50,12 +107,22 @@ publication is tag-only; permitting `main` is unnecessary.
 
 ## TestPyPI candidate
 
-After the frozen candidate is merged into main and **its exact commit's CI has
-passed**, create and push an unused compatible stable tag (for example, `v0.2.2`):
+After the reviewed change is merged into main, capture the merged commit. Replace
+`vX.Y.Z` below with the chosen unused compatible stable tag:
 
 ```bash
-git tag v0.2.2 <validated-main-commit>
-git push origin v0.2.2
+tag=vX.Y.Z
+git fetch origin main --tags
+release_commit=$(git rev-parse origin/main)
+gh run list --repo NexuFed/NexuML --commit "$release_commit"
+```
+
+Inspect the exact commit's workflow results. Only after its main CI succeeds,
+create and push the tag on that captured SHA:
+
+```bash
+git tag "$tag" "$release_commit"
+git push origin "refs/tags/$tag"
 ```
 
 The push starts stamped **CI**, **Release** for TestPyPI, and **Publish Studio** for
@@ -65,8 +132,8 @@ The complete tagged source/GPU/documentation/package checks then test the stampe
 wheels, source distributions, and single npm tarball. The aggregate `CI` gate emits
 `release-candidate-<attempt>` only after every mandatory check succeeds.
 
-Publishers wait without publishing credentials for this unique candidate (up to 115
-minutes within a 120-minute job timeout). Failed/cancelled checks, malformed or moved
+Publishers wait without publishing credentials for this unique candidate within
+the timeout configured in the workflow. Failed/cancelled checks, malformed or moved
 tags, missing files, duplicate successful candidates, and metadata/hash mismatches
 fail closed. Ordinary main/dev pushes never publish packages. Do not publish the
 GitHub Release until TestPyPI verification and release testing pass.
@@ -75,7 +142,7 @@ Manual dispatch remains available for a validated candidate or a failed run that
 has not uploaded the version yet:
 
 ```bash
-gh workflow run release.yml --ref v0.2.2
+gh workflow run release.yml --ref "$tag"
 gh run list --workflow release.yml --limit 5
 gh run watch <run-id>
 ```
@@ -88,9 +155,9 @@ retains `testpypi-verification-<attempt>` evidence tied to the candidate manifes
 Third-party dependencies resolve from production PyPI. Inspect workflow results/artifact
 identity rather than assuming dispatch means publication.
 
-Original distributions, manifest, and verification evidence are retained for **seven
-days**; finish production within that window. If original files expire, use a fresh
-unused version tag, not a replacement build under the old version. Release never
+Finish production within the artifact-retention window configured in the workflows
+for the original distributions, manifest, and verification evidence. If files expire,
+use a fresh unused version tag, not a replacement build under the old version. Release never
 rebuilds or restamps files. TestPyPI uploads are immutable.
 
 If tag CI has never produced a successful candidate, fix the failure and rerun **all
@@ -105,6 +172,12 @@ after CI finishes. Do not retag, overwrite artifacts, or choose a newer substitu
    and the matching Studio package on npm `next` passed release testing.
 2. Use the same stable `vX.Y.Z` tag already tested through TestPyPI.
 3. Publish its GitHub release to trigger production; approve `pypi`, then `pypi-library`.
+
+For an existing draft, after candidate verification completes:
+
+```bash
+gh release edit "$tag" --repo NexuFed/NexuML --draft=false
+```
 
 The workflow requires successful TestPyPI verification evidence for that exact candidate,
 publishes its original core then library files, and attaches those files to the existing
@@ -131,8 +204,9 @@ published version. Separate `studio-v*` release tags are no longer supported.
 Follow [official npm Trusted Publishing requirements](https://docs.npmjs.com/trusted-publishers)
 for supported Node/npm and GitHub-hosted runners; self-hosted publishing is unsupported.
 The protected publish-only job uses OIDC `id-token: write` and provenance without dependency
-installation/build or long-lived credentials. Only the npm publisher and four TestPyPI/PyPI
-package publisher jobs use GitHub-hosted `ubuntu-latest`. All other Linux CPU work uses
+installation/build or long-lived credentials. The npm publisher and four TestPyPI/PyPI
+package publisher jobs, plus the dedicated Docker build/verify/publish job, use
+GitHub-hosted `ubuntu-latest`. Other Linux CPU work uses
 `ika-runner`, including tag eligibility, publisher validation, documentation checks/staging,
 Pages deployment, TestPyPI install verification, GitHub release asset attachment, and the
 always-running aggregate CI gate. Pages deployment uses a Node API action, not a hosted-only
@@ -155,7 +229,7 @@ package Trusted Publisher. Mandatory Python GPU suites use separately approved `
    dispatch also publishes to `next`, never `latest`.
 
    ```bash
-   gh workflow run publish-studio.yml --ref v0.2.2
+   gh workflow run publish-studio.yml --ref "$tag"
    ```
 4. Publish the shared GitHub Release. After Python's production publication succeeds,
    approve **npm** for promotion. The workflow repeats exact-commit/artifact validation,
@@ -163,7 +237,7 @@ package Trusted Publisher. Mandatory Python GPU suites use separately approved `
    to **that exact version**, not whichever version `next` currently references. A missing
    package or integrity mismatch blocks promotion. No rebuild or second package upload.
 
-The npm CLI is pinned to 11.21.0 for OIDC-authenticated dist-tag operations. Both
+The npm CLI is pinned in the workflow for OIDC-authenticated dist-tag operations. Both
 workflows share triggers, but registry writes are not an atomic transaction:
 inspect both results before announcing the release. No automated nightly schedule is added.
 
