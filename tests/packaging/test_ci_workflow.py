@@ -47,6 +47,18 @@ def test_only_package_publishers_and_docker_use_hosted_runners():
     assert hosted == publishers
 
 
+def test_source_ci_installs_the_committed_dependency_lock():
+    for name in ("static", "test"):
+        install = next(
+            step
+            for step in WORKFLOW["jobs"][name]["steps"]
+            if step.get("name") == "Install nexuml + library"
+        )
+        assert install["env"]["UV_PROJECT_ENVIRONMENT"] == "${{ github.workspace }}/.venv"
+        assert "uv sync --locked --all-packages --all-extras --python" in install["run"]
+        assert "uv pip install" not in install["run"]
+
+
 def test_docker_metadata_keeps_only_exact_releases_latest_and_main():
     root = Path(__file__).resolve().parents[2]
     workflow = YAML(typ="safe").load((root / ".github/workflows/docker.yml").read_text())
@@ -596,6 +608,7 @@ def test_tag_ci_prepares_every_package_checkout_before_use():
                 value in command
                 for value in (
                     "uv pip install",
+                    "uv sync",
                     "uv build",
                     "npm ci",
                     "run check",

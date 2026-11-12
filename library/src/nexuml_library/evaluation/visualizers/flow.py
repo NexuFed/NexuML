@@ -68,16 +68,16 @@ class _FlowVisualizerRuntime(EvalAlgorithm):
             payload["trajectory"] = cast(torch.Tensor, x[self.trajectory_key]).detach().cpu()
         self._storage.add_batch(TensorDict(cast(Any, payload), batch_size=[target.shape[0]]))
 
-    def visualize(self, logger_obj: Any) -> None:  # ty: ignore[invalid-method-override]
+    def visualize(self, logger: Any) -> None:
         data = self._storage.get()
         if data is None:
             return
 
         target = cast(torch.Tensor, data["target"])
         if target.ndim == 2 and target.shape[1] == 2:
-            self._visualize_2d(logger_obj, data)
+            self._visualize_2d(logger, data)
         elif target.ndim == 4 and target.shape[1] in {1, 3}:
-            self._visualize_images(logger_obj, data)
+            self._visualize_images(logger, data)
 
     def _visualize_2d(self, logger_obj: Any, data: TensorDict) -> None:
         import matplotlib

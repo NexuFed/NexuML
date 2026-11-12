@@ -52,6 +52,8 @@ trajectories during evaluation.
   this global changelog, with separate main and development snapshots.
 - Stable Git tags select Python and Studio package versions before CI builds and
   tests; manual version-bump commits are no longer required.
+- Source CI installs the committed workspace lock instead of resolving drifting
+  dependency versions. Visualizers now accept the base evaluator's `logger` keyword.
 - Branch testing uses distinct RC tags and normalized Python/npm prerelease
   versions. Final tags identify the validated post-merge main commit; RCs cannot
   publish production packages or advance stable image/npm aliases.
