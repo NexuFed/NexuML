@@ -16,14 +16,14 @@ env:
 
 jobs:
   validate:
-    if: (github.event_name == 'push' && !github.event.deleted) || github.event_name == 'workflow_dispatch' || startsWith(github.event.release.tag_name, 'v')
+    if: (github.event_name == 'push' && !github.event.deleted) || github.event_name == 'workflow_dispatch' || (startsWith(github.event.release.tag_name, 'v') && !github.event.release.prerelease && !contains(github.event.release.tag_name, '-rc.'))
     runs-on: ika-runner
     timeout-minutes: 120
     outputs:
       ci-run-id: ${{ steps.candidate.outputs.run-id }}
       manifest-id: ${{ steps.candidate.outputs.manifest-id }}
       python-id: ${{ steps.candidate.outputs.python-id }}
-      version: ${{ steps.candidate.outputs.version }}
+      version: ${{ steps.candidate.outputs.python-version }}
     steps:
       - uses: actions/checkout@v5
         with:

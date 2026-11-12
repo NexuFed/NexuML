@@ -124,20 +124,23 @@ def publish_attempt(api, run, artifacts, *, job="CI"):
 
 def distributions(root, dist, commit, version=VERSION):
     files = {}
+    python_version = rc.python_version(version)
     for directory, name in (("nexuml", "nexuml"), ("nexuml-library", "nexuml_library")):
         metadata = (
-            f"Metadata-Version: 2.3\nName: {name.replace('_', '-')}\nVersion: {version}\n\n"
+            f"Metadata-Version: 2.3\nName: {name.replace('_', '-')}\nVersion: {python_version}\n\n"
         ).encode()
-        files[f"{directory}/{name}-{version}-py3-none-any.whl"] = zipped(
+        files[f"{directory}/{name}-{python_version}-py3-none-any.whl"] = zipped(
             {
-                f"{name}-{version}.dist-info/METADATA": metadata,
+                f"{name}-{python_version}.dist-info/METADATA": metadata,
                 f"{name}/__init__.py": b"",
             }
         )
-        files[f"{directory}/{name}-{version}.tar.gz"] = tarred(
+        files[f"{directory}/{name}-{python_version}.tar.gz"] = tarred(
             {
-                f"{name}-{version}/PKG-INFO": metadata,
-                f"{name}-{version}/pyproject.toml": f'[project]\nversion = "{version}"\n'.encode(),
+                f"{name}-{python_version}/PKG-INFO": metadata,
+                f"{name}-{python_version}/pyproject.toml": (
+                    f'[project]\nversion = "{python_version}"\n'
+                ).encode(),
             }
         )
     package = json.loads((root / "studio/package.json").read_bytes())
@@ -274,6 +277,37 @@ def test_create_is_deterministic_and_checks_real_metadata(candidate):
     assert c["manifest"]["version"] == VERSION
     assert rc.git(c["root"], "show", "HEAD:pyproject.toml") == '[project]\nversion = "0.2.1"'
     rc.verify_files(c["root"], c["dist"], c["manifest"])
+
+
+def test_rc_candidate_uses_distinct_python_and_npm_versions(candidate, monkeypatch, tmp_path):
+    c = candidate
+    version = "0.2.3-rc.1"
+    ref = f"refs/tags/v{version}"
+    subprocess.run(["git", "-C", str(c["root"]), "tag", f"v{version}"], check=True)
+    monkeypatch.setenv("GITHUB_REF", ref)
+    for name in ("pyproject.toml", "library/pyproject.toml"):
+        (c["root"] / name).write_text('[project]\nversion = "0.2.3rc1"\n')
+    package = json.loads((c["root"] / "studio/package.json").read_bytes())
+    package["version"] = version
+    (c["root"] / "studio/package.json").write_bytes(rc.json_bytes(package))
+    dist = tmp_path / "rc-dist"
+    distributions(c["root"], dist, c["commit"], version)
+    manifest = rc.create(c["root"], dist, 102, 103)
+    assert manifest["version"] == version and manifest["ref"] == ref
+    assert "nexuml/nexuml-0.2.3rc1-py3-none-any.whl" in manifest["files"]
+    assert "studio/nexufed-nexuml-studio-0.2.3-rc.1.tgz" in manifest["files"]
+    rc.validate_manifest(manifest, REPO, ref, version, c["commit"])
+    rc.verify_files(c["root"], dist, manifest)
+    monkeypatch.setenv("GITHUB_EVENT_NAME", "release")
+    with pytest.raises(rc.CandidateError, match="RC|prerelease"):
+        rc.context(c["root"])
+
+
+def test_github_prerelease_cannot_use_stable_production_publisher(candidate, monkeypatch):
+    monkeypatch.setenv("GITHUB_EVENT_NAME", "release")
+    Path(rc.os.environ["GITHUB_EVENT_PATH"]).write_text('{"release":{"prerelease":true}}')
+    with pytest.raises(rc.CandidateError, match="prerelease"):
+        rc.context(candidate["root"])
 
 
 @pytest.mark.parametrize("python_id,studio_id", [(0, 103), (-1, 103), (102, 102), (True, 103)])
@@ -818,6 +852,44 @@ def test_integrated_requires_exact_current_main_ci(candidate, monkeypatch, probl
     else:
         rc.integrated(api, c["root"], REPO, REF, c["commit"])
     assert "fetch" in commands[0] and "--no-tags" in commands[0]
+
+
+@pytest.mark.parametrize("problem", [None, "fork", "commit", "tag", "failed", "gate", "manual"])
+def test_rc_eligibility_requires_successful_same_repo_branch_ci(candidate, monkeypatch, problem):
+    c = candidate
+    api = FakeAPI()
+    ref = "refs/tags/v0.2.3-rc.1"
+    api.values[f"{PREFIX}/git/ref/tags/v0.2.3-rc.1"] = {
+        "object": {"type": "commit", "sha": c["commit"]}
+    }
+    source = workflow(c["commit"], run_id=10, branch="fix/release", attempt=2)
+    if problem == "fork":
+        source["head_repository"]["full_name"] = "fork/repo"
+    elif problem == "commit":
+        source["head_sha"] = "f" * 40
+    elif problem == "tag":
+        source["head_branch"] = "v0.2.2"
+    elif problem == "failed":
+        source["conclusion"] = "failure"
+    elif problem == "manual":
+        source["event"] = "workflow_dispatch"
+    key = f"{PREFIX}/actions/workflows/ci.yml/runs?head_sha={c['commit']}&event=push&per_page=100"
+    api.values[key] = [{"workflow_runs": [source]}]
+    publish_attempt(api, source, [])
+    if problem == "gate":
+        api.values[f"{PREFIX}/actions/runs/10/attempts/2/jobs?per_page=100"][0]["jobs"][0][
+            "conclusion"
+        ] = "failure"
+
+    def no_main_ancestry(*args, **kwargs):
+        pytest.fail("RC branch eligibility must not require main ancestry")
+
+    monkeypatch.setattr(rc.subprocess, "run", no_main_ancestry)
+    if problem:
+        with pytest.raises(rc.CandidateError, match="branch"):
+            rc.integrated(api, c["root"], REPO, ref, c["commit"])
+    else:
+        rc.integrated(api, c["root"], REPO, ref, c["commit"])
 
 
 def test_gh_transport_is_get_only_and_paginates(monkeypatch):

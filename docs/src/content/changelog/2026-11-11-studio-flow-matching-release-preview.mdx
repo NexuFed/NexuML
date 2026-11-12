@@ -1,0 +1,85 @@
+---
+date: '2026-11-11'
+title: 'v0.2.3 preview: Studio, flow matching, and tag-driven releases'
+category: release
+summary: Preview the local Studio workbench, discoverable execution backends, flow-matching components, and coordinated Python, Studio, and container releases.
+version: v0.2.3
+links:
+  - label: GitHub release notes (available after publication)
+    url: https://github.com/NexuFed/NexuML/releases/tag/v0.2.3
+  - label: Changes since the previous production release
+    url: https://github.com/NexuFed/NexuML/compare/v0.2.1...main
+---
+
+**Release preview — not yet published.** These notes describe the planned v0.2.3
+release, not confirmation that its packages or container image are available.
+The previous production release remains v0.2.1. Version 0.2.2 reached TestPyPI
+and npm candidate publication, but its original CI artifacts expired before
+production publication. A fresh v0.2.3 candidate will use a new tag after merge
+and successful validation; the old tag will not be deleted or moved.
+
+## Local Studio workbench
+
+- Author pipelines through a graph-first interface with component discovery,
+  property editing, routing, and stage containers.
+- Run validation, model construction, training, and export through the selected
+  installed Python runtime rather than in the browser.
+- Inspect live metrics, logs, artifacts, and resolved run configuration.
+- Keep graph layout in a separate sidecar while YAML remains the executable
+  scenario format.
+- Install Studio independently as `@nexufed/nexuml-studio`. Package acceptance
+  covers Linux project and isolated-tool installations; macOS and Windows remain
+  unverified.
+
+## Execution and component contracts
+
+Backend discovery, resource discovery, preflight checks, and dispatch are shared
+across Python, CLI, the local API, and Studio. Execution uses explicit `type`,
+`version`, and `params` definitions with launch settings fixed at submission.
+Native component input/output contracts replace custom schema extensions.
+The local API and authenticated Studio hosting make runtime ownership explicit.
+
+## Flow matching
+
+Linear probability paths, time-conditioned vector fields, Euler integration, and
+a flow-matching loss support continuous generative models. Synthetic and MNIST
+scenarios include a time-conditioned U-Net, sample visualization, and integration
+trajectories during evaluation.
+
+## Documentation and distribution
+
+- Astro Starlight documentation adds task-oriented navigation, references, and
+  this global changelog, with separate main and development snapshots.
+- Stable Git tags select Python and Studio package versions before CI builds and
+  tests; manual version-bump commits are no longer required.
+- Source CI installs the committed workspace lock instead of resolving drifting
+  dependency versions. Visualizers now accept the base evaluator's `logger` keyword.
+- Branch testing uses distinct RC tags and normalized Python/npm prerelease
+  versions. Final tags identify the validated post-merge main commit; RCs cannot
+  publish production packages or advance stable image/npm aliases.
+- Package publication reuses the exact tested artifacts and requires successful
+  TestPyPI verification. Studio candidates publish to npm `next` before the exact
+  version is promoted to `latest` on GitHub Release publication.
+- The Docker build and publication job uses GitHub-hosted `ubuntu-latest`, while
+  source GPU tests remain on `ika-runner-gpu`. Image verification precedes upload.
+- Container tags use exact NexuML/CUDA versions, a per-CUDA `latest` alias, and
+  `edge` for main. Older release builds cannot move the stable alias backward.
+
+Studio also adopts a patched Next.js release to address the production dependency
+security advisories affecting its earlier pinned version.
+
+## Migration notes
+
+Execution configuration no longer accepts `execution.kind` or `target.kind`.
+Use a registered backend identity with `type`, `version`, and placement settings
+in `params`. The local API uses interface major **3**: Studio and backend packages
+must support that interface; matching package versions alone are not sufficient.
+
+Python 3.12 or newer remains required. Package publication requires an existing
+stable `vX.Y.Z` tag and its original successful tag-CI candidate; branch artifacts
+and replacement builds are not release inputs.
+
+The release includes [flow matching (#12)](https://github.com/NexuFed/NexuML/pull/12),
+[static type-check fixes (#14)](https://github.com/NexuFed/NexuML/pull/14),
+[Studio and Starlight documentation (#18)](https://github.com/NexuFed/NexuML/pull/18),
+and [container release tags (#30)](https://github.com/NexuFed/NexuML/pull/30).

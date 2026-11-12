@@ -1,4 +1,4 @@
-"""Shared stable release identity and disposable-checkout preparation."""
+"""Shared stable/RC release identity and disposable-checkout preparation."""
 
 import copy
 import json
@@ -29,15 +29,34 @@ def stable_version(tag: str) -> str:
     return tag[1:]
 
 
+def tag_version(tag: str) -> str:
+    """Return the canonical npm version from an ASCII stable or RC tag.
+
+    Raises:
+        ValueError: The tag is not a canonical stable or RC version.
+    """
+    if not re.fullmatch(
+        r"v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-rc\.(0|[1-9][0-9]*))?",
+        tag,
+    ):
+        raise ValueError(f"Expected vX.Y.Z or vX.Y.Z-rc.N tag: {tag!r}")
+    return tag[1:]
+
+
+def python_version(version: str) -> str:
+    """Return the PEP 440 spelling of a canonical npm release version."""
+    return tag_version(f"v{version}").replace("-rc.", "rc")
+
+
 def resolve_tag(root: Path, ref: str) -> tuple[str, str]:
-    """Return the normalized version and peeled commit for a full stable tag ref.
+    """Return the canonical npm version and peeled commit for a full release tag ref.
 
     Raises:
         ValueError: The ref is invalid, absent, or does not point to checkout HEAD.
     """
     if not ref.startswith("refs/tags/"):
-        raise ValueError(f"Expected full refs/tags/vX.Y.Z release ref, not {ref!r}")
-    version = stable_version(ref.removeprefix("refs/tags/"))
+        raise ValueError(f"Expected full refs/tags/vX.Y.Z[-rc.N] release ref, not {ref!r}")
+    version = tag_version(ref.removeprefix("refs/tags/"))
     try:
         commit = subprocess.check_output(
             ["git", "rev-parse", "--verify", f"{ref}^{{commit}}"],
@@ -77,10 +96,10 @@ def _workspace_packages(lock: dict) -> dict:
 
 
 def validate_versions(root: Path, tag: str | None = None) -> str:
-    """Return the shared stable project/npm/workspace-lock version.
+    """Return the canonical npm version shared by Python/npm/workspace metadata.
 
     Raises:
-        ValueError: Versions differ, are unstable, or do not match the optional tag.
+        ValueError: Versions differ, are invalid, or do not match the optional tag.
     """
     metadata = _read_metadata(root)
     versions = {path: metadata[path]["project"]["version"] for path in TARGETS[:2]}
@@ -91,11 +110,14 @@ def validate_versions(root: Path, tag: str | None = None) -> str:
     ][""]["version"]
     for name, package in _workspace_packages(metadata["uv.lock"]).items():
         versions[f"uv.lock {name}"] = package["version"]
-    version = versions["pyproject.toml"]
-    if len(set(versions.values())) != 1:
+    version = tag_version(f"v{versions['studio/package.json']}")
+    normalized = python_version(version)
+    if any(
+        value != (version if path.startswith("studio/") else normalized)
+        for path, value in versions.items()
+    ):
         raise ValueError(f"Package versions must match: {versions}")
-    stable_version(f"v{version}")
-    if tag is not None and stable_version(tag) != version:
+    if tag is not None and tag_version(tag) != version:
         raise ValueError(f"Tag {tag!r} must match package version v{version}")
     return version
 
@@ -142,7 +164,7 @@ def prepare_release(root: Path, ref: str) -> str:
     _run(root, "uv", "lock", "--check")
     before = _without_release_versions(_read_metadata(root))
     for name in PROJECTS:
-        _run(root, "uv", "version", version, "--package", name, "--frozen")
+        _run(root, "uv", "version", python_version(version), "--package", name, "--frozen")
     _run(root, "uv", "lock")
     _run(
         root / "studio",

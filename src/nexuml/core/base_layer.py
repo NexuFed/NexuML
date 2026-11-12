@@ -108,7 +108,7 @@ class PipelineLayer(torch.nn.Module):
         else:
             return None if y is None else y[self.label_key]  # ty: ignore[invalid-return-type]
 
-    def forward(  # ty: ignore[invalid-mutable-override]
+    def forward(
         self,
         x: TensorDict | torch.Tensor,
         y: TensorDict | None = None,

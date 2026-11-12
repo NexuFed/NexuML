@@ -68,7 +68,7 @@ The launcher SHALL start local services on loopback, establish protected runtime
 
 #### Scenario: Backend package releases independently
 - **WHEN** Studio connects to the selected backend
-- **THEN** it accepts stable NexuML >=0.2.1,<0.3.0 with API interface 3 and the native-contract catalog, reports NexuML/Python version and interpreter, and rejects unsupported versions before exposing the workbench/catalog with actionable required-version guidance
+- **THEN** it accepts supported stable NexuML >=0.2.1,<0.3.0 and canonical Python RC builds of the supported patch line with API interface 3 and the native-contract catalog, reports NexuML/Python version and interpreter, and rejects unsupported versions before exposing the workbench/catalog with actionable required-version guidance
 
 #### Scenario: Authenticated hosted access is explicitly configured
 - **WHEN** an operator supplies a public HTTPS origin
@@ -112,13 +112,19 @@ Tag CI SHALL build the stamped Studio tarball once, retain it immutably, and tes
 - **AND** `latest` remains unchanged while the matching Python packages are tested through TestPyPI
 
 #### Scenario: Shared release is published
-- **WHEN** the matching GitHub Release is published and npm promotion is approved
+- **WHEN** the matching stable-tag GitHub Release is published without the prerelease flag and npm promotion is approved
 - **THEN** the workflow revalidates the original tag-specific candidate and compares the registry version's integrity to its tested tarball
 - **AND** only that existing matching version is promoted to `latest`, without rebuilding or uploading another package
 - **AND** missing or mismatched registry packages block promotion
 
+#### Scenario: Branch RC is tested before merge
+- **WHEN** a canonical `vX.Y.Z-rc.N` tag identifies a trusted branch commit with successful exact-commit repository CI
+- **THEN** tag CI builds and tests Studio `X.Y.Z-rc.N` against Python `X.Y.ZrcN`
+- **AND** protected candidate publication targets npm `next`, never `latest`
+- **AND** publishing a GitHub RC or prerelease does not request stable promotion
+
 #### Scenario: Manual candidate publication
-- **WHEN** a maintainer dispatches Publish Studio against an existing stable tag with an unpublished, validated candidate
+- **WHEN** a maintainer dispatches Publish Studio against an existing stable or RC tag with an unpublished, validated candidate
 - **THEN** the same candidate, version, and integrity checks apply
 - **AND** publication targets `next`, not `latest`
 
@@ -133,7 +139,7 @@ Tag CI SHALL build the stamped Studio tarball once, retain it immutably, and tes
 
 ### Requirement: Shared Python and Studio versions
 
-The shared stable `vX.Y.Z` tag SHALL determine all three packages' release version `X.Y.Z`. CI SHALL prepare owned project and lockfile version metadata before release builds, reject drift, and leave the source commit unchanged. Untagged development SHALL remain usable with valid checked-in metadata and no release-only environment variable. Preparation SHALL NOT rewrite compatibility policy or historical version references.
+The shared stable `vX.Y.Z` tag SHALL determine all three packages' release version `X.Y.Z`. An RC tag `vX.Y.Z-rc.N` SHALL determine Python `X.Y.ZrcN` and Studio `X.Y.Z-rc.N`. CI SHALL prepare owned project and lockfile version metadata before release builds, reject drift, and leave the source commit unchanged. Untagged development SHALL remain usable with valid checked-in metadata and no release-only environment variable. Preparation SHALL NOT rewrite compatibility policy or historical version references.
 
 #### Scenario: Package versions diverge
 - **WHEN** either prepared Python project, Studio package, owned lockfile version, or built release artifact differs from the tag-derived version

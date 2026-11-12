@@ -110,7 +110,7 @@ class KeyedDaliIterator(DALIGenericIterator):
         self.y_keys = list(y_keys)
         self.metadata_labels = metadata_labels
 
-    def __next__(self) -> tuple[TensorDict, TensorDict | None]:  # ty: ignore[invalid-method-override] — see class comment
+    def __next__(self) -> tuple[TensorDict, TensorDict | None]:  # ty: ignore[incompatible-method-override] — see class comment
         out = super().__next__()[0]
         x = TensorDict(
             {key: out[key] for key in self.x_keys},

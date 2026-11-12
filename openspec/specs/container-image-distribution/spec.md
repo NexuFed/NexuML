@@ -15,6 +15,7 @@ The container image SHALL install the locked `nexuml` and `nexuml-library` works
 - **WHEN** the container image is built from a current repository revision
 - **THEN** both `nexuml` and `nexuml_library` import from the image environment
 - **AND** dependencies selected by every workspace extra are installed from the committed lockfile.
+- **AND** the container-specific binary-only hash lock selects a PyTorch backend matching the image's declared CUDA runtime without constraining public package consumers.
 
 #### Scenario: Lockfile is stale
 
@@ -90,6 +91,12 @@ Successful trusted push runs SHALL publish to `ghcr.io/nexufed/nexuml` using rep
 - **WHEN** an older stable-tag workflow publishes after a newer stable tag is integrated into `main`
 - **THEN** it publishes only its exact-version tag and leaves the stable latest alias unchanged
 - **AND** the workflow serializes runs across refs and refreshes integrated tags immediately before publication so concurrent release runs cannot roll the alias backward.
+
+#### Scenario: Branch RC image is published
+
+- **WHEN** a canonical RC tag identifies a trusted branch commit with successful exact-commit repository CI
+- **THEN** the workflow prepares its RC package versions, builds and verifies the image, and publishes only its exact RC image tag
+- **AND** it leaves both the main edge alias and stable latest alias unchanged.
 
 #### Scenario: Earlier registry tags exist
 

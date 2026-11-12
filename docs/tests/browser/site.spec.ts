@@ -86,7 +86,11 @@ test('prose, API, CLI, diagrams, search, controls and accessible layout', async 
 test('global ordering, rich media and version fallback', async ({ page }, info) => {
   await page.goto(`${mount}changelog/`);
   const titles = await page.locator('article h3').allTextContents();
-  expect(titles.slice(0, 3)).toEqual(['Newest acceptance fixture', 'Alphabetical acceptance fixture', 'Media acceptance fixture']);
+  const fixtures = ['Newest acceptance fixture', 'Alphabetical acceptance fixture', 'Media acceptance fixture'];
+  expect(titles.filter(title => fixtures.includes(title))).toEqual(fixtures);
+  const dates = await page.locator('article time').evaluateAll(nodes => nodes.map(node => node.getAttribute('datetime') ?? ''));
+  expect(dates.every(date => /^\d{4}-\d{2}-\d{2}$/.test(date))).toBe(true);
+  expect(dates).toEqual([...dates].sort().reverse());
   await page.getByRole('link', { name: 'Media acceptance fixture' }).click();
   const image = page.getByAltText('NexuFed wordmark media fixture');
   await expect(image).toBeVisible();

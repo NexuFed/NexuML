@@ -145,6 +145,8 @@ def test_stable_version(tag):
         "v1.2.03",
         "v1.2",
         "v1.2.3rc1",
+        "v1.2.3-rc.0",
+        "v1.2.3-rc.12",
         "v1.2.3+build",
         "studio-v1.2.3",
         "main",
@@ -160,17 +162,69 @@ def test_invalid_stable_version(tag):
         release.stable_version(tag)
 
 
+@pytest.mark.parametrize(
+    ("tag", "python"),
+    [
+        ("v0.0.0", "0.0.0"),
+        ("v0.2.2", "0.2.2"),
+        ("v12.34.567", "12.34.567"),
+        ("v0.2.3-rc.0", "0.2.3rc0"),
+        ("v12.34.567-rc.123", "12.34.567rc123"),
+    ],
+)
+def test_canonical_release_versions(tag, python):
+    assert release.tag_version(tag) == tag[1:]
+    assert release.python_version(tag[1:]) == python
+
+
+@pytest.mark.parametrize(
+    "version",
+    [
+        "",
+        "v1.2.3",
+        "01.2.3",
+        "1.02.3",
+        "1.2.03",
+        "1.2",
+        "1.2.3rc1",
+        "1.2.3-rc",
+        "1.2.3-rc.",
+        "1.2.3-rc.01",
+        "1.2.3-rc.-1",
+        "1.2.3-rc.1.2",
+        "1.2.3-RC.1",
+        "1.2.3-alpha.1",
+        "1.2.3-beta.1",
+        "1.2.3-dev.1",
+        "1.2.3+build",
+        "1.2.3-rc.1+build",
+        "1.2.3\n",
+        " 1.2.3",
+        "١.2.3",
+        "1.٢.3",
+        "1.2.３",
+        "1.2.3-rc.١",
+    ],
+)
+def test_invalid_canonical_release_versions(version):
+    with pytest.raises(ValueError, match="Expected vX.Y.Z"):
+        release.tag_version(f"v{version}")
+    with pytest.raises(ValueError, match="Expected vX.Y.Z"):
+        release.python_version(version)
+
+
+@pytest.mark.parametrize("version", ["0.2.2", "0.2.3-rc.0", "0.2.3-rc.12"])
 @pytest.mark.parametrize("annotated", [False, True])
-def test_prepare_release_is_idempotent_and_preserves_metadata(checkout, annotated):
+def test_prepare_release_is_idempotent_and_preserves_metadata(checkout, annotated, version):
     root = checkout
     tag_args = ("-a", "-m", "Release") if annotated else ()
-    run(root, "git", "tag", *tag_args, "v0.2.2")
-    ref = "refs/tags/v0.2.2"
+    run(root, "git", "tag", *tag_args, f"v{version}")
+    ref = f"refs/tags/v{version}"
     commit = run(root, "git", "rev-parse", "HEAD").stdout.strip()
     refs = run(root, "git", "show-ref").stdout
     before = {path: (root / path).read_bytes() for path in release.TARGETS}
     metadata = release._without_release_versions(release._read_metadata(root))
-    assert release.resolve_tag(root, ref) == ("0.2.2", commit)
+    assert release.resolve_tag(root, ref) == (version, commit)
     for attempt in range(2):
         result = run(
             root,
@@ -181,15 +235,23 @@ def test_prepare_release_is_idempotent_and_preserves_metadata(checkout, annotate
             "--ref",
             ref,
         )
-        assert result.stdout == "0.2.2\n"
-        assert release.validate_versions(root, "v0.2.2") == "0.2.2"
+        assert result.stdout == f"{version}\n"
+        assert release.validate_versions(root, f"v{version}") == version
+        data = release._read_metadata(root)
+        for path in release.TARGETS[:2]:
+            assert data[path]["project"]["version"] == release.python_version(version)
+        for package in release._workspace_packages(data["uv.lock"]).values():
+            assert package["version"] == release.python_version(version)
+        for path in release.TARGETS[3:]:
+            assert data[path]["version"] == version
+        assert data["studio/package-lock.json"]["packages"][""]["version"] == version
         assert release._without_release_versions(release._read_metadata(root)) == metadata
         after = {path: (root / path).read_bytes() for path in release.TARGETS}
         if attempt == 0:
             for path in release.TARGETS[:2]:
                 assert after[path] == before[path].replace(
                     b'version = "0.2.1"',
-                    b'version = "0.2.2"',
+                    f'version = "{release.python_version(version)}"'.encode(),
                     1,
                 )
             prepared = after
@@ -222,16 +284,18 @@ def test_invalid_or_absent_ref_fails_before_writes(checkout, ref):
     assert run(checkout, "git", "status", "--porcelain").stdout == ""
 
 
-def test_deleted_tag_and_wrong_checkout(checkout):
-    run(checkout, "git", "tag", "v0.2.2")
+@pytest.mark.parametrize("tag", ["v0.2.2", "v0.2.3-rc.0", "v0.2.3-rc.12"])
+def test_deleted_tag_and_wrong_checkout(checkout, tag):
+    run(checkout, "git", "tag", tag)
     run(checkout, "git", "commit", "--allow-empty", "--quiet", "-m", "Later commit")
     with pytest.raises(ValueError, match="not checkout HEAD"):
-        release.resolve_tag(checkout, "refs/tags/v0.2.2")
-    run(checkout, "git", "tag", "-d", "v0.2.2")
+        release.resolve_tag(checkout, f"refs/tags/{tag}")
+    run(checkout, "git", "tag", "-d", tag)
     with pytest.raises(ValueError, match="does not exist"):
-        release.resolve_tag(checkout, "refs/tags/v0.2.2")
+        release.resolve_tag(checkout, f"refs/tags/{tag}")
 
 
+@pytest.mark.parametrize("version", ["0.2.1", "0.2.3-rc.12"])
 @pytest.mark.parametrize(
     "field",
     [
@@ -244,19 +308,25 @@ def test_deleted_tag_and_wrong_checkout(checkout):
         "nexuml-library",
     ],
 )
-def test_validator_rejects_each_drifting_field(checkout, field):
+def test_validator_rejects_each_drifting_field(checkout, field, version):
+    if "-rc." in version:
+        run(checkout, "git", "tag", f"v{version}")
+        release.prepare_release(checkout, f"refs/tags/v{version}")
+    python = release.python_version(version)
     if field in ("nexuml", "nexuml-library"):
         path = checkout / "uv.lock"
         path.write_text(
             path.read_text().replace(
-                f'name = "{field}"\nversion = "0.2.1"',
+                f'name = "{field}"\nversion = "{python}"',
                 f'name = "{field}"\nversion = "0.2.2"',
                 1,
             )
         )
     elif field.endswith(".toml"):
         path = checkout / field
-        path.write_text(path.read_text().replace('version = "0.2.1"', 'version = "0.2.2"'))
+        path.write_text(
+            path.read_text().replace(f'version = "{python}"', 'version = "0.2.2"'),
+        )
     else:
         path = checkout / ("studio/package-lock.json" if field == "npm-lock-root" else field)
         data = json.loads(path.read_text())
@@ -275,8 +345,12 @@ def test_validator_rejects_each_drifting_field(checkout, field):
     assert "Package versions must match" in result.stderr
 
 
-def test_branch_and_explicit_tag_validation(checkout):
-    for args in ((), ("--tag", "v0.2.1")):
+@pytest.mark.parametrize("version", ["0.2.1", "0.2.3-rc.0", "0.2.3-rc.12"])
+def test_branch_and_explicit_tag_validation(checkout, version):
+    if "-rc." in version:
+        run(checkout, "git", "tag", f"v{version}")
+        release.prepare_release(checkout, f"refs/tags/v{version}")
+    for args in ((), ("--tag", f"v{version}")):
         result = run(
             checkout,
             sys.executable,
@@ -285,7 +359,7 @@ def test_branch_and_explicit_tag_validation(checkout):
             str(checkout),
             *args,
         )
-        assert result.stdout == "0.2.1\n"
+        assert result.stdout == f"{version}\n"
     with pytest.raises(ValueError, match="must match"):
         release.validate_versions(checkout, "v0.2.2")
 

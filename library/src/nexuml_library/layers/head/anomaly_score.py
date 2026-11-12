@@ -40,7 +40,7 @@ class _AnomalyScoreRuntime(PipelineLayer):
         self,
         x: "TensorDict",
         y: "TensorDict | None" = None,
-    ) -> tuple["TensorDict", "TensorDict | None"]:  # ty: ignore[invalid-method-override]
+    ) -> tuple["TensorDict", "TensorDict | None"]:  # ty: ignore[incompatible-method-override]
         keys_in: list[str] = cast(list[str], self.keys_in)
         original = cast(torch.Tensor, x[keys_in[0]]).reshape(x.batch_size[0], -1)
         reconstructed = cast(torch.Tensor, x[keys_in[1]]).reshape(x.batch_size[0], -1)

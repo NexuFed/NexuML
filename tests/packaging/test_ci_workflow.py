@@ -4,6 +4,8 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+from types import SimpleNamespace
+import re
 
 import pytest
 from ruamel.yaml import YAML
@@ -14,7 +16,7 @@ WORKFLOW = YAML(typ="safe").load(
 )
 
 
-def test_only_package_publishers_use_hosted_runners():
+def test_only_package_publishers_and_docker_use_hosted_runners():
     workflows = Path(__file__).resolve().parents[2] / ".github/workflows"
     publishers = {
         ("release.yml", name)
@@ -24,7 +26,7 @@ def test_only_package_publishers_use_hosted_runners():
             "publish-pypi-core",
             "publish-pypi-library",
         )
-    } | {("publish-studio.yml", "publish")}
+    } | {("publish-studio.yml", "publish"), ("docker.yml", "build")}
     hosted = set()
     for path in workflows.glob("*.yml"):
         workflow = YAML(typ="safe").load(path.read_text())
@@ -43,6 +45,18 @@ def test_only_package_publishers_use_hosted_runners():
             else:
                 assert runner == "ika-runner", identity
     assert hosted == publishers
+
+
+def test_source_ci_installs_the_committed_dependency_lock():
+    for name in ("static", "test"):
+        install = next(
+            step
+            for step in WORKFLOW["jobs"][name]["steps"]
+            if step.get("name") == "Install nexuml + library"
+        )
+        assert install["env"]["UV_PROJECT_ENVIRONMENT"] == "${{ github.workspace }}/.venv"
+        assert "uv sync --locked --all-packages --all-extras --python" in install["run"]
+        assert "uv pip install" not in install["run"]
 
 
 def test_docker_metadata_keeps_only_exact_releases_latest_and_main():
@@ -74,7 +88,7 @@ def test_docker_metadata_keeps_only_exact_releases_latest_and_main():
 def test_docker_prepares_tag_versions_and_verifies_before_push_only_publication():
     root = Path(__file__).resolve().parents[2]
     workflow = YAML(typ="safe").load((root / ".github/workflows/docker.yml").read_text())
-    assert workflow["permissions"] == {"contents": "read", "packages": "write"}
+    assert workflow["permissions"] == {"actions": "read", "contents": "read", "packages": "write"}
     steps = workflow["jobs"]["build"]["steps"]
     trusted = next(
         i for i, step in enumerate(steps) if step.get("name") == "Validate trusted revision"
@@ -89,6 +103,7 @@ def test_docker_prepares_tag_versions_and_verifies_before_push_only_publication(
         i for i, step in enumerate(steps) if step.get("name") == "Publish verified image"
     )
     assert trusted < prepared < built < verified < login < published
+    assert "scripts/release_candidate.py eligibility" in steps[trusted]["run"]
     assert steps[prepared]["if"] == "startsWith(github.ref, 'refs/tags/')"
     assert steps[built]["with"]["context"] == "."  # Include the tag-stamped checkout.
     assert steps[built]["with"]["push"] is False
@@ -108,6 +123,7 @@ def test_docker_prepares_tag_versions_and_verifies_before_push_only_publication(
         ("v0.2.9", ["v0.2.9", "v0.2.10"], False),
         ("v0.2.10", ["v0.2.9", "v0.2.10"], True),
         ("v0.2.2", ["v0.2.2", "v1.0.0rc1", "v01.2.3", "v1.2.3+build"], True),
+        ("v0.2.3-rc.1", ["v0.2.3-rc.1"], False),
         ("main", [], False),
     ],
 )
@@ -167,7 +183,7 @@ def test_docker_publication_never_promotes_an_older_release(tmp_path, ref, tags,
             ["fetch", "--tags", "origin", "main:refs/remotes/origin/main"],
             ["tag", "--merged", "origin/main", "--list", "v*"],
         ]
-        if ref != "main"
+        if ref != "main" and "-rc." not in ref
         else []
     )
 
@@ -232,6 +248,11 @@ def test_shared_release_triggers_and_studio_channels():
     python = YAML(typ="safe").load((root / ".github/workflows/release.yml").read_text())
     assert "startsWith(github.event.release.tag_name, 'v')" in python["jobs"]["validate"]["if"]
     studio = YAML(typ="safe").load((root / ".github/workflows/publish-studio.yml").read_text())
+    assert studio["concurrency"] == {
+        "group": "publish-studio",
+        "cancel-in-progress": False,
+        "queue": "max",
+    }
     publish = studio["jobs"]["publish"]
     assert studio["on"] == python["on"]
     assert studio["jobs"]["validate"]["if"] == python["jobs"]["validate"]["if"]
@@ -268,6 +289,43 @@ def test_shared_release_triggers_and_studio_channels():
     assert any(
         step.get("run") == "python scripts/check-release-versions.py"
         for step in WORKFLOW["jobs"]["static"]["steps"]
+    )
+
+
+@pytest.mark.parametrize(
+    "event,tag,prerelease,allowed",
+    [
+        ("push", "v0.2.3-rc.1", False, True),
+        ("workflow_dispatch", "v0.2.3-rc.1", False, True),
+        ("release", "v0.2.3-rc.1", True, False),
+        ("release", "v0.2.3-rc.1", False, False),
+        ("release", "v0.2.3", True, False),
+        ("release", "v0.2.3", False, True),
+    ],
+)
+def test_release_events_cannot_promote_rc_or_github_prereleases(event, tag, prerelease, allowed):
+    root = Path(__file__).resolve().parents[2]
+    github = SimpleNamespace(
+        event_name=event,
+        event=SimpleNamespace(
+            deleted=False, release=SimpleNamespace(tag_name=tag, prerelease=prerelease)
+        ),
+    )
+    for name in ("release.yml", "publish-studio.yml"):
+        workflow = YAML(typ="safe").load((root / ".github/workflows" / name).read_text())
+        condition = workflow["jobs"]["validate"]["if"].replace("&&", "and").replace("||", "or")
+        condition = re.sub(r"!(?!=)", "not ", condition)
+        assert (
+            eval(
+                condition,
+                {"__builtins__": {}},
+                {"github": github, "startsWith": str.startswith, "contains": lambda a, b: b in a},
+            )
+            is allowed
+        )
+    python = YAML(typ="safe").load((root / ".github/workflows/release.yml").read_text())
+    assert python["jobs"]["validate"]["outputs"]["version"] == (
+        "${{ steps.candidate.outputs.python-version }}"
     )
 
 
@@ -550,6 +608,7 @@ def test_tag_ci_prepares_every_package_checkout_before_use():
                 value in command
                 for value in (
                     "uv pip install",
+                    "uv sync",
                     "uv build",
                     "npm ci",
                     "run check",

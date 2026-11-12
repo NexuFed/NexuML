@@ -25,7 +25,7 @@ from nexuml.core.components import (
 from nexuml.evaluation.storage import ReservoirTensorDictBuffer
 from nexuml_library.evaluation.visualizers._plotting import format_label, log_figure
 
-logger = logging.getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 
 @eval_algorithm("reconstruction_visualizer")
@@ -117,7 +117,7 @@ class _ReconstructionVisualizerRuntime(EvalAlgorithm):
         mse = float(((orig - recon) ** 2).mean())
         return {"reconstruction_mse_sample": mse}
 
-    def visualize(self, logger_obj: Any) -> None:  # ty: ignore[invalid-method-override]
+    def visualize(self, logger: Any) -> None:
         data = self._storage.get()
         if data is None:
             return
@@ -178,7 +178,7 @@ class _ReconstructionVisualizerRuntime(EvalAlgorithm):
             axes[2, 0].set_ylabel("|Error|")
             fig.suptitle("Reconstruction Overview", y=0.98)
             fig.subplots_adjust(top=0.86, bottom=0.06, wspace=0.08, hspace=0.08)
-            log_figure(logger_obj, "eval/reconstruction/overview", fig)
+            log_figure(logger, "eval/reconstruction/overview", fig)
             plt.close(fig)
 
             if masked:
@@ -204,10 +204,10 @@ class _ReconstructionVisualizerRuntime(EvalAlgorithm):
                         masked_axes[idx].set_title(sample_title, fontsize=9, pad=8)
                 masked_fig.suptitle("Masked Reconstruction Input", y=0.98)
                 masked_fig.subplots_adjust(top=0.78, bottom=0.08, wspace=0.08)
-                log_figure(logger_obj, "eval/reconstruction/masked_input", masked_fig)
+                log_figure(logger, "eval/reconstruction/masked_input", masked_fig)
                 plt.close(masked_fig)
         except Exception as e:
-            logger.warning(f"ReconstructionVisualizer.visualize() failed: {e}")
+            _logger.warning(f"ReconstructionVisualizer.visualize() failed: {e}")
 
     def _align_for_plot(
         self,
