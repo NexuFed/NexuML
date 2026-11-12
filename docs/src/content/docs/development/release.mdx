@@ -9,8 +9,8 @@ environments, and successful exact-commit CI. This is an operator procedure, not
 to run while contributing documentation.
 
 Python `nexuml`/`nexuml-library` publish through `.github/workflows/release.yml`.
-Studio `@nexufed/nexuml-studio` uses `publish-studio.yml` with the same shared `vX.Y.Z`
-tags and GitHub Release events as Python. Tag pushes publish npm `next`; GitHub
+Studio `@nexufed/nexuml-studio` uses `publish-studio.yml` with the same shared stable
+`vX.Y.Z` and RC `vX.Y.Z-rc.N` tags as Python. Tag pushes publish npm `next`; a final GitHub
 Release publication promotes that exact version to `latest` without another upload.
 Both consume one immutable candidate from successful **tag CI**, bound to the tag,
 peeled source commit, CI run/attempt, artifact IDs, and file hashes. Branch-CI artifacts
@@ -19,8 +19,9 @@ Never add publishing tokens to repository secrets.
 
 ## Tag-selected versions
 
-Choose one unused stable `vX.Y.Z` tag; CI stamps `X.Y.Z` into both Python projects,
-Studio, and their owned lockfile version fields **before** builds and tests. No manual
+Choose an unused stable `vX.Y.Z` or RC `vX.Y.Z-rc.N` tag. CI stamps `X.Y.Z` for a
+stable release; RCs use `X.Y.ZrcN` in Python and `X.Y.Z-rc.N` in Studio. Owned
+lockfile version fields are updated **before** builds and tests. No manual
 version bump, `SET_BY_CI` placeholder, generated commit, or tag rewrite is needed.
 Normal development retains valid fixed checked-in metadata, not a Git-derived revision
 version. Python's installed `__version__` and runtime API read distribution metadata.
@@ -56,7 +57,7 @@ publish packages or reserve a registry version. Do not let publishing the draft
 create the tag implicitly: push the tag and finish its CI/candidate verification
 first.
 
-## Drafts, release candidates, and prereleases
+## Branch RC testing
 
 An unreleased change is not automatically an RC. Before merging, use branch-CI
 artifacts or local builds for testing; do not upload the intended final version.
@@ -68,24 +69,44 @@ A published **release candidate (RC)** has its own prerelease version:
 - npm uses `X.Y.Z-rc.N`; `next` is a distribution channel, not part of the version.
 - GitHub's prerelease flag describes the release; it does not change package versions.
 
-**RC tags are not supported by the current publishing workflows.** The shared
-version validator accepts stable `vX.Y.Z` tags only. Do not push an RC tag or mark
-a release as a prerelease expecting the stable-only publisher to handle it. The
-conventions above explain prerelease naming, not an available RC publishing command.
-Marking a stable-tag GitHub Release as a prerelease does not prevent production
-publication: the current workflows respond to its `published` event too.
+**RC tags require successful same-repository branch CI on the exact commit.**
+Commit and push the reviewed branch first, then inspect its CI before tagging.
+Replace the placeholders below with the intended RC version and iteration:
 
-The current supported candidate flow stages the **final stable version** on
-TestPyPI and npm `next` after merge. That is not an RC version, even though the
-GitHub Release is still a draft. Once uploaded, the final registry version is
-consumed: fixes require another unused version, not a replacement upload.
+```bash
+tag=vX.Y.Z-rc.N
+rc_commit=$(git rev-parse HEAD)
+gh run list --repo NexuFed/NexuML --commit "$rc_commit"
+```
+
+Only after that branch commit's CI succeeds:
+
+```bash
+git tag "$tag" "$rc_commit"
+git push origin "refs/tags/$tag"
+```
+
+Tag CI builds and tests the stamped RC packages. Approve the existing candidate
+environments to publish the original Python files to TestPyPI and Studio to npm
+`next`. The Docker workflow publishes only an exact RC image tag after verification.
+RCs never publish to production PyPI or move npm/image latest aliases. RC documentation
+is checked as development content, not deployed as a stable documentation snapshot.
+
+Publishing a GitHub RC release, or marking a stable-tag GitHub Release as a
+prerelease, does not request production publication. Production publishers require
+a stable tag on validated main and a GitHub Release not marked as a prerelease.
+
+After the squash merge, the final stable tag must identify the new validated main
+commit, not the RC branch commit. Its own tag CI stages the final stable version
+on TestPyPI and npm `next` before production. This consumes the final registry
+version: subsequent fixes require another unused version, not a replacement upload.
 
 If an RC needs fixes, each published iteration must use a new RC number. The final
 release must be built and tested with final-version package metadata from the
 validated merged source. RC and final versions are different artifacts: do not
 rename RC wheels/tarballs or describe an npm channel change as converting an RC
 into a stable version. Reusing the same artifact is valid only when its package
-version stays unchanged, as in the supported stable-candidate flow.
+version stays unchanged, as when moving a final candidate from TestPyPI to PyPI.
 
 ## One-time Python configuration
 
@@ -126,8 +147,10 @@ git push origin "refs/tags/$tag"
 ```
 
 The push starts stamped **CI**, **Release** for TestPyPI, and **Publish Studio** for
-npm `next`. Before tag builds and tests, the read-only eligibility gate on `ika-runner` requires
-protected-main ancestry and successful main-branch CI for that exact peeled commit.
+npm `next`, plus image and stable documentation workflows. Before stable-tag builds
+and tests, the read-only eligibility check on `ika-runner` requires protected-main
+ancestry and successful main-branch CI for that exact peeled commit. RC tags instead
+require successful same-repository branch-push CI for their exact commit.
 The complete tagged source/GPU/documentation/package checks then test the stamped
 wheels, source distributions, and single npm tarball. The aggregate `CI` gate emits
 `release-candidate-<attempt>` only after every mandatory check succeeds.
@@ -218,9 +241,10 @@ package Trusted Publisher. Mandatory Python GPU suites use separately approved `
    `studio/package.json`, and both Studio lockfile root versions automatically, then
    checks agreement through `scripts/check-release-versions.py`. Launcher compatibility
    remains enforced. Operators explicitly install API extra/custom libraries.
-2. Merge the reviewed candidate to protected main, wait for complete required CI on that
-   commit. Maintainer-disabled macOS/Windows acceptance remains unverified.
-3. Push the same `vX.Y.Z` tag used for TestPyPI. Wait for tag CI's
+2. For a final release, merge the reviewed change to protected main and wait for CI
+   on the resulting commit. For an RC, use the validated branch commit instead.
+   Package acceptance covers Linux; macOS and Windows remain unverified.
+3. Push the shared stable or RC tag used for TestPyPI. Wait for tag CI's
    `studio-distribution-<attempt>` and candidate manifest. Studio is built/packed once;
    Linux project/tool jobs test that tarball plus matching Python wheels. Approve **npm** to publish
    **that tested tarball** with provenance to npm `next`, leaving `latest` unchanged.

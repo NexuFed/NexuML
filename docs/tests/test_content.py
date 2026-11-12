@@ -33,8 +33,10 @@ def test_release_guide_is_version_agnostic_and_explains_rc_support():
     assert re.search(r"\bv?\d+\.\d+\.\d+(?:rc\d+)?\b", page) is None
     assert 'git tag "$tag" "$release_commit"' in page
     assert "`X.Y.ZrcN`" in page and "`X.Y.Z-rc.N`" in page
-    assert "RC tags are not supported by the current publishing workflows" in " ".join(page.split())
-    assert "prerelease does not prevent production publication" in " ".join(page.split())
+    text = " ".join(page.split())
+    assert "RC tags require successful same-repository branch CI" in text
+    assert "RCs never publish to production PyPI or move npm/image latest aliases" in text
+    assert 'git tag "$tag" "$rc_commit"' in page
 
 
 def test_editorial_frontmatter_and_missing_routes_fail(tmp_path):

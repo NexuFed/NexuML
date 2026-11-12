@@ -24,7 +24,7 @@ The release process SHALL derive the versions of `nexuml` and `nexuml-library` f
 - **THEN** release preparation fails before a release build or registry publication
 
 ### Requirement: Production releases originate from integrated commits
-The repository SHALL protect `main` with required release checks. Publication SHALL require an immutable stable tag whose peeled commit is contained in `main`, successful required branch CI for that exact commit, and successful tag CI covering the stamped source, supported-Python, package-artifact, and strict documentation checks.
+The repository SHALL protect `main` with required release checks. Production publication SHALL require an immutable stable tag whose peeled commit is contained in `main`, successful required main-branch CI for that exact commit, and successful tag CI covering the stamped source, supported-Python, package-artifact, and strict documentation checks.
 
 #### Scenario: Tag points to a validated main commit
 - **WHEN** a stable tag points to a commit contained in `main` with successful required branch checks and successful version-stamped tag CI for that same commit
@@ -70,6 +70,24 @@ Tag CI SHALL build and validate wheels and source distributions for both stamped
 - **THEN** publication waits for the exact candidate within a bounded interval without publishing credentials
 - **AND** failure, cancellation, or timeout blocks publication instead of selecting branch artifacts
 
+### Requirement: Branch candidates use distinct RC versions
+RC publication SHALL accept only canonical `vX.Y.Z-rc.N` tags backed by successful same-repository branch-push CI on the exact peeled commit. Python metadata SHALL use `X.Y.ZrcN`, and Studio metadata SHALL use `X.Y.Z-rc.N`. RC candidates SHALL preserve the same artifact identity and integrity checks as stable candidates and SHALL publish only to TestPyPI, npm `next`, and exact-version image tags.
+
+#### Scenario: Reviewed branch is tested as an RC
+- **WHEN** a canonical RC tag points to a trusted repository branch commit with successful exact-commit CI
+- **THEN** tag CI builds and tests the normalized RC distributions before candidate publication
+- **AND** production PyPI and stable npm/image aliases remain unchanged
+
+#### Scenario: RC is followed by a squash merge
+- **WHEN** the reviewed change is squash-merged into main
+- **THEN** the final stable tag identifies the validated resulting main commit
+- **AND** final-version artifacts are built and tested independently of the RC artifacts
+- **AND** no RC tag or uploaded package version is rewritten
+
+#### Scenario: GitHub prerelease attempts production promotion
+- **WHEN** a GitHub Release is marked as a prerelease or identifies an RC tag
+- **THEN** production publishers do not request registry credentials or promote stable aliases
+
 ### Requirement: Publication uses trusted identity
 Production publication SHALL use PyPI Trusted Publishing with short-lived OpenID Connect credentials and separate protected `pypi` and `pypi-library` environments rather than a long-lived repository API token.
 
@@ -83,7 +101,7 @@ Production publication SHALL use PyPI Trusted Publishing with short-lived OpenID
 - **THEN** PyPI rejects publication.
 
 ### Requirement: Test publication is available before production
-Maintainers SHALL publish and verify the tag-specific validated Python files on TestPyPI before their production publication. TestPyPI SHALL use separate protected `testpypi` and `testpypi-library` environments and trusted publisher identities. Manual candidate publication SHALL require an existing stable tag and the same candidate validation as automatic publication.
+Maintainers SHALL publish and verify the tag-specific validated Python files on TestPyPI before their production publication. TestPyPI SHALL use separate protected `testpypi` and `testpypi-library` environments and trusted publisher identities. Manual candidate publication SHALL require an existing stable or RC tag and the same candidate validation as automatic publication.
 
 #### Scenario: Stable candidate tag triggers test publication
 - **WHEN** stable `vX.Y.Z` is pushed for an integrated commit and its stamped tag CI succeeds
@@ -118,7 +136,7 @@ Publishing the matching GitHub Release SHALL request production publication of t
 - **AND** it does not mark the release as successfully completed or create another release that claims completion
 
 ### Requirement: Candidate identity is immutable across release operations
-A release candidate SHALL bind its repository, stable tag, peeled commit, successful CI run and attempt, immutable artifact identifiers, filenames, and integrity values. Both registries' workflows SHALL use the same candidate identity. Missing, expired, conflicting, or ambiguous candidates SHALL block publication; a later run SHALL NOT silently replace a published candidate.
+A release candidate SHALL bind its repository, stable or RC tag, peeled commit, successful CI run and attempt, immutable artifact identifiers, filenames, and integrity values. Both registries' workflows SHALL use the same candidate identity. Missing, expired, conflicting, or ambiguous candidates SHALL block publication; a later run SHALL NOT silently replace a published candidate.
 
 #### Scenario: Two tags identify the same source commit
 - **WHEN** `v0.2.2` and `v0.2.3` point to the same eligible commit and each has a successful stamped build

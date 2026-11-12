@@ -6,7 +6,7 @@ ARG PYTHON_VERSION=3.13
 ARG BASE_CONTAINER=nvidia/cuda:${CUDA_VERSION}-devel-ubuntu${UBUNTU_VERSION}
 
 FROM $BASE_CONTAINER
-COPY --from=ghcr.io/astral-sh/uv:0.12.9 /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.13.5 /uv /uvx /bin/
 
 LABEL maintainer="NexuFed AI <info@nexufed.ai>" \
     org.opencontainers.image.vendor="NexuFed AI" \
@@ -114,14 +114,19 @@ ENV VIRTUAL_ENV=/env \
     PATH="/env/bin:$PATH"
 WORKDIR /workspace
 
-# Resolve external dependencies before copying source so source-only changes reuse this layer.
-COPY --chown=${UID}:${GID} pyproject.toml uv.lock ./
+# Check and install locked external dependencies before copying source.
+COPY --chown=${UID}:${GID} pyproject.toml ./
 COPY --chown=${UID}:${GID} library/pyproject.toml library/
+COPY --chown=${UID}:${GID} containers/cuda128.in containers/cuda128.txt containers/
+COPY --chown=${UID}:${GID} scripts/container_lock.py scripts/
 RUN --mount=type=cache,target=/home/${USERNAME}/.cache/uv,uid=${UID},gid=${GID} \
-    uv sync --frozen --no-install-workspace --all-packages --all-extras
+    python scripts/container_lock.py --check \
+    && uv pip sync --python /env/bin/python --require-hashes --only-binary :all: \
+        --torch-backend cu128 containers/cuda128.txt
 
 COPY --chown=${UID}:${GID} . .
 RUN --mount=type=cache,target=/home/${USERNAME}/.cache/uv,uid=${UID},gid=${GID} \
-    uv sync --locked --all-packages --all-extras
+    uv pip install --python /env/bin/python --no-deps --editable . --editable ./library \
+    && uv pip check --python /env/bin/python
 
 CMD ["/bin/bash"]

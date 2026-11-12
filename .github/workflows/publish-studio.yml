@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   validate:
-    if: (github.event_name == 'push' && !github.event.deleted) || github.event_name == 'workflow_dispatch' || startsWith(github.event.release.tag_name, 'v')
+    if: (github.event_name == 'push' && !github.event.deleted) || github.event_name == 'workflow_dispatch' || (startsWith(github.event.release.tag_name, 'v') && !github.event.release.prerelease && !contains(github.event.release.tag_name, '-rc.'))
     runs-on: ika-runner
     timeout-minutes: 120
     outputs:

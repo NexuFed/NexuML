@@ -62,6 +62,7 @@ def test_durable_staging_precedes_only_the_deploy_queue():
     workflow = load("docs.yml")
     assert "concurrency" not in workflow
     assert workflow["on"]["push"]["branches"] == ["main", "dev"]
+    assert workflow["on"]["push"]["tags"] == ["v*", "!v*-rc.*"]
     jobs = workflow["jobs"]
     assert workflow["permissions"] == {"contents": "read", "actions": "read"}
     identity = jobs["release-identity"]

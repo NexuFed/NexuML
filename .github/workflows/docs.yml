@@ -3,7 +3,7 @@ name: Deploy docs
 on:
   push:
     branches: [main, dev]
-    tags: ["v*"]
+    tags: ["v*", "!v*-rc.*"]
 
 permissions:
   contents: read

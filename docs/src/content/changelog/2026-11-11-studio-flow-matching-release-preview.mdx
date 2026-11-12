@@ -52,6 +52,9 @@ trajectories during evaluation.
   this global changelog, with separate main and development snapshots.
 - Stable Git tags select Python and Studio package versions before CI builds and
   tests; manual version-bump commits are no longer required.
+- Branch testing uses distinct RC tags and normalized Python/npm prerelease
+  versions. Final tags identify the validated post-merge main commit; RCs cannot
+  publish production packages or advance stable image/npm aliases.
 - Package publication reuses the exact tested artifacts and requires successful
   TestPyPI verification. Studio candidates publish to npm `next` before the exact
   version is promoted to `latest` on GitHub Release publication.
@@ -59,6 +62,9 @@ trajectories during evaluation.
   source GPU tests remain on `ika-runner-gpu`. Image verification precedes upload.
 - Container tags use exact NexuML/CUDA versions, a per-CUDA `latest` alias, and
   `edge` for main. Older release builds cannot move the stable alias backward.
+
+Studio also adopts a patched Next.js release to address the production dependency
+security advisories affecting its earlier pinned version.
 
 ## Migration notes
 
