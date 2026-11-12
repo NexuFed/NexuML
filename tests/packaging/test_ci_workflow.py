@@ -236,6 +236,11 @@ def test_shared_release_triggers_and_studio_channels():
     python = YAML(typ="safe").load((root / ".github/workflows/release.yml").read_text())
     assert "startsWith(github.event.release.tag_name, 'v')" in python["jobs"]["validate"]["if"]
     studio = YAML(typ="safe").load((root / ".github/workflows/publish-studio.yml").read_text())
+    assert studio["concurrency"] == {
+        "group": "publish-studio",
+        "cancel-in-progress": False,
+        "queue": "max",
+    }
     publish = studio["jobs"]["publish"]
     assert studio["on"] == python["on"]
     assert studio["jobs"]["validate"]["if"] == python["jobs"]["validate"]["if"]

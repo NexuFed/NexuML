@@ -119,7 +119,7 @@ Maintainers SHALL publish and verify the tag-specific validated Python files on 
 - **THEN** the workflow rejects the request without deriving a release version from checked-in development metadata
 
 #### Scenario: Candidate publishing prerequisites are incomplete
-- **WHEN** TestPyPI projects, trusted publisher identities, environment approval, the integrated tagged commit, verified candidate files, or required validation evidence are absent
+- **WHEN** TestPyPI projects, trusted publisher identities, environment approval, the eligible tagged commit, verified candidate files, or required validation evidence are absent
 - **THEN** the workflow does not upload the immutable candidate files
 
 ### Requirement: GitHub release follows successful package publication

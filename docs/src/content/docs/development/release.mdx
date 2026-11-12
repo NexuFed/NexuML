@@ -183,8 +183,10 @@ for the original distributions, manifest, and verification evidence. If files ex
 use a fresh unused version tag, not a replacement build under the old version. Release never
 rebuilds or restamps files. TestPyPI uploads are immutable.
 
-If tag CI has never produced a successful candidate, fix the failure and rerun **all
-jobs of the original tag-push CI run**; a manual CI dispatch is not a candidate source.
+If tag CI has never produced a successful candidate, retry infrastructure failures
+by rerunning **all jobs of the original tag-push CI run** without changing its source.
+Code fixes require another commit and a fresh RC number, or a fresh unused stable
+version after merge; never move the original tag. A manual CI dispatch is not a candidate source.
 After a candidate succeeds, retry only failed publication against that same candidate,
 not CI. If publishing merely timed out waiting, dispatch the publisher on the tag
 after CI finishes. Do not retag, overwrite artifacts, or choose a newer substitute.
