@@ -37,17 +37,19 @@ def test_real_archive_reproduction():
     assert module.capture(baseline["sourceCommit"], baseline["archiveCommit"], routes) == baseline
 
 
-def test_missing_page_is_rejected():
+def test_missing_page_is_rejected(monkeypatch):
     import pytest
 
     baseline = json.loads((ROOT / "docs/migration/baseline.json").read_text())
     routes = json.loads((ROOT / "docs/migration/route-map.json").read_text())
     routes["pages"].pop("studio.md")
-    import subprocess
 
-    if subprocess.run(
-        ["git", "cat-file", "-e", baseline["archiveCommit"]], cwd=ROOT, capture_output=True
-    ).returncode:
-        pytest.skip("Recorded archive unavailable; source-inventory comparison runs independently")
+    def source_inventory(*args):
+        if args[0] == "rev-parse":
+            return args[1].encode()
+        assert args == ("ls-tree", "-r", "--name-only", baseline["sourceCommit"], "docs/")
+        return "\n".join(f"docs/{page}" for page in baseline["pages"]).encode()
+
+    monkeypatch.setattr(module, "git", source_inventory)
     with pytest.raises(ValueError, match="studio.md"):
         module.capture(baseline["sourceCommit"], baseline["archiveCommit"], routes)
