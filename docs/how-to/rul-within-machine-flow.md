@@ -187,11 +187,11 @@ same `--experiment-root`. Its manifest records the new upstream SHA-256s.
 
 ## Running the study
 
-From the NEX-233 feature worktree:
+From the NEX-233 feature worktree, using the main-worktree NexuML core:
 
 ```bash
 git pull --ff-only
-export PYTHONPATH="$PWD/src:$PWD/library/src"
+export PYTHONPATH="/workspaces/NexuFed/NexuML/src:$PWD/library/src${PYTHONPATH:+:$PYTHONPATH}"
 
 ruff check .
 ruff format --check .
