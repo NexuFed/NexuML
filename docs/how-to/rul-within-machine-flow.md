@@ -174,6 +174,14 @@ python -m nexuml_library.evaluation.maintenance.rul_machine_flow_recover \\
   --rebuild --retrain-missing
 ```
 
+The recovery command reports six numbered stages. Detailed Rich progress
+bars track NASA download bytes (with the server's reported size, when
+available), extracted tables, preprocessed engines, created sensor-window
+groups and frozen healthy/failure encoding batches. Native NexuML training
+retains its Lightning epoch/batch progress bar. Cached inputs are reported
+as reused. Add `--no-progress` to suppress the recovery-specific bars and
+stage messages (it does not change Lightning's own output).
+
 Omit `--retrain-missing` to prepare public data without launching expensive
 training; the command then stops if the checkpoint is absent. Recovery never
 overwrites surviving prepared files, endpoint tensors, audits or partial
