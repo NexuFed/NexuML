@@ -1,6 +1,24 @@
 import {expect,test} from "@playwright/test";
 import {apiAction,loadStudio,openFile,openRun,reviewRun,trainingSection} from "./helpers";
 
+test("review validation focuses the committed error summary without an animation frame",async({page})=>{
+  await page.route("**/api/v1/train/prepare",route=>route.fulfill({status:422,json:{error:{code:"validation",message:"Review rejected.",fields:[]}}}));
+  await loadStudio(page);await openFile(page);await openRun(page);
+  const dialog=page.getByRole("dialog");
+  try {
+    await apiAction(page,"/train/prepare",()=>dialog.getByRole("button",{name:"Review selection",exact:true}).evaluate(element=>{
+      const frame=window.requestAnimationFrame;
+      window.requestAnimationFrame=()=>0;
+      window.addEventListener("restore-animation-frames",()=>{window.requestAnimationFrame=frame;},{once:true});
+      (element as HTMLButtonElement).click();
+    }),{status:422});
+    await expect.poll(()=>page.evaluate(()=>document.activeElement?.classList.contains("execution-error"))).toBe(true);
+  } finally {
+    await page.evaluate(()=>window.dispatchEvent(new Event("restore-animation-frames")));
+  }
+  await expect(dialog.locator(".execution-error")).toContainText("Review rejected.");
+});
+
 test("runtime schema staging, stale target responses, accessible review and native controls",async({page},testInfo)=>{
   const errors:string[]=[];page.on("pageerror",error=>errors.push(error.message));
   const snapshot=(target:string)=>({backend:"sixth-fixture",source:"fixture native inventory",target,namespace:"test",observed_at:new Date(Date.now()-120000).toISOString(),
