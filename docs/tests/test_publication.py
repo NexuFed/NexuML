@@ -519,6 +519,70 @@ class PublicationTests(unittest.TestCase):
                     publication.manifest(output / version),
                 )
 
+    def test_staging_normalizes_incoming_artifacts_without_changing_sources(self):
+        remote = self.stage_fixture()
+        self.extracted(remote)
+        write(self.candidate, "executable", "candidate executable", 0o755)
+        for number, mask in enumerate((0o002, 0o027, 0o077)):
+            with self.subTest(umask=oct(mask)):
+                sources = [self.candidate, self.global_build]
+                for source in sources:
+                    for path in [source, *source.rglob("*")]:
+                        mode = 0o777 if path.is_dir() or path.stat().st_mode & 0o111 else 0o666
+                        path.chmod(mode & ~mask)
+                before = [publication.manifest(source) for source in sources]
+                report = self.stage(remote, revision=self.revisions[number])
+                self.assertTrue(report["staged"])
+                output = self.root / f"artifact-modes-{mask:o}"
+                publication.extract_archive(remote, "refs/heads/gh-pages", output)
+                publication.load_archive(output)
+                for name in ("v0.1.0", "v0.2.1", "unknown"):
+                    self.assertEqual(
+                        publication.manifest(output / name),
+                        publication.manifest(self.root / "extracted" / name),
+                    )
+                self.assertEqual(
+                    publication.manifest(output / "latest"),
+                    publication.manifest(output / "v0.2.1"),
+                )
+                for source, previous in zip(sources, before, strict=True):
+                    self.assertEqual(publication.manifest(source), previous)
+                self.assertEqual((output / "main/executable").stat().st_mode & 0o777, 0o755)
+                self.assertEqual((output / "_astro/global.js").read_text(), "global asset")
+                self.assertEqual((output / "main/_astro/site.js").read_text(), "new asset")
+                self.assertFalse(self.stage(remote, revision=self.revisions[number])["staged"])
+
+    def test_staging_rejects_temporary_directories_inside_inputs(self):
+        remote = self.stage_fixture()
+        for source in (self.candidate, self.global_build):
+            for base in (source, source / "nested"):
+                with self.subTest(source=source.name, temporary=base.name):
+                    base.mkdir(exist_ok=True)
+                    before = publication.manifest(source)
+                    with patch.dict(os.environ, {"TMPDIR": str(base)}):
+                        with self.assertRaisesRegex(ValueError, "Overlapping staging"):
+                            self.stage(remote)
+                    self.assertEqual(publication.manifest(source), before)
+
+    def test_staging_rejects_overlapping_original_inputs(self):
+        remote = self.stage_fixture()
+        head = run(remote, "rev-parse", "refs/heads/gh-pages")
+        nested = self.candidate / "global-build"
+        shutil.copytree(self.global_build, nested)
+        before = publication.manifest(self.candidate)
+        for candidate, changelog in (
+            (self.candidate, self.candidate),
+            (self.candidate, nested),
+            (nested, self.candidate),
+        ):
+            with self.subTest(candidate=candidate.name, changelog=changelog.name):
+                with patch.object(self, "candidate", candidate):
+                    with patch.object(self, "global_build", changelog):
+                        with self.assertRaisesRegex(ValueError, "Overlapping publication paths"):
+                            self.stage(remote)
+                self.assertEqual(publication.manifest(self.candidate), before)
+                self.assertEqual(run(remote, "rev-parse", "refs/heads/gh-pages"), head)
+
     def test_competing_staged_tags_refetch_recompose_and_both_survive(self):
         remote = self.stage_fixture()
         original = run(remote, "rev-parse", "refs/heads/gh-pages")
