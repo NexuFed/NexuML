@@ -485,6 +485,40 @@ class PublicationTests(unittest.TestCase):
         publication.extract_archive(remote, "refs/heads/gh-pages", destination)
         return destination
 
+    def test_git_extraction_preserves_records_independently_of_umask(self):
+        remote = self.stage_fixture()
+        self.stage(remote)
+        expected = publication.manifest(self.extracted(remote))
+        for mask in (0o002, 0o027, 0o077):
+            with self.subTest(umask=oct(mask)):
+                output = self.root / f"extracted-{mask:o}"
+                previous = os.umask(mask)
+                try:
+                    publication.extract_archive(remote, "refs/heads/gh-pages", output)
+                finally:
+                    os.umask(previous)
+                self.assertEqual(publication.manifest(output), expected)
+                publication.load_archive(output)
+
+    def test_staging_uses_git_modes_and_restores_the_callers_umask(self):
+        remote = self.stage_fixture()
+        for number, mask in enumerate((0o002, 0o027, 0o077)):
+            with self.subTest(umask=oct(mask)):
+                version = f"v1.0.{number}"
+                previous = os.umask(mask)
+                try:
+                    self.stage(remote, version)
+                finally:
+                    restored = os.umask(previous)
+                self.assertEqual(restored, mask)
+                output = self.root / f"staged-{mask:o}"
+                publication.extract_archive(remote, "refs/heads/gh-pages", output)
+                publication.load_archive(output)
+                self.assertEqual(
+                    publication.manifest(output / "latest"),
+                    publication.manifest(output / version),
+                )
+
     def test_competing_staged_tags_refetch_recompose_and_both_survive(self):
         remote = self.stage_fixture()
         original = run(remote, "rev-parse", "refs/heads/gh-pages")
