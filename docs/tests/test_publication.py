@@ -564,6 +564,25 @@ class PublicationTests(unittest.TestCase):
                             self.stage(remote)
                     self.assertEqual(publication.manifest(source), before)
 
+    def test_staging_rejects_overlapping_original_inputs(self):
+        remote = self.stage_fixture()
+        head = run(remote, "rev-parse", "refs/heads/gh-pages")
+        nested = self.candidate / "global-build"
+        shutil.copytree(self.global_build, nested)
+        before = publication.manifest(self.candidate)
+        for candidate, changelog in (
+            (self.candidate, self.candidate),
+            (self.candidate, nested),
+            (nested, self.candidate),
+        ):
+            with self.subTest(candidate=candidate.name, changelog=changelog.name):
+                with patch.object(self, "candidate", candidate):
+                    with patch.object(self, "global_build", changelog):
+                        with self.assertRaisesRegex(ValueError, "Overlapping publication paths"):
+                            self.stage(remote)
+                self.assertEqual(publication.manifest(self.candidate), before)
+                self.assertEqual(run(remote, "rev-parse", "refs/heads/gh-pages"), head)
+
     def test_competing_staged_tags_refetch_recompose_and_both_survive(self):
         remote = self.stage_fixture()
         original = run(remote, "rev-parse", "refs/heads/gh-pages")

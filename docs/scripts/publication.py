@@ -658,15 +658,25 @@ def stage(*, repository, remote, branch="gh-pages", attempts=4, **options):
         remote = configured.stdout.decode().strip()
     elif ":" not in remote and not Path(remote).is_absolute():
         remote = str((repository / remote).resolve())
+    inputs = {
+        name: safe_path(options[name])
+        for name in ("candidate", "changelog")
+        if options.get(name) is not None
+    }
+    if len(inputs) == 2:
+        candidate, changelog = inputs.values()
+        if (
+            candidate == changelog
+            or candidate in changelog.parents
+            or changelog in candidate.parents
+        ):
+            raise ValueError(f"Overlapping publication paths: {candidate}, {changelog}")
     base = Path(os.environ.get("TMPDIR", "/tmp/opencode"))
     base.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="docs-stage-", dir=base) as temporary:
         temporary = safe_path(temporary)
         # Artifact transfer does not preserve POSIX modes; normalize private inputs, not archives.
-        for name in ("candidate", "changelog"):
-            if options.get(name) is None:
-                continue
-            source = safe_path(options[name])
+        for name, source in inputs.items():
             if source in temporary.parents:
                 raise ValueError("Overlapping staging and publication input paths")
             validate_tree(source)
