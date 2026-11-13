@@ -8,11 +8,20 @@ from __future__ import annotations
 
 import hashlib
 import shutil
+from contextlib import nullcontext
 import tempfile
 import zipfile
 from pathlib import Path
 from urllib.error import URLError
 from urllib.request import Request, urlopen
+
+from rich.progress import (
+    BarColumn,
+    DownloadColumn,
+    Progress,
+    TimeRemainingColumn,
+    TransferSpeedColumn,
+)
 
 CMAPSS_ARCHIVE_URL = (
     "https://phm-datasets.s3.amazonaws.com/NASA/"
@@ -51,7 +60,7 @@ def _locate_tables(root: Path, subset: str) -> Path | None:
     return None
 
 
-def _download_archive(destination: Path) -> None:
+def _download_archive(destination: Path, *, show_progress: bool = False) -> None:
     """Download the official ZIP to an atomic reusable local cache.
 
     Raises:
@@ -66,8 +75,27 @@ def _download_archive(destination: Path) -> None:
     try:
         request = Request(CMAPSS_ARCHIVE_URL, headers={"User-Agent": "NexuML-RUL/1.0"})
         with urlopen(request, timeout=120) as source, partial.open("wb") as output:
-            while block := source.read(1024 * 1024):
-                output.write(block)
+            progress = (
+                Progress(
+                    "{task.description}",
+                    BarColumn(),
+                    DownloadColumn(),
+                    TransferSpeedColumn(),
+                    TimeRemainingColumn(),
+                )
+                if show_progress else None
+            )
+            with progress if progress is not None else nullcontext():
+                length = source.headers.get("Content-Length") if progress is not None else None
+                total = int(length) if length and length.isdecimal() else None
+                task = (
+                    progress.add_task("NASA C-MAPSS", total=total)
+                    if progress is not None else None
+                )
+                while block := source.read(1024 * 1024):
+                    output.write(block)
+                    if progress is not None and task is not None:
+                        progress.advance(task, len(block))
         if not zipfile.is_zipfile(partial):
             raise RuntimeError("NASA response was not a ZIP archive")
         partial.replace(destination)
@@ -78,7 +106,9 @@ def _download_archive(destination: Path) -> None:
         ) from exc
 
 
-def _extract_tables(archive: Path, destination: Path, subset: str) -> None:
+def _extract_tables(
+    archive: Path, destination: Path, subset: str, *, show_progress: bool = False
+) -> None:
     """Extract only named sensor tables, supporting an optional nested ZIP.
 
     Ignore unrelated entries, disallow symlinks and enforce per-file bounds
@@ -89,6 +119,11 @@ def _extract_tables(archive: Path, destination: Path, subset: str) -> None:
     """
     required = set(_required_files(subset))
     found: set[str] = set()
+    progress = Progress("{task.description}", BarColumn(), "{task.completed}/{task.total}")
+    task = (
+        progress.add_task(f"Extract {subset} tables", total=len(required))
+        if show_progress else None
+    )
 
     def scan(file: Path, depth: int) -> None:
         with zipfile.ZipFile(file) as zipped:
@@ -106,6 +141,8 @@ def _extract_tables(archive: Path, destination: Path, subset: str) -> None:
                     with zipped.open(member) as source, (destination / filename).open("wb") as out:
                         shutil.copyfileobj(source, out, length=1024 * 1024)
                     found.add(filename)
+                    if task is not None:
+                        progress.advance(task)
                 elif depth == 0 and filename.lower().endswith(".zip"):
                     if member.file_size > 512 * 1024 * 1024:
                         raise ValueError("Oversized nested C-MAPSS archive")
@@ -117,12 +154,16 @@ def _extract_tables(archive: Path, destination: Path, subset: str) -> None:
                     finally:
                         nested.unlink(missing_ok=True)
 
-    scan(archive, 0)
+    with progress if task is not None else nullcontext():
+        scan(archive, 0)
     if found != required:
         raise ValueError(f"NASA archive is missing tables: {sorted(required - found)}")
 
 
-def ensure_cmapss(root: str | Path, subset: str, *, download: bool = True) -> Path:
+def ensure_cmapss(
+    root: str | Path, subset: str, *, download: bool = True,
+    show_progress: bool = False,
+) -> Path:
     """Find or automatically retrieve official C-MAPSS tables.
 
     Reuse existing extracted files and the cached ZIP. Publish only validated
@@ -132,6 +173,7 @@ def ensure_cmapss(root: str | Path, subset: str, *, download: bool = True) -> Pa
         root: Target dataset cache directory.
         subset: One of FD001, FD002, FD003 and FD004.
         download: Automatically retrieve the official archive when needed.
+        show_progress: Display transfer and extraction progress for recovery.
 
     Returns:
         Directory containing the selected official source tables.
@@ -152,12 +194,12 @@ def ensure_cmapss(root: str | Path, subset: str, *, download: bool = True) -> Pa
         )
 
     archive = root.parent / "cmapss-nasa-official.zip"
-    _download_archive(archive)
+    _download_archive(archive, show_progress=show_progress)
     root.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="cmapss-prepare-", dir=root.parent) as tmp:
         staging = Path(tmp)
         try:
-            _extract_tables(archive, staging, subset)
+            _extract_tables(archive, staging, subset, show_progress=show_progress)
         except zipfile.BadZipFile as exc:
             raise ValueError("Invalid NASA C-MAPSS archive structure") from exc
         for filename in _required_files(subset):
