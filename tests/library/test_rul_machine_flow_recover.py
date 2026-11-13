@@ -1,10 +1,15 @@
 """Read-only and recovery-safety contracts for the FD003 machine-flow inputs."""
 
+import io
 from pathlib import Path
 
+import numpy as np
 import pytest
 
+from nexuml_library.data.maintenance import rul_download
+from nexuml_library.data.maintenance.patchformer_flow import AutoPatchFormerFlowEndpoints
 from nexuml_library.evaluation.maintenance import rul_machine_flow_recover as recovery
+from nexuml_library.evaluation.maintenance.rul_prepare import _windowize
 
 
 def test_recovery_status_is_read_only(tmp_path: Path) -> None:
@@ -60,3 +65,39 @@ def test_training_uses_native_runner_and_shared_checkpoint_root(
         == str(locations["experiment_root"] / "rul" / "checkpoints")
         for _, _, env in calls
     )
+
+
+def test_download_reports_bytes_without_changing_archive(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Byte-level progress must preserve the downloaded archive exactly."""
+    content = b"official-nasa-test-zip"
+
+    class Response(io.BytesIO):
+        headers = {"Content-Length": str(len(content))}
+
+    monkeypatch.setattr(rul_download, "urlopen", lambda request, timeout: Response(content))
+    monkeypatch.setattr(rul_download.zipfile, "is_zipfile", lambda file: True)
+    destination = tmp_path / "nasa.zip"
+    rul_download._download_archive(destination, show_progress=True)
+    assert destination.read_bytes() == content
+
+
+def test_window_progress_does_not_change_prepared_values() -> None:
+    """Progress reporting must have no effect on chronological sensor windows."""
+    observations = np.arange(12, dtype=np.float32).reshape(4, 3)
+    rul = np.array([3, 2, 1, 0], dtype=np.float32)
+    sequences = [("train:FD003:1", "train", observations, rul)]
+    expected = _windowize(sequences, window=2, stride=1, final_only_test=True)
+    actual = _windowize(
+        sequences, window=2, stride=1, final_only_test=True, show_progress=True
+    )
+    assert expected[0].equal(actual[0])
+    assert expected[1].equal(actual[1])
+    assert expected[2] == actual[2]
+
+
+def test_patchformer_embedding_progress_is_opt_in() -> None:
+    """Existing flow scenarios retain silent embedding generation by default."""
+    assert AutoPatchFormerFlowEndpoints().show_progress is False
+    assert AutoPatchFormerFlowEndpoints(show_progress=True).show_progress is True
