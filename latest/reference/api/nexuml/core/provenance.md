@@ -4,7 +4,7 @@
 
 Optional local provenance snapshots for scenario-file runs.
 
-[View source](https://github.com/NexuFed/NexuML/blob/b9fb6586f015db459cb8881e6feb51b84b3f03e0/src/nexuml/core/provenance.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/1787e5e6ec271ff0045b9659199a85fdf92d1e06/src/nexuml/core/provenance.py#L1-L1)
 
 ## nexuml.core.provenance.snapshot_scenario_file_run
 
@@ -20,4 +20,4 @@ Snapshot source, built scenario YAML, metadata, git, and tuning summary.
 
 - (`Path | None`) — Path to the snapshot directory, or ``None`` if *artifact_dir* is ``None``.
 
-[View source](https://github.com/NexuFed/NexuML/blob/b9fb6586f015db459cb8881e6feb51b84b3f03e0/src/nexuml/core/provenance.py#L45-L107)
+[View source](https://github.com/NexuFed/NexuML/blob/1787e5e6ec271ff0045b9659199a85fdf92d1e06/src/nexuml/core/provenance.py#L45-L107)

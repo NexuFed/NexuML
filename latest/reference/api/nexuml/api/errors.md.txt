@@ -4,7 +4,7 @@
 
 Actionable HTTP errors without leaking request inputs.
 
-[View source](https://github.com/NexuFed/NexuML/blob/b9fb6586f015db459cb8881e6feb51b84b3f03e0/src/nexuml/api/errors.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/1787e5e6ec271ff0045b9659199a85fdf92d1e06/src/nexuml/api/errors.py#L1-L1)
 
 ## nexuml.api.errors.ApiError
 
@@ -18,7 +18,7 @@ Bases: `Exception`
 
 Transport failure; existing NexuML errors remain authoritative.
 
-[View source](https://github.com/NexuFed/NexuML/blob/b9fb6586f015db459cb8881e6feb51b84b3f03e0/src/nexuml/api/errors.py#L4-L11)
+[View source](https://github.com/NexuFed/NexuML/blob/1787e5e6ec271ff0045b9659199a85fdf92d1e06/src/nexuml/api/errors.py#L4-L11)
 
 ### nexuml.api.errors.ApiError.code
 
@@ -28,7 +28,7 @@ Transport failure; existing NexuML errors remain authoritative.
 code = code
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/b9fb6586f015db459cb8881e6feb51b84b3f03e0/src/nexuml/api/errors.py#L9-L9)
+[View source](https://github.com/NexuFed/NexuML/blob/1787e5e6ec271ff0045b9659199a85fdf92d1e06/src/nexuml/api/errors.py#L9-L9)
 
 ### nexuml.api.errors.ApiError.fields
 
@@ -38,7 +38,7 @@ code = code
 fields = fields or []
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/b9fb6586f015db459cb8881e6feb51b84b3f03e0/src/nexuml/api/errors.py#L11-L11)
+[View source](https://github.com/NexuFed/NexuML/blob/1787e5e6ec271ff0045b9659199a85fdf92d1e06/src/nexuml/api/errors.py#L11-L11)
 
 ### nexuml.api.errors.ApiError.message
 
@@ -48,7 +48,7 @@ fields = fields or []
 message = message
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/b9fb6586f015db459cb8881e6feb51b84b3f03e0/src/nexuml/api/errors.py#L10-L10)
+[View source](https://github.com/NexuFed/NexuML/blob/1787e5e6ec271ff0045b9659199a85fdf92d1e06/src/nexuml/api/errors.py#L10-L10)
 
 ### nexuml.api.errors.ApiError.status
 
@@ -58,4 +58,4 @@ message = message
 status = status
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/b9fb6586f015db459cb8881e6feb51b84b3f03e0/src/nexuml/api/errors.py#L8-L8)
+[View source](https://github.com/NexuFed/NexuML/blob/1787e5e6ec271ff0045b9659199a85fdf92d1e06/src/nexuml/api/errors.py#L8-L8)

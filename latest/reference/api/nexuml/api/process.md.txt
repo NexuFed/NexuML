@@ -4,7 +4,7 @@
 
 Fresh selected-interpreter calls for discovery and configuration validation.
 
-[View source](https://github.com/NexuFed/NexuML/blob/b9fb6586f015db459cb8881e6feb51b84b3f03e0/src/nexuml/api/process.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/1787e5e6ec271ff0045b9659199a85fdf92d1e06/src/nexuml/api/process.py#L1-L1)
 
 ## nexuml.api.process.call_worker
 
@@ -24,7 +24,7 @@ Run one existing NexuML call in a fresh selected-interpreter process.
 
 - `ApiError` — If validation, initialization or the bounded call fails.
 
-[View source](https://github.com/NexuFed/NexuML/blob/b9fb6586f015db459cb8881e6feb51b84b3f03e0/src/nexuml/api/process.py#L26-L67)
+[View source](https://github.com/NexuFed/NexuML/blob/1787e5e6ec271ff0045b9659199a85fdf92d1e06/src/nexuml/api/process.py#L26-L67)
 
 ## nexuml.api.process.worker_environment
 
@@ -40,4 +40,4 @@ Inherit the selected environment without forwarding API credentials.
 
 - (`dict[str, str]`) — Worker environment, with private connection settings removed.
 
-[View source](https://github.com/NexuFed/NexuML/blob/b9fb6586f015db459cb8881e6feb51b84b3f03e0/src/nexuml/api/process.py#L13-L23)
+[View source](https://github.com/NexuFed/NexuML/blob/1787e5e6ec271ff0045b9659199a85fdf92d1e06/src/nexuml/api/process.py#L13-L23)
