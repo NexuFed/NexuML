@@ -9,13 +9,14 @@ from __future__ import annotations
 
 import hashlib
 import json
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from pathlib import Path
 from typing import Any, Literal, Self, cast
 
 import pandas as pd
 import torch
 from pydantic import Field
+from rich.progress import track
 from tensordict import TensorDict
 from torch import Tensor
 
@@ -183,6 +184,7 @@ class AutoPatchFormerFlowEndpoints(DataSourceDefinition):
     val_pairs: int = Field(default=128, gt=0)
     embedding_batch_size: int = Field(default=64, gt=0)
     sequence_embeddings: bool = False
+    show_progress: bool = False
 
     def build(self) -> NexuDataset:
         """Prepare immutable paired endpoints without official test-label leakage.
@@ -265,22 +267,31 @@ class AutoPatchFormerFlowEndpoints(DataSourceDefinition):
                     torch.randperm(len(faulty), generator=generator)[:count].tolist()
                 ]
 
-                def encode(indices: list[int]) -> Tensor:
+                def encode(indices: list[int], kind: str) -> Tensor:
                     """Encode frozen DPAN without invoking PatchFormer's RUL head.
 
                     Returns:
                         Full [N,L,D] DPAN sequence or legacy mean-pooled [N,D].
                     """
+                    batches: Iterable[list[int]] = (
+                        indices[start : start + self.embedding_batch_size]
+                        for start in range(0, len(indices), self.embedding_batch_size)
+                    )
+                    if self.show_progress:
+                        count = (
+                            len(indices) + self.embedding_batch_size - 1
+                        ) // self.embedding_batch_size
+                        batches = track(
+                            batches, total=count,
+                            description=f"Encode {split} {kind} embeddings",
+                        )
                     parts = [
                         (
                             model.forward_features(windows[batch])
                             if self.sequence_embeddings
                             else model.forward_features(windows[batch]).mean(dim=1)
                         )
-                        for batch in (
-                            indices[start : start + self.embedding_batch_size]
-                            for start in range(0, len(indices), self.embedding_batch_size)
-                        )
+                        for batch in batches
                     ]
                     return torch.cat(parts)
 
@@ -293,7 +304,7 @@ class AutoPatchFormerFlowEndpoints(DataSourceDefinition):
                     }
                     for i, (hi, fi) in enumerate(zip(h_ids, f_ids))
                 ]
-                paired_raw[split] = (encode(h_ids), encode(f_ids), meta)
+                paired_raw[split] = (encode(h_ids, "healthy"), encode(f_ids, "faulty"), meta)
         train_h, train_f, _ = paired_raw["train"]
         train_embeddings = torch.cat((train_h, train_f), dim=0)
         mean = train_embeddings.mean(dim=0)
