@@ -4,7 +4,7 @@
 
 Synthetic convolutional autoencoder scenarios.
 
-[View source](https://github.com/NexuFed/NexuML/blob/446d626f6712b0ca5963be5d1275ccf1bcd31bdd/library/src/nexuml_library/scenarios/asd/synthetic_conv_ae.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/1787e5e6ec271ff0045b9659199a85fdf92d1e06/library/src/nexuml_library/scenarios/asd/synthetic_conv_ae.py#L1-L1)
 
 ## nexuml_library.scenarios.asd.synthetic_conv_ae.synthetic_conv_ae_anomaly
 
@@ -20,7 +20,7 @@ Synthetic spectrogram convolutional AE anomaly workflow.
 
 - `ScenarioSpec` (`ScenarioSpec`) — Assembled scenario with pipeline, training, data and evaluation.
 
-[View source](https://github.com/NexuFed/NexuML/blob/446d626f6712b0ca5963be5d1275ccf1bcd31bdd/library/src/nexuml_library/scenarios/asd/synthetic_conv_ae.py#L12-L53)
+[View source](https://github.com/NexuFed/NexuML/blob/1787e5e6ec271ff0045b9659199a85fdf92d1e06/library/src/nexuml_library/scenarios/asd/synthetic_conv_ae.py#L12-L53)
 
 ## nexuml_library.scenarios.asd.synthetic_conv_ae.synthetic_conv_cvae_anomaly
 
@@ -36,4 +36,4 @@ Synthetic spectrogram convolutional VAE anomaly workflow.
 
 - `ScenarioSpec` (`ScenarioSpec`) — Assembled scenario with pipeline, training, data and evaluation.
 
-[View source](https://github.com/NexuFed/NexuML/blob/446d626f6712b0ca5963be5d1275ccf1bcd31bdd/library/src/nexuml_library/scenarios/asd/synthetic_conv_ae.py#L56-L101)
+[View source](https://github.com/NexuFed/NexuML/blob/1787e5e6ec271ff0045b9659199a85fdf92d1e06/library/src/nexuml_library/scenarios/asd/synthetic_conv_ae.py#L56-L101)

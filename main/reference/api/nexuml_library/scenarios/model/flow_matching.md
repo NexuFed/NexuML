@@ -4,7 +4,7 @@
 
 Flow Matching model fragment.
 
-[View source](https://github.com/NexuFed/NexuML/blob/446d626f6712b0ca5963be5d1275ccf1bcd31bdd/library/src/nexuml_library/scenarios/model/flow_matching.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/1787e5e6ec271ff0045b9659199a85fdf92d1e06/library/src/nexuml_library/scenarios/model/flow_matching.py#L1-L1)
 
 ## nexuml_library.scenarios.model.flow_matching.mlp_flow_matching
 
@@ -20,7 +20,7 @@ Build the basic MLP Flow Matching pipeline.
 
 - (`PipelineSpec`) — Linear path sampling, flow model, and Flow Matching loss pipeline.
 
-[View source](https://github.com/NexuFed/NexuML/blob/446d626f6712b0ca5963be5d1275ccf1bcd31bdd/library/src/nexuml_library/scenarios/model/flow_matching.py#L11-L50)
+[View source](https://github.com/NexuFed/NexuML/blob/1787e5e6ec271ff0045b9659199a85fdf92d1e06/library/src/nexuml_library/scenarios/model/flow_matching.py#L11-L50)
 
 ## nexuml_library.scenarios.model.flow_matching.unet_flow_matching
 
@@ -36,4 +36,4 @@ Build an image Flow Matching pipeline with a U-Net vector field.
 
 - (`PipelineSpec`) — Linear path sampling, U-Net flow model, and Flow Matching loss pipeline.
 
-[View source](https://github.com/NexuFed/NexuML/blob/446d626f6712b0ca5963be5d1275ccf1bcd31bdd/library/src/nexuml_library/scenarios/model/flow_matching.py#L53-L92)
+[View source](https://github.com/NexuFed/NexuML/blob/1787e5e6ec271ff0045b9659199a85fdf92d1e06/library/src/nexuml_library/scenarios/model/flow_matching.py#L53-L92)

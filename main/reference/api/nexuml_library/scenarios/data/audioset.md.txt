@@ -4,7 +4,7 @@
 
 AudioSet data specification builders.
 
-[View source](https://github.com/NexuFed/NexuML/blob/446d626f6712b0ca5963be5d1275ccf1bcd31bdd/library/src/nexuml_library/scenarios/data/audioset.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/1787e5e6ec271ff0045b9659199a85fdf92d1e06/library/src/nexuml_library/scenarios/data/audioset.py#L1-L1)
 
 ## nexuml_library.scenarios.data.audioset.audioset_data
 
@@ -25,4 +25,4 @@ AudioSet balanced-train + eval data spec.
 - `FileNotFoundError` — If AudioSet data is missing or incomplete after
 validation.
 
-[View source](https://github.com/NexuFed/NexuML/blob/446d626f6712b0ca5963be5d1275ccf1bcd31bdd/library/src/nexuml_library/scenarios/data/audioset.py#L18-L89)
+[View source](https://github.com/NexuFed/NexuML/blob/1787e5e6ec271ff0045b9659199a85fdf92d1e06/library/src/nexuml_library/scenarios/data/audioset.py#L18-L89)

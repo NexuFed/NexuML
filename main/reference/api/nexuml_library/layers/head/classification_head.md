@@ -4,7 +4,7 @@
 
 Classification head for latent space.
 
-[View source](https://github.com/NexuFed/NexuML/blob/446d626f6712b0ca5963be5d1275ccf1bcd31bdd/library/src/nexuml_library/layers/head/classification_head.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/1787e5e6ec271ff0045b9659199a85fdf92d1e06/library/src/nexuml_library/layers/head/classification_head.py#L1-L1)
 
 ## nexuml_library.layers.head.classification_head.LatentClassificationHead
 
@@ -20,7 +20,7 @@ Classification head operating on latent vectors.
 
 Produces logits for multiclass or multilabel classification.
 
-[View source](https://github.com/NexuFed/NexuML/blob/446d626f6712b0ca5963be5d1275ccf1bcd31bdd/library/src/nexuml_library/layers/head/classification_head.py#L15-L28)
+[View source](https://github.com/NexuFed/NexuML/blob/1787e5e6ec271ff0045b9659199a85fdf92d1e06/library/src/nexuml_library/layers/head/classification_head.py#L15-L28)
 
 ### nexuml_library.layers.head.classification_head.LatentClassificationHead.hidden_dims
 
@@ -30,7 +30,7 @@ Produces logits for multiclass or multilabel classification.
 hidden_dims: list[int] | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/446d626f6712b0ca5963be5d1275ccf1bcd31bdd/library/src/nexuml_library/layers/head/classification_head.py#L22-L22)
+[View source](https://github.com/NexuFed/NexuML/blob/1787e5e6ec271ff0045b9659199a85fdf92d1e06/library/src/nexuml_library/layers/head/classification_head.py#L22-L22)
 
 ### nexuml_library.layers.head.classification_head.LatentClassificationHead.build
 
@@ -40,4 +40,4 @@ hidden_dims: list[int] | None = None
 def build(context: LayerBuildContext) -> PipelineLayer
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/446d626f6712b0ca5963be5d1275ccf1bcd31bdd/library/src/nexuml_library/layers/head/classification_head.py#L24-L28)
+[View source](https://github.com/NexuFed/NexuML/blob/1787e5e6ec271ff0045b9659199a85fdf92d1e06/library/src/nexuml_library/layers/head/classification_head.py#L24-L28)

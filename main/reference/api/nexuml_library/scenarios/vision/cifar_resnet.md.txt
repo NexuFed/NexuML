@@ -4,7 +4,7 @@
 
 Composed CIFAR + ResNet classification scenarios.
 
-[View source](https://github.com/NexuFed/NexuML/blob/446d626f6712b0ca5963be5d1275ccf1bcd31bdd/library/src/nexuml_library/scenarios/vision/cifar_resnet.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/1787e5e6ec271ff0045b9659199a85fdf92d1e06/library/src/nexuml_library/scenarios/vision/cifar_resnet.py#L1-L1)
 
 ## nexuml_library.scenarios.vision.cifar_resnet.cifar_resnet
 
@@ -35,4 +35,4 @@ CIFAR image classification with ResNet backbone.
 
 - `ValueError` — If ``dataset`` is not ``"cifar10"`` or ``"cifar100"``.
 
-[View source](https://github.com/NexuFed/NexuML/blob/446d626f6712b0ca5963be5d1275ccf1bcd31bdd/library/src/nexuml_library/scenarios/vision/cifar_resnet.py#L23-L86)
+[View source](https://github.com/NexuFed/NexuML/blob/1787e5e6ec271ff0045b9659199a85fdf92d1e06/library/src/nexuml_library/scenarios/vision/cifar_resnet.py#L23-L86)
