@@ -16,6 +16,7 @@ from typing import Any
 
 import numpy as np
 import torch
+from rich.progress import track
 from torch import Tensor
 
 
@@ -27,6 +28,7 @@ def _windowize(
     final_only_test: bool,
     padding_mode: str = "repeat_first",
     train_full_windows_only: bool = False,
+    show_progress: bool = False,
 ) -> tuple[Tensor, Tensor, list[dict[str, Any]]]:
     """Build causal left-edge-padded windows without joining asset sequences.
 
@@ -39,7 +41,11 @@ def _windowize(
     features: list[Tensor] = []
     labels: list[float] = []
     metadata: list[dict[str, Any]] = []
-    for asset, split, observations, rul in sequences:
+    source = (
+        track(sequences, total=len(sequences), description="Build RUL windows")
+        if show_progress else sequences
+    )
+    for asset, split, observations, rul in source:
         if (
             observations.ndim != 2
             or len(observations) == 0
@@ -179,6 +185,7 @@ def prepare_cmapss(
     padding_mode: str = "repeat_first",
     train_full_windows_only: bool = False,
     normalize_targets: bool = True,
+    show_progress: bool = False,
 ) -> dict[str, Any]:
     """Construct supervised C-MAPSS RUL windows with official test targets.
 
@@ -230,7 +237,11 @@ def prepare_cmapss(
             or list(ids) != list(range(1, len(terminal_rul) + 1))
         ):
             raise ValueError("Official test RUL count/engine IDs disagree")
-        for engine in ids:
+        engines = (
+            track(ids, total=len(ids), description=f"Prepare {subset} {origin} engines")
+            if show_progress else ids
+        )
+        for engine in engines:
             part = table[table[:, 0] == engine]
             cycles = part[:, 1]
             if (
@@ -266,6 +277,7 @@ def prepare_cmapss(
         final_only_test=final_only_test,
         padding_mode=padding_mode,
         train_full_windows_only=train_full_windows_only,
+        show_progress=show_progress,
     )
     raw_targets = torch.tensor(
         [float(raw_rul_by_asset[row["asset_id"]][row["step"]]) for row in rows],
