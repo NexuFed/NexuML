@@ -26,8 +26,10 @@ def test_recovery_job_is_pinned_to_gh200_and_has_prisma_source_mounts() -> None:
         "effect": "NoSchedule",
     }]
     container = pod["containers"][0]
-    assert container["resources"]["requests"]["nvidia.com/gpu"] == "1"
-    assert container["resources"]["limits"]["nvidia.com/gpu"] == "1"
+    assert container["resources"] == {
+        "requests": {"nvidia.com/gpu": "1"},
+        "limits": {"nvidia.com/gpu": "1"},
+    }
     assert container["volumeMounts"][0]["mountPath"] == "/mnt/juicefs_prisma"
     assert container["volumeMounts"][1]["subPath"].startswith("job-staging/")
     assert pod["volumes"][0]["persistentVolumeClaim"]["claimName"] == "juicefs"
