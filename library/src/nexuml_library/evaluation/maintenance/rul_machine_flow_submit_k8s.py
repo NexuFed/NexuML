@@ -149,15 +149,8 @@ def build_manifest(
                         "args": [_runtime_command(experiment_root)],
                         "envFrom": [{"configMapRef": {"name": "env-config"}}],
                         "resources": {
-                            "requests": {
-                                "cpu": "8",
-                                "memory": "64Gi",
-                                "nvidia.com/gpu": "1",
-                            },
-                            "limits": {
-                                "memory": "64Gi",
-                                "nvidia.com/gpu": "1",
-                            },
+                            "requests": {"nvidia.com/gpu": "1"},
+                            "limits": {"nvidia.com/gpu": "1"},
                         },
                         "volumeMounts": [
                             {"name": "juicefs", "mountPath": "/mnt/juicefs_prisma"},
