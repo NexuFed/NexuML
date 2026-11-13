@@ -182,6 +182,7 @@ def _extract_archive(worktree: Path, target: Path) -> None:
 
     Raises:
         subprocess.CalledProcessError: If archive creation or extraction fails.
+        RuntimeError: If the Git archive stream cannot be read completely.
     """
     target.mkdir(parents=True, exist_ok=False)
     archive = subprocess.Popen(
