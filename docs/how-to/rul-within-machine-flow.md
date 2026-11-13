@@ -124,6 +124,67 @@ RUL reference is used for calibration, while the **dynamics themselves are
 machine-specific**. The later global/ensemble approach is deliberately
 deferred.
 
+## Rebuilding inputs after experiment-storage loss
+
+Only three derived inputs are required by this study:
+
+1. `.experiments/rul/prepared/cmapss-FD003-seed42-controlled-w30-s42.pt`
+   (official FD003 data, 30-cycle, 15 selected sensors, 80/20 train/validation engines);
+2. `.experiments/rul/audits/rul-FD003-controlled-patchformer-seed42.checkpoint.json`
+   and its selected `.ckpt` under `.experiments/rul/checkpoints/`;
+3. `.experiments/rul/prepared/rul-FD003-patchformer-sequence-cfc-flow-seed42-endpoints.pt`
+   (frozen sequence embedding normalization, **not** a trained flow model).
+
+The original 12 cluster-conditioned CfC checkpoints and their ablation CSVs
+are **not required**. The official NASA C-MAPSS FD003 tables can be downloaded
+again from their public source. The prepared RUL tensor and endpoint statistics
+can be regenerated deterministically. **Lost PatchFormer weights cannot be
+recovered from a CSV or model recipe**: restore the original checkpoint/audit
+from a backup or retrain the native controlled model. A retrained encoder has
+a new SHA-256 and is a new experimental lineage, so earlier metrics are not
+guaranteed to reproduce exactly.
+
+First verify that JuiceFS is mounted, and investigate snapshots/backups **before
+writing into a potentially recoverable storage volume**:
+
+```bash
+findmnt /mnt/juicefs_prisma
+```
+
+With the existing main-worktree NexuML virtual environment activated,
+prepend **main** core and **feature-worktree** library paths:
+
+```bash
+export PYTHONPATH="/workspaces/NexuFed/NexuML/src:/workspaces/NexuFed/NexuML-predictive/library/src${PYTHONPATH:+:$PYTHONPATH}"
+```
+
+A read-only inventory (does not download, train or create directories):
+
+```bash
+python -m nexuml_library.evaluation.maintenance.rul_machine_flow_recover \\
+  --experiment-root /mnt/juicefs_prisma/models/nexuml/.experiments
+```
+
+After confirming that backup restoration is unavailable or complete, rebuild
+missing artifacts and, only if necessary, **train a new seed-42 PatchFormer**:
+
+```bash
+python -m nexuml_library.evaluation.maintenance.rul_machine_flow_recover \\
+  --experiment-root /mnt/juicefs_prisma/models/nexuml/.experiments \\
+  --rebuild --retrain-missing
+```
+
+Omit `--retrain-missing` to prepare public data without launching expensive
+training; the command then stops if the checkpoint is absent. Recovery never
+overwrites surviving prepared files, endpoint tensors, audits or partial
+checkpoints. Native `nexuml resolve` and `nexuml train` run on the current
+workstation, with checkpoints persisted under the specified experiment root;
+this command does **not** submit Kubernetes jobs. A separate cluster run
+requires choosing a permitted GPU node profile.
+
+When recovery reports `"status": "ready"`, run the study below with the
+same `--experiment-root`. Its manifest records the new upstream SHA-256s.
+
 ## Running the study
 
 From the NEX-233 feature worktree:
