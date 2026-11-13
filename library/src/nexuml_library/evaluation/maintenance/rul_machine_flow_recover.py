@@ -172,7 +172,8 @@ def _train_patchformer(locations: dict[str, Path]) -> None:
 
 
 def rebuild_prerequisites(
-    experiment_root: Path, *, retrain_missing: bool = False
+    experiment_root: Path, *, retrain_missing: bool = False,
+    show_progress: bool = True,
 ) -> dict[str, Any]:
     """Recreate missing source, windows, selected encoder and flow endpoints.
 
@@ -182,6 +183,7 @@ def rebuild_prerequisites(
     Args:
         experiment_root: Explicit writable .experiments directory.
         retrain_missing: Permit expensive native PatchFormer training if necessary.
+        show_progress: Display recovery stages and detailed per-operation progress.
 
     Returns:
         Verified paths and SHA-256 hashes for the recovered study inputs.
@@ -193,11 +195,23 @@ def rebuild_prerequisites(
     """
     locations = _locations(experiment_root)
     root = locations["experiment_root"]
+
+    def stage(number: int, description: str) -> None:
+        """Print a stable, immediately visible recovery-stage indicator."""
+        if show_progress:
+            print(f"[recovery {number}/6] {description}", flush=True)
+
+    stage(1, "Verify destination and storage mount")
     _check_mount(root)
 
     # The official NASA archive is a public reproducible source; the local
     # prepared artifact is a deterministic transformation of these tables.
-    raw = ensure_cmapss(locations["raw_dir"], "FD003", download=True)
+    stage(2, "Retrieve/extract official NASA FD003 dataset")
+    raw = ensure_cmapss(
+        locations["raw_dir"], "FD003", download=True,
+        show_progress=show_progress,
+    )
+    stage(3, "Prepare chronological FD003 sensor windows")
     prepared = locations["prepared"]
     if not prepared.exists():
         payload = prepare_cmapss(
@@ -213,8 +227,11 @@ def rebuild_prerequisites(
             padding_mode="zero",
             train_full_windows_only=True,
             normalize_targets=False,
+            show_progress=show_progress,
         )
         save_rul_artifact(payload, prepared)
+    elif show_progress:
+        print(f"  Reusing prepared windows: {prepared}", flush=True)
 
     stored = read_rul_artifact(prepared)
     settings = cast(dict[str, Any], stored["settings"])
@@ -230,6 +247,7 @@ def rebuild_prerequisites(
         raise ValueError("Recovered FD003 windows do not have [30,15] sensor layout")
     _index_engine_rows(cast(list[dict[str, Any]], stored["rows"]))
 
+    stage(4, "Restore or train validation-selected PatchFormer")
     try:
         checkpoint = _shared_patchformer_checkpoint(root, 42)
     except FileNotFoundError as exc:
@@ -238,12 +256,18 @@ def rebuild_prerequisites(
                 "FD003 windows are ready, but the seed-42 PatchFormer is missing. "
                 "Restore its original checkpoint and audit or rerun with --retrain-missing."
             ) from exc
+        if show_progress:
+            print("  No checkpoint available; starting native NexuML training", flush=True)
         _train_patchformer(locations)
         checkpoint = _shared_patchformer_checkpoint(root, 42)
+    else:
+        if show_progress:
+            print(f"  Reusing selected checkpoint: {checkpoint}", flush=True)
 
     # Independently verify the selected model before trusting any endpoints.
     encoder = _PatchFormerModel(30, 15, 64, 5, 2, 0.1)
     checkpoint_sha = _trusted_patchformer_weights(encoder, checkpoint)
+    stage(5, "Generate frozen healthy/failure sequence embeddings")
     endpoint = locations["endpoint"]
     if not endpoint.exists():
         AutoPatchFormerFlowEndpoints(
@@ -259,8 +283,12 @@ def rebuild_prerequisites(
             val_pairs=128,
             embedding_batch_size=64,
             sequence_embeddings=True,
+            show_progress=show_progress,
         ).build()
+    elif show_progress:
+        print(f"  Reusing endpoint artifact: {endpoint}", flush=True)
 
+    stage(6, "Verify recovered artifact provenance and checksums")
     endpoint_settings = cast(dict[str, Any], read_prepared_artifact(endpoint)["settings"])
     if (
         endpoint_settings.get("subset") != "FD003"
@@ -300,11 +328,18 @@ def main() -> None:
         "--retrain-missing", action="store_true",
         help="Permit full native PatchFormer training when its checkpoint is lost",
     )
+    parser.add_argument(
+        "--no-progress", action="store_true",
+        help="Disable recovery stage indicators and per-operation progress bars",
+    )
     args = parser.parse_args()
     if args.retrain_missing and not args.rebuild:
         parser.error("--retrain-missing requires --rebuild")
     result = (
-        rebuild_prerequisites(args.experiment_root, retrain_missing=args.retrain_missing)
+        rebuild_prerequisites(
+            args.experiment_root, retrain_missing=args.retrain_missing,
+            show_progress=not args.no_progress,
+        )
         if args.rebuild
         else recovery_status(args.experiment_root)
     )
