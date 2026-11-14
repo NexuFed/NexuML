@@ -32,7 +32,7 @@ def test_recovery_job_is_pinned_to_gh200_and_has_prisma_source_mounts() -> None:
     }
     assert container["volumeMounts"][0]["mountPath"] == "/mnt/juicefs_prisma"
     assert container["volumeMounts"][1]["subPath"].startswith("job-staging/")
-    assert pod["volumes"][0]["persistentVolumeClaim"]["claimName"] == "juicefs"
+    assert pod["volumes"][0]["persistentVolumeClaim"]["claimName"] == "juicefs-prisma"
 
 
 def test_runtime_runs_exact_recovery_command_with_main_and_feature() -> None:
@@ -42,6 +42,8 @@ def test_runtime_runs_exact_recovery_command_with_main_and_feature() -> None:
     assert "--rebuild --retrain-missing" in command
     assert "--experiment-root /mnt/juicefs_prisma/models/nexuml/.experiments" in command
     assert "assert torch.cuda.is_available()" in command
+    assert "ERROR: source marker missing from Prisma PVC" in command
+    assert "PYTHONUNBUFFERED=1" in command
 
 
 def test_recovery_rejects_external_output_paths_and_unsafe_subpaths() -> None:
@@ -57,4 +59,11 @@ def test_recovery_rejects_external_output_paths_and_unsafe_subpaths() -> None:
             job="nexuml-rul-fd003-recovery-gh200",
             subpath="job-staging/../outside",
             experiment_root=Path("/mnt/juicefs_prisma/models/nexuml/.experiments"),
+        )
+    with pytest.raises(ValueError, match="PVC name"):
+        build_manifest(
+            job="nexuml-rul-fd003-recovery-gh200",
+            subpath="job-staging/nexuml/recovery/example",
+            experiment_root=Path("/mnt/juicefs_prisma/models/nexuml/.experiments"),
+            pvc="juicefs_prisma",
         )
