@@ -16,17 +16,17 @@ from pathlib import Path
 from typing import Any
 
 NAMESPACE = "lbecker"
-JUICEFS_ROOT = Path("/mnt/juicefs_prisma")
-# The lbecker Prisma PV exposes only the ``shared/prisma`` subdirectory of
-# the workstation's JuiceFS mount, not the mount root.
+STAGING_MOUNT = Path("/mnt/juicefs")
+PRISMA_MOUNT = Path("/mnt/juicefs_prisma")
 PRISMA_PV_SUBPATH = Path("shared/prisma")
-HOST_PVC_ROOT = JUICEFS_ROOT / PRISMA_PV_SUBPATH
-DEFAULT_EXPERIMENT_ROOT = JUICEFS_ROOT / "models/nexuml/.experiments"
-DEFAULT_STAGING_ROOT = HOST_PVC_ROOT / "job-staging/nexuml/within-machine-recovery"
+DEFAULT_DATA_ROOT = PRISMA_MOUNT / "data"
+DEFAULT_EXPERIMENT_ROOT = PRISMA_MOUNT / "models/nexuml/.experiments"
+DEFAULT_STAGING_ROOT = STAGING_MOUNT / "job-staging/NexuML-predictive"
 DEFAULT_FEATURE_ROOT = Path("/workspaces/NexuFed/NexuML-predictive")
 DEFAULT_CORE_ROOT = Path("/workspaces/NexuFed/NexuML")
 DEFAULT_JOB = "nexuml-rul-fd003-recovery-gh200"
-DEFAULT_PVC = "juicefs-prisma"
+DEFAULT_STAGING_PVC = "juicefs"
+DEFAULT_PRISMA_PVC = "juicefs-prisma"
 IMAGE = "harbor.ika.rub.de/library/pytorch-template-lb-multiarch:latest"
 
 
@@ -68,32 +68,16 @@ def _stage_subpath(staging_root: Path, stage_name: str) -> str:
         Kubernetes volume subPath for the immutable staged source.
 
     Raises:
-        ValueError: If the staging destination escapes the Prisma PV root.
+        ValueError: If the staging destination escapes the staging mount.
     """
     try:
-        relative = staging_root.resolve().relative_to(HOST_PVC_ROOT.resolve())
+        relative = staging_root.resolve().relative_to(STAGING_MOUNT.resolve())
     except ValueError as exc:
-        raise ValueError(f"Staging root must be inside {HOST_PVC_ROOT}") from exc
+        raise ValueError(f"Staging root must be inside {STAGING_MOUNT}") from exc
     return str(relative / stage_name)
 
 
-def _host_pvc_path(container_path: Path) -> Path:
-    """Convert a container Prisma path to its workstation counterpart.
-
-    Returns:
-        Path below the PV-backed ``shared/prisma`` subtree on the workstation.
-
-    Raises:
-        ValueError: If the container path escapes the Prisma mount.
-    """
-    try:
-        relative = container_path.relative_to(JUICEFS_ROOT)
-    except ValueError as exc:
-        raise ValueError("Container path must be inside /mnt/juicefs_prisma") from exc
-    return HOST_PVC_ROOT / relative
-
-
-def _runtime_command(experiment_root: Path) -> str:
+def _runtime_command(experiment_root: Path, data_root: Path = DEFAULT_DATA_ROOT) -> str:
     """Construct the GH200-specific Python and CUDA bootstrap.
 
     Returns:
@@ -102,13 +86,15 @@ def _runtime_command(experiment_root: Path) -> str:
     return "\n".join(
         [
             "set -euo pipefail",
-            "echo '[recovery] Checking Prisma source stage'",
+            "echo '[recovery] Checking source stage on juicefs PVC'",
             "if [[ ! -f /workspace/.nexuml-recovery-sources.json ]]; then",
-            "  echo '[recovery] ERROR: source marker missing from Prisma PVC' >&2",
+            "  echo '[recovery] ERROR: source marker missing from staging PVC' >&2",
             "  ls -la /workspace >&2",
             "  exit 3",
             "fi",
             "cat /workspace/.nexuml-recovery-sources.json",
+            f"echo '[recovery] Prisma data root: {shlex.quote(str(data_root))}'",
+            f"echo '[recovery] Prisma models root: {shlex.quote(str(experiment_root.parent.parent))}'",
             "export UV_CACHE_DIR=/tmp/uv-cache",
             "export PYTHONUNBUFFERED=1",
             "export PYTHONPATH=/workspace/core/src:/workspace/feature/library/src",
@@ -123,13 +109,17 @@ def _runtime_command(experiment_root: Path) -> str:
             "assert torch.cuda.is_available()'",
             "python -u -m nexuml_library.evaluation.maintenance.rul_machine_flow_recover "
             f"--experiment-root {shlex.quote(str(experiment_root))} "
+            f"--data-root {shlex.quote(str(data_root))} "
             "--rebuild --retrain-missing",
         ]
     )
 
 
 def build_manifest(
-    *, job: str, subpath: str, experiment_root: Path, pvc: str = DEFAULT_PVC
+    *, job: str, subpath: str, experiment_root: Path,
+    data_root: Path = DEFAULT_DATA_ROOT,
+    staging_pvc: str = DEFAULT_STAGING_PVC,
+    prisma_pvc: str = DEFAULT_PRISMA_PVC,
 ) -> dict[str, Any]:
     """Build a single-GPU, immutable-source Job pinned strictly to GH200.
 
@@ -137,15 +127,18 @@ def build_manifest(
         Kubernetes batch/v1 Job manifest.
 
     Raises:
-        ValueError: If the requested Job name, PVC, or output path is invalid.
+        ValueError: If the Job name, PVCs, or persistent paths are invalid.
     """
     if not re.fullmatch(r"[a-z0-9]([-a-z0-9]*[a-z0-9])?", job) or len(job) > 63:
         raise ValueError("Job name must be a valid Kubernetes DNS label")
-    if not re.fullmatch(r"[a-z0-9]([-a-z0-9]*[a-z0-9])?", pvc) or len(pvc) > 63:
-        raise ValueError("PVC name must be a valid Kubernetes DNS label")
-    if not experiment_root.resolve().is_relative_to(JUICEFS_ROOT):
-        raise ValueError("Experiment root must be inside /mnt/juicefs_prisma")
-    if not subpath.startswith("job-staging/") or ".." in Path(subpath).parts:
+    for pvc in (staging_pvc, prisma_pvc):
+        if not re.fullmatch(r"[a-z0-9]([-a-z0-9]*[a-z0-9])?", pvc) or len(pvc) > 63:
+            raise ValueError("PVC name must be a valid Kubernetes DNS label")
+    if not experiment_root.resolve().is_relative_to(PRISMA_MOUNT / "models"):
+        raise ValueError("Experiment root must be inside /mnt/juicefs_prisma/models")
+    if not data_root.resolve().is_relative_to(PRISMA_MOUNT / "data"):
+        raise ValueError("Data root must be inside /mnt/juicefs_prisma/data")
+    if not subpath.startswith("job-staging/NexuML-predictive/") or ".." in Path(subpath).parts:
         raise ValueError("Unsafe staged source subPath")
     return {
         "apiVersion": "batch/v1",
@@ -176,21 +169,23 @@ def build_manifest(
                         "image": IMAGE,
                         "imagePullPolicy": "Always",
                         "command": ["/bin/bash", "-lc"],
-                        "args": [_runtime_command(experiment_root)],
+                        "args": [_runtime_command(experiment_root, data_root)],
                         "envFrom": [{"configMapRef": {"name": "env-config"}}],
                         "resources": {
                             "requests": {"nvidia.com/gpu": "1"},
                             "limits": {"nvidia.com/gpu": "1"},
                         },
                         "volumeMounts": [
-                            {"name": "juicefs", "mountPath": "/mnt/juicefs_prisma"},
-                            {"name": "juicefs", "mountPath": "/workspace", "subPath": subpath},
+                            {"name": "staging", "mountPath": "/mnt/juicefs"},
+                            {"name": "staging", "mountPath": "/workspace", "subPath": subpath},
+                            {"name": "prisma", "mountPath": "/mnt/juicefs_prisma"},
                             {"name": "shm", "mountPath": "/dev/shm"},
                             {"name": "temporary", "mountPath": "/tmp"},
                         ],
                     }],
                     "volumes": [
-                        {"name": "juicefs", "persistentVolumeClaim": {"claimName": pvc}},
+                        {"name": "staging", "persistentVolumeClaim": {"claimName": staging_pvc}},
+                        {"name": "prisma", "persistentVolumeClaim": {"claimName": prisma_pvc}},
                         {"name": "shm", "emptyDir": {"medium": "Memory", "sizeLimit": "16Gi"}},
                         {"name": "temporary", "emptyDir": {"sizeLimit": "32Gi"}},
                     ],
@@ -235,8 +230,8 @@ def _stage_sources(
         FileExistsError: If that source identity was already staged.
         RuntimeError: If the requested JuiceFS mount is absent.
     """
-    if not JUICEFS_ROOT.is_mount():
-        raise RuntimeError("JuiceFS Prisma is not mounted on this workstation")
+    if not STAGING_MOUNT.is_mount():
+        raise RuntimeError("JuiceFS staging root is not mounted at /mnt/juicefs")
     stage = staging_root / stage_name
     if stage.exists():
         raise FileExistsError(f"Immutable source already staged: {stage}")
@@ -248,6 +243,31 @@ def _stage_sources(
         encoding="utf-8",
     )
     return stage
+
+
+def _bound_pv(pvc: str) -> str:
+    """Resolve a Bound PVC to the name of its PersistentVolume.
+
+    Returns:
+        Kubernetes PV name.
+
+    Raises:
+        RuntimeError: If the PVC is missing or not Bound.
+    """
+    volume = subprocess.run(
+        ["kubectl", "-n", NAMESPACE, "get", "pvc", pvc, "-o", "json"],
+        text=True, capture_output=True, check=False,
+    )
+    if volume.returncode != 0:
+        raise RuntimeError(f"Cannot access PVC {pvc}: {volume.stderr.strip()}")
+    claim = json.loads(volume.stdout)
+    phase = claim.get("status", {}).get("phase", "")
+    if phase != "Bound":
+        raise RuntimeError(f"PVC {pvc} is not Bound: {phase}")
+    pv_name = claim.get("spec", {}).get("volumeName")
+    if not pv_name:
+        raise RuntimeError(f"PVC {pvc} has no bound PersistentVolume")
+    return str(pv_name)
 
 
 def submit(
@@ -264,24 +284,13 @@ def submit(
         subprocess.CalledProcessError: If Kubernetes submission fails.
     """
     job = str(manifest["metadata"]["name"])
-    pvc = str(manifest["spec"]["template"]["spec"]["volumes"][0]["persistentVolumeClaim"]["claimName"])
-    volume = subprocess.run(
-        ["kubectl", "-n", NAMESPACE, "get", "pvc", pvc,
-         "-o", "json"],
-        text=True, capture_output=True, check=False,
-    )
-    if volume.returncode != 0:
-        raise RuntimeError(
-            f"Cannot access Prisma PVC {pvc}; use --pvc with its exact name: "
-            f"{volume.stderr.strip()}"
-        )
-    claim = json.loads(volume.stdout)
-    phase = claim.get("status", {}).get("phase", "")
-    if phase != "Bound":
-        raise RuntimeError(f"Prisma PVC {pvc} is not Bound: {phase}")
-    pv_name = claim.get("spec", {}).get("volumeName")
-    if not pv_name:
-        raise RuntimeError(f"Prisma PVC {pvc} has no bound PersistentVolume")
+    volumes = manifest["spec"]["template"]["spec"]["volumes"]
+    claims = {
+        volume["name"]: volume["persistentVolumeClaim"]["claimName"]
+        for volume in volumes if "persistentVolumeClaim" in volume
+    }
+    _bound_pv(str(claims["staging"]))
+    pv_name = _bound_pv(str(claims["prisma"]))
     volume_details = subprocess.run(
         ["kubectl", "get", "pv", pv_name, "-o", "json"],
         text=True, capture_output=True, check=False,
@@ -325,11 +334,16 @@ def main() -> None:
     parser.add_argument("--feature-root", type=Path, default=DEFAULT_FEATURE_ROOT)
     parser.add_argument("--core-root", type=Path, default=DEFAULT_CORE_ROOT)
     parser.add_argument("--staging-root", type=Path, default=DEFAULT_STAGING_ROOT)
+    parser.add_argument("--data-root", type=Path, default=DEFAULT_DATA_ROOT)
     parser.add_argument("--experiment-root", type=Path, default=DEFAULT_EXPERIMENT_ROOT)
     parser.add_argument("--job", default=DEFAULT_JOB)
     parser.add_argument(
-        "--pvc", default=DEFAULT_PVC,
-        help="Exact Kubernetes PVC name for /mnt/juicefs_prisma",
+        "--staging-pvc", default=DEFAULT_STAGING_PVC,
+        help="PVC for /mnt/juicefs and the immutable /workspace source stage",
+    )
+    parser.add_argument(
+        "--prisma-pvc", default=DEFAULT_PRISMA_PVC,
+        help="PVC for /mnt/juicefs_prisma datasets and model artifacts",
     )
     parser.add_argument("--submit", action="store_true", help="Stage sources and create the Job")
     args = parser.parse_args()
@@ -342,12 +356,13 @@ def main() -> None:
     subpath = _stage_subpath(args.staging_root, stage_name)
     manifest = build_manifest(
         job=args.job, subpath=subpath, experiment_root=args.experiment_root,
-        pvc=args.pvc,
+        data_root=args.data_root, staging_pvc=args.staging_pvc,
+        prisma_pvc=args.prisma_pvc,
     )
     print(json.dumps(manifest, indent=2, sort_keys=True), flush=True)
     print(f"[plan] Workstation stage: {args.staging_root / stage_name}", flush=True)
-    print(f"[plan] Container experiment root: {args.experiment_root}", flush=True)
-    print(f"[plan] Workstation experiment root: {_host_pvc_path(args.experiment_root)}", flush=True)
+    print(f"[plan] Prisma data root: {args.data_root}", flush=True)
+    print(f"[plan] Prisma experiment root: {args.experiment_root}", flush=True)
     if not args.submit:
         print("[plan] Add --submit to stage the revisions and create the GH200 Job")
         return
