@@ -50,16 +50,24 @@ UPSTREAM_RUN = "rul-FD003-controlled-patchformer-seed42"
 PRISMA_MOUNT = Path("/mnt/juicefs_prisma")
 
 
-def _locations(experiment_root: Path) -> dict[str, Path]:
+def _locations(
+    experiment_root: Path, *, data_root: Path | None = None
+) -> dict[str, Path]:
     """Locate all immutable inputs within an explicit experiment root.
 
     Returns:
         Paths for the official source, prepared windows, audit and embeddings.
     """
     root = experiment_root.expanduser().resolve()
+    if data_root is not None:
+        raw_base = data_root.expanduser().resolve()
+    elif root.is_relative_to(PRISMA_MOUNT):
+        raw_base = PRISMA_MOUNT / "data"
+    else:
+        raw_base = root.parent / "data"
     return {
         "experiment_root": root,
-        "raw_dir": root.parent / "data" / "cmapss",
+        "raw_dir": raw_base / "cmapss",
         "prepared": root / "rul" / "prepared" / PREPARED_NAME,
         "audit": root / "rul" / "audits" / f"{UPSTREAM_RUN}.checkpoint.json",
         "checkpoint_dir": root / "rul" / "checkpoints" / UPSTREAM_RUN,
@@ -80,13 +88,15 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def recovery_status(experiment_root: Path) -> dict[str, Any]:
+def recovery_status(
+    experiment_root: Path, *, data_root: Path | None = None
+) -> dict[str, Any]:
     """Inspect prerequisites without reading or modifying their contents.
 
     Returns:
         Path and existence indicators suitable for a read-only inventory.
     """
-    locations = _locations(experiment_root)
+    locations = _locations(experiment_root, data_root=data_root)
     raw = locations["raw_dir"]
     status: dict[str, Any] = {
         "experiment_root": str(locations["experiment_root"]),
@@ -156,6 +166,7 @@ def _train_patchformer(locations: dict[str, Path]) -> None:
     env["NEXUML_RUL_CHECKPOINT_ROOT"] = str(
         locations["experiment_root"] / "rul" / "checkpoints"
     )
+    env["NEXUML_CMAPSS_ROOT"] = str(locations["raw_dir"])
     workdir = locations["experiment_root"].parent
     subprocess.run(
         ["nexuml", "resolve", SCENARIO, "--output", str(config)],
@@ -173,7 +184,7 @@ def _train_patchformer(locations: dict[str, Path]) -> None:
 
 def rebuild_prerequisites(
     experiment_root: Path, *, retrain_missing: bool = False,
-    show_progress: bool = True,
+    show_progress: bool = True, data_root: Path | None = None,
 ) -> dict[str, Any]:
     """Recreate missing source, windows, selected encoder and flow endpoints.
 
@@ -184,6 +195,8 @@ def rebuild_prerequisites(
         experiment_root: Explicit writable .experiments directory.
         retrain_missing: Permit expensive native PatchFormer training if necessary.
         show_progress: Display recovery stages and detailed per-operation progress.
+        data_root: Raw-data directory base. Defaults to /mnt/juicefs_prisma/data
+            for experiments on the Prisma mount.
 
     Returns:
         Verified paths and SHA-256 hashes for the recovered study inputs.
@@ -193,7 +206,7 @@ def rebuild_prerequisites(
         RuntimeError: If the Prisma mount is absent or an old audit is orphaned.
         ValueError: If any preserved artifact fails scientific provenance checks.
     """
-    locations = _locations(experiment_root)
+    locations = _locations(experiment_root, data_root=data_root)
     root = locations["experiment_root"]
 
     def stage(number: int, description: str) -> None:
@@ -321,6 +334,10 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--experiment-root", required=True, type=Path)
     parser.add_argument(
+        "--data-root", type=Path,
+        help="Raw-data base (defaults to /mnt/juicefs_prisma/data on Prisma)",
+    )
+    parser.add_argument(
         "--rebuild", action="store_true",
         help="Fetch missing NASA data and reconstruct the minimal prerequisites",
     )
@@ -338,10 +355,10 @@ def main() -> None:
     result = (
         rebuild_prerequisites(
             args.experiment_root, retrain_missing=args.retrain_missing,
-            show_progress=not args.no_progress,
+            show_progress=not args.no_progress, data_root=args.data_root,
         )
         if args.rebuild
-        else recovery_status(args.experiment_root)
+        else recovery_status(args.experiment_root, data_root=args.data_root)
     )
     print(json.dumps(result, indent=2, sort_keys=True))
 
