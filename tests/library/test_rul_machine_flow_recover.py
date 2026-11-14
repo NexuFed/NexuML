@@ -24,6 +24,22 @@ def test_recovery_status_is_read_only(tmp_path: Path) -> None:
     assert not any(status["official_fd003_tables"].values())
 
 
+def test_prisma_data_and_model_roots_are_separate() -> None:
+    """Keep FD003 source tables under data and model artifacts under models."""
+    locations = recovery._locations(
+        Path("/mnt/juicefs_prisma/models/nexuml/.experiments")
+    )
+    assert locations["raw_dir"] == Path("/mnt/juicefs_prisma/data/cmapss")
+    assert locations["checkpoint_dir"].is_relative_to(
+        Path("/mnt/juicefs_prisma/models/nexuml/.experiments")
+    )
+    custom = recovery._locations(
+        Path("/mnt/juicefs_prisma/models/nexuml/.experiments"),
+        data_root=Path("/mnt/juicefs_prisma/data"),
+    )
+    assert custom["raw_dir"] == locations["raw_dir"]
+
+
 def test_recovery_requires_real_prisma_mount(monkeypatch: pytest.MonkeyPatch) -> None:
     """Never create files on the local mountpoint when JuiceFS is absent."""
     monkeypatch.setattr(Path, "is_mount", lambda self: False)
@@ -63,6 +79,10 @@ def test_training_uses_native_runner_and_shared_checkpoint_root(
     assert all(
         env["NEXUML_RUL_CHECKPOINT_ROOT"]
         == str(locations["experiment_root"] / "rul" / "checkpoints")
+        for _, _, env in calls
+    )
+    assert all(
+        env["NEXUML_CMAPSS_ROOT"] == str(locations["raw_dir"])
         for _, _, env in calls
     )
 
