@@ -52,6 +52,13 @@ snapshots and advance `/latest/` only when newer. The site root stays on latest 
 Local builds default to `dev`; use `DOCS_VERSION=main` to preview the main namespace
 from your current checkout, without fetching the remote main branch.
 
+Validated pushes first stage the durable archive, then dispatch deployment from
+reviewed `main` to avoid stale tag deployments. To redeploy that archive without
+rebuilding or restaging, run `gh workflow run docs.yml --repo NexuFed/NexuML --ref main`.
+The deployment verifies the served version list, build identities, root redirect,
+`/latest/` and canonical stable home;
+a successful Pages API response alone is not accepted as delivery.
+
 ## Migration evidence
 
 `migration/route-map.json` maps all original authored pages and downloads. `migration/baseline.json`
