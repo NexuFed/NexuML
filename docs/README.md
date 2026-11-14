@@ -55,7 +55,8 @@ from your current checkout, without fetching the remote main branch.
 Validated pushes first stage the durable archive, then dispatch deployment from
 reviewed `main` to avoid stale tag deployments. To redeploy that archive without
 rebuilding or restaging, run `gh workflow run docs.yml --repo NexuFed/NexuML --ref main`.
-The deployment verifies the served version list, build identities and stable home;
+The deployment verifies the served version list, build identities, root redirect,
+`/latest/` and canonical stable home;
 a successful Pages API response alone is not accepted as delivery.
 
 ## Migration evidence

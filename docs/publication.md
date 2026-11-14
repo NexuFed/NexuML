@@ -207,7 +207,7 @@ deployment needs pages-write and OIDC. Untrusted PR checks get neither credentia
 nor institute/self-hosted runners.
 
 The deployment then reads back public `versions.json`, available build identities,
-and the selected stable home page, comparing their bytes with the validated archive.
+the root redirect, `/latest/`, and the canonical stable home, comparing their bytes with the validated archive.
 It allows five minutes for propagation and fails if the site stays stale. A green
 Pages API response alone is not successful delivery.
 

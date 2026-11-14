@@ -13,7 +13,7 @@ def verify(directory: Path, url: str) -> None:
     Raises:
         ValueError: If the public site serves different bytes.
     """
-    paths = {"versions.json": directory / "versions.json"}
+    paths = {"versions.json": directory / "versions.json", "": directory / "index.html"}
     for entry in json.loads(paths["versions.json"].read_bytes()):
         version = entry["version"]
         identity = directory / version / "build.json"
@@ -21,12 +21,17 @@ def verify(directory: Path, url: str) -> None:
             paths[f"{version}/build.json"] = identity
         if "latest" in entry["aliases"]:
             paths[f"{version}/"] = directory / version / "index.html"
+            paths["latest/"] = directory / "latest/index.html"
+            if identity.is_file():
+                paths["latest/build.json"] = directory / "latest/build.json"
     for route, path in paths.items():
         expected = path.read_bytes()
         request = Request(url.rstrip("/") + "/" + route, headers={"Cache-Control": "no-cache"})
         with urlopen(request, timeout=10) as response:
             if response.read(len(expected) + 1) != expected:
-                raise ValueError(f"Live documentation differs from the validated archive: {route}")
+                raise ValueError(
+                    f"Live documentation differs from the validated archive: {route or '/'}"
+                )
 
 
 def main() -> None:

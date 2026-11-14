@@ -25,22 +25,30 @@ def archive(tmp_path):
         {"version": "v0.2.1", "aliases": []},
     ]
     (tmp_path / "versions.json").write_text(json.dumps(versions))
+    (tmp_path / "index.html").write_text('<meta http-equiv="refresh" content="0;url=v0.2.3/">')
     for version in ("main", "v0.2.3"):
         root = tmp_path / version
         root.mkdir()
         (root / "build.json").write_text(json.dumps({"version": version, "revision": "1" * 40}))
         (root / "index.html").write_text(f"<h1>{version}</h1>")
+    latest = tmp_path / "latest"
+    latest.mkdir()
+    for name in ("index.html", "build.json"):
+        (latest / name).write_bytes((tmp_path / "v0.2.3" / name).read_bytes())
     return tmp_path
 
 
 def serve(monkeypatch, archive, changed=None):
     responses = {
         "versions.json": (archive / "versions.json").read_bytes(),
+        "": (archive / "index.html").read_bytes(),
+        "latest/": (archive / "latest/index.html").read_bytes(),
+        "latest/build.json": (archive / "latest/build.json").read_bytes(),
         "main/build.json": (archive / "main/build.json").read_bytes(),
         "v0.2.3/build.json": (archive / "v0.2.3/build.json").read_bytes(),
         "v0.2.3/": (archive / "v0.2.3/index.html").read_bytes(),
     }
-    if changed:
+    if changed is not None:
         responses[changed] = b"stale deployment"
 
     def open_request(request, timeout):
@@ -59,7 +67,16 @@ def test_live_archive_matches_including_legacy_versions_without_build_identity(
 
 
 @pytest.mark.parametrize(
-    "route", ["versions.json", "main/build.json", "v0.2.3/build.json", "v0.2.3/"]
+    "route",
+    [
+        "versions.json",
+        "",
+        "latest/",
+        "latest/build.json",
+        "main/build.json",
+        "v0.2.3/build.json",
+        "v0.2.3/",
+    ],
 )
 def test_live_stale_bytes_fail(monkeypatch, archive, route):
     serve(monkeypatch, archive, route)
