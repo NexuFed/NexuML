@@ -46,6 +46,10 @@ def test_recovery_job_is_pinned_to_gh200_with_separate_persistent_volumes() -> N
     }
     assert pod["volumes"][0]["persistentVolumeClaim"]["claimName"] == "juicefs"
     assert pod["volumes"][1]["persistentVolumeClaim"]["claimName"] == "juicefs-prisma"
+    assert container["volumeMounts"][4] == {
+        "name": "temporary", "mountPath": "/tmp",
+    }
+    assert "emptyDir" in pod["volumes"][3]
 
 
 def test_runtime_runs_exact_recovery_command_with_main_and_feature() -> None:
@@ -58,6 +62,20 @@ def test_runtime_runs_exact_recovery_command_with_main_and_feature() -> None:
     assert "assert torch.cuda.is_available()" in command
     assert "ERROR: source marker missing from staging PVC" in command
     assert "PYTHONUNBUFFERED=1" in command
+
+
+def test_runtime_installs_all_packages_ephemerally() -> None:
+    """Use the rebuttal-style uv bootstrap without persistent package installs."""
+    command = _runtime_command(Path("/mnt/juicefs_prisma/models/nexuml/.experiments"))
+    assert "export PYTHONUSERBASE=/tmp/nexuml-userbase" in command
+    assert "export UV_CACHE_DIR=/tmp/uv-cache" in command
+    assert "export UV_PYTHON_INSTALL_DIR=/tmp/nexuml-python" in command
+    assert "python3 -m pip install --user --no-cache-dir uv" in command
+    assert "uv venv --python 3.12 \"$VENV_DIR\"" in command
+    assert "uv pip install --python \"$VENV_DIR/bin/python\" " in command
+    assert "/workspace/core /workspace/feature/library" in command
+    assert "--system-site-packages" not in command
+    assert "-e /workspace/core" not in command
 
 
 def test_stage_uses_juicefs_and_data_uses_prisma() -> None:
