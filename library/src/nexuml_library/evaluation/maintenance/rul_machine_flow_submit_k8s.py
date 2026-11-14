@@ -17,8 +17,12 @@ from typing import Any
 
 NAMESPACE = "lbecker"
 JUICEFS_ROOT = Path("/mnt/juicefs_prisma")
+# The lbecker Prisma PV exposes only the ``shared/prisma`` subdirectory of
+# the workstation's JuiceFS mount, not the mount root.
+PRISMA_PV_SUBPATH = Path("shared/prisma")
+HOST_PVC_ROOT = JUICEFS_ROOT / PRISMA_PV_SUBPATH
 DEFAULT_EXPERIMENT_ROOT = JUICEFS_ROOT / "models/nexuml/.experiments"
-DEFAULT_STAGING_ROOT = JUICEFS_ROOT / "job-staging/nexuml/within-machine-recovery"
+DEFAULT_STAGING_ROOT = HOST_PVC_ROOT / "job-staging/nexuml/within-machine-recovery"
 DEFAULT_FEATURE_ROOT = Path("/workspaces/NexuFed/NexuML-predictive")
 DEFAULT_CORE_ROOT = Path("/workspaces/NexuFed/NexuML")
 DEFAULT_JOB = "nexuml-rul-fd003-recovery-gh200"
@@ -64,13 +68,29 @@ def _stage_subpath(staging_root: Path, stage_name: str) -> str:
         Kubernetes volume subPath for the immutable staged source.
 
     Raises:
-        ValueError: If the staging destination escapes the Prisma mount.
+        ValueError: If the staging destination escapes the Prisma PV root.
     """
     try:
-        relative = staging_root.resolve().relative_to(JUICEFS_ROOT)
+        relative = staging_root.resolve().relative_to(HOST_PVC_ROOT.resolve())
     except ValueError as exc:
-        raise ValueError("Staging root must be inside /mnt/juicefs_prisma") from exc
+        raise ValueError(f"Staging root must be inside {HOST_PVC_ROOT}") from exc
     return str(relative / stage_name)
+
+
+def _host_pvc_path(container_path: Path) -> Path:
+    """Convert a container Prisma path to its workstation counterpart.
+
+    Returns:
+        Path below the PV-backed ``shared/prisma`` subtree on the workstation.
+
+    Raises:
+        ValueError: If the container path escapes the Prisma mount.
+    """
+    try:
+        relative = container_path.relative_to(JUICEFS_ROOT)
+    except ValueError as exc:
+        raise ValueError("Container path must be inside /mnt/juicefs_prisma") from exc
+    return HOST_PVC_ROOT / relative
 
 
 def _runtime_command(experiment_root: Path) -> str:
@@ -247,7 +267,7 @@ def submit(
     pvc = str(manifest["spec"]["template"]["spec"]["volumes"][0]["persistentVolumeClaim"]["claimName"])
     volume = subprocess.run(
         ["kubectl", "-n", NAMESPACE, "get", "pvc", pvc,
-         "-o", "jsonpath={.status.phase}"],
+         "-o", "json"],
         text=True, capture_output=True, check=False,
     )
     if volume.returncode != 0:
@@ -255,8 +275,30 @@ def submit(
             f"Cannot access Prisma PVC {pvc}; use --pvc with its exact name: "
             f"{volume.stderr.strip()}"
         )
-    if volume.stdout.strip() != "Bound":
-        raise RuntimeError(f"Prisma PVC {pvc} is not Bound: {volume.stdout.strip()}")
+    claim = json.loads(volume.stdout)
+    phase = claim.get("status", {}).get("phase", "")
+    if phase != "Bound":
+        raise RuntimeError(f"Prisma PVC {pvc} is not Bound: {phase}")
+    pv_name = claim.get("spec", {}).get("volumeName")
+    if not pv_name:
+        raise RuntimeError(f"Prisma PVC {pvc} has no bound PersistentVolume")
+    volume_details = subprocess.run(
+        ["kubectl", "get", "pv", pv_name, "-o", "json"],
+        text=True, capture_output=True, check=False,
+    )
+    if volume_details.returncode != 0:
+        raise RuntimeError(
+            f"Cannot inspect Prisma PV {pv_name}: {volume_details.stderr.strip()}"
+        )
+    pv = json.loads(volume_details.stdout)
+    pv_subpath = (
+        pv.get("spec", {}).get("csi", {}).get("volumeAttributes", {}).get("subPath", "")
+    ).strip("/")
+    if pv_subpath != PRISMA_PV_SUBPATH.as_posix():
+        raise RuntimeError(
+            f"Prisma PV {pv_name} exposes subPath {pv_subpath!r}; "
+            f"launcher expects {PRISMA_PV_SUBPATH.as_posix()!r}"
+        )
     existing = subprocess.run(
         ["kubectl", "-n", NAMESPACE, "get", "job", job, "-o", "name"],
         text=True, capture_output=True, check=False,
@@ -303,6 +345,9 @@ def main() -> None:
         pvc=args.pvc,
     )
     print(json.dumps(manifest, indent=2, sort_keys=True), flush=True)
+    print(f"[plan] Workstation stage: {args.staging_root / stage_name}", flush=True)
+    print(f"[plan] Container experiment root: {args.experiment_root}", flush=True)
+    print(f"[plan] Workstation experiment root: {_host_pvc_path(args.experiment_root)}", flush=True)
     if not args.submit:
         print("[plan] Add --submit to stage the revisions and create the GH200 Job")
         return
