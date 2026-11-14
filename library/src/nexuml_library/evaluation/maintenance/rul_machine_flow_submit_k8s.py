@@ -78,7 +78,7 @@ def _stage_subpath(staging_root: Path, stage_name: str) -> str:
 
 
 def _runtime_command(experiment_root: Path, data_root: Path = DEFAULT_DATA_ROOT) -> str:
-    """Construct the GH200-specific Python and CUDA bootstrap.
+    """Bootstrap uv, Python, and project wheels solely in ephemeral /tmp storage.
 
     Returns:
         Shell script passed to the pinned Job container.
@@ -95,13 +95,29 @@ def _runtime_command(experiment_root: Path, data_root: Path = DEFAULT_DATA_ROOT)
             "cat /workspace/.nexuml-recovery-sources.json",
             f"echo '[recovery] Prisma data root: {shlex.quote(str(data_root))}'",
             f"echo '[recovery] Prisma models root: {shlex.quote(str(experiment_root.parent.parent))}'",
+            "if [[ -x /docker-entrypoint.sh ]]; then /docker-entrypoint.sh; fi",
+            "export PYTHONUSERBASE=/tmp/nexuml-userbase",
+            "export XDG_CACHE_HOME=/tmp/nexuml-cache",
             "export UV_CACHE_DIR=/tmp/uv-cache",
+            "export UV_PYTHON_INSTALL_DIR=/tmp/nexuml-python",
+            "export VENV_DIR=/tmp/nexuml-venv",
             "export PYTHONUNBUFFERED=1",
+            "export PYTHONDONTWRITEBYTECODE=1",
             "export PYTHONPATH=/workspace/core/src:/workspace/feature/library/src",
-            "uv venv --python 3.12 --system-site-packages /tmp/nexuml-venv",
-            "export PATH=/tmp/nexuml-venv/bin:$PATH",
-            "uv pip install --python /tmp/nexuml-venv/bin/python "
-            "-e /workspace/core -e /workspace/feature/library",
+            "export PATH=$PYTHONUSERBASE/bin:$PATH",
+            "mkdir -p \"$PYTHONUSERBASE\" \"$UV_CACHE_DIR\" \"$UV_PYTHON_INSTALL_DIR\"",
+            "if ! command -v uv >/dev/null 2>&1; then",
+            "  echo '[recovery] Installing uv into ephemeral /tmp user base'",
+            "  python3 -m pip install --user --no-cache-dir uv",
+            "fi",
+            "command -v uv >/dev/null 2>&1 || { echo '[recovery] ERROR: uv unavailable' >&2; exit 4; }",
+            "uv --version",
+            "echo '[recovery] Creating isolated Python 3.12 environment under /tmp'",
+            "uv venv --python 3.12 \"$VENV_DIR\"",
+            "echo '[recovery] Installing NexuML packages into ephemeral environment'",
+            "uv pip install --python \"$VENV_DIR/bin/python\" "
+            "/workspace/core /workspace/feature/library",
+            "export PATH=$VENV_DIR/bin:$PATH",
             "python -c 'import torch; "
             "print(\"CUDA:\", torch.cuda.is_available(), "
             "\"GPU:\", torch.cuda.get_device_name(0) if torch.cuda.is_available() "
