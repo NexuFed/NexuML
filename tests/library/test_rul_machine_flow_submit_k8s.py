@@ -5,20 +5,20 @@ from pathlib import Path
 import pytest
 
 from nexuml_library.evaluation.maintenance.rul_machine_flow_submit_k8s import (
+    DEFAULT_DATA_ROOT,
     DEFAULT_STAGING_ROOT,
-    HOST_PVC_ROOT,
-    _host_pvc_path,
+    STAGING_MOUNT,
     _runtime_command,
     _stage_subpath,
     build_manifest,
 )
 
 
-def test_recovery_job_is_pinned_to_gh200_and_has_prisma_source_mounts() -> None:
-    """Keep the recovery command on GH200 and the correct persistent volume."""
+def test_recovery_job_is_pinned_to_gh200_with_separate_persistent_volumes() -> None:
+    """Use the proven stage PVC and Prisma solely for datasets and models."""
     manifest = build_manifest(
         job="nexuml-rul-fd003-recovery-gh200",
-        subpath="job-staging/nexuml/recovery/example",
+        subpath="job-staging/NexuML-predictive/example",
         experiment_root=Path("/mnt/juicefs_prisma/models/nexuml/.experiments"),
     )
     assert manifest["metadata"]["namespace"] == "lbecker"
@@ -34,9 +34,18 @@ def test_recovery_job_is_pinned_to_gh200_and_has_prisma_source_mounts() -> None:
         "requests": {"nvidia.com/gpu": "1"},
         "limits": {"nvidia.com/gpu": "1"},
     }
-    assert container["volumeMounts"][0]["mountPath"] == "/mnt/juicefs_prisma"
-    assert container["volumeMounts"][1]["subPath"].startswith("job-staging/")
-    assert pod["volumes"][0]["persistentVolumeClaim"]["claimName"] == "juicefs-prisma"
+    assert container["volumeMounts"][0] == {
+        "name": "staging", "mountPath": "/mnt/juicefs",
+    }
+    assert container["volumeMounts"][1] == {
+        "name": "staging", "mountPath": "/workspace",
+        "subPath": "job-staging/NexuML-predictive/example",
+    }
+    assert container["volumeMounts"][2] == {
+        "name": "prisma", "mountPath": "/mnt/juicefs_prisma",
+    }
+    assert pod["volumes"][0]["persistentVolumeClaim"]["claimName"] == "juicefs"
+    assert pod["volumes"][1]["persistentVolumeClaim"]["claimName"] == "juicefs-prisma"
 
 
 def test_runtime_runs_exact_recovery_command_with_main_and_feature() -> None:
@@ -45,26 +54,23 @@ def test_runtime_runs_exact_recovery_command_with_main_and_feature() -> None:
     assert "-e /workspace/core -e /workspace/feature/library" in command
     assert "--rebuild --retrain-missing" in command
     assert "--experiment-root /mnt/juicefs_prisma/models/nexuml/.experiments" in command
+    assert "--data-root /mnt/juicefs_prisma/data" in command
     assert "assert torch.cuda.is_available()" in command
-    assert "ERROR: source marker missing from Prisma PVC" in command
+    assert "ERROR: source marker missing from staging PVC" in command
     assert "PYTHONUNBUFFERED=1" in command
 
 
-def test_prisma_pv_subdirectory_is_not_staged_as_filesystem_root() -> None:
-    """Map workstation paths through the PV's shared/prisma subdirectory."""
-    assert HOST_PVC_ROOT == Path("/mnt/juicefs_prisma/shared/prisma")
-    assert DEFAULT_STAGING_ROOT == (
-        HOST_PVC_ROOT / "job-staging/nexuml/within-machine-recovery"
-    )
+def test_stage_uses_juicefs_and_data_uses_prisma() -> None:
+    """Keep the two workstation mounts separate."""
+    assert STAGING_MOUNT == Path("/mnt/juicefs")
+    assert DEFAULT_STAGING_ROOT == STAGING_MOUNT / "job-staging/NexuML-predictive"
+    assert DEFAULT_DATA_ROOT == Path("/mnt/juicefs_prisma/data")
     assert _stage_subpath(DEFAULT_STAGING_ROOT, "sha-job") == (
-        "job-staging/nexuml/within-machine-recovery/sha-job"
-    )
-    assert _host_pvc_path(Path("/mnt/juicefs_prisma/models/nexuml/.experiments")) == (
-        HOST_PVC_ROOT / "models/nexuml/.experiments"
+        "job-staging/NexuML-predictive/sha-job"
     )
     with pytest.raises(ValueError, match="Staging root"):
         _stage_subpath(
-            Path("/mnt/juicefs_prisma/job-staging/nexuml/within-machine-recovery"),
+            Path("/mnt/juicefs_prisma/job-staging/NexuML-predictive"),
             "sha-job",
         )
 
@@ -74,8 +80,15 @@ def test_recovery_rejects_external_output_paths_and_unsafe_subpaths() -> None:
     with pytest.raises(ValueError, match="Experiment root"):
         build_manifest(
             job="nexuml-rul-fd003-recovery-gh200",
-            subpath="job-staging/nexuml/recovery/example",
+            subpath="job-staging/NexuML-predictive/example",
             experiment_root=Path("/tmp/experiments"),
+        )
+    with pytest.raises(ValueError, match="Data root"):
+        build_manifest(
+            job="nexuml-rul-fd003-recovery-gh200",
+            subpath="job-staging/NexuML-predictive/example",
+            experiment_root=Path("/mnt/juicefs_prisma/models/nexuml/.experiments"),
+            data_root=Path("/tmp/data"),
         )
     with pytest.raises(ValueError, match="Unsafe staged source"):
         build_manifest(
@@ -86,7 +99,7 @@ def test_recovery_rejects_external_output_paths_and_unsafe_subpaths() -> None:
     with pytest.raises(ValueError, match="PVC name"):
         build_manifest(
             job="nexuml-rul-fd003-recovery-gh200",
-            subpath="job-staging/nexuml/recovery/example",
+            subpath="job-staging/NexuML-predictive/example",
             experiment_root=Path("/mnt/juicefs_prisma/models/nexuml/.experiments"),
-            pvc="juicefs_prisma",
+            prisma_pvc="juicefs_prisma",
         )
