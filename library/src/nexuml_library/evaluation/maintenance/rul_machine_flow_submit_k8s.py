@@ -22,6 +22,7 @@ DEFAULT_STAGING_ROOT = JUICEFS_ROOT / "job-staging/nexuml/within-machine-recover
 DEFAULT_FEATURE_ROOT = Path("/workspaces/NexuFed/NexuML-predictive")
 DEFAULT_CORE_ROOT = Path("/workspaces/NexuFed/NexuML")
 DEFAULT_JOB = "nexuml-rul-fd003-recovery-gh200"
+DEFAULT_PVC = "juicefs-prisma"
 IMAGE = "harbor.ika.rub.de/library/pytorch-template-lb-multiarch:latest"
 
 
@@ -81,8 +82,15 @@ def _runtime_command(experiment_root: Path) -> str:
     return "\n".join(
         [
             "set -euo pipefail",
-            "test -f /workspace/.nexuml-recovery-sources.json",
+            "echo '[recovery] Checking Prisma source stage'",
+            "if [[ ! -f /workspace/.nexuml-recovery-sources.json ]]; then",
+            "  echo '[recovery] ERROR: source marker missing from Prisma PVC' >&2",
+            "  ls -la /workspace >&2",
+            "  exit 3",
+            "fi",
+            "cat /workspace/.nexuml-recovery-sources.json",
             "export UV_CACHE_DIR=/tmp/uv-cache",
+            "export PYTHONUNBUFFERED=1",
             "export PYTHONPATH=/workspace/core/src:/workspace/feature/library/src",
             "uv venv --python 3.12 --system-site-packages /tmp/nexuml-venv",
             "export PATH=/tmp/nexuml-venv/bin:$PATH",
@@ -93,7 +101,7 @@ def _runtime_command(experiment_root: Path) -> str:
             "\"GPU:\", torch.cuda.get_device_name(0) if torch.cuda.is_available() "
             "else \"none\", flush=True); "
             "assert torch.cuda.is_available()'",
-            "python -m nexuml_library.evaluation.maintenance.rul_machine_flow_recover "
+            "python -u -m nexuml_library.evaluation.maintenance.rul_machine_flow_recover "
             f"--experiment-root {shlex.quote(str(experiment_root))} "
             "--rebuild --retrain-missing",
         ]
@@ -101,7 +109,7 @@ def _runtime_command(experiment_root: Path) -> str:
 
 
 def build_manifest(
-    *, job: str, subpath: str, experiment_root: Path
+    *, job: str, subpath: str, experiment_root: Path, pvc: str = DEFAULT_PVC
 ) -> dict[str, Any]:
     """Build a single-GPU, immutable-source Job pinned strictly to GH200.
 
@@ -109,10 +117,12 @@ def build_manifest(
         Kubernetes batch/v1 Job manifest.
 
     Raises:
-        ValueError: If the requested Job name or output path is invalid.
+        ValueError: If the requested Job name, PVC, or output path is invalid.
     """
     if not re.fullmatch(r"[a-z0-9]([-a-z0-9]*[a-z0-9])?", job) or len(job) > 63:
         raise ValueError("Job name must be a valid Kubernetes DNS label")
+    if not re.fullmatch(r"[a-z0-9]([-a-z0-9]*[a-z0-9])?", pvc) or len(pvc) > 63:
+        raise ValueError("PVC name must be a valid Kubernetes DNS label")
     if not experiment_root.resolve().is_relative_to(JUICEFS_ROOT):
         raise ValueError("Experiment root must be inside /mnt/juicefs_prisma")
     if not subpath.startswith("job-staging/") or ".." in Path(subpath).parts:
@@ -160,7 +170,7 @@ def build_manifest(
                         ],
                     }],
                     "volumes": [
-                        {"name": "juicefs", "persistentVolumeClaim": {"claimName": "juicefs"}},
+                        {"name": "juicefs", "persistentVolumeClaim": {"claimName": pvc}},
                         {"name": "shm", "emptyDir": {"medium": "Memory", "sizeLimit": "16Gi"}},
                         {"name": "temporary", "emptyDir": {"sizeLimit": "32Gi"}},
                     ],
@@ -234,6 +244,19 @@ def submit(
         subprocess.CalledProcessError: If Kubernetes submission fails.
     """
     job = str(manifest["metadata"]["name"])
+    pvc = str(manifest["spec"]["template"]["spec"]["volumes"][0]["persistentVolumeClaim"]["claimName"])
+    volume = subprocess.run(
+        ["kubectl", "-n", NAMESPACE, "get", "pvc", pvc,
+         "-o", "jsonpath={.status.phase}"],
+        text=True, capture_output=True, check=False,
+    )
+    if volume.returncode != 0:
+        raise RuntimeError(
+            f"Cannot access Prisma PVC {pvc}; use --pvc with its exact name: "
+            f"{volume.stderr.strip()}"
+        )
+    if volume.stdout.strip() != "Bound":
+        raise RuntimeError(f"Prisma PVC {pvc} is not Bound: {volume.stdout.strip()}")
     existing = subprocess.run(
         ["kubectl", "-n", NAMESPACE, "get", "job", job, "-o", "name"],
         text=True, capture_output=True, check=False,
@@ -262,6 +285,10 @@ def main() -> None:
     parser.add_argument("--staging-root", type=Path, default=DEFAULT_STAGING_ROOT)
     parser.add_argument("--experiment-root", type=Path, default=DEFAULT_EXPERIMENT_ROOT)
     parser.add_argument("--job", default=DEFAULT_JOB)
+    parser.add_argument(
+        "--pvc", default=DEFAULT_PVC,
+        help="Exact Kubernetes PVC name for /mnt/juicefs_prisma",
+    )
     parser.add_argument("--submit", action="store_true", help="Stage sources and create the Job")
     args = parser.parse_args()
     feature_sha = _revision(
@@ -272,7 +299,8 @@ def main() -> None:
     stage_name = f"{feature_sha[:12]}-{core_sha[:12]}-{args.job}"
     subpath = _stage_subpath(args.staging_root, stage_name)
     manifest = build_manifest(
-        job=args.job, subpath=subpath, experiment_root=args.experiment_root
+        job=args.job, subpath=subpath, experiment_root=args.experiment_root,
+        pvc=args.pvc,
     )
     print(json.dumps(manifest, indent=2, sort_keys=True), flush=True)
     if not args.submit:
