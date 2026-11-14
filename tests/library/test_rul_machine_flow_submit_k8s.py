@@ -5,7 +5,11 @@ from pathlib import Path
 import pytest
 
 from nexuml_library.evaluation.maintenance.rul_machine_flow_submit_k8s import (
+    DEFAULT_STAGING_ROOT,
+    HOST_PVC_ROOT,
+    _host_pvc_path,
     _runtime_command,
+    _stage_subpath,
     build_manifest,
 )
 
@@ -44,6 +48,25 @@ def test_runtime_runs_exact_recovery_command_with_main_and_feature() -> None:
     assert "assert torch.cuda.is_available()" in command
     assert "ERROR: source marker missing from Prisma PVC" in command
     assert "PYTHONUNBUFFERED=1" in command
+
+
+def test_prisma_pv_subdirectory_is_not_staged_as_filesystem_root() -> None:
+    """Map workstation paths through the PV's shared/prisma subdirectory."""
+    assert HOST_PVC_ROOT == Path("/mnt/juicefs_prisma/shared/prisma")
+    assert DEFAULT_STAGING_ROOT == (
+        HOST_PVC_ROOT / "job-staging/nexuml/within-machine-recovery"
+    )
+    assert _stage_subpath(DEFAULT_STAGING_ROOT, "sha-job") == (
+        "job-staging/nexuml/within-machine-recovery/sha-job"
+    )
+    assert _host_pvc_path(Path("/mnt/juicefs_prisma/models/nexuml/.experiments")) == (
+        HOST_PVC_ROOT / "models/nexuml/.experiments"
+    )
+    with pytest.raises(ValueError, match="Staging root"):
+        _stage_subpath(
+            Path("/mnt/juicefs_prisma/job-staging/nexuml/within-machine-recovery"),
+            "sha-job",
+        )
 
 
 def test_recovery_rejects_external_output_paths_and_unsafe_subpaths() -> None:
