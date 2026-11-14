@@ -1,6 +1,7 @@
 name: Deploy docs
 
 on:
+  workflow_dispatch:
   push:
     branches: [main, dev]
     tags: ["v*", "!v*-rc.*"]
@@ -26,6 +27,7 @@ jobs:
         run: python scripts/release_candidate.py eligibility
 
   validate:
+    if: github.event_name == 'push'
     needs: release-identity
     uses: ./.github/workflows/docs-checks.yml
     with:
@@ -37,6 +39,7 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: write
+      actions: write
     env:
       VERSION: ${{ github.ref_name }}
       SOURCE_SHA: ${{ github.sha }}
@@ -88,8 +91,15 @@ jobs:
           subprocess.run(args, check=True)
           PY
 
+      # Tag deployments can report success while serving the earlier branch artifact (deploy-pages#383).
+      - name: Deploy the staged archive through a main-branch dispatch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run docs.yml --repo "$GITHUB_REPOSITORY" --ref main
+
   deploy:
-    needs: stage
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    needs: release-identity
     runs-on: ika-runner
     timeout-minutes: 10
     concurrency:
@@ -136,7 +146,14 @@ jobs:
           PY
       - uses: actions/upload-pages-artifact@v5.0.0
         with:
+          name: github-pages-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ steps.assembled.outputs.path }}
       - name: Deploy assembled static archive
         id: deployment
         uses: actions/deploy-pages@v5.0.1
+        with:
+          artifact_name: github-pages-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Verify the public site serves the validated archive
+        env:
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: python source/docs/scripts/verify_live.py --directory "${{ steps.assembled.outputs.path }}" --url "$PAGE_URL"
