@@ -4,7 +4,7 @@
 
 Composed scenarios combining data + model + training + evaluation.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1787e5e6ec271ff0045b9659199a85fdf92d1e06/library/src/nexuml_library/scenarios/asd/synthetic_linear_ae.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/484c461e3d84309527692c64ae567c7de3524802/library/src/nexuml_library/scenarios/asd/synthetic_linear_ae.py#L1-L1)
 
 ## nexuml_library.scenarios.asd.synthetic_linear_ae.synthetic_linear_ae_multiclass
 
@@ -20,7 +20,7 @@ Synthetic vector reconstruction + multiclass classification.
 
 - `ScenarioSpec` (`ScenarioSpec`) — Assembled scenario with pipeline, training, data and evaluation.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1787e5e6ec271ff0045b9659199a85fdf92d1e06/library/src/nexuml_library/scenarios/asd/synthetic_linear_ae.py#L63-L104)
+[View source](https://github.com/NexuFed/NexuML/blob/484c461e3d84309527692c64ae567c7de3524802/library/src/nexuml_library/scenarios/asd/synthetic_linear_ae.py#L63-L104)
 
 ## nexuml_library.scenarios.asd.synthetic_linear_ae.synthetic_linear_ae_multilabel
 
@@ -36,7 +36,7 @@ Synthetic vector reconstruction + multilabel classification.
 
 - `ScenarioSpec` (`ScenarioSpec`) — Assembled scenario with pipeline, training, data and evaluation.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1787e5e6ec271ff0045b9659199a85fdf92d1e06/library/src/nexuml_library/scenarios/asd/synthetic_linear_ae.py#L107-L147)
+[View source](https://github.com/NexuFed/NexuML/blob/484c461e3d84309527692c64ae567c7de3524802/library/src/nexuml_library/scenarios/asd/synthetic_linear_ae.py#L107-L147)
 
 ## nexuml_library.scenarios.asd.synthetic_linear_ae.synthetic_linear_ae_reconstruction
 
@@ -52,7 +52,7 @@ Synthetic vector reconstruction with linear autoencoder.
 
 - `ScenarioSpec` (`ScenarioSpec`) — Assembled scenario with pipeline, training, data and evaluation.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1787e5e6ec271ff0045b9659199a85fdf92d1e06/library/src/nexuml_library/scenarios/asd/synthetic_linear_ae.py#L24-L60)
+[View source](https://github.com/NexuFed/NexuML/blob/484c461e3d84309527692c64ae567c7de3524802/library/src/nexuml_library/scenarios/asd/synthetic_linear_ae.py#L24-L60)
 
 ## nexuml_library.scenarios.asd.synthetic_linear_ae.synthetic_linear_ae_regression
 
@@ -68,4 +68,4 @@ Synthetic vector reconstruction + regression.
 
 - `ScenarioSpec` (`ScenarioSpec`) — Assembled scenario with pipeline, training, data and evaluation.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1787e5e6ec271ff0045b9659199a85fdf92d1e06/library/src/nexuml_library/scenarios/asd/synthetic_linear_ae.py#L150-L191)
+[View source](https://github.com/NexuFed/NexuML/blob/484c461e3d84309527692c64ae567c7de3524802/library/src/nexuml_library/scenarios/asd/synthetic_linear_ae.py#L150-L191)

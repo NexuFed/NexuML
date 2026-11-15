@@ -4,7 +4,7 @@
 
 Reconstruction visualizer.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1787e5e6ec271ff0045b9659199a85fdf92d1e06/library/src/nexuml_library/evaluation/visualizers/reconstruction.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/484c461e3d84309527692c64ae567c7de3524802/library/src/nexuml_library/evaluation/visualizers/reconstruction.py#L1-L1)
 
 ## nexuml_library.evaluation.visualizers.reconstruction.ReconstructionVisualizer
 
@@ -18,7 +18,7 @@ Bases: `EvalAlgorithmDefinition`
 
 Shows side-by-side original vs reconstructed samples.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1787e5e6ec271ff0045b9659199a85fdf92d1e06/library/src/nexuml_library/evaluation/visualizers/reconstruction.py#L31-L51)
+[View source](https://github.com/NexuFed/NexuML/blob/484c461e3d84309527692c64ae567c7de3524802/library/src/nexuml_library/evaluation/visualizers/reconstruction.py#L31-L51)
 
 ### nexuml_library.evaluation.visualizers.reconstruction.ReconstructionVisualizer.context_inputs
 
@@ -28,7 +28,7 @@ Shows side-by-side original vs reconstructed samples.
 context_inputs = EvalContextInputs(feature_key=ContextInput(required=True))
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1787e5e6ec271ff0045b9659199a85fdf92d1e06/library/src/nexuml_library/evaluation/visualizers/reconstruction.py#L35-L35)
+[View source](https://github.com/NexuFed/NexuML/blob/484c461e3d84309527692c64ae567c7de3524802/library/src/nexuml_library/evaluation/visualizers/reconstruction.py#L35-L35)
 
 ### nexuml_library.evaluation.visualizers.reconstruction.ReconstructionVisualizer.label_keys
 
@@ -38,7 +38,7 @@ context_inputs = EvalContextInputs(feature_key=ContextInput(required=True))
 label_keys: list[LabelKey] | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1787e5e6ec271ff0045b9659199a85fdf92d1e06/library/src/nexuml_library/evaluation/visualizers/reconstruction.py#L39-L39)
+[View source](https://github.com/NexuFed/NexuML/blob/484c461e3d84309527692c64ae567c7de3524802/library/src/nexuml_library/evaluation/visualizers/reconstruction.py#L39-L39)
 
 ### nexuml_library.evaluation.visualizers.reconstruction.ReconstructionVisualizer.mask_key
 
@@ -48,7 +48,7 @@ label_keys: list[LabelKey] | None = None
 mask_key: FeatureKey | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1787e5e6ec271ff0045b9659199a85fdf92d1e06/library/src/nexuml_library/evaluation/visualizers/reconstruction.py#L38-L38)
+[View source](https://github.com/NexuFed/NexuML/blob/484c461e3d84309527692c64ae567c7de3524802/library/src/nexuml_library/evaluation/visualizers/reconstruction.py#L38-L38)
 
 ### nexuml_library.evaluation.visualizers.reconstruction.ReconstructionVisualizer.n_samples
 
@@ -58,7 +58,7 @@ mask_key: FeatureKey | None = None
 n_samples: int = 8
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1787e5e6ec271ff0045b9659199a85fdf92d1e06/library/src/nexuml_library/evaluation/visualizers/reconstruction.py#L40-L40)
+[View source](https://github.com/NexuFed/NexuML/blob/484c461e3d84309527692c64ae567c7de3524802/library/src/nexuml_library/evaluation/visualizers/reconstruction.py#L40-L40)
 
 ### nexuml_library.evaluation.visualizers.reconstruction.ReconstructionVisualizer.patch_size
 
@@ -68,7 +68,7 @@ n_samples: int = 8
 patch_size: int | tuple[int, int] | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1787e5e6ec271ff0045b9659199a85fdf92d1e06/library/src/nexuml_library/evaluation/visualizers/reconstruction.py#L41-L41)
+[View source](https://github.com/NexuFed/NexuML/blob/484c461e3d84309527692c64ae567c7de3524802/library/src/nexuml_library/evaluation/visualizers/reconstruction.py#L41-L41)
 
 ### nexuml_library.evaluation.visualizers.reconstruction.ReconstructionVisualizer.reconstructed_key
 
@@ -78,7 +78,7 @@ patch_size: int | tuple[int, int] | None = None
 reconstructed_key: FeatureKey
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1787e5e6ec271ff0045b9659199a85fdf92d1e06/library/src/nexuml_library/evaluation/visualizers/reconstruction.py#L37-L37)
+[View source](https://github.com/NexuFed/NexuML/blob/484c461e3d84309527692c64ae567c7de3524802/library/src/nexuml_library/evaluation/visualizers/reconstruction.py#L37-L37)
 
 ### nexuml_library.evaluation.visualizers.reconstruction.ReconstructionVisualizer.storage_backend
 
@@ -88,7 +88,7 @@ reconstructed_key: FeatureKey
 storage_backend: str = 'memory'
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1787e5e6ec271ff0045b9659199a85fdf92d1e06/library/src/nexuml_library/evaluation/visualizers/reconstruction.py#L42-L42)
+[View source](https://github.com/NexuFed/NexuML/blob/484c461e3d84309527692c64ae567c7de3524802/library/src/nexuml_library/evaluation/visualizers/reconstruction.py#L42-L42)
 
 ### nexuml_library.evaluation.visualizers.reconstruction.ReconstructionVisualizer.storage_path
 
@@ -98,7 +98,7 @@ storage_backend: str = 'memory'
 storage_path: str | None = None
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1787e5e6ec271ff0045b9659199a85fdf92d1e06/library/src/nexuml_library/evaluation/visualizers/reconstruction.py#L43-L43)
+[View source](https://github.com/NexuFed/NexuML/blob/484c461e3d84309527692c64ae567c7de3524802/library/src/nexuml_library/evaluation/visualizers/reconstruction.py#L43-L43)
 
 ### nexuml_library.evaluation.visualizers.reconstruction.ReconstructionVisualizer.build
 
@@ -108,4 +108,4 @@ storage_path: str | None = None
 def build(context: EvalBuildContext) -> EvalAlgorithm
 ```
 
-[View source](https://github.com/NexuFed/NexuML/blob/1787e5e6ec271ff0045b9659199a85fdf92d1e06/library/src/nexuml_library/evaluation/visualizers/reconstruction.py#L45-L51)
+[View source](https://github.com/NexuFed/NexuML/blob/484c461e3d84309527692c64ae567c7de3524802/library/src/nexuml_library/evaluation/visualizers/reconstruction.py#L45-L51)

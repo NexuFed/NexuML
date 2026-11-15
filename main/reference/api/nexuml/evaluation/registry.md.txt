@@ -4,7 +4,7 @@
 
 Explicit evaluation-algorithm materialization.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1787e5e6ec271ff0045b9659199a85fdf92d1e06/src/nexuml/evaluation/registry.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/484c461e3d84309527692c64ae567c7de3524802/src/nexuml/evaluation/registry.py#L1-L1)
 
 ## nexuml.evaluation.registry.create_algorithm
 
@@ -24,4 +24,4 @@ Materialize and validate an evaluation algorithm definition.
 
 - `TypeError` — If the definition builds the wrong runtime type.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1787e5e6ec271ff0045b9659199a85fdf92d1e06/src/nexuml/evaluation/registry.py#L10-L27)
+[View source](https://github.com/NexuFed/NexuML/blob/484c461e3d84309527692c64ae567c7de3524802/src/nexuml/evaluation/registry.py#L10-L27)

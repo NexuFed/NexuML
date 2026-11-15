@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "target": "versioned",
   "version": "main",
-  "revision": "1787e5e6ec271ff0045b9659199a85fdf92d1e06",
+  "revision": "484c461e3d84309527692c64ae567c7de3524802",
   "site": "https://nexufed.github.io",
   "mount": "/NexuML/"
 }

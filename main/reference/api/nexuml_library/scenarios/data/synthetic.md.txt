@@ -4,7 +4,7 @@
 
 Synthetic data scenario fragments.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1787e5e6ec271ff0045b9659199a85fdf92d1e06/library/src/nexuml_library/scenarios/data/synthetic.py#L1-L1)
+[View source](https://github.com/NexuFed/NexuML/blob/484c461e3d84309527692c64ae567c7de3524802/library/src/nexuml_library/scenarios/data/synthetic.py#L1-L1)
 
 ## nexuml_library.scenarios.data.synthetic.synthetic_vector_data
 
@@ -20,4 +20,4 @@ Create a DataSpec for synthetic vector data.
 
 - `DataSpec` (`DataSpec`) — Synthetic dataset specification.
 
-[View source](https://github.com/NexuFed/NexuML/blob/1787e5e6ec271ff0045b9659199a85fdf92d1e06/library/src/nexuml_library/scenarios/data/synthetic.py#L9-L55)
+[View source](https://github.com/NexuFed/NexuML/blob/484c461e3d84309527692c64ae567c7de3524802/library/src/nexuml_library/scenarios/data/synthetic.py#L9-L55)
