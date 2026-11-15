@@ -63,6 +63,7 @@ def test_durable_staging_precedes_only_the_deploy_queue():
     assert "concurrency" not in workflow
     assert workflow["on"]["push"]["branches"] == ["main", "dev"]
     assert workflow["on"]["push"]["tags"] == ["v*", "!v*-rc.*"]
+    assert "workflow_dispatch" in workflow["on"]
     jobs = workflow["jobs"]
     assert workflow["permissions"] == {"contents": "read", "actions": "read"}
     identity = jobs["release-identity"]
@@ -76,6 +77,7 @@ def test_durable_staging_precedes_only_the_deploy_queue():
     assert identity["steps"][-1]["env"] == {"GH_TOKEN": "${{ github.token }}"}
     assert identity["steps"][-1]["run"] == "python scripts/release_candidate.py eligibility"
     assert jobs["validate"]["needs"] == "release-identity"
+    assert jobs["validate"]["if"] == "github.event_name == 'push'"
     assert jobs["validate"]["with"] == {"version": "${{ github.ref_name }}"}
     assert jobs["stage"]["env"]["VERSION"] == "${{ github.ref_name }}"
     stage_script = next(
@@ -86,8 +88,11 @@ def test_durable_staging_precedes_only_the_deploy_queue():
     assert jobs["stage"]["needs"] == "validate"
     assert jobs["stage"]["runs-on"] == "ika-runner"
     assert "concurrency" not in jobs["stage"]
-    assert jobs["stage"]["permissions"] == {"contents": "write"}
-    assert jobs["deploy"]["needs"] == "stage"
+    assert jobs["stage"]["permissions"] == {"contents": "write", "actions": "write"}
+    dispatch = jobs["stage"]["steps"][-1]
+    assert dispatch["env"] == {"GH_TOKEN": "${{ github.token }}"}
+    assert dispatch["run"] == 'gh workflow run docs.yml --repo "$GITHUB_REPOSITORY" --ref main'
+    assert jobs["deploy"]["needs"] == "release-identity"
     assert jobs["deploy"]["runs-on"] == "ika-runner"
     assert jobs["deploy"]["concurrency"]["cancel-in-progress"] is False
     assert jobs["deploy"]["permissions"] == {
@@ -98,3 +103,30 @@ def test_durable_staging_precedes_only_the_deploy_queue():
     steps = jobs["deploy"]["steps"]
     assert any(step.get("with", {}).get("ref") == "gh-pages" for step in steps)
     assert any(str(step.get("uses", "")).startswith("actions/deploy-pages@") for step in steps)
+
+
+@pytest.mark.parametrize("event_name", ["push", "workflow_dispatch"])
+@pytest.mark.parametrize("ref", ["refs/heads/main", "refs/heads/dev", "refs/tags/v0.2.3"])
+def test_pages_dispatch_only_deploys_from_reviewed_main(event_name, ref):
+    job = load("docs.yml")["jobs"]["deploy"]
+    assert job["if"] == (
+        "github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'"
+    )
+    github = SimpleNamespace(event_name=event_name, ref=ref)
+    assert eval(job["if"].replace("&&", "and"), {"__builtins__": {}}, {"github": github}) is (
+        event_name == "workflow_dispatch" and ref == "refs/heads/main"
+    )
+
+
+def test_pages_transport_is_unique_and_live_content_is_verified():
+    steps = load("docs.yml")["jobs"]["deploy"]["steps"]
+    upload = next(step for step in steps if "upload-pages-artifact@" in step.get("uses", ""))
+    deploy = next(step for step in steps if "deploy-pages@" in step.get("uses", ""))
+    assert upload["with"]["name"] == "github-pages-${{ github.run_id }}-${{ github.run_attempt }}"
+    assert deploy["with"]["artifact_name"] == upload["with"]["name"]
+    verify = steps[-1]
+    assert verify["env"] == {"PAGE_URL": "${{ steps.deployment.outputs.page_url }}"}
+    assert verify["run"] == (
+        "python source/docs/scripts/verify_live.py "
+        '--directory "${{ steps.assembled.outputs.path }}" --url "$PAGE_URL"'
+    )
