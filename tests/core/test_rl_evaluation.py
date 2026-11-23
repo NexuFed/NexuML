@@ -694,7 +694,7 @@ def test_scheduled_partial_and_full_budget_resume(factory, tmp_path, monkeypatch
     session = NexuSession(
         scenario, log_dir=tmp_path / "first", enable_loggers=False, enable_progress_bar=False
     )
-    session.trainer.callbacks.append(Interrupt())  # ty: ignore[unresolved-attribute]
+    session.trainer.callbacks.append(Interrupt())  # ty: ignore[missing-attribute]
     with pytest.raises(RuntimeError, match="checkpoint interruption"):
         session.fit()
     assert calls == [0]
@@ -819,7 +819,7 @@ def test_recorded_interrupt_resume_export_reload_and_cli_replay(factory, tmp_pat
             raise RuntimeError("recorded interruption")
 
     first = NexuSession(scenario, log_dir=tmp_path / "first", enable_progress_bar=False)
-    first.trainer.callbacks.append(Interrupt())  # ty: ignore[unresolved-attribute]
+    first.trainer.callbacks.append(Interrupt())  # ty: ignore[missing-attribute]
     with pytest.raises(RuntimeError, match="recorded interruption"):
         first.fit()
     assert first.lightning_module._collector is None

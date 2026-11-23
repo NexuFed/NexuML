@@ -49,7 +49,7 @@ jobs:
     needs: release-identity
     uses: ./.github/workflows/docs-checks.yml
     with:
-      version: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'dev' }}
+      version: ${{ startsWith(github.ref, 'refs/tags/') && !contains(github.ref_name, '-rc.') && github.ref_name || 'dev' }}
 
   static:
     needs: release-identity
@@ -70,10 +70,10 @@ jobs:
 
       - name: Install nexuml + library
         env:
-          UV_PROJECT_ENVIRONMENT: .venv
+          UV_PROJECT_ENVIRONMENT: ${{ github.workspace }}/.venv
         run: |
           # Type-check every optional source against the locked native Python profile.
-          uv sync --locked --python 3.12 --all-packages --all-extras
+          uv sync --locked --all-packages --all-extras --python 3.12
           echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
           echo "VIRTUAL_ENV=$PWD/.venv" >> "$GITHUB_ENV"
 
@@ -134,11 +134,17 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
 
       - name: Install nexuml + library
+        env:
+          UV_PROJECT_ENVIRONMENT: ${{ github.workspace }}/.venv
         run: |
-          uv venv --python "${{ matrix.python-version }}"
-          source .venv/bin/activate
-          uv pip install -e ".[dev,all,dali]"
-          uv pip install -e "./library[all]"
+          # The native workspace lock only covers Python 3.12.
+          if [ "${{ matrix.python-version }}" = "3.12" ]; then
+            uv sync --locked --all-packages --extra all --extra dev --python 3.12
+          else
+            uv venv --python "${{ matrix.python-version }}" "$UV_PROJECT_ENVIRONMENT"
+            uv pip install --python "$UV_PROJECT_ENVIRONMENT/bin/python" -e ".[dev,all,dali]"
+            uv pip install --python "$UV_PROJECT_ENVIRONMENT/bin/python" -e "./library[all]"
+          fi
           echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
           echo "VIRTUAL_ENV=$PWD/.venv" >> "$GITHUB_ENV"
 
@@ -439,7 +445,7 @@ jobs:
           import assert from 'node:assert/strict';
           const [pack] = JSON.parse(readFileSync('dist/studio/pack.json'));
           assert.equal(pack.name, '@nexufed/nexuml-studio');
-          assert.match(pack.filename, /^nexufed-nexuml-studio-\d+\.\d+\.\d+\.tgz$/);
+          assert.match(pack.filename, /^nexufed-nexuml-studio-\d+\.\d+\.\d+(?:-rc\.\d+)?\.tgz$/);
           assert.equal(`sha512-${createHash('sha512').update(readFileSync(`dist/studio/${pack.filename}`)).digest('base64')}`, pack.integrity);
           JS
 

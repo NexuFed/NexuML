@@ -33,6 +33,7 @@ from nexuml_library.evaluation.anomalous_sound_detection.asd_evaluator import (
     AnomalyVisualizer,
 )
 from nexuml_library.evaluation.visualizers.class_histogram import ClassHistogramVisualizer
+from nexuml_library.evaluation.visualizers.flow import FlowVisualizer
 from nexuml_library.evaluation.visualizers.latent import LatentVisualizer
 from nexuml_library.evaluation.visualizers.reconstruction import ReconstructionVisualizer
 
@@ -128,6 +129,21 @@ def test_reconstruction_consumes_scalar_optional_and_collection_keys(build):
     assert torch.equal(stored["mask"], mask)
     assert torch.equal(stored["label__class"], y["class"].float())
     assert torch.equal(stored["label__domain"], y["domain"].float())
+
+
+@pytest.mark.parametrize(
+    "definition",
+    [
+        ReconstructionVisualizer(reconstructed_key="prediction"),
+        LatentVisualizer(),
+        ClassHistogramVisualizer(),
+        FlowVisualizer(),
+    ],
+)
+def test_visualizers_accept_base_logger_keyword_and_positional_call(build, definition):
+    runtime = build(definition, feature_key="embedding", label_key="target")
+    runtime.visualize(logger=None)
+    runtime.visualize(None)
 
 
 def test_latent_consumes_context_feature_and_label_keys(build):

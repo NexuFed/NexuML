@@ -25,7 +25,7 @@ from nexuml_library.evaluation.visualizers._plotting import (
     log_figure,
 )
 
-logger = logging.getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 
 @eval_algorithm("latent_visualizer")
@@ -133,7 +133,7 @@ class _LatentVisualizerRuntime(EvalAlgorithm):
         train_labels = self._restore_labels(train_td)
         test_labels = self._restore_labels(test_td)
         if train_data is None and test_data is None:
-            logger.warning("LatentVisualizer: no features collected, skipping projection")
+            _logger.warning("LatentVisualizer: no features collected, skipping projection")
             return
 
         parts: list[torch.Tensor] = []
@@ -148,7 +148,7 @@ class _LatentVisualizerRuntime(EvalAlgorithm):
         combined = torch.cat(parts).numpy()
         n_samples = combined.shape[0]
         if n_samples < 3:
-            logger.warning("LatentVisualizer: not enough samples (%d) for projection", n_samples)
+            _logger.warning("LatentVisualizer: not enough samples (%d) for projection", n_samples)
             return
 
         if self.method == "tsne":
@@ -163,7 +163,7 @@ class _LatentVisualizerRuntime(EvalAlgorithm):
                     init="pca",
                 ).fit_transform(combined)
             except ImportError:
-                logger.warning("sklearn not available for t-SNE projection")
+                _logger.warning("sklearn not available for t-SNE projection")
         elif self.method == "umap":
             try:
                 import umap
@@ -174,12 +174,12 @@ class _LatentVisualizerRuntime(EvalAlgorithm):
                     n_neighbors=min(30, max(5, n_samples - 1)),
                 ).fit_transform(combined)
             except ImportError:
-                logger.warning("umap-learn not available for UMAP projection")
+                _logger.warning("umap-learn not available for UMAP projection")
 
         self._split_labels = split_labels
         self._combined_labels = train_labels + test_labels
 
-    def visualize(self, logger_obj: Any) -> None:  # ty: ignore[invalid-method-override]
+    def visualize(self, logger: Any) -> None:
         if self._projection is None:
             return
         try:
@@ -234,10 +234,10 @@ class _LatentVisualizerRuntime(EvalAlgorithm):
             ax.set_ylabel("Component 2")
             apply_axis_style(ax)
             plt.tight_layout()
-            log_figure(logger_obj, f"eval/latent_space/{self.method}_{self.label_key}", fig)
+            log_figure(logger, f"eval/latent_space/{self.method}_{self.label_key}", fig)
             plt.close(fig)
         except Exception as e:
-            logger.warning(f"LatentVisualizer.visualize() failed: {e}")
+            _logger.warning(f"LatentVisualizer.visualize() failed: {e}")
 
     def results(self) -> dict[str, float]:
         return {"n_projected_samples": float(len(self._split_labels))} if self._split_labels else {}

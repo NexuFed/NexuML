@@ -226,7 +226,7 @@ class CompiledPolicy(nn.Module):
                     else:
                         output, updated = actor.step(
                             local,
-                            cast(TensorDict, group_state[..., index]),
+                            group_state[..., index],
                             deterministic=deterministic,
                         )
                         outputs.append(output)
@@ -265,7 +265,7 @@ class CompiledPolicy(nn.Module):
                 states = []
                 for index, actor_id in enumerate(actor_ids):
                     actor = cast(CompiledPolicy, self.actors[actor_id])
-                    local = cast(TensorDict, child[..., index])
+                    local = child[..., index]
                     states.append(
                         actor.reset_state(local, mask)
                         if actor.processor is not None
@@ -352,11 +352,7 @@ class CompiledPolicy(nn.Module):
 
     @staticmethod
     def _local_observation(child: TensorDict, index: int, actor: "CompiledPolicy") -> TensorDict:
-        local = (
-            cast(TensorDict, child[..., index])
-            .select(*actor.contract.observations, strict=False)
-            .clone()
-        )
+        local = child[..., index].select(*actor.contract.observations, strict=False).clone()
         spec = actor.pipeline.resolved_config.policy
         assert spec is not None
         if spec.batch_mode == "independent":

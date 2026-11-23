@@ -409,7 +409,7 @@ def test_registered_defaults_are_frozen_and_do_not_mutate_constructor_input():
         "UV_CONCURRENT_DOWNLOADS": "4",
     }
     with pytest.raises(ValidationError, match="frozen"):
-        execution.py_executable = "different-python"
+        execution.py_executable = "different-python"  # ty: ignore[invalid-assignment]
     assert RayJobsSDKExecution(py_executable="/prepared/python").py_executable == "/prepared/python"
     assert RayJobsSDKExecution(setup_command=None).runtime_env == {"working_dir": "."}
     assert RayJobsSDKExecution(setup_command=None).py_executable == "python"

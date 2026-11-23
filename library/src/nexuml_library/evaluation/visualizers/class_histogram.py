@@ -23,7 +23,7 @@ from nexuml_library.evaluation.visualizers._plotting import (
     log_figure,
 )
 
-logger = logging.getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 
 @eval_algorithm("class_histogram")
@@ -79,7 +79,7 @@ class _ClassHistogramVisualizerRuntime(EvalAlgorithm):
             metrics["imbalance_ratio"] = float(max(counts)) / float(min(counts))
         return metrics
 
-    def visualize(self, logger_obj: Any) -> None:  # ty: ignore[invalid-method-override]
+    def visualize(self, logger: Any) -> None:
         if not self._train_counts and not self._test_counts:
             return
         try:
@@ -147,7 +147,7 @@ class _ClassHistogramVisualizerRuntime(EvalAlgorithm):
 
             fig.suptitle(self.title or f"{self.label_key} Distribution", y=1.02)
             fig.tight_layout()
-            log_figure(logger_obj, f"eval/class_histogram/{self.label_key}", fig)
+            log_figure(logger, f"eval/class_histogram/{self.label_key}", fig)
             plt.close(fig)
         except Exception as e:
-            logger.warning(f"ClassHistogramVisualizer.visualize() failed: {e}")
+            _logger.warning(f"ClassHistogramVisualizer.visualize() failed: {e}")

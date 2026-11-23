@@ -68,7 +68,7 @@ class CarlaLaneFollowingEnvironment(EnvironmentDefinition):
         if context.num_envs != 1 or context.worker_rank != 0:
             raise ValueError("CARLA requires one direct collector and a dedicated server")
         try:
-            import carla  # ty: ignore[unresolved-import]
+            import carla  # ty: ignore[import-not-found]
         except ImportError as error:
             raise ImportError(
                 "CARLA requires a matching simulator server and CARLA Python client built for "

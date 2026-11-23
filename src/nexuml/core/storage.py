@@ -66,13 +66,13 @@ class SharedStorage:
                 cast(
                     Callable[[torch.Tensor | TensorDict], object],
                     self.data[key][counter : counter + remaining].copy_,
-                )(cast(torch.Tensor | TensorDict, value[:remaining]))
+                )(value[:remaining])
             overflow = B - remaining
             if overflow > 0:
                 cast(
                     Callable[[torch.Tensor | TensorDict], object],
                     self.data[key][0:overflow].copy_,
-                )(cast(torch.Tensor | TensorDict, value[remaining : remaining + overflow]))
+                )(value[remaining : remaining + overflow])
 
         return (counter + B) % data_size
 

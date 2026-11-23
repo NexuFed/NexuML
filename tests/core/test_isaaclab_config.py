@@ -24,7 +24,7 @@ from nexuml_library.environments.isaaclab_config import (
 
 if TYPE_CHECKING:
     # Deliberately absent: forward annotations must not require the native package.
-    import uninstalled_native  # ty: ignore[unresolved-import]
+    import uninstalled_native  # ty: ignore[import-not-found]
 
 
 def _mutate(cfg: dict, *, values: list, enabled: bool = True) -> None:

@@ -364,7 +364,7 @@ def test_custom_layer_package_export_and_clean_load(tmp_path):
 
     sys.path.insert(0, str(tmp_path))
     try:
-        from custom_test_pkg.layers import CustomLinear  # ty: ignore[unresolved-import]
+        from custom_test_pkg.layers import CustomLinear  # ty: ignore[import-not-found]
 
         scenario = ScenarioSpec(
             name="test_custom_layer",
@@ -435,7 +435,7 @@ def test_direct_custom_module_package_export_and_clean_load(tmp_path):
 
     sys.path.insert(0, str(tmp_path))
     try:
-        from direct_test_pkg.layers import CustomScale  # ty: ignore[unresolved-import]
+        from direct_test_pkg.layers import CustomScale  # ty: ignore[import-not-found]
 
         scenario = ScenarioSpec(
             name="test_direct_custom_module",
@@ -522,7 +522,7 @@ def test_explicit_include_modules_package_dynamic_import(tmp_path):
 
     sys.path.insert(0, str(tmp_path))
     try:
-        from custom_dynamic_pkg.layers import DynamicImportLayer  # ty: ignore[unresolved-import]
+        from custom_dynamic_pkg.layers import DynamicImportLayer  # ty: ignore[import-not-found]
 
         scenario = ScenarioSpec(
             name="test_dynamic_include",

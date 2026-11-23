@@ -17,7 +17,7 @@ import time
 import tomllib
 import zipfile
 
-from release_versions import resolve_tag, stable_version
+from release_versions import python_version, resolve_tag, tag_version
 
 
 CI_WORKFLOW = ".github/workflows/ci.yml"
@@ -93,7 +93,7 @@ def listing(api, path, key):
 
 
 def context(root, *, push=False):
-    """Return an existing stable tag identity and its exact checked-out commit."""
+    """Return an existing release tag identity and its exact checked-out commit."""
     repo = os.environ.get("GITHUB_REPOSITORY", "")
     require(
         re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo),
@@ -102,9 +102,9 @@ def context(root, *, push=False):
     ref = os.environ.get("GITHUB_REF", "")
     require(
         ref.startswith("refs/tags/"),
-        "Publication requires an existing full refs/tags/vX.Y.Z ref; dispatch with --ref vX.Y.Z",
+        "Publication requires an existing full refs/tags/vX.Y.Z[-rc.N] ref",
     )
-    stable_version(ref.removeprefix("refs/tags/"))
+    version = tag_version(ref.removeprefix("refs/tags/"))
     event = os.environ.get("GITHUB_EVENT_NAME", "")
     require(
         event in ({"push"} if push else {"push", "workflow_dispatch", "release"}),
@@ -112,10 +112,20 @@ def context(root, *, push=False):
     )
     event_path = os.environ.get("GITHUB_EVENT_PATH")
     if event_path:
+        payload = json.loads(Path(event_path).read_bytes())
         require(
-            not json.loads(Path(event_path).read_bytes()).get("deleted", False),
+            not payload.get("deleted", False),
             "Deleted tags cannot be released",
         )
+        if event == "release":
+            require(
+                not payload.get("release", {}).get("prerelease", False),
+                "GitHub prereleases cannot trigger production publication",
+            )
+    require(
+        event != "release" or "-rc." not in version,
+        "RC versions are candidate-only, not production GitHub releases",
+    )
     version, commit = resolve_tag(root, ref)
     require(
         not os.environ.get("GITHUB_SHA") or os.environ["GITHUB_SHA"] == commit,
@@ -164,55 +174,78 @@ def jobs_success(api, repo, run_id, attempt, name):
 
 
 def integrated(api, root, repo, ref, commit):
-    """Require protected-main ancestry and exact current main-push CI evidence.
+    """Require exact branch CI for RCs, or protected-main ancestry and CI for finals.
 
     Raises:
-        CandidateError: No exact-commit main-push CI run has a successful current gate.
+        CandidateError: No eligible exact-commit push CI has a successful current gate.
     """
     remote_tag(api, repo, ref, commit)
-    subprocess.run(
-        ["git", "-C", str(root), "fetch", "--no-tags", "origin", "main:refs/remotes/origin/main"],
-        check=True,
-    )
-    require(
+    is_rc = "-rc." in tag_version(ref.removeprefix("refs/tags/"))
+    if not is_rc:
         subprocess.run(
-            ["git", "-C", str(root), "merge-base", "--is-ancestor", commit, "origin/main"],
-            check=False,
-        ).returncode
-        == 0,
-        "Tag commit is not contained in origin/main",
-    )
-    require(
-        api.api(f"repos/{repo}/branches/main").get("protected") is True,
-        "main must be protected before releasing",
-    )
+            [
+                "git",
+                "-C",
+                str(root),
+                "fetch",
+                "--no-tags",
+                "origin",
+                "main:refs/remotes/origin/main",
+            ],
+            check=True,
+        )
+        require(
+            subprocess.run(
+                ["git", "-C", str(root), "merge-base", "--is-ancestor", commit, "origin/main"],
+                check=False,
+            ).returncode
+            == 0,
+            "Tag commit is not contained in origin/main",
+        )
+        require(
+            api.api(f"repos/{repo}/branches/main").get("protected") is True,
+            "main must be protected before releasing",
+        )
     runs = listing(
         api,
         f"repos/{repo}/actions/workflows/ci.yml/runs?head_sha={commit}&event=push",
         "workflow_runs",
     )
     for run in runs:
+        branch = run.get("head_branch") if is_rc else "main"
+        if is_rc:
+            if not isinstance(branch, str) or not branch:
+                continue
+            try:
+                tag_version(branch)
+            except ValueError:
+                pass
+            else:
+                continue
         if (
-            origin(run, repo, CI_WORKFLOW, commit, "main", {"push"})
+            origin(run, repo, CI_WORKFLOW, commit, branch, {"push"})
             and run.get("status") == "completed"
             and run.get("conclusion") == "success"
         ):
             if jobs_success(api, repo, run["id"], run["run_attempt"], "CI"):
                 print(
-                    f"Protected main CI: run {run['id']} attempt {run['run_attempt']} "
+                    f"{'RC branch' if is_rc else 'Protected main'} CI: "
+                    f"run {run['id']} attempt {run['run_attempt']} "
                     f"commit {commit}"
                 )
                 return
     raise CandidateError(
-        "No successful exact-commit main push ci.yml run with a successful current-attempt CI job"
+        f"No successful exact-commit {'branch' if is_rc else 'main'} push ci.yml run "
+        "with a successful current-attempt CI job"
     )
 
 
 def filenames(version):
     """Return the only five allowed publication filenames."""
+    normalized = python_version(version)
     return {
         "python": [
-            f"{directory}/{name}-{version}{suffix}"
+            f"{directory}/{name}-{normalized}{suffix}"
             for directory, name in (("nexuml", "nexuml"), ("nexuml-library", "nexuml_library"))
             for suffix in ("-py3-none-any.whl", ".tar.gz")
         ],
@@ -375,6 +408,7 @@ def tar_metadata(path, wanted):
 
 def python_metadata(path, version):
     """Check wheel/sdist identity and the rebuildable sdist project version."""
+    version = python_version(version)
     name = "nexuml-library" if path.name.startswith("nexuml_library-") else "nexuml"
     normalized = name.replace("-", "_")
     if path.suffix == ".whl":
@@ -494,7 +528,8 @@ def create(root, dist, python_id, studio_id):
     repo, ref, version, commit = context(root, push=True)
     for path in ("pyproject.toml", "library/pyproject.toml"):
         require(
-            tomllib.loads((root / path).read_text())["project"]["version"] == version,
+            tomllib.loads((root / path).read_text())["project"]["version"]
+            == python_version(version),
             f"Prepare the tag checkout before building: {path}",
         )
     require(
@@ -851,7 +886,7 @@ def main(argv=None):
                     }
                 )
                 return
-            repo, ref, version, commit = context(root, push=True)
+            repo, ref, version, commit = context(root)
             integrated(api, root, repo, ref, commit)
             emit({"version": version, "commit": commit})
         elif args.command == "create":
@@ -911,6 +946,7 @@ def main(argv=None):
                 "python-id": manifest["artifacts"]["python"],
                 "studio-id": manifest["artifacts"]["studio"],
                 "version": version,
+                "python-version": python_version(version),
                 "candidate-sha256": digest(raw),
             }
             if args.command == "resolve" or args.group in {"studio", "all"}:

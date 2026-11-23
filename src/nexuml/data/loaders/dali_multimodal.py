@@ -114,7 +114,7 @@ class KeyedDaliIterator(DALIGenericIterator):
         self.y_keys = list(y_keys)
         self.metadata_labels = metadata_labels
 
-    def __next__(self) -> tuple[TensorDict, TensorDict | None]:  # ty: ignore[invalid-method-override] — see class comment
+    def __next__(self) -> tuple[TensorDict, TensorDict | None]:  # ty: ignore[incompatible-method-override] — see class comment
         out = super().__next__()[0]
         x = TensorDict(
             {key: out[key] for key in self.x_keys},
@@ -129,7 +129,7 @@ class KeyedDaliIterator(DALIGenericIterator):
         }
         if self.metadata_labels is not None:
             indices = out[INDEX_OUTPUT].reshape(-1).long().cpu()
-            label_batch = cast(TensorDict, self.metadata_labels[indices])
+            label_batch = self.metadata_labels[indices]
             for key, value in label_batch.items():
                 y_dict[str(key)] = cast(torch.Tensor, value)
 

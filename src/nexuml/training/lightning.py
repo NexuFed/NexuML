@@ -777,14 +777,8 @@ class NexuSession:
 
         self._trainer = L.Trainer(
             max_epochs=max_epochs,
-            **(
-                {
-                    "max_steps": getattr(tr, "max_steps", None) or -1,
-                    "deterministic": getattr(tr, "deterministic", False),
-                }
-                if not reinforcement
-                else {}
-            ),
+            max_steps=-1 if reinforcement else (tr.max_steps or -1),
+            deterministic=None if reinforcement else tr.deterministic,
             accelerator=resolved_accelerator,
             devices=resolved_devices,
             num_nodes=self.num_nodes,

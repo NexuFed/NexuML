@@ -30,13 +30,13 @@ export function RunReview({initial,connection,catalog,sourceChanged,checkpoint,c
   const snapshot=discovery.data;
   const reviewed=review?.key===key ? review.document : null;
   const error=failure?.key===key ? failure.error : null;
+  useEffect(()=>{if(error)summary.current?.focus();},[error]);
   const errors=error instanceof ApiError ? error.fields : [];
   const blocked=sourceChanged || !backend?.available || pending || snapshot?.api_supported===false || snapshot?.submission_allowed===false;
   const suggestions=Object.fromEntries(Object.entries(snapshot?.options ?? {}).map(([path,values])=>[`execution.params.${path}`,values]));
   const fail=(error:unknown,captured:string)=>{
     if(currentKey.current!==captured)return;
     setFailure({key:captured,error:error instanceof Error ? error : new Error(String(error))});
-    requestAnimationFrame(()=>summary.current?.focus());
   };
   const prepare=async()=>{
     if(confirming.current || blocked)return;

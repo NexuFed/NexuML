@@ -190,13 +190,35 @@ GitHub Actions can replace a pending queued job even with that setting; serializ
 whole staging workflows can therefore lose release events. Durable archive commits
 make a superseded pending deploy safe.
 
+After staging succeeds, the publisher dispatches `docs.yml` on reviewed `main`.
+Only that `workflow_dispatch` run deploys; it skips rebuilding and staging. This
+avoids the [Pages tag/release deployment bug](https://github.com/actions/deploy-pages/issues/383)
+that can report success while serving the earlier branch artifact. The dispatch
+does not change the release tag, source identity or immutable snapshots.
+
 After acquiring the deployment slot, **fetch the newest complete `gh-pages` again**,
 extract and validate that archive, and upload that tree with GitHub's static Pages
 upload/deploy actions. Do not upload the earlier candidate or simply deploy the
 commit returned by a run that waited in the queue. Preserve `.nojekyll`. Artifacts
-must contain no symlinks or hardlinks. Stage permissions are contents-write;
+must contain no symlinks or hardlinks. Pages transport names include the run ID and
+attempt so retries cannot select multiple artifacts with the same name. Stage
+permissions are contents-write and actions-write for the dispatch;
 deployment needs pages-write and OIDC. Untrusted PR checks get neither credentials
 nor institute/self-hosted runners.
+
+The deployment then reads back public `versions.json`, available build identities,
+the root redirect, `/latest/`, and the canonical stable home, comparing their bytes with the validated archive.
+It allows five minutes for propagation and fails if the site stays stale. A green
+Pages API response alone is not successful delivery.
+
+To redeploy the current validated archive without rebuilding or restaging it:
+
+```sh
+gh workflow run docs.yml --repo NexuFed/NexuML --ref main
+```
+
+Dispatches from other refs cannot deploy. Do not retry a tag deployment or move a
+tag to work around stale Pages content.
 
 ## Maintainer-controlled Pages cutover and recovery
 
@@ -210,8 +232,8 @@ nor institute/self-hosted runners.
    **Deploy from a branch** to **GitHub Actions**. Keep the existing project URL,
    provider and archive branch. Do not add a CNAME or change DNS/custom-domain
     settings during this migration.
-   Ensure the protected `github-pages` environment permits main, dev, and the
-   supported stable tags under the repository's trusted-branch policy.
+    Ensure the protected `github-pages` environment permits `main`, the dispatch
+    reference, under the repository's trusted-branch policy.
 3. Run the trusted, validated main publisher (rerun the merged main commit's
    **Deploy docs** Actions run if it started before the Source setting changed).
    It stages main/global only; the dev branch separately updates dev. Old

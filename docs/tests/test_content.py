@@ -28,6 +28,17 @@ def test_install_container_tags_use_runtime_placeholders():
         assert f"`{tag}`" in container
 
 
+def test_release_guide_is_version_agnostic_and_explains_rc_support():
+    page = (ROOT / "docs/src/content/docs/development/release.mdx").read_text()
+    assert re.search(r"\bv?\d+\.\d+\.\d+(?:rc\d+)?\b", page) is None
+    assert 'git tag "$tag" "$release_commit"' in page
+    assert "`X.Y.ZrcN`" in page and "`X.Y.Z-rc.N`" in page
+    text = " ".join(page.split())
+    assert "RC tags require successful same-repository branch CI" in text
+    assert "RCs never publish to production PyPI or move npm/image latest aliases" in text
+    assert 'git tag "$tag" "$rc_commit"' in page
+
+
 def test_editorial_frontmatter_and_missing_routes_fail(tmp_path):
     content = tmp_path / "src/content/docs"
     content.mkdir(parents=True)

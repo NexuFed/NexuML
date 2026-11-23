@@ -13,6 +13,7 @@ concurrency:
   queue: max
 
 permissions:
+  actions: read
   contents: read
   packages: write
 
@@ -25,7 +26,7 @@ env:
 
 jobs:
   build:
-    runs-on: ika-runner
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v7
@@ -37,9 +38,15 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Validate trusted revision
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          git fetch --no-tags origin main:refs/remotes/origin/main
-          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            python3 scripts/release_candidate.py eligibility
+          else
+            git fetch --no-tags origin main:refs/remotes/origin/main
+            git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+          fi
 
       - uses: ./.github/actions/prepare-release
         if: startsWith(github.ref, 'refs/tags/')
@@ -66,6 +73,11 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
+
+      - name: Free hosted runner space
+        if: runner.environment == 'github-hosted'
+        # The CUDA development image needs more disk than the preinstalled SDKs leave free.
+        run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
 
       - name: Record runner capacity
         run: |
@@ -150,7 +162,7 @@ jobs:
           TAGS: ${{ steps.meta.outputs.tags }}
         run: |
           latest_tag=""
-          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+          if [[ "$GITHUB_REF" == refs/tags/* && "$GITHUB_REF_NAME" != *-rc.* ]]; then
             git fetch --tags origin main:refs/remotes/origin/main
             latest_tag=$(python3 - <<'PY'
           import subprocess

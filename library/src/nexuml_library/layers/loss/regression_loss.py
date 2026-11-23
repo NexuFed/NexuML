@@ -47,7 +47,7 @@ class _RegressionLossRuntime(PipelineLayer):
         self,
         x: "TensorDict",
         y: "TensorDict | None" = None,
-    ) -> tuple["TensorDict", "TensorDict | None"]:  # ty: ignore[invalid-method-override]
+    ) -> tuple["TensorDict", "TensorDict | None"]:  # ty: ignore[incompatible-method-override]
         predictions = cast(torch.Tensor, x[cast(list[str], self.keys_in)[0]])
         target = self.get_label(x, y)
 

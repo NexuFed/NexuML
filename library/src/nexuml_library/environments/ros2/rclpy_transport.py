@@ -11,15 +11,15 @@ class RclpyTransport:
 
     def __init__(self, definition, build_context):
         try:
-            import rclpy  # ty: ignore[unresolved-import]
-            from rclpy.context import Context  # ty: ignore[unresolved-import]
-            from rclpy.duration import Duration  # ty: ignore[unresolved-import]
-            from rclpy.executors import SingleThreadedExecutor  # ty: ignore[unresolved-import]
-            from rclpy.parameter import Parameter  # ty: ignore[unresolved-import]
-            from rclpy.qos import qos_profile_sensor_data  # ty: ignore[unresolved-import]
-            from sensor_msgs.msg import JointState  # ty: ignore[unresolved-import]
-            from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint  # ty: ignore[unresolved-import]
-            from std_srvs.srv import Empty  # ty: ignore[unresolved-import]
+            import rclpy  # ty: ignore[import-not-found]
+            from rclpy.context import Context  # ty: ignore[import-not-found]
+            from rclpy.duration import Duration  # ty: ignore[import-not-found]
+            from rclpy.executors import SingleThreadedExecutor  # ty: ignore[import-not-found]
+            from rclpy.parameter import Parameter  # ty: ignore[import-not-found]
+            from rclpy.qos import qos_profile_sensor_data  # ty: ignore[import-not-found]
+            from sensor_msgs.msg import JointState  # ty: ignore[import-not-found]
+            from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint  # ty: ignore[import-not-found]
+            from std_srvs.srv import Empty  # ty: ignore[import-not-found]
         except ImportError as error:
             raise ImportError(
                 "ROS joint control requires a sourced ROS 2 installation with rclpy, sensor_msgs, "

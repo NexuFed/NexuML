@@ -404,7 +404,7 @@ def test_partial_checkpoint_resumes_remaining_frames_and_optimizer_state(
         enable_loggers=False,
         enable_progress_bar=False,
     )
-    session.trainer.callbacks.append(InterruptAfterCheckpoint())  # ty: ignore[unresolved-attribute]
+    session.trainer.callbacks.append(InterruptAfterCheckpoint())  # ty: ignore[missing-attribute]
     with pytest.raises(RuntimeError, match="interrupted after checkpoint"):
         session.fit()
     assert isinstance(session.lightning_module, NexuRLLightningModule)

@@ -101,9 +101,9 @@ class _MultiLabelMAPMetricsRuntime(PipelineLayer):
         # MultilabelAveragePrecision handles per-class thresholding internally.
         labels = labels.to(probs.device)
         metric.to(probs.device)
-        metric.update(probs, labels.long())  # ty: ignore[invalid-argument-type]
+        metric.update(probs, labels.long())
         for key in self.keys_out:
-            x[key] = metric.compute().detach().expand(x.batch_size)  # ty: ignore[missing-argument]
+            x[key] = metric.compute().detach().expand(x.batch_size)
         return x, y
 
     def get_epoch_metrics(self, stage: str) -> dict[str, torch.Tensor]:
@@ -112,7 +112,7 @@ class _MultiLabelMAPMetricsRuntime(PipelineLayer):
         )
         if metric is None:
             return {}
-        return {"mAP": metric.compute().detach()}  # ty: ignore[missing-argument]
+        return {"mAP": metric.compute().detach()}
 
     def on_validation_start(self):
         super().on_validation_start()

@@ -3711,20 +3711,6 @@ wheels = [
 ]
 
 [[package]]
-name = "orjson"
-version = "3.11.9"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/7e/0c/964746fcafbd16f8ff53219ad9f6b412b34f345c75f384ad434ceaadb538/orjson-3.11.9.tar.gz", hash = "sha256:4fef17e1f8722c11587a6ef18e35902450221da0028e65dbaaa543619e68e48f", size = 5599163, upload-time = "2026-05-06T15:11:08.309Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/0e/a4/82b7a2fe5d8a67a59ed831b24d59a3d46ea7d207b66e1602d376541d94a6/orjson-3.11.9-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:be4fa4f0af7fa18951f7ab3fc2148e223af211bf03f59e1c6034ec3f97f21d61", size = 134014, upload-time = "2026-05-06T15:10:08.213Z" },
-    { url = "https://files.pythonhosted.org/packages/df/e5/4d2d8af06f788329b4f78f8cc3679bb395392fcaa1e4d8d3c33e85308fa4/orjson-3.11.9-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:71e63adb0e1f1ed5d9e168f50a91ceb93ae6420731d222dc7da5c69409aa47aa", size = 136943, upload-time = "2026-05-06T15:10:14.405Z" },
-    { url = "https://files.pythonhosted.org/packages/a1/08/dca0082dd2a194acb93e5457e73455388e2e2ca464a2672449a9ddbb679d/orjson-3.11.9-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:4e39364e726a8fff737309aff059ff67d8a8c8d5b677be7bb49a8b3e84b7e218", size = 134033, upload-time = "2026-05-06T15:10:31.152Z" },
-    { url = "https://files.pythonhosted.org/packages/04/83/45fbb6d962e260807f99441db9613cee868ceda4baceda59b3720a563f97/orjson-3.11.9-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:9f78cf8fec5bd627f4082b8dfeac7871b43d7f3274904492a43dab39f18a19a0", size = 136915, upload-time = "2026-05-06T15:10:38.013Z" },
-    { url = "https://files.pythonhosted.org/packages/76/3e/c0b690253f0b82d86e99949af13533363acfb5432ecb5d53dd5b3bce9c34/orjson-3.11.9-cp314-cp314-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:aaea64f3f467d22e70eeed68bdccb3bc4f83f650446c4a03c59f2cba28a108db", size = 134030, upload-time = "2026-05-06T15:10:54.988Z" },
-    { url = "https://files.pythonhosted.org/packages/97/4e/00503f64204bf859b37213a63927028f30fb6268cd8677fb0a5ad48155e1/orjson-3.11.9-cp314-cp314-musllinux_1_2_x86_64.whl", hash = "sha256:5f63aaf97afd9f6dec5b1a68e1b8da12bfccb4cb9a9a65c3e0b6c847849e7586", size = 136921, upload-time = "2026-05-06T15:11:02.176Z" },
-]
-
-[[package]]
 name = "osqp"
 version = "1.0.5"
 source = { registry = "https://pypi.org/simple" }
@@ -4973,22 +4959,16 @@ wheels = [
 
 [[package]]
 name = "tensordict"
-version = "0.14.2"
+version = "0.15.6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cloudpickle" },
-    { name = "importlib-metadata" },
     { name = "numpy" },
-    { name = "orjson" },
-    { name = "packaging" },
     { name = "pyvers" },
     { name = "torch" },
 ]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/bc/e6/a58bfc3290322b92805f544e5cad860a9b68245752313a3c2908a847417f/tensordict-0.14.2-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:0a748755bfb35db40123bcda67bfebac0138283d25deda76fe30be58ce10c247", size = 595446, upload-time = "2026-09-09T19:58:00.61Z" },
-    { url = "https://files.pythonhosted.org/packages/d2/a2/75ffd4e8dfb42f54bc65b1a9b6b8eee9639328434681177fa2319937b18f/tensordict-0.14.2-cp313-cp313-manylinux_2_28_x86_64.whl", hash = "sha256:75a2a55f4633fbd3b82d158b2442e561bd595d48138ca473a2008e4e8689e640", size = 595477, upload-time = "2026-09-09T19:58:07.511Z" },
-    { url = "https://files.pythonhosted.org/packages/2b/e3/ca37b8f2588d0caed67bcdbb5ec776553c2dda689db0f64b42795211dda9/tensordict-0.14.2-cp314-cp314-manylinux_2_28_x86_64.whl", hash = "sha256:6d710cbc3091be3fee8d009492fb372df4c732e064495cf0ed5cdfacb5e168bd", size = 595951, upload-time = "2026-09-09T19:58:15.233Z" },
-    { url = "https://files.pythonhosted.org/packages/bf/a7/ff158220025f451f2c041bad424a406e0e41b1bee238c7163c3ffc5123dc/tensordict-0.14.2-cp314-cp314t-manylinux_2_28_x86_64.whl", hash = "sha256:0482dd97ba526d4918f8920aaa3936f6fe32f2ed4682a714e779582eacba4c2c", size = 595837, upload-time = "2026-09-09T19:58:21.257Z" },
+    { url = "https://files.pythonhosted.org/packages/78/6a/afc9e529c87fc47d6b9d869d7d4906334b4153f75764338158da1f32a1cd/tensordict-0.15.6-py3-none-any.whl", hash = "sha256:fd4dc096ad5f98d9418a90ed572fdb1d1f1f3286c82b7dc138e9a4130a6ba5c3", size = 876045, upload-time = "2026-11-11T21:18:33.021Z" },
 ]
 
 [[package]]
@@ -5124,7 +5104,7 @@ wheels = [
 
 [[package]]
 name = "torchrl"
-version = "0.14.0"
+version = "0.15.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cloudpickle" },
@@ -5136,9 +5116,9 @@ dependencies = [
     { name = "torch" },
 ]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/61/99/97219a50d8cfda1f1be1b43851c852f60afe28facc88d6e211acbb4286a2/torchrl-0.14.0-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:80271ff526cac25757bd3fe1a60ec815098fdcab254c46acedd76586d6f1a828", size = 3359496, upload-time = "2026-09-10T14:37:53.544Z" },
-    { url = "https://files.pythonhosted.org/packages/08/2a/01a9be952cde3ec79e97b533a4d27977282a6bdeec42107de3aada354f9e/torchrl-0.14.0-cp313-cp313-manylinux_2_28_x86_64.whl", hash = "sha256:54b531edd5ad20383c6de56070a603a67ed02341f98e7dc9b13d319c07193ac1", size = 3359505, upload-time = "2026-09-10T14:38:01.819Z" },
-    { url = "https://files.pythonhosted.org/packages/05/da/ddd5e8c7b8d4e9c8575e7199299cd3ec45425cffb08a0c07ea3685691109/torchrl-0.14.0-cp314-cp314-manylinux_2_28_x86_64.whl", hash = "sha256:f2649f41538e94e0f3070445c766e93eb3dc3a98d5b1d2d6f183fac6a757e7c2", size = 3359990, upload-time = "2026-09-10T14:38:10.847Z" },
+    { url = "https://files.pythonhosted.org/packages/ac/cf/3c5e2a30417a21edba70212ee74c0d3d7041aaadf5a9e655bd37da2dcaaf/torchrl-0.15.0-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:81fb7fef8908e9cc57d7e6660d965c39943b0af417963cd8c4c04b3f50a63a60", size = 3594965, upload-time = "2026-11-10T01:34:15.747Z" },
+    { url = "https://files.pythonhosted.org/packages/ed/ea/140008ed548b4e9cf13ec9c82983a8baff6e6176425cd9ebe4666a8fbab7/torchrl-0.15.0-cp313-cp313-manylinux_2_28_x86_64.whl", hash = "sha256:6f238905a879d5b595b0b9fc8d2edf7fee50a8e12c95d1a0d76c2bebc298eb9e", size = 3595784, upload-time = "2026-11-10T01:34:22.793Z" },
+    { url = "https://files.pythonhosted.org/packages/94/f6/4910360be19745fcad20faf65670f2643072cf9177633328289fcb43c7a9/torchrl-0.15.0-cp314-cp314-manylinux_2_28_x86_64.whl", hash = "sha256:c1311b08869d0059535d7449a91bad7db48e02495109920ed71a137c90a2db05", size = 3596488, upload-time = "2026-11-10T01:34:29.984Z" },
 ]
 
 [[package]]
@@ -5234,12 +5214,12 @@ wheels = [
 
 [[package]]
 name = "ty"
-version = "0.0.53"
+version = "0.0.101"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/96/87/d5a1d099a41ed22f939b9eec5af3c40bd907409e673cc0b8fcfd1e354ab2/ty-0.0.53.tar.gz", hash = "sha256:86e8c522b1a1ae267cd6442cc93c0c954a2a59b89565e4fb493c1133bd5a056e", size = 5998692, upload-time = "2026-06-24T06:53:57.021Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/34/6c/22c0680e71f529e084ee2e308a51f04317298248ee699f4914c02129c351/ty-0.0.101.tar.gz", hash = "sha256:dbb43374b49fe30ea49e244da63aa90098dff1257a49ae4351b44881ccef724f", size = 8244347, upload-time = "2026-11-11T13:53:32.912Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/23/0a/778deab4b31e3f6879073c668a4851de41f96174b5ff6bc8971c7d01d7b3/ty-0.0.53-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:ef0664e9f707a4937e292ae83403e0486f610107b76f25e0987fec1bcda04121", size = 12353792, upload-time = "2026-06-24T06:53:36.347Z" },
-    { url = "https://files.pythonhosted.org/packages/7c/bb/af534430d07cf26b30f7ca76ac0f34df11bc3957d92eb29597ffa803626b/ty-0.0.53-py3-none-musllinux_1_2_x86_64.whl", hash = "sha256:de583808d93f7b6c93e1841deb4db5b181d8a7a1503c674f8143d6e06f2c67a2", size = 12462111, upload-time = "2026-06-24T06:53:47.76Z" },
+    { url = "https://files.pythonhosted.org/packages/0d/ff/647ce788ceccacf2da38126115cf0ba505093aeadc0bc7a09da4f120cfb7/ty-0.0.101-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:e6d912d5593a6abc953b135c7d73d58dbeefb898d7306337ce16bbd88b01a616", size = 16832271, upload-time = "2026-11-11T13:53:06.036Z" },
+    { url = "https://files.pythonhosted.org/packages/43/2c/a7377d6c7a866e75d0e9a7821e37e12b4bbb9c4c17f6f6a0a9eb69d8866d/ty-0.0.101-py3-none-musllinux_1_2_x86_64.whl", hash = "sha256:02e2aec3bdb7051882ee1514a78f0161f4d51a53b6263c7d6a818ae5dc85a79e", size = 15382120, upload-time = "2026-11-11T13:53:21.289Z" },
 ]
 
 [[package]]

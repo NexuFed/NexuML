@@ -127,6 +127,35 @@ configs/*.yaml
 dvc.yaml
 tmp/
 .artifacts/
+.slim/
+/experiments/
+/reports/
+.literature/
+.packaged_models/
+.kube/
+.nexuml/
+.claude/
+.openchamber/
+/exported_model/
+/external/
+/graphify-out/
+/skills/*-workspace/
+
+# Frontend dependencies and generated documentation/browser resources
+**/node_modules/
+**/.venv*/
+**/__pycache__/
+**/.pytest_cache/
+**/.ruff_cache/
+docs/.astro/
+docs/.generated/
+docs/.output/
+docs/python/.venv/
+studio/.next/
+studio/*.tgz
+studio/tsconfig.tsbuildinfo
+**/playwright-report/
+**/test-results/
 
 # ── Docker-specific ───────────────────────────────────────────────────────────
 .dockerignore

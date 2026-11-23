@@ -49,7 +49,7 @@ class PostTrainFitLayer(PipelineLayer):
     ) -> tuple[TensorDict, TensorDict | None]:
         """Apply fitted transformation and return (x, y) with output key(s) written."""
 
-    def forward(  # ty: ignore[invalid-method-override]
+    def forward(  # ty: ignore[incompatible-method-override]
         self, x: TensorDict, y: TensorDict | None = None
     ) -> tuple[TensorDict, TensorDict | None]:
         if self._fitted:
