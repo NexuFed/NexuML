@@ -159,3 +159,5 @@ studio/tsconfig.tsbuildinfo
 
 # ── Docker-specific ───────────────────────────────────────────────────────────
 .dockerignore
+# The local-only Isaac build uses a separately staged context.
+/containers/isaac/

@@ -1,0 +1,13 @@
+{
+  "antlr_sha256": "d0362e2e3940d9767351b8d5af3fda20ae0c8b3c71b24142e8f69e7555268cde",
+  "antlr_wheel": "antlr4_python3_runtime-4.9.3-py3-none-any.whl",
+  "base": "nvcr.io/nvidia/isaac-sim:6.2.0@sha256:bcb96e0b87c28ad446a2a6a2f0fdb7d82b9867f18b96a94c796912c61f07337f",
+  "lab_cache": "sdists-v10/git/8d247d8127ea60c7/70ab24fec3eabf51",
+  "lab_checkout": "git-v1/checkouts/8893ae68ea014c6b/70ab24fec",
+  "lab_db": "git-v1/db/8893ae68ea014c6b",
+  "lab_revision": "70ab24fec3eabf51222817db0cdb5a4e7133bd7e",
+  "lab_wheel": "isaaclab-3.0.0-py3-none-any.whl",
+  "lab_sha256": "3ce4b0bfba6b0038b8e762785ab82ad458f764d424a07b4167010ef31b807399",
+  "shim_sha256": "bc6a2a23086bb60681bb67d539412cf7bfbd62123c87b2bc471a9cf5bcf60282",
+  "uv_sha256": "783ddacbd62bce7d3201bd1d0c2287ac3aa63813ce91f97292c83f26d6227a26"
+}

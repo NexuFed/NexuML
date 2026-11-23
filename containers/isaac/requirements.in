@@ -1,0 +1,16 @@
+# Isaac-only native ABI and qualified spectator pins. NexuML requirements come from its wheels.
+mujoco-usd-converter==0.6.1
+torch==2.11.0
+torchvision==0.26.0
+torchaudio==2.11.0
+torchrl==0.14.0
+tensordict==0.14.2
+torchcodec==0.11.1+cu130
+viser==1.1.1
+newton==1.6.1
+
+# These NVIDIA wheel listings do not supply hashes to uv's requirements export.
+nvidia-dali-cuda120 @ https://pypi.nvidia.com/nvidia-dali-cuda120/nvidia_dali_cuda120-2.4.0-py3-none-manylinux_2_28_x86_64.whl#sha256=8be1bf9137cf4e3a62b51db5de818226ef6c81ec17791672d06ed5351d6e8eb1
+ovphysx @ https://pypi.nvidia.com/ovphysx/ovphysx-0.6.4.72118723-py3-none-manylinux_2_35_x86_64.whl#sha256=8276824ef74bd79ae231804850a9dcaf218967c6dd92bc31f4d1bc1c1e0d4643
+ovrtx @ https://pypi.nvidia.com/ovrtx/ovrtx-0.5.1.385782-py3-none-manylinux_2_35_x86_64.whl#sha256=232d46d872401d2870d1a6118ee256ba63db966bd9c1877ebe3e11a9cdd96091
+ovstage @ https://pypi.nvidia.com/ovstage/ovstage-0.2.1.385922-py3-none-manylinux_2_35_x86_64.whl#sha256=19b5549260f6088678ec5ff914517fd18a5629319bbb531401fff8ebf3fe5c5d

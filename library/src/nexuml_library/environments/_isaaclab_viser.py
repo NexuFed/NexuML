@@ -2,7 +2,8 @@
 
 from contextlib import contextmanager
 from hashlib import sha256
-from importlib.metadata import distribution
+from importlib.metadata import PackageNotFoundError, distribution
+from importlib.util import find_spec
 import atexit
 import json
 import os
@@ -79,10 +80,37 @@ _SOURCE_HASHES = {
 }
 
 
+_SIM_BUNDLE_VERSION = "6.2.0-rc.14+release.52805.02189a84.gl"
+_SIM_BUNDLE_INIT_SHA256 = "c6f9f064b9dd5a9fca8b52cb5c94484d0f334ff82ded06e525e6edc0196a3469"
+
+
+def _qualify_isaacsim():
+    try:
+        installed = distribution("isaacsim")
+    except PackageNotFoundError:
+        # The official container bundles the SDK without a pip distribution.
+        spec = find_spec("isaacsim")
+        if spec is None or spec.origin is None:
+            raise RuntimeError("Unqualified Isaac Sim SDK bundle") from None
+        origin = Path(spec.origin).resolve()
+        if origin.parts[-3:] != ("python_packages", "isaacsim", "__init__.py"):
+            raise RuntimeError("Unqualified Isaac Sim SDK bundle origin") from None
+        try:
+            version = (origin.parents[2] / "VERSION").read_text().strip()
+            digest = sha256(origin.read_bytes()).hexdigest()
+        except OSError as error:
+            raise RuntimeError("Unverifiable Isaac Sim SDK bundle") from error
+        if version != _SIM_BUNDLE_VERSION or digest != _SIM_BUNDLE_INIT_SHA256:
+            raise RuntimeError("Unqualified Isaac Sim SDK bundle identity") from None
+    else:
+        if installed.version != "6.2.0.0":
+            raise RuntimeError(f"Unqualified spectator distribution: isaacsim {installed.version}")
+
+
 def _qualify_installation():
+    _qualify_isaacsim()
     for name, expected in (
         ("isaaclab", "3.0.0"),
-        ("isaacsim", "6.2.0.0"),
         ("newton", "1.6.1"),
         ("viser", "1.1.1"),
     ):

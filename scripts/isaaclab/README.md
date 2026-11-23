@@ -1,5 +1,9 @@
 # Isaac Lab execution
 
+For the combined Isaac Sim editor and Lab training image, use the
+[local Isaac container build](../../containers/isaac/README.md). The older
+Sim 6.1 / Lab EA recipe below is not the current workstation image.
+
 For declarative state-only Cartpole training, use
 `nexuml train --scenario-file scripts/isaaclab/cartpole.py` in the prepared venv.
 The [Cartpole guide](../../docs/src/content/docs/how-to/isaac-cartpole.mdx) covers the learning

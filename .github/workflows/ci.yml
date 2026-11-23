@@ -77,6 +77,9 @@ jobs:
           echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
           echo "VIRTUAL_ENV=$PWD/.venv" >> "$GITHUB_ENV"
 
+      - name: Verify Isaac image lock
+        run: python containers/isaac/stage.py --check
+
       - name: Verify independently installable agent skills
         run: |
           python skills/tests/check_skills.py
