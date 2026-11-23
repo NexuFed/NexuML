@@ -87,3 +87,16 @@ Quickstarts SHALL provide the exact remote submission, status, artifact retrieva
 - **WHEN** its commands are executed without editing application source
 - **THEN** they select the documented remote runtime and produce the named artifact types
 - **AND** unsupported nested overrides, missing worker files or absent prerequisites produce an actionable next step
+
+### Requirement: O9 Researchers can inspect individual benchmark outcomes
+
+With MLflow selected, the worker SHALL publish machine-readable episode results, per-condition scores and their denominators through existing tracking. Results SHALL include task-defined success, termination reason and measured task errors where available. A selected failed episode SHALL link to a bounded trace or clip from that trial, retrievable after worker cleanup.
+
+#### Scenario: An engineer compares episodes across two runs
+- **WHEN** the engineer retrieves the episode rows
+- **THEN** each row identifies the suite/version, policy, source checkpoint when known, task/assets, condition, seed or starting state, and episode ID
+
+#### Scenario: A later episode fails while episode zero succeeds
+- **WHEN** the researcher opens the completed run after its worker exits
+- **THEN** the researcher can find the failed episode by ID, see its condition and reason, and retrieve its associated diagnostic
+- **AND** the first episode's preview is not substituted for the failure or presented as the aggregate result

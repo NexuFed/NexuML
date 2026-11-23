@@ -147,3 +147,16 @@ SDK Jobs SHALL register as `ray-jobs-sdk` using `dev`'s `ExecutionBackendDefinit
 - **WHEN** a config or profile uses the previous `execution.kind` representation
 - **THEN** loading fails with an actionable registered-schema diagnostic
 - **AND** the framework neither accepts a parallel legacy schema nor silently selects local or KubeRay execution
+
+### Requirement: R11 Benchmark weight inputs are resolved on the worker
+
+Benchmark evaluation through `ray-jobs-sdk` SHALL accept exactly one trusted worker-side weight input: an exported policy package or a trainer checkpoint. The submitter SHALL dispatch before reading weights. The checkpoint route SHALL reuse canonical checkpoint export to materialize the complete policy at an attempt-owned path, then perform inference without resuming training. Ordinary package evaluation remains supported.
+
+#### Scenario: A selected Isaac checkpoint is benchmarked after fit
+- **WHEN** the training native process has exited and the user submits evaluation with a named suite and the worker checkpoint
+- **THEN** a fresh native evaluation process runs the suite with the checkpoint-derived policy, preserving source checkpoint and policy identity
+- **AND** no collection or optimizer updates are performed to produce the policy and no training-time simulator is reused
+
+#### Scenario: Ambiguous benchmark weights are supplied
+- **WHEN** both a package and a checkpoint are supplied, or neither is supplied
+- **THEN** the command identifies the invalid weight selection before submission without opening either input

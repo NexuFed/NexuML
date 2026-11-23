@@ -97,3 +97,17 @@ Viewer mutation capabilities SHALL be disclosed. Sessions accepting simulation p
 - **WHEN** it displays a qualified spectator through an approved private route
 - **THEN** the result identifies browser-side software rendering
 - **AND** it does not claim server RTX, native sensor or universal renderer qualification
+
+### Requirement: V9 The authored task is visible without changing its physics
+
+Acceptance SHALL exercise the authored task's live training view and separately enabled fresh evaluation view on the declared physics backend, using project-supplied camera settings. Evidence SHALL identify the scene edit, task, purpose, physics, viewer and renderer where applicable. Sensor diagnostics, video captured from an episode, and a new rollout of the policy SHALL be labelled separately.
+
+#### Scenario: The engineer follows the authored target through training and evaluation
+- **WHEN** the worker trains and later evaluates the exported policy with live viewing enabled for each purpose
+- **THEN** both private views show the identified edited scene and advancing state, without adding a camera pose keyed to that task name in NexuML
+- **AND** any claimed video is from the identified episode on its declared backend
+
+#### Scenario: A camera-policy recipe has sensor output but no spectator video renderer
+- **WHEN** the run retains raw or processed sensor diagnostics but cannot record the requested spectator video
+- **THEN** only the diagnostics are reported as delivered and the requested recording remains unsupported or blocked
+- **AND** a screen capture or recording from another physics backend does not qualify that video

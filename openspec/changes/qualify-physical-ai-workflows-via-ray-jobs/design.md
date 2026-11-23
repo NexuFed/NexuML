@@ -2,7 +2,7 @@
 
 ## Context
 
-See [proposal.md](proposal.md) for motivation and `specs/*/spec.md` for the four acceptance contracts. [verification-matrix.md](verification-matrix.md) defines the bounded recipe and gate inventory.
+See [proposal.md](proposal.md) for motivation and `specs/*/spec.md` for the four acceptance contracts. [verification-matrix.md](verification-matrix.md) defines the registered-recipe inventory; D11 adds two public user journeys outside that inventory.
 
 Planning baseline: source/published feature head `a812e54e1bd7ac4b52d52ce04f739064d5fe620a`, PR #15 against `dev` `f8d5490ab1446177aa26ba529124310f0b8041f2`. The PR was draft/conflicting; no checks were attached to that new head at inspection. Earlier failed CI on `a5011a0` is diagnostic history, not the new head's result. Re-resolve these identities during apply; they are not permanent pins.
 
@@ -150,6 +150,16 @@ The bounded driver writes one per-attempt JSON receipt and per-stage logs, then 
 Reuse existing hermetic tests locally with CUDA hidden and existing remote opt-in markers/CI tiers. No automatic live cluster submission on every ordinary PR test. Required static/test/package checks must be green, while required remote matrix results must exist for the final candidate; a skipped optional workflow is not that proof. An independent read-only review checks integration, secret/output handling, package boundaries and claim-to-evidence mapping before readiness. Update PR/Linear only when separately authorized; do not close the full NEX-248 roadmap.
 
 Alternative rejected: embedding test counts in planning files as completion evidence or automatically uploading private run artifacts with the implementation commit.
+
+### D11. Qualify project-owned tasks and benchmarks through public evaluation
+
+**Authored task.** Save a scene in the full Isaac Sim editor with an identifiable edit (for example, move the reach target). Make the USD and its referenced layers/assets plus the trusted, registered Lab task package available on the GPU worker. Record their identities and check the edited target on the worker; a matching filename does not prove the same scene loaded. The project supplies observations, actions, control units/rate, resets, success predicate and camera settings. Before learning, check a reset and known scripted action against expected motion and success versus timeout. The editor is the authoring tool; Viser observes a separate native process. Exercise ordinary Ray CLI train, partial resume, export and fresh live evaluation without editing the framework for that robot. Use the task's actual outcome, even when its reward is positive on a failed trial.
+
+**Benchmark.** Reuse the [common policy evaluation and Arena work](../add-isaac-physical-ai-backend/specs/physical-policy-evaluation/spec.md). A named, versioned suite is an evaluation input, independent of how weights were obtained. Submit `evaluate` twice through the same SDK transport: once with a worker-accessible complete policy and once with its trusted trainer checkpoint as the sole weight input. The worker uses the existing checkpoint-to-policy export path in its own attempt directory; it does not resume the learner. The inference stage in both cases loads the complete policy, including its processor and action adapter. For Isaac, run selected checkpoint evaluations after fit exits in fresh native processes, never by adding an in-fit simulator.
+
+Arena owns the chosen suite's scene variations, rollout and scoring. Its policy adapter checks observation meaning, joint/action order, units, control rate and processing ownership, and resets policy history for each completed environment. Reject incompatible mappings rather than translate one control task into another. Compare decoded actions on fixed observations and episode outcomes on matched held-out starts under declared numerical/rollout tolerances. Missing compatible Arena/runtime/assets block the benchmark; upstream smoke runs do not count. The Ray change qualifies the user journey, not a second suite engine or new MuJoCo/Gazebo benchmark implementation.
+
+**What can be inspected afterwards.** Publish per-episode rows and the suite summary through existing MLflow logging. Link a selected failed episode to a bounded trace or clip from that episode. A video shows the original event; a fresh policy rollout is another trial. In the matrix's I2 native-media row, identify sensor diagnostics separately from spectator video. A PhysX recording cannot qualify Newton recording, and a user-authored camera must not rely on a framework table of robot names.
 
 ## Risks / Trade-offs
 

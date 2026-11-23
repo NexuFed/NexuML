@@ -92,3 +92,25 @@ Native GPU, viewer, middleware and remote-browser gates SHALL name their exact p
 - **WHEN** the live ROS/Gazebo viewer journey is selected
 - **THEN** that gate reports the missing world/controller/reset/display prerequisites
 - **AND** it neither executes on the local GPU nor treats fake-transport tests as the live result
+
+### Requirement: W9 A project-owned Isaac task uses the public workflow
+
+A project-owned registered Isaac Lab task SHALL use a scene saved in Isaac Sim and its referenced assets through ordinary NexuML configuration. On the worker, acceptance SHALL verify an identifiable authored edit, reset behavior, the physical effect of a known scripted action, and task-defined success distinct from reward and timeout before training. Training, interrupted continuation, export and fresh evaluation SHALL use the public CLI without adding a task-name branch to NexuML.
+
+#### Scenario: An engineer changes a target in the editor
+- **WHEN** the engineer saves the changed scene and submits the project task
+- **THEN** the worker verifies the changed target and referenced asset identities, and the scripted control produces the expected motion and task outcome
+- **AND** the exported policy is evaluated on that task using the declared control contract, with unsuccessful trials counted even when they earn positive reward
+
+### Requirement: W10 A named policy benchmark accepts a package or its checkpoint
+
+The public evaluation workflow SHALL qualify a pinned Isaac Lab-Arena suite on a compatible NexuML policy, using the maintained suite's held-out conditions, starts, horizons and scoring rules. It SHALL exercise both exported-package and standalone trainer-checkpoint inputs through registered Ray Jobs. Compatibility SHALL cover observation/processor semantics, action meaning/order/units, control rate and episode-state resets. Unavailable prerequisites SHALL be reported as blocked.
+
+#### Scenario: Two weight inputs represent the same trained policy
+- **WHEN** both routes evaluate the same suite revision on matched starts with the same action-selection settings
+- **THEN** the decoded actions on fixed observations agree within declared tolerances and both results account for the same trials under the same scoring rules
+- **AND** per-condition scores agree within tolerances declared before the run, with discrepancies visible rather than averaged away
+
+#### Scenario: Action shapes match but control mode differs
+- **WHEN** a suite expects end-effector commands and the policy emits joint-position targets of the same width
+- **THEN** the pairing is rejected before scored rollouts and no benchmark score is published
