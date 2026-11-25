@@ -20,7 +20,7 @@ Ray collection SHALL use existing/native Ray connection and resource scheduling,
 
 ### Requirement: Synchronous collection preserves on-policy semantics
 
-For supported PPO/IPPO/MAPPO topologies, each learner update SHALL consume complete policy-version-consistent rollouts, preserving time/environment axes, actual frame counts, behavior statistics, critic inputs or values, terminal versus reset observations, terminated/truncated signals and required masks. Updated rollout weights SHALL be acknowledged before the next on-policy collection. Stale, incomplete or unsupported asynchronous/multi-learner requests SHALL be rejected rather than silently alter learning.
+For PPO/IPPO/MAPPO, each update SHALL use complete rollouts from one policy version. Rollouts SHALL preserve time and environment axes, actual frame counts, behavior statistics, critic inputs or values, terminal versus reset observations, termination versus truncation, and required masks. Workers SHALL acknowledge new weights before collecting again. The learner SHALL reject stale or incomplete batches and unsupported asynchronous or multi-learner configurations.
 
 #### Scenario: A worker returns data from an outdated rollout policy
 - **GIVEN** The learner is assembling a synchronous update
