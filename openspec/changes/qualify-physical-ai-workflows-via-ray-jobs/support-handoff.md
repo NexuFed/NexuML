@@ -3,7 +3,7 @@
 ## Status and authority
 
 Partial support handoff, not a release approval. [tasks.md](tasks.md) remains the
-authority: **21/36 complete**. Required blocked rows are not waived. No publication,
+authority: **24/38 complete**. Required blocked rows are not waived. No publication,
 PR/Linear status change, merge or archive is authorized by this handoff.
 
 - Published head: `01d3c0a7dcde55b5d4915e9484d6f069e946fe67`, based on actual
@@ -16,6 +16,201 @@ PR/Linear status change, merge or archive is authorized by this handoff.
   Historical evidence keeps its actual source/runtime identity, never the new hash.
 - Published-head CI remains failed; exact-candidate CI requires separately authorized
   publication. Local checks and historical remote passes are not that CI result.
+
+## Gazebo qualification on stock Ray workers
+
+- RoboStack Jazzy plus conda-forge resolved a Linux x86-64 stack for Python
+  3.12 and glibc 2.35, including native `rclpy`, Fast DDS, Gazebo Harmonic,
+  `ros_gz_bridge`, `gz_ros2_control`, and both joint controllers. The resolved
+  plan has 648 SHA-256-pinned artifacts (~915 MiB compressed). The lock, pinned
+  Pixi bootstrap and probe inputs are retained privately.
+- Guarded one-GPU `ray-jobs-sdk` admission `994172bf2a8b4cea851cea9f556a5e7e`
+  installed the stack in a disposable job-local prefix on the stock image.
+  ROS 2 on Python 3.12.16/glibc 2.35 loaded native type support and delivered
+  a loopback JointState; Gazebo Harmonic 8.10.0 ran a minimal headless world
+  for ten iterations. These stages passed. The overall job stayed `FAILED`:
+  the trailing fixed preflight rejected controller-only metadata included
+  in its worker arguments (exit 2). The complete receipt remains in
+  `gazebo-robostack-admission-Zry1os`.
+- Follow-up `673ec192ba54422f933fa01d0ffe0495` repeated the ROS and
+  headless world passes and constructed/closed the production ROS transport
+  in the layered uv environment. The bridge did not start: the minimal
+  profile omitted the `ros2 run` extension. The world-control service
+  therefore timed out; no clock/reset proof. Inputs and logs retained in
+  `gazebo-robostack-bridge-aOvthr`. Follow-up `0e972efb16474acab568e3daafd68c94`
+  invoked the installed bridge executable directly and `SUCCEEDED`. The
+  regular worker preflight passed, and the job-local NexuML environment
+  observed advancing Gazebo clock messages and a successful Gazebo
+  world-control reset response through ROS. This empty-world probe does not
+  prove the task's `std_srvs/Empty` reset adapter or movement through its
+  joint controller. The locked inputs and original logs are hash-retained
+  in `gazebo-robostack-bridge-corrected-4kTWFF`. The controlled robot,
+  public training/resume/export/replay and private GUI remain unqualified.
+- The next run, `6d3c5075ab6b4293bb65c7efde05c7f1`, added a task-owned
+  two-joint world and real `ros2_control` position controllers. It checks
+  measured movement to `[0.5, -0.5]` rad and return to neutral through the
+  task's `std_srvs/Empty` service, then attempts a bounded public CLI
+  train/export/evaluate smoke on the same simulation. The generated URDF
+  and controller declarations passed static consistency checks. Spawn and
+  controller setup commands returned successfully, but the control probe
+  failed before any measured movement: the Torch-first process loaded the
+  worker's older `libstdc++.so.6` before `rclpy`, which needs `CXXABI_1.3.15`.
+  The earlier bridge probe imported `rclpy` first. Retained original inputs
+  and logs in `gazebo-two-joint-E1AxxE`. The Pixi lock remains separate from
+  `uv.lock`, and the Ray image is unchanged.
+- Follow-up `0fb6a8e35ede41aca5a9b1492275d106` preloaded only the locked
+  job-local C++ runtime for the application subprocesses. It measured
+  `[0, 0]` → `[0.47138, -0.46613]` rad under the real joint controller and
+  reset to `[0.00044, -0.00044]` rad through `std_srvs/Empty`. The job stayed
+  `FAILED`: CLI training reached policy export, where static source scanning
+  treated installed ROS modules as archive dependencies. No replay ran.
+  Original logs and hashes are retained in `gazebo-two-joint-loader-6b2n5h`.
+- ROS transport now imports ROS only when constructing a live environment.
+  The export regression reproduced the native `PackagingError` with ROS
+  import names present on the old code; the fix exports and decodes the
+  same action after blocking all ROS imports. Focused CPU checks: 153 tests
+  and 58 subtests passed, one native test skipped; scoped Ruff, locked `ty`,
+  diff check and strict OpenSpec passed. Job
+  `bba1914ed2d84180b0a1353fb2eee193` passed measured native control, public
+  CLI export at 64 physical frames and fresh headless policy replay, with
+  no ROS requirements in the actor package. The overall Ray status was
+  `FAILED`: the final acceptance preflight refused a receipt root that
+  already contained the Gazebo logs. Original source `27570d57…` and inputs,
+  logs and hashes are retained in `gazebo-two-joint-export-MBoI4D`. The
+  next attempt `6a3a163056cb4f58a249aa606e1a43f2` separated receipt roots
+  and `SUCCEEDED` on `9b0fb056…`. The real controller moved both joints
+  and returned them to neutral. The public CLI stopped at 32 frames and
+  20 optimizer steps with exit 143, resumed the unchanged partial checkpoint
+  to exactly 128 frames and 80 optimizer steps, exported the matching finite
+  actor and action adapter, and completed three fresh evaluation episodes.
+  The worker preflight passed. The setup, receipt summaries and logs are
+  hash-retained in `gazebo-two-joint-resume-MSVSW1`. Readback
+  `92082aca28004e179be458cc54d3a1a0` on a different GPU worker verified the
+  lifecycle log hashes, checkpoint and actor/adapter bytes, consistent ROS
+  namespace, and guard/stage cleanup. All three replay episodes reached the
+  native 50-step limit; this is lifecycle smoke, not learning success. This
+  closes headless task 5.7. Readback evidence is retained in
+  `gazebo-lifecycle-readback-dGKSxk`. Private GUI remains open.
+- Concurrent isolation probe `7d7b510259bc468ca6cd6a0bd0fee2d6` succeeded
+  on `9b0fb056…`. Two headless worlds overlapped on a single stock worker.
+  Each saw its own clock/messages and Gazebo service but not its peer.
+  A duplicate ROS domain claim was rejected and owned processes cleaned up.
+  This closes 3.2 with the earlier private port, interpreter, attempt-root
+  and tracking-store evidence; it does not qualify native desktop viewing.
+  Inputs and logs are hash-retained in `gazebo-concurrent-isolation-BVKEEg`.
+- Gazebo's job-local display probe adds prebuilt X11/Mesa packages without
+  replacing any package in the working ROS/Gazebo lock. TurboVNC 3.3.2
+  accepts a private `xkbcomp` directory, unlike the earlier extracted
+  TigerVNC used in the Reacher probe. The first Gazebo display attempt
+  failed before submission with HTTP 413 during the working-directory
+  upload. It has no Ray job ID. Keep that failure in
+  `gazebo-display-admission-q2vKmY`; the next attempt downloads the
+  hash-pinned binary into its own worker directory instead. A GUI startup
+  probe is not evidence for private viewing, camera navigation or 6.5.
+- Job `4b98b0cc38e34fd4bb69d46f5fa64bb2` measured real joint movement
+  and reset, then failed because the stock worker has no `curl`. A new
+  attempt `9f820f05625443829404a9631246d48d` fetched and verified the same
+  binary with the job Python and measured control/reset again. TurboVNC
+  bound to loopback but exited with signal 11 before X11 readiness, so
+  there was no private viewer or camera proof. Keep both original
+  failures in `gazebo-display-admission-download-DHk55o` and
+  `gazebo-display-admission-urllib-szPdMR`. The separate Gazebo-only
+  fallback uses prebuilt Pixi Xvfb/Mesa and a signed Ubuntu TigerVNC
+  framebuffer server. Job `ba6e69f724974b50a034e3656787c535` measured
+  control/reset but failed before Xvfb: the probe looked in `share/X11`
+  for keyboard rules. The hash-verified conda archive places them in
+  `share/xkeyboard-config-2`. The retained `gazebo-xvfb-live-UahNoN`
+  failure had no listener, camera or training proof. The next explicit
+  attempt fixes the rules path and still requires authenticated forwarding,
+  a camera move, actual CLI training with a passive joint/clock witness
+  and owned cleanup. It does not change the Ray image or start Reacher.
+- With the rules path corrected, `30515db068c94e8ca9444164b0420a18`
+  measured control/reset, then Xvfb aborted inside the worker's NVIDIA
+  EGL/GBM library before reporting X11 ready. The next probe explicitly
+  selects the locked Mesa EGL vendor for the desktop processes only and
+  corrects the TigerVNC scraper's boolean flags. The physics process and
+  stock Ray image are unchanged. Original failure retained in
+  `gazebo-xvfb-live-xkb-W8gQRv`; 6.5 stays open.
+- The Mesa-only display in `fe370d8996964d49898ff8360d2b64a0` admitted
+  authenticated X11, rejected access without the X authority, and opened
+  an RFB listener only on worker loopback. It then failed waiting for
+  the native Gazebo GUI render marker. No client was forwarded and no
+  live CLI training ran. The original attempt is hash-retained in
+  `gazebo-xvfb-live-mesa-zArb8J`. Follow-up
+  `3cd4145d5375491f97d340b6046de08c` captures the actual private desktop
+  and line-buffered GUI output before requiring a rendered viewport and
+  camera motion. Display admission alone does not close 6.5.
+- `3cd4145d5375491f97d340b6046de08c` did render the R1 robot. The
+  authenticated client captured its actual Gazebo viewport via private
+  `kubectl port-forward`, and the GUI requested state from
+  `/world/nexuml_joint_world/state`. The job still failed: ANSI color
+  codes split the scene-ready log text, so the controller never armed
+  the camera/training step. Original GUI log and forwarded screenshot
+  are retained in `gazebo-xvfb-gui-trace-mw5Ljp`. The follow-up strips
+  those codes and also checks the world-state request. No live camera
+  navigation, CLI-driven viewing or cleanup acceptance is claimed yet.
+- `446c77e34a7a4f128a791e4fcefc1ca9` on `4c4f93c0…` completed public CLI
+  training with the display active (256 physical frames, 160 optimizer
+  steps, changed finite actor), two-joint motion under the same ROS
+  namespace and worker-side display release. Private camera navigation
+  changed the actual view, but the camera moved the robot out of frame;
+  the training capture matched that empty view. The client timed out and
+  its exact leftover loopback tunnel was stopped separately. Ray status
+  remains `SUCCEEDED`; visual acceptance did not pass. Preserve screenshots
+  and receipts in `gazebo-xvfb-live-qualified-IYocNY`. The next attempt
+  uses a small pan, rejects out-of-frame captures and checks client-side
+  tunnel closure as well as worker cleanup.
+- `5061701387024d11b891b7bbeb384bd7` also succeeded on the worker at
+  256 frames/160 steps. The private client captured the robot before and
+  after a small pan and in two different poses during the CLI train
+  window. Visual inspection and image hashes confirmed the visible
+  motion. The client nevertheless exited 1 when building its receipt
+  (`camera_difference` was undefined); no leftover forwarding process
+  was found. Preserve this split result and images in
+  `gazebo-xvfb-live-framed-eOtPCc`. A clean follow-up fixes the receipt,
+  checks the camera framing, joins capture times to the worker training
+  window and verifies hashes and tunnel closure.
+- `637659940f5d454092ad2d6b68ccc661` failed before camera or training:
+  the scene creation log preceded the first rendered robot frame. The
+  authenticated viewport capture was still blank. Original evidence is
+  retained in `gazebo-xvfb-live-receipt-gP5ITh`. The follow-up waits for
+  actual robot geometry within a bounded window, rather than treating
+  GUI initialization as sufficient.
+- `71abac77de01491f9997ba728911a4ab` failed earlier, during Pixi linking:
+  the locked Xvfb package places a directory at `share/X11/xkb`, while
+  `xkeyboard-config` also owns that path. This failure is retained in
+  `gazebo-xvfb-live-render-ready-dCsdlG`; no viewer or training ran.
+  A separate rerun pins keyboard rules 2.44, which uses a real directory
+  compatible with Xvfb, without changing the application pins.
+- Task 6.5 closes on the observed `5061701387024d11b891b7bbeb384bd7`
+  viewport and distinct-worker readback `ba221f6f23804e76beb4f4dd9191c07a`.
+  Readback verified the same worker's world-state request, matching URDF,
+  controller and measured ROS namespace, CLI stage hashes, policy and
+  checkpoint bytes, and guard/RFB shutdown. The private client images
+  show the camera pan and two in-frame robot poses during the recorded
+  CLI train window, verified against the preserved file times and hashes.
+  No job-owned client tunnel remained. The original client exit 1 and
+  failed receipt remain unchanged; independent reconciliation is retained
+  separately in `gazebo-live-evidence-review-MePNV8` and the readback in
+  `gazebo-live-readback-rPY28Z`. The tested GUI used camera-only input
+  through loopback VNC and `kubectl port-forward`; any physical
+  intervention is debug-only and excluded from quantitative acceptance.
+  This is software-rendered live viewing and lifecycle smoke, not
+  learned reaching, hardware safety or a universal Gazebo profile.
+- Clean repeat `b75eb69f6ddc4cacbbb6f3b364e0796d` on `4c4f93c0…`
+  passed with keyboard rules 2.44: Ray succeeded, the client exited 0,
+  the verified receipt joins both distinct in-frame captures to the
+  CLI training window, and both the display and the client port-forward
+  closed. The camera pan kept the robot in frame. Both joints moved
+  in the matching namespace, and training again finished at
+  256 physical frames and 160 optimizer steps with a changed finite
+  actor. The lock, commands, receipts, and reviewed images are
+  hash-retained in `gazebo-xvfb-live-keyboard-layout-b9a0rW`.
+  For a new attempt, copy the retained inputs to a new private attempt
+  directory and point its controller at a fresh client venv built from
+  the retained hashed `requirements.txt`. Use the verified Ray CA and
+  the registered SDK submission; the retained controller records the
+  exact arguments. The client venv is disposable, not a worker dependency.
 
 ## Claim-to-evidence map
 
@@ -96,8 +291,6 @@ active controllers and latest checkpoint before any separately restarted launch.
 - Approved72successful SO-101 joint-reach episodes, fixed48/12/12 split and explicit
   current-runtime qualification, or an approved replacement frozen protocol. No
   automatic recapture or private-data upload.
-- Prepared ROS/Gazebo world, robot/controllers, reset/clock bridge, isolated namespace
-  and private GUI access. Fake transport and GUI startup are not substitutes.
 - Approved worker display and private access for MuJoCo Reacher live native viewing.
 - Storage/profile qualification for the recorded browser journal-sync boundary;
   unrelated GPU plasma repair is not proof of that repair.

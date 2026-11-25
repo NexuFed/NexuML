@@ -1,5 +1,6 @@
 """Production ROS transport with an owned context/executor and bounded waits."""
 
+from importlib import import_module
 import math
 from time import monotonic
 from typing import Any
@@ -11,16 +12,21 @@ class RclpyTransport:
 
     def __init__(self, definition, build_context):
         try:
-            import rclpy  # ty: ignore[import-not-found]
-            from rclpy.context import Context  # ty: ignore[import-not-found]
-            from rclpy.duration import Duration  # ty: ignore[import-not-found]
-            from rclpy.executors import SingleThreadedExecutor  # ty: ignore[import-not-found]
-            from rclpy.parameter import Parameter  # ty: ignore[import-not-found]
-            from rclpy.qos import qos_profile_sensor_data  # ty: ignore[import-not-found]
-            from sensor_msgs.msg import JointState  # ty: ignore[import-not-found]
-            from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint  # ty: ignore[import-not-found]
-            from std_srvs.srv import Empty  # ty: ignore[import-not-found]
-        except ImportError as error:
+            # Policy archive source scanning must not capture live ROS dependencies.
+            rclpy = import_module("rclpy")
+            Context = import_module("rclpy.context").Context
+            Duration = import_module("rclpy.duration").Duration
+            SingleThreadedExecutor = import_module("rclpy.executors").SingleThreadedExecutor
+            Parameter = import_module("rclpy.parameter").Parameter
+            qos_profile_sensor_data = import_module("rclpy.qos").qos_profile_sensor_data
+            JointState = import_module("sensor_msgs.msg").JointState
+            trajectory = import_module("trajectory_msgs.msg")
+            JointTrajectory, JointTrajectoryPoint = (
+                trajectory.JointTrajectory,
+                trajectory.JointTrajectoryPoint,
+            )
+            Empty = import_module("std_srvs.srv").Empty
+        except (ImportError, AttributeError) as error:
             raise ImportError(
                 "ROS joint control requires a sourced ROS 2 installation with rclpy, sensor_msgs, "
                 "trajectory_msgs and std_srvs, plus a running simulation/controller/reset service"

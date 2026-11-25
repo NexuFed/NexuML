@@ -1,10 +1,11 @@
 """The production task and message boundary without a ROS installation."""
 
-from types import SimpleNamespace
+from types import ModuleType, SimpleNamespace
 import json
 import os
 import signal
 import subprocess
+import sys
 
 import pytest
 import torch
@@ -14,6 +15,8 @@ from tensordict import TensorDict
 from nexuml.core.compiler import compile
 from nexuml.core.components import EnvironmentBuildContext
 from nexuml.core.config import ResolvedConfig
+from nexuml.core.export import export_package, load_inference_package
+from nexuml.core.policy import CompiledPolicy
 from nexuml_library.environments.ros2.joint_reach import (
     Ros2JointReachEnvironment,
     _JointReachRuntime,
@@ -117,7 +120,12 @@ def test_production_transport_freshness_commands_reset_and_owned_shutdown(monkey
     transport.JointTrajectory = transport.JointTrajectoryPoint = SimpleNamespace
     transport.Duration = lambda seconds: SimpleNamespace(to_msg=lambda: seconds)
     transport.Empty = SimpleNamespace(Request=lambda: object())
-    transport.rclpy = SimpleNamespace(shutdown=lambda context: events.append("context"))
+    monkeypatch.setattr(
+        transport,
+        "rclpy",
+        SimpleNamespace(shutdown=lambda context: events.append("context")),
+        raising=False,
+    )
 
     def spin_once(timeout_sec):
         now[0] += timeout_sec
@@ -173,18 +181,46 @@ def test_production_transport_freshness_commands_reset_and_owned_shutdown(monkey
 
 
 def test_missing_ros_is_not_replaced_by_fake_transport(monkeypatch):
-    import builtins
-
-    original = builtins.__import__
-
-    def blocked(name, *args, **kwargs):
-        if name == "rclpy" or name.startswith("rclpy."):
-            raise ImportError("ROS blocked for test")
-        return original(name, *args, **kwargs)
-
-    monkeypatch.setattr(builtins, "__import__", blocked)
+    monkeypatch.setitem(sys.modules, "rclpy", None)
     with pytest.raises(ImportError, match="sourced ROS 2"):
         Ros2JointReachEnvironment().build(EnvironmentBuildContext(purpose="eval"))
+
+
+def test_ros_policy_exports_with_ros_present_and_replays_without_it(monkeypatch, tmp_path):
+    native = (
+        "rclpy",
+        "rclpy.context",
+        "rclpy.duration",
+        "rclpy.executors",
+        "rclpy.parameter",
+        "rclpy.qos",
+        "sensor_msgs",
+        "sensor_msgs.msg",
+        "trajectory_msgs",
+        "trajectory_msgs.msg",
+        "std_srvs",
+        "std_srvs.srv",
+    )
+    for name in native:
+        monkeypatch.setitem(sys.modules, name, ModuleType(name))
+    scenario = ros2_joint_reach_ppo()
+    assert scenario.interaction is not None
+    contract = scenario.interaction.environment.describe()
+    policy = CompiledPolicy.from_pipeline(compile(scenario), contract).eval()
+    observations = TensorDict(
+        {name: torch.zeros(field.shape) for name, field in contract.observations.items()},
+        batch_size=[],
+    )
+
+    package = export_package(policy, tmp_path / "policy")
+    assert not any(
+        line.startswith(("rclpy", "sensor_msgs", "trajectory_msgs", "std_srvs"))
+        for line in (package / "requirements.txt").read_text().splitlines()
+    )
+    for name in native:
+        monkeypatch.setitem(sys.modules, name, None)
+    loaded, _, _ = load_inference_package(package)
+    assert torch.equal(loaded(observations)["joint_command"], policy(observations)["joint_command"])
 
 
 @pytest.fixture

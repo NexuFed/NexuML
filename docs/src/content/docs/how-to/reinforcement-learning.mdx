@@ -828,6 +828,24 @@ Replace the launch package/file with your testbench. The live test requires actu
 joint movement toward the published target, then collects PPO rollouts and evaluates
 using the production transport. Fake tests are not proof of ROS/Gazebo integration.
 
+On the stock Ubuntu 22.04 / Python 3.12 Ray worker, Ubuntu's system ROS packages
+are not interchangeable with a Python 3.12 environment. A headless qualification
+job installed prebuilt RoboStack Jazzy and Gazebo Harmonic into a private Pixi
+environment, then used `uv sync --locked` for NexuML in a venv based on that
+Python. The job used its locked C++ runtime for the NexuML subprocesses, so
+Torch and `rclpy` could coexist. Other Ray jobs don't install this stack
+automatically. Only the simulation needs ROS: the exported actor can decode
+actions without it. The headless lifecycle does not qualify live GUI viewing.
+
+The separate live check used Gazebo Harmonic's native GUI on the same worker and
+Gazebo partition as the CLI-controlled robot. The job owned its X11 display
+and loopback VNC listener, and the client connected through a private Kubernetes
+port-forward. This requires a prepared display and the actual worker pod and
+listener port; it is not enabled by the default Ray profile. Software rendering
+was verified for this GUI only. Camera navigation does not change the task;
+any edits, pause, reset, or applied forces are debug-only and cannot be used
+for scored trials.
+
 ### Later hardware mapping
 
 Hardware can expose the same high-level joint topics and a separately reviewed episode
