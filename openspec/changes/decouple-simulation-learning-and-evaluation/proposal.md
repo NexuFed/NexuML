@@ -4,7 +4,13 @@
 
 The robotics branch already has a portable interaction contract, native Isaac Lab tasks, TorchRL collection, Lightning optimization and an evaluation-only Arena integration. At baseline c745927b505b1ca2402186217949c7d454e8ee45, Isaac requires a single direct collector on the learner's CUDA device; Ray rollout collection starts a local CPU-only Ray runtime; Arena-composed tasks cannot enter normal training. Remote job submission is not distributed simulation. These qualification restrictions prevent researchers from selecting the best simulator and independently scaling simulation, training and evaluation.
 
+The strategic goal is not to outperform or replace Isaac Lab as a simulator/trainer. NexuML is the common local learning backend for NexuFL: compatible clients using Isaac Lab/Arena, MuJoCo and physical ROS 2 robots must be able to start from the same versioned global policy, learn locally and return compatible numeric updates for one global model without transferring raw experience. Native training remains a valid entry point.
+
 ## What Changes
+
+- Run an early, matched native Isaac Lab versus NexuML decision gate on a reward-bearing SO-101 task. Compare correctness, learning, wall-clock/GPU/memory performance, code and dependency burden, export and suitability for repeated external-weight local fitting. Reuse or remove redundant abstractions where upstream preserves semantics; do not treat all later stages as unconditional backlog.
+- Extend the existing bounded local-fit and manifest contract toward interactive RL and heterogeneous local experience, not a new federation API. Separate shared actor/parameter compatibility from client-specific task, recipe and runtime provenance; qualify numeric update production from a common base using Isaac, MuJoCo and ROS 2 experience. Keep training-only critics, optimizer state and raw data local by default; NexuFL owns rounds, aggregation, transport and promotion.
+- Qualify one narrow native-first policy import/initialization path from a maintained Isaac Lab learner, with explicit actor architecture, preprocessing, controls and parameter mapping. Do not promise arbitrary checkpoint conversion or import of optimizer state.
 
 - Keep ScenarioSpec, compiler, CompiledPolicy, EnvironmentDefinition/Runtime, TensorDict, TorchRL and Lightning. Native scene, task, sensor, physics and control configuration remains provider-owned.
 - Make native Isaac Lab and Arena task construction converge on the same runtime/bindings/lifecycle; add ordinary Arena-composed training while retaining maintained native benchmark evaluation.
@@ -23,6 +29,8 @@ The robotics branch already has a portable interaction contract, native Isaac La
 - `independent-rollout-placement`: distinct devices and worker resources, GPU-native direct and distributed synchronous TorchRL collection.
 - `snapshot-policy-evaluation`: independent evaluation placement, immutable versioned snapshots, native results and bounded concurrency.
 - `cross-simulator-qualification`: second native provider and staged system-level backends, runtime/image compatibility and measured evidence.
+- `native-learning-comparison`: measured native Isaac Lab baseline, decision gate and narrow native-first interoperability.
+- `heterogeneous-local-learning-handoff`: common global-policy identity, bounded compatible local fitting and numeric update receipts across simulation and authorized real-world experience.
 
 ### Modified Capabilities
 
@@ -30,4 +38,4 @@ None of the published baseline capabilities is replaced. The existing active cha
 
 ## Impact
 
-Core interaction/contract validation, existing collector and evaluation paths, Lightning lifecycle, library-native environment adapters and examples, execution resources, CI containers and documentation. NexuFL, NexuVibe and cluster GitOps changes are outside this change; document their integration prerequisites without editing them. Phase gates require native evidence, not mocked success.
+Core interaction/contract validation, existing collector and evaluation paths, Lightning lifecycle, library-native environment adapters and examples, execution resources, CI containers and documentation. Extend the existing NexuML local-learning SDK and document the consumer contract for NexuFL. NexuFL aggregation, protocol, deployment and integration changes, NexuVibe and cluster GitOps changes are outside this change; document their prerequisites without editing them. Phase gates require native evidence, not mocked success; a local deterministic aggregation fixture is not a deployed NexuFL round or proof of real-robot safety.

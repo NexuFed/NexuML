@@ -11,7 +11,7 @@ Native providers SHALL implement or reuse the existing serializable EnvironmentD
 
 ### Requirement: Policy compatibility is distinct from runtime provenance
 
-Policy compatibility SHALL check observation/action semantics, shapes excluding runtime batch width, dtype, units, frames, joint identities and order, normalization, control rate and mode, temporal/reset behavior, and agent groups. Native asset, physics and runtime identities SHALL be recorded as provenance. Provider metadata or prose alone SHALL NOT decide compatibility. Semantic differences SHALL require a validated explicit mapping; matching shapes alone SHALL NOT suffice.
+Policy compatibility SHALL check observation/action semantics, shapes excluding runtime batch width, dtype, units, frames, joint identities and order, normalization, control rate and mode, temporal/reset behavior, and agent groups. Native asset, physics and runtime identities SHALL be recorded as provenance. For federated local fitting, a common actor semantic contract and exact shared tensor/parameter identity SHALL be validated separately from client-specific recipe and environment identity, as specified in heterogeneous-local-learning-handoff. Provider metadata or prose alone SHALL NOT decide compatibility. Semantic differences SHALL require a validated explicit mapping; matching shapes alone SHALL NOT suffice.
 
 #### Scenario: A policy is evaluated with a different simulator
 - **GIVEN** The new provider has a validated compatible semantic contract and different native provenance

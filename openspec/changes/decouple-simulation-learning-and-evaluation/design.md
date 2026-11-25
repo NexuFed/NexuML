@@ -19,11 +19,29 @@ Reviewed branch `feature/nex-212-add-reinforcement-learning` at `c745927b505b1ca
 
 ## Goals / non-goals
 
+Product direction: use native robotics tools for initial training where they suffice; earn NexuML's role as a shared local learning and portable policy lifecycle across Isaac, MuJoCo and physical ROS 2 clients consumed by NexuFL. The goal is one compatible global actor (or explicitly selected shared parameter subset), not one physics engine, one task recipe or one optimizer across all clients.
+
 Goals: one public scenario/CLI/SDK workflow; exchange native environments without rewriting learner code; independently place simulation, inference, training and evaluation; preserve physical correctness and GPU-native paths; clean provider boundaries; preserve reproducible export and existing supervised/local-fit functionality.
 
 Non-goals: universal scene DSL, generic robot/sensor/physics reimplementation, simulator fleet service, custom transport, RLlib/second trainer, immediate asynchronous PPO or DDP RL, universal checkpoint portability, real-robot online exploration, all simulators or all benchmarks in one release. No sibling repository, cluster configuration, licensing or credential changes. No new compatibility lanes without evidence and approval.
 
 ## Decisions
+
+### 0. Native-first decision gate before broad refactoring
+
+Compare native Isaac Lab training with NexuML on the **same reward-bearing SO-101 task** (joint reach is acceptable for the first gate; it is not manipulation). Use an upstream-maintained learner supported by the pinned stack, e.g. RSL-RL or skrl PPO; also use a minimal native TorchRL path when supported to isolate adapter/orchestration overhead from algorithm differences. Do not manufacture identical numerical results from different PPO implementations.
+
+Freeze native task/factory, asset/physics revision, observation/action/control semantics, rewards, terminations, vector width, device, frame budget, seeds, network sizes, initialization, optimizer/hyperparameters and evaluation protocol where possible. Record any unavoidable differences (normalization, GAE, clipping, minibatches, schedules, number of updates). Use same qualified hardware/image and disable or match logging/rendering during timing. Record warm-up/startup separately, at least three matched seeds for learning comparisons, and repeated warm timing measurements. Report mean/spread, curves and failures; predeclare tolerances and success criteria before running, not after inspecting the results.
+
+| Question | Evidence |
+| --- | --- |
+| Does NexuML preserve scientific correctness? | Known-action probes, terminal/truncation behavior, update/frame accounting, finite losses, held-out native success/return and time-to-target |
+| What overhead does it add? | Wall time, simulation/collection/optimization breakdown, frames/s, GPU utilization, peak VRAM/RAM, initialization/export cost; separate algorithm vs adapter effects |
+| Does the SDK simplify multi-provider work? | Minimal comparable runnable examples, provider-specific glue/LOC and dependency count, configuration and maintenance burden, documented custom-task changes |
+| Does it enable NexuFL? | Clean export/reload inference parity; two bounded local fits using different externally supplied initial actor tensors, validated numeric update receipts and compatibility/provenance separation |
+| Can native users adopt without replacing training? | One explicitly supported native actor checkpoint mapped using trusted local code into the shared NexuML actor contract; known-input parity including normalization and action mapping, native held-out evaluation, bounded fine-tuning |
+
+Record results and an explicit maintainer decision: retain the existing adapter where justified, replace redundant code with qualified upstream components, or narrow NexuML to a thinner integration/local-fit layer if native performance/maintenance or interoperability is unacceptable. Keep native direct training available for baselines. Gate expensive simulator breadth and distributed optimization on this evidence; no need to reproduce every native feature or algorithm. A failed or blocked comparison does not silently pass. Native-first import initially covers one named architecture/format, not arbitrary third-party weights, executable checkpoint code, policy semantics or optimizer continuation. Deployment/inference-only import is not evidence of trainable compatibility.
 
 ### 1. Keep three independent axes and existing APIs
 
@@ -60,6 +78,43 @@ Keep the existing physical contracts and explicit observation/action mappings. P
 
 Keep exact checkpoint continuation stricter: native task/physics/assets, model and algorithm identity, compatible optimizer and rollout geometry, state and counters. Supported resume creates a fresh simulator; no claim of exact physical trajectory restoration. Record changed topology and reject unsupported continuation. Do not weaken SO-101 local-fit/dataset integrity or previously qualified export behavior.
 
+### 3a. NexuML as the local learning backend for NexuFL
+
+The shared unit is a **versioned global actor and its agreed semantic contract**, not a complete trainer checkpoint or an independently trained model. Each federation client is an operator-owned local learning program. A client may use local Isaac, MuJoCo, offline ROS 2 trajectories or an explicitly authorized physical interaction runtime; it may use its own local simulation workers via Ray. A Ray rollout worker within one learner is not a federated client. No raw trajectories cross the federated boundary by default.
+
+```mermaid
+flowchart TD
+    G[NexuFL global policy version t] --> I[Isaac local fit]
+    G --> M[MuJoCo local fit]
+    G --> R[ROS 2 local fit on approved experience]
+    I -->|Named numeric update and receipt| A[NexuFL aggregation]
+    M -->|Named numeric update and receipt| A
+    R -->|Named numeric update and receipt| A
+    A --> V[Candidate global policy t+1]
+    V --> E[Held-out simulation and physical safety gates]
+    E -->|Approved version| G
+```
+
+**Reuse the NEX-234 local-fit boundary.** The current `src/nexuml/training/local_fit.py` and `local_fit_manifest` accept only bounded dataset-training recipes with exact local binding and full numeric state, and hash training/loader/interaction details into recipe identity. Keep that published/qualified behavior. Extend the same public SDK by a minimal versioned contract or supported mode for RL and multiple local recipes; do not weaken existing manifests or create a second learner. Trusted recipes, assets and datasets remain installed/operator-bound; the remote request supplies approved numeric weights, expected shared manifest/base version and authorized bounded budget, never executable code. Reject unauthorized data/transport and unsupported modes before allocation.
+
+Distinguish three identities in the new contract:
+
+| Identity | Scope |
+| --- | --- |
+| Shared model/aggregation manifest | Architecture/parameter schema and exact named tensor roles/shapes/dtypes, approved trainable subset, actor input/output physical semantics, normalization/processor and action mapping state policy, schema version |
+| Base policy identity | Exact initial shared tensor content digest and global version supplied to every client in a round; independent of runtime/recipe |
+| Local recipe and provenance | Locally trusted code/config hash, native asset/physics/ROS calibration, task/reward/objective, data or environment binding, algorithm, seeds, effective budget, runtime and optimizer/critic ownership |
+
+Client-specific recipe hashes may differ while the shared manifest and base match. Shared actor tensors must have the same architecture/parameter correspondence and semantic interface (or an explicitly validated local mapping); no averaging unrelated independently initialized models, different action heads or merely equal-shaped weights. Explicitly define shared vs frozen vs client-private state. Keep critics, target networks, optimizer state, replay buffers, raw observations/trajectories and robot handles local by default; do not average running normalization statistics or non-floating buffers blindly. Shared preprocessing/buffers must be immutable or use an explicit approved aggregation rule. If needed, distinct local heads/adapters and a common trainable backbone are a separately qualified shared-subset configuration, not arbitrary heterogeneous model aggregation.
+
+Start from one versioned policy and use bounded synchronous local fitting. For RL, gather fresh on-policy experience after loading the supplied base, with consistent local actor versions per PPO update. Initially reset optimizer and initialize/reset or explicitly define local critic state per fit; persistent local state is opt-in only with versioned ownership and tests. Offline ROS 2 demonstrations may use behavior cloning or a qualified offline method; logged transitions cannot be treated as fresh on-policy PPO data. Physical online adaptation requires explicit operator authorization and qualified safe control envelope, watchdog, emergency stop, supervision, bounded actions, no unapproved exploration/reset and local abort on unsafe observations. No automatic physical deployment of aggregated weights.
+
+Return finite, validated named numeric state in the existing full-update convention first (or explicitly versioned delta where the consumer supports it), plus base/manifest identity, trainable scope, local objective and provenance hashes, actual transition/window/episode and optimizer-step counts, approved bounded metrics and status. Never equate optimizer steps, padded samples, simulator transitions and real demonstrations as interchangeable aggregation mass. Start the multi-provider proof with the same task and compatible local objective and an explicitly documented simple weighting rule (equal-client weighting is an acceptable reference, not a universal optimum). Heterogeneous dynamics, rewards, data quality and RL vs imitation can cause conflicting updates: mixed-objective aggregation is a later separately measured algorithm choice, not guaranteed by interface compatibility. No automatic raw data or sensitive path/telemetry disclosure; numeric model updates are not a formal privacy guarantee.
+
+NexuML acceptance: a thin local caller/fixture exercises the real existing SDK from one base on Isaac and MuJoCo first (CPU MuJoCo suffices for this gate, GPU qualification remains separate), plus ROS 2 recorded/authorized real experience with the same contract. Prove repeatable external-weight fits, check actual changed shared tensors, reject stale/wrong base, schema or semantics and nonfinite/frozen tensor changes; combine compatible full updates/deltas via a small deterministic **test-only** reference average, reload the candidate into each compatible evaluator and execute a second bounded round from it. Report per-domain held-out performance, global vs local-only and simulation-only baselines, client update norms/conflicts and worst-domain regressions; no claim of improvement without evidence. Synthetic/fake ROS transport proves only SDK wiring; real recorded or supervised physical trials need separate evidence and operator-approved hardware. A simulated client is not a physical client. Do not block the initial simulator-only handoff on acquiring hardware; keep the real three-domain gate blocked/unverified until evidence exists.
+
+NexuFL owns federation membership, transport, privacy/security policies, aggregation algorithms and weighting, stale/duplicate update rejection across clients, global versioning, evaluation/promotion/rollback and deployment. NexuML owns local validation, fitting, numeric receipts, policy export and evaluation; the fixture verifies the interface, not a new production aggregation implementation. Hand off the versioned manifest/result schema and pinned package to NexuFL, with explicit follow-up to qualify real multi-client rounds and promotion safeguards. No NexuFL imports, gRPC, separate federation trainer or sibling-repository edits here.
+
 ### 4. Direct and distributed collection
 
 1. Same-process/same GPU: retain existing CUDA-resident fast path. No mandatory CPU staging or Ray.
@@ -89,7 +144,7 @@ Adapt existing files first; names below are targets, not a demand for empty abst
 | --- | --- |
 | Core | `core/components.py`, `core/types.py`, `core/policy.py`, existing interaction contract/runtime modules; semantic compatibility helper reused by evaluation and export |
 | Collection | `reinforcement/collector.py`, `ray_collector.py`, `torchrl_env.py`; only extract worker lifecycle helper if needed |
-| Learner | `training/reinforcement.py`; preserve Lightning iterable/manual optimization and checkpoint owner |
+| Learner | `training/reinforcement.py`; preserve Lightning iterable/manual optimization and checkpoint owner; extend `training/local_fit.py` and manifest minimally with a versioned shared actor/local recipe boundary, preserve existing dataset local-fit |
 | Evaluation | `evaluation/policy.py`; small Ray execution adapter only if existing execution dispatch cannot express it |
 | Isaac library | group existing `environments/isaaclab.py`, `_isaaclab_runtime.py`, `isaaclab_config.py` and bindings helpers into `environments/isaac/` only if it reduces coupling; add Arena environment composition next to these; preserve public discovery/imports as appropriate |
 | Arena | `evaluation/arena.py`, `arena_so101.py`; share native startup and bindings, keep benchmark-specific code |
@@ -129,7 +184,7 @@ The cluster target and evaluator placement must be explicit through the existing
 - `add-reinforcement-learning`: owns the original canonical learner and portable runtime; this follow-up qualifies its existing independent placement intent.
 - `add-isaaclab-gpu-robotics`: preserves qualified direct paths, native reset/GAE and historical evidence. Its single-GPU/direct-only and fresh-process replay qualification limits apply to the historical profile; this follow-up supersedes those limits only for newly qualified placements, not by deleting safety checks globally.
 - `generalize-isaac-native-configuration-and-marl`: preserve native factory, multimodal, MARL and Viser read-only requirements. Worker-local scope extends, not replaces, native lifecycle guarantees.
-- `add-isaac-physical-ai-backend`: remains umbrella for VLA, world models, offline learning, ROS, deployment and MuJoCo Playground evidence. This change owns the new distribution/arena-training/cross-provider seams, reuses existing native reference requirements, and does not close umbrella tasks.
+- `add-isaac-physical-ai-backend`: remains umbrella for VLA, world models, offline learning, ROS, deployment and MuJoCo Playground evidence. Its NEX-234 `local-learning-handoff` and `federation-handoff.md` own the original dataset-only local-fit contract; preserve that contract and extend it through a versioned shared actor/recipe split. NexuFL's separate NEX-235 consumer owns actual federated rounds. This change owns the new distribution/arena-training/cross-provider seams, reuses existing native reference requirements, and does not close umbrella tasks.
 - `add-mujoco-reference-workflows`: preserve CPU/Gymnasium and Meta-World evidence, coordinate GPU dependency compatibility with the umbrella's explicit compatibility lanes.
 - `qualify-physical-ai-workflows-via-ray-jobs`: retains existing CLI, visual, suite and job acceptance. Its NEX-248 benchmark qualification is a baseline, not proof of GPU distributed rollouts. Its existing acceptance-pool policy remains authoritative for that change; independent collector/learner resource topology needs explicit operator-provided capacity. Use its evidence/report conventions rather than duplicate tests.
 - Published Ray training and execution specs remain authoritative for learner placement. Do not duplicate Ray Train or Ray Jobs behavior.
