@@ -1,4 +1,4 @@
-"""Extract the real CLI's public Click tree without executing command callbacks."""
+"""Extract the real CLI's public Typer tree without executing command callbacks."""
 
 from __future__ import annotations
 
@@ -46,13 +46,16 @@ def extract_cli() -> list[dict[str, Any]]:
             for parameter in command.get_params(ctx):
                 if getattr(parameter, "hidden", False):
                     continue
+                display_type = getattr(parameter, "display_type", None)
                 parameters.append(
                     {
                         "name": parameter.name,
                         "kind": parameter.param_type_name,
                         "opts": parameter.opts,
                         "secondary_opts": parameter.secondary_opts,
-                        "type": parameter.type.get_metavar(param=parameter, ctx=ctx)
+                        "type": display_type(ctx)
+                        if display_type is not None
+                        else parameter.type.get_metavar(param=parameter, ctx=ctx)
                         or parameter.type.name,
                         "required": parameter.required,
                         "multiple": parameter.multiple,

@@ -189,7 +189,7 @@ convention = "google"
 [tool.ty.environment]
 extra-paths = [
     "src", "library/src", "skills/nexuml-library/assets/minimal-library/src",
-    "tests/core", "tests/fixtures",
+    "scripts", "tests/core", "tests/fixtures",
 ]
 
 [tool.ty.src]

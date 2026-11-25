@@ -75,6 +75,12 @@ The supported MuJoCo reference SHALL demonstrate an actual live native viewer wh
 - **THEN** the live session shows actual advancing training state and a fresh evaluation uses the compatible recording mode
 - **AND** the actor's declared observation/action semantics remain unchanged
 
+#### Scenario: Reacher uses the stock Ray worker image
+- **WHEN** the remote training job requests live Reacher viewing
+- **THEN** an X11/TigerVNC sidecar provides the display without changing the Ray image
+- **AND** the viewer uses an authenticated pod-local display and private port forwarding, with no public listener
+- **AND** the Ray job, not the worker image or display sidecar, installs its application Python dependencies
+
 ### Requirement: V7 Native Gazebo viewing requires a real ROS simulation
 
 The Gazebo viewing journey SHALL run the real simulation, controllers and reset/clock interfaces on prepared remote resources. Its GUI SHALL show the robot driven by the actual CLI policy while real updates are evidenced separately. Camera navigation, private access and cleanup SHALL be checked; fake transport or virtual-display startup alone SHALL NOT qualify the journey.
@@ -111,3 +117,16 @@ Acceptance SHALL exercise the authored task's live training view and separately 
 - **WHEN** the run retains raw or processed sensor diagnostics but cannot record the requested spectator video
 - **THEN** only the diagnostics are reported as delivered and the requested recording remains unsupported or blocked
 - **AND** a screen capture or recording from another physics backend does not qualify that video
+
+### Requirement: V10 Arena has private live viewing and remote headless results
+
+The same Arena evaluation workflow SHALL support headless scoring and private live GUI observation on Ray. Qualification SHALL match policy, scene, physics and starting conditions across modes without requiring the viewer for scoring. In headless mode, the suite summary, per-episode results and a selected failure diagnostic SHALL be retrievable remotely in MLflow after worker cleanup.
+
+#### Scenario: The engineer watches a live Arena evaluation
+- **WHEN** the engineer connects through the approved private route to a viewer-enabled Ray job
+- **THEN** the GUI shows the advancing policy rollout in the actual evaluation worker, with camera navigation that does not intervene in physics
+- **AND** the viewer is released when the job ends; a recording, different process or display startup alone cannot satisfy the live gate
+
+#### Scenario: The benchmark runs without a live viewer
+- **WHEN** the engineer opens a completed headless evaluation after worker removal
+- **THEN** the identified scores, episode rows and selected failure diagnostic remain accessible, independently of the live GUI

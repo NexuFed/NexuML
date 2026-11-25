@@ -39,9 +39,10 @@ from nexuml_library.scenarios.imitation.so101 import (
 )
 
 
-def _packages() -> dict:
+def _packages(*, capture: bool = False) -> dict:
     result = {}
-    for name in ("nexuml", "nexuml-library", "torch", "lerobot", "isaaclab", "isaacsim"):
+    names = ("nexuml", "nexuml-library", "torch", "isaaclab", "isaacsim")
+    for name in (*names, "lerobot") if capture else names:
         installed = distribution(name)
         origin = json.loads(installed.read_text("direct_url.json") or "{}")
         result[name] = {"version": installed.version}
@@ -189,7 +190,7 @@ def collect(root: Path, *, episodes: int, seed: int) -> dict:
     receipt = {
         "schema_version": 2,
         **_task_identity(),
-        **_capture_provenance(_packages(), platform.python_version()),
+        **_capture_provenance(_packages(capture=True), platform.python_version()),
         "seed": seed,
         "episode_seeds": list(range(seed, seed + episodes)),
         "split_episodes": splits,

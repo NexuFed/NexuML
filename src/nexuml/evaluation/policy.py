@@ -1,5 +1,6 @@
 """Fresh environment-based policy evaluation, independent of any training engine."""
 
+from collections import deque
 from collections.abc import Callable, Mapping
 from contextlib import contextmanager
 import hashlib
@@ -11,7 +12,11 @@ import sys
 import numpy as np
 import torch
 
-from nexuml.core.components import EnvironmentBuildContext, EnvironmentDefinition
+from nexuml.core.components import (
+    BenchmarkEnvironmentDefinition,
+    EnvironmentBuildContext,
+    EnvironmentDefinition,
+)
 from nexuml.core.policy import CompiledPolicy
 from nexuml.core.config import ResolvedConfig
 from nexuml.core.serialization import lower_component, lower_model
@@ -126,6 +131,7 @@ def evaluate_policy(
     scenario: ScenarioSpec,
     *,
     media_sink: Callable | None = None,
+    episode_report_sink: Callable[[dict], None] | None = None,
     frame_step: int = 0,
     provenance: dict | None = None,
 ) -> dict[str, float]:
@@ -133,12 +139,15 @@ def evaluate_policy(
 
     Returns:
         Episode returns/lengths and termination/truncation statistics.
+
+    Raises:
+        ValueError: If generic video is requested for a benchmark that owns its rollout.
     """
     definition, spec, seed = resolve_policy_evaluation(scenario)
     if spec.episodes == 0:
         return {}
     evaluation_context = {}
-    if spec.video.enabled:
+    if spec.video.enabled or episode_report_sink is not None:
         evaluation_context = {
             "environment": lower_component(definition),
             "contract_hash": hashlib.sha256(
@@ -148,12 +157,20 @@ def evaluate_policy(
                 ResolvedConfig.from_scenario(scenario).to_yaml().encode()
             ).hexdigest()[:16],
         }
+    if isinstance(definition, BenchmarkEnvironmentDefinition):
+        if spec.video.enabled:
+            raise ValueError("Upstream benchmarks do not support generic replay video")
+        metrics, report = definition.run_benchmark(policy, spec)
+        if episode_report_sink is not None:
+            episode_report_sink({**evaluation_context, **_report_provenance(provenance), **report})
+        return metrics
     return _evaluate_episodes(
         policy,
         definition,
         spec,
         seed,
         media_sink=media_sink,
+        episode_report_sink=episode_report_sink,
         frame_step=frame_step,
         provenance=provenance,
         evaluation_context=evaluation_context,
@@ -168,6 +185,7 @@ def _evaluate_episodes(
     seed,
     *,
     media_sink,
+    episode_report_sink,
     frame_step,
     provenance,
     evaluation_context,
@@ -197,6 +215,9 @@ def _evaluate_episodes(
     capped = False
     fps = None
     runtime = None
+    episode_rows = []
+    failure_trace = None
+    trace_limit = 128
     with _evaluation_state(policy, seed):
         try:
             _validate_evaluation_contract(policy.contract, definition.describe())
@@ -247,7 +268,8 @@ def _evaluate_episodes(
                 frames.append(frame.copy())
 
             for episode in range(spec.episodes):
-                observation = runtime.reset(seed=None if seed is None else seed + episode)
+                episode_seed = None if seed is None else seed + episode
+                observation = runtime.reset(seed=episode_seed)
                 expected_batch = (1,) if policy.contract.groups else ()
                 if tuple(observation.batch_size) != expected_batch:
                     raise ValueError("Evaluation requires unbatched episode observations")
@@ -260,6 +282,11 @@ def _evaluate_episodes(
                 }
                 episode_success, final_error = False, None
                 episode_errors = {}
+                trace = (
+                    deque(maxlen=trace_limit)
+                    if episode_report_sink is not None and failure_trace is None
+                    else None
+                )
                 while True:
                     transition = runtime.step(policy(observation, deterministic=spec.deterministic))
                     reward = transition.reward
@@ -384,6 +411,15 @@ def _evaluate_episodes(
                     steps += 1
                     term = bool(transition.terminated.item())
                     trunc = bool(transition.truncated.item())
+                    if trace is not None and signature[0]:
+                        trace.append(
+                            {
+                                "step": steps,
+                                "success_seen": episode_success,
+                                "joint_error_rad": final_error,
+                                "task_errors": dict(episode_errors),
+                            }
+                        )
                     if spec.video.enabled and episode == 0:
                         capture()
                     limit = (
@@ -405,6 +441,33 @@ def _evaluate_episodes(
                     ):
                         grouped_returns.setdefault((group, agent), []).append(float(value))
                 lengths.append(steps)
+                if episode_report_sink is not None:
+                    episode_rows.append(
+                        {
+                            "episode_id": episode,
+                            "seed": episode_seed,
+                            "steps": steps,
+                            "return": total if reward_signature else None,
+                            "task_success": episode_success if outcome_signature[0] else None,
+                            "joint_error_rad": final_error,
+                            "task_errors": episode_errors,
+                            "termination_reason": (
+                                "native_terminated"
+                                if term
+                                else "native_truncated"
+                                if trunc
+                                else "evaluation_horizon"
+                            ),
+                            "native_terminated": term,
+                            "native_truncated": trunc,
+                        }
+                    )
+                    if trace is not None and outcome_signature[0] and not episode_success:
+                        failure_trace = {
+                            "episode_id": episode,
+                            "omitted_initial_steps": steps - len(trace),
+                            "steps": list(trace),
+                        }
                 if outcome_signature[0]:
                     successes.append(episode_success)
                 if outcome_signature[1]:
@@ -447,6 +510,20 @@ def _evaluate_episodes(
     metrics.update(
         {key.replace("eval/rl/", "eval/policy/", 1): value for key, value in metrics.items()}
     )
+    if episode_report_sink is not None:
+        episode_report_sink(
+            {
+                **evaluation_context,
+                **_report_provenance(provenance),
+                "schema_version": 1,
+                "deterministic": spec.deterministic,
+                "requested_episodes": spec.episodes,
+                "completed_episodes": len(episode_rows),
+                "metrics": metrics,
+                "episodes": episode_rows,
+                "selected_failure": failure_trace,
+            }
+        )
     if spec.video.enabled:
         metadata = {
             **evaluation_context,
@@ -470,3 +547,15 @@ def _evaluate_episodes(
             assert media_sink is not None
             media_sink(frames, metadata)
     return metrics
+
+
+def _report_provenance(provenance: dict | None) -> dict:
+    source = provenance or {}
+    checkpoint = source.get("source_checkpoint")
+    return {
+        "source_policy_files_sha256": source.get("source_policy_files_sha256"),
+        "source_checkpoint_sha256": (
+            checkpoint.get("sha256") if isinstance(checkpoint, Mapping) else None
+        ),
+        "source_training_frames": source.get("source_training_frames"),
+    }

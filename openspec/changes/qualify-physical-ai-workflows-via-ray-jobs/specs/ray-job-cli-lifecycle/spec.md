@@ -69,6 +69,11 @@ At most four jobs SHALL be in flight, further limited by qualified capacity; pen
 
 The SDK backend SHALL default to locked uv setup in a private per-submission venv and support explicit prepared-environment opt-out. Setup SHALL complete before the workload and preserve failure. It SHALL modify only the owned job environment, never the submitter, base worker or another job's interpreter. Only appropriate immutable assets and package caches MAY be shared.
 
+#### Scenario: A qualification job needs application Python dependencies
+- **WHEN** the job starts on the stock Ray worker image
+- **THEN** its setup installs the application dependencies into the job's private environment
+- **AND** worker startup, worker init containers and display sidecars do not install them
+
 #### Scenario: A prepared remote environment is selected
 - **WHEN** `setup_command=None` explicitly opts out of installation
 - **THEN** the backend adds no implicit uv settings and the implicit interpreter remains `python`

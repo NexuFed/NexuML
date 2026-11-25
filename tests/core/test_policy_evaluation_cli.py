@@ -1,6 +1,8 @@
 """Inference-package replay stays outside the training lifecycle."""
 
 import builtins
+from contextlib import contextmanager
+from hashlib import sha256
 import json
 from types import SimpleNamespace
 
@@ -14,8 +16,14 @@ from nexuml.core.compiler import compile
 from nexuml.core.config import ResolvedConfig
 from nexuml.core.export import export_package, load_inference_package
 from nexuml.core.policy import CompiledPolicy
-from nexuml.core.serialization import lower_component
-from nexuml.core.types import ExportSpec, InteractionContract, ReinforcementLearningSpec
+from nexuml.core.serialization import lower_component, lower_model
+from nexuml.core.types import (
+    ExportSpec,
+    InteractionContract,
+    MLflowSpec,
+    ReinforcementLearningSpec,
+    ScenarioSpec,
+)
 from nexuml_library.environments.gymnasium import GymnasiumEnvironment
 from nexuml_library.scenarios.reinforcement.gymnasium import cartpole_ppo, pendulum_ppo
 
@@ -154,6 +162,125 @@ def test_evaluate_help(monkeypatch, color):
     if color:
         assert "\x1b[" in result.output
     assert "--override" in unstyle(result.output)
+
+
+@pytest.mark.requires_optional("gymnasium")
+@pytest.mark.requires_optional("torchrl")
+@pytest.mark.parametrize("evaluation_fails", [False, True])
+def test_checkpoint_replay_materializes_weight_parity_without_trainer(
+    monkeypatch, tmp_path, native_logging, evaluation_fails
+):
+    import lightning as L
+    from tensordict import TensorDict
+    from nexuml.training.reinforcement import NexuRLLightningModule
+
+    scenario = pendulum_ppo(total_frames=32, frames_per_batch=16)
+    scenario.training.evaluation.episodes = 1
+    module = NexuRLLightningModule(scenario)
+    module.frames.fill_(16)
+    with torch.no_grad():
+        for parameter in module.policy.parameters():
+            parameter.fill_(0.125)
+    path = tmp_path / "trusted policy.ckpt"
+    torch.save(
+        {
+            "pytorch-lightning_version": L.__version__,
+            "state_dict": module.state_dict(),
+            "hyper_parameters": dict(module.hparams),
+        },
+        path,
+    )
+    digest = sha256(path.read_bytes()).hexdigest()
+    package = export_package(module.policy, tmp_path / "reference", checkpoint_path=path)
+    observation = TensorDict(
+        {
+            key: torch.zeros(field.shape, dtype=getattr(torch, field.dtype))
+            for key, field in module.policy.contract.observations.items()
+        },
+        batch_size=[],
+    )
+    reference, _, metadata = load_inference_package(package)
+    expected = reference(observation, deterministic=True)["action"].detach()
+    exports = []
+
+    def load(candidate):
+        exports.append(candidate)
+        assert candidate.is_dir() and candidate != package
+        restored, config, provenance = load_inference_package(candidate)
+        assert provenance["policy_files_sha256"] == metadata["policy_files_sha256"]
+        return restored, config, provenance
+
+    def evaluate(policy, scenario, *, provenance, frame_step, **_):
+        assert torch.equal(policy(observation, deterministic=True)["action"], expected)
+        assert frame_step == 16
+        assert provenance["source_package"] is None
+        assert provenance["source_checkpoint"]["source"] == str(path)
+        assert provenance["source_checkpoint"]["sha256"] == digest
+        if evaluation_fails:
+            raise ValueError("evaluation fixture failed")
+        return {"eval/rl/episodes": 1.0}
+
+    @contextmanager
+    def job_scope(_):
+        assert exports[0].is_dir()
+        try:
+            yield
+        finally:
+            assert not exports[0].exists(), "cleanup must precede non-returning native teardown"
+
+    monkeypatch.setattr("nexuml.core.export.load_inference_package", load)
+    monkeypatch.setattr("nexuml.evaluation.policy.evaluate_policy", evaluate)
+    monkeypatch.setattr(GymnasiumEnvironment, "job_scope", job_scope)
+    monkeypatch.setattr("nexuml.training.lightning.NexuSession", fail_training)
+    monkeypatch.setattr(L.Trainer, "__init__", fail_training)
+    monkeypatch.setattr(torch.optim.Optimizer, "__init__", fail_training)
+    monkeypatch.setattr("nexuml.training.reinforcement.build_collector", fail_training)
+    commands = ["evaluate", "--trainer-checkpoint", str(path)]
+    result = runner.invoke(app, commands)
+    assert result.exit_code == int(evaluation_fails), (result.output, result.exception)
+    if evaluation_fails:
+        assert "evaluation fixture failed" in result.output
+    assert native_logging.loggers[0].statuses == ["failed" if evaluation_fails else "success"]
+    assert len(exports) == 1 and not exports[0].exists()
+    assert sha256(path.read_bytes()).hexdigest() == digest
+
+
+def test_checkpoint_replay_rejects_model_before_data_build(monkeypatch, tmp_path):
+    checkpoint = tmp_path / "model.ckpt"
+    torch.save(
+        {"hyper_parameters": {"scenario": lower_model(ScenarioSpec(name="model"))}}, checkpoint
+    )
+    monkeypatch.setattr("nexuml.training.lightning.create_data_module_from_spec", fail_training)
+    result = runner.invoke(app, ["evaluate", "--trainer-checkpoint", str(checkpoint)])
+    assert result.exit_code == 1
+    assert "--trainer-checkpoint requires a complete policy checkpoint" in result.output
+
+
+def test_mlflow_policy_replay_publishes_episode_results(policy_packages, native_logging):
+    result = runner.invoke(
+        app,
+        [
+            "evaluate",
+            str(policy_packages["cartpole-ppo"]),
+            "-O",
+            "logging.mlflow={}",
+            "-O",
+            "training.evaluation.episodes=2",
+            "-O",
+            "training.evaluation.seed=17",
+            "-O",
+            "training.evaluation.max_steps_per_episode=1",
+        ],
+    )
+    assert result.exit_code == 0, (result.output, result.exception)
+    assert isinstance(native_logging.configs[0][0].mlflow, MLflowSpec)
+    artifacts = {name: text for _, text, name in native_logging.artifacts}
+    report = json.loads(artifacts["evaluation-episodes.json"])
+    assert report["completed_episodes"] == report["requested_episodes"] == 2
+    assert [row["seed"] for row in report["episodes"]] == [17, 18]
+    assert all(row["task_success"] is None for row in report["episodes"])
+    assert report["selected_failure"] is None
+    assert native_logging.loggers[0].statuses == ["success"]
 
 
 @pytest.mark.parametrize("name", ["cartpole-ppo", "pendulum-ppo"])

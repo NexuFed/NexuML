@@ -33,8 +33,11 @@ class LocalExecution(ExecutionBackendDefinition):
         if operation == "evaluate":
             from nexuml.cli.main import _evaluate_local
 
+            package = kwargs.get("model_package")
+            checkpoint = kwargs.get("trainer_checkpoint")
             return _evaluate_local(
-                Path(kwargs["model_package"]),
+                Path(package) if package is not None else None,
+                trainer_checkpoint=Path(checkpoint) if checkpoint is not None else None,
                 supplied=scenario if kwargs.get("evaluation_inputs", True) else None,
                 scenario_file=kwargs.get("evaluation_scenario_file"),
                 device=kwargs.get("device"),
@@ -187,6 +190,19 @@ class RayJobsSDKExecution(ExecutionBackendDefinition):
         argv = _ray_job_argv("<remote-config>", **kwargs)
         if not shlex.split(self.py_executable):
             raise ValueError("ray-jobs-sdk py_executable must contain a Python command")
+        if argv[0] == "acceptance" and self.setup_command is not None:
+            project_environment = self.runtime_env.get("env_vars", {}).get("UV_PROJECT_ENVIRONMENT")
+            if (
+                not isinstance(project_environment, str)
+                or "\0" in project_environment
+                or "{run_id}" not in project_environment
+                or not Path(project_environment).is_relative_to("/tmp/ray")
+                or ".." in Path(project_environment).parts
+            ):
+                raise ValueError(
+                    "Acceptance setup requires a private UV_PROJECT_ENVIRONMENT "
+                    "under /tmp/ray with a {run_id} placeholder"
+                )
         super().preflight(scenario, **kwargs)
         return {"argv": argv}
 

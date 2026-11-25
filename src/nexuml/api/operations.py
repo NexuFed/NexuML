@@ -379,6 +379,10 @@ class Operations:
                     *result.get("artifacts", []),
                     {"path": str(folder / "logs.txt"), "kind": "log"},
                 ]
+                # The process has exited; observers of terminal state must be
+                # able to start the next operation without waiting for finally.
+                if self.active and self.active[0] == folder.name:
+                    self.active = None
                 self.append(
                     folder,
                     "terminal",

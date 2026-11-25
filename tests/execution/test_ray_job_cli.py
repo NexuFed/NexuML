@@ -321,6 +321,64 @@ def test_completion_commands_use_only_real_checkpoints_and_quote_worker_paths(
     )
 
 
+def test_resolved_worker_config_logs_plain_checkpoint_options():
+    import yaml
+
+    from nexuml.core.config import ResolvedConfig
+    from nexuml.core.serialization import lower_model
+    from nexuml.core.types import CallbackSpec
+
+    config = ResolvedConfig(
+        callbacks=[
+            CallbackSpec(
+                factory="lightning.pytorch.callbacks:ModelCheckpoint",
+                kwargs={"save_top_k": 0, "save_last": True},
+            )
+        ]
+    )
+    resolved = ResolvedConfig.from_yaml(config.to_yaml())
+    logged = yaml.safe_load(yaml.safe_dump(lower_model(resolved)))
+    assert logged["callbacks"][0]["kwargs"] == {"save_top_k": 0, "save_last": True}
+
+
+def test_finished_remote_viewer_reports_explicit_replay_for_the_export(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    import nexuml.execution as execution
+
+    package = tmp_path / "policy with spaces"
+    metadata = package / "metadata.json"
+    scenario = ScenarioSpec(name="finished", logging=None)
+    environment = SimpleNamespace(viewer=SimpleNamespace(purposes=("train",)))
+    module = SimpleNamespace(
+        frames=64,
+        fit_device="cuda:0",
+        scenario=SimpleNamespace(interaction=SimpleNamespace(environment=environment)),
+    )
+    result = SimpleNamespace(
+        lightning_module=module,
+        artifacts=[{"kind": "train_package", "path": str(metadata)}],
+    )
+    monkeypatch.setenv("RAY_JOB_CONFIG_JSON_ENV_VAR", '{"metadata": {"job_submission_id": "fit"}}')
+    monkeypatch.setattr(main, "_get_scenario_fn", lambda _: lambda: scenario)
+    monkeypatch.setattr(execution, "run", lambda *_args, **_kwargs: result)
+
+    finished = runner.invoke(main.app, ["train", "finished"])
+    assert finished.exit_code == 0
+    line = next(line for line in finished.output.splitlines() if "Submitter replay:" in line)
+    assert shlex.split(line.partition("Submitter replay: ")[2]) == [
+        "nexuml",
+        "evaluate",
+        str(package),
+        "--config",
+        "$NEXUML_REPLAY_CONFIG",
+        "--device",
+        "cuda:0",
+        "-O",
+        'interaction.evaluation_environment.viewer.purposes=["eval"]',
+    ]
+    assert environment.viewer.purposes == ("train",)
+
+
 def test_cli_selects_ray_job_without_changing_the_local_scenario(submit_only):
     result = runner.invoke(
         main.app,
@@ -374,13 +432,14 @@ def test_invalid_execution_override_is_rejected_before_dispatch(submit_only, exe
     assert not submit_only
 
 
-@pytest.mark.parametrize("operation", ["evaluate", "export"])
+@pytest.mark.parametrize("kind", ["package", "trainer_checkpoint", "export"])
 @pytest.mark.parametrize("source", ["config", "file"])
 def test_remote_lifecycle_selects_execution_before_worker_inputs(
-    operation, source, submit_only, tmp_path, monkeypatch
+    kind, source, submit_only, tmp_path, monkeypatch
 ):
     import nexuml.execution as execution
 
+    operation = "export" if kind == "export" else "evaluate"
     scenario = ScenarioSpec(name="lifecycle", execution=RayJobsSDKExecution())
     if source == "config":
         path = tmp_path / "job.yaml"
@@ -403,10 +462,15 @@ def test_remote_lifecycle_selects_execution_before_worker_inputs(
         "nexuml.core.export.load_inference_package",
         lambda *_args, **_kwargs: pytest.fail("opened worker package locally"),
     )
+    monkeypatch.setattr(
+        "nexuml.training.lightning.create_runtime_artifacts_from_trainer_checkpoint",
+        lambda *_args, **_kwargs: pytest.fail("opened worker checkpoint locally"),
+    )
     worker_input = "/worker only/input ; 'data"
     args = (
         [
             "evaluate",
+            *(["--trainer-checkpoint"] if kind == "trainer_checkpoint" else []),
             worker_input,
             *selector,
             "--device",
@@ -423,7 +487,11 @@ def test_remote_lifecycle_selects_execution_before_worker_inputs(
     selected, kwargs = calls[0]
     assert isinstance(selected.execution, RayJobsSDKExecution)
     assert kwargs["operation"] == operation
-    key = "model_package" if operation == "evaluate" else "checkpoint"
+    key = {
+        "package": "model_package",
+        "trainer_checkpoint": "trainer_checkpoint",
+        "export": "checkpoint",
+    }[kind]
     assert str(kwargs[key]) == worker_input
     if operation == "evaluate":
         assert kwargs["overrides"] == ("policy_evaluation.episodes=2",)
@@ -437,6 +505,14 @@ def test_remote_lifecycle_selects_execution_before_worker_inputs(
     if operation == "export":
         assert "Requested worker export output (not yet produced): /worker/policy" in text
     assert "Training complete" not in result.output
+
+
+@pytest.mark.parametrize("inputs", [[], ["/worker/policy", "--trainer-checkpoint", "/worker/ckpt"]])
+def test_evaluate_rejects_missing_or_competing_weights_before_dispatch(inputs, submit_only):
+    result = runner.invoke(main.app, ["evaluate", *inputs, "--config", "/nonexistent/job.yaml"])
+    assert result.exit_code == 2
+    assert "exactly one MODEL_PACKAGE or --trainer-checkpoint" in " ".join(result.output.split())
+    assert not submit_only
 
 
 @pytest.mark.parametrize("operation", ["evaluate", "export"])

@@ -214,6 +214,20 @@ class BrowserControlTest(unittest.TestCase):
         self.assertEqual(self.record["checks"]["mlflow_native_artifacts"], "PASS")
         self.assertEqual(self.record["checks"]["mlflow_native_overview"], "PASS")
 
+    def test_missing_explicit_s3_ca_blocks_before_browser_or_servers_start(self):
+        with self.assertRaisesRegex(ValueError, "AWS_CA_BUNDLE is missing"):
+            self.run_browser(
+                self.record,
+                self.root,
+                self.options,
+                {"AWS_CA_BUNDLE": str(self.root / "unprovisioned-ca.pem")},
+                self.stage,
+                self.recover,
+                lambda: {1},
+            )
+        self.stage.assert_not_called()
+        self.launch.assert_not_called()
+
     def test_incomplete_or_cross_mode_overview_proof_never_passes(self):
         original = self.stage.side_effect
         replacements = {

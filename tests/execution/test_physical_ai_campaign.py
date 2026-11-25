@@ -7,6 +7,7 @@ import signal
 import sys
 import time
 from types import SimpleNamespace
+from unittest import mock
 from uuid import UUID
 
 import pytest
@@ -26,6 +27,24 @@ def driver(monkeypatch):
         SimpleNamespace(monotonic=lambda: clock.now, sleep=sleep),
     )
     return functions, clock
+
+
+@pytest.fixture
+def inert_source(driver, monkeypatch):
+    functions, _ = driver
+    namespace = functions["main"].__globals__
+    git = {
+        ("git", "rev-parse", "HEAD"): "a" * 40,
+        ("git", "status", "--porcelain"): "",
+    }
+    monkeypatch.setitem(namespace, "source_identity", lambda _: "tree")
+    # The source bundle used by worker tests deliberately does not upload .git.
+    monkeypatch.setitem(
+        namespace,
+        "subprocess",
+        SimpleNamespace(check_output=lambda argv, *, text: git[tuple(argv)]),
+    )
+    return functions
 
 
 def attempts(count):
@@ -298,16 +317,14 @@ def test_browser_forwards_only_qualified_producer_identity(
 
 @pytest.mark.parametrize("mode", ["separate", "both"])
 def test_browser_mode_cli_is_explicit_and_dry_run_stays_inert(
-    driver, monkeypatch, tmp_path, capsys, mode
+    inert_source, monkeypatch, tmp_path, capsys, mode
 ):
     from nexuml.execution.definitions import RayJobsSDKExecution
 
-    functions, _ = driver
     certificate = tmp_path / "ca.pem"
     certificate.write_text("inert CA fixture")
     output = tmp_path / "not-created"
     monkeypatch.setattr("nexuml.execution.load_ray_job_profile", lambda _: RayJobsSDKExecution())
-    monkeypatch.setitem(functions["main"].__globals__, "source_identity", lambda _: "tree")
     monkeypatch.setattr(
         sys,
         "argv",
@@ -323,8 +340,9 @@ def test_browser_mode_cli_is_explicit_and_dry_run_stays_inert(
             str(output),
         ],
     )
-    functions["main"]()
+    inert_source["main"]()
     plan = json.loads(capsys.readouterr().out)
+    assert plan["source_revision"] == "a" * 40 and plan["source_tree_sha256"] == "tree"
     assert plan["attempts"][0]["options"]["logger_mode"] == mode
     assert not output.exists()
 
@@ -352,6 +370,43 @@ def test_browser_mode_cli_cannot_select_other_cases(driver, monkeypatch, tmp_pat
         functions["main"]()
     assert result.value.code == 2
     assert "requires a browser case" in capsys.readouterr().err
+
+
+def test_submitter_cli_does_not_echo_private_rpc_exception(
+    inert_source, monkeypatch, tmp_path, capsys
+):
+    from nexuml.execution.definitions import RayJobsSDKExecution
+
+    certificate = tmp_path / "ca.pem"
+    certificate.touch()
+    output = tmp_path / "out"
+    monkeypatch.setattr("nexuml.execution.load_ray_job_profile", lambda _: RayJobsSDKExecution())
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "physical_ai_acceptance.py",
+            "--case",
+            "preflight",
+            "--ca",
+            str(certificate),
+            "--output",
+            str(output),
+            "--submit",
+        ],
+    )
+    monkeypatch.setitem(
+        inert_source["main"].__globals__,
+        "_bounded_rpc",
+        mock.Mock(side_effect=RuntimeError("private SDK sentinel")),
+    )
+    with pytest.raises(SystemExit) as error:
+        inert_source["main"]()
+    assert error.value.code == 1
+    assert error.value.__suppress_context__
+    captured = capsys.readouterr()
+    assert "private SDK sentinel" not in captured.out + captured.err
+    assert str(output / "summary.json") in captured.err
 
 
 def test_logging_failure_forwards_only_authenticated_source_inputs(driver, monkeypatch, tmp_path):
@@ -388,12 +443,11 @@ def test_recipe_forwards_only_fixed_recording_selection(driver, monkeypatch, tmp
 @pytest.mark.parametrize("owner", ["package", "external"])
 @pytest.mark.parametrize("family", ["rgb", "depth", "segmentation", "mixed"])
 def test_sensor_owner_cli_resolves_the_existing_recipe_without_launch(
-    driver, monkeypatch, tmp_path, capsys, family, owner
+    inert_source, monkeypatch, tmp_path, capsys, family, owner
 ):
     from nexuml.execution.definitions import RayJobsSDKExecution
     from nexuml.core.scenario_registry import get_scenario_registry
 
-    functions, _ = driver
     name = f"isaac-{family}-cartpole-ppo"
     factory = get_scenario_registry().get(name)
     selected = []
@@ -410,7 +464,6 @@ def test_sensor_owner_cli_resolves_the_existing_recipe_without_launch(
     certificate.write_text("inert fixture")
     output = tmp_path / "not-created"
     monkeypatch.setattr("nexuml.execution.load_ray_job_profile", lambda _: RayJobsSDKExecution())
-    monkeypatch.setitem(functions["main"].__globals__, "source_identity", lambda _: "tree")
     monkeypatch.setattr(
         sys,
         "argv",
@@ -428,7 +481,7 @@ def test_sensor_owner_cli_resolves_the_existing_recipe_without_launch(
             str(output),
         ],
     )
-    functions["main"]()
+    inert_source["main"]()
     plan = json.loads(capsys.readouterr().out)
     assert plan["attempts"][0]["options"]["processing_owner"] == owner
     assert selected == [{"processing_owner": owner}]
@@ -551,13 +604,16 @@ def test_invalid_concurrency_never_submits(driver, monkeypatch, tmp_path, concur
         functions["run_campaign"](attempts(1), Client(), tmp_path / "out", concurrency=concurrency)
 
 
-def test_duplicate_attempt_root_fails_before_submission(driver, monkeypatch, tmp_path):
+@pytest.mark.parametrize("suffix", ["", "/.", "/nested"])
+def test_overlapping_attempt_roots_fail_before_submission(driver, monkeypatch, tmp_path, suffix):
     functions, _ = driver
     rows = attempts(2)
-    rows[1]["attempt_root"] = rows[0]["attempt_root"]
+    rows[1]["attempt_root"] = rows[0]["attempt_root"] + suffix
     monkeypatch.setattr("nexuml.execution.run", lambda *_args, **_kwargs: pytest.fail("submitted"))
-    with pytest.raises(ValueError, match="share output roots"):
-        functions["run_campaign"](rows, Client(), tmp_path / "out")
+    output = tmp_path / "out"
+    with pytest.raises(ValueError, match="disjoint output roots"):
+        functions["run_campaign"](rows, Client(), output)
+    assert not output.exists()
 
 
 def test_missing_or_changed_source_receipt_is_not_a_pass(driver, monkeypatch, tmp_path):
@@ -590,6 +646,18 @@ def test_worker_options_exclude_driver_metadata_and_unset_inputs(driver, monkeyp
     rows[0]["options"].update(data_root=None, suite="full", source_dirty=False)
     functions["run_campaign"](rows, client, tmp_path / "out")
     assert client.requests[0]["case_options"] == {}
+
+
+def test_package_worker_gets_only_explicit_data_path(driver, monkeypatch, tmp_path):
+    functions, _ = driver
+    client = Client(pending_polls=0)
+    monkeypatch.setattr("nexuml.execution.run", client.submit)
+    rows = attempts(1)
+    rows[0]["case"] = "package"
+    data = "/mnt/data/approved SO-101"
+    rows[0]["options"].update(data_root=data, suite="full", source_dirty=False)
+    functions["run_campaign"](rows, client, tmp_path / "out")
+    assert client.requests[0]["case_options"] == {"data_root": data}
 
 
 def test_owned_uuid_and_identity_are_durable_before_submission(driver, monkeypatch, tmp_path):

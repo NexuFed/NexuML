@@ -193,6 +193,8 @@ def run_browser(record, root, options, env, stage, recover, group_members):
     if hashlib.sha256(data).hexdigest() != previous["logging"]["manifest_sha256"]:
         raise AssertionError("producer logger manifest changed after input admission")
     payloads = json.loads(data)
+    if (ca := env.get("AWS_CA_BUNDLE")) and not Path(ca).is_file():
+        raise ValueError("configured AWS_CA_BUNDLE is missing on the browser worker")
     owned_manifest = root / "source-logging-manifest.json"
     owned_manifest.write_bytes(data)
     setup = json.loads((root / "browser-setup.json").read_text())

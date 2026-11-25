@@ -218,6 +218,23 @@ unchanged. Evaluation `--config` supplies only allowed evaluation/data/logging/
 environment settings, never replacement packaged weights. Dependent native stages
 run sequentially in fresh processes; submission alone does not establish completion.
 
+On the IKA cluster, `pool_gpu_workers` scales from zero. No GPU workers while the
+pool is idle is normal. Submit a job requesting one GPU and the pool label, then
+use its status and queue deadline to distinguish scale-up from a scheduling failure.
+
+For a trusted policy trainer checkpoint, use
+`nexuml evaluate --trainer-checkpoint /mnt/data/run/model.ckpt --config EVALUATION_JOB.yaml`
+instead of the positional package. The worker uses the checkpoint's saved scenario
+to materialize a temporary inference package without running training, and retains
+the source checkpoint identity in evaluation provenance.
+
+With MLflow enabled, ordinary policy evaluation logs `evaluation-episodes.json`
+with the episode denominator, reset seeds, termination reasons and reported task
+outcomes. When the environment reports success and a trial fails, the report
+includes the last 128 or fewer task-outcome samples from the first failed trial.
+This is not a video, and environments that do not report task success are not
+assigned a failure based on reward or timeout.
+
 Worker completion reports the Ray submission ID, host and PID when Ray supplies
 its job metadata. `Fit device observed at start` records placement before training;
 `Module device after completion` may instead be CPU after Lightning teardown.
@@ -225,6 +242,14 @@ Printed resume/evaluation commands quote the produced worker paths and are label
 **worker-local**. To run them from the submitter, add the appropriate trusted
 `--config` as above; those paths are not uploaded. A missing fit-device observation
 is not evidence of GPU training (for example, an already exhausted checkpoint).
+If a remote training spectator finished and produced a policy, the separate
+**Submitter replay** command opts in to evaluation viewing. Set `NEXUML_REPLAY_CONFIG`
+to a trusted Ray Jobs config with a compatible environment, private viewer port,
+and nonzero evaluation episode budget. The exported policy must be on storage the
+next worker can access. The completed job's viewer is no longer available.
+While training, the banner labels the spectator's configured worker port and
+prints separate loopback commands for tracking UIs. It does not start those
+UIs or verify that the spectator is listening.
 
 The test-owned acceptance driver prints `NEXUML_CASE_SUBMITTED` and
 `NEXUML_CASE_TERMINAL` JSON lines. They link the case, unique attempt root, Ray
@@ -255,6 +280,37 @@ semantics against the checkpoint on the worker before native allocation. Changes
 fail rather than silently replacing the saved run. Saved scenario metadata remains
 authoritative, including output paths: choose isolated durable paths before original
 training. A resume does not implicitly relocate them.
+
+### Isaac Lab-Arena evaluation
+
+The SO-101 Arena scenario in `scripts/isaaclab/so101_arena.py` selects a separate
+evaluation-only environment. Use its `so101_arena_evaluation()` factory to prepare
+the trusted Ray config; set `scenario.execution` to `ray-jobs-sdk` and configure
+MLflow on storage reachable after the worker exits. Keep the stock Ray image;
+the job's setup must install NexuML and its Arena dependencies into the private
+job environment. Do not use a worker-wide Python install or a display sidecar
+as the Python runtime. The target is Arena 0.4 with Isaac Lab 3.0, Isaac Sim
+6.2 and a compatible cuRobo package. Candidate versions need not match the
+upstream lock, but the resolved runtime still needs native qualification. An
+upstream demo is not qualification.
+
+```bash
+nexuml evaluate /worker/path/so101.policy --config arena-ray.yaml --device cuda:0
+nexuml evaluate --trainer-checkpoint /worker/path/so101.ckpt --config arena-ray.yaml --device cuda:0
+```
+
+Run each command as a separate job. They take the same suite and exactly one
+weight source; neither trains. Leave the suite's seeds and native horizon in
+place. Its default budget is one episode per condition, enough to compare
+weight-loading paths, not to estimate deployment reliability.
+
+Headless is the default. Set `interaction.evaluation_environment.params.kit_viewer`
+in the serialized config only for a worker with an approved private display
+route. Navigate the camera only; pausing or resetting makes the run debug-only.
+Creating a display does not establish remote access. Scored jobs use the headless
+profile and record the suite, source identities, trial counts and the first
+observed failure diagnostic in MLflow's `evaluation-episodes.json`. The artifact
+is not a live view or a video.
 
 ### Non-graphics lifecycle control
 
@@ -306,6 +362,17 @@ through a trusted `py_executable` override. Its `setup_command=None` prevents ex
 unguarded setup; the guard runs the same locked sync with private uv settings.
 It retains the 4 GiB physical-disk stop and wall-time deadline. The SDK backend
 itself does not add those limits to ordinary submissions.
+Guarded campaign output requires the worker's approved `/mnt/data` mount before
+setup; a directory on the writable container layer is not durable storage.
+Each attempt is a named leaf under its campaign, never a subdirectory of
+another attempt.
+For the test-owned native setup, `NEXUML_NATIVE_DEB_CACHE` can explicitly select
+an absolute worker directory containing the pinned public packages. The worker
+checks their existing sizes and SHA-256 values before extracting into its own
+environment. An incomplete or mismatched cache fails without a network fallback.
+For the browser fixture, `NEXUML_BROWSER_DEB_CACHE` selects the exact pinned
+Ubuntu client packages. The larger browser binaries still use their pinned
+HTTPS sources, so the working-directory upload contains only the small packages.
 
 Graphics qualification requires a separately qualified Ray worker image and
 display/browser routes; a submitter devcontainer rebuild does not satisfy them.
@@ -320,6 +387,13 @@ Without `--submit`, this prints approved target/CA paths, durable root, budgets 
 missing/unqualified prerequisites without creating a client, installing dependencies
 or initializing a workload. A private-data path is neither approval nor admission.
 Initial qualification remains serial; the four-job ceiling does not prove capacity.
+For two admitted recipe jobs, `--overlap-start` waits until both reach training
+after setup, with a bounded wait inside each existing attempt. It does not
+reserve hardware or change training budgets. The receipts record actual stage
+timings; merely submitting two jobs still does not prove overlap.
+For a guarded acceptance case with setup enabled, `UV_PROJECT_ENVIRONMENT` must
+stay under worker-local `/tmp/ray` and contain `{run_id}`. A shared mutable venv
+is not a valid campaign profile.
 
 ### Remote dependency setup
 

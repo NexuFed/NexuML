@@ -466,6 +466,15 @@ def test_registered_sdk_roundtrip_and_distinct_kuberay_identity():
             ["evaluate", "--config", "--config", "CONFIG"],
         ),
         (
+            {"operation": "evaluate", "trainer_checkpoint": "/worker/model ' ;$(literal).ckpt"},
+            [
+                "evaluate",
+                "--trainer-checkpoint=/worker/model ' ;$(literal).ckpt",
+                "--config",
+                "CONFIG",
+            ],
+        ),
+        (
             {
                 "operation": "export",
                 "checkpoint": "/worker/a ' ;.ckpt",
@@ -512,6 +521,22 @@ def test_lifecycle_bootstrap_preserves_literal_argv_and_resets_execution(
         received.append([*argv[:config_index], "CONFIG", *argv[config_index + 1 :]])
 
     monkeypatch.setitem(sys.modules, "nexuml.cli.main", SimpleNamespace(app=cli))
+    evaluation = kwargs.get("operation") == "evaluate"
+    if evaluation:
+
+        def launch(command):
+            assert command[:6] == [
+                sys.executable,
+                "-u",
+                "-X",
+                "faulthandler",
+                "-m",
+                "nexuml.cli.main",
+            ]
+            cli(command[6:])
+            return -11
+
+        monkeypatch.setattr(subprocess, "call", launch)
     validations = []
     monkeypatch.setattr(
         "nexuml.execution.ray_job._validate_remote_resume",
@@ -523,9 +548,17 @@ def test_lifecycle_bootstrap_preserves_literal_argv_and_resets_execution(
     bootstrap = shlex.split(jobs_client.submission["entrypoint"])[-1]
     for secret in ("private-dashboard", "/private/ca.pem", "private-submission-token"):
         assert secret not in bootstrap
-    exec(compile(bootstrap, "<mock-worker>", "exec"), {})
+    worker = compile(bootstrap, "<mock-worker>", "exec")
+    if evaluation:
+        with pytest.raises(SystemExit) as stopped:
+            exec(worker, {})
+        assert stopped.value.code == 139
+    else:
+        exec(worker, {})
     assert received == [expected]
-    assert len(validations) == int(kwargs.get("trainer_checkpoint") is not None)
+    assert len(validations) == int(
+        kwargs.get("operation", "train") == "train" and kwargs.get("trainer_checkpoint") is not None
+    )
     assert not paths[0].parent.exists()
     assert lower_model(scenario) == before
 
@@ -540,10 +573,10 @@ def test_lifecycle_bootstrap_preserves_literal_argv_and_resets_execution(
         ({"device": "cpu"}, "train does not accept device"),
         ({"overrides": ["name=x"]}, "train does not accept overrides"),
         ({"trainer_checkpoint": ""}, "trainer_checkpoint must"),
-        ({"operation": "evaluate"}, "evaluate requires model_package"),
+        ({"operation": "evaluate"}, "exactly one model_package or trainer_checkpoint"),
         (
             {"operation": "evaluate", "model_package": "worker/policy", "trainer_checkpoint": "x"},
-            "evaluate does not accept trainer_checkpoint",
+            "exactly one model_package or trainer_checkpoint",
         ),
         (
             {"operation": "evaluate", "model_package": "worker/policy", "checkpoint": "x"},
@@ -606,6 +639,7 @@ def test_preflight_and_settings_never_import_runtime_or_open_worker_paths(monkey
     for kwargs in (
         {"trainer_checkpoint": "/not/on/submitter.ckpt"},
         {"operation": "evaluate", "model_package": "/not/on/submitter/policy"},
+        {"operation": "evaluate", "trainer_checkpoint": "/not/on/submitter.ckpt"},
         {"operation": "export", "checkpoint": "/remote/model.ckpt", "output": "/remote/out"},
         {
             "operation": "acceptance",
@@ -988,3 +1022,27 @@ def test_acceptance_uses_shared_guarded_transport_and_fixed_fixture(
         assert env["UV_CACHE_DIR"] == "/tmp/ray/uv-cache"
         assert env["UV_LINK_MODE"] == "hardlink"
     assert lower_model(scenario) == before
+
+
+@pytest.mark.parametrize(
+    "venv",
+    ["/env", "/tmp/ray/shared", "relative/{run_id}", "/tmp/ray/{run_id}/../shared"],
+)
+def test_acceptance_rejects_shared_or_outside_setup_venv_before_submission(jobs_client, venv):
+    from nexuml.execution import service
+
+    scenario = ScenarioSpec(
+        name="private-setup",
+        execution=RayJobsSDKExecution(
+            runtime_env={"env_vars": {"UV_PROJECT_ENVIRONMENT": venv}},
+        ),
+    )
+    with pytest.raises(ValueError, match="requires a private UV_PROJECT_ENVIRONMENT"):
+        service.run(
+            scenario,
+            operation="acceptance",
+            case="preflight",
+            attempt_root="/mnt/data/nexuml-qualification/campaign/attempt",
+            wall_seconds=60,
+        )
+    assert jobs_client.count == 0

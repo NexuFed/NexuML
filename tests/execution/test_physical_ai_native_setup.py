@@ -103,7 +103,9 @@ class PhysicalAINativeSetupTest(unittest.TestCase):
 
     def command(self, argv, **kwargs):
         if argv[0] == "dpkg-deb":
-            self.assertEqual(self.http.call_count, 13)
+            self.assertEqual(
+                self.http.call_count, 0 if "NEXUML_NATIVE_DEB_CACHE" in os.environ else 13
+            )
             self.assertEqual(argv[1], "--extract")
             self.assertEqual(argv[3], str(self.destination))
             self.assertEqual(kwargs, {"check": True, "timeout": 60})
@@ -320,6 +322,27 @@ class PhysicalAINativeSetupTest(unittest.TestCase):
         self.assertEqual(self.http.call_count, 1)
         self.launch.assert_not_called()
         self.assertEqual(self.receipt()["status"], "failed")
+        self.assertEqual(self.receipt()["failed_package"], self.pins[0]["name"])
+
+    def test_explicit_cache_uses_same_pins_without_network_or_source_mutation(self):
+        cache = self.base / "prepared"
+        cache.mkdir()
+        for package in self.pins:
+            (cache / Path(package["filename"]).name).write_bytes(self.content)
+        with mock.patch.dict(os.environ, NEXUML_NATIVE_DEB_CACHE=str(cache)):
+            self.main()
+        self.http.assert_not_called()
+        self.assertEqual(self.receipt()["status"], "success")
+        self.assertTrue(all(path.read_bytes() == self.content for path in cache.iterdir()))
+
+    def test_explicit_incomplete_cache_fails_without_network_fallback(self):
+        cache = self.base / "prepared"
+        cache.mkdir()
+        with mock.patch.dict(os.environ, NEXUML_NATIVE_DEB_CACHE=str(cache)):
+            with self.assertRaisesRegex(ValueError, "pinned local archive missing: libgl1"):
+                self.main()
+        self.http.assert_not_called()
+        self.launch.assert_not_called()
 
     def test_secondary_receipt_failure_preserves_original_setup_error(self):
         self.http.side_effect = TimeoutError("original download deadline")

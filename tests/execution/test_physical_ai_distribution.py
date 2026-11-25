@@ -68,6 +68,11 @@ class PhysicalAIDistributionTest(unittest.TestCase):
         self.calls = []
         self.failed_stage = None
         self.provenance_change = None
+        self.fit_receipt = {
+            "bitwise_repeatable": True,
+            "first": {"metrics": {"optimizer_steps": 500}, "episodes": 48},
+            "second": {"metrics": {"optimizer_steps": 500}, "episodes": 48},
+        }
 
     def provenance(self):
         return {
@@ -112,14 +117,18 @@ class PhysicalAIDistributionTest(unittest.TestCase):
             if self.provenance_change:
                 self.provenance_change(provenance)
             Path(argv[4]).write_text(json.dumps(provenance))
+        if name == "installed-so101-fit":
+            fit = Path(argv[4])
+            fit.mkdir()
+            (fit / "fit.json").write_text(json.dumps(self.fit_receipt))
 
-    def run_profile(self):
+    def run_profile(self, *, data=None):
         with (
             contextlib.chdir(self.source),
             mock.patch("tempfile.mkdtemp", return_value=str(self.scratch)) as scratch,
             mock.patch("subprocess.Popen", side_effect=AssertionError("local launch forbidden")),
         ):
-            self.run_package(self.record, self.root, self.env, self.stage)
+            self.run_package(self.record, self.root, self.env, self.stage, data=data)
         scratch.assert_called_once_with(prefix="nexuml-distribution-", dir="/tmp/ray")
 
     def test_import_is_inert_stdlib_only(self):
@@ -259,6 +268,40 @@ class PhysicalAIDistributionTest(unittest.TestCase):
         self.assertEqual(self.record["package"]["so101_approved_data"], "UNVERIFIED")
         self.assertIn("full distribution gate UNVERIFIED", self.record["gate_scope"]["D"])
         self.assertNotIn("never-in-receipt", json.dumps(self.record))
+
+    def test_opt_in_so101_fit_uses_exact_installed_wheels_and_stays_offline(self):
+        data = self.base / "approved data; no shell"
+        self.run_profile(data=data)
+        name, argv, env = self.calls[-1]
+        self.assertEqual(name, "installed-so101-fit")
+        self.assertEqual(
+            argv,
+            [
+                str(self.venv / "bin/python"),
+                "-I",
+                str(self.source / "scripts/so101_local_fit.py"),
+                str(data),
+                str(self.root / "so101-fit"),
+                "--steps",
+                "500",
+                "--seed",
+                "42",
+            ],
+        )
+        self.assertEqual(env["HF_HUB_OFFLINE"], "1")
+        self.assertEqual(env["HF_DATASETS_OFFLINE"], "1")
+        self.assertNotIn("PYTHONPATH", env)
+        commands = {name: argv for name, argv, _ in self.calls}
+        self.assertEqual(commands["installed-locked-sync"][-2:], ["--extra", "lerobot"])
+        self.assertNotIn("isaac", commands["installed-locked-sync"])
+        self.assertEqual(self.record["package"]["so101_approved_data"], "PASS")
+        self.assertEqual(self.record["gates"]["D"], "UNVERIFIED")
+
+    def test_opt_in_so101_rejects_short_or_nonrepeatable_fit(self):
+        self.fit_receipt["second"]["metrics"]["optimizer_steps"] = 499
+        with self.assertRaisesRegex(AssertionError, "fixed budget or repeatability"):
+            self.run_profile(data=self.base / "approved data")
+        self.assertEqual(self.record["package"]["so101_approved_data"], "UNVERIFIED")
 
     def test_each_stage_failure_stops_without_later_passes(self):
         self.run_profile()

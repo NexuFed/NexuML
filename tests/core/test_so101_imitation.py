@@ -65,6 +65,20 @@ def script():
     )
 
 
+def test_native_replay_provenance_does_not_require_lerobot(script, monkeypatch):
+    from importlib.metadata import PackageNotFoundError
+
+    def distribution(name):
+        if name == "lerobot":
+            raise PackageNotFoundError(name)
+        return SimpleNamespace(version="synthetic-test-only", read_text=lambda _: None)
+
+    monkeypatch.setitem(script._packages.__globals__, "distribution", distribution)
+    assert set(script._packages()) == {"nexuml", "nexuml-library", "torch", "isaaclab", "isaacsim"}
+    with pytest.raises(PackageNotFoundError):
+        script._packages(capture=True)
+
+
 def _synthetic_receipt(episodes=6):
     # Deliberately synthetic; matching receipt fields are NOT proof of native execution.
     packages = {

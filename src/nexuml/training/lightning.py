@@ -159,6 +159,7 @@ class NexuLightningModule(L.LightningModule):
                 val,
                 prog_bar=self._should_show_in_progress_bar("val", name),
                 sync_dist=True,
+                batch_size=x.batch_size[0] if x.ndim else 1,
             )
         self._log_running_pipeline_metrics("val", x_out)
 
@@ -172,12 +173,14 @@ class NexuLightningModule(L.LightningModule):
         self._run_eval_batch(x_out, y_out)
         loss, loss_dict = self._compute_loss(x_out)
 
+        # Use the sample axis; Lightning cannot infer it from nested non-tensor metadata.
         for name, val in loss_dict.items():
             self.log(
                 f"test/{name}",
                 val,
                 prog_bar=self._should_show_in_progress_bar("test", name),
                 sync_dist=True,
+                batch_size=x.batch_size[0] if x.ndim else 1,
             )
         self._log_running_pipeline_metrics("test", x_out)
 
@@ -748,6 +751,8 @@ class NexuSession:
             if self._runtime is not None and self._runtime.data_module is not None:
                 data_backend = self._runtime.data_module.loader_spec.backend.component_name
 
+            interaction = self.scenario.interaction
+            spectator = getattr(interaction.environment, "viewer", None) if interaction else None
             print_service_info(
                 trainer_loggers=(
                     self.trainer_loggers if isinstance(self.trainer_loggers, list) else []
@@ -758,6 +763,11 @@ class NexuSession:
                 tuning_spec=getattr(self.scenario, "tuning", None),
                 data_backend=data_backend,
                 training_backend="lightning",
+                spectator_port=(
+                    getattr(spectator, "port", None)
+                    if "train" in getattr(spectator, "purposes", ())
+                    else None
+                ),
             )
             self._service_info_printed = True
 
@@ -1203,6 +1213,29 @@ def resolve_preprocessing_path(scenario: ScenarioSpec) -> Path:
     )
 
 
+def _offline_policy(pipeline: CompiledPipeline) -> CompiledPolicy | None:
+    """Assemble a policy only when its checkpoint owns the full inference state.
+
+    Returns:
+        The complete offline policy, or None for an ordinary model pipeline.
+
+    Raises:
+        ValueError: If the offline action adapter has unowned checkpoint state.
+    """
+    config = pipeline.resolved_config
+    if config.interaction is None or config.policy is None:
+        return None
+    policy = CompiledPolicy.from_pipeline(pipeline)
+    # Offline checkpoints own only the pipeline, not action-adapter state.
+    adapter = policy.action_adapter
+    if list(adapter.parameters()) or list(adapter.buffers()) or adapter.state_dict():
+        raise ValueError(
+            "Offline policy training requires a stateless action adapter; "
+            "adapter parameters/buffers have no checkpoint owner"
+        )
+    return policy
+
+
 def create_runtime_artifacts(
     scenario: ScenarioSpec,
     apply_selective_checkpoint: bool = True,
@@ -1212,9 +1245,6 @@ def create_runtime_artifacts(
     Returns:
         ``RuntimeArtifacts`` containing the compiled pipeline, Lightning module,
         data module, and optional load report.
-
-    Raises:
-        ValueError: If an offline action adapter has state without a checkpoint owner.
     """
     if isinstance(scenario.training, ReinforcementLearningSpec):
         if scenario.training.seed is not None:
@@ -1245,16 +1275,7 @@ def create_runtime_artifacts(
     data_module = create_data_module_from_spec(scenario)
     hydrated_scenario = _hydrate_scenario_from_dataset(scenario, data_module)
     pipeline = compile(hydrated_scenario)
-    policy = None
-    if hydrated_scenario.interaction is not None and hydrated_scenario.policy is not None:
-        policy = CompiledPolicy.from_pipeline(pipeline)
-        # Offline checkpoints own only the pipeline, not action-adapter state.
-        adapter = policy.action_adapter
-        if list(adapter.parameters()) or list(adapter.buffers()) or adapter.state_dict():
-            raise ValueError(
-                "Offline policy training requires a stateless action adapter; "
-                "adapter parameters/buffers have no checkpoint owner"
-            )
+    policy = _offline_policy(pipeline)
 
     load_report = None
     if (
@@ -1480,19 +1501,37 @@ def load_scenario_from_trainer_checkpoint(
 def create_runtime_artifacts_from_trainer_checkpoint(
     checkpoint_path: str | Path,
     scenario: ScenarioSpec | None = None,
+    *,
+    require_policy: bool = False,
 ) -> RuntimeArtifacts:
     """Rebuild runtime objects from a Lightning Trainer checkpoint.
 
+    Policy-only restoration uses the saved compile inputs, never the training dataset.
+
     Returns:
         ``RuntimeArtifacts`` reconstructed from the checkpoint.
+
+    Raises:
+        ValueError: If policy reconstruction was requested for a non-policy checkpoint.
     """
     restored_scenario = load_scenario_from_trainer_checkpoint(checkpoint_path, fallback=scenario)
+    if require_policy and (
+        restored_scenario.interaction is None or restored_scenario.policy is None
+    ):
+        raise ValueError("--trainer-checkpoint requires a complete policy checkpoint")
     restored_scenario = restored_scenario.model_copy(update={"checkpoint": None})
     if isinstance(restored_scenario.training, ReinforcementLearningSpec):
         module = NexuRLLightningModule.load_from_checkpoint(
             checkpoint_path, scenario=restored_scenario
         )
         return RuntimeArtifacts(module.pipeline, module, None, None, module.policy)
+    if require_policy:
+        pipeline = compile(restored_scenario)
+        policy = _offline_policy(pipeline)
+        module = NexuLightningModule.load_from_checkpoint(
+            checkpoint_path, pipeline=pipeline, scenario=restored_scenario, strict=True
+        )
+        return RuntimeArtifacts(pipeline, module, None, policy=policy)
     if restored_scenario.interaction is None or restored_scenario.policy is None:
         seed = getattr(restored_scenario.training, "seed", None)
         if seed is not None:

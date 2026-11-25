@@ -176,7 +176,10 @@ finally:
         marker = self.root / "setup-marker"
         before = sorted(str(path.relative_to(self.root)) for path in self.root.rglob("*"))
         with mock.patch.object(guard, "ATTEMPT_BASE", base or self.root / "campaign"):
-            with mock.patch.object(guard.subprocess, "Popen") as launch:
+            # A mock process must never reach cleanup, which sends real signals.
+            with mock.patch.object(
+                guard.subprocess, "Popen", side_effect=AssertionError("unexpected process launch")
+            ) as launch:
                 with self.assertRaises((OSError, ValueError)):
                     guard.run_guarded(
                         python(f"open({str(marker)!r}, 'w').write('setup ran')"),
@@ -245,7 +248,8 @@ finally:
 
     def test_campaign_existing_empty_or_occupied_roots_are_never_adopted(self):
         root = self.root / "campaign" / "attempt"
-        root.mkdir(parents=True, mode=0o755)
+        root.mkdir(parents=True)
+        root.chmod(0o755)
         for occupied in (False, True):
             with self.subTest(occupied=occupied):
                 if occupied:
@@ -253,6 +257,65 @@ finally:
                 self.assert_campaign_rejected(root)
                 self.assertEqual(root.stat().st_mode & 0o777, 0o755)
         self.assertEqual((root / "evidence").read_text(), "owned elsewhere")
+
+    def test_campaign_cannot_create_an_attempt_under_another_attempt(self):
+        for evidence in ("guard.json.lock", "guard.json"):
+            with self.subTest(evidence=evidence):
+                root = self.root / "campaign" / evidence
+                root.mkdir(parents=True)
+                marker = root / evidence
+                marker.write_text("owned elsewhere")
+                self.assert_campaign_rejected(root / "nested" / "attempt")
+
+    def test_guard_never_signals_invalid_or_own_process_group(self):
+        with mock.patch.object(guard.os, "killpg", side_effect=AssertionError("signal sent")):
+            for pid in (mock.MagicMock(), 0, 1, os.getpgrp()):
+                with self.assertRaisesRegex(ValueError, "invalid or shared process group"):
+                    guard._stop_group(types.SimpleNamespace(pid=pid))
+
+    def test_campaign_mount_admission_does_not_create_attempt_on_ephemeral_directory(self):
+        base = self.root / "approved"
+        root = base / "attempt"
+        for observation in (FileNotFoundError(), (1024, {"mountpoint": str(self.root)})):
+            with (
+                self.subTest(observation=type(observation).__name__),
+                mock.patch.object(guard, "ATTEMPT_BASE", base),
+                mock.patch.object(guard, "_disk_sample", side_effect=[observation]),
+                mock.patch.object(
+                    guard.subprocess,
+                    "Popen",
+                    side_effect=AssertionError("unexpected process launch"),
+                ) as launch,
+                self.assertRaisesRegex(ValueError, "approved durable output mount"),
+            ):
+                guard.run_guarded(
+                    python("pass"),
+                    receipt=root / "guard.json",
+                    attempt_root=root,
+                    output_mount=base,
+                    deadline_seconds=1,
+                )
+            self.assertFalse(root.exists())
+            launch.assert_not_called()
+
+    def test_production_attempts_cannot_claim_nested_leaf_before_parent_exists(self):
+        base = self.root / "approved"
+        parent = base / ("a" * 32) / ("recipe-" + "b" * 32)
+        nested = parent / ("c" * 32) / ("recipe-" + "d" * 32)
+        with (
+            mock.patch.object(guard, "ATTEMPT_BASE", base),
+            mock.patch.object(
+                guard, "_disk_sample", return_value=(1024, {"mountpoint": str(self.root)})
+            ),
+        ):
+            with self.assertRaisesRegex(ValueError, "named campaign leaf"):
+                guard._claim_attempt_root(nested, nested / "guard.json", None, self.root)
+            self.assertFalse(base.exists())
+            descriptor = guard._claim_attempt_root(parent, parent / "guard.json", None, self.root)
+            os.close(descriptor)
+            with self.assertRaisesRegex(ValueError, "named campaign leaf"):
+                guard._claim_attempt_root(nested, nested / "guard.json", None, self.root)
+            self.assertEqual(list(parent.iterdir()), [])
 
     def test_campaign_raced_claim_is_not_adopted_or_removed(self):
         base = self.root / "campaign"
@@ -267,7 +330,11 @@ finally:
 
         with mock.patch.object(guard, "ATTEMPT_BASE", base):
             with mock.patch.object(guard.os, "mkdir", side_effect=race):
-                with mock.patch.object(guard.subprocess, "Popen") as launch:
+                with mock.patch.object(
+                    guard.subprocess,
+                    "Popen",
+                    side_effect=AssertionError("unexpected process launch"),
+                ) as launch:
                     with self.assertRaises(FileExistsError):
                         guard.run_guarded(
                             python("pass"),
@@ -374,16 +441,18 @@ finally:
         sentinel = subprocess.Popen(python("import time; time.sleep(30)"), start_new_session=True)
         self.addCleanup(lambda: self.stop_process(sentinel))
         actual = guard._disk_sample(self.root)[1]
-        output_samples = iter((100, 100, 5))
+        floor = 4 * 1024**3
+        output_samples = iter((floor + 1, floor + 1, floor))
+        scratch_free = floor + 100
 
         def sample(path):
             role = "scratch" if path == self.root else "output"
             filesystem = dict(actual, device=role, path=str(path), mountpoint=str(path))
-            return (1000 if role == "scratch" else next(output_samples, 5)), filesystem
+            return (scratch_free if role == "scratch" else next(output_samples, floor)), filesystem
 
         with mock.patch.object(guard, "_disk_sample", side_effect=sample):
             result, _, receipt = self.run_campaign(
-                "import time; time.sleep(30)", disk_floor_bytes=5
+                "import time; time.sleep(30)", disk_floor_bytes=floor
             )
         self.assertEqual(result, 75)
         self.assertEqual(receipt["reason"], "disk_floor")
@@ -392,11 +461,11 @@ finally:
         self.assertIsNone(sentinel.poll())
         self.assertEqual(receipt["disk_stop"]["role"], "output")
         self.assertEqual(receipt["disk_stop"]["path"], str(self.receipt.parent))
-        self.assertEqual(receipt["disk_spaces"]["output"]["min_available_bytes"], 5)
+        self.assertEqual(receipt["disk_spaces"]["output"]["min_available_bytes"], floor)
         self.assertEqual(receipt["disk_spaces"]["scratch"]["filesystem"]["device"], "scratch")
         self.assertEqual(receipt["disk_spaces"]["output"]["filesystem"]["device"], "output")
-        self.assertEqual(receipt["min_free_bytes"], 1000)
-        self.assertEqual(receipt["min_physical_free_bytes"], 5)
+        self.assertEqual(receipt["min_free_bytes"], scratch_free)
+        self.assertEqual(receipt["min_physical_free_bytes"], floor)
 
     def test_campaign_fuse_quota_is_not_reported_as_physical_disk(self):
         actual = guard._disk_sample
@@ -423,7 +492,9 @@ finally:
                     return actual(path)
 
         with mock.patch.object(guard, "_disk_sample", side_effect=sample):
-            with mock.patch.object(guard.subprocess, "Popen") as launch:
+            with mock.patch.object(
+                guard.subprocess, "Popen", side_effect=AssertionError("unexpected process launch")
+            ) as launch:
                 result, _, receipt = self.run_campaign("pass", disk_floor_bytes=5)
                 launch.assert_not_called()
         self.assertEqual(result, 75)
@@ -474,7 +545,9 @@ finally:
                     mock.patch.object(guard, "ATTEMPT_BASE", mount),
                     mock.patch.object(Path, "read_text", return_value=mountinfo),
                     mock.patch.object(guard.os, "statvfs", side_effect=statvfs),
-                    mock.patch.object(guard.subprocess, "Popen") as launch,
+                    mock.patch.object(
+                        guard.subprocess, "Popen", side_effect=AssertionError("unexpected launch")
+                    ) as launch,
                 ):
                     output = io.BytesIO()
                     with mock.patch.object(
@@ -826,14 +899,6 @@ finally:
                     self.assertIsNone(sentinel.poll())
                 finally:
                     self.stop_process(process)
-                    # Only these exact test-owned groups are eligible for cleanup.
-                    if ready.exists():
-                        pids = json.loads(ready.read_text())
-                        for pgid in pids if detached else pids[:1]:
-                            try:
-                                os.killpg(pgid, signal.SIGKILL)
-                            except ProcessLookupError:
-                                pass
 
     def test_child_absence_requires_kernel_confirmation_and_only_reaps_adopted_children(self):
         process = mock.Mock(pid=77, returncode=None)
@@ -1205,7 +1270,9 @@ finally:
             mock.patch.object(
                 guard, "_enable_descendant_supervision", side_effect=OSError("pidfd unavailable")
             ),
-            mock.patch.object(guard.subprocess, "Popen") as launch,
+            mock.patch.object(
+                guard.subprocess, "Popen", side_effect=AssertionError("unexpected process launch")
+            ) as launch,
         ):
             code, _, receipt = self.run_child("raise AssertionError('must not execute')")
         self.assertEqual(code, 70)
@@ -1282,12 +1349,6 @@ finally:
             self.assertIsNone(sentinel.poll())
         finally:
             self.stop_process(process)
-            if ready.is_file():
-                for pid in json.loads(ready.read_text()):
-                    try:
-                        os.killpg(pid, signal.SIGKILL)
-                    except ProcessLookupError:
-                        pass
 
 
 if __name__ == "__main__":

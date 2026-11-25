@@ -155,9 +155,14 @@ def run_campaign(
         raise ValueError("concurrency must be between one and four")
     if any(not math.isfinite(value) or value <= 0 for value in (queue_seconds, poll_seconds)):
         raise ValueError("Monitoring budgets must be finite and positive")
-    roots = [str(item["attempt_root"]) for item in attempts]
-    if len(set(roots)) != len(roots):
-        raise ValueError("Attempts must not share output roots")
+    roots = set()
+    for item in attempts:
+        root = Path(item["attempt_root"])
+        if not root.is_absolute() or ".." in root.parts:
+            raise ValueError("Attempt output roots must be absolute without '..'")
+        if any(root.is_relative_to(other) or other.is_relative_to(root) for other in roots):
+            raise ValueError("Attempts must have disjoint output roots")
+        roots.add(root)
     output.mkdir(parents=True, exist_ok=False)
     pending, active, results = list(attempts), {}, []
 
@@ -204,8 +209,9 @@ def run_campaign(
                     raise ValueError("Acceptance requires SDK Jobs, one GPU and GPU workers only")
                 option_names = {
                     "preflight": {"data_root"},
+                    "package": {"data_root"},
                     "regression": {"suite"},
-                    "recipe": {"recipe", "recording", "processing_owner"},
+                    "recipe": {"recipe", "recording", "processing_owner", "peer_attempt"},
                     "recovery": {"source_attempt", "source_case_sha256", "source_guard_sha256"},
                     "browser": {
                         "source_attempt",
@@ -408,12 +414,19 @@ def main() -> None:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--durable-root", type=Path, default=Path("/mnt/data/nexuml-qualification"))
     parser.add_argument("--concurrency", type=int, choices=range(1, 5), default=1)
+    parser.add_argument(
+        "--overlap-start",
+        action="store_true",
+        help="For exactly two recipe jobs, start training after both finish setup and export",
+    )
     parser.add_argument("--wall-seconds", type=float, default=3600)
     parser.add_argument("--queue-seconds", type=float, default=900)
     parser.add_argument("--frames", type=int, default=1024)
     parser.add_argument("--batch", type=int, default=128)
     parser.add_argument("--envs", type=int, default=2)
-    parser.add_argument("--data-root", type=str)
+    parser.add_argument(
+        "--data-root", help="Approved worker-local data path for preflight or installed SO-101 fit"
+    )
     parser.add_argument("--source-attempt", type=str)
     parser.add_argument("--source-case-sha256", type=str)
     parser.add_argument("--source-guard-sha256", type=str)
@@ -451,6 +464,12 @@ def main() -> None:
         parser.error("Recipe budgets must be positive")
     if "recipe" in args.case and not args.recipe:
         parser.error("recipe cases require --recipe")
+    if args.data_root is not None and "package" in args.case:
+        data = Path(args.data_root)
+        if not data.is_absolute() or ".." in data.parts:
+            parser.error("installed SO-101 fit requires an absolute worker --data-root")
+    if args.overlap_start and (args.case != ["recipe", "recipe"] or args.concurrency != 2):
+        parser.error("--overlap-start requires two recipe jobs and --concurrency 2")
     if args.processing_owner is not None and (
         args.case != ["recipe"] or args.recipe not in SENSOR_RECIPES
     ):
@@ -476,9 +495,9 @@ def main() -> None:
     revision = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
     dirty = bool(subprocess.check_output(["git", "status", "--porcelain"], text=True).strip())
     campaign = uuid4().hex
+    attempt_roots = [args.durable_root / campaign / f"{case}-{uuid4().hex}" for case in args.case]
     attempts = []
-    for case in args.case:
-        attempt_root = args.durable_root / campaign / f"{case}-{uuid4().hex}"
+    for index, (case, attempt_root) in enumerate(zip(args.case, attempt_roots, strict=True)):
         values = base.model_dump()
         values.update(address=args.address, verify=str(args.ca))
         values["entrypoint_num_gpus"] = 1
@@ -530,6 +549,11 @@ def main() -> None:
                 "attempt_root": str(attempt_root),
                 "wall_seconds": args.wall_seconds,
                 "options": {
+                    **(
+                        {"peer_attempt": str(attempt_roots[1 - index])}
+                        if args.overlap_start
+                        else {}
+                    ),
                     "source_revision": revision,
                     "source_dirty": dirty,
                     "source_tree_sha256": identity,
@@ -603,14 +627,22 @@ def main() -> None:
     from ray.job_submission import JobSubmissionClient
 
     os.environ["RAY_API_SERVER_ADDRESS"] = args.address
-    client = _bounded_rpc(JobSubmissionClient, args.address, verify=str(args.ca))
-    result = run_campaign(
-        attempts,
-        client,
-        args.output,
-        concurrency=args.concurrency,
-        queue_seconds=args.queue_seconds,
-    )
+    try:
+        client = _bounded_rpc(JobSubmissionClient, args.address, verify=str(args.ca))
+        result = run_campaign(
+            attempts,
+            client,
+            args.output,
+            concurrency=args.concurrency,
+            queue_seconds=args.queue_seconds,
+        )
+    except Exception:
+        print(
+            f"Ray control-plane operation failed. Check {args.output / 'summary.json'} "
+            "for recorded job identities and status, if available.",
+            file=sys.stderr,
+        )
+        raise SystemExit(1) from None
     if any(row["status"] != "passed" for row in result["results"]):
         raise SystemExit(1)
 

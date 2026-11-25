@@ -353,7 +353,8 @@ def train_cmd(
         console.print(f"  Module device after completion: {completed_device}", markup=False)
     interaction = getattr(getattr(module, "scenario", None), "interaction", None)
     viewer = getattr(getattr(interaction, "environment", None), "viewer", None)
-    if frames is not None and "train" in getattr(viewer, "purposes", ()):
+    training_viewer = frames is not None and "train" in getattr(viewer, "purposes", ())
+    if training_viewer:
         console.print("  Configured training viewer: run finished, not stalled training.")
         console.print(
             "  Viewing again requires a separate evaluation with an explicit "
@@ -379,8 +380,23 @@ def train_cmd(
     }
     for package in sorted(packages):
         console.print(f"  Complete inference package: {package}")
-        command = shlex.join(["nexuml", "evaluate", str(package), "--device", fit_device or "cpu"])
+        device_args = ["--device", fit_device or "cpu"]
+        command = shlex.join(["nexuml", "evaluate", str(package), *device_args])
         console.print(f"  Worker-local evaluation: {command}", markup=False, soft_wrap=True)
+        if training_viewer and os.environ.get("RAY_JOB_CONFIG_JSON_ENV_VAR"):
+            console.print(
+                "  Set NEXUML_REPLAY_CONFIG to a trusted ray-jobs-sdk config with a "
+                "compatible evaluation environment, viewer, and nonzero episode budget."
+            )
+            evaluation_args = shlex.join(
+                [*device_args, "-O", 'interaction.evaluation_environment.viewer.purposes=["eval"]']
+            )
+            console.print(
+                f"  Submitter replay: nexuml evaluate {shlex.quote(str(package.resolve()))} "
+                f'--config "$NEXUML_REPLAY_CONFIG" {evaluation_args}',
+                markup=False,
+                soft_wrap=True,
+            )
     if checkpoints or packages:
         console.print(
             "  These are worker-local commands. From the submitter, select a trusted "
@@ -389,10 +405,15 @@ def train_cmd(
     _print_worker_identity("train")
 
 
-@app.command(name="evaluate", help="Evaluate a trusted exported model or policy without training")
+@app.command(
+    name="evaluate", help="Evaluate a trusted package or policy checkpoint without training"
+)
 def evaluate_cmd(
-    model_package: Path = typer.Argument(
-        help="Trusted model or complete policy package directory or file"
+    model_package: Optional[Path] = typer.Argument(
+        None, help="Trusted model or complete policy package directory or file"
+    ),
+    trainer_checkpoint: Optional[Path] = typer.Option(
+        None, "--trainer-checkpoint", help="Trusted policy trainer checkpoint instead of a package."
     ),
     config_path: Optional[Path] = typer.Option(
         None, "--config", "-c", help="Execution and evaluation inputs; never replacement weights."
@@ -414,7 +435,14 @@ def evaluate_cmd(
         help="Override data/evaluation/logging or policy replay settings: key.path=value.",
     ),
 ):
-    """Select execution before reading any worker-owned package."""
+    """Select execution before reading any worker-owned weights.
+
+    Raises:
+        typer.BadParameter: If the weight input is missing or ambiguous.
+    """
+    if (model_package is None) == (trainer_checkpoint is None):
+        raise typer.BadParameter("Provide exactly one MODEL_PACKAGE or --trainer-checkpoint.")
+
     from nexuml.core.types import ScenarioSpec
     from nexuml.execution import run
 
@@ -428,13 +456,16 @@ def evaluate_cmd(
         selected,
         operation="evaluate",
         model_package=model_package,
+        trainer_checkpoint=trainer_checkpoint,
         device=device,
         overrides=tuple(override or ()),
         evaluation_inputs=supplied is not None,
         evaluation_scenario_file=scenario_file,
     )
     if isinstance(result, str):
-        _print_job_submission(result, selected, operation="evaluate", worker_input=model_package)
+        _print_job_submission(
+            result, selected, operation="evaluate", worker_input=model_package or trainer_checkpoint
+        )
 
 
 def _print_job_submission(
@@ -510,8 +541,9 @@ def _print_worker_identity(operation: Literal["train", "evaluate", "export"]) ->
 
 
 def _evaluate_local(
-    model_package: Path,
+    model_package: Path | None,
     *,
+    trainer_checkpoint: Path | None = None,
     supplied: Any = None,
     scenario_file: Optional[Path] = None,
     device: Optional[str] = None,
@@ -536,10 +568,31 @@ def _evaluate_local(
     from nexuml.tracking.logger import create_loggers, log_text_artifact
     from nexuml.evaluation.policy import evaluate_policy, resolve_policy_evaluation
 
-    with ExitStack() as job:
+    # Kit can exit the process when its job scope closes. Remove the temporary
+    # checkpoint export after logging but before Kit shutdown.
+    with ExitStack() as job, ExitStack() as artifacts:
         loggers = []
         failed = False
         try:
+            if (model_package is None) == (trainer_checkpoint is None):
+                raise ValueError("Provide exactly one MODEL_PACKAGE or --trainer-checkpoint.")
+            if trainer_checkpoint is not None:
+                from tempfile import TemporaryDirectory
+                from nexuml.core.export import export_package
+                from nexuml.training.lightning import (
+                    create_runtime_artifacts_from_trainer_checkpoint,
+                )
+
+                runtime = create_runtime_artifacts_from_trainer_checkpoint(
+                    trainer_checkpoint, require_policy=True
+                )
+                assert runtime.policy is not None
+                directory = artifacts.enter_context(TemporaryDirectory(prefix="nexuml-evaluate-"))
+                model_package = export_package(
+                    runtime.policy, Path(directory), checkpoint_path=trainer_checkpoint
+                )
+                del runtime
+            assert model_package is not None
             model, config, metadata = load_inference_package(model_package)
             is_policy = metadata.get("artifact_kind") == "policy"
             scenario = config.to_scenario()
@@ -644,7 +697,9 @@ def _evaluate_local(
                 source_frames = None
             frame_step = source_frames if source_frames is not None else 0
             provenance = {
-                "source_package": str(model_package.resolve()),
+                "source_package": str(model_package.resolve())
+                if trainer_checkpoint is None
+                else None,
                 "source_config_hash": metadata.get("config_hash"),
                 "source_training_frames": source_frames,
                 "source_policy_files_sha256": metadata.get("policy_files_sha256"),
@@ -671,10 +726,19 @@ def _evaluate_local(
                     loggers, ResolvedConfig.from_scenario(scenario).to_yaml(), "config.yaml"
                 )
             if is_policy:
+                episode_report_sink = None
+                if loggers and scenario.logging is not None and scenario.logging.mlflow is not None:
+
+                    def episode_report_sink(report):
+                        log_text_artifact(
+                            loggers, json.dumps(report, allow_nan=False), "evaluation-episodes.json"
+                        )
+
                 metrics = evaluate_policy(
                     policy,
                     scenario,
                     media_sink=media_sink,
+                    episode_report_sink=episode_report_sink,
                     frame_step=frame_step,
                     provenance=provenance,
                 )

@@ -1005,6 +1005,7 @@ def print_service_info(
     tuning_spec: Any | None = None,
     data_backend: str | None = None,
     training_backend: str | None = None,
+    spectator_port: int | None = None,
 ) -> None:
     """Print actionable commands for all active monitoring services.
 
@@ -1023,6 +1024,10 @@ def print_service_info(
     if logs_root:
         lines.append(f"  Logs root    {_dim(str(Path(logs_root).expanduser()))}")
         lines.append(sep)
+
+    if spectator_port is not None:
+        lines.append(f"  Spectator    worker loopback port {spectator_port} (configured)")
+        lines.append("    Use an approved private forward; this is not a listener readiness check.")
 
     # -- Backends --
     if data_backend is not None or training_backend is not None:
@@ -1044,7 +1049,8 @@ def print_service_info(
             log_path = getattr(lg, "log_dir", None) or str(log_dir)
             parent = str(Path(log_path).parent)
             lines.append(f"  TensorBoard  {_dim(log_path)}")
-            tb_cmd = f"tensorboard --logdir {shlex.quote(parent)} --port 6007 --host 127.0.0.1"
+            port = 6008 if spectator_port == 6007 else 6007
+            tb_cmd = f"tensorboard --logdir {shlex.quote(parent)} --port {port} --host 127.0.0.1"
             lines.append(f"    {_cyan(tb_cmd)}")
 
     # -- MLflow --
@@ -1066,9 +1072,10 @@ def print_service_info(
                     "trusted configuration, not the displayed URI."
                 )
             else:
+                port = 5001 if spectator_port == 5000 else 5000
                 mlflow_cmd = (
                     f"mlflow ui --backend-store-uri {shlex.quote(tracking_uri)} "
-                    "--port 5000 --host 127.0.0.1"
+                    f"--port {port} --host 127.0.0.1"
                 )
                 lines.append(f"    {_cyan(mlflow_cmd)}")
 

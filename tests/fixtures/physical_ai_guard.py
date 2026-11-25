@@ -26,6 +26,7 @@ _TERM_SECONDS = 1.0
 _KILL_SECONDS = 2.0
 _WAIT_ALL = 0x40000000  # Linux __WALL also waits for non-SIGCHLD clone children.
 _SUPERVISE_DESCENDANTS = False
+_ATTEMPT_NAME = re.compile(r"[a-z][a-z0-9-]*-[0-9a-f]{32}")
 _QUOTA_FILESYSTEMS = {"fuse.juicefs", "nfs", "nfs4", "ceph", "fuse.ceph", "fuse.ceph-fuse"}
 _DISK_FILESYSTEMS = {
     "ext2",
@@ -103,7 +104,16 @@ def _open_directory(parent_fd, name):
     return os.open(name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=parent_fd)
 
 
-def _claim_attempt_root(root, receipt, log_path):
+def _reject_attempt_parent(fd, root):
+    for name in ("guard.json.lock", "guard.json"):
+        try:
+            os.stat(name, dir_fd=fd, follow_symlinks=False)
+        except FileNotFoundError:
+            continue
+        raise FileExistsError(f"attempt root is nested under another attempt: {root}")
+
+
+def _claim_attempt_root(root, receipt, log_path, output_mount=None):
     """Validate without writes, then claim exclusively using no-follow directory FDs."""
     if (
         not root.is_absolute()
@@ -127,9 +137,30 @@ def _claim_attempt_root(root, receipt, log_path):
         or log_path.is_relative_to(root / "guard.json.lock")
     ):
         raise ValueError("campaign log must be inside attempt_root, separate from receipt/lock")
+    if output_mount is not None:
+        if not root.is_relative_to(output_mount) or output_mount.resolve() != output_mount:
+            raise ValueError("attempt root must use the approved durable output mount")
+        try:
+            _, filesystem = _disk_sample(output_mount)
+        except (OSError, ValueError) as error:
+            raise ValueError(
+                f"approved durable output mount is unavailable: {output_mount}"
+            ) from error
+        if Path(filesystem["mountpoint"]) != output_mount:
+            raise ValueError(f"approved durable output mount is not mounted: {output_mount}")
+        # Use disjoint leaf names rather than relying on the timing of another guard's lock.
+        relative = root.relative_to(ATTEMPT_BASE)
+        if (
+            not _ATTEMPT_NAME.fullmatch(root.name)
+            or not re.fullmatch(r"[0-9a-f]{32}", root.parent.name)
+            or any(_ATTEMPT_NAME.fullmatch(part) for part in relative.parts[:-1])
+        ):
+            raise ValueError("guarded attempt must be a named campaign leaf, never nested")
     fd = os.open("/", os.O_RDONLY | os.O_DIRECTORY)
     try:
-        for part in root.parts[1:]:
+        for index, part in enumerate(root.parts[1:], 1):
+            if index >= len(ATTEMPT_BASE.parts):
+                _reject_attempt_parent(fd, root)
             try:
                 child_fd = _open_directory(fd, part)
             except FileNotFoundError:
@@ -143,6 +174,8 @@ def _claim_attempt_root(root, receipt, log_path):
     fd = os.open("/", os.O_RDONLY | os.O_DIRECTORY)
     try:
         for index, part in enumerate(root.parts[1:], 1):
+            if index >= len(ATTEMPT_BASE.parts):
+                _reject_attempt_parent(fd, root)
             final = index == len(root.parts) - 1
             if final:
                 os.mkdir(part, 0o700, dir_fd=fd)  # Never adopt even an empty raced root.
@@ -428,6 +461,8 @@ def _stop_group(process):
     if _SUPERVISE_DESCENDANTS:
         _stop_descendants(process)
         return
+    if type(process.pid) is not int or process.pid <= 1 or process.pid == os.getpgrp():
+        raise ValueError("guard refuses to signal an invalid or shared process group")
     for sig, grace in ((signal.SIGTERM, _TERM_SECONDS), (signal.SIGKILL, _KILL_SECONDS)):
         try:
             os.killpg(process.pid, sig)
@@ -476,6 +511,7 @@ def run_guarded(
     poll_seconds: float = 0.5,
     log_path: Path | None = None,
     attempt_root: Path | None = None,
+    output_mount: Path | None = None,
 ) -> int:
     """Run one argv under a combined wall/disk budget and retain its exit receipt.
 
@@ -508,7 +544,7 @@ def run_guarded(
     root_fd = None
     if attempt_root is not None:
         attempt_root = Path(attempt_root)
-        root_fd = _claim_attempt_root(attempt_root, receipt, log_path)
+        root_fd = _claim_attempt_root(attempt_root, receipt, log_path, output_mount)
         # Anchor evidence writes to our claimed inode even if a pathname is replaced.
         receipt = Path(f"/proc/self/fd/{root_fd}") / "guard.json"
         lock = receipt.with_name("guard.json.lock")
@@ -850,6 +886,7 @@ def main():
             disk_path=args.disk_path,
             log_path=args.log_path,
             attempt_root=args.attempt_root,
+            output_mount=ATTEMPT_BASE.parent if args.attempt_root is not None else None,
         )
     except (OSError, ValueError) as exc:
         parser.error(str(exc))

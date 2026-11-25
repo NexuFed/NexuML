@@ -315,7 +315,15 @@ def test_build_failure_is_reported_without_changing_field_validation(tmp_path):
         assert "missing-runtime-input" in json.dumps(done["result"])
 
 
-def test_deadline_releases_owned_operation(tmp_path):
+def test_deadline_releases_owned_operation(tmp_path, monkeypatch):
+    original = Operations.append
+
+    def append(operations, folder, kind, payload):
+        if kind == "terminal":
+            assert operations.active is None
+        return original(operations, folder, kind, payload)
+
+    monkeypatch.setattr(Operations, "append", append)
     api = create_app(Settings(tmp_path, ORIGIN, TOKEN))
     with TestClient(
         api, base_url="http://127.0.0.1:8000", headers={"Authorization": f"Bearer {TOKEN}"}

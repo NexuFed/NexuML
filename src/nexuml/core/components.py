@@ -12,7 +12,11 @@ if TYPE_CHECKING:
     from torch import nn
 
     from nexuml.core.policy import CompiledPolicy
-    from nexuml.core.types import InteractionContract, ReinforcementLearningSpec
+    from nexuml.core.types import (
+        InteractionContract,
+        PolicyEvaluationSpec,
+        ReinforcementLearningSpec,
+    )
     from nexuml.interaction.runtime import EnvironmentRuntime
 
 
@@ -220,6 +224,24 @@ class EnvironmentDefinition(ComponentDefinition):
     @abstractmethod
     def build(self, context: EnvironmentBuildContext) -> "EnvironmentRuntime":
         """Materialize reset/step/close resources at the execution site."""
+
+
+class BenchmarkEnvironmentDefinition(EnvironmentDefinition):
+    """Evaluation-only environment whose upstream suite owns rollouts and scoring."""
+
+    def build(self, context: EnvironmentBuildContext) -> "EnvironmentRuntime":
+        """Reject ordinary training and scalar replay for an upstream suite.
+
+        Raises:
+            ValueError: An upstream suite must be run through policy evaluation.
+        """
+        raise ValueError("An upstream benchmark requires policy evaluation, not environment build")
+
+    @abstractmethod
+    def run_benchmark(
+        self, policy: "CompiledPolicy", spec: "PolicyEvaluationSpec"
+    ) -> tuple[dict[str, float], dict[str, Any]]:
+        """Return the suite's scalar metrics and native per-episode report."""
 
 
 class ActionAdapterDefinition(ComponentDefinition):

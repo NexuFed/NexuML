@@ -104,13 +104,17 @@ A project-owned registered Isaac Lab task SHALL use a scene saved in Isaac Sim a
 
 ### Requirement: W10 A named policy benchmark accepts a package or its checkpoint
 
-The public evaluation workflow SHALL qualify a pinned Isaac Lab-Arena suite on a compatible NexuML policy, using the maintained suite's held-out conditions, starts, horizons and scoring rules. It SHALL exercise both exported-package and standalone trainer-checkpoint inputs through registered Ray Jobs. Compatibility SHALL cover observation/processor semantics, action meaning/order/units, control rate and episode-state resets. Unavailable prerequisites SHALL be reported as blocked.
+Public evaluation SHALL qualify a pinned suite with a compatible NexuML policy on Isaac Lab 3.0 and a maintained Arena release. It SHALL test exported-package and standalone trainer-checkpoint inputs on registered Ray Jobs. Compatibility SHALL cover observation/processor semantics, action meaning/order/units, control rate and episode resets. Missing prerequisites SHALL block the benchmark.
 
 #### Scenario: Two weight inputs represent the same trained policy
-- **WHEN** both routes evaluate the same suite revision on matched starts with the same action-selection settings
+- **WHEN** both routes evaluate the same suite revision under its held-out conditions, starts, horizons and scoring rules, with the same action-selection settings
 - **THEN** the decoded actions on fixed observations agree within declared tolerances and both results account for the same trials under the same scoring rules
 - **AND** per-condition scores agree within tolerances declared before the run, with discrepancies visible rather than averaged away
 
 #### Scenario: Action shapes match but control mode differs
 - **WHEN** a suite expects end-effector commands and the policy emits joint-position targets of the same width
 - **THEN** the pairing is rejected before scored rollouts and no benchmark score is published
+
+#### Scenario: An Arena recipe only runs on an older Isaac stack
+- **WHEN** native compatibility with the required Isaac Lab 3.0 stack cannot be established
+- **THEN** the benchmark remains blocked instead of accepting a downgrade or relabeling an upstream smoke test

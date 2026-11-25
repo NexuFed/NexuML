@@ -53,7 +53,7 @@ def _ray_job_argv(
     }
     allowed = {
         "train": {"trainer_checkpoint"},
-        "evaluate": {"model_package", "device"},
+        "evaluate": {"model_package", "trainer_checkpoint", "device"},
         "export": {"checkpoint", "output"},
         "acceptance": set(),
     }[operation]
@@ -133,9 +133,14 @@ def _ray_job_argv(
         if value is not None:
             raise ValueError(f"{operation} does not accept {name}")
     if operation == "evaluate":
-        if model_package is None:
-            raise ValueError("evaluate requires model_package")
-        argv = ["evaluate", str(model_package), "--config", config_path]
+        if (model_package is None) == (trainer_checkpoint is None):
+            raise ValueError("evaluate requires exactly one model_package or trainer_checkpoint")
+        weights = (
+            str(model_package)
+            if model_package is not None
+            else f"--trainer-checkpoint={trainer_checkpoint}"
+        )
+        argv = ["evaluate", weights, "--config", config_path]
         if device is not None:
             argv += ["--device", str(device)]
         for value in overrides:
@@ -266,7 +271,8 @@ def _submit_ray_job(scenario: ScenarioSpec, **kwargs: Any) -> str:
     remote = scenario.model_copy(update={"execution": LocalExecution()})
     config = ResolvedConfig.from_scenario(remote).to_yaml()
     acceptance = argv[0] == "acceptance"
-    config_index = 3 if argv[0] == "evaluate" else 2
+    evaluation = argv[0] == "evaluate"
+    config_index = 3 if evaluation else 2
     bootstrap = "\n".join(
         [
             "from pathlib import Path",
@@ -274,6 +280,8 @@ def _submit_ray_job(scenario: ScenarioSpec, **kwargs: Any) -> str:
             *(
                 ["import json", "import runpy"]
                 if acceptance
+                else ["import subprocess", "import sys"]
+                if evaluation
                 else ["from nexuml.cli.main import app"]
             ),
             "with TemporaryDirectory(prefix='nexuml-ray-job-') as directory:",
@@ -298,7 +306,16 @@ def _submit_ray_job(scenario: ScenarioSpec, **kwargs: Any) -> str:
                         if argv[0] == "train" and kwargs.get("trainer_checkpoint") is not None
                         else []
                     ),
-                    "    app(argv)",
+                    *(
+                        [
+                            # Kit can segfault when evaluation is embedded in Python -c.
+                            '    code = subprocess.call([sys.executable, "-u", "-X", '
+                            '"faulthandler", "-m", "nexuml.cli.main", *argv])',
+                            "    raise SystemExit(128 - code if code < 0 else code)",
+                        ]
+                        if evaluation
+                        else ["    app(argv)"]
+                    ),
                 ]
             ),
         ]

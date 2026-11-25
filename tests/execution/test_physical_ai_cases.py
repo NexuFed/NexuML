@@ -226,6 +226,8 @@ class PhysicalAICasesTest(unittest.TestCase):
                 "ray",
                 "isaacsim",
                 "isaaclab",
+                "isaaclab_arena",
+                "curobo",
             }:
                 raise AssertionError("application/native import forbidden")
             return original_import(name, *args, **kwargs)
@@ -296,6 +298,11 @@ class PhysicalAICasesTest(unittest.TestCase):
                     code, receipt = self.run_case(case)
                     self.assertEqual((code, receipt["status"]), (0, "PASS"))
                     self.assertTrue(receipt["source_origin_match"])
+                    for module in ("isaaclab_arena", "curobo"):
+                        self.assertEqual(
+                            receipt["imports"][module],
+                            {"available": False, "origin": None, "version": None},
+                        )
                     for module, origin in origins.items():
                         self.assertEqual(receipt["imports"][module]["resolved_origin"], origin)
                         self.assertTrue(receipt["imports"][module]["source_origin_match"])
@@ -381,6 +388,34 @@ class PhysicalAICasesTest(unittest.TestCase):
             )
             self.assertEqual(receipt["stages"], [])
             self.assertIsNone(receipt.get("training_frames"))
+
+    def test_package_dispatches_only_external_worker_data(self):
+        data = self.base / "approved data"
+        data.mkdir()
+        symlink = self.base / "link"
+        symlink.symlink_to(data, target_is_directory=True)
+        source = self.base / "source"
+        source.mkdir()
+        profile = mock.Mock()
+        with (
+            contextlib.chdir(source),
+            mock.patch("runpy.run_path", return_value={"run_package": profile}),
+        ):
+            for index, path in enumerate(
+                ("relative", self.base / "absent", symlink, source, self.base)
+            ):
+                with self.subTest(path=path):
+                    self.root = self.base / f"reject-{index}"
+                    self.guarded_root()
+                    code, receipt = self.run_case("package", {"data_root": str(path)})
+                    self.assertEqual((code, receipt["status"]), (2, "BLOCKED"))
+                    self.assertEqual(receipt["stages"], [])
+            profile.assert_not_called()
+            self.root = self.base / "admitted"
+            self.guarded_root()
+            code, receipt = self.run_case("package", {"data_root": str(data)})
+            self.assertEqual((code, receipt["status"]), (0, "PASS"))
+            self.assertEqual(profile.call_args.kwargs, {"data": data})
 
     def test_prepared_browser_dispatch_keeps_visual_gate_unverified(self):
         self.guarded_root()
@@ -651,13 +686,15 @@ class PhysicalAICasesTest(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertEqual(
             [stage["name"] for stage in receipt["stages"]],
-            ["lint", "format", "types", "docs", "lock"],
+            ["lint", "format", "types", "docs-content", "lock"],
         )
         self.assertEqual(calls[0][0], [sys.executable, "-m", "ruff", "check", "."])
         self.assertEqual(calls[-1][0], ["uv", "lock", "--check"])
         self.assertEqual(
             calls[2][0], [sys.executable, "-m", "ty", "check", "--python", sys.executable]
         )
+        self.assertEqual(calls[3][0], [sys.executable, "docs/scripts/check_content.py"])
+        self.assertIn("UNVERIFIED", receipt["regression"]["docs_site_build"])
         self.assertEqual(receipt["checks"]["static"], "PASS")
         self.assertEqual(receipt["regression"]["full_suite_gate"], "UNVERIFIED")
         self.assertTrue(all(value == "UNVERIFIED" for value in receipt["gates"].values()))
@@ -821,6 +858,8 @@ class PhysicalAICasesTest(unittest.TestCase):
         with self.assertRaisesRegex(AssertionError, "live descendants"):
             self.g["_stage"](receipt, "train", ["fixed-command"], {})
         self.assertEqual(receipt["stages"][0]["status"], "FAIL")
+        stage = receipt["stages"][0]
+        self.assertGreaterEqual(stage["ended_unix_ns"], stage["started_unix_ns"])
 
     def test_partial_interruption_must_be_real_nonfinal_and_nonzero(self):
         self.guarded_root()
@@ -853,6 +892,7 @@ class PhysicalAICasesTest(unittest.TestCase):
         process.wait.assert_called_once_with(timeout=30)
         self.assertEqual(result["status"], "EXPECTED_INTERRUPTION")
         self.assertTrue(result["cleanup"])
+        self.assertGreaterEqual(result["ended_unix_ns"], result["started_unix_ns"])
 
     def test_recipe_stage_order_literal_argv_and_gate_scope(self):
         self.guarded_root()
@@ -913,6 +953,28 @@ class PhysicalAICasesTest(unittest.TestCase):
         self.assertEqual(record["gates"]["C"], "PASS")
         self.assertEqual(record["gates"]["R"], "UNVERIFIED")
         self.assertEqual(record["checks"]["partial_resume"], "PASS")
+
+    def test_parallel_recipe_waits_for_sibling_marker_without_adopting_other_output(self):
+        root = self.base / ("recipe-" + "a" * 32)
+        peer = self.base / ("recipe-" + "b" * 32)
+        root.mkdir()
+        peer.mkdir()
+        await_peer = self.g["_await_recipe_peer"]
+        with self.assertRaisesRegex(self.g["Blocked"], "same campaign"):
+            await_peer(root, self.base / "other" / peer.name)
+        self.assertFalse(list(root.iterdir()))
+        (peer / "ready-for-training").touch()
+        await_peer(root, peer)
+        self.assertTrue((root / "ready-for-training").is_file())
+        self.assertEqual([path.name for path in peer.iterdir()], ["ready-for-training"])
+
+    def test_parallel_recipe_missing_peer_times_out_without_starting_training(self):
+        root = self.base / ("recipe-" + "a" * 32)
+        peer = self.base / ("recipe-" + "b" * 32)
+        root.mkdir()
+        with self.assertRaisesRegex(self.g["Blocked"], "readiness deadline"):
+            self.g["_await_recipe_peer"](root, peer, seconds=0)
+        self.assertFalse(peer.exists())
 
     def test_recipe_failure_stops_dependent_stages_and_fails_c_gate(self):
         self.guarded_root()
@@ -1147,6 +1209,17 @@ class PhysicalAICasesTest(unittest.TestCase):
         self.assertEqual((code, receipt["status"]), (2, "BLOCKED"))
         self.assertIsNone(receipt["family_prerequisites"]["so101"]["data_root"])
         self.assertIsNone(receipt["family_prerequisites"]["ros_gazebo"]["controllers"])
+
+    def test_preflight_rejects_explicit_missing_worker_data_before_gpu_probe(self):
+        self.guarded_root()
+        self.patch_globals(_gpu_inventory=mock.Mock(), _stage=mock.Mock())
+        data = str(self.base / "not-mounted")
+        code, receipt = self.run_case("preflight", {"data_root": data})
+        self.assertEqual((code, receipt["status"]), (2, "BLOCKED"))
+        self.assertIn("absolute directory on the worker", receipt["reason"])
+        self.assertFalse(receipt["family_prerequisites"]["so101"]["data_present"])
+        self.g["_gpu_inventory"].assert_not_called()
+        self.g["_stage"].assert_not_called()
 
     def test_preflight_shm_cap_blocks_without_mutation_or_gpu_probe(self):
         self.guarded_root()
@@ -1500,6 +1573,23 @@ class PhysicalAICasesTest(unittest.TestCase):
         (self.root / "partial.ckpt").unlink()
         self.patch_globals(_checkpoint=lambda path: ({}, 64, 8))
         self.assertIsNone(self.g["_copy_partial"](self.root, 64))
+
+    def test_unprepared_external_recipes_block_before_writing_config_or_starting_cli(self):
+        self.root.mkdir()
+        config = self.fake_config_imports(
+            SimpleNamespace(name="ros2-gazebo-joint-reach-ppo", training=SimpleNamespace())
+        )
+        self.patch_globals(_stage=mock.Mock())
+        for name, message in (
+            ("ros2-gazebo-joint-reach-ppo", "simulation-only world"),
+            ("carla-lane-following-ppo", "unqualified external integration"),
+        ):
+            with self.subTest(recipe=name):
+                config.name = name
+                with self.assertRaisesRegex(self.g["Blocked"], message):
+                    self.g["_recipe"]({}, self.root, self.config, {}, {})
+                self.assertEqual(list(self.root.iterdir()), [])
+        self.g["_stage"].assert_not_called()
 
 
 if __name__ == "__main__":

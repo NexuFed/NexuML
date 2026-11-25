@@ -165,23 +165,38 @@ def main():
         "packages": PACKAGES,
         "libraries": {},
         "ldd": [],
+        "failed_package": None,
         "status": "failed",
     }
     try:
         cache = destination / "cache"
         cache.mkdir(mode=0o700)
+        supplied = os.environ.get("NEXUML_NATIVE_DEB_CACHE")
+        offline = Path(supplied) if supplied is not None else None
+        if offline is not None and (not offline.is_dir() or offline.resolve() != offline):
+            raise ValueError("NEXUML_NATIVE_DEB_CACHE must be an absolute, real directory")
         for package in PACKAGES:
-            url = ARCHIVE + package["filename"]
-            with urllib.request.urlopen(url, timeout=30) as response:
-                if response.geturl() != url:
-                    raise ValueError("archive redirects are not permitted")
-                content = response.read(package["size"] + 1)
+            record["failed_package"] = package["name"]
+            filename = Path(package["filename"]).name
+            if offline is None:
+                url = ARCHIVE + package["filename"]
+                with urllib.request.urlopen(url, timeout=30) as response:
+                    if response.geturl() != url:
+                        raise ValueError("archive redirects are not permitted")
+                    content = response.read(package["size"] + 1)
+            else:
+                archive = offline / filename
+                if archive.is_symlink() or not archive.is_file():
+                    raise ValueError(f"pinned local archive missing: {package['name']}")
+                with archive.open("rb") as source:
+                    content = source.read(package["size"] + 1)
             if len(content) != package["size"]:
                 raise ValueError(f"size mismatch: {package['name']}")
             if hashlib.sha256(content).hexdigest() != package["sha256"]:
                 raise ValueError(f"SHA256 mismatch: {package['name']}")
-            with (cache / Path(package["filename"]).name).open("xb") as output:
+            with (cache / filename).open("xb") as output:
                 output.write(content)
+        record["failed_package"] = None
         for package in PACKAGES:
             subprocess.run(
                 [

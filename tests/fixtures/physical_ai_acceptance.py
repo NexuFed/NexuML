@@ -263,6 +263,8 @@ def _stage(record, name, argv, env, *, interrupt_total=None):
         "cwd": str(Path.cwd()),
         "exit_code": None,
         "pid": None,
+        "started_unix_ns": None,
+        "ended_unix_ns": None,
         "status": "RUNNING",
         "log_path": str(log),
         "log_sha256": None,
@@ -278,6 +280,7 @@ def _stage(record, name, argv, env, *, interrupt_total=None):
             # Inherit the guard's group: never start_new_session/process_group here.
             process = subprocess.Popen(argv, stdout=output, stderr=subprocess.STDOUT, env=env)
             stage["pid"] = process.pid
+            stage["started_unix_ns"] = time.time_ns()
             if interrupt_total is not None:
                 while process.poll() is None:
                     partial = _copy_partial(root, interrupt_total)
@@ -299,6 +302,7 @@ def _stage(record, name, argv, env, *, interrupt_total=None):
                         break
                     time.sleep(0.05)
             returned = process.wait(timeout=30) if stage["partial"] else process.wait()
+            stage["ended_unix_ns"] = time.time_ns()
             stage["exit_code"] = returned
         stage["log_sha256"] = _sha256(log)
         stage["cleanup"] = not (_group_members() - baseline)
@@ -337,6 +341,8 @@ def _stage(record, name, argv, env, *, interrupt_total=None):
             process.kill()  # Outer guard retains ownership of any surviving descendants.
             process.wait(timeout=5)
         if process is not None:
+            if stage["ended_unix_ns"] is None and process.returncode is not None:
+                stage["ended_unix_ns"] = time.time_ns()
             stage["exit_code"] = process.returncode
         if log.exists():
             stage["log_sha256"] = _sha256(log)
@@ -356,6 +362,8 @@ def _module_inventory():
         ("mujoco", "mujoco"),
         ("isaacsim", "isaacsim"),
         ("isaaclab", "isaaclab"),
+        ("isaaclab_arena", "isaaclab-arena"),
+        ("curobo", "nvidia-curobo"),
         ("rclpy", "rclpy"),
         ("playwright", "playwright"),
         ("tensorboard", "tensorboard"),
@@ -587,7 +595,8 @@ def _preflight(record, root, options, env):
         "existing_object_store_observations": _object_store_observations(),
     }
     data = options.get("data_root")
-    present = data is not None and Path(data).is_dir()
+    private_data = data is not None and not data.startswith("s3://")
+    present = private_data and Path(data).is_absolute() and Path(data).is_dir()
     record["family_prerequisites"] = {
         "so101": {
             "state": "BLOCKED",
@@ -618,6 +627,8 @@ def _preflight(record, root, options, env):
         },
         "native": {"state": "BLOCKED", "reason": "metadata inventory is not native startup proof"},
     }
+    if private_data and not present:
+        raise Blocked("explicit private data_root must be an absolute directory on the worker")
     if not all(
         record["imports"][key]["available"] for key in ("nexuml", "nexuml_library", "torch")
     ):
@@ -685,8 +696,24 @@ def _preflight(record, root, options, env):
 def _package(record, root, options, env):
     import runpy
 
+    data = None
+    if "data_root" in options:
+        data = Path(options["data_root"])
+        source = Path.cwd()
+        if (
+            not data.is_absolute()
+            or not data.is_dir()
+            or data.resolve() != data
+            or data.is_relative_to(source)
+            or source.is_relative_to(data)
+            or data.is_relative_to(root)
+            or root.is_relative_to(data)
+        ):
+            raise Blocked(
+                "installed SO-101 fit needs a worker data directory outside source and outputs"
+            )
     profile = runpy.run_path(str(Path(__file__).with_name("physical_ai_distribution.py")))
-    profile["run_package"](record, root, env, _stage)
+    profile["run_package"](record, root, env, _stage, data=data)
 
 
 @contextmanager
@@ -909,22 +936,12 @@ def _regression(record, root, options, env):
             ("lint", [sys.executable, "-m", "ruff", "check", "."]),
             ("format", [sys.executable, "-m", "ruff", "format", "--check", "."]),
             ("types", [sys.executable, "-m", "ty", "check", "--python", sys.executable]),
-            (
-                "docs",
-                [
-                    sys.executable,
-                    "-m",
-                    "mkdocs",
-                    "build",
-                    "--strict",
-                    "--site-dir",
-                    str(root / "site"),
-                ],
-            ),
+            ("docs-content", [sys.executable, "docs/scripts/check_content.py"]),
             ("lock", ["uv", "lock", "--check"]),
         ):
             _stage(record, name, command, env)
         record["checks"]["static"] = "PASS"
+        record["regression"]["docs_site_build"] = "UNVERIFIED; run the Starlight docs check"
         return
     _stage(record, "pytest", argv, env)
     record["regression"]["full_suite_gate"] = "PASS" if suite == "full" else "UNVERIFIED"
@@ -946,6 +963,13 @@ def _prepare_recipe(config_path, root, options):
     config = ResolvedConfig.load(config_path)
     if config.name not in RECIPES or options.get("recipe", config.name) != config.name:
         raise Blocked("recipe must match one of the fixed 21 matrix recipe names")
+    if config.name == "ros2-gazebo-joint-reach-ppo":
+        raise Blocked(
+            "Gazebo acceptance needs the prepared simulation-only world, controllers, "
+            "reset/clock bridge and private display route; the default ROS graph is not qualified"
+        )
+    if config.name == "carla-lane-following-ppo":
+        raise Blocked("CARLA is an unqualified external integration, not a live acceptance case")
     if not isinstance(config.training, ReinforcementLearningSpec):
         raise Blocked("recipe requires reinforcement learning training settings")
     if not isinstance(config.execution, LocalExecution):
@@ -1231,6 +1255,26 @@ def _learning(record, root, env):
     )
 
 
+def _await_recipe_peer(root, peer, *, seconds=600):
+    peer = Path(peer)
+    if (
+        peer.parent != root.parent
+        or peer == root
+        or not re.fullmatch(r"recipe-[0-9a-f]{32}", peer.name)
+    ):
+        raise Blocked("overlap requires a distinct recipe attempt in the same campaign")
+    marker = "ready-for-training"
+    (root / marker).touch(exist_ok=False)
+    deadline = time.monotonic() + seconds
+    while time.monotonic() < deadline:
+        if peer.is_symlink():
+            raise Blocked("overlap peer attempt must not be a symlink")
+        if (peer / marker).is_file() and not (peer / marker).is_symlink():
+            return
+        time.sleep(0.2)
+    raise Blocked("overlap peer did not reach training before the readiness deadline")
+
+
 def _recipe(record, root, config_path, options, env):
     config = _prepare_recipe(config_path, root, options)
     recording = options.get("recording")
@@ -1245,6 +1289,8 @@ def _recipe(record, root, config_path, options, env):
         )
     total = config.training.total_frames
     record["recipe"] = config.name
+    if config.name.startswith("isaac-"):
+        record["gpu"] = _gpu_inventory()
     if options.get("processing_owner") is not None:
         record["processing_owner"] = options["processing_owner"]
     record["config_sha256"] = _sha256(root / "case.yaml")
@@ -1277,6 +1323,8 @@ def _recipe(record, root, config_path, options, env):
         str(root / "untrained"),
     ]
     _stage(record, "untrained-export", argv, env)
+    if peer := options.get("peer_attempt"):
+        _await_recipe_peer(root, peer)
     train = [*_CLI, "train", "--config", str(root / "case.yaml")]
     interrupted = _stage(record, "partial-train", train, env, interrupt_total=total)
     partial = interrupted["partial"]
@@ -1380,8 +1428,9 @@ def run_case(case: str, attempt_root: Path, config_path: Path, options: dict) ->
         record["source_tree_sha256"] = _source_identity()
         allowed_options = {
             "preflight": {"data_root"},
+            "package": {"data_root"},
             "regression": {"suite"},
-            "recipe": {"recipe", "recording", "processing_owner"},
+            "recipe": {"recipe", "recording", "processing_owner", "peer_attempt"},
             "recovery": {"source_attempt", "source_case_sha256", "source_guard_sha256"},
             "browser": {
                 "source_attempt",

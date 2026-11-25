@@ -117,7 +117,7 @@ def _admit_installed(provenance, venv, source, artifacts):
             raise AssertionError("application import is not owned by the installed distribution")
 
 
-def run_package(record: dict, root: Path, env: dict, stage):
+def run_package(record: dict, root: Path, env: dict, stage, *, data: Path | None = None):
     """Build current distributions, then test exact wheels in a fresh locked environment."""
     source = Path.cwd().resolve(strict=True)
     scratch = Path(tempfile.mkdtemp(prefix="nexuml-distribution-", dir="/tmp/ray"))
@@ -258,6 +258,7 @@ def run_package(record: dict, root: Path, env: dict, stage):
             "api",
             "--extra",
             "reinforcement",
+            *(["--extra", "lerobot"] if data is not None else []),
         ],
         private,
     )
@@ -342,3 +343,34 @@ def run_package(record: dict, root: Path, env: dict, stage):
         private,
     )
     checks["installed_actor_inference"] = "PASS"
+    if data is not None:
+        fit_root = root / "so101-fit"
+        stage(
+            record,
+            "installed-so101-fit",
+            [
+                python,
+                "-I",
+                str(source / "scripts/so101_local_fit.py"),
+                str(data),
+                str(fit_root),
+                "--steps",
+                "500",
+                "--seed",
+                "42",
+            ],
+            {**private, "HF_HUB_OFFLINE": "1", "HF_DATASETS_OFFLINE": "1"},
+        )
+        receipt = json.loads((fit_root / "fit.json").read_text())
+        if receipt.get("bitwise_repeatable") is not True or any(
+            receipt[run]["metrics"]["optimizer_steps"] != 500 or receipt[run]["episodes"] != 48
+            for run in ("first", "second")
+        ):
+            raise AssertionError(
+                "installed SO-101 fit did not satisfy the fixed budget or repeatability"
+            )
+        checks["installed_so101_fit"] = "PASS"
+        record["package"]["so101_approved_data"] = "PASS"
+        record["gate_scope"]["D"] = (
+            "installed SO-101 fit and ordinary controls passed; native replay/parity UNVERIFIED"
+        )

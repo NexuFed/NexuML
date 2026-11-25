@@ -68,9 +68,15 @@ def _assert_matches_help():
                 assert metadata["kind"] == parameter.param_type_name
                 for field in ("opts", "secondary_opts", "required", "multiple", "nargs"):
                     assert metadata[field] == getattr(parameter, field)
-                assert metadata["type"] == (
-                    parameter.type.get_metavar(param=parameter, ctx=ctx) or parameter.type.name
-                )
+                if hasattr(parameter, "display_type_rich"):
+                    rendered_type = parameter.display_type_rich(ctx)
+                    if rendered_type:
+                        assert metadata["type"] == rendered_type.removesuffix("...")
+                        assert _text(rendered_type) in text
+                else:
+                    assert metadata["type"] == (
+                        parameter.type.get_metavar(param=parameter, ctx=ctx) or parameter.type.name
+                    )
                 assert metadata["help"] == inspect.cleandoc(getattr(parameter, "help", None) or "")
                 assert _text(Text.from_markup(metadata["help"]).plain) in text
                 if metadata["kind"] == "option":
@@ -154,7 +160,7 @@ def test_new_nested_commands_aliases_and_defaults(monkeypatch):
     assert "secret" not in parameters
     assert parameters["value"]["required"] is True
     assert parameters["mode"]["default"] == "fast"
-    assert parameters["mode"]["type"] == "<fast|safe>"
+    assert parameters["mode"]["type"] in {"<fast|safe>", "[fast|safe]"}
     assert parameters["output"]["default"] == "a <b> & {c}"
     assert parameters["output"]["opts"] == ["--output", "-o"]
     assert parameters["tag"]["default"] == ["one", "two"]

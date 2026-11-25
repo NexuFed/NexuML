@@ -503,6 +503,24 @@ class PhysicalAIBrowserSetupTest(unittest.TestCase):
         response.read.assert_called_once_with(pin["size"] + 1)
         self.http.assert_called_with(pin["url"], timeout=30)
 
+    def test_explicit_browser_cache_verifies_bytes_without_http_fallback(self):
+        cache = self.base / "download-cache"
+        cache.mkdir()
+        prepared = self.base / "prepared"
+        prepared.mkdir()
+        pin = {**self.fake_assets[1], "filename": "pinned.deb"}
+        with mock.patch.dict(os.environ, NEXUML_BROWSER_DEB_CACHE=str(prepared)):
+            with self.assertRaisesRegex(ValueError, "pinned local browser archive missing"):
+                self.g["_fetch"](pin, cache)
+            archive = prepared / pin["filename"]
+            archive.write_bytes(self.content)
+            with self.assertRaisesRegex(ValueError, "SHA512 mismatch"):
+                self.g["_fetch"]({**pin, "integrity": "sha512-bad"}, cache)
+            self.assertFalse(list(cache.iterdir()))
+            self.assertEqual(self.g["_fetch"](pin, cache), pin["sha256"])
+        self.http.assert_not_called()
+        self.assertEqual(archive.read_bytes(), self.content)
+
     def test_downgrade_redirect_is_rejected_before_following_it(self):
         handler = self.g["_HTTPSRedirect"]()
         with self.assertRaisesRegex(ValueError, "outside HTTPS"):

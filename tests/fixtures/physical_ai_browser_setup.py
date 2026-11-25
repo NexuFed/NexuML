@@ -300,14 +300,24 @@ class _HTTPSRedirect(urllib.request.HTTPRedirectHandler):
 
 
 def _fetch(pin: _Pin, cache: Path) -> str:
-    url = pin["url"]
-    if not url.startswith("https://"):
-        raise ValueError("download requires HTTPS")
-    opener = urllib.request.build_opener(_HTTPSRedirect())
-    with opener.open(url, timeout=30) as response:
-        if not response.geturl().startswith("https://"):
-            raise ValueError("download redirected outside HTTPS")
-        content = response.read(pin["size"] + 1)
+    filename = Path(pin["filename"]).name
+    supplied = os.environ.get("NEXUML_BROWSER_DEB_CACHE") if filename.endswith(".deb") else None
+    if supplied is None:
+        url = pin["url"]
+        if not url.startswith("https://"):
+            raise ValueError("download requires HTTPS")
+        opener = urllib.request.build_opener(_HTTPSRedirect())
+        with opener.open(url, timeout=30) as response:
+            if not response.geturl().startswith("https://"):
+                raise ValueError("download redirected outside HTTPS")
+            content = response.read(pin["size"] + 1)
+    else:
+        offline = Path(supplied)
+        archive = offline / filename
+        if offline.resolve() != offline or archive.is_symlink() or not archive.is_file():
+            raise ValueError(f"pinned local browser archive missing: {pin['name']}")
+        with archive.open("rb") as source:
+            content = source.read(pin["size"] + 1)
     if len(content) != pin["size"]:
         raise ValueError(f"size mismatch: {pin['name']}")
     digest = hashlib.sha256(content).hexdigest()
@@ -317,7 +327,7 @@ def _fetch(pin: _Pin, cache: Path) -> str:
         integrity = "sha512-" + base64.b64encode(hashlib.sha512(content).digest()).decode()
         if integrity != pin["integrity"]:
             raise ValueError(f"SHA512 mismatch: {pin['name']}")
-    with (cache / Path(pin["filename"]).name).open("xb") as output:
+    with (cache / filename).open("xb") as output:
         output.write(content)
     return digest
 

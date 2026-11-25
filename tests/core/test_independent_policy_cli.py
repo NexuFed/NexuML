@@ -117,6 +117,37 @@ def test_exported_offline_policy_runs_real_cpu_cli_and_keeps_training_provenance
     assert (package / "resolved_config.yaml").read_bytes() == source_yaml
 
 
+def test_offline_checkpoint_replay_does_not_open_training_data(
+    tmp_path, monkeypatch, native_logging
+):
+    import lightning as L
+    from nexuml.training.lightning import NexuLightningModule
+
+    scenario = offline_scenario()
+    module = NexuLightningModule(compile(scenario), scenario=scenario)
+    checkpoint = tmp_path / "offline.ckpt"
+    torch.save(
+        {
+            "pytorch-lightning_version": L.__version__,
+            "state_dict": module.state_dict(),
+            "hyper_parameters": dict(module.hparams),
+        },
+        checkpoint,
+    )
+    forbid_training(monkeypatch)
+    monkeypatch.setattr("nexuml.training.lightning.create_data_module_from_spec", forbidden)
+    monkeypatch.setattr("nexuml.training.lightning._resolve_auto_batch_size_if_needed", forbidden)
+    result = runner.invoke(
+        app,
+        ["evaluate", "--trainer-checkpoint", str(checkpoint), "-O", "policy_evaluation.episodes=1"],
+    )
+    assert result.exit_code == 0, (result.output, result.exception)
+    artifacts = {name: text for _, text, name in native_logging.artifacts}
+    effective = ResolvedConfig.from_yaml(artifacts["config.yaml"])
+    assert type(effective.training) is TrainingSpec
+    assert native_logging.loggers[0].metrics[0][0]["eval/rl/episodes"] == 1
+
+
 @pytest.mark.parametrize("name", ["offline-no-evaluation", "legacy"])
 @pytest.mark.parametrize("seed", [None, 0])
 def test_whole_block_repairs_offline_or_explicitly_migrates_legacy_without_seed_fallback(

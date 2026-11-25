@@ -192,6 +192,48 @@ def test_task_outcomes_are_separate_from_returns_and_reset_per_episode(
     assert evaluate_policy(policy, scenario, media_sink=lambda f, m: None) == metrics
 
 
+def test_episode_report_keeps_later_failure_and_bounded_terminal_trace(fake, monkeypatch):
+    scenario, policy = fake
+    scenario.training.evaluation.max_steps_per_episode = 150
+
+    def factory():
+        runtime = FakeRuntime()
+        original = runtime.step
+
+        def step(action):
+            transition = original(action)
+            first = len(runtime.resets) == 1
+            return replace(
+                transition,
+                terminated=torch.tensor(first and runtime.steps == 3),
+                info={
+                    "task_success": torch.tensor(first and runtime.steps == 2),
+                    "joint_error_rad": torch.tensor(runtime.steps / 100),
+                },
+            )
+
+        monkeypatch.setattr(runtime, "step", step)
+        return runtime
+
+    monkeypatch.setattr(FakeEnvironment, "factory", factory)
+    reports = []
+    metrics = evaluate_policy(policy, scenario, episode_report_sink=reports.append)
+    [report] = reports
+    assert report["metrics"] == metrics
+    assert report["requested_episodes"] == report["completed_episodes"] == 2
+    assert [r["seed"] for r in report["episodes"]] == [7, 8]
+    assert [r["task_success"] for r in report["episodes"]] == [True, False]
+    assert [r["termination_reason"] for r in report["episodes"]] == [
+        "native_terminated",
+        "evaluation_horizon",
+    ]
+    failure = report["selected_failure"]
+    assert failure["episode_id"] == 1 and failure["omitted_initial_steps"] == 22
+    assert [step["step"] for step in failure["steps"]] == list(range(23, 151))
+    assert failure["steps"][-1]["joint_error_rad"] == 1.5
+    assert FakeEnvironment.instances[-1].closed
+
+
 @pytest.mark.parametrize(
     "info",
     [

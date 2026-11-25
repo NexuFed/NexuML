@@ -235,13 +235,19 @@ def test_log_image_file_fallback_writes_png(tmp_path):
     assert destination.exists()
 
 
-def test_service_commands_are_private_quoted_and_avoid_viser_port(tmp_path, caplog, monkeypatch):
+@pytest.mark.parametrize(
+    "spectator_port,ui_ports",
+    [(None, ["6007", "5000"]), (6007, ["6008", "5000"]), (5000, ["6007", "5001"])],
+)
+def test_service_commands_are_private_quoted_and_avoid_viser_port(
+    tmp_path, caplog, monkeypatch, spectator_port, ui_ports
+):
     monkeypatch.setattr(logger_module, "_USE_COLOR", False)
     log_path = tmp_path / "logs with spaces" / "experiment" / "run"
     uri = f"sqlite:///{tmp_path / 'tracking with spaces.db'}"
     tensorboard = type("TensorBoardLogger", (), {"log_dir": str(log_path)})()
     mlflow = type("MLFlowLogger", (), {"_tracking_uri": uri, "run_id": "actual-run"})()
-    logger_module.print_service_info([tensorboard, mlflow], "test")
+    logger_module.print_service_info([tensorboard, mlflow], "test", spectator_port=spectator_port)
     commands = [
         shlex.split(line.strip())
         for line in caplog.messages[-1].splitlines()
@@ -251,7 +257,10 @@ def test_service_commands_are_private_quoted_and_avoid_viser_port(tmp_path, capl
     assert commands[0][commands[0].index("--logdir") + 1] == str(log_path.parent)
     assert commands[1][commands[1].index("--backend-store-uri") + 1] == uri
     assert [cmd[cmd.index("--host") + 1] for cmd in commands] == ["127.0.0.1"] * 2
-    assert [cmd[cmd.index("--port") + 1] for cmd in commands] == ["6007", "5000"]
+    assert [cmd[cmd.index("--port") + 1] for cmd in commands] == ui_ports
+    if spectator_port is not None:
+        assert f"worker loopback port {spectator_port} (configured)" in caplog.text
+        assert "private forward" in caplog.text
     assert "actual-run" in caplog.text and "worker" in caplog.text.lower()
 
 

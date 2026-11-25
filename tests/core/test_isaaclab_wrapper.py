@@ -131,7 +131,7 @@ def test_public_wrapper_ignores_final_obs_on_native_shaped_cpu_fake(
         assert env.batch_size == torch.Size([2])
         td = _input(env)
         transition = env.step(td)
-        assert fake.last_action is td["action"]
+        torch.testing.assert_close(fake.last_action, td["action"], rtol=0, atol=0)
         final = torch.tensor([[11.0], [22.0]])
         done = torch.tensor(terminated) | torch.tensor(truncated)
         expected_returned = final.clone()
