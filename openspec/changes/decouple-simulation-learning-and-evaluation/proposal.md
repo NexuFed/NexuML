@@ -13,7 +13,9 @@ The strategic goal is not to outperform or replace Isaac Lab as a simulator/trai
 - Qualify one narrow native-first policy import/initialization path from a maintained Isaac Lab learner, with explicit actor architecture, preprocessing, controls and parameter mapping. Do not promise arbitrary checkpoint conversion or import of optimizer state.
 
 - Keep ScenarioSpec, compiler, CompiledPolicy, EnvironmentDefinition/Runtime, TensorDict, TorchRL and Lightning. Native scene, task, sensor, physics and control configuration remains provider-owned.
-- Make native Isaac Lab and Arena task construction converge on the same runtime/bindings/lifecycle; add ordinary Arena-composed training while retaining maintained native benchmark evaluation.
+- Make native Isaac Lab and Arena task construction converge on the same runtime/bindings/lifecycle; add ordinary Arena-composed training while retaining maintained native benchmark evaluation. Qualify reuse of an independently runnable, externally authored native Python task/configuration (including a custom direct environment) and its assets without a parallel NexuML scene schema or task rewrite.
+- Add simulator-neutral `nexuml play` and Python playback using the existing policy inference/rollout/runtime lifecycle: continuous and bounded playback, native parallel environments, per-environment reset/state, real-time pacing, selected visible instances, native interactive simulation controls and optional recording. Keep scientific evaluation distinct. Support ordinary local execution and independent remote Ray Jobs playback on qualified workers.
+- Expose typed Isaac viewer modes `headless`, `viser`, `webrtc` and `local` through existing scenario configuration and CLI. Reuse native Isaac visualizers/Kit streaming and the existing CI-distributed Isaac image; preserve private, read-only training/evaluation viewing and explicit opt-in. External NetBird, TCP forwarding, X11 and TigerVNC are infrastructure, not NexuML-managed networking or desktop services.
 - Separate environment, rollout collection and learner placement. Qualify direct same-GPU and separate-GPU operation, then synchronous GPU Ray collectors on an existing cluster with worker-local inference, versioned batched rollouts and explicit resources.
 - Execute evaluation on immutable policy snapshots in an independent process/worker, with explicit simulator placement, native benchmark results and no disturbance to training.
 - Separate policy semantic compatibility, exact training-resumption identity and asset/runtime provenance. Require explicit mappings rather than treating same-shaped tensors as portable.
@@ -31,6 +33,8 @@ The strategic goal is not to outperform or replace Isaac Lab as a simulator/trai
 - `cross-simulator-qualification`: second native provider and staged system-level backends, runtime/image compatibility and measured evidence.
 - `native-learning-comparison`: measured native Isaac Lab baseline, decision gate and narrow native-first interoperability.
 - `heterogeneous-local-learning-handoff`: common global-policy identity, bounded compatible local fitting and numeric update receipts across simulation and authorized real-world experience.
+- `policy-playback`: shared inference-only continuous/bounded native vectorized playback, interactive simulation controls, pacing, recording and independent local/remote execution.
+- `native-viewer-selection`: typed viewer modes, provider-specific native launch and capability validation, private connectivity, purpose-specific control isolation and actual display/stream acceptance.
 
 ### Modified Capabilities
 
@@ -38,4 +42,4 @@ None of the published baseline capabilities is replaced. The existing active cha
 
 ## Impact
 
-Core interaction/contract validation, existing collector and evaluation paths, Lightning lifecycle, library-native environment adapters and examples, execution resources, CI containers and documentation. Extend the existing NexuML local-learning SDK and document the consumer contract for NexuFL. NexuFL aggregation, protocol, deployment and integration changes, NexuVibe and cluster GitOps changes are outside this change; document their prerequisites without editing them. Phase gates require native evidence, not mocked success; a local deterministic aggregation fixture is not a deployed NexuFL round or proof of real-robot safety.
+Core interaction/contract validation, existing collector and evaluation/playback paths, Lightning lifecycle, CLI/SDK, library-native environment adapters and examples, execution resources, CI containers and documentation. Extend the existing NexuML local-learning SDK and document the consumer contract for NexuFL. NexuFL aggregation, protocol, deployment and integration changes, NexuVibe and cluster GitOps changes are outside this change; document their prerequisites without editing them. Phase gates require native evidence, not mocked success; a local deterministic aggregation fixture is not a deployed NexuFL round or proof of real-robot safety.

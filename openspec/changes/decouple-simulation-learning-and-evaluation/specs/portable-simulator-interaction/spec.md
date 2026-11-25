@@ -2,7 +2,7 @@
 
 ### Requirement: Native tasks use the existing interaction boundary
 
-Native providers SHALL implement or reuse the existing serializable EnvironmentDefinition, execution-local EnvironmentRuntime and InteractionContract. Native scene, embodiment, physics, task, sensor and reward configuration SHALL remain provider-owned. Compiling and describing a declared environment SHALL NOT require retaining a simulator or connecting to physical hardware.
+Native providers SHALL implement or reuse the existing serializable EnvironmentDefinition, execution-local EnvironmentRuntime and InteractionContract. Native scene, embodiment, physics, task, sensor and reward configuration SHALL remain provider-owned. An independently runnable installed native task and Python configuration/registration, including compatible custom direct environments and referenced assets, SHALL be usable by native tools and NexuML without rewriting their simulation logic; only the learning scenario, semantic contract and bindings are additional. Qualification SHALL extend the existing NC1–NC6 registered-task acceptance with a real custom direct task reused by both paths; unsupported version, native reset or I/O semantics SHALL fail explicitly. Compiling and describing a declared environment SHALL NOT require retaining a simulator or connecting to physical hardware.
 
 #### Scenario: A project-owned native task is selected
 - **GIVEN** A trusted importable native definition and explicit contract are supplied
