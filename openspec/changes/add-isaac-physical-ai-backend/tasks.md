@@ -214,9 +214,9 @@ The user-selected LeRobot additions require complete Diffusion Policy and resour
 
 ## 16. Operator-supervised hardware and local improvement
 
-- [ ] 16.1 Select an approved exact arm and record firmware, calibration, controller and workspace; verify independent stop/intervention/fallback provisions and operator go/no-go criteria before motion.
+- [ ] 16.1 Select approved exact G1 EDU (29-DoF body target, hands/firmware/SDK/controller to confirm); verify calibrated native balance/whole-body controller, protective workspace/support and independent stop/intervention/fallback; operator go/no-go before motion. Reuse follow-up hardware readiness proof.
 - [ ] 16.2 Validate complete policy and optimized-target parity on recorded observations; verify processor/state/action equivalence, rate/memory/sensor readiness and zero commands while hardware enablement is absent.
-- [ ] 16.3 Perform separately approved low-speed arm trials and leader/follower or corrective capture; verify actual task/intervention/latency/safety-trigger evidence and immediate operator-stop behavior, never unattended exploration.
+- [ ] 16.3 Perform separately approved low-speed bounded G1 manipulation trials with qualified native balance/whole-body controller and supervised teleoperation/corrective capture; verify task/intervention/latency/safety-trigger evidence and immediate operator stop, never unattended exploration. Reuse follow-up hardware acceptance; low-cost arm physical proof optional.
 - [ ] 16.4 Compare matched simulated and physical trials and validate captured local experience; verify sensing/dynamics/delay gaps, calibration/episode provenance, authorized retention and held-out splits.
 - [ ] 16.5 Expose the local offline adaptation operation through existing scenario/session APIs; verify approved parent/data/config inputs, trainable scope/budget and deterministic candidate/evidence/error outputs without NexuFL or automatic upload.
 - [ ] 16.6 Compare naïve fine-tuning against replay/regularization and targeted failure selection against equal-budget random selection; verify old/new-task results, forgetting, selected episode identities and no contaminated evaluation.

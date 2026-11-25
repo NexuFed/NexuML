@@ -360,11 +360,11 @@ G1 is an exact 29-DoF locomotion **training** task, not a DDS simulator; humanoi
 
 Use the maintained UR10e/Rizon gear-insertion reference with its already-grasped start and measured perception inputs. Keep UR5e/URSim validation separate. A LumenPnP offline vision/offset/anomaly example reuses ordinary datasets and model training; missing turnkey dynamics gets a costed feasibility report rather than a new simulator requirement. Include compatible read-only industrial data gateways and self-/semi-supervised representation learning on approved unlabeled streams, without forcing robot/ROS concepts into all models.
 
-**Rejected:** substitute generic simulation toys for obtainable machines, treat model loading as learning, make classical Nav2/MoveIt itself the learned policy, or require physical humanoid/drone trials before the first arm is useful.
+**Rejected:** substitute generic simulation toys for obtainable machines, treat model loading as learning, make classical Nav2/MoveIt itself the learned policy, or require physical humanoid/drone trials before simulation and offline milestones are useful.
 
 ### D15. Full program includes a manual real-arm and local adaptation gate
 
-Software milestones are independently useful, but the full program does not close until the stated manual arm workflow is demonstrated. Start with exact SO-101 or an explicitly approved arm, calibrated sensing/controller and independently validated protective workspace/stop/intervention. Offline recorded-sequence parity comes before motion. Operator enables low-speed bounded trials; no unattended real-world exploration, online training or hot swaps.
+Software milestones are independently useful, but the full program retains a separately approved manual hardware gate. First physical target is now exact Unitree G1 EDU (29-DoF body preferred, exact hands/firmware/SDK subject to confirmation), using qualified native locomotion/balance and whole-body control for initial supervised bounded upper-body manipulation. SO-101/LeKiwi remain simulation-first; real low-cost arm trials are optional and separately approved. Calibrated sensing/controller, manufacturer-approved support/protective workspace and independently validated stop/intervention/fallback precede motion. Offline parity and isolated sim-to-sim/full-stack control precede separately authorized low-speed trials; no unattended exploration, controller bypass, online real-hardware RL or mid-episode hot swaps. `integrate-robotics-stack-and-teleoperation` owns the exact G1 gate and its receipt is reused here.
 
 Collect authorized local demonstrations/corrections/failures, validate and split them, fine-tune offline and run shadow/simulator/old-new regression. The local adaptation operation accepts parent artifact, authorized dataset reference, explicit trainable scope/budget and frozen evaluation suite; outputs candidate, provenance and decision. Compare naïve adaptation with replay/regularization and targeted failure selection with equal-budget random selection. Human approval and a retained known-good artifact control promotion and rollback.
 
@@ -431,7 +431,7 @@ remain separately requested operations.
 
 ## Risks / Trade-offs
 
-- **[Program breadth]** -> Staged tasks and per-family proofs; do not turn the first arm milestone into a claim of full support or grow a generic framework preemptively.
+- **[Program breadth]** -> Staged tasks and per-family proofs; do not turn the first simulation or supervised hardware milestone into a claim of full support or grow a generic framework preemptively.
 - **[Conflicting optional simulator/native dependencies]** -> Resolve the primary compatible graph first, maintain an explicit named profile matrix for incompatible Meta-World/JAX cases, and test a reviewed opt-in execution boundary; no hidden environments/overrides.
 - **[A relaxed bound hides a real API break]** -> D3 enumerates five exception names, pins exact selections, preserves security/ABI checks and checker discrepancies, and requires affected native/real-model proof and an upstream removal condition. Failed or unexecuted tests leave support incomplete.
 - **[Upstream docs differ from installed/pinned code]** -> Immutable sources, explicit API inventory and native/numerical tests before adapters.

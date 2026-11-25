@@ -29,7 +29,7 @@ F01 is an **additional early integration proof**, not an assertion that I03 reac
 | I07 | SO-101 demonstrations/corrections | Isaac Capture/LeRobot data | approved teleoperation and LeRobotDataset v3 ingest; DAgger correction loop | P0/P1 | planned + expanded; tasks 7, 20 |
 | I08 | SO-101 imitation | LeRobot + Isaac Lab | ACT, Diffusion and optional small flow policy from matching episodes -> Isaac replay | P0/P1 | ACT/Diffusion planned, flow added; tasks 8, 20 |
 | I09 | SO-101 pretrained VLA | LeRobot + Isaac Lab | SmolVLA; selected GR00T N1.7; resource-gated pi0.5, matched processor/control contracts | P1 | planned; tasks 9, 21.3 |
-| I10 | SO-101 adaptation loop | Isaac + approved arm | offline corrections, frozen old/new-task suite, parity, operator-approved real trial/rollback | P1/manual | planned; tasks 16, 20 |
+| I10 | SO-101 adaptation loop | Isaac + approved recordings; optional physical arm | offline corrections, frozen old/new-task suite, parity and rollback; real arm trial optional | P1 | planned; tasks 16, 20; required first physical gate now G1 |
 | I11 | OpenArm single and bimanual manipulation | Maintained Isaac Lab tasks | one real unimanual RL task and one distinct bimanual IL/policy training task | P1 | planned; tasks 13.2, 21.4 |
 | I12 | Unitree G1 exact 29-DoF | Isaac Lab/official Unitree | trained locomotion velocity tracking; separate humanoid manipulation/Mimic experience | P1 | planned; tasks 13.3, 21.4 |
 | I13 | Unitree Go2 | Isaac Lab/Unitree | trained rough terrain/velocity tracking, falls and domain shift | P1 | planned; tasks 13.4 |
@@ -42,6 +42,10 @@ F01 is an **additional early integration proof**, not an assertion that I03 reac
 | I20 | G1 humanoid locomanipulation or Isaac Mimic | Isaac Lab maintained | actual demonstration-generation plus imitation/closed-loop evaluation | P1 | existing generalized requirement; task 21.4 |
 | I21 | Dexterous Allegro/Shadow or maintained equivalent | Isaac/DexSuite | one exact actuated hand object-reorientation/contact-rich training reference | P2 | new opt-in extension; task 21.6 |
 | I22 | GR-1 manipulation or equivalent native example | Isaac Mimic | source-traceable teleoperation/synthetic demonstration and closed-loop learned policy | P2 | optional; task 21.6 |
+
+## Selected Isaac delivery catalogue (follow-up)
+
+See [integrate-robotics-stack-and-teleoperation/reference-catalogue.md](../integrate-robotics-stack-and-teleoperation/reference-catalogue.md) for the ten user-selected priority examples: Cartpole, so101_new_calib, Franka Panda, Kaya, RidgebackFranka, Spot with arm, Agibot A2D, G1 29-DoF body, Crazyflie and LeKiwi. Reuse matching receipts; retain other historical roadmap rows/status. Follow-up owns added deliveries, full-stack LeKiwi/G1 and first physical G1 gate. Planning asserts no new implementation status.
 
 ## Alternative simulation and benchmarks
 

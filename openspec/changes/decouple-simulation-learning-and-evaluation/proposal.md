@@ -22,6 +22,8 @@ The strategic goal is not to outperform or replace Isaac Lab as a simulator/trai
 - Qualify a native MuJoCo GPU/Warp or maintained Playground path as a second provider. Retain Gymnasium MuJoCo. Plan Gazebo, CARLA and ROS 2 expansion behind the same interaction boundary, without claiming all upstream tasks work.
 - Extend existing CI/image/release and execution mechanisms; measure actual native throughput, learning, network costs, failure handling and cleanup. No new trainer, simulator language, RPC protocol, mandatory service or framework.
 
+- Freeze a small reusable interaction handoff for the follow-up `integrate-robotics-stack-and-teleoperation`: purpose-aware lifecycle, action-source-independent execution, provider-declared supported operations, observation/command timing and simulator-free inference. Implement only the seams needed by current training/evaluation/playback and a small non-policy action-source fixture; actual teleoperation, recording orchestration, DDS/ROS skills and robot deployment belong to the follow-up.
+
 ## Capabilities
 
 ### New Capabilities

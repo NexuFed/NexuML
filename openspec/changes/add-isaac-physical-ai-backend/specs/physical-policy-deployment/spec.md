@@ -14,9 +14,9 @@ Every deployment target SHALL reproduce reference preprocessing, state updates a
 - **WHEN** parity is checked before enabling commands
 - **THEN** deployment is blocked with the semantic mismatch identified
 
-### Requirement: Sim-to-real is an operator-supervised arm workflow
+### Requirement: Sim-to-real is an operator-supervised G1 workflow
 
-The first physical proof SHALL use one approved low-cost arm with verified firmware, calibration, controller interface, protective workspace, independent stop mechanism and human intervention. Hardware enablement SHALL require explicit operator action and SHALL NOT run through normal CI or unattended exploration.
+The first physical proof SHALL target an approved exact Unitree G1 EDU with verified firmware, calibration, native control access, qualified balance/whole-body controller, protective workspace/support, independent stop and human intervention. Initial task SHALL be bounded supervised upper-body manipulation with retained qualified locomotion/balance controller. SO-101 and LeKiwi remain simulation-first; additional physical arm trials are optional and separately authorized. The G1 integration receipt from integrate-robotics-stack-and-teleoperation SHALL satisfy the shared gate. Hardware enablement SHALL require explicit operator action and SHALL NOT run through normal CI or unattended exploration.
 
 #### Scenario: The hardware enable gate is absent
 - **WHEN** a simulation-validated policy is loaded on a connected robot workstation

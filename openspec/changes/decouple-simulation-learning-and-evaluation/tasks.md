@@ -20,6 +20,9 @@ All tasks are new, unchecked. Existing historical evidence remains scoped to its
 - [ ] 1.5 Re-run existing direct Cartpole/SO-101/MARL, supervised and NEX-234 local-fit regressions; report original benchmark behavior and artifact provenance.
 - [ ] 1.6 Extend the existing native custom-task acceptance with one independently runnable project-owned Isaac DirectRLEnv Python configuration/registration and assets used unchanged by native runner and NexuML; prove known-action/terminal/reset semantics and actual training/export/replay without task-name branches. Reuse the same principle for the Arena composition in 1.3–1.4. Only NexuML scenario/contract/bindings are additional; document native-version/runtime limitations.
 
+- [ ] 1.7 Qualify minimal foundation handoff in design §1a: shared purpose/lifecycle, policy-independent scripted action execution, provider capability checks, timestamp/freshness/control-period semantics and explicit async-action boundary. Reuse existing types/fixtures, reject unsupported physical reset/play, and prove native mapping for policy vs scripted actions. No teleop/skill executor here.
+- [ ] 1.8 Qualify installed inference-only artifact load, processor/state/action parity and reset without simulator/ROS, training/collector/Ray or NexuFL dependencies (except documented actual inference dependencies). Publish the SDK/contract example, capability and ownership notes for follow-up; no need to wait for §§2–6.
+
 ## 1a. Early NexuFL local-learning handoff (before expensive distributed expansion)
 
 - [ ] 1a.1 Audit and preserve NEX-234 `local_fit` / `local_fit_manifest` behavior; define a versioned shared actor manifest/base digest distinct from operator-owned local recipe/provenance, including exact parameter roles, semantic contract, shared buffers and trainable subset. Freeze an inspectable consumer fixture.

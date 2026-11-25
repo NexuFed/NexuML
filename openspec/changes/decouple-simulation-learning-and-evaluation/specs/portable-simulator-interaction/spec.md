@@ -26,3 +26,20 @@ Resume SHALL retain existing learner, optimizer, counters, task/asset/physics an
 - **GIVEN** The model, algorithm and exact continuation contract are valid
 - **WHEN** the corresponding supported workflow is executed
 - **THEN** Learning state and remaining frame budget are restored, the environment is freshly built, and changed placement is recorded.
+
+
+### Requirement: Interaction ownership and capabilities are independent of policy source
+
+The existing environment definition/runtime SHALL expose a minimal purpose-aware lifecycle and provider-supported operations, validate incompatible purpose, vectorization, reset, pacing and viewer requests, and accept contracted actions independently of a CompiledPolicy. Requested/executed action and source identity SHALL remain representable. Train/evaluate/play SHALL reuse the same interaction boundary; teleoperation, recording and authorized physical deployment SHALL have an explicit extensibility boundary but are not implemented by this requirement. Physical hardware SHALL NOT be treated as a resettable, pausable or accelerated simulator.
+
+#### Scenario: A native runtime receives scripted rather than learned actions
+- **WHEN** an approved scripted source supplies the same contracted action as the policy
+- **THEN** the same native execution and validation path is used and resource ownership remains unchanged.
+
+### Requirement: Timing and standalone inference form a reusable handoff
+
+Interaction contracts SHALL preserve available native clock/timestamps, sensor validity/freshness, control period and action timing, and distinguish synchronous fixed-step RL from asynchronous bounded goals. Unsupported operations SHALL fail explicitly rather than inventing transitions or timing. The existing complete policy export SHALL demonstrate installed inference and temporal-state/action parity independent of simulator, ROS, learner, collectors, Ray and NexuFL, subject to documented inference dependencies. A generic skill executor is not required.
+
+#### Scenario: A deployment consumer loads a qualified policy
+- **WHEN** the complete exported actor is evaluated on representative recorded observations in an inference-only installation
+- **THEN** processor, action and reset/state parity are retained without a learner or live simulator; missing required inputs or unsupported timed operations are rejected.
