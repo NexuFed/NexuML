@@ -23,7 +23,7 @@ The SDK SHALL return validated full numeric updates or an explicitly supported v
 
 ### Requirement: Cross-provider handoff is demonstrated before production federation
 
-NexuML SHALL demonstrate compatible Isaac and MuJoCo local fits from a common actor, an explicit deterministic test-only reference combination, candidate reload/evaluation and a second bounded round. The eventual three-domain gate SHALL additionally use approved actual ROS 2 experience with a validated matching physical contract; fake transport and simulated episodes SHALL NOT satisfy real-data acceptance. Use a common objective first and explicitly document weighting; mixed RL/imitation objectives or shared-subset configurations SHALL require separate evidence. Per-domain learning and worst-domain regressions SHALL be reported against local-only and simulator-only baselines. Physical online learning SHALL require authorized safe control and supervised bounded operation; no automatic physical deployment follows aggregation.
+NexuML SHALL demonstrate compatible Isaac and MuJoCo local fits from a common actor, an explicit deterministic test-only reference combination, candidate reload/evaluation and a second bounded round. The eventual three-domain gate SHALL additionally use approved actual ROS 2 experience with a validated matching physical contract; fake transport and simulated episodes SHALL NOT satisfy real-data acceptance. Use a common behavior-cloning objective from genuine compatible episodes for the initial three-domain proof, with explicit equal-client and equal-domain weighting references. The real-data gate SHALL be independently executable without waiting for distributed GPU qualification. Mixed RL/imitation objectives or shared-subset configurations SHALL require separate evidence. Per-domain learning and worst-domain regressions SHALL be reported against local-only and simulator-only baselines. Physical online learning SHALL require authorized safe control and supervised bounded operation; no automatic physical deployment follows aggregation.
 
 #### Scenario: Compatible local results are combined in a reference fixture
 - **WHEN** valid numeric updates from the same base are returned by qualified providers
@@ -40,3 +40,16 @@ NexuML SHALL expose a documented, pinned numeric model/update contract and local
 #### Scenario: A trusted NexuFL client program calls the SDK
 - **WHEN** it supplies the approved base state, manifest and locally installed recipe
 - **THEN** NexuML returns a bounded validated update receipt through its ordinary local-learning interface, independently of the federation transport.
+
+### Requirement: Mixed local objectives are qualified explicitly and domain weighting is observable
+
+After the common-objective proof, NexuML SHALL support a bounded reference experiment combining compatible local simulation RL and authorized real-world offline learning updates from the exact same shared actor base. The experiment SHALL validate common actor parameter roles and physical semantics, preserve private training state, report objective and budget/count differences and update conflicts, and compare equal-client/equal-domain weighting references against common-objective, local-only and simulation-only baselines. Simulator frame count SHALL NOT silently determine real-domain contribution. Negative or inconclusive outcomes SHALL remain visible; no automatic promotion or claim of general mixed-objective compatibility follows from numeric compatibility. Production aggregation remains NexuFL-owned.
+
+#### Scenario: Simulators learn with PPO while a robot learns from demonstrations
+- **GIVEN** Qualified local RL and offline learning modes with the same approved shared actor manifest and starting state
+- **WHEN** Their bounded numeric updates are combined in the reference experiment
+- **THEN** The result is evaluated on held-out domains against predeclared comparison criteria, with explicit objective and weighting provenance; incompatible shared roles or regressive outcomes are reported rather than silently promoted.
+
+#### Scenario: Real-world experience is scarce relative to simulation
+- **WHEN** A large simulated frame count and a smaller approved real-world episode set contribute updates
+- **THEN** The experiment reports distinct count semantics and an equal-domain comparison rather than implicitly equating raw transitions with eligible demonstrations.
