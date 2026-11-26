@@ -430,6 +430,42 @@ def test_ray_lightning_fit_and_failure_close_workers(
 
 
 @pytest.mark.requires_system
+@pytest.mark.requires_gpu
+@pytest.mark.requires_optional("ray")
+@pytest.mark.requires_optional("torchrl")
+@pytest.mark.requires_optional("gymnasium")
+def test_ray_cuda_learner_synchronizes_cpu_workers(local_ray, tmp_path, monkeypatch):
+    scenario = pendulum_ppo(total_frames=32, frames_per_batch=16)
+    scenario.training.accelerator = "gpu"
+    scenario.training.devices = 1
+    scenario.training.collector = CollectorSpec(
+        backend="ray", num_collectors=2, policy_device="cpu", ray=RayCollectorSpec()
+    )
+    scenario.training.algorithm = PPO(update_epochs=1, minibatch_size=8)
+    scenario.training.evaluation = RLEvaluationSpec(episodes=0)
+    versions = []
+
+    def checked_sync(collector, policy):
+        expected = {key: value.cpu() for key, value in policy.state_dict().items()}
+        assert all(value.is_cuda for value in policy.parameters())
+        synchronize_policy(collector, policy)
+        for state in local_ray.get(
+            [worker.state_dict.remote() for worker in collector.remote_collectors], timeout=10
+        ):
+            torch.testing.assert_close(state["policy_state_dict"], expected, rtol=0, atol=0)
+        versions.append(collector._published_version)
+
+    monkeypatch.setattr("nexuml.training.reinforcement.synchronize_policy", checked_sync)
+    result = NexuSession(
+        scenario, log_dir=tmp_path, enable_loggers=False, enable_progress_bar=False
+    ).run()
+    assert result.lightning_module.fit_device == "cuda:0"
+    assert int(result.lightning_module.get_buffer("frames")) == 32
+    assert result.trainer.global_step == 8 and versions == [2, 3]
+    assert result.lightning_module._collector is None and local_ray.is_initialized()
+
+
+@pytest.mark.requires_system
 @pytest.mark.requires_optional("ray")
 @pytest.mark.requires_optional("torchrl")
 @pytest.mark.requires_optional("gymnasium")
@@ -585,6 +621,24 @@ def test_unvalidated_ray_topologies_fail_before_allocation(collector, frames, er
     )
     with pytest.raises(ValueError, match=error):
         build_collector(GymnasiumEnvironment(), training, torch.nn.Linear(3, 1), "cpu")
+
+
+@pytest.mark.parametrize(
+    "collector",
+    [
+        CollectorSpec(backend="ray", policy_device="cpu"),
+        CollectorSpec(
+            backend="ray",
+            env_device="cuda:0",
+            policy_device="cuda:0",
+            ray=RayCollectorSpec(num_gpus=1),
+        ),
+    ],
+)
+def test_ray_cuda_learner_needs_explicit_placement_and_cpu_workers(collector):
+    training = ReinforcementLearningSpec(algorithm=PPO(), collector=collector)
+    with pytest.raises(ValueError, match="requires explicit Ray placement and CPU rollout"):
+        build_collector(GymnasiumEnvironment(), training, None, "cuda:0")
 
 
 def test_ray_placement_config_round_trips_without_changing_default_dump():

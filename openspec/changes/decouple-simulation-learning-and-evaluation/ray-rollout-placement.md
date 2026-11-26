@@ -14,7 +14,8 @@ version retained at the first tick of the next batch. The coordinator
 checks that all workers contributed the complete `[worker, ..., time]`
 batch and that every transition has the published version, before the
 learner consumes the batch. Each update must synchronize all workers;
-asynchronous, multi-learner and GPU Ray layouts remain rejected.
+asynchronous, multi-learner and GPU Ray layouts were rejected in this
+initial CPU candidate.
 
 In a two-worker, two-environment probe, the native next-version rows were
 uniform at **1, 2, 3** across successive eight-transition batches, paired
@@ -181,3 +182,31 @@ Receipts: `/tmp/opencode/native-ray-ppo-public-vVWr0v/` (CLI),
 Isaac preflight and Arena checks). This is one host and a CPU learner,
 not separate GPU learner, two-node worker placement, grouped rollout
 or a matched-throughput claim.
+
+At `da4c2347`, binary-only NexuML wheels installed in an independent
+CPU virtual environment with matching Torch `2.11.0+cpu`, torchvision
+`0.26.0+cpu`, Ray `2.57.0`, TensorDict `0.14.2`, TorchRL `0.14.0`, and
+lock-matched `virtualenv==21.7.8`. The installed learner had no Isaac,
+Arena, MuJoCo or ROS runtime and ran outside the source directory with
+Python isolated mode. The prepared local worker still ran the pinned
+CUDA PhysX runtime. The public train command produced another **64
+frames / eight optimizer steps**, a checkpoint and a frame-64 actor
+package. Worker PID departure, GPU availability and zero object-store
+references were verified again. A fresh native playback process loaded
+the export and ran **eight ticks / 24 CUDA transitions** before clearing
+the simulation context. This is a dependency-boundary proof, not a
+cross-node or published-image proof.
+Wheels, hashes and receipts: `/tmp/opencode/gpu-ray-learner-wheels-kt05Cc/`.
+
+## CUDA publication to CPU workers (3.4 slice)
+
+A learner on `cuda:0` ran ordinary Pendulum PPO with two CPU Ray workers
+on an explicit borrowed runtime. The driver serialized one CPU policy
+copy for worker construction; later updates used the existing versioned
+TorchRL transport from the original CUDA learner. Both workers'
+parameters matched the learner bit-for-bit at versions **2 and 3**;
+the learner reached **32 physical frames / eight optimizer steps**.
+The collector closed without shutting down the caller's Ray runtime.
+No CUDA worker was requested in this pairing. A CUDA learner together
+with CUDA workers still fails preflight pending that topology's proof.
+Receipt: `/tmp/opencode/rgcl-PxTiUd/`.

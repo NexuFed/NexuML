@@ -1,6 +1,7 @@
 """Execution-local collector factories and the Lightning iterable bridge."""
 
 from contextlib import ExitStack
+from copy import deepcopy
 from dataclasses import dataclass, replace
 from typing import Any, cast
 
@@ -74,6 +75,7 @@ def build_collector(definition, training: ReinforcementLearningSpec, policy, dev
     """
     definition.validate_training(training, device=str(device))
     spec = training.collector
+    worker_policy = policy
     policy_device = str(device) if spec.policy_device == "auto" else spec.policy_device
     for name, value in (
         ("env_device", spec.env_device),
@@ -94,8 +96,15 @@ def build_collector(definition, training: ReinforcementLearningSpec, policy, dev
         gpu_worker = spec.ray is not None and spec.ray.num_gpus == 1
         if gpu_worker:
             spec.validate_ray_gpu_devices()
-        if not spec.sync or torch.device(device).type != "cpu":
-            raise ValueError("Ray collection requires a CPU learner and synchronous collectors")
+        learner_device = torch.device(device).type
+        if not spec.sync or learner_device not in {"cpu", "cuda"}:
+            raise ValueError(
+                "Ray collection requires synchronous collectors and a CPU/CUDA learner"
+            )
+        if learner_device == "cuda" and (gpu_worker or spec.ray is None):
+            raise ValueError(
+                "A Ray CUDA learner requires explicit Ray placement and CPU rollout workers"
+            )
         if not gpu_worker and any(
             torch.device(value).type != "cpu"
             for value in (spec.env_device, spec.storing_device, policy_device)
@@ -108,6 +117,9 @@ def build_collector(definition, training: ReinforcementLearningSpec, policy, dev
             raise ValueError(
                 "Ray frames_per_batch must be divisible by collectors times environments"
             )
+        if learner_device == "cuda":
+            # Ray constructs workers before moving the policy to the worker's device.
+            worker_policy = deepcopy(policy).cpu()
     try:
         from torchrl.collectors import Collector
     except ImportError as error:
@@ -176,7 +188,7 @@ def build_collector(definition, training: ReinforcementLearningSpec, policy, dev
     try:
         collector = constructor(
             direct_environment if direct_environment is not None else factories,
-            policy=policy,
+            policy=worker_policy,
             **topology,
             frames_per_batch=training.frames_per_batch,
             total_frames=training.total_frames,

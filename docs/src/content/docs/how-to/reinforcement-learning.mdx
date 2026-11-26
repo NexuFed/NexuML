@@ -197,6 +197,17 @@ alongside a CPU learner. This does not enable automatic Isaac fit evaluation
 or qualify a two-GPU learner/evaluator pairing. Omit `process` to keep
 in-process evaluation.
 
+### Train on CUDA with CPU Ray rollout workers
+
+For a CPU environment such as Pendulum, use one CUDA learner with
+`training.accelerator: gpu` and `training.devices: 1`. Set the collector
+`backend: ray`, all three collector devices (`env_device`,
+`policy_device`, `storing_device`) to `cpu`, and set `collector.ray.address`
+to the prepared Ray Core address. Keep `sync: true` and synchronize after
+every batch. The learner publishes its weights to CPU policy copies after
+each update; the workers run their own physics and return full batches.
+This does not qualify CUDA learners paired with CUDA rollout workers.
+
 ### Place CPU snapshot evaluation on an existing Ray runtime
 
 Use the Python SDK from a driver already connected to a trusted Ray cluster.
