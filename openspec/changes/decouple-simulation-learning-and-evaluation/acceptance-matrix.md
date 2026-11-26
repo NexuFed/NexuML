@@ -103,8 +103,18 @@ and rejection of unsupported video. Both packages resolved from the isolated
 prefix. Gymnasium supplied the classic-control task; Ray and native robotics
 packages (Isaac, MuJoCo, ROS, CARLA, Newton and LeRobot) were absent.
 See `learner.log` and `learner-packages.txt` in the same receipt directory.
-Task 6.3 remains open for the unqualified split and distributed recipes,
-not for public release delivery.
+
+The rebuilt `51606ce8` wheels also passed the installed CPU Ray CLI smoke.
+The fresh binary-only environment used Torch 2.11.0+cpu, TorchRL 0.14.0,
+Ray 2.57.0 and Gymnasium 1.3.0, without native robotics packages. A local
+Ray learner run completed **32 transitions and 8 optimizer steps** on CPU
+with two rollout actors, then the installed CLI exported and played the
+fixed actor for eight transitions. The actor reports source frame 32,
+with package SHA-256
+`e14a0b94b2b3d3490dcf8e2969f4b4a9ea1572a2296b8a4294755c8e5e849260`.
+Receipts and wheel hashes: `/tmp/opencode/ri-jhl2lN/`. Task 6.3 remains
+open for unqualified split and distributed GPU recipes, not public release
+delivery.
 
 The existing binary-only Isaac workstation build produced image
 `sha256:1f03b8cf62699c098b0e590076b972446b51102086767aaa103c475b964b2d6b`
@@ -139,6 +149,16 @@ Skipped and deselected tests are not qualification evidence. Log:
 After GPU/Ray evaluation and the CARLA export fix, standard regression at
 `124ea1cd` passed **3,649 tests and 604 subtests** (16 skipped, 119 deselected)
 in 508.84 s. Log: `/tmp/opencode/nexuml-decouple-regression-kpLIcT/pytest.log`.
+
+The first integrated placement run passed **3,730 tests and 604 subtests**
+and failed nine stale Ray Jobs receipt assertions. The receipt reports
+worker allocation/device and progress as unknown until observed in job
+logs; train, evaluate and export tests now assert that wording. No product
+behavior was changed to make these tests pass. The focused CLI suite passed
+**44**. The first run's recorded input SHA-256 is
+`83e1bac24564cf20a32d769b7c90ec4996f57ff79aa85ec51825901c4710731a`.
+Logs: `/tmp/opencode/nexuml-placement-standard-5YAUcL/pytest.log`
+and `/tmp/opencode/nexuml-ray-receipt-qbI9Hz/pytest.log`.
 
 ## Spec precedence for this candidate
 

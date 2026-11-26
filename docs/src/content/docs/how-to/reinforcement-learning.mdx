@@ -582,6 +582,21 @@ lookahead. Every learner update must synchronize all rollout workers
 (`policy_sync_interval_batches=1`). The collector rejects short batches
 and stale policy versions before PPO sees them.
 
+To check an installed CPU-only profile, run a short fit with two local
+rollout workers:
+
+```bash
+nexuml train pendulum-ppo \
+  -O training.accelerator=cpu \
+  -O training.collector.backend=ray -O training.collector.num_collectors=2 \
+  -O training.total_frames=32 -O training.frames_per_batch=16 \
+  -O training.algorithm.minibatch_size=8 -O training.algorithm.update_epochs=1 \
+  -O training.evaluation.episodes=0
+```
+
+The receipt should show 32 physical training frames, 8 optimizer steps,
+and `cpu` as the observed fit device.
+
 For a prepared Ray Core cluster, configure the address and the resources
 advertised by the intended rollout workers:
 
@@ -608,15 +623,9 @@ It waits at most 30 seconds; failed/timed-out close still kills owned actors and
 the runtime lease, then reports the error. Repeated teardown is safe. Caller-owned Ray
 runtimes remain alive; collector-owned local runtimes stop after collection.
 
-```bash
-NEXUML_RUN_SYSTEM_TESTS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 \
-  python -m pytest tests/core/test_ray_collectors.py -q
-```
-
-The proof uses its own small local runtime, two CPU actors, worker-local environments,
-copied-policy refresh and normal/failure/cancellation cleanup. Ray learner placement,
-asynchronous/GPU Ray collection and nested learner/collector placement remain rejected.
-Do not nest unvalidated Ray runtimes. ROS/CARLA reference runs use a single direct collector.
+Ray learner placement, asynchronous/GPU Ray collection and nested
+learner/collector placement remain rejected. ROS/CARLA reference runs
+use a single direct collector.
 
 ## Scenario and dependency matrix
 

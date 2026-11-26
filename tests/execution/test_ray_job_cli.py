@@ -82,7 +82,7 @@ def test_train_submits_all_scenario_sources_with_overrides(
     assert f"GPUs={execution.entrypoint_num_gpus}; CPUs={execution.entrypoint_num_cpus}" in text
     assert "RAM bytes=unspecified" in text
     assert "Configured epoch budget: 2" in text
-    assert "phase: unknown until observed in job logs" in text
+    assert "Worker allocation/device and progress: unknown until observed in job logs." in text
     assert "Training complete" not in result.output
     assert "Ray training complete" not in result.output
     if source == "file":
@@ -501,7 +501,7 @@ def test_remote_lifecycle_selects_execution_before_worker_inputs(
     assert f"operation: {operation}" in text
     assert f"Worker {operation} input:" in text
     assert "Configured epoch budget" not in text
-    assert "setup/learning phase: unknown" in text
+    assert "Worker allocation/device and progress: unknown until observed in job logs." in text
     if operation == "export":
         assert "Requested worker export output (not yet produced): /worker/policy" in text
     assert "Training complete" not in result.output
