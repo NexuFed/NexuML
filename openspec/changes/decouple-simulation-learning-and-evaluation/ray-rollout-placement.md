@@ -76,6 +76,23 @@ Receipts: `/tmp/opencode/jr-x2o97S/` and `/tmp/opencode/jr-full-2E6fPu/`.
 These probes did not run TorchRL distributed PPO or verify native
 cancellation, checkpoint resume, or object-store cleanup.
 
+### Native Warp factory lifecycle (3.2, one-host slice)
+
+At `5989d6a5`, two successive Ray actors each reserved the same RTX 4080
+SUPER and built the unchanged native MuJoCo Warp Cartpole via the same
+worker-owned `EnvironmentFactory`. Each ran three ticks over two worlds
+with CUDA reward and termination tensors. Both Ray close calls returned
+after the runtime released its model and data; repeated close was safe.
+In the second actor, an injected exception after real physics steps
+crossed Ray, followed by the same successful close. Both actor processes
+exited and the caller-owned Ray runtime stayed up. Source hashes, exact
+probe and receipts: `/tmp/opencode/wr-3DqxFe/`.
+
+This isolates the observed non-returning close to the Kit lane, not the
+shared factory. The probe did not use the public Ray PPO collector,
+exercise cancellation or move rollout batches over the object store.
+GPU Ray training remains disabled.
+
 ## Checkpoint continuation (3.5, CPU slice)
 
 The public session saved an ordinary Pendulum checkpoint after 16

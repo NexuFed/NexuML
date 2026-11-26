@@ -77,7 +77,9 @@ Raw local logs, probe and training receipts, `receipt.json` and the package:
 
 No split-device, asynchronous, distributed, viewer, performance, cross-image,
 or general CPU/GPU trajectory-equivalence claim. The existing Ray collector
-rejects GPU placement before allocation; no distributed Warp run was attempted.
+rejects GPU placement before allocation. The later
+[one-host Ray factory probe](ray-rollout-placement.md#native-warp-factory-lifecycle-32-one-host-slice)
+tested native Warp worker cleanup, not distributed learning.
 The CPU fixture, assets, learner, collector, package manifests and planning
 status are unchanged by this slice.
 

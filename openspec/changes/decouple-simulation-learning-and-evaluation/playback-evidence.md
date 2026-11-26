@@ -255,3 +255,10 @@ viewer, native local desktop, TigerVNC or WebRTC support is inferred.
 Probe logs: `/tmp/opencode/nexuml-kit-local-native-WNPXME/` and
 `/tmp/opencode/nexuml-kit-minimal-dpOhMT/`. No network route or display was
 provisioned and no fallback was enabled.
+
+The pinned Kit install also ships `omni.app.viewport.kit`, labeled
+`support_level = "Sample"`. It selects no renderer or default stage and
+does not depend on Isaac Lab or PhysX. Isaac Sim's `isaacsim.exp.base`
+and the Lab default desktop experience both include the stage and property
+editors. None is a qualified Isaac Lab playback-only experience; hiding
+editor panels is not proof that arbitrary mutation is disabled.
