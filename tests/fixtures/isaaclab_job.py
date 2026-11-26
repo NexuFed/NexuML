@@ -139,7 +139,10 @@ def _train(task, stage, root):
         isaac_franka_reach_ppo,
         isaac_so101_joint_reach_ppo,
     )
-    from nexuml_library.scenarios.reinforcement.isaaclab_custom import isaac_custom_cartpole_ppo
+    from nexuml_library.scenarios.reinforcement.isaaclab_custom import (
+        isaac_custom_cartpole_ppo,
+        isaac_custom_direct_cartpole_ppo,
+    )
     from nexuml_library.scenarios.reinforcement.isaaclab_categorical import (
         isaac_categorical_cartpole_ppo,
     )
@@ -156,6 +159,7 @@ def _train(task, stage, root):
         "franka": isaac_franka_reach_ppo,
         "so101": isaac_so101_joint_reach_ppo,
         "custom": isaac_custom_cartpole_ppo,
+        "custom-direct": isaac_custom_direct_cartpole_ppo,
         "categorical": isaac_categorical_cartpole_ppo,
     }
     for family in ("rgb", "depth", "segmentation", "mixed"):
@@ -495,6 +499,95 @@ def _so101_config():
         raise AssertionError("SO-101 selected a different backend")
 
 
+def _local_fit_round(output):
+    from unittest.mock import patch
+
+    from lightning.pytorch.callbacks import Callback
+    import torch
+
+    from nexuml.core.compiler import compile
+    from nexuml.core.policy import CompiledPolicy
+    from nexuml.training import local_fit, local_fit_manifest
+    from nexuml.training.lightning import NexuSession
+    from nexuml.training.local_fit import _state_hash
+    from nexuml_library.scenarios.reinforcement.isaaclab import isaac_so101_joint_reach_ppo
+
+    scenario = isaac_so101_joint_reach_ppo(1152, 128, 8)
+    scenario.training.algorithm = scenario.training.algorithm.model_copy(
+        update={"update_epochs": 1, "minibatch_size": 64}
+    )
+    torch.manual_seed(17)
+    base = CompiledPolicy.from_pipeline(compile(scenario)).state_dict()
+    scope = tuple(name for name in base if name.endswith("model.4.bias"))
+    if output.name == "2":
+        base[scope[0]][0] += 0.125
+    version = f"round-{output.name}"
+    manifest = local_fit_manifest(scenario, base, trainable_names=scope, global_version=version)
+    base_hash = manifest["base"]["tensor_sha256"]
+
+    class FirstRollout(Callback):
+        critic = None
+        observed = False
+
+        def on_train_start(self, trainer, pl_module):
+            assert _state_hash(pl_module.policy.state_dict()) == base_hash
+            assert trainer.global_step == 0 and not any(opt.state for opt in trainer.optimizers)
+            self.critic = _state_hash(pl_module.algorithm.critic.state_dict())
+
+        def on_train_batch_start(self, trainer, pl_module, batch, batch_idx):
+            if batch_idx:
+                return
+            assert _state_hash(pl_module.policy.state_dict()) == base_hash
+            with torch.no_grad():
+                distribution = pl_module.algorithm.rollout_policy.get_dist(batch.clone())
+                torch.testing.assert_close(
+                    distribution.log_prob(batch["action"]),
+                    batch["action_log_prob"],
+                    rtol=1e-4,
+                    atol=1e-5,
+                )
+            self.observed = True
+
+    capture = FirstRollout()
+    fit = NexuSession.fit
+
+    def with_oracle(session):
+        getattr(session.trainer, "callbacks").append(capture)
+        result = fit(session)
+        assert session.lightning_module._collector is None
+        return result
+
+    with patch.object(NexuSession, "fit", with_oracle):
+        result = local_fit(
+            trusted_recipe=scenario,
+            initial_tensors=base,
+            model_manifest=manifest,
+            budget={"frames": 1024},
+            seed=0,
+            trainable_names=scope,
+            device="cuda:0",
+            global_version=version,
+        )
+    assert capture.observed and capture.critic
+    assert set(result.updated_tensors) == set(base)
+    assert [
+        name for name, value in result.updated_tensors.items() if not torch.equal(value, base[name])
+    ] == list(scope)
+    assert result.train_windows == 0 and result.episodes >= 8
+    assert all(
+        value.device.type == "cpu" and torch.isfinite(value).all()
+        for value in result.updated_tensors.values()
+    )
+    receipt = result.provenance
+    assert receipt["model_manifest"] == manifest
+    assert receipt["frames"] == 1024 and receipt["minibatch_updates"] == 16
+    assert receipt["optimizer_steps"] == 32 and receipt["completed_episodes"] == result.episodes
+    assert receipt["updated_tensor_sha256"] == _state_hash(result.updated_tensors)
+    output.mkdir()
+    (output / "fit.json").write_text(json.dumps(receipt) + "\n")
+    (output / "oracle.json").write_text(json.dumps({"critic": capture.critic}) + "\n")
+
+
 if __name__ == "__main__":
     reference, phase, directory = sys.argv[1:]
     task_root = Path(directory) / reference
@@ -506,5 +599,11 @@ if __name__ == "__main__":
         _cancel_native()
     elif phase == "config":
         _so101_config()
+    elif phase == "local-fit":
+        _local_fit_round(task_root)
+    elif phase.startswith("paired-"):
+        from paired_cartpole import run
+
+        run(reference, phase.removeprefix("paired-"), Path(directory))
     else:
         _train(reference, phase, task_root)

@@ -26,6 +26,7 @@ from nexuml.core.types import (
     ReinforcementLearningSpec,
     ScenarioSpec,
 )
+from nexuml.interaction.media import capture_rgb
 
 
 @contextmanager
@@ -60,40 +61,59 @@ def _evaluation_state(policy, seed, *, cuda_devices=()):
             module.training = training
 
 
-def _validate_evaluation_contract(policy_contract, actual):
+def _validate_evaluation_contract(policy_contract, actual, *, num_envs=1):
     # Inference archives own isolated model classes and may predate optional metadata.
     policy_contract = InteractionContract.model_validate(lower_model(policy_contract))
     actual = InteractionContract.model_validate(lower_model(actual))
-    if actual.num_envs != 1:
+    if actual.num_envs != num_envs:
+        if num_envs != 1:
+            raise ValueError("Runtime environment count differs from the requested count")
         raise ValueError("Evaluation requires a single unbatched environment")
     if actual.action_space != policy_contract.action_space:
         raise ValueError("Evaluation action-space semantics do not match the policy")
     if actual.control_period_s != policy_contract.control_period_s:
         raise ValueError("Evaluation control period does not match the policy")
-    if policy_contract.physical is not None and actual.physical != policy_contract.physical:
-        raise ValueError("Evaluation physical system identity does not match the policy")
+    if policy_contract.physical is not None:
+        provenance_fields = {"asset_source", "asset_id"}
+        if actual.physical is None or actual.physical.model_dump(
+            exclude=provenance_fields
+        ) != policy_contract.physical.model_dump(exclude=provenance_fields):
+            raise ValueError("Evaluation physical system identity does not match the policy")
     if (
         list(actual.groups) != list(policy_contract.groups)
-        or actual.groups != policy_contract.groups
         or actual.team_reward != policy_contract.team_reward
     ):
         raise ValueError("Evaluation fixed groups, order or team reward semantics differ")
+    for key, expected in policy_contract.groups.items():
+        found = actual.groups[key]
+        if found.agents != expected.agents or found.action_space != expected.action_space:
+            raise ValueError(f"Evaluation group {key!r} agents, order or action space differ")
+        _validate_actor_fields(expected, found, exact=True)
+    _validate_actor_fields(policy_contract, actual)
+
+
+def _validate_actor_fields(policy, actual, *, exact=False):
     for role in ("observations", "actions"):
-        expected_fields = getattr(policy_contract, role)
+        expected_fields = getattr(policy, role)
         actual_fields = getattr(actual, role)
-        if role == "actions" and actual_fields.keys() != expected_fields.keys():
-            raise ValueError("Evaluation action keys do not match the policy")
+        if (role == "actions" or exact) and actual_fields.keys() != expected_fields.keys():
+            raise ValueError(f"Evaluation {role} keys do not match the policy")
         for key, expected in expected_fields.items():
             found = actual_fields.get(key)
             fields = ("shape", "dtype", "modality", "num_values")
-            if role == "actions":
-                fields += ("low", "high", "rate_hz", "description")
-            if expected.physical is not None:
-                fields += ("physical",)
-            if expected.axes is not None:
-                fields += ("axes",)
-            if expected.sensor is not None:
-                fields += ("sensor", "rate_hz")
+            for name in ("low", "high", "rate_hz", "physical", "axes", "sensor"):
+                if (
+                    exact
+                    or getattr(expected, name) is not None
+                    or (role == "actions" and name in {"low", "high", "rate_hz"})
+                    or (name == "rate_hz" and expected.sensor is not None)
+                ):
+                    fields += (name,)
+            # An untyped action can still carry its only mapping in the existing description.
+            if role == "actions" and (
+                expected.physical is None or expected.physical.control_mode is None
+            ):
+                fields += ("description",)
             if found is None or any(
                 getattr(found, name) != getattr(expected, name) for name in fields
             ):
@@ -220,7 +240,8 @@ def _evaluate_episodes(
     trace_limit = 128
     with _evaluation_state(policy, seed):
         try:
-            _validate_evaluation_contract(policy.contract, definition.describe())
+            declared = definition.describe()
+            _validate_evaluation_contract(policy.contract, declared)
             runtime = definition.build(
                 EnvironmentBuildContext(
                     purpose="eval",
@@ -231,6 +252,19 @@ def _evaluate_episodes(
                 )
             )
             _validate_evaluation_contract(policy.contract, runtime.contract)
+            if declared.physical != runtime.contract.physical:
+                raise ValueError(
+                    "Evaluation runtime physical provenance differs from its definition"
+                )
+            if evaluation_context:
+                policy_physical = lower_model(policy.contract).get("physical")
+                if policy_physical is not None or declared.physical is not None:
+                    evaluation_context["physical_provenance"] = {
+                        "policy": policy_physical,
+                        "environment": lower_model(declared.physical)
+                        if declared.physical
+                        else None,
+                    }
             if spec.video.enabled:
                 if not callable(getattr(runtime, "render_frame", None)):
                     raise ValueError("Evaluation environment does not support RGB recording")
@@ -243,29 +277,10 @@ def _evaluate_episodes(
                 if len(frames) >= spec.video.max_frames:
                     capped = True
                     return
-                frame = getattr(runtime, "render_frame")()
-                if (
-                    not isinstance(frame, np.ndarray)
-                    or frame.dtype != np.uint8
-                    or frame.ndim != 3
-                    or frame.shape[2] != 3
-                    or not frame.size
-                ):
-                    raise ValueError("Recording frames must be nonempty CPU uint8 HWC RGB arrays")
-                from PIL import Image
-
-                height, width = frame.shape[:2]
-                if source_size is None:
-                    source_size = [width, height]
-                elif source_size != [width, height]:
-                    raise ValueError("Recording frame dimensions changed within the episode")
-                ratio = min(1.0, spec.video.max_size / max(width, height))
-                size = (max(1, round(width * ratio)), max(1, round(height * ratio)))
-                if size != (width, height):
-                    frame = np.asarray(
-                        Image.fromarray(frame).resize(size, Image.Resampling.BILINEAR)
-                    )
-                frames.append(frame.copy())
+                frame, source_size = capture_rgb(
+                    runtime, spec.video.max_size, expected_size=source_size
+                )
+                frames.append(frame)
 
             for episode in range(spec.episodes):
                 episode_seed = None if seed is None else seed + episode

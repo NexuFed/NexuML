@@ -2,7 +2,7 @@
 
 ### Requirement: Arena composition supports ordinary learning
 
-NexuML SHALL support a trusted, importable Arena-composed environment through the normal EnvironmentDefinition/build and TorchRL collection path. It SHALL use the maintained native builder and share compatible Isaac Lab runtime, bindings, observation/action mapping and lifecycle. Plain Isaac Lab SHALL remain usable without Arena. The same project-owned native Arena scene/embodiment/task composition SHALL remain usable by its native tooling and by ordinary NexuML training/playback without copying its task definition into a NexuML-specific schema.
+Native tools and ordinary NexuML training and playback SHALL use the same trusted, importable Arena scene, embodiment and task without copying them into a NexuML schema. The normal EnvironmentDefinition/build and TorchRL collection path SHALL use the maintained native builder and share compatible Isaac Lab runtime, bindings, observation/action mapping and lifecycle. Plain Isaac Lab SHALL remain usable without Arena.
 
 #### Scenario: An Arena reward-bearing task is selected for training
 - **GIVEN** A compatible pinned native environment, task and policy contract are provided

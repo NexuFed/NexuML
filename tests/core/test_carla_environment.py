@@ -69,7 +69,10 @@ def test_missing_client_and_unsupported_topology_fail_without_fallback(monkeypat
         definition.build(EnvironmentBuildContext(purpose="train", num_envs=2))
 
 
-def test_fake_server_exercises_real_runtime_frames_controls_and_cleanup(monkeypatch):
+@pytest.mark.parametrize(
+    "failure", ["camera", "before_tick", "extra_tick", "snapshot", "missing_ego"]
+)
+def test_fake_server_exercises_real_runtime_frames_controls_and_cleanup(monkeypatch, failure):
     events, actors = [], []
 
     class Location:
@@ -96,6 +99,7 @@ def test_fake_server_exercises_real_runtime_frames_controls_and_cleanup(monkeypa
         def __init__(self, kind):
             self.kind, self.callback = kind, None
             actors.append(self)
+            self.id = len(actors)
 
         def listen(self, callback):
             self.callback = callback
@@ -107,18 +111,15 @@ def test_fake_server_exercises_real_runtime_frames_controls_and_cleanup(monkeypa
             events.append((self.kind, "destroy"))
             return True
 
-        def get_transform(self):
-            return transform
-
-        def get_velocity(self):
-            return Location(x=2.0)
-
         def apply_control(self, control):
             events.append(control)
 
     class World:
         frame = 0
         send_camera = True
+        frame_advance = 1
+        advance_after_camera = False
+        missing_ego = False
 
         def get_settings(self):
             return copy.copy(settings)
@@ -142,8 +143,21 @@ def test_fake_server_exercises_real_runtime_frames_controls_and_cleanup(monkeypa
         def spawn_actor(self, blueprint, spawn, attach_to):
             return Actor(blueprint.id)
 
+        def get_snapshot(self):
+            return SimpleNamespace(
+                frame=self.frame,
+                find=lambda actor_id: (
+                    None
+                    if self.missing_ego or actors[actor_id - 1].kind != "vehicle.tesla.model3"
+                    else SimpleNamespace(
+                        get_transform=lambda: transform, get_velocity=lambda: Location(x=2.0)
+                    )
+                ),
+            )
+
         def tick(self, timeout):
-            self.frame += 1
+            self.frame += self.frame_advance
+            frame = self.frame
             if self.send_camera:
                 camera = next(
                     actor for actor in reversed(actors) if actor.kind == "sensor.camera.rgb"
@@ -156,7 +170,9 @@ def test_fake_server_exercises_real_runtime_frames_controls_and_cleanup(monkeypa
                         raw_data=bytes([10, 20, 30, 255] * 4),
                     )
                 )
-            return self.frame
+            if self.advance_after_camera:
+                self.frame += 1
+            return frame
 
     world = World()
     carla = SimpleNamespace(
@@ -189,9 +205,28 @@ def test_fake_server_exercises_real_runtime_frames_controls_and_cleanup(monkeypa
         assert runtime.step(action).terminated.item()
         transform.location.y = 0.0
         runtime.reset(seed=0)
-        world.send_camera = False
-        with pytest.raises(TimeoutError, match="camera timed out"):
+        if failure == "camera":
+            world.send_camera = False
+            error, message = TimeoutError, "camera timed out"
+        elif failure == "before_tick":
+            world.frame += 1
+            error, message = RuntimeError, "world frame advanced outside"
+        elif failure == "extra_tick":
+            world.frame_advance = 2
+            error, message = RuntimeError, "exactly one owned tick"
+        elif failure == "snapshot":
+            world.advance_after_camera = True
+            error, message = RuntimeError, "world frame advanced outside"
+        else:
+            world.missing_ego = True
+            error, message = RuntimeError, "ego actor missing"
+        before = len(events)
+        with pytest.raises(error, match=message):
             runtime.step(action)
+        if failure == "before_tick":
+            assert len(events) == before, "tick ownership was checked after applying an action"
+            with pytest.raises(RuntimeError, match="world frame advanced outside"):
+                runtime.reset()
         with pytest.raises(RuntimeError, match="Reset"):
             runtime.step(action)
     finally:

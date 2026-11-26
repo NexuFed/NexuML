@@ -91,4 +91,4 @@ all = [
 base = "nexuml_library"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/nexuml_library"]
+packages = ["src/nexuml_library", "src/nexuml_isaac_tasks"]

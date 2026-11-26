@@ -570,9 +570,9 @@ def test_record_copies_native_history_actions_and_rng_without_advancing_them(mon
     import numpy as np
     from tensordict import TensorDict
 
-    action = TensorDict({"action": torch.tensor([[0.2]])}, batch_size=(1,))
-    observation = TensorDict({"state": torch.tensor([[1.0]])}, batch_size=(1,))
-    history = TensorDict({"history": torch.tensor([[2.0]])}, batch_size=(1,))
+    action = TensorDict({"action": torch.tensor([[0.2]])}, batch_size=(1,), device="cpu")
+    observation = TensorDict({"state": torch.tensor([[1.0]])}, batch_size=(1,), device="cpu")
+    history = TensorDict({"history": torch.tensor([[2.0]])}, batch_size=(1,), device="cpu")
     joints, velocity = torch.tensor([[3.0]]), torch.tensor([[4.0]])
     runtime = SimpleNamespace(
         native=SimpleNamespace(

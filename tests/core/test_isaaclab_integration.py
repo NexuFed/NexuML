@@ -460,6 +460,142 @@ def test_registered_so101_uses_pinned_native_physics_resolution(tmp_path):
     assert "PINNED_SO101_FIXED_PHYSICS_SELECTION_VERIFIED" in log
 
 
+def test_native_interactive_local_fit_restarts_from_two_approved_bases(tmp_path):
+    fits, critics = [], []
+    for index in ("1", "2"):
+        log = _run([JOB, index, "local-fit", tmp_path], tmp_path, f"fit-{index}")
+        assert "SimulationContext cleared" in log
+        fits.append(json.loads((tmp_path / index / "fit.json").read_text()))
+        critics.append(json.loads((tmp_path / index / "oracle.json").read_text())["critic"])
+    first, second = [receipt["model_manifest"] for receipt in fits]
+    assert first["manifest"] == second["manifest"]
+    assert first["base"]["tensor_sha256"] != second["base"]["tensor_sha256"]
+    assert first["base"]["global_version"] != second["base"]["global_version"]
+    assert fits[0]["updated_tensor_sha256"] != fits[1]["updated_tensor_sha256"]
+    assert fits[0]["recipe_sha256"] == fits[1]["recipe_sha256"]
+    assert critics[0] == critics[1]
+
+
+def test_native_scripted_and_policy_actions_share_the_headless_runtime(tmp_path):
+    fixture = ROOT / "tests/fixtures/isaaclab_foundation.py"
+    rows = {}
+    for phase in ("known", "policy", "replay"):
+        log = _run([fixture, phase, tmp_path], tmp_path, phase)
+        assert "SimulationContext cleared" in log
+        rows[phase] = json.loads((tmp_path / f"{phase}.json").read_text())
+    policy, replay = rows["policy"], rows["replay"]
+    assert policy["purpose"] == "eval" and replay["purpose"] == "play"
+    assert policy["source"] != replay["source"] and policy["force_n"] != 0
+    for key in ("initial_observation", "requested_action", "submitted_action", "native_frames"):
+        assert policy[key] == replay[key]
+    for key in ("observation", "reward", "force_n"):
+        assert policy[key] == pytest.approx(replay[key])
+    for key in ("terminated", "truncated"):
+        assert policy[key] == replay[key]
+
+
+@pytest.mark.requires_optional("mujoco")
+def test_native_and_cpu_mujoco_fit_and_reload_one_common_actor(tmp_path):
+    import torch
+
+    from nexuml.training.local_fit import _state_hash
+
+    def job(domain, phase):
+        _run(
+            [JOB, domain, f"paired-{phase}", tmp_path],
+            tmp_path,
+            f"{domain}-{phase}",
+            process_scope=domain == "isaac",
+        )
+        if phase != "prepare":
+            return json.loads((tmp_path / f"{domain}-{phase}.json").read_text())
+
+    job("mujoco", "prepare")
+    base = torch.load(tmp_path / "base.pt", weights_only=True)
+    domains = ("isaac", "mujoco")
+    controls = {domain: job(domain, "controls") for domain in domains}
+    first = [job(domain, "fit-1") for domain in domains]
+    manifest = first[0]["model_manifest"]
+    assert manifest == first[1]["model_manifest"]
+    assert manifest["base"]["tensor_sha256"] == _state_hash(base)
+    assert first[0]["recipe_sha256"] != first[1]["recipe_sha256"]
+    local = [torch.load(tmp_path / f"{domain}-1.pt", weights_only=True) for domain in domains]
+    trainable = [
+        name
+        for name, field in manifest["manifest"]["tensors"].items()
+        if field["role"] == "trainable_parameter"
+    ]
+    for name in base.keys() - set(trainable):
+        assert all(torch.equal(base[name], update[name]) for update in local)
+    combined = {
+        name: local[0][name].lerp(local[1][name], 0.5) if name in trainable else value
+        for name, value in base.items()
+    }
+    combined_digest = _state_hash(combined)
+    assert len({combined_digest, *[_state_hash(state) for state in (base, *local)]}) == 4
+    torch.save(combined, tmp_path / "combined.pt")
+    evaluation = {
+        domain: {
+            name: job(domain, f"eval-{name}")
+            for name in ("base", "isaac-1", "mujoco-1", "combined")
+        }
+        for domain in domains
+    }
+    for candidates in evaluation.values():
+        for report in candidates.values():
+            assert report["completed_episodes"] == 4
+            assert [ep["seed"] for ep in report["episodes"]] == [211, 212, 213, 214]
+
+    second = [job(domain, "fit-2") for domain in domains]
+    for receipt in second:
+        assert receipt["model_manifest"]["manifest"] == manifest["manifest"]
+        assert receipt["model_manifest"]["base"] == {
+            "global_version": "paired-2",
+            "tensor_sha256": combined_digest,
+        }
+        assert receipt["updated_tensor_sha256"] != combined_digest
+    for receipt in (*first, *second):
+        assert receipt["frames"] == 1024 and receipt["completed_episodes"] > 0
+        assert receipt["minibatch_updates"] == 16 and receipt["optimizer_steps"] == 32
+    directions = [
+        torch.cat([(update[name] - base[name]).flatten() for name in trainable]) for update in local
+    ]
+    (tmp_path / "pair.json").write_text(
+        json.dumps(
+            {
+                "controls": controls,
+                "base": _state_hash(base),
+                "combined": combined_digest,
+                "update_norms": [direction.norm().item() for direction in directions],
+                "update_cosine": torch.nn.functional.cosine_similarity(*directions, dim=0).item(),
+                "return_mean": {
+                    domain: {
+                        name: result["metrics"]["eval/policy/return_mean"]
+                        for name, result in candidates.items()
+                    }
+                    for domain, candidates in evaluation.items()
+                },
+            },
+            indent=2,
+            allow_nan=False,
+        )
+        + "\n"
+    )
+
+
+def test_project_owned_direct_task_native_and_adapted_controls(tmp_path):
+    import torch
+
+    fixture = ROOT / "tests/fixtures/isaaclab_custom_direct.py"
+    for mode in ("native", "adapted", "native-replay"):
+        log = _run([fixture, mode, tmp_path], tmp_path, mode, process_scope=False)
+        assert f"CUSTOM_DIRECT_VERIFIED {mode}" in log
+    native = torch.load(tmp_path / "native-controls.pt", weights_only=True)
+    adapted = torch.load(tmp_path / "adapted-controls.pt", weights_only=True)
+    assert native.pop("asset") == adapted.pop("asset")
+    torch.testing.assert_close(adapted, native)
+
+
 @pytest.mark.parametrize(
     "reference",
     [
@@ -470,6 +606,7 @@ def test_registered_so101_uses_pinned_native_physics_resolution(tmp_path):
         "franka",
         "so101",
         "custom",
+        "custom-direct",
         "categorical",
         *[
             f"{family}-{owner}"
@@ -518,6 +655,27 @@ def test_native_checkpoint_remaining_budget_export_and_scalar_replay(tmp_path, r
     assert "Evaluation complete!" in log and "frame step 256" in log
     if reference == "so101":
         assert "task_success_rate" in log and "final_joint_error_rad_mean" in log
+    if reference in {"custom-direct", "mixed-package", "mixed-external"}:
+        count, ticks = (8, 60) if reference == "custom-direct" else (4, 6)
+        log = _run(
+            [
+                "-m",
+                "nexuml",
+                "play",
+                tmp_path / reference / "resume/policy",
+                "--device",
+                "cuda:0",
+                "--num-envs",
+                str(count),
+                "--steps",
+                str(ticks),
+                "--seed",
+                "23",
+            ],
+            tmp_path,
+            "vector-play",
+        )
+        assert f"Playback complete: {ticks} steps, {count * ticks} transitions" in log
 
 
 def test_native_frame_budget_counts_rounded_actual_transitions(tmp_path):
@@ -558,6 +716,9 @@ def test_native_recorded_replay_uses_existing_media_pipeline(tmp_path, reference
     ffmpeg = pytest.importorskip("imageio_ffmpeg")
     image = pytest.importorskip("PIL.Image")
     _run([JOB, reference, "train", tmp_path], tmp_path, "training")
+    package = tmp_path / reference / "train/policy"
+    source_frames = json.loads((package / "metadata.json").read_text())["training_frames"]
+    assert source_frames == 256
     log_root = tmp_path / "native-logs"
     prior_events = len(list(log_root.rglob("events.out.tfevents.*")))
     backend = ("tensorboard", "mlflow", "both")[
@@ -586,7 +747,7 @@ def test_native_recorded_replay_uses_existing_media_pipeline(tmp_path, reference
             "-m",
             "nexuml",
             "evaluate",
-            tmp_path / reference / "train/policy",
+            package,
             "--device",
             "cuda:0",
             "-O",
@@ -617,7 +778,9 @@ def test_native_recorded_replay_uses_existing_media_pipeline(tmp_path, reference
         if isinstance(data, dict) and "captured_frames" in data:
             metadata.append(data)
     assert metadata and all(m["renderer"] == "isaac_rtx" for m in metadata)
-    assert all(1 <= m["captured_frames"] <= 9 and m["frame_step"] == 0 for m in metadata)
+    assert all(
+        1 <= m["captured_frames"] <= 9 and m["frame_step"] == source_frames for m in metadata
+    )
     expected = metadata[0]["captured_frames"] / metadata[0]["fps"]
     for path in artifacts:
         duration = 0

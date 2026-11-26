@@ -79,6 +79,10 @@ class Ros2JointReachEnvironment(EnvironmentDefinition):
         )
 
     def build(self, context: EnvironmentBuildContext):
+        if not self.use_sim_time:
+            raise ValueError("ROS joint reach is simulation-only; physical reset is unsupported")
+        if context.purpose == "play" or context.render_mode is not None:
+            raise ValueError("ROS joint reach does not support simulator playback or rendering")
         if context.num_envs != 1:
             raise ValueError(
                 "ROS joint control supports one robot per worker; use isolated ROS namespaces"

@@ -17,6 +17,8 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
+from nexuml.core.components import PlaybackViewer
+
 app = typer.Typer(name="nexuml", help="NexuML pipeline framework CLI")
 console = Console()
 _runtime_warnings_configured = False
@@ -405,6 +407,141 @@ def train_cmd(
     _print_worker_identity("train")
 
 
+def _checkpoint_policy_package(checkpoint: Path, artifacts: ExitStack) -> Path:
+    from tempfile import TemporaryDirectory
+
+    from nexuml.core.export import export_package
+    from nexuml.training.lightning import create_runtime_artifacts_from_trainer_checkpoint
+
+    runtime = create_runtime_artifacts_from_trainer_checkpoint(checkpoint, require_policy=True)
+    assert runtime.policy is not None
+    directory = artifacts.enter_context(TemporaryDirectory(prefix="nexuml-policy-"))
+    return export_package(runtime.policy, Path(directory), checkpoint_path=checkpoint)
+
+
+@app.command(name="play", help="Run a fixed policy in a simulation without training or scoring")
+def play_cmd(
+    model_package: Optional[Path] = typer.Argument(None, help="Trusted complete policy package."),
+    trainer_checkpoint: Optional[Path] = typer.Option(None, "--trainer-checkpoint"),
+    config_path: Optional[Path] = typer.Option(None, "--config", "-c"),
+    scenario_file: Optional[Path] = typer.Option(None, "--scenario-file"),
+    device: str = typer.Option("cpu", "--device"),
+    viewer: PlaybackViewer = typer.Option(
+        "headless", "--viewer", help="Select a qualified viewer."
+    ),
+    num_envs: int = typer.Option(1, "--num-envs", min=1),
+    steps: Optional[int] = typer.Option(None, "--steps", min=1, help="Native control ticks."),
+    episodes: Optional[int] = typer.Option(None, "--episodes", min=1),
+    seed: Optional[int] = typer.Option(None, "--seed", min=0),
+    stochastic: bool = typer.Option(False, "--stochastic"),
+    real_time: bool = typer.Option(False, "--real-time"),
+    record: Optional[Path] = typer.Option(None, "--record", help="New media output directory."),
+    record_frames: Optional[int] = typer.Option(None, "--record-frames", min=1),
+    record_format: Literal["gif", "mp4", "both"] = typer.Option("gif", "--record-format"),
+):
+    """Select a local environment without replacing packaged policy weights.
+
+    Raises:
+        typer.BadParameter: If the source, viewer or supplied environment is unsupported.
+        typer.Exit: If loading or playback fails.
+        ValueError: If no playable interaction environment is supplied.
+    """
+    from nexuml.core.export import (
+        PACKAGE_FILENAME,
+        _restore_packaged_policy,
+        load_inference_package,
+    )
+    from nexuml.execution.definitions import LocalExecution
+    from nexuml.interaction.playback import play_policy
+
+    if (model_package is None) == (trainer_checkpoint is None):
+        raise typer.BadParameter("Provide exactly one MODEL_PACKAGE or --trainer-checkpoint.")
+    if (record is None) != (record_frames is None):
+        raise typer.BadParameter("Use --record and a finite --record-frames limit together.")
+    supplied = (
+        _load_scenario(None, config_path, scenario_file)
+        if config_path is not None or scenario_file is not None
+        else None
+    )
+    if supplied is not None and not isinstance(supplied.execution, LocalExecution):
+        raise typer.BadParameter("Playback does not yet submit remote execution profiles.")
+    with ExitStack() as job, ExitStack() as artifacts:
+        try:
+            if trainer_checkpoint is not None:
+                model_package = _checkpoint_policy_package(trainer_checkpoint, artifacts)
+            assert model_package is not None
+            model, config, metadata = load_inference_package(model_package)
+            policy = _restore_packaged_policy(model, metadata)
+            scenario = supplied if supplied is not None else config.to_scenario()
+            if scenario.interaction is None:
+                raise ValueError("Playback requires a playable interaction environment")
+            # Training and benchmark viewer settings are not playback overrides.
+            definition = scenario.interaction.environment
+            definition.validate_playback(viewer)
+            video = media_sink = None
+            if record is not None and record_frames is not None:
+                from hashlib import file_digest
+
+                from nexuml.core.serialization import lower_component
+                from nexuml.core.types import RLVideoSpec
+                from nexuml.interaction.media import write_playback_media
+                from nexuml.tracking.logger import _evaluation_mp4_info, _evaluation_pillow
+
+                if record.exists() or not record.parent.is_dir():
+                    raise ValueError(
+                        "Playback recording requires a new directory with an existing parent"
+                    )
+                _evaluation_pillow()
+                if record_format != "gif":
+                    _evaluation_mp4_info()
+                video = RLVideoSpec(enabled=True, max_frames=record_frames, format=record_format)
+                source = (
+                    model_package / PACKAGE_FILENAME if model_package.is_dir() else model_package
+                )
+                with (trainer_checkpoint or source).open("rb") as stream:
+                    source_sha256 = file_digest(stream, "sha256").hexdigest()
+
+                def publish(frames, capture):
+                    write_playback_media(
+                        record,
+                        frames,
+                        {
+                            **capture,
+                            "source_artifact": "checkpoint" if trainer_checkpoint else "policy",
+                            "source_sha256": source_sha256,
+                            "environment": lower_component(definition),
+                        },
+                        video,
+                    )
+
+                media_sink = publish
+            policy.to(device)
+            job.enter_context(definition.job_scope())
+            result = play_policy(
+                policy,
+                definition,
+                num_envs=num_envs,
+                steps=steps,
+                episodes=episodes,
+                seed=seed,
+                viewer=viewer,
+                deterministic=not stochastic,
+                real_time=real_time,
+                video=video,
+                media_sink=media_sink,
+            )
+            console.print(
+                f"Playback complete: {result.steps} steps, {result.transitions} transitions, "
+                f"{result.completed_episodes} episodes ({result.reason}).",
+                markup=False,
+            )
+            if result.interventions:
+                console.print("Playback interventions: " + json.dumps(result.interventions))
+        except (ValueError, RuntimeError, OSError, ImportError) as error:
+            console.print(f"Playback failed: {error}", markup=False)
+            raise typer.Exit(1) from error
+
+
 @app.command(
     name="evaluate", help="Evaluate a trusted package or policy checkpoint without training"
 )
@@ -558,13 +695,9 @@ def _evaluate_local(
     """
     from nexuml.cli.overrides import apply_overrides
     from nexuml.core.config import ResolvedConfig
-    from nexuml.core.export import load_inference_package
-    from nexuml.core.policy import CompiledPolicy
+    from nexuml.core.export import _restore_packaged_policy, load_inference_package
     from nexuml.core.serialization import lower_model, restore_model_data
-    from nexuml.core.types import (
-        InteractionContract,
-        ScenarioSpec,
-    )
+    from nexuml.core.types import ScenarioSpec
     from nexuml.tracking.logger import create_loggers, log_text_artifact
     from nexuml.evaluation.policy import evaluate_policy, resolve_policy_evaluation
 
@@ -577,21 +710,7 @@ def _evaluate_local(
             if (model_package is None) == (trainer_checkpoint is None):
                 raise ValueError("Provide exactly one MODEL_PACKAGE or --trainer-checkpoint.")
             if trainer_checkpoint is not None:
-                from tempfile import TemporaryDirectory
-                from nexuml.core.export import export_package
-                from nexuml.training.lightning import (
-                    create_runtime_artifacts_from_trainer_checkpoint,
-                )
-
-                runtime = create_runtime_artifacts_from_trainer_checkpoint(
-                    trainer_checkpoint, require_policy=True
-                )
-                assert runtime.policy is not None
-                directory = artifacts.enter_context(TemporaryDirectory(prefix="nexuml-evaluate-"))
-                model_package = export_package(
-                    runtime.policy, Path(directory), checkpoint_path=trainer_checkpoint
-                )
-                del runtime
+                model_package = _checkpoint_policy_package(trainer_checkpoint, artifacts)
             assert model_package is not None
             model, config, metadata = load_inference_package(model_package)
             is_policy = metadata.get("artifact_kind") == "policy"
@@ -613,20 +732,7 @@ def _evaluate_local(
                     scenario.data = supplied.data
                     scenario.evaluation = supplied.evaluation
             if is_policy:
-                if (
-                    not callable(model)
-                    or any(
-                        getattr(model, name, None) is None
-                        for name in ("pipeline", "action_adapter", "contract")
-                    )
-                    or not callable(getattr(model, "parameters", None))
-                ):
-                    raise ValueError("evaluate requires a complete exported policy package")
-                policy = cast(CompiledPolicy, model)
-                # torch.package isolates model classes; restore portable contract metadata.
-                policy.contract = InteractionContract.model_validate(
-                    metadata["interaction_contract"]
-                )
+                policy = _restore_packaged_policy(model, metadata)
                 if scenario.interaction is None or scenario.policy is None:
                     raise ValueError(
                         "policy package requires an embedded RL scenario or an offline scenario "

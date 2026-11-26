@@ -175,22 +175,30 @@ class LoaderBackendDefinition(ComponentDefinition):
         """Build the loader backend runtime."""
 
 
+PlaybackViewer = Literal["headless", "viser", "webrtc", "local"]
+
+
 @dataclass(frozen=True, slots=True)
 class EnvironmentBuildContext:
-    """Execution-local settings for a training or evaluation environment."""
+    """Execution-local settings for training, evaluation, or playback."""
 
-    purpose: Literal["train", "eval"]
+    purpose: Literal["train", "eval", "play"]
     seed: int | None = None
     device: str = "cpu"
     worker_rank: int = 0
     num_envs: int = 1
     render_mode: Literal["rgb_array"] | None = None
+    viewer: PlaybackViewer | None = None
 
     def __post_init__(self) -> None:
-        if self.purpose not in ("train", "eval"):
-            raise ValueError("environment purpose must be train or eval")
+        if self.purpose not in ("train", "eval", "play"):
+            raise ValueError("environment purpose must be train, eval, or play")
         if self.num_envs < 1 or self.worker_rank < 0:
             raise ValueError("num_envs must be positive and worker_rank nonnegative")
+        if self.viewer is not None and (
+            self.purpose != "play" or self.viewer not in ("headless", "viser", "webrtc", "local")
+        ):
+            raise ValueError("An explicit playback viewer requires purpose='play' and a known mode")
 
 
 class EnvironmentDefinition(ComponentDefinition):
@@ -220,6 +228,22 @@ class EnvironmentDefinition(ComponentDefinition):
         self, training: "ReinforcementLearningSpec", *, device: str | None = None
     ) -> None:
         """Optionally reject unsupported training settings before runtime allocation."""
+
+    def validate_local_fit(self) -> None:
+        """Require explicit provider support for bounded simulated online learning.
+
+        Raises:
+            ValueError: If the provider does not support interactive local fit.
+        """
+        raise ValueError("This environment does not support interactive local fit")
+
+    def validate_playback(self, viewer: PlaybackViewer) -> None:
+        """Require provider opt-in before continuous policy interaction.
+
+        Raises:
+            ValueError: If the provider has not authorized simulated playback.
+        """
+        raise ValueError("This environment does not support simulated playback")
 
     @abstractmethod
     def build(self, context: EnvironmentBuildContext) -> "EnvironmentRuntime":
@@ -265,6 +289,7 @@ class RLAlgorithmDefinition(ComponentDefinition):
     """Portable configuration for a checkpoint-visible reinforcement learner."""
 
     kind = "rl_algorithm"
+    supports_bounded_local_fit: ClassVar[bool] = False
 
     @abstractmethod
     def build(self, context: RLAlgorithmBuildContext) -> "nn.Module":

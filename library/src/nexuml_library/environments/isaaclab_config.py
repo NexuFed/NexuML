@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import inspect
 from collections.abc import Callable, Mapping
-from typing import Annotated, Literal, Self
+from typing import Annotated, Literal, NamedTuple, Self
 
 from pydantic import ConfigDict, Field, StrictInt, field_validator, model_validator
 
@@ -102,12 +102,20 @@ def isaac_task_config(fn: Callable[..., object], **kwargs: object) -> IsaacTaskC
     return IsaacTaskConfigSpec.from_factory(fn, **kwargs)
 
 
+class IsaacPlaybackOptions(NamedTuple):
+    """Trusted native task options applied on an explicit full simulation reset."""
+
+    choices: Mapping[str, tuple[str, ...]]
+    configure_reset: Callable[[object, str, str], None]
+
+
 class IsaacBindings(SpecModel):
     """Map declared observation fields to literal native observation mapping keys.
 
     Source paths index mappings only; an empty group path selects the whole agent
     tensor. Components are never evaluated as configuration overrides. The action
-    names the declared local action field.
+    names the declared local action field. For procedural direct controls,
+    ``direct_controls`` describes the live native mechanism for contract checking.
     """
 
     model_config = ConfigDict(frozen=True, validate_default=True, allow_inf_nan=False)
@@ -123,6 +131,12 @@ class IsaacBindings(SpecModel):
         default_factory=dict, exclude_if=lambda value: not value
     )
     action: str = Field(default="action", min_length=1)
+    direct_controls: FactorySpec | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
+    playback_options: FactorySpec | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
     processing: Literal["raw", "processed"] = Field(
         default="processed", exclude_if=lambda value: value == "processed"
     )
@@ -132,6 +146,14 @@ class IsaacBindings(SpecModel):
         if self.groups:
             if self.observations or any(group.groups for group in self.groups.values()):
                 raise ValueError("Grouped native bindings require one flat binding per group")
+            if self.playback_options or any(
+                group.playback_options for group in self.groups.values()
+            ):
+                raise ValueError("Native task reset options require single-agent playback")
+            if self.direct_controls or any(group.direct_controls for group in self.groups.values()):
+                raise ValueError(
+                    "Procedural control verification requires a single-agent direct task"
+                )
         elif not self.observations:
             raise ValueError("Native bindings require observations or groups")
         return self
@@ -142,7 +164,7 @@ class ViserSpec(SpecModel):
 
     model_config = ConfigDict(frozen=True, validate_default=True, allow_inf_nan=False)
 
-    purposes: tuple[Literal["train", "eval"], ...] = Field(default=("train",), min_length=1)
+    purposes: tuple[Literal["train", "eval", "play"], ...] = Field(default=("train",), min_length=1)
     bind_address: Literal["127.0.0.1", "localhost"] = "127.0.0.1"
     # Native Viser can retry up to 1000 consecutive ports after a bind failure.
     port: Annotated[StrictInt, Field(ge=1, le=64535)] = 8080
@@ -153,6 +175,13 @@ class ViserSpec(SpecModel):
     enable_markers: bool = True
     enable_live_plots: bool = True
     live_plots_update_interval: Annotated[StrictInt, Field(gt=0)] = 5
+    playback_controls: bool = Field(default=False, exclude_if=lambda value: not value)
+
+    @model_validator(mode="after")
+    def _require_playback_purpose(self):
+        if self.playback_controls and "play" not in self.purposes:
+            raise ValueError("Viser playback controls require an explicit 'play' purpose")
+        return self
 
     @field_validator("purposes", "visible_env_indices")
     @classmethod

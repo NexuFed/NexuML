@@ -17,10 +17,12 @@ import lightning as L
 import torch
 
 from nexuml.core.compiler import compile
+from nexuml.core import compiler
 from nexuml.core.policy import CompiledPolicy
-from nexuml.core.serialization import lower_model
-from nexuml.core.types import DataSpec, ScenarioSpec, TrainingSpec
+from nexuml.core.serialization import lower_component, lower_model
+from nexuml.core.types import DataSpec, ReinforcementLearningSpec, ScenarioSpec, TrainingSpec
 from nexuml.training.lightning import NexuSession
+from nexuml.training.reinforcement import NexuRLLightningModule
 
 
 def _hash(value: Any) -> str:
@@ -34,7 +36,11 @@ def _state_hash(tensors: Mapping[str, torch.Tensor]) -> str:
     for name, tensor in sorted(tensors.items()):
         value = tensor.detach().cpu().contiguous()
         digest.update(json.dumps([name, str(value.dtype), list(value.shape)]).encode())
-        digest.update(value.reshape(-1).view(torch.uint8).numpy().tobytes())
+        flat = value.reshape(-1)
+        # A singleton is considered contiguous even when its element stride is zero.
+        if flat.stride(0) != 1:
+            flat = flat.clone(memory_format=torch.contiguous_format)
+        digest.update(flat.view(torch.uint8).numpy().tobytes())
     return digest.hexdigest()
 
 
@@ -104,18 +110,34 @@ def local_fit_manifest(
     initial_tensors: Mapping[str, torch.Tensor],
     *,
     trainable_names: tuple[str, ...] | None = None,
+    global_version: str | None = None,
 ) -> dict[str, Any]:
     """Describe exact numeric state and locally installed model/physical semantics.
 
     The caller, not a remote request, owns ``trusted_recipe``. Build the expected
     manifest locally; never resolve an import, recipe or dataset from this manifest.
     ``trainable_names`` may select only originally trainable parameters by exact name.
+    Interactive recipes require a caller-approved ``global_version`` and use
+    complete named actor state rather than the dataset mode's pipeline state.
     Unsupported recipes, initial states or scopes raise ``ValueError``.
 
     Returns:
         A numeric-state schema with content-pinned architecture and base identity.
+
+    Raises:
+        ValueError: If the recipe, state, version or trainable scope is not supported.
     """
+    if isinstance(trusted_recipe, ScenarioSpec) and isinstance(
+        trusted_recipe.training, ReinforcementLearningSpec
+    ):
+        _check_interactive_recipe(trusted_recipe)
+        with torch.random.fork_rng(devices=[]):
+            torch.random.default_generator.manual_seed(0)
+            policy = CompiledPolicy.from_pipeline(compile(trusted_recipe))
+        return _shared_actor_manifest(policy, initial_tensors, trainable_names, global_version)
     _check_recipe(trusted_recipe)
+    if global_version is not None:
+        raise ValueError("global_version is only supported by the interactive manifest")
     # Compilation needs explicit input shapes, not access to private episodes.
     with torch.random.fork_rng(devices=[]):
         torch.random.default_generator.manual_seed(0)
@@ -190,6 +212,250 @@ class _Consumption(L.Callback):
         self.samples += batch[0].batch_size[0]
 
 
+def _check_interactive_recipe(recipe: ScenarioSpec) -> None:
+    from nexuml.execution.definitions import LocalExecution
+
+    training = recipe.training
+    assert isinstance(training, ReinforcementLearningSpec)
+    if recipe.interaction is None or recipe.policy is None:
+        raise ValueError("Interactive local fit requires an installed environment and actor")
+    env = recipe.interaction.environment
+    env.validate_local_fit()
+    collector = training.collector
+    if (
+        recipe.checkpoint is not None
+        or recipe.callbacks
+        or not isinstance(recipe.execution, LocalExecution)
+        or not training.algorithm.supports_bounded_local_fit
+        or training.strategy != "auto"
+        or training.devices != 1
+        or training.precision != "32-true"
+        or collector.backend != "direct"
+        or not collector.sync
+        or collector.num_collectors != 1
+        or collector.policy_sync_interval_batches != 1
+        or training.frames_per_batch % collector.num_envs_per_collector
+    ):
+        raise ValueError("Interactive local fit requires a fresh direct synchronous local recipe")
+    evaluation = recipe.policy_evaluation or training.evaluation
+    if (
+        evaluation.episodes
+        or evaluation.at_start
+        or evaluation.every_n_frames
+        or evaluation.video.enabled
+    ):
+        raise ValueError("Interactive local fit does not perform evaluation or recording")
+    contract = env.describe()
+    if (
+        contract.groups
+        or contract.physical is None
+        or contract.control_period_s is None
+        or any(
+            field.physical is None and field.sensor is None
+            for field in contract.observations.values()
+        )
+        or any(
+            field.physical is None or field.physical.control_mode is None
+            for field in contract.actions.values()
+        )
+    ):
+        raise ValueError("Interactive local fit requires typed single-actor physical semantics")
+
+
+def _shared_actor_manifest(policy, initial_tensors, trainable_names, global_version):
+    if not isinstance(global_version, str) or not re.fullmatch(
+        r"[A-Za-z0-9._:-]{1,128}", global_version
+    ):
+        raise ValueError("Interactive local fit requires an explicit global_version")
+    state = policy.state_dict()
+    _validate_tensors(initial_tensors, state)
+    parameters = dict(policy.named_parameters())
+    buffers = dict(policy.named_buffers())
+    if set(state) - (parameters.keys() | buffers.keys()):
+        raise ValueError("Shared actor state must contain only named parameters and buffers")
+    persistent_buffers = buffers.keys() & state.keys()
+    if _state_hash({name: initial_tensors[name] for name in persistent_buffers}) != _state_hash(
+        {name: state[name] for name in persistent_buffers}
+    ):
+        raise ValueError("Shared actor buffers must match the installed immutable policy buffers")
+    trainable = _apply_trainable_scope(policy, trainable_names)
+    if not trainable <= set(state) or any(not name.startswith("pipeline.") for name in trainable):
+        raise ValueError("Interactive local fit only updates parameters of the actor pipeline")
+    config = policy.pipeline.resolved_config
+    graph = lower_model(config.pipeline)
+    graph["stages"] = list(graph["stages"].items())
+    for _, layers in graph["stages"]:
+        for layer in layers:
+            if isinstance(layer["keys_in"], dict):
+                layer["keys_in"] = list(layer["keys_in"].items())
+    definitions = {
+        type(layer.component) for layers in config.pipeline.stages.values() for layer in layers
+    }
+    definitions.update(type(module) for module in policy.modules())
+    definitions.update(
+        type(component)
+        for component in (config.policy.action_adapter, config.policy.processor)
+        if component is not None
+    )
+    sources = {inspect.getmodule(cls) for cls in definitions} | {compiler}
+    if None in sources:
+        raise ValueError("Shared actor implementation must have inspectable installed modules")
+    try:
+        code = sorted(
+            (source.__name__, hashlib.sha256(inspect.getsource(source).encode()).hexdigest())
+            for source in sources
+            if source is not None
+        )
+    except (OSError, TypeError) as error:
+        raise ValueError(
+            "Shared actor implementation must have inspectable installed source"
+        ) from error
+    architecture = _hash(
+        {
+            "pipeline": graph,
+            "policy": lower_model(config.policy),
+            "code": code,
+        }
+    )
+    semantics = lower_model(policy.contract)
+    for key in ("num_envs", "critic_observations", "team_reward"):
+        semantics.pop(key, None)
+    for key in ("asset_source", "asset_id"):
+        semantics["physical"].pop(key)
+    for role in ("observations", "actions"):
+        for field in semantics[role].values():
+            field.pop("description", None)
+    return {
+        "schema_version": 2,
+        "update_kind": "full",
+        "base": {"global_version": global_version, "tensor_sha256": _state_hash(initial_tensors)},
+        "manifest": {
+            "architecture_sha256": architecture,
+            "actor_semantics": semantics,
+            "tensors": {
+                name: {
+                    "shape": list(value.shape),
+                    "dtype": str(value.dtype).removeprefix("torch."),
+                    "role": (
+                        "trainable_parameter"
+                        if name in trainable
+                        else "frozen_parameter"
+                        if name in parameters
+                        else "frozen_buffer"
+                    ),
+                }
+                for name, value in state.items()
+            },
+        },
+    }
+
+
+class _RolloutReceipt(L.Callback):
+    def __init__(self):
+        self.episodes = 0
+
+    def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
+        self.episodes += int(batch["next", "done"].sum())
+        if any(
+            not torch.isfinite(value).all()
+            for name, value in trainer.callback_metrics.items()
+            if name.startswith("train/rl/")
+        ):
+            raise ValueError("Interactive local fit produced a nonfinite training metric")
+
+
+def _fit_interactive(
+    recipe, initial_tensors, model_manifest, budget, seed, scope, device, global_version
+):
+    _check_interactive_recipe(recipe)
+    training = recipe.training
+    frames = budget.get("frames") if isinstance(budget, Mapping) else None
+    if (
+        type(frames) is not int
+        or set(budget) != {"frames"}
+        or not 0 < frames <= training.total_frames
+        or frames % training.frames_per_batch
+    ):
+        raise ValueError(
+            "Interactive local fit requires whole rollouts within the approved frame budget"
+        )
+    if device not in ("cpu", "cuda:0"):
+        raise ValueError("Interactive local fit requires CPU or one visible CUDA device at cuda:0")
+    env = recipe.interaction.environment
+    effective = training.model_copy(update={"total_frames": frames, "seed": seed})
+    env.validate_training(effective, device=device)
+    recipe_hash = _hash(
+        {
+            "environment": env.checkpoint_identity(),
+            "contract": lower_model(env.describe()),
+            "training": lower_model(effective),
+            "device": device,
+        }
+    )
+    scenario = recipe.model_copy(deep=True, update={"training": effective})
+    with TemporaryDirectory(prefix="nexuml-local-fit-") as root:
+        session = NexuSession(
+            scenario,
+            accelerator="cpu" if device == "cpu" else "gpu",
+            devices=1,
+            log_dir=root,
+            enable_loggers=False,
+            enable_progress_bar=False,
+        )
+        module = session.lightning_module
+        assert isinstance(module, NexuRLLightningModule)
+        expected = _shared_actor_manifest(module.policy, initial_tensors, scope, global_version)
+        if not isinstance(model_manifest, Mapping) or dict(model_manifest) != expected:
+            raise ValueError("Shared actor manifest or approved base differs")
+        state = {name: value.detach().cpu().clone() for name, value in initial_tensors.items()}
+        if _state_hash(state) != expected["base"]["tensor_sha256"]:
+            raise ValueError("Shared actor base changed during validation")
+        module.policy.load_state_dict(state, strict=True)
+        receipt = _RolloutReceipt()
+        trainer = session.trainer
+        getattr(trainer, "callbacks").append(receipt)
+        session.fit()
+        updated = {
+            name: tensor.detach().cpu().clone()
+            for name, tensor in module.policy.state_dict().items()
+        }
+        updates, steps = int(module.algorithm.updates), int(trainer.global_step)
+        if int(module.frames) != frames or updates < 1 or steps < 1:
+            raise ValueError("Interactive local fit did not meet the approved learning budget")
+        if not all(torch.isfinite(tensor).all() for tensor in module.state_dict().values()):
+            raise ValueError("Interactive local fit produced nonfinite learning state")
+    _validate_tensors(updated, state)
+    frozen = [
+        name
+        for name, field in expected["manifest"]["tensors"].items()
+        if field["role"] != "trainable_parameter"
+    ]
+    if _state_hash({name: updated[name] for name in frozen}) != _state_hash(
+        {name: state[name] for name in frozen}
+    ):
+        raise ValueError("Interactive local fit changed a frozen actor tensor")
+    return LocalFitResult(
+        updated,
+        {"optimizer_steps": float(steps)},
+        0,
+        receipt.episodes,
+        {
+            "schema_version": 2,
+            "update_kind": "full",
+            "model_manifest": expected,
+            "recipe_sha256": recipe_hash,
+            "objective": lower_component(training.algorithm)["type"],
+            "critic_mode": "fresh",
+            "optimizer_mode": "reset",
+            "frames": frames,
+            "completed_episodes": receipt.episodes,
+            "minibatch_updates": updates,
+            "optimizer_steps": steps,
+            "updated_tensor_sha256": _state_hash(updated),
+        },
+    )
+
+
 def _episode_receipt(dataset, recipe) -> tuple[int, int, str]:
     meta = dataset.meta
     if meta is None or not {"episode_index", "frame_index", "timestamp", "split"} <= set(meta):
@@ -245,12 +511,13 @@ def local_fit(
     trusted_recipe: ScenarioSpec,
     initial_tensors: Mapping[str, torch.Tensor],
     model_manifest: Mapping[str, Any],
-    local_data: DataSpec,
+    local_data: DataSpec | None = None,
     budget: Mapping[str, int],
     seed: int,
     optimizer_mode: str = "reset",
     trainable_names: tuple[str, ...] | None = None,
     device: str = "cpu",
+    global_version: str | None = None,
 ) -> LocalFitResult:
     """Fit approved private episodes with NexuSession and a fresh optimizer each call.
 
@@ -261,13 +528,23 @@ def local_fit(
     available ``cuda:N`` device, independent of any simulator. ``trainable_names``
     must match the operator-selected scope used to build the manifest.
 
+    For interactive fits, omit ``local_data`` and supply ``budget={"frames": n}``
+    and the approved ``global_version`` and manifest. The caller owns the
+    environment's whole-job scope, including persisting any returned update.
+
     Returns:
         Validated CPU numeric tensors, allowlisted scalars and opaque fingerprints.
 
     Raises:
         ValueError: If authorization, compatibility, budget or numerical checks fail.
     """
-    _check_recipe(trusted_recipe)
+    interactive = isinstance(trusted_recipe, ScenarioSpec) and isinstance(
+        trusted_recipe.training, ReinforcementLearningSpec
+    )
+    if not interactive:
+        _check_recipe(trusted_recipe)
+        if global_version is not None:
+            raise ValueError("global_version is only supported by interactive local fit")
     if optimizer_mode != "reset":
         raise ValueError("Only optimizer_mode='reset' is supported")
     devices: int | str = 1
@@ -283,6 +560,19 @@ def local_fit(
         raise ValueError("device must be 'cpu' or one explicit 'cuda:N' device")
     if type(seed) is not int or not 0 <= seed < 2**32:
         raise ValueError("seed must be an unsigned 32-bit integer")
+    if interactive:
+        if local_data is not None:
+            raise ValueError("Interactive local fit cannot consume a dataset")
+        return _fit_interactive(
+            trusted_recipe,
+            initial_tensors,
+            model_manifest,
+            budget,
+            seed,
+            trainable_names,
+            device,
+            global_version,
+        )
     if not isinstance(budget, Mapping) or set(budget) not in ({"steps"}, {"epochs"}):
         raise ValueError("budget requires exactly one of steps or epochs")
     amount = next(iter(budget.values()))

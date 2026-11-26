@@ -80,8 +80,6 @@ def test_new_physical_rate_cannot_contradict_the_control_period():
         "sensor_id",
         "calibration_id",
         "embodiment_id",
-        "asset_id",
-        "asset_source",
         "bounds",
         "rate",
         "missing_field_metadata",
@@ -105,7 +103,7 @@ def test_same_width_physical_mismatches_fail_compatibility(change):
         physical[change] = (1.0,)
     elif change == "sensor_id":
         actual["observations"]["observation"]["physical"][change] = "different-encoder"
-    elif change in {"calibration_id", "embodiment_id", "asset_id", "asset_source"}:
+    elif change in {"calibration_id", "embodiment_id"}:
         actual["physical"][change] = "different-identity"
     elif change == "bounds":
         action["high"] = 0.5
@@ -118,6 +116,18 @@ def test_same_width_physical_mismatches_fail_compatibility(change):
         actual["physical"] = None
     with pytest.raises(ValueError, match="Evaluation"):
         _validate_evaluation_contract(expected, InteractionContract.model_validate(actual))
+
+
+def test_native_actor_contract_accepts_matching_declared_meaning_with_other_provenance():
+    expected = _contract()
+    actual = expected.model_dump()
+    actual["physical"].update(asset_id="different-asset", asset_source="different-provider")
+    actual["actions"]["action"]["description"] = "Normalized absolute position target."
+    actual["observations"]["observation"]["description"] = "Mapped joint state and task goal."
+    mapped = InteractionContract.model_validate(actual)
+
+    assert mapped != expected
+    _validate_evaluation_contract(expected.model_copy(update={"num_envs": 32}), mapped)
 
 
 def test_legacy_absence_keeps_its_previous_checks_without_claiming_physical_qualification():

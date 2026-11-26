@@ -1,5 +1,6 @@
 """Process-owned Isaac application and execution-local transition normalization."""
 
+from collections.abc import Mapping
 from contextlib import contextmanager
 from importlib import import_module
 from importlib.metadata import distribution
@@ -10,15 +11,19 @@ from pathlib import Path
 import signal
 import subprocess
 import sys
+from time import monotonic_ns
 import traceback
 from typing import Any, cast
 
 import torch
-from tensordict import TensorDict
+from tensordict import TensorDict, TensorDictBase
 
 from nexuml.core.policy import CompiledPolicy
 from nexuml.core.components import LayerBuildContext
-from nexuml.interaction.runtime import InteractionStep
+from nexuml.core.types import PhysicalTensorContract
+from nexuml.interaction.playback_controls import PlaybackControls
+from nexuml.interaction.runtime import InteractionStep, InteractionTrace
+from nexuml_library.environments.isaaclab_config import IsaacPlaybackOptions
 
 
 _process_active = False
@@ -105,6 +110,8 @@ def _create_environment(owner, definition, context):
         )
     if _process_definition is not None and definition != _process_definition:
         raise RuntimeError("Native environment conflicts with the active Isaac job definition")
+    if os.environ.get("LIVESTREAM", "0") != "0":
+        raise ValueError("Isaac headless and spectator jobs require LIVESTREAM=0 or unset")
     for name, permitted in (
         ("OMNI_CRASHREPORTER_ENABLED", {"0", "n", "N", "f", "F"}),
         ("OMNI_CRASHREPORTER_SKIPOLDDUMPUPLOAD", {"1", "y", "Y", "t", "T"}),
@@ -114,15 +121,20 @@ def _create_environment(owner, definition, context):
             raise ValueError(f"{name} conflicts with Isaac crash-upload protection; unset it")
     _process_definition = definition
     device = owner.device
-    viewing = definition.viewer is not None and context.purpose in definition.viewer.purposes
+    viewing = (
+        definition.viewer is not None
+        and context.purpose in definition.viewer.purposes
+        and (context.purpose != "play" or context.viewer == "viser")
+    )
     if device.type != "cuda" or not torch.cuda.is_available():
         raise ValueError("Isaac Lab requires a working single-GPU CUDA device")
     if context.purpose == "eval" and context.num_envs != 1:
         raise ValueError("Isaac replay requires exactly one environment")
     if context.render_mode not in (None, "rgb_array") or (
-        context.render_mode is not None and context.purpose != "eval"
+        context.render_mode is not None
+        and (context.purpose not in ("eval", "play") or context.num_envs != 1)
     ):
-        raise ValueError("Isaac rendering supports only fresh-process N=1 rgb_array replay")
+        raise ValueError("Isaac rendering supports only fresh-process N=1 rgb_array replay or play")
     try:
         isaaclab = import_module("isaaclab")
         import_module("isaaclab_tasks")
@@ -229,18 +241,35 @@ def _create_environment(owner, definition, context):
 
         configure_rgb(cfg, owner)
     if viewing:
-        import_module("nexuml_library.environments._isaaclab_viser").configure_spectator(
-            cfg,
-            definition.viewer,
-            context.num_envs,
-        )
-        owner._spectator_type = cfg.sim.visualizer_cfgs[0].class_type
+        if context.purpose == "play" and definition.viewer.playback_controls:
+            if owner._marl:
+                raise ValueError("Viser playback controls require a single-agent native task")
+            factory = owner._bindings.playback_options
+            if factory is not None:
+                options = factory.build()
+                if not isinstance(options, IsaacPlaybackOptions) or not callable(
+                    options.configure_reset
+                ):
+                    raise TypeError(
+                        "Native playback option factory must return IsaacPlaybackOptions"
+                    )
+                owner._playback_options = options
+            owner.playback_controls = PlaybackControls(
+                context.num_envs,
+                selected_reset=isinstance(cfg, native_envs.ManagerBasedRLEnvCfg),
+                task_options=None
+                if owner._playback_options is None
+                else owner._playback_options.choices,
+            )
+        cfg.sim.default_visualizer_cfg = None
+        cfg.sim.visualizer_cfgs = []
     args = {
         "headless": True,
         "fast_shutdown": True,
         "device": str(device),
         "visualizer": ["viser"] if viewing else ["none"],
         "visualizer_explicit": True,
+        "livestream": 0,
         "enable_cameras": owner._rendering,
         # Kit's anonymous-data defaults also enable crash-dump upload consent.
         "kit_args": (
@@ -257,6 +286,12 @@ def _create_environment(owner, definition, context):
         # Kit's fast close must follow whole-job checkpoint/export/logger finalization.
         _process_launcher, owner._launcher = owner._launcher, None
     signal.signal(signal.SIGTERM, _terminate_job)
+    if viewing:
+        # Viser's Newton viewer imports USD; Kit must select its own USD first when needed.
+        import_module("nexuml_library.environments._isaaclab_viser").configure_spectator(
+            cfg, definition.viewer, context.num_envs, controls=owner.playback_controls
+        )
+        owner._spectator_type = cfg.sim.visualizer_cfgs[0].class_type
     owner._context_class = import_module("isaaclab.sim").SimulationContext
     owner.native = gym.make(definition.task, cfg=cfg).unwrapped
     if viewing:
@@ -295,11 +330,12 @@ class _IsaacLabRuntime:
         self.native: Any = None
         self._launcher = None
         self._spectator_type = None
+        self.playback_controls: PlaybackControls | None = None
+        self._playback_options: IsaacPlaybackOptions | None = None
         self._context_class = None
         self._closed = False
         self._observation = None
         self._pending_reset = None
-        self._so101 = definition.task == "NexuML-SO101-Joint-Reach"
         self._direct = False
         self._marl = False
         self._marl_boundary = None
@@ -328,7 +364,9 @@ class _IsaacLabRuntime:
                     keys_out=keys,
                     metadata={
                         "interaction_contract": self.contract.model_dump(mode="json"),
-                        "execution_owner": "runtime",
+                        "execution_owner": (
+                            "playback_runtime" if context.purpose == "play" else "runtime"
+                        ),
                     },
                 )
             )
@@ -377,6 +415,18 @@ class _IsaacLabRuntime:
             if tuple(space.shape) != self._observation_fields[key].shape:
                 raise ValueError("Native Isaac observation dimensions/device contract mismatch")
         self._validate_sensors()
+        if self._bindings.direct_controls is not None:
+            if not self._direct:
+                raise ValueError("Procedural control verification requires a native direct task")
+            observed = self._bindings.direct_controls.build(env)
+            if (
+                not isinstance(observed, PhysicalTensorContract)
+                or observed != action_field.physical
+            ):
+                raise ValueError(
+                    "Native direct physical controls differ from the declared contract"
+                )
+            return
         if getattr(self, "resolved_task", definition.task) == "NexuML-Cartpole-Categorical":
             self._validate_categorical_controls(action_field)
             return
@@ -395,12 +445,6 @@ class _IsaacLabRuntime:
         elif definition.task == "Isaac-Reach-Franka":
             name, joints, scale = "arm_action", [f"panda_joint{i}" for i in range(1, 8)], 0.5
             offset = torch.tensor([0.0, -0.569, 0.0, -2.810, 0.0, 3.037, 0.741])
-        elif definition.task == "NexuML-SO101-Joint-Reach":
-            from nexuml_library.environments._isaaclab_so101 import JOINT_NAMES, validate_asset
-
-            validate_asset(env)
-            name, joints, scale = "arm_action", list(JOINT_NAMES), 0.5
-            offset = torch.tensor(0.0)
         else:
             self._validate_bound_controls()
             return
@@ -423,7 +467,6 @@ class _IsaacLabRuntime:
             or term.cfg.clip is not None
             or not torch.allclose(native_offset, offset, rtol=0, atol=1e-6)
             or (definition.task == "Isaac-Reach-Franka" and not term.cfg.use_default_offset)
-            or (definition.task == "NexuML-SO101-Joint-Reach" and term.cfg.use_default_offset)
         ):
             raise ValueError(
                 "Native Isaac joint order/scale/offset/clipping differs from the policy"
@@ -597,7 +640,39 @@ class _IsaacLabRuntime:
         assert self._observation is not None
         return self._pack(self._observation.clone())
 
+    def reset_with_task_option(self, name: str, choice: str) -> TensorDict:
+        """Apply an opted-in task option at a full playback reset boundary.
+
+        Returns:
+            Fresh observations for the new trajectories.
+
+        Raises:
+            ValueError: If the active simulation has not authorized the request.
+        """
+        if (
+            self._closed
+            or self._in_step
+            or self._playback_options is None
+            or self.playback_controls is None
+            or not self.playback_controls.accepts_task_option(name, choice)
+        ):
+            raise ValueError("Native playback did not authorize that task reset")
+        self._playback_options.configure_reset(self.native, name, choice)
+        return self.reset()
+
     def step(self, action: TensorDict) -> InteractionStep:
+        return self._step(action)
+
+    def step_recorded(self, action: TensorDict, *, source: str) -> InteractionStep:
+        if not isinstance(source, str) or not source.strip():
+            raise ValueError("A recorded interaction requires an action source")
+        if self._marl:
+            raise ValueError("Recorded native actions are not qualified for grouped interactions")
+        return self._step(action, source=source)
+
+    def _step(self, action: TensorDict, *, source: str | None = None) -> InteractionStep:
+        if not isinstance(action, TensorDictBase):
+            raise TypeError("Isaac step requires a synchronous TensorDict action, not a goal")
         if self._marl:
             if self._closed:
                 raise RuntimeError("Isaac runtime is closed")
@@ -611,15 +686,35 @@ class _IsaacLabRuntime:
         ):
             raise ValueError("Isaac actions must use the native batch and device")
         CompiledPolicy._validate_fields(action, self.contract.actions, "Action")
-        native_action = action[self._bindings.action].reshape(
+        native_action = cast(torch.Tensor, action[self._bindings.action]).reshape(
             self.contract.num_envs, *self.contract.actions[self._bindings.action].shape
         )
+        trace = None
+        if source is not None:
+            requested = action.select(*self.contract.actions).detach().clone()
+            submitted = native_action.detach().clone()
+            frame_before = self.native.common_step_counter
+            issued = monotonic_ns()
         self._terminal_frame = None
         self._in_step = True
         try:
             observations, reward, terminated, truncated, info = self.native.step(native_action)
         finally:
             self._in_step = False
+        if source is not None:
+            frame_after = self.native.common_step_counter
+            if frame_after != frame_before + 1:
+                raise ValueError("Recorded Isaac actions require one native control step")
+            trace = InteractionTrace(
+                source=source,
+                requested_action=requested,
+                native_action=submitted,
+                issued_monotonic_ns=issued,
+                native_clock="isaaclab.control_step",
+                native_frame_before=frame_before,
+                native_frame_after=frame_after,
+                control_period_s=self.native.step_dt,
+            )
         count = self.contract.num_envs
         for value, dtype, name in (
             (reward, torch.float32, "reward"),
@@ -650,18 +745,25 @@ class _IsaacLabRuntime:
             if self._pending_reset.any():
                 self._process_reset(raw, self._pending_reset)
         shape = (*expected_batch, 1)
-        outcomes = None
-        if self._so101:
-            outcomes = {
-                "task_success": self.native.joint_reach_success.clone().reshape(shape),
-                "joint_error_rad": self.native.joint_reach_error.clone().reshape(shape),
-            }
+        outcomes = info.get("task_outcomes")
+        if outcomes is not None:
+            if not isinstance(outcomes, Mapping) or any(
+                not isinstance(key, str)
+                or not key
+                or not isinstance(value, torch.Tensor)
+                or value.shape != (count,)
+                or value.device != self.device
+                for key, value in outcomes.items()
+            ):
+                raise ValueError("Isaac task_outcomes must map names to native scalar batches")
+            outcomes = {key: value.clone().reshape(shape) for key, value in outcomes.items()}
         return InteractionStep(
             observation=self._pack(final),
             reward=reward.reshape(shape),
             terminated=terminated.reshape(shape),
             truncated=truncated.reshape(shape),
             info=outcomes,
+            trace=trace,
         )
 
     def render_frame(self):

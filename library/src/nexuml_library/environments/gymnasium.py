@@ -7,7 +7,7 @@ import torch
 from pydantic import Field
 from tensordict import TensorDict
 
-from nexuml.core.components import EnvironmentBuildContext, EnvironmentDefinition
+from nexuml.core.components import EnvironmentBuildContext, EnvironmentDefinition, PlaybackViewer
 from nexuml.core.discovery import environment
 from nexuml.core.policy import CompiledPolicy
 from nexuml.core.types import InteractionContract, TensorFieldContract
@@ -79,7 +79,18 @@ class GymnasiumEnvironment(EnvironmentDefinition):
         finally:
             probe.close()
 
+    def validate_playback(self, viewer: PlaybackViewer) -> None:
+        """Allow simulated Gymnasium environments to use their ordinary runtime.
+
+        Raises:
+            ValueError: If an interactive viewer is requested.
+        """
+        if viewer != "headless":
+            raise ValueError("Gymnasium playback only supports headless mode")
+
     def build(self, context: EnvironmentBuildContext):
+        if context.purpose == "play":
+            self.validate_playback(context.viewer or "headless")
         return _GymnasiumRuntime(self, context)
 
 

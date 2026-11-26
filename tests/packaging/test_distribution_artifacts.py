@@ -94,13 +94,30 @@ def test_distribution_artifacts() -> None:
     core_sdist_names, core_sdist_license = _sdist_files(core_sdist)
     library_sdist_names, library_sdist_license = _sdist_files(library_sdist)
 
-    _require_names(core_wheel_names, ("nexuml/__init__.py", "nexuml/api/app.py"), core_wheel)
+    _require_names(
+        core_wheel_names,
+        (
+            "nexuml/__init__.py",
+            "nexuml/api/app.py",
+            "nexuml/evaluation/_process.py",
+            "nexuml/interaction/playback.py",
+        ),
+        core_wheel,
+    )
     _require_names(
         library_wheel_names,
-        ("nexuml_library/__init__.py", "nexuml_library/data/dcaset2/dcase_zenodo.yaml"),
+        (
+            "nexuml_library/__init__.py",
+            "nexuml_library/data/dcaset2/dcase_zenodo.yaml",
+            "nexuml_isaac_tasks/centering_cartpole.py",
+        ),
         library_wheel,
     )
-    _require_names(core_sdist_names, ("README.md", "src/nexuml/__init__.py"), core_sdist)
+    _require_names(
+        core_sdist_names,
+        ("README.md", "src/nexuml/__init__.py", "src/nexuml/evaluation/_process.py"),
+        core_sdist,
+    )
     assert not any(
         "studio/" in name or "node_modules/" in name for name in core_wheel_names | core_sdist_names
     )
@@ -113,7 +130,12 @@ def test_distribution_artifacts() -> None:
         )
     _require_names(
         library_sdist_names,
-        ("README.md", "src/nexuml_library/__init__.py", "dcase_zenodo.yaml"),
+        (
+            "README.md",
+            "src/nexuml_library/__init__.py",
+            "dcase_zenodo.yaml",
+            "src/nexuml_isaac_tasks/centering_cartpole.py",
+        ),
         library_sdist,
     )
     for artifact, packaged_license in (

@@ -830,7 +830,7 @@ class NexuSession:
             raise
         finally:
             if isinstance(module, NexuRLLightningModule):
-                module.close_collection()
+                module.close_fit_resources()
         return self
 
     def validate(self) -> list[dict[str, float]]:

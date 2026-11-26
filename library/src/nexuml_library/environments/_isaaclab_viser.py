@@ -186,8 +186,8 @@ def _validate_configuration(cfg):
         raise ValueError("Spectator selection must not consume task RNG")
 
 
-def configure_spectator(cfg, spec, num_envs):
-    """Select only the qualified private native subtype before launcher resolution.
+def configure_spectator(cfg, spec, num_envs, *, controls=None):
+    """Select only the qualified private native subtype before environment construction.
 
     Raises:
         ValueError: If the requested displayed environment does not exist.
@@ -202,7 +202,7 @@ def configure_spectator(cfg, spec, num_envs):
     cfg.sim.default_visualizer_cfg = None
     cfg.sim.visualizer_cfgs = [
         ViserVisualizerCfg(
-            class_type=spectator_visualizer_type(),
+            class_type=spectator_visualizer_type(controls=controls),
             bind_address=spec.bind_address,
             port=spec.port,
             share=False,
@@ -220,7 +220,7 @@ def configure_spectator(cfg, spec, num_envs):
     ]
 
 
-def spectator_visualizer_type():
+def spectator_visualizer_type(*, controls=None):
     """Return the qualified native subtype without changing vendor globals.
 
     Returns:
@@ -456,7 +456,7 @@ def spectator_visualizer_type():
             self._is_initialized = True
 
         def reset(self, soft=False):
-            # Only the native lifecycle can rebind geometry; no browser reset is registered.
+            # Only the native lifecycle can rebind geometry.
             if soft or not self._is_initialized or self._is_closed:
                 return
             sim = SimulationContext.instance()
@@ -654,6 +654,46 @@ def spectator_visualizer_type():
                 self._viewer._live_plots_folder = server.gui.add_folder(
                     "Plots", expand_by_default=True
                 )
+            if controls is not None:
+                with server.gui.add_folder("Playback Controls"):
+                    server.gui.add_button("Pause Simulation").on_click(
+                        lambda _: controls.submit("pause")
+                    )
+                    server.gui.add_button("Resume Simulation").on_click(
+                        lambda _: controls.submit("resume")
+                    )
+                    server.gui.add_button("Single Step").on_click(lambda _: controls.submit("step"))
+                    server.gui.add_button("Reset All Environments").on_click(
+                        lambda _: controls.submit("reset")
+                    )
+                    if controls.selected_reset:
+
+                        def reset_selected(_event):
+                            selection = display.selection
+                            if selection != "Configured":
+                                controls.submit("reset", int(selection))
+
+                        server.gui.add_button("Reset Selected Environment").on_click(reset_selected)
+                    speeds = {"0.25×": 0.25, "0.5×": 0.5, "1×": 1.0, "2×": 2.0}
+                    speed = server.gui.add_dropdown(
+                        "Playback Speed", options=tuple(speeds), initial_value="1×"
+                    )
+
+                    @speed.on_update
+                    def change_speed(event):
+                        value = event.target.value
+                        if isinstance(value, str) and value in speeds:
+                            controls.submit("speed", speeds[value])
+
+                if controls.task_options:
+                    with server.gui.add_folder("Task Reset Options"):
+                        for name, choices in controls.task_options.items():
+                            for choice in choices:
+                                server.gui.add_button(f"{name}: {choice}").on_click(
+                                    lambda _, option=(name, choice): controls.submit(
+                                        "task_reset", option
+                                    )
+                                )
 
         def is_training_paused(self):
             return False

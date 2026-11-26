@@ -53,7 +53,10 @@ def native(num_envs=1, period=1 / 30):
 def test_arena_bridge_decodes_the_stock_so101_policy_without_remapping(so101):
     policy, contract, bindings = so101
     observations = torch.linspace(-0.35, 0.35, 30).reshape(2, 15)
-    batch_contract = contract.model_copy(update={"num_envs": 2})
+    action_field = contract.actions["action"].model_copy(update={"description": "SO-101 arm"})
+    batch_contract = contract.model_copy(
+        update={"num_envs": 2, "actions": {"action": action_field}}
+    )
     adapter = ArenaPolicy(policy, batch_contract, bindings, deterministic=True)
     expected = policy(TensorDict({"observation": observations}, batch_size=[2]))["action"]
     action = adapter.get_action(native(2), {"policy": observations})
@@ -76,7 +79,12 @@ def test_arena_bridge_rejects_equal_width_but_different_semantics(so101, mismatc
             }
         )
     if mismatch == "mode":
-        action = action.model_copy(update={"description": "relative joint position targets"})
+        assert action.physical is not None
+        action = action.model_copy(
+            update={
+                "physical": action.physical.model_copy(update={"control_mode": "relative_position"})
+            }
+        )
     if mismatch == "period":
         contract = contract.model_copy(update={"control_period_s": 1 / 60})
         action = action.model_copy(update={"rate_hz": 60.0})

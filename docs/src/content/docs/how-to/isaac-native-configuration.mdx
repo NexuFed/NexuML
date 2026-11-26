@@ -103,6 +103,95 @@ capacity from a nominal envelope or a visible-cgroup peak. Do not silently incre
 RAM/plasma allocations. Keep the 4 GiB disk stop and independent viewer/renderer/
 resource gates. Store run-specific receipts and measurements outside source commits.
 
+## Step an Isaac task without a policy
+
+The headless Python runtime accepts contracted `TensorDict` actions from a
+script or a `CompiledPolicy`. Both use the native action validator and step
+path. Use one owned native scope and close the runtime inside it:
+
+```python
+import torch
+from tensordict import TensorDict
+
+from nexuml.core.components import EnvironmentBuildContext
+from nexuml.interaction import TraceableEnvironmentRuntime
+from nexuml_library.environments.isaaclab import IsaacLabEnvironment
+
+definition = IsaacLabEnvironment(task="Isaac-Cartpole", physics="isaacsim_physx")
+with definition.job_scope():
+    runtime = definition.build(EnvironmentBuildContext(purpose="play", device="cuda:0"))
+    try:
+        runtime.reset(seed=23)
+        action = TensorDict({"action": torch.tensor([0.5], device="cuda:0")}, [])
+        if not isinstance(runtime, TraceableEnvironmentRuntime):
+            raise ValueError("This provider does not record fixed-step actions")
+        transition = runtime.step_recorded(action, source="script:cart-effort")
+    finally:
+        runtime.close()
+```
+
+`step_recorded` is opt-in and currently qualified for headless, single-agent
+state interaction. It records the source label, contracted action, the tensor
+submitted to the simulator, host monotonic issue time, native control-step
+indices, and the verified control period. The submitted tensor is **not**
+measured actuator feedback. Native step indices are not sensor acquisition
+timestamps; sensor binding rate and validity rules still apply. No timestamp
+is synthesized for observations without one. Ordinary `step` does not clone
+actions for recording. Neither method executes asynchronous goals, and this
+headless entry point does not enable a viewer, physical robot control, or a
+continuous player.
+
+### Play a trained policy headlessly
+
+Playback runs fixed weights without training or scientific scoring. Use a
+trusted complete export or `--trainer-checkpoint`, optionally with a trusted
+`--config` or `--scenario-file` supplying a compatible environment:
+
+```bash
+nexuml play ./policy --viewer headless --device cuda:0 --num-envs 8 --steps 60
+```
+
+Omit `--steps` and `--episodes` for continuous playback. Counts are actual
+native ticks, transitions across the batch, and completed episodes. Several
+episodes can finish on the same tick. `--seed` and `--stochastic` select
+repeatable sampled actions where supported; deterministic actions are the
+default. `--real-time` paces at the declared native control period without
+changing physics. The Python entry point is
+`nexuml.interaction.playback.play_policy`; pass an optional `threading.Event`
+to stop it, and use the same caller-owned `definition.job_scope()` shown above.
+
+For a loopback-only spectator, put `ViserSpec(purposes=("play",), port=PORT)`
+on the trusted Isaac environment and explicitly select `--viewer viser`.
+The same viewer settings can select displayed instances independently of
+`--num-envs`. It is read-only by default: pausing its display does not
+pause physics. For simulation controls, set `playback_controls=True` on
+that explicit play configuration. Pause, resume, single step, reset all,
+and wall-clock speed changes run between native control ticks. To reset
+one instance on a supported manager task, select that instance first;
+direct tasks expose reset-all but not arbitrary selected reset.
+Manual resets are interventions, not completed episodes.
+For tasks that expose an `IsaacBindings.playback_options` factory, the
+viewer also shows the declared task reset options. Selecting one starts
+new episodes for all instances without advancing physics. The viewer
+can send only the named options, not code or arbitrary simulator commands.
+Training and evaluation do not expose those simulation controls.
+Unset `LIVESTREAM` or set it to `0` for headless and spectator jobs. Local
+Kit, WebRTC and remote playback are not qualified.
+
+For the qualified single-environment, headless Kit PhysX manager profile,
+record independently of playback:
+
+```bash
+nexuml play ./policy --viewer headless --device cuda:0 --steps 120 \
+  --record ./playback-media --record-frames 30 --record-format both
+```
+
+The output directory must not exist. Capture stops at the frame limit even
+when playback continues. The manifest names the source artifact and
+environment, native tick indices, and monotonic capture times. The video
+uses the nominal renderer rate, not the actual wall-clock cadence. Viser
+recording, direct-task RGB and vectorized RGB capture are not enabled.
+
 ## Typed functions, not override strings
 
 Put customization in an importable operator-owned module, not a script's
@@ -195,6 +284,12 @@ Every declared observation must be mapped, and `action` names the single declare
 action field. Bindings are not configuration overrides or automatic contract
 inference. A binding declaration alone does not establish sensor support.
 
+Tasks that report per-transition outcomes can return `info["task_outcomes"]`
+from native `step`. Each value is a tensor with one scalar per environment on
+the simulator device. Record it before native autoreset so the ending
+transition keeps the correct task outcome. NexuML copies these reported
+values into the interaction result; it does not infer success from reward.
+
 The installed `isaac-custom-cartpole-ppo` scenario is a real Gym-registered
 `NexuML-Custom-Cartpole` manager task, not a renamed built-in. Its registration
 starts with a 3-second horizon and spacing 2; the scenario customizes the resolved
@@ -222,6 +317,32 @@ Gym's `"my_tasks:Registered-Task"` form to import its registrations at execution
 Static restoration does not run that package. A missing registration or wrong
 native workflow, spaces, bindings, rates or protected settings is an error, not
 permission to infer a replacement contract.
+
+### Procedural controls in a direct task
+
+`nexuml_isaac_tasks.centering_cartpole` is an independently runnable Isaac
+registration. It defines a centering reward and track limit, and reuses the
+native direct Cartpole asset, simulation, actuator and reset code. Use the
+registered Gym ID `NexuML-Cartpole-Direct-Centering` with Isaac Lab after
+importing that module. The NexuML scenario `isaac-custom-direct-cartpole-ppo`
+uses the same registration and native configuration via `module:task`; it
+does not wrap or replace the task's reward, reset or simulation code.
+
+A direct task may implement the actuator mapping in Python instead of exposing
+an Isaac action-manager term. Pair the typed action contract with
+`IsaacBindings(direct_controls=FactorySpec.from_factory(describe_controls), ...)`.
+That trusted function receives the live native environment and returns a
+`PhysicalTensorContract` read from the actual mechanism. It must inspect the
+implemented actuator, joint order, scale and other control semantics, not
+echo the expected policy contract. NexuML calls it only in the native job and
+rejects mismatches before interaction. Manager and grouped tasks do not use
+this binding.
+
+Direct tasks must expose pre-reset final observations alongside same-step
+autoreset. NexuML can acknowledge those reset rows without resetting twice.
+It rejects arbitrary partial reset requests when the direct workflow cannot
+perform them through its public API. This example qualifies the headless
+state-only Newton profile; it does not qualify other backends or camera paths.
 
 ## Normal CLI and whole-job Python ownership
 

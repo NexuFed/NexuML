@@ -1,0 +1,38 @@
+{
+  "schema_version": 2,
+  "update_kind": "full",
+  "example": "SO-101 complete compiled actor; schema illustration, not a fit request",
+  "base_fields": ["global_version", "tensor_sha256"],
+  "manifest_fields": ["architecture_sha256", "actor_semantics", "tensors"],
+  "local_receipt_fields": [
+    "recipe_sha256",
+    "objective",
+    "frames",
+    "completed_episodes",
+    "minibatch_updates",
+    "optimizer_steps",
+    "updated_tensor_sha256"
+  ],
+  "tensors": {
+    "pipeline.stages.policy.00_PolicyHead.model.0.weight": {
+      "shape": [64, 15], "dtype": "float32", "role": "trainable_parameter"
+    },
+    "pipeline.stages.policy.00_PolicyHead.model.0.bias": {
+      "shape": [64], "dtype": "float32", "role": "trainable_parameter"
+    },
+    "pipeline.stages.policy.00_PolicyHead.model.2.weight": {
+      "shape": [64, 64], "dtype": "float32", "role": "trainable_parameter"
+    },
+    "pipeline.stages.policy.00_PolicyHead.model.2.bias": {
+      "shape": [64], "dtype": "float32", "role": "trainable_parameter"
+    },
+    "pipeline.stages.policy.00_PolicyHead.model.4.weight": {
+      "shape": [10, 64], "dtype": "float32", "role": "trainable_parameter"
+    },
+    "pipeline.stages.policy.00_PolicyHead.model.4.bias": {
+      "shape": [10], "dtype": "float32", "role": "trainable_parameter"
+    },
+    "action_adapter.low": {"shape": [5], "dtype": "float32", "role": "frozen_buffer"},
+    "action_adapter.high": {"shape": [5], "dtype": "float32", "role": "frozen_buffer"}
+  }
+}

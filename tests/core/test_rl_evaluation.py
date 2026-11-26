@@ -22,6 +22,7 @@ from nexuml.core.types import (
     InteractionContract,
     LoggingSpec,
     MLflowSpec,
+    PhysicalSystemContract,
     RLEvaluationSpec,
     RLVideoSpec,
     ReinforcementLearningSpec,
@@ -127,6 +128,49 @@ def fake(monkeypatch):
     scenario.interaction.environment = FakeEnvironment()
     scenario.training.evaluation = RLEvaluationSpec(episodes=2, seed=7, max_steps_per_episode=5)
     return scenario, FakePolicy()
+
+
+@pytest.mark.parametrize("different_runtime_asset", [False, True])
+def test_evaluation_keeps_provider_provenance_separate_from_policy(
+    fake, monkeypatch, different_runtime_asset
+):
+    scenario, policy = fake
+    physical = PhysicalSystemContract(
+        embodiment_id="same-embodiment",
+        calibration_id="same-calibration",
+        asset_id="training-asset",
+        asset_source="training-provider",
+    )
+    policy.contract = contract().model_copy(update={"physical": physical})
+    declared = physical.model_copy(
+        update={"asset_source": "evaluation-provider", "asset_id": "evaluation-asset"}
+    )
+    runtime = FakeRuntime()
+    runtime.contract = contract().model_copy(
+        update={
+            "physical": declared.model_copy(update={"asset_id": "unexpected-asset"})
+            if different_runtime_asset
+            else declared
+        }
+    )
+    monkeypatch.setattr(FakeEnvironment, "factory", lambda: runtime)
+    monkeypatch.setattr(
+        FakeEnvironment, "describe", lambda _: contract().model_copy(update={"physical": declared})
+    )
+
+    reports = []
+    if different_runtime_asset:
+        with pytest.raises(ValueError, match="runtime physical provenance"):
+            evaluate_policy(policy, scenario, episode_report_sink=reports.append)
+        assert not runtime.resets and not reports
+    else:
+        evaluate_policy(policy, scenario, episode_report_sink=reports.append)
+        assert reports[0]["physical_provenance"] == {
+            "policy": physical.model_dump(mode="json"),
+            "environment": declared.model_dump(mode="json"),
+        }
+        assert runtime.resets
+    assert runtime.closed
 
 
 @pytest.mark.parametrize(

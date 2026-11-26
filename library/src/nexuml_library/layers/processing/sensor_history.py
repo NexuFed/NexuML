@@ -22,26 +22,33 @@ class SensorHistoryProcessor(LayerDefinition):
         if "interaction_contract" not in context.metadata:
             raise ValueError("SensorHistoryProcessor requires interaction_contract metadata")
         owner = context.metadata.get("execution_owner", "package")
-        if owner not in {"package", "runtime"}:
-            raise ValueError("Sensor processing execution_owner must be package or runtime")
+        if owner not in {"package", "runtime", "playback_runtime"}:
+            raise ValueError("Unknown sensor processing execution_owner")
         return _SensorHistoryRuntime(
             InteractionContract.model_validate(context.metadata["interaction_contract"]),
-            process_external=owner == "runtime",
+            process_external=owner != "package",
+            defer_package=owner == "playback_runtime",
         )
 
 
 class _SensorHistoryRuntime(nn.Module):
-    def __init__(self, contract: InteractionContract, *, process_external: bool = False):
+    def __init__(
+        self, contract: InteractionContract, *, process_external: bool, defer_package: bool
+    ):
         super().__init__()
         self.fields = contract.observations
         self.raw_fields: dict[str, TensorFieldContract] = {}
         self.frame_shapes: dict[str, tuple[int, ...]] = {}
+        deferred = set()
         for key, field in self.fields.items():
             sensor = field.sensor
             if sensor is None or (sensor.owner == "external" and not process_external):
                 self.raw_fields[key] = field
                 continue
-            self.frame_shapes[key] = self._frame_shape(key, field, sensor)
+            if defer_package and sensor.owner == "package":
+                deferred.add(key)
+            else:
+                self.frame_shapes[key] = self._frame_shape(key, field, sensor)
             self.raw_fields[key] = TensorFieldContract(
                 shape=sensor.raw_shape,
                 dtype=sensor.raw_dtype,
@@ -49,6 +56,10 @@ class _SensorHistoryRuntime(nn.Module):
                 rate_hz=field.rate_hz,
                 sensor=sensor,
             )
+        self.output_fields = {
+            key: field for key, field in self.fields.items() if key not in deferred
+        }
+        self._raw_sensors = self.frame_shapes.keys() | deferred
 
     @staticmethod
     def _frame_shape(
@@ -218,7 +229,7 @@ class _SensorHistoryRuntime(nn.Module):
                 raise ValueError(f"Raw observation {key!r} and state must use the same device")
             sensor = self.fields[key].sensor
             mask_depth = (
-                key in self.frame_shapes
+                key in self._raw_sensors
                 and self.fields[key].modality == "depth"
                 and sensor is not None
                 and sensor.invalid_depth == "mask_zero"
@@ -256,7 +267,7 @@ class _SensorHistoryRuntime(nn.Module):
             processed[key] = frames.reshape(
                 *state.batch_size, sensor.history_length * shape[0], *shape[1:]
             ).clone()
-        CompiledPolicy._validate_fields(processed, self.fields, "Processed observation")
+        CompiledPolicy._validate_fields(processed, self.output_fields, "Processed observation")
         return processed, next_state
 
     def reset_state(self, state: TensorDict, mask: torch.Tensor) -> TensorDict:

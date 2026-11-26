@@ -13,7 +13,7 @@ import torch
 from tensordict import TensorDict
 
 from nexuml.core.components import EnvironmentBuildContext
-from nexuml.core.types import PhysicalTensorContract, SensorProcessingContract
+from nexuml.core.types import FactorySpec, PhysicalTensorContract, SensorProcessingContract
 from nexuml_library.environments import _isaaclab_runtime
 from nexuml_library.environments.isaaclab import (
     IsaacLabEnvironment,
@@ -193,6 +193,7 @@ def make_runtime(monkeypatch):
         attach_native=True,
         device="cpu",
         definition=None,
+        direct=False,
     ):
         if native is None:
             native = _FakeNative(num_envs)
@@ -211,7 +212,7 @@ def make_runtime(monkeypatch):
             assert received_definition is definition
             assert received_context is context
             owner._launcher = launcher
-            owner._direct = definition.task == "Isaac-Cartpole-Direct"
+            owner._direct = direct or definition.task == "Isaac-Cartpole-Direct"
             launcher.__enter__()
             if attach_native:
                 owner.native = native
@@ -390,7 +391,7 @@ def test_direct_task_validates_its_public_control_mapping_without_a_manager(make
 )
 @pytest.mark.parametrize("substitution", ["velocity", "forged-config"])
 def test_reference_rejects_same_shape_wrong_control_implementation(
-    make_runtime, monkeypatch, task, substitution
+    make_runtime, task, substitution
 ):
     native = _FakeNative()
     definition = IsaacLabEnvironment(task=task)
@@ -400,16 +401,18 @@ def test_reference_rejects_same_shape_wrong_control_implementation(
     assert contract.control_period_s is not None
     native.step_dt = contract.control_period_s
     expected = _EffortAction if task == "Isaac-Cartpole" else _PositionAction
+    cfg = (
+        _PositionActionCfg(class_type=_VelocityAction, use_default_offset=False)
+        if task == "NexuML-SO101-Joint-Reach"
+        else SimpleNamespace(class_type=_VelocityAction)
+    )
     native.term = (_VelocityAction if substitution == "velocity" else expected)(
-        cfg=SimpleNamespace(class_type=_VelocityAction),
+        cfg=cfg,
         IO_descriptor=native.term.IO_descriptor,
     )
     name = "joint_effort" if task == "Isaac-Cartpole" else "arm_action"
     native.action_manager.active_terms = [name]
     native.action_manager.get_term = lambda key: native.term
-    import nexuml_library.environments._isaaclab_so101 as so101
-
-    monkeypatch.setattr(so101, "validate_asset", lambda env: None)
     with pytest.raises(ValueError, match="implementation/control mode"):
         make_runtime(native, definition=definition)
     assert native.reset_calls == native.step_calls == []
@@ -449,6 +452,49 @@ def test_custom_physical_contract_validates_executed_action_not_only_config(
         with pytest.raises(ValueError, match="implementation/control mode"):
             make_runtime(native, definition=definition)
         assert native.close_calls == 1 and native.step_calls == []
+
+
+@pytest.mark.parametrize("result", ["match", "wrong-scale", "not-descriptor", "manager", "unbound"])
+def test_procedural_controls_are_verified_before_native_steps(make_runtime, monkeypatch, result):
+    reference = IsaacLabEnvironment().describe()
+    physical = PhysicalTensorContract(
+        units=("N",), frame="joint", joints=("test_joint",), control_mode="effort", scale=(100.0,)
+    )
+    action = reference.actions["action"].model_copy(update={"physical": physical})
+    definition = IsaacLabEnvironment(
+        task="Custom-Direct",
+        contract=reference.model_copy(update={"actions": {"action": action}}),
+        bindings=IsaacBindings(
+            observations={"observation": ("policy",)},
+            direct_controls=(
+                None if result == "unbound" else FactorySpec(factory="fixture:describe_controls")
+            ),
+        ),
+    )
+    native = _FakeNative()
+    observed = {
+        "match": physical,
+        "wrong-scale": physical.model_copy(update={"scale": (150.0,)}),
+        "not-descriptor": None,
+    }
+    calls = []
+
+    def describe(self, live_native):
+        calls.append(live_native)
+        return observed[result]
+
+    monkeypatch.setattr(FactorySpec, "build", describe)
+    if result == "match":
+        assert make_runtime(native, direct=True, definition=definition).native is native
+        assert calls == [native]
+        return
+    if result == "unbound":
+        del native.action_manager
+    with pytest.raises(ValueError, match="native direct task|physical controls|physical control"):
+        make_runtime(native, direct=result != "manager", definition=definition)
+    assert calls == ([native] if result in {"wrong-scale", "not-descriptor"} else [])
+    assert native.reset_calls == native.step_calls == []
+    assert native.close_calls == 1
 
 
 @pytest.fixture
@@ -541,7 +587,9 @@ def native_launch(monkeypatch, tmp_path):
             make=lambda *args, **kwargs: SimpleNamespace(unwrapped=native),
             registry={
                 "NexuML-SO101-Joint-Reach": SimpleNamespace(
-                    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+                    entry_point=(
+                        "nexuml_library.environments._isaaclab_so101:make_so101_environment"
+                    ),
                     kwargs={
                         "env_cfg_entry_point": (
                             "nexuml_library.environments._isaaclab_so101:make_so101_config"
@@ -602,6 +650,29 @@ def test_native_startup_disables_telemetry_and_crash_uploads_before_launch(nativ
         ]
         assert native_launch.args[0]["headless"] is True
         assert native_launch.args[0]["visualizer"] == ["none"]
+        assert native_launch.args[0]["livestream"] == 0
+
+
+@pytest.mark.parametrize("inherited", ["1", "2"])
+def test_headless_native_startup_rejects_inherited_livestream(
+    native_launch, monkeypatch, inherited
+):
+    monkeypatch.setenv("LIVESTREAM", inherited)
+    with _isaaclab_runtime.isaaclab_process(), pytest.raises(ValueError, match="LIVESTREAM"):
+        native_launch.build()
+    assert not native_launch.launchers
+    assert not native_launch.parsed
+
+
+def test_explicit_headless_play_ignores_train_spectator_settings(native_launch):
+    from nexuml_library.environments.isaaclab_config import ViserSpec
+
+    context = EnvironmentBuildContext(
+        purpose="play", device="cuda:0", num_envs=3, viewer="headless"
+    )
+    with _isaaclab_runtime.isaaclab_process():
+        native_launch.build(context, viewer=ViserSpec())
+        assert native_launch.args[0]["visualizer"] == ["none"]
 
 
 @pytest.mark.parametrize(
@@ -657,7 +728,11 @@ def test_viewer_requires_a_separate_purpose_opt_in_without_importing_viser(nativ
 
 
 @pytest.mark.parametrize("fail", ["none", "construction"])
-def test_exact_spectator_selection_and_partial_native_ownership(native_launch, monkeypatch, fail):
+@pytest.mark.parametrize("purpose", ["train", "eval", "play"])
+@pytest.mark.parametrize("enable_controls", [False, True])
+def test_exact_spectator_selection_and_partial_native_ownership(
+    native_launch, monkeypatch, fail, purpose, enable_controls
+):
     from nexuml_library.environments.isaaclab_config import ViserSpec
 
     events = native_launch.native.events
@@ -672,8 +747,15 @@ def test_exact_spectator_selection_and_partial_native_ownership(native_launch, m
         _pending_visualizers=[] if fail == "none" else [spectator],
     )
 
-    def configure(cfg, spec, count):
-        assert spec.port == 8080 and count == 3
+    count = 1 if purpose == "eval" else 3
+    native_launch.native.num_envs = count
+
+    def configure(cfg, spec, num_envs, *, controls=None):
+        assert spec.port == 8080 and num_envs == count
+        if enable_controls and purpose == "play":
+            assert controls is not None and controls.num_envs == count and controls.selected_reset
+        else:
+            assert controls is None
         cfg.sim.visualizer_cfgs = [SimpleNamespace(class_type=Spectator)]
 
     native_launch.modules["nexuml_library.environments._isaaclab_viser"] = SimpleNamespace(
@@ -685,6 +767,17 @@ def test_exact_spectator_selection_and_partial_native_ownership(native_launch, m
         )
     )
     native_launch.native.sim = sim
+    context = EnvironmentBuildContext(
+        purpose=purpose,
+        device="cuda:0",
+        num_envs=count,
+        seed=17,
+        viewer="viser" if purpose == "play" else None,
+    )
+    viewer = ViserSpec(
+        purposes=("train", "eval", "play") if enable_controls else (purpose,),
+        playback_controls=enable_controls,
+    )
     if fail == "construction":
 
         def fail_make(*args, **kwargs):
@@ -694,9 +787,9 @@ def test_exact_spectator_selection_and_partial_native_ownership(native_launch, m
     with _isaaclab_runtime.isaaclab_process():
         if fail == "construction":
             with pytest.raises(RuntimeError, match="native construction failed"):
-                native_launch.build(viewer=ViserSpec())
+                native_launch.build(context=context, viewer=viewer)
         else:
-            runtime = native_launch.build(viewer=ViserSpec())
+            runtime = native_launch.build(context=context, viewer=viewer)
             assert runtime._spectator_type is Spectator
             runtime.close()
             assert events.index("spectator.close") < events.index("native.close")
@@ -1373,19 +1466,43 @@ def test_owned_close_is_ordered_and_idempotent(make_runtime):
 
 def test_task_outcomes_are_cloned_before_native_cache_reuse(make_runtime):
     runtime = make_runtime()
-    runtime._so101 = True
     native = runtime.native
-    native.joint_reach_success = torch.tensor([False, True, False])
-    native.joint_reach_error = torch.tensor([0.3, 0.01, 0.2])
+    success = torch.tensor([False, True, False])
+    error = torch.tensor([0.3, 0.01, 0.2])
+    step = native.step
+
+    def report(action):
+        *values, info = step(action)
+        info["task_outcomes"] = {"task_success": success, "joint_error_rad": error}
+        return (*values, info)
+
+    native.step = report
     runtime.reset()
     native.next_terminated = [False, True, False]
     transition = runtime.step(_actions())
-    native.joint_reach_success.zero_()
-    native.joint_reach_error.fill_(99)
+    success.zero_()
+    error.fill_(99)
+    assert transition.info is not None
     assert torch.equal(transition.info["task_success"], torch.tensor([[False], [True], [False]]))
     torch.testing.assert_close(
         transition.info["joint_error_rad"], torch.tensor([[0.3], [0.01], [0.2]])
     )
+
+
+def test_task_outcomes_reject_non_native_scalar_batches(make_runtime):
+    runtime = make_runtime()
+    native = runtime.native
+    step = native.step
+
+    def report(action):
+        *values, info = step(action)
+        info["task_outcomes"] = {"task_success": torch.tensor(True)}
+        return (*values, info)
+
+    native.step = report
+    runtime.reset()
+    with pytest.raises(ValueError, match="task_outcomes must map names to native scalar batches"):
+        runtime.step(_actions())
 
 
 @pytest.mark.parametrize("fail_native,fail_launcher", [(True, False), (False, True), (True, True)])

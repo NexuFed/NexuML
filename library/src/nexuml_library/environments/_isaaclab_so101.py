@@ -8,6 +8,8 @@ from typing import Any, cast
 
 import torch
 
+from nexuml_library.environments.isaaclab_config import IsaacPlaybackOptions
+
 
 JOINT_NAMES = ("shoulder_pan", "shoulder_lift", "elbow_flex", "wrist_flex", "wrist_roll")
 GRIPPER_POSITION = 0.2555162024919699
@@ -115,6 +117,29 @@ def validate_asset(env) -> None:
     _validate_asset_content()
 
 
+def make_so101_environment(**kwargs: Any) -> Any:
+    """Build the native manager task and verify its installed articulation.
+
+    Returns:
+        The validated native environment.
+
+    Raises:
+        ValueError: If the articulation or installed action term does not match.
+    """
+    native = import_module("isaaclab.envs").ManagerBasedRLEnv(**kwargs)
+    try:
+        validate_asset(native)
+        if native.action_manager.active_terms != ["arm_action"]:
+            raise ValueError("SO-101 requires the pinned native arm action term")
+    except BaseException as error:
+        try:
+            native.close()
+        except BaseException as cleanup:
+            error.add_note(f"SO-101 native environment cleanup also failed: {cleanup}")
+        raise
+    return native
+
+
 def normalized_joint_error(joint_pos: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
     """Return mean squared joint error normalized by the declared one-radian target range."""
     return ((joint_pos - target) / (2 * TARGET_SCALE)).square().mean(dim=-1)
@@ -132,6 +157,7 @@ def _joint_error(env, asset_cfg) -> torch.Tensor:
     positions = env.scene[asset_cfg.name].data.joint_pos.torch[:, asset_cfg.joint_ids]
     # Keep pre-reset outcomes: native same-step reset replaces the goal and hold counter.
     env.joint_reach_error = (positions - env.joint_reach_target).abs().mean(dim=-1)
+    env.extras.setdefault("task_outcomes", {})["joint_error_rad"] = env.joint_reach_error
     return normalized_joint_error(positions, env.joint_reach_target)
 
 
@@ -141,7 +167,26 @@ def _reach_success(env, asset_cfg) -> torch.Tensor:
     within = (positions - env.joint_reach_target).abs().amax(dim=-1) <= TOLERANCE
     env.joint_reach_hold = torch.where(within, env.joint_reach_hold + 1, 0)
     env.joint_reach_success = env.joint_reach_hold >= math.ceil(HOLD_SECONDS / env.step_dt)
+    env.extras.setdefault("task_outcomes", {})["task_success"] = env.joint_reach_success
     return env.joint_reach_success
+
+
+def _set_playback_goal(env: Any, name: str, choice: str) -> None:
+    choices = ("Home", "Positive", "Negative")
+    if name != "Goal" or choice not in (*choices, "Random"):
+        raise ValueError("Unknown SO-101 playback goal")
+    env.joint_reach_playback_goal = None if choice == "Random" else choices.index(choice)
+
+
+def so101_playback_options() -> IsaacPlaybackOptions:
+    """Declare safe simulator-only options for an explicit SO-101 reset.
+
+    Returns:
+        The supported goal choices and their native reset binding.
+    """
+    return IsaacPlaybackOptions(
+        {"Goal": ("Home", "Positive", "Negative", "Random")}, _set_playback_goal
+    )
 
 
 def _reset_joint_reach(env, env_ids) -> None:
@@ -165,7 +210,12 @@ def _reset_joint_reach(env, env_ids) -> None:
         env.joint_reach_target = torch.tensor(HOME, device=env.device).repeat(env.num_envs, 1)
         env.joint_reach_hold = torch.zeros(env.num_envs, dtype=torch.long, device=env.device)
     goals = torch.tensor(GOALS, device=env.device)
-    choices = torch.randint(len(GOALS), (len(env_ids),), device=env.device)
+    fixed_goal = getattr(env, "joint_reach_playback_goal", None)
+    choices = (
+        torch.randint(len(GOALS), (len(env_ids),), device=env.device)
+        if fixed_goal is None
+        else fixed_goal
+    )
     env.joint_reach_target[env_ids] = goals[choices]
     env.joint_reach_hold[env_ids] = 0
 

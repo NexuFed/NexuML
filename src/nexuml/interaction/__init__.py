@@ -1,5 +1,15 @@
 """Framework-neutral interaction runtime contracts."""
 
-from nexuml.interaction.runtime import EnvironmentRuntime, InteractionStep
+from nexuml.interaction.runtime import (
+    EnvironmentRuntime,
+    InteractionStep,
+    InteractionTrace,
+    TraceableEnvironmentRuntime,
+)
 
-__all__ = ["EnvironmentRuntime", "InteractionStep"]
+__all__ = [
+    "EnvironmentRuntime",
+    "InteractionStep",
+    "InteractionTrace",
+    "TraceableEnvironmentRuntime",
+]

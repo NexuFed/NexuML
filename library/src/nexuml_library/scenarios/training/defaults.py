@@ -5,13 +5,6 @@ from __future__ import annotations
 from collections.abc import Callable
 
 import torch
-from lightning.pytorch.callbacks import (
-    DeviceStatsMonitor,
-    EarlyStopping,
-    LearningRateMonitor,
-    ModelCheckpoint,
-    RichProgressBar,
-)
 
 from nexuml import callback, optimizer, scheduler
 from nexuml.core.types import (
@@ -108,6 +101,14 @@ def default_callbacks() -> list[CallbackSpec]:
     Returns:
         list[CallbackSpec]: Default callbacks for training.
     """
+    from lightning.pytorch.callbacks import (
+        DeviceStatsMonitor,
+        EarlyStopping,
+        LearningRateMonitor,
+        ModelCheckpoint,
+        RichProgressBar,
+    )
+
     return [
         callback(EarlyStopping, monitor="val/loss", patience=5),
         callback(LearningRateMonitor),

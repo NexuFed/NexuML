@@ -28,6 +28,7 @@ from nexuml.core.types import (
     SensorProcessingContract,
     TensorFieldContract,
 )
+from nexuml.evaluation.policy import _validate_evaluation_contract
 from nexuml_library.action_adapters.adapters import (
     CategoricalActionAdapter,
     GaussianActionAdapter,
@@ -122,6 +123,38 @@ def _scenario(*, shared=True, processing=False, external=False):
 def _policy(**kwargs):
     scenario = _scenario(**kwargs)
     return CompiledPolicy.from_pipeline(compile(scenario))
+
+
+@pytest.mark.parametrize(
+    ("difference", "error"),
+    [
+        ("provenance", None),
+        ("agent_order", "agents, order"),
+        ("sensor_initialization", "observations.*incompatible"),
+        ("control_units", "actions.*incompatible"),
+    ],
+)
+def test_grouped_compatibility_keeps_semantics_but_ignores_asset_and_prose(difference, error):
+    expected = _policy(processing=True).contract
+    data = expected.model_dump()
+    data["num_envs"] = 1
+    data["critic_observations"] = {}
+    data["physical"].update(asset_id="alternate-model", asset_source="alternate-provider")
+    runners = data["groups"]["runners"]
+    runners["observations"]["observation"]["description"] = "Mapped raw observation."
+    runners["actions"]["action"]["description"] = "Mapped actuator effort."
+    if difference == "agent_order":
+        runners["agents"] = tuple(reversed(runners["agents"]))
+    elif difference == "sensor_initialization":
+        runners["observations"]["observation"]["sensor"]["initialization"] = "zeros"
+    elif difference == "control_units":
+        runners["actions"]["action"]["physical"]["units"] = ("Nm",)
+    actual = InteractionContract.model_validate(data)
+    if error is None:
+        _validate_evaluation_contract(expected, actual)
+    else:
+        with pytest.raises(ValueError, match=error):
+            _validate_evaluation_contract(expected, actual)
 
 
 def _observation(batch=(2,), *, raw=False, value=1.0, named=False):

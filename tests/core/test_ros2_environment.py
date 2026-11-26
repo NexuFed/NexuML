@@ -73,6 +73,19 @@ def test_joint_configuration_and_simulator_free_round_trip():
         restored.interaction.environment.build(EnvironmentBuildContext(purpose="train", num_envs=2))
 
 
+def test_ros2_simulation_adapter_rejects_physical_and_playback_before_transport(monkeypatch):
+    from nexuml_library.environments.ros2 import rclpy_transport
+
+    def forbidden(*_args):
+        pytest.fail("Unsupported contexts must not connect to ROS")
+
+    monkeypatch.setattr(rclpy_transport, "RclpyTransport", forbidden)
+    with pytest.raises(ValueError, match="physical reset is unsupported"):
+        Ros2JointReachEnvironment(use_sim_time=False).build(EnvironmentBuildContext(purpose="eval"))
+    with pytest.raises(ValueError, match="does not support simulator playback"):
+        Ros2JointReachEnvironment().build(EnvironmentBuildContext(purpose="play"))
+
+
 def test_production_callback_reorders_and_rejects_invalid_joint_samples():
     transport = RclpyTransport.__new__(RclpyTransport)
     transport.definition = Ros2JointReachEnvironment()

@@ -2,11 +2,13 @@
 
 ### Requirement: Native learning comparison is an early architectural decision gate
 
-NexuML SHALL compare native Isaac Lab training and NexuML on a matched reward-bearing SO-101 reference before broad architectural expansion. The comparison SHALL freeze matching task, control, hardware, budget, seeds and evaluation protocol, disclose unavoidable algorithm differences, and measure correctness, learning outcomes, wall time, throughput, peak memory, implementation/dependency burden and external-weight local-fit suitability. It SHALL use an upstream-supported learner and a minimal native TorchRL reference where supported to isolate overhead, predeclare acceptance criteria and record the retain/simplify/narrow decision. Failure or missing evidence SHALL NOT count as approval.
+Before broad architectural expansion, NexuML SHALL compare native Isaac Lab and NexuML training on a matched reward-bearing SO-101 task. It SHALL use an upstream-supported learner and, where supported, a minimal native TorchRL reference to isolate overhead. The comparison SHALL use predeclared acceptance criteria and record whether to retain, simplify or narrow the architecture. Failed or missing evidence SHALL NOT count as approval.
 
 #### Scenario: Native and NexuML policies are trained on the same task
-- **WHEN** the predeclared matched comparison is executed
-- **THEN** revision-bound multi-seed learning and repeated performance results, deviations, maintainability evidence and a decision are published before broad distributed or provider expansion.
+- **GIVEN** the task, control settings, hardware, budget, seeds and evaluation protocol are fixed across runs
+- **WHEN** the native and NexuML learners run the matched comparison
+- **THEN** the revision-bound report gives correctness, multi-seed learning outcomes, repeated wall-time, throughput and peak-memory measurements, implementation and dependency burden, and suitability for local fits from external weights.
+- **AND** it discloses unavoidable algorithm differences and other deviations and publishes the decision before broad distributed or provider expansion.
 
 ### Requirement: Native-first policy adoption is explicit and qualified
 

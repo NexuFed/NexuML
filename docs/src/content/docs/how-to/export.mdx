@@ -107,6 +107,48 @@ Use **your exported configuration's** keys and shape (the default synthetic reci
 128 features, not 64). Expect pipeline-defined outputs, such as `latent`/`reconstructed`.
 Compare a fixed sample before/after reload for meaningful parity, not just file existence.
 
+## Run a packaged policy without training dependencies
+
+Export the full `CompiledPolicy`, not just its neural pipeline. In a separate
+environment, install the package's reviewed `requirements.txt` with the
+appropriate PyTorch wheel source. If you don't install `nexuml` itself, use
+PyTorch's package reader instead of `nexuml.core.export`. Load only a trusted
+package: the reader runs the code bundled with the policy.
+
+```python
+import torch
+from tensordict import TensorDict
+from torch.package import PackageImporter
+
+payload = PackageImporter("packages/my-policy/pipeline.package").load_pickle(
+    "nexuml_export", "artifact.pkl"
+)
+policy = payload["policy"].eval()
+```
+
+For a policy that owns preprocessing, each recording entry below contains a
+`raw` mapping of named batched tensors and an `ended` Boolean mask. Match the
+artifact's raw keys, dtypes, axes and batch sizes; keep streams in the same
+row order across steps.
+
+```python
+with torch.inference_mode():
+    state = policy.initialize_state(batch_size=(2,), device="cpu")
+    for entry in torch.load("recorded-frames.pt", weights_only=True):
+        raw = TensorDict(entry["raw"], batch_size=(2,), device="cpu")
+        actions, state = policy.step(raw, state, deterministic=True)
+        # Use actions according to the artifact's contract. Reset before
+        # consuming the next episode's first frame, only for ended rows.
+        state = policy.reset_state(state, entry["ended"])
+```
+
+If preprocessing is external, supply the declared processed tensors and
+own their per-stream history yourself; for a stateless actor, call
+`policy(observation, deterministic=True)`. An inference artifact does not
+restore a caller's live state, schedule commands or control an environment.
+See [Isaac sensors and policy state](/how-to/isaac-sensors-and-policy-state/)
+for the tested ownership and reset semantics.
+
 ## Other weight and graph formats
 
 The Python API provides `export_safetensors(...)` and `export_onnx(...)` separately from

@@ -1,6 +1,7 @@
 """Lightning-owned manual optimization; episode evaluation has a shared owner."""
 
-from typing import Any
+import logging
+from typing import TYPE_CHECKING, Any
 
 import lightning as L
 import torch
@@ -18,6 +19,9 @@ from nexuml.evaluation.policy import (
     resolve_policy_evaluation,
 )
 from nexuml.reinforcement.collector import RolloutDataset, build_collector, synchronize_policy
+
+if TYPE_CHECKING:
+    from nexuml.evaluation._process import ProcessEvaluation
 
 
 class NexuRLLightningModule(L.LightningModule):
@@ -59,6 +63,7 @@ class NexuRLLightningModule(L.LightningModule):
             raise TypeError("RL algorithms must build a checkpointable nn.Module")
         self._collector = None
         self._evaluation_cache = None
+        self._pending_evaluation: tuple[tuple, ProcessEvaluation] | None = None
         self._next_evaluation_frame = None
         self.register_buffer("frames", torch.tensor(0, dtype=torch.int64))
         self.register_buffer("batches", torch.tensor(0, dtype=torch.int64))
@@ -166,10 +171,15 @@ class NexuRLLightningModule(L.LightningModule):
         if int(self.batches) % self.training_spec.collector.policy_sync_interval_batches == 0:
             synchronize_policy(self._collector, self.algorithm.rollout_policy)
         interval = self.evaluation_spec.every_n_frames
-        if interval is not None and self._next_evaluation_frame is not None:
-            if int(self.frames) >= self._next_evaluation_frame:
-                self.evaluate_current_policy()
-                self._next_evaluation_frame = (int(self.frames) // interval + 1) * interval
+        if (
+            interval is not None
+            and self._next_evaluation_frame is not None
+            and int(self.frames) >= self._next_evaluation_frame
+        ):
+            self._request_fit_evaluation()
+            self._next_evaluation_frame = (int(self.frames) // interval + 1) * interval
+        else:
+            self._finish_snapshot(wait=False)
 
     def on_fit_start(self):
         self.fit_device = str(self.device)
@@ -181,13 +191,15 @@ class NexuRLLightningModule(L.LightningModule):
         from nexuml.tracking.logger import preflight_evaluation_media
 
         spec = self.evaluation_spec
+        if spec.process is not None and self.trainer.world_size != 1:
+            raise ValueError("CPU-process fit evaluation requires one learner process")
         preflight_evaluation_media(self.trainer.loggers, spec.video)
         if spec.every_n_frames is not None:
             self._next_evaluation_frame = (
                 int(self.frames) // spec.every_n_frames + 1
             ) * spec.every_n_frames
         if spec.at_start and int(self.frames) == 0:
-            self.evaluate_current_policy()
+            self._request_fit_evaluation()
 
     def on_fit_end(self):
         spec = self.evaluation_spec
@@ -195,14 +207,63 @@ class NexuRLLightningModule(L.LightningModule):
         if spec.episodes and (spec.at_start or spec.every_n_frames or spec.video.enabled):
             self.evaluate_current_policy()
 
-    def evaluate_current_policy(self) -> dict[str, float]:
+    def _request_fit_evaluation(self) -> None:
+        process = self.evaluation_spec.process
+        if process is not None and process.scheduling == "skip_if_busy":
+            self.evaluate_current_policy(allow_skip=True)
+        else:
+            self.evaluate_current_policy()
+
+    def _finish_snapshot(self, *, wait: bool) -> None:
+        if self._pending_evaluation is None:
+            return
+        key, pending = self._pending_evaluation
+        report = pending.result(wait=wait, check_cancelled=self._check_snapshot_cancelled)
+        if report is not None:
+            self._close_snapshot()
+            self._publish_snapshot(report)
+            self._evaluation_cache = (key, dict(report["metrics"]))
+
+    def _check_snapshot_cancelled(self) -> None:
+        if self.trainer.received_sigterm:
+            from lightning.pytorch.utilities.exceptions import SIGTERMException
+
+            raise SIGTERMException
+
+    def _close_snapshot(self) -> None:
+        if self._pending_evaluation is not None:
+            _, pending = self._pending_evaluation
+            self._pending_evaluation = None
+            pending.close()
+
+    def _publish_snapshot(self, report: dict) -> None:
+        import json
+
+        from nexuml.tracking.logger import log_text_artifact
+
+        step = report["source_training_frames"]
+        if self.trainer.loggers:
+            log_text_artifact(
+                self.trainer.loggers,
+                json.dumps(report, allow_nan=False),
+                f"evaluation-frame-{step:012d}.json",
+            )
+        self._publish_evaluation_metrics(report["metrics"], step)
+
+    def _publish_evaluation_metrics(self, metrics: dict, step: int) -> None:
+        if metrics:
+            for logger in self.trainer.loggers:
+                logger.log_metrics(metrics, step=step)
+
+    def evaluate_current_policy(self, *, allow_skip: bool = False) -> dict[str, float]:
         """Report one evaluation per unchanged policy/frame/configuration state.
 
         Returns:
-            The existing scalar episode metrics, reusing only matching local results.
+            Scalar episode metrics, or an empty dict when scheduled without waiting.
         """
         from nexuml.tracking.logger import log_evaluation_media
 
+        self._finish_snapshot(wait=not allow_skip)
         definition, spec, seed = resolve_policy_evaluation(self.scenario)
         key = (
             id(self.policy),
@@ -220,15 +281,53 @@ class NexuRLLightningModule(L.LightningModule):
         def publish(frames, metadata):
             log_evaluation_media(self.trainer.loggers, frames, metadata, spec.video, step=step)
 
-        metrics = evaluate_policy(self.policy, self.scenario, media_sink=publish, frame_step=step)
-        if metrics:
-            for logger in self.trainer.loggers:
-                logger.log_metrics(metrics, step=step)
+        if spec.process is not None and spec.episodes:
+            from nexuml.evaluation._process import ProcessEvaluation, evaluate_in_fresh_process
+
+            self._check_snapshot_cancelled()
+            if allow_skip:
+                if self._pending_evaluation is not None:
+                    _, pending = self._pending_evaluation
+                    self._publish_evaluation_metrics({"eval/rl/snapshot_skipped": 1}, step)
+                    if not self.trainer.loggers:
+                        logging.getLogger(__name__).info(
+                            "Skipped evaluation at frame %d: snapshot %d still running",
+                            step,
+                            pending.frame,
+                        )
+                else:
+                    self._pending_evaluation = (
+                        key,
+                        ProcessEvaluation(
+                            self.policy, self.scenario, owner=self, timeout_s=spec.process.timeout_s
+                        ),
+                    )
+                return {}
+            report = evaluate_in_fresh_process(
+                self.policy,
+                self.scenario,
+                owner=self,
+                timeout_s=spec.process.timeout_s,
+                check_cancelled=self._check_snapshot_cancelled,
+            )
+            metrics = report["metrics"]
+            self._publish_snapshot(report)
+        else:
+            metrics = evaluate_policy(
+                self.policy, self.scenario, media_sink=publish, frame_step=step
+            )
+            self._publish_evaluation_metrics(metrics, step)
         self._evaluation_cache = (key, dict(metrics))
         return metrics
 
     def teardown(self, stage):
-        self.close_collection()
+        self.close_fit_resources()
+
+    def close_fit_resources(self):
+        try:
+            self._close_snapshot()
+        finally:
+            self.close_collection()
 
     def close_collection(self):
         if self._collector is not None:

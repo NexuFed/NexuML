@@ -651,6 +651,15 @@ class RLVideoSpec(SpecModel):
     fps: float | None = Field(default=None, gt=0, allow_inf_nan=False)
 
 
+class ProcessEvaluationSpec(SpecModel):
+    """Evaluation in a fresh CPU process, without a shared native runtime."""
+
+    timeout_s: float = Field(default=120, gt=0, allow_inf_nan=False)
+    scheduling: Literal["blocking", "skip_if_busy"] = Field(
+        default="blocking", exclude_if=lambda value: value == "blocking"
+    )
+
+
 class RLEvaluationSpec(SpecModel):
     """Fresh episodic policy evaluation, not dataset evaluation phases."""
 
@@ -661,11 +670,16 @@ class RLEvaluationSpec(SpecModel):
     every_n_frames: int | None = Field(default=None, gt=0, strict=True)
     at_start: bool = False
     video: RLVideoSpec = Field(default_factory=RLVideoSpec)
+    process: ProcessEvaluationSpec | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
 
     @model_validator(mode="after")
     def validate_recording(self) -> Self:
         if self.video.enabled and self.episodes == 0:
             raise ValueError("evaluation.video requires evaluation.episodes > 0")
+        if self.process is not None and self.video.enabled:
+            raise ValueError("Fresh CPU-process fit evaluation does not support video")
         return self
 
 

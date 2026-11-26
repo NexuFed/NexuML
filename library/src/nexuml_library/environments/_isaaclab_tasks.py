@@ -53,7 +53,7 @@ def register_reference_tasks() -> None:
     for task, entry, config in (
         (
             "NexuML-SO101-Joint-Reach",
-            manager,
+            "nexuml_library.environments._isaaclab_so101:make_so101_environment",
             "nexuml_library.environments._isaaclab_so101:make_so101_config",
         ),
         (

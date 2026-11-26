@@ -81,7 +81,11 @@ class _Robot:
 
 def _env(num_envs=3):
     return SimpleNamespace(
-        scene={"robot": _Robot(num_envs)}, num_envs=num_envs, device="cpu", step_dt=4 / 120
+        scene={"robot": _Robot(num_envs)},
+        num_envs=num_envs,
+        device="cpu",
+        step_dt=4 / 120,
+        extras={},
     )
 
 
@@ -411,6 +415,9 @@ def test_outcomes_keep_pre_reset_goal_error_and_success():
     torch.testing.assert_close(env.joint_reach_error, before)
     assert env.joint_reach_success.all(), "reset must not overwrite the ending transition"
     assert not env.joint_reach_hold.any()
+    reported = env.extras["task_outcomes"]
+    torch.testing.assert_close(reported["joint_error_rad"], before)
+    assert reported["task_success"].all()
 
 
 def _asset_env():
@@ -474,6 +481,29 @@ def test_native_asset_validation_rejects_control_profile_changes(change, monkeyp
     with pytest.raises(ValueError, match="SO-101"):
         so101.validate_asset(env)
     assert not validated
+
+
+@pytest.mark.parametrize("mismatch", [None, "asset", "action"])
+def test_registered_builder_checks_native_asset_and_closes_on_rejection(monkeypatch, mismatch):
+    env = _asset_env()
+    calls = []
+    env.close = lambda: calls.append("close")
+    env.action_manager = SimpleNamespace(
+        active_terms=["replacement" if mismatch == "action" else "arm_action"]
+    )
+    if mismatch == "asset":
+        env.cfg.scene.robot.spawn.usd_path = "file:///replacement.usd"
+    monkeypatch.setattr(
+        so101, "import_module", lambda name: SimpleNamespace(ManagerBasedRLEnv=lambda **kwargs: env)
+    )
+    monkeypatch.setattr(so101, "_validate_asset_content", lambda: calls.append("checked"))
+    if mismatch is None:
+        assert so101.make_so101_environment() is env
+        assert calls == ["checked"]
+    else:
+        with pytest.raises(ValueError, match="SO-101"):
+            so101.make_so101_environment()
+        assert calls == (["close"] if mismatch == "asset" else ["checked", "close"])
 
 
 @pytest.mark.parametrize("change", [None, "root", "physics", "missing"])

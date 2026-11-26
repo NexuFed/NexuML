@@ -27,7 +27,7 @@ def test_sigterm_preserves_nonzero_status_and_closes_owned_collection(monkeypatc
 
     class Module:
         def __init__(self):
-            self.close_collection = Mock()
+            self.close_fit_resources = Mock()
 
     module_type = Module
     module = module_type()
@@ -42,4 +42,4 @@ def test_sigterm_preserves_nonzero_status_and_closes_owned_collection(monkeypatc
     with pytest.raises(SIGTERMException) as caught:
         namespace["fit"](owner)
     assert caught.value is error and caught.value.code == expected
-    module.close_collection.assert_called_once()
+    module.close_fit_resources.assert_called_once()

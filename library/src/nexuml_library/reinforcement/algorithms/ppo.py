@@ -18,6 +18,8 @@ from nexuml_library.reinforcement.policies import PolicyHead
 class PPO(RLAlgorithmDefinition):
     """PPO-specific value network and update settings, without a live environment."""
 
+    supports_bounded_local_fit = True
+
     critic: PipelineSpec | None = None
     clip_epsilon: float = Field(default=0.2, gt=0, lt=1)
     gamma: float = Field(default=0.99, gt=0, le=1)

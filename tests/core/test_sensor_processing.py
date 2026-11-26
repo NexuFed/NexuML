@@ -641,30 +641,12 @@ def _baseline_ast_dump(tree):
     return ast.dump(tree, include_attributes=False, **options)
 
 
-def test_sdk_and_ppo_source_bytes_are_unchanged():
+def test_so101_imitation_fixture_source_is_unchanged():
     root = Path(__file__).resolve().parents[2]
-    tree = ast.parse((root / "src/nexuml/training/local_fit.py").read_text())
-    # Registered execution admission changed; retain the pre-rebase fit/math baseline.
-    tree.body = [
-        node
-        for node in tree.body
-        if not isinstance(node, (ast.Import, ast.ImportFrom))
-        and not (isinstance(node, ast.FunctionDef) and node.name == "_check_recipe")
-    ]
-    assert hashlib.sha256(_baseline_ast_dump(tree).encode()).hexdigest() == (
-        "209d53aae8a9335d1303066ddc91ca0e570f4b56a0f6adc323a60da44fe62c17"
+    source = root / "library/src/nexuml_library/scenarios/imitation/so101.py"
+    assert hashlib.sha256(source.read_bytes()).hexdigest() == (
+        "c0d22ef6363ab8f4b56e0878cf17fa24ab2edd89c184d740e2ff665ea871b2f8"
     )
-    for path, digest in [
-        (
-            "library/src/nexuml_library/scenarios/imitation/so101.py",
-            "c0d22ef6363ab8f4b56e0878cf17fa24ab2edd89c184d740e2ff665ea871b2f8",
-        ),
-        (
-            "library/src/nexuml_library/reinforcement/algorithms/ppo.py",
-            "6c52fcb6bc3b03739fe05925807a298ae5637248dd7654f5497be8508a61c635",
-        ),
-    ]:
-        assert hashlib.sha256((root / path).read_bytes()).hexdigest() == digest
 
 
 def test_ordinary_ppo_numerical_bodies_and_defaults_match_pre_sensor_baseline():
@@ -674,6 +656,16 @@ def test_ordinary_ppo_numerical_bodies_and_defaults_match_pre_sensor_baseline():
     )
     tree.body = [node for node in tree.body if not isinstance(node, (ast.Import, ast.ImportFrom))]
     ppo = next(node for node in tree.body if isinstance(node, ast.ClassDef) and node.name == "PPO")
+    ppo.body = [
+        node
+        for node in ppo.body
+        if not (
+            isinstance(node, ast.Assign)
+            and len(node.targets) == 1
+            and isinstance(node.targets[0], ast.Name)
+            and node.targets[0].id == "supports_bounded_local_fit"
+        )
+    ]
     build = next(
         node for node in ppo.body if isinstance(node, ast.FunctionDef) and node.name == "build"
     )

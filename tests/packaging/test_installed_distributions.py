@@ -77,22 +77,31 @@ def test_library_discovery_does_not_import_robotics() -> None:
     _assert_no_source_paths()
     # Runtime discovery needs declared dependencies, unlike metadata-only artifact checks.
     code = """
-import importlib.abc, sys
+import importlib.abc, importlib.util, sys
 from pathlib import Path
 root = Path(sys.prefix).resolve()
 blocked = {'lerobot', 'newton', 'mujoco', 'jax', 'rclpy', 'omni', 'pxr', 'torchrl', 'gymnasium'}
+attempts = []
 class BlockNative(importlib.abc.MetaPathFinder):
     def find_spec(self, fullname, path=None, target=None):
         name = fullname.split('.')[0]
         if name in blocked or name.startswith(('isaaclab', 'isaacsim')):
+            attempts.append(fullname)
             raise AssertionError('unexpected native import: ' + fullname)
 sys.meta_path.insert(0, BlockNative())
 import nexuml, nexuml_library
 assert Path(nexuml.__file__).resolve().is_relative_to(root)
 assert Path(nexuml_library.__file__).resolve().is_relative_to(root)
 from nexuml.core.scenario_registry import get_scenario_registry
-assert get_scenario_registry().get('isaac-cartpole-ppo')().interaction is not None
+registry = get_scenario_registry()
+assert registry.get('isaac-cartpole-ppo')().interaction is not None
+custom = registry.get('isaac-custom-direct-cartpole-ppo')().interaction
+assert custom.environment.task.startswith('nexuml_isaac_tasks.centering_cartpole:')
+task_module = importlib.util.find_spec('nexuml_isaac_tasks.centering_cartpole')
+assert task_module and Path(task_module.origin).resolve().is_relative_to(root)
+assert 'nexuml_isaac_tasks.centering_cartpole' not in sys.modules
 assert not blocked.intersection(sys.modules)
+assert not attempts, attempts
 """
     result = subprocess.run(
         [sys.executable, "-I", "-c", code],

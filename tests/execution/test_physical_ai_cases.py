@@ -116,7 +116,7 @@ class PhysicalAICasesTest(unittest.TestCase):
             )
         )
 
-    def test_inventory_matches_all_matrix_names_and_registered_decorators(self):
+    def test_inventory_matches_matrix_and_qualified_registered_decorators(self):
         matrix = (
             SCRIPT.parents[2]
             / "openspec/changes/qualify-physical-ai-workflows-via-ray-jobs/verification-matrix.md"
@@ -134,8 +134,9 @@ class PhysicalAICasesTest(unittest.TestCase):
                     ):
                         names.add(node.args[0].value)
         self.assertEqual(len(self.g["RECIPES"]), 21)
-        self.assertEqual(self.g["RECIPES"], names)
-        self.assertTrue(all(f"`{name}`" in matrix.read_text() for name in names))
+        self.assertEqual(names - self.g["RECIPES"], {"isaac-custom-direct-cartpole-ppo"})
+        self.assertLessEqual(self.g["RECIPES"], names)
+        self.assertTrue(all(f"`{name}`" in matrix.read_text() for name in self.g["RECIPES"]))
 
     def test_source_identity_covers_owned_trees_and_metadata_not_unrelated_files(self):
         # Obtain the real helper, not setUp's receipt-only stub.

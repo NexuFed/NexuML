@@ -1,0 +1,76 @@
+---
+title: Fit an approved actor in simulation
+description: Run bounded local PPO from a versioned actor and return a numeric update without exporting trajectories.
+---
+
+Interactive `local_fit` uses a trusted installed simulation recipe and the
+same learner as ordinary NexuML training. It does not take an environment
+definition, Python code, or a checkpoint from a remote request.
+
+The qualified reference is headless, direct SO-101 joint reach on the pinned
+Isaac Lab / Kit PhysX profile. This does not qualify other tasks, Ray
+collectors, grouped policies, native RSL-RL checkpoint import, or physical
+ROS 2 online learning. For the existing dataset-only schema, see
+[SO-101 local fit](/how-to/so101-local-fit/).
+
+## Fit from an approved base
+
+The operator owns `recipe`, `version`, `approved_manifest`, `trainable_names`,
+and the frame limit. `approved_state` is the complete named numeric
+`CompiledPolicy.state_dict()`, including immutable action-adapter buffers.
+Choose a whole-rollout budget no greater than the recipe's cap.
+
+```python
+from nexuml.training import local_fit, local_fit_manifest
+from safetensors.torch import save_file
+
+expected = local_fit_manifest(
+    recipe, approved_state, trainable_names=trainable_names, global_version=version
+)
+if expected != approved_manifest:
+    raise ValueError("Local actor or supplied base does not match the approved round")
+
+# The caller owns the job and persists the result before native shutdown.
+with recipe.interaction.environment.job_scope():
+    result = local_fit(
+        trusted_recipe=recipe,
+        initial_tensors=approved_state,
+        model_manifest=approved_manifest,
+        global_version=version,
+        budget={"frames": 1024},
+        seed=0,
+        trainable_names=trainable_names,
+        device="cuda:0",
+    )
+    save_file(result.updated_tensors, "updated-actor.safetensors")
+```
+
+Run each Kit-backed fit in a **fresh process**. Kit's process shutdown
+does not return to code outside its outer job scope. Persist the receipt
+there along with the tensors; do not turn off native teardown to keep the
+process alive.
+
+## Read the receipt
+
+Schema 2 keeps the shared graph, actor semantics and tensor roles separate
+from the supplied global version and exact base tensor digest. The receipt
+contains an opaque local recipe fingerprint, the objective and ownership
+of optimizer and critic state. Both start fresh for every fit.
+
+The JSON manifest has `schema_version: 2`, `update_kind: "full"`,
+`base: {global_version, tensor_sha256}` and
+`manifest: {architecture_sha256, actor_semantics, tensors}`. Tensor entries
+are keyed by exact state name and declare `shape`, `dtype` and `role`
+(`trainable_parameter`, `frozen_parameter`, or `frozen_buffer`).
+Treat the approved base digest and version as separate from that shared
+schema. Do not generate an approval from the received tensors themselves.
+
+`result.provenance` gives physical `frames`, `completed_episodes`, PPO
+`minibatch_updates` and actual `optimizer_steps` separately. `train_windows`
+is zero for live interaction; a simulator frame is not a dataset window.
+The receipt also includes `schema_version`, `update_kind`, `model_manifest`,
+`recipe_sha256`, `objective`, `critic_mode`, `optimizer_mode`, and
+`updated_tensor_sha256`.
+The update contains only CPU actor tensors. It does not include the
+optimizer, critic, trajectories, environment or local filesystem paths.
+NexuML does not aggregate or deploy the result.

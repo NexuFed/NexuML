@@ -448,6 +448,10 @@ def test_sensor_owner_cli_resolves_the_existing_recipe_without_launch(
     from nexuml.execution.definitions import RayJobsSDKExecution
     from nexuml.core.scenario_registry import get_scenario_registry
 
+    # The rest of the suite may have loaded these in an earlier test.
+    for module in {"isaaclab", "isaacsim", *sys.modules.copy()}:
+        if module.split(".")[0] in {"isaaclab", "isaacsim"}:
+            monkeypatch.setitem(sys.modules, module, None)
     name = f"isaac-{family}-cartpole-ppo"
     factory = get_scenario_registry().get(name)
     selected = []
@@ -486,7 +490,10 @@ def test_sensor_owner_cli_resolves_the_existing_recipe_without_launch(
     assert plan["attempts"][0]["options"]["processing_owner"] == owner
     assert selected == [{"processing_owner": owner}]
     assert not output.exists()
-    assert "isaaclab" not in sys.modules and "isaacsim" not in sys.modules
+    assert not any(
+        module.split(".")[0] in {"isaaclab", "isaacsim"} and loaded is not None
+        for module, loaded in sys.modules.copy().items()
+    )
 
 
 @pytest.mark.parametrize(

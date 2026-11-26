@@ -19,6 +19,15 @@ its pipeline payload, state dict, resolved config, metadata, and dependency info
 verify reload/inference before treating the artifact as deployable. Do not silently
 substitute newly initialized weights.
 
+For ordinary simulator evaluation, the policy's typed observation and action
+contract must agree with the evaluation environment: units, frames, joint and
+agent order, control period, sensor processing, embodiment and calibration
+still matter. A different asset source or revision can be compatible if the
+provider validates the same semantics and the runtime matches its own declared
+asset. Episode reports preserve both asset identities. This check does not
+establish equivalent dynamics, authorize hardware control, or permit resuming
+a training checkpoint against a different task or asset.
+
 Build the consuming application's image from its own locked environment. Do not embed
 site-specific credentials or cluster addresses in reusable scenarios. NexuML supplies
 no public multi-tenant serving boundary or automatic cluster provisioning.

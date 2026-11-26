@@ -2,12 +2,12 @@
 
 ### Requirement: Local learning consumes one common versioned actor
 
-NexuML SHALL reuse and version the existing local-fit SDK to accept an approved shared actor state and bounded local learning recipe for compatible simulation or physical experience. The shared aggregation manifest SHALL specify architecture, named tensor roles/shapes/dtypes, trainable scope, semantic policy contract and processor/buffer ownership independently of client-specific trusted recipe, simulator, task and data provenance. The exact initial tensor digest and global version SHALL be checked. Matching tensor shape alone SHALL NOT authorize learning or aggregation. Existing NEX-234 dataset-only behavior SHALL remain supported.
+The existing local-fit SDK SHALL accept an approved shared actor and trusted bounded recipe for compatible simulated or physical experience through a versioned contract. It SHALL validate the global version, exact initial tensor digest and shared manifest separately from each client's recipe and provenance. Matching shapes alone SHALL NOT authorize learning or aggregation. Existing NEX-234 dataset-only fits SHALL remain supported.
 
 #### Scenario: Different providers receive one global actor
-- **GIVEN** compatible Isaac and MuJoCo clients have distinct trusted local recipes and a matching shared manifest
+- **GIVEN** compatible Isaac and MuJoCo clients have distinct trusted local recipes and a shared manifest specifying architecture, named tensor roles, shapes and dtypes, trainable scope, semantic policy contract and processor/buffer ownership
 - **WHEN** each receives the same approved base policy
-- **THEN** each fit begins from the exact supplied tensors and records its own recipe/runtime provenance without rejecting solely because provider identities differ.
+- **THEN** each fit begins from the exact supplied tensors and records its own recipe, simulator, task and data provenance without rejecting solely because provider identities differ.
 
 #### Scenario: A local recipe is incompatible
 - **WHEN** a supplied actor has a wrong base digest, tensor schema, control semantics, unapproved mapping or untrusted executable content
@@ -15,7 +15,15 @@ NexuML SHALL reuse and version the existing local-fit SDK to accept an approved 
 
 ### Requirement: Bounded local updates are numeric, attributable and private by default
 
-The SDK SHALL return validated full numeric updates or an explicitly supported versioned delta, base and manifest identity, trainable scope, local provenance, actual eligible frames/windows/episodes and optimizer-step counts, objective and approved finite metrics. Unapproved changes to frozen state SHALL be rejected. Raw observations, trajectories, optimizer/critic/replay state, native handles and sensitive local identifiers SHALL remain local unless separately authorized by an explicit future contract. Initial fits SHALL reset optimizer and define critic state ownership; on-policy RL SHALL use fresh compatible policy-version experience. Offline data SHALL NOT be misrepresented as on-policy experience.
+The SDK SHALL return a validated full numeric update or explicitly supported versioned delta. Its receipt SHALL identify the base, manifest, trainable scope, local provenance, objective, actual eligible frame/window/episode and optimizer-step counts, and approved finite metrics. It SHALL reject unapproved changes to frozen state. Private data and training state SHALL remain local unless a future contract explicitly authorizes disclosure.
+
+#### Scenario: A client returns an update receipt
+- **WHEN** the client returns a numeric update under the current contract
+- **THEN** raw observations, trajectories, optimizer/critic/replay state, native handles and sensitive local identifiers remain local.
+
+#### Scenario: A client initializes local training state
+- **WHEN** the client initializes a fit from an approved actor
+- **THEN** it resets the optimizer and identifies who owns the critic state. On-policy RL uses fresh experience from the compatible policy version; offline data does not qualify as on-policy experience.
 
 #### Scenario: A client performs a second externally initialized fit
 - **WHEN** a compatible new base is supplied under an approved bounded recipe
@@ -23,11 +31,19 @@ The SDK SHALL return validated full numeric updates or an explicitly supported v
 
 ### Requirement: Cross-provider handoff is demonstrated before production federation
 
-NexuML SHALL demonstrate compatible Isaac and MuJoCo local fits from a common actor, an explicit deterministic test-only reference combination, candidate reload/evaluation and a second bounded round. The eventual three-domain gate SHALL additionally use approved actual ROS 2 experience with a validated matching physical contract; fake transport and simulated episodes SHALL NOT satisfy real-data acceptance. Use a common behavior-cloning objective from genuine compatible episodes for the initial three-domain proof, with explicit equal-client and equal-domain weighting references. The real-data gate SHALL be independently executable without waiting for distributed GPU qualification. Mixed RL/imitation objectives or shared-subset configurations SHALL require separate evidence. Per-domain learning and worst-domain regressions SHALL be reported against local-only and simulator-only baselines. Physical online learning SHALL require authorized safe control and supervised bounded operation; no automatic physical deployment follows aggregation.
+NexuML SHALL demonstrate compatible Isaac and MuJoCo fits from one actor, a deterministic test-only combination, candidate reload and evaluation, and a second bounded round. The three-domain proof SHALL additionally require approved real ROS 2 experience with a validated matching physical contract and SHALL run independently of distributed GPU qualification. Mixed RL/imitation objectives or shared-subset configurations SHALL require separate evidence.
 
 #### Scenario: Compatible local results are combined in a reference fixture
 - **WHEN** valid numeric updates from the same base are returned by qualified providers
 - **THEN** a deterministic test fixture combines only declared shared parameters, reloads the candidate, evaluates it and starts a subsequent fit without claiming a deployed NexuFL round or guaranteed improvement.
+
+#### Scenario: Genuine compatible episodes are available from all three domains
+- **WHEN** Isaac, MuJoCo and approved physical ROS 2 episodes are used for the initial proof
+- **THEN** all three fits use the same behavior-cloning objective. Results compare equal-client and equal-domain weights and report per-domain learning and worst-domain regressions against local-only and simulator-only baselines.
+
+#### Scenario: A candidate is considered for physical online learning
+- **WHEN** the reference fixture produces a candidate
+- **THEN** aggregation does not deploy it. Physical online learning requires authorized safe control and supervised, bounded operation.
 
 #### Scenario: Real ROS 2 data or hardware is unavailable
 - **WHEN** only simulated or fake-transport evidence exists
@@ -43,12 +59,13 @@ NexuML SHALL expose a documented, pinned numeric model/update contract and local
 
 ### Requirement: Mixed local objectives are qualified explicitly and domain weighting is observable
 
-After the common-objective proof, NexuML SHALL support a bounded reference experiment combining compatible local simulation RL and authorized real-world offline learning updates from the exact same shared actor base. The experiment SHALL validate common actor parameter roles and physical semantics, preserve private training state, report objective and budget/count differences and update conflicts, and compare equal-client/equal-domain weighting references against common-objective, local-only and simulation-only baselines. Simulator frame count SHALL NOT silently determine real-domain contribution. Negative or inconclusive outcomes SHALL remain visible; no automatic promotion or claim of general mixed-objective compatibility follows from numeric compatibility. Production aggregation remains NexuFL-owned.
+After the common-objective proof, NexuML SHALL compare bounded simulation RL and authorized real-world offline updates from the exact same actor base. The reference experiment SHALL validate shared parameter roles and physical semantics and keep training state private. Numeric compatibility SHALL NOT imply general mixed-objective compatibility or automatic promotion. Production aggregation remains NexuFL-owned.
 
 #### Scenario: Simulators learn with PPO while a robot learns from demonstrations
 - **GIVEN** Qualified local RL and offline learning modes with the same approved shared actor manifest and starting state
 - **WHEN** Their bounded numeric updates are combined in the reference experiment
-- **THEN** The result is evaluated on held-out domains against predeclared comparison criteria, with explicit objective and weighting provenance; incompatible shared roles or regressive outcomes are reported rather than silently promoted.
+- **THEN** held-out results compare equal-client and equal-domain weighting against common-objective, local-only and simulation-only baselines using predeclared criteria.
+- **AND** the report identifies each objective, budget, count and weighting choice, update conflicts and incompatible shared roles. Negative or inconclusive outcomes remain visible.
 
 #### Scenario: Real-world experience is scarce relative to simulation
 - **WHEN** A large simulated frame count and a smaller approved real-world episode set contribute updates

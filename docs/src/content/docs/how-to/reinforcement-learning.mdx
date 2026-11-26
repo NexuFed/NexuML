@@ -170,6 +170,27 @@ mode and a fixed seed make CPU comparisons useful, not a cross-platform determin
 fails validation. Evaluation-environment overrides must retain compatible observation/action
 fields and action semantics.
 
+### Evaluate snapshots in a fresh CPU process
+
+For a CPU-capable task and one learner process, add
+`-O 'training.evaluation.process={"timeout_s":120}'` to the training command.
+The existing start, periodic and final schedule then exports a complete
+inference-only policy at each selected update boundary and waits for one
+fresh CPU evaluator. Metrics and the episode report are attributed to that
+snapshot's frame and update, not the learner's later state. A worker error
+or timeout fails the fit; required final evaluation is not skipped.
+
+Blocking is the default. To let training continue during CPU evaluation, use
+`-O 'training.evaluation.process={"timeout_s":120,"scheduling":"skip_if_busy"}'`.
+At most one worker runs at a time. If it is still busy at the next scheduled
+frame, the learner records `eval/rl/snapshot_skipped` at that frame and does
+not queue a backlog. Fit completion waits for any in-flight result and
+evaluates the final actor if that exact snapshot has not already completed.
+Cancellation stops the owned evaluator without reporting success.
+
+Neither schedule enables automatic Isaac fit evaluation, video, a separate
+evaluator GPU or Ray placement. Omit `process` to keep in-process evaluation.
+
 Task outcomes are separate from return. A provider may report boolean `task_success`
 alone, or also a finite nonnegative floating `joint_error_rad`. Evaluation emits
 `eval/rl/task_success_rate` using any-step success once per episode; it emits
@@ -848,10 +869,11 @@ for scored trials.
 
 ### Later hardware mapping
 
-Hardware can expose the same high-level joint topics and a separately reviewed episode
-initialization hook. Set `use_sim_time=False` for wall-clock hardware and configure
-correct joint names, bounds, topics, period and timeouts. This is **not authorization to
-run exploratory RL on a robot**: an operator must review the task and controller first.
+This joint-reach runtime is simulation-only. It rejects `use_sim_time=False`
+and playback before connecting to ROS, and must be pointed at an isolated
+simulation graph. Do not map its simulation reset service onto hardware. A
+physical runtime needs a separately qualified controller and episode
+initialization procedure; the transport alone does not authorize control or learning.
 
 Robot drivers, real-time servo loops, physical limits, collision protection, safety
 interlocks and emergency stops remain below/outside NexuML. Configured action bounds

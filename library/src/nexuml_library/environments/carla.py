@@ -65,10 +65,12 @@ class CarlaLaneFollowingEnvironment(EnvironmentDefinition):
         )
 
     def build(self, context: EnvironmentBuildContext):
+        if context.purpose == "play":
+            raise ValueError("CARLA policy playback is not qualified")
         if context.num_envs != 1 or context.worker_rank != 0:
             raise ValueError("CARLA requires one direct collector and a dedicated server")
         try:
-            import carla  # ty: ignore[import-not-found]
+            import carla  # ty: ignore[unresolved-import]
         except ImportError as error:
             raise ImportError(
                 "CARLA requires a matching simulator server and CARLA Python client built for "
@@ -100,6 +102,7 @@ class _CarlaRuntime:
             settings.max_substep_delta_time = 0.01
             settings.max_substeps = 10
             self.world.apply_settings(settings)
+            self._frame = self.world.get_snapshot().frame
             self.map = self.world.get_map()
         except BaseException:
             self.close()
@@ -125,6 +128,7 @@ class _CarlaRuntime:
         if self.closed:
             raise RuntimeError("CARLA environment is closed")
         self.ready = False
+        self._snapshot_at(self._frame)
         self._destroy_actors()
         self.frames = Queue()
         self.collided = False
@@ -166,8 +170,17 @@ class _CarlaRuntime:
     def _on_collision(self, event):
         self.collided = True
 
+    def _snapshot_at(self, frame):
+        snapshot = self.world.get_snapshot()
+        if snapshot.frame != frame:
+            raise RuntimeError("CARLA world frame advanced outside the owned tick")
+        return snapshot
+
     def _observe(self):
         frame = self.world.tick(self.definition.timeout_s)
+        if frame != self._frame + 1:
+            raise RuntimeError("CARLA world did not advance by exactly one owned tick")
+        self._frame = frame
         deadline = monotonic() + self.definition.timeout_s
         while True:
             remaining = deadline - monotonic()
@@ -185,7 +198,11 @@ class _CarlaRuntime:
                 )
         rgb = np.frombuffer(image.raw_data, dtype=np.uint8).reshape(image.height, image.width, 4)
         rgb = rgb[:, :, 2::-1].transpose(2, 0, 1).copy()
-        transform, velocity = self.vehicle.get_transform(), self.vehicle.get_velocity()
+        snapshot = self._snapshot_at(frame)
+        ego = snapshot.find(self.vehicle.id)
+        if ego is None:
+            raise RuntimeError("CARLA ego actor missing from the camera's world frame")
+        transform, velocity = ego.get_transform(), ego.get_velocity()
         speed = math.sqrt(velocity.x**2 + velocity.y**2 + velocity.z**2)
         waypoint = self.map.get_waypoint(transform.location)
         offset, heading, off_lane = 0.0, 0.0, waypoint is None
@@ -216,6 +233,7 @@ class _CarlaRuntime:
             raise ValueError("CARLA requires unbatched actions")
         steer, throttle, brake = actions["action"].detach().cpu().tolist()
         self.ready = False
+        self._snapshot_at(self._frame)
         self.vehicle.apply_control(
             self.carla.VehicleControl(steer=steer, throttle=throttle, brake=brake)
         )

@@ -8,7 +8,7 @@ import tempfile
 from collections.abc import Callable, Iterable, Sequence
 from contextlib import ExitStack, contextmanager
 from pathlib import Path
-from typing import TypeAlias, overload
+from typing import TYPE_CHECKING, TypeAlias, overload
 
 import pandas as pd
 import torch
@@ -19,9 +19,11 @@ from tqdm.auto import tqdm
 
 from nexuml.data.dataset import NexuDataset
 from nexuml.data.export.backend import ExportConfig, get_export_backend
-from nexuml.data.module import NexuDataModule
 from nexuml.storage.s3 import is_s3_uri
 from nexuml.core.types import WriterSpec
+
+if TYPE_CHECKING:
+    from nexuml.data.module import NexuDataModule
 
 logger = logging.getLogger(__name__)
 

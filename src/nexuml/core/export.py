@@ -1072,6 +1072,23 @@ def load_package(
     return policy if policy is not None else pipeline, config, metadata
 
 
+def _restore_packaged_policy(model, metadata) -> CompiledPolicy:
+    if (
+        metadata.get("artifact_kind") != "policy"
+        or not callable(model)
+        or any(
+            getattr(model, name, None) is None
+            for name in ("pipeline", "action_adapter", "contract")
+        )
+        or not callable(getattr(model, "parameters", None))
+    ):
+        raise ValueError("Expected a complete exported policy package")
+    policy = cast(CompiledPolicy, model)
+    # torch.package isolates model classes; restore portable contract metadata.
+    policy.contract = InteractionContract.model_validate(metadata["interaction_contract"])
+    return policy
+
+
 def load_inference_package(
     path: Path,
 ) -> tuple[CompiledPipeline | CompiledPolicy, ResolvedConfig, dict[str, Any]]:

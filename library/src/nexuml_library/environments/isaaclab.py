@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Literal
 import torch
 from pydantic import Field, model_validator
 
-from nexuml.core.components import EnvironmentBuildContext, EnvironmentDefinition
+from nexuml.core.components import EnvironmentBuildContext, EnvironmentDefinition, PlaybackViewer
 from nexuml.core.discovery import environment
 from nexuml.core.types import (
     InteractionContract,
@@ -136,6 +136,12 @@ class IsaacLabEnvironment(EnvironmentDefinition):
                 raise ValueError("Native observation bindings must exactly match the contract")
             if set(self.contract.actions) != {bindings.action}:
                 raise ValueError("Native single-agent tasks require one explicitly bound action")
+            if bindings.direct_controls is not None:
+                physical = self.contract.actions[bindings.action].physical
+                if physical is None or physical.control_mode is None:
+                    raise ValueError(
+                        "Procedural direct controls require a typed physical action contract"
+                    )
         return self
 
     def native_bindings(self) -> IsaacBindings:
@@ -218,6 +224,15 @@ class IsaacLabEnvironment(EnvironmentDefinition):
             physical=system_physical,
         )
 
+    def validate_local_fit(self) -> None:
+        """Allow local simulation learning without viewer access.
+
+        Raises:
+            ValueError: If a viewer has been configured for this recipe.
+        """
+        if self.viewer is not None:
+            raise ValueError("Interactive local fit requires headless simulation")
+
     def validate_training(
         self, training: ReinforcementLearningSpec, *, device: str | None = None
     ) -> None:
@@ -271,7 +286,29 @@ class IsaacLabEnvironment(EnvironmentDefinition):
                 "--override training.evaluation.episodes=3"
             )
 
+    def validate_playback(self, viewer: PlaybackViewer) -> None:
+        """Require an explicit play spectator configuration before starting Viser.
+
+        Raises:
+            ValueError: If the selected viewer is unqualified or not opted in.
+        """
+        if viewer == "viser":
+            if self.viewer is None or "play" not in self.viewer.purposes:
+                raise ValueError(
+                    "Viser playback requires an explicit ViserSpec with purpose 'play'"
+                )
+        elif viewer != "headless":
+            raise ValueError(f"Isaac {viewer} playback is not qualified")
+
     def build(self, context: EnvironmentBuildContext) -> "EnvironmentRuntime":
+        if context.purpose == "play":
+            self.validate_playback(context.viewer or "headless")
+            if context.render_mode is not None and (
+                context.viewer not in (None, "headless")
+                or self.physics != "isaacsim_physx"
+                or context.num_envs != 1
+            ):
+                raise ValueError("Isaac playback recording requires headless N=1 Kit PhysX")
         from nexuml_library.environments._isaaclab_runtime import _IsaacLabRuntime
 
         return _IsaacLabRuntime(self, context)

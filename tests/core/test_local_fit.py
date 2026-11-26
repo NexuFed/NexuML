@@ -3,6 +3,7 @@
 from dataclasses import asdict
 import importlib
 import json
+from pathlib import Path
 from typing import Any
 
 import pandas as pd
@@ -14,6 +15,7 @@ from nexuml.core.compiler import compile
 from nexuml.core.components import DataSourceDefinition
 from nexuml.core.discovery import data_source
 from nexuml.core.pipeline import CompiledPipeline
+from nexuml.core.policy import CompiledPolicy
 from nexuml.core.serialization import lower_model
 from nexuml.core.types import (
     DataSpec,
@@ -27,7 +29,7 @@ from nexuml.core.types import (
 )
 from nexuml.data.dataset import NexuDataset
 from nexuml.training import local_fit, local_fit_manifest
-from nexuml.training.local_fit import _check_recipe
+from nexuml.training.local_fit import _check_recipe, _state_hash
 from nexuml_library.action_adapters.adapters import DirectActionAdapter
 from nexuml_library.environments.isaaclab import IsaacLabEnvironment
 from nexuml_library.layers.head.regression_head import LatentRegressionHead
@@ -87,6 +89,117 @@ class UnitDataset(NexuDataset):
         if self.broken == "nan":
             target[0] = float("nan")
         return TensorDict({"observation": value}, []), TensorDict({"action": target}, [])
+
+
+def _interactive_example():
+    from nexuml_library.scenarios.reinforcement.isaaclab import isaac_so101_joint_reach_ppo
+
+    scenario = isaac_so101_joint_reach_ppo(total_frames=256, frames_per_batch=128, num_envs=8)
+    actor = CompiledPolicy.from_pipeline(compile(scenario))
+    return scenario, actor.state_dict()
+
+
+def test_state_hash_compares_values_not_singleton_strides():
+    value = torch.tensor(0.5).expand(1)
+    assert value.stride() == (0,)
+    assert _state_hash({"action": value}) == _state_hash({"action": torch.tensor([0.5])})
+    assert _state_hash({"action": value}) != _state_hash({"action": torch.tensor([-0.5])})
+
+
+def test_shared_actor_consumer_fixture_matches_complete_native_policy_state(monkeypatch):
+    def no_runtime(*args, **kwargs):
+        pytest.fail("An actor manifest must not allocate a simulator")
+
+    monkeypatch.setattr(IsaacLabEnvironment, "build", no_runtime)
+    scenario, state = _interactive_example()
+    manifest = local_fit_manifest(scenario, state, global_version="round-1")
+    path = Path(__file__).parents[1] / "fixtures/shared_actor_local_fit_contract.json"
+    fixture = json.loads(path.read_text())
+    assert manifest["schema_version"] == fixture["schema_version"]
+    assert manifest["update_kind"] == fixture["update_kind"]
+    assert list(manifest["base"]) == fixture["base_fields"]
+    assert list(manifest["manifest"]) == fixture["manifest_fields"]
+    assert fixture["tensors"] == manifest["manifest"]["tensors"]
+    assert json.loads(json.dumps(manifest)) == manifest
+
+
+def test_shared_actor_manifest_excludes_local_provenance_but_not_calibration():
+    scenario, state = _interactive_example()
+    assert scenario.interaction is not None
+    provider = scenario.interaction.environment
+    data = provider.describe().model_dump()
+    data["physical"].update(asset_id="alternate-asset", asset_source="alternate-provider")
+    alternate = scenario.model_copy(deep=True)
+    assert alternate.interaction is not None
+
+    def manifest():
+        alternate.interaction.environment = provider.model_copy(
+            update={"contract": provider.describe().model_validate(data)}
+        )
+        return local_fit_manifest(alternate, state, global_version="round-1")
+
+    original = local_fit_manifest(scenario, state, global_version="round-1")
+    alternate.training.total_frames *= 2
+    assert manifest() == original
+    data["physical"]["calibration_id"] = "different-calibration"
+    other = manifest()
+    assert other["base"] == original["base"] and other["manifest"] != original["manifest"]
+
+
+@pytest.mark.parametrize(
+    "reason",
+    ["version", "base", "semantics", "buffer", "nan", "budget", "dataset", "provider", "scope"],
+)
+def test_interactive_local_fit_preflight_does_not_allocate_or_optimize(reason, monkeypatch):
+    import copy
+
+    from nexuml.training.reinforcement import NexuRLLightningModule
+    from nexuml_library.environments.ros2.joint_reach import Ros2JointReachEnvironment
+
+    scenario, state = _interactive_example()
+    manifest = local_fit_manifest(scenario, state, global_version="round-1")
+    assert scenario.interaction is not None
+    manifest = copy.deepcopy(manifest)
+    args: dict[str, Any] = {"global_version": "round-1", "budget": {"frames": 128}}
+    weight = next(iter(state))
+    if reason == "version":
+        args["global_version"] = "round-0"
+    elif reason == "base":
+        state[weight] = state[weight] + 1
+    elif reason == "nan":
+        state[weight].fill_(torch.nan)
+    elif reason == "semantics":
+        manifest["manifest"]["actor_semantics"]["control_period_s"] = 0.1
+    elif reason == "buffer":
+        state["action_adapter.high"].mul_(2)
+    elif reason == "budget":
+        args["budget"] = {"frames": 384}
+    elif reason == "dataset":
+        args["local_data"] = DataSpec()
+    elif reason == "provider":
+        scenario.interaction.environment = Ros2JointReachEnvironment()
+    else:
+        args["trainable_names"] = ("action_adapter.high",)
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("Unauthorized fit allocated a runtime or optimizer")
+
+    monkeypatch.setattr(IsaacLabEnvironment, "build", forbidden)
+    monkeypatch.setattr(Ros2JointReachEnvironment, "build", forbidden)
+    monkeypatch.setattr(NexuRLLightningModule, "configure_optimizers", forbidden)
+    match = {
+        "buffer": "immutable",
+        "nan": "finiteness",
+        "budget": "frame budget",
+        "dataset": "dataset",
+        "provider": "does not support",
+        "scope": "trainable parameter",
+    }.get(reason, "manifest or approved base")
+    monkeypatch.setattr(IsaacLabEnvironment, "validate_training", lambda *args, **kwargs: None)
+    with pytest.raises(ValueError, match=match):
+        local_fit(
+            trusted_recipe=scenario, initial_tensors=state, model_manifest=manifest, seed=0, **args
+        )
 
 
 def test_local_fit_requires_registered_local_execution(tmp_path):

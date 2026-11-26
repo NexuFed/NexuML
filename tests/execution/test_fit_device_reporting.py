@@ -31,6 +31,7 @@ def test_fit_hook_captures_device_before_teardown_without_changing_state(kind, d
     if kind == "supervised":
         owner.pipeline = SimpleNamespace(call_layer_hook=Mock())
     else:
+        from nexuml.core.types import RLEvaluationSpec
         from nexuml.tracking import logger
 
         monkeypatch.setattr(logger, "preflight_evaluation_media", Mock())
@@ -38,9 +39,7 @@ def test_fit_hook_captures_device_before_teardown_without_changing_state(kind, d
             interaction=SimpleNamespace(environment=SimpleNamespace(validate_training=validate))
         )
         owner.training_spec = SimpleNamespace(model_copy=lambda **kwargs: kwargs)
-        owner.evaluation_spec = SimpleNamespace(
-            every_n_frames=None, at_start=False, video=SimpleNamespace(enabled=False)
-        )
+        owner.evaluation_spec = RLEvaluationSpec(episodes=0)
         owner.trainer = SimpleNamespace(loggers=[])
     namespace["on_fit_start"](owner)
     owner.device = "cpu"  # Simulated Lightning teardown, not the recorded fit placement.

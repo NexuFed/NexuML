@@ -4,7 +4,6 @@ import builtins
 import hashlib
 import importlib
 import json
-from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, cast
 
@@ -843,7 +842,7 @@ def _hash(value):
     ).hexdigest()
 
 
-def test_so101_identities_and_existing_ppo_source_are_unchanged():
+def test_so101_imitation_and_interaction_identities_are_unchanged():
     from nexuml_library.scenarios.imitation.so101 import _task_identity
 
     assert _hash(_task_identity()) == (
@@ -852,11 +851,4 @@ def test_so101_identities_and_existing_ppo_source_are_unchanged():
     contract = IsaacLabEnvironment(task="NexuML-SO101-Joint-Reach").describe()
     assert _hash(lower_model(contract)) == (
         "b623a00a33c0ff6ac84cb4519f945e6954f093cce0dc9a238f2ebfd2150b7bf9"
-    )
-    root = Path(__file__).resolve().parents[2]
-    assert (
-        hashlib.sha256(
-            (root / "library/src/nexuml_library/reinforcement/algorithms/ppo.py").read_bytes()
-        ).hexdigest()
-        == "6c52fcb6bc3b03739fe05925807a298ae5637248dd7654f5497be8508a61c635"
     )

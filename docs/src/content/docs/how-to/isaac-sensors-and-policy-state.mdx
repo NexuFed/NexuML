@@ -218,7 +218,9 @@ semantics, not every native camera task or renderer.
 
 For actor-only deployment, export the complete `CompiledPolicy` using
 `export_package(policy, output)`, not just its neural pipeline; reload with
-`load_inference_package(output)`. The artifact preserves weights, processing
+`load_inference_package(output)` or use the
+[standalone package reader](/how-to/export/#run-a-packaged-policy-without-training-dependencies).
+The artifact preserves weights, processing
 ownership/definition, initial/reset semantics and physical/temporal contracts,
 **not a live caller's history**. Initialize fresh state after loading, or supply
 the declared processed interface for an external owner. Actor inference does not

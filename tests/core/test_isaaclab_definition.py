@@ -15,7 +15,7 @@ from tensordict import TensorDict
 
 from nexuml.cli.overrides import apply_overrides
 from nexuml.core.compiler import compile
-from nexuml.core.components import EnvironmentDefinition
+from nexuml.core.components import EnvironmentBuildContext, EnvironmentDefinition
 from nexuml.core.config import ResolvedConfig
 from nexuml.core.policy import CompiledPolicy
 from nexuml.core.scenario_registry import get_scenario_registry
@@ -36,6 +36,7 @@ from nexuml_library.action_adapters.adapters import GaussianActionAdapter
 from nexuml_library.environments.isaaclab import (
     IsaacLabEnvironment,
     IsaacBindings,
+    ViserSpec,
     isaac_task_config,
 )
 from nexuml_library.environments._isaaclab_tasks import configure_state_reference
@@ -60,6 +61,19 @@ _REFERENCES = [
         1 / 30,
     ),
 ]
+
+
+def test_isaac_play_rejects_unqualified_modes_before_native_startup():
+    definition = IsaacLabEnvironment(viewer=ViserSpec())
+    with pytest.raises(ValueError, match="explicit ViserSpec"):
+        definition.build(EnvironmentBuildContext(purpose="play", device="cuda:0", viewer="viser"))
+    with pytest.raises(ValueError, match="recording requires headless N=1 Kit PhysX"):
+        IsaacLabEnvironment(physics="newton_mjwarp").build(
+            EnvironmentBuildContext(purpose="play", device="cuda:0", render_mode="rgb_array")
+        )
+    for mode in ("local", "webrtc"):
+        with pytest.raises(ValueError, match=f"{mode} playback is not qualified"):
+            definition.build(EnvironmentBuildContext(purpose="play", viewer=mode))
 
 
 @pytest.mark.parametrize("factory,name,task,obs_size,action_size,period", _REFERENCES)
@@ -465,6 +479,7 @@ def test_fresh_discovery_yaml_compile_and_inference_forbid_native_imports():
         for name in (
             'isaac-cartpole-ppo', 'isaac-franka-reach-ppo',
             'isaac-so101-joint-reach-ppo', 'isaac-custom-cartpole-ppo',
+            'isaac-custom-direct-cartpole-ppo',
         ):
             scenario = registry.get(name)()
             restored = ResolvedConfig.from_yaml(ResolvedConfig.from_scenario(scenario).to_yaml())
