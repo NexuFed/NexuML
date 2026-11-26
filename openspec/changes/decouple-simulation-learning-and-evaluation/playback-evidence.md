@@ -456,6 +456,23 @@ network listener was created. Exact source hashes, captures and logs:
 - `/tmp/opencode/nex212-local-cli-a6fIY6/`
 - `/tmp/opencode/nex212-local-preflight-pEiUsG/`
 
+In a matched pair of fresh processes at `e38e4d14`, the same actor, seed,
+and 24-tick/two-environment budget produced bit-identical observations
+and actions in local and headless modes (maximum absolute difference
+zero). Both processes cleared their native contexts. Receipt:
+`/tmp/opencode/nex212-local-trajectory-rD4o3u/`.
+
+The hardened entry point rejects the vendor `--no-window` flag and
+returning-close worker scope before native allocation. It checks Kit's
+native OS window handle as well as its viewport, because a headless
+Kit app can have a viewport object. With the windowing binding loaded,
+the same public CLI completed 48 transitions and exited 0; a nonempty
+but nonexistent display exited nonzero with an X11 error and no
+playback receipt. The focused suite passed 76 tests, including both
+conflicting launch modes. Receipts:
+`/tmp/opencode/nex212-window-guards-gv7esm/` and
+`/tmp/opencode/nex212-window-binding-cUggU1/`.
+
 This qualifies a prepared local X11 viewport for state-only,
 single-agent PhysX play. It does not qualify forwarded Windows X11,
 TigerVNC, native WebRTC, or a Kit training/evaluation spectator. Keep

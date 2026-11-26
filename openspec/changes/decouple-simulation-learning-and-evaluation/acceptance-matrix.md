@@ -247,6 +247,20 @@ diagnostics, rendered links verified).
 Logs: `/tmp/opencode/rollout-final-standard-LWXuuh/pytest.log` and
 `/tmp/opencode/remote-play-docs-yAehUP/docs.log`.
 
+The local Kit candidate (`e38e4d14`) passed **3,760 tests and 604
+subtests** (16 skipped, 128 deselected) with the same standard marker
+selection, in 474.79 s. The before/after input hash matched the committed
+candidate:
+`9d2b868cb6020b7847d87e3ae86b7f50086589ad597eb91be95b12f23ae1753a`.
+Ruff and type checking of the changed product modules passed. Whole-tree
+`ty` in this prepared environment reported the same 126 diagnostics on
+the candidate and its pre-viewer baseline, including unavailable ROS and
+Kubernetes modules and pre-existing test/library typing diagnostics.
+Docs and strict change validation passed. Logs:
+`/tmp/opencode/nex212-local-viewport-standard-94ChtB/`,
+`/tmp/opencode/nex212-ty-baseline-ivndkn/` and
+`/tmp/opencode/nex212-local-viewport-docs-pjXs6q/`.
+
 ## Spec precedence for this candidate
 
 - The original Isaac [rollout](../add-isaaclab-gpu-robotics/specs/isaaclab-rollout-collection/spec.md)

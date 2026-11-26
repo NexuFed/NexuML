@@ -215,3 +215,14 @@ reset and timestamp semantics as a qualified simulation mapping. Keep
 hold-out splits by whole episode and use a common offline objective first.
 No real episodes or matching physical mapping were supplied; the Cartpole
 proof is not a physical robot mapping or authorization to actuate hardware.
+
+Public metadata did not supply a direct substitute. The
+[ROS Physical AI demo rosbags](https://github.com/ros-physical-ai/demos/blob/main/docs/demos/pretrained-demo.md)
+were recorded in Gazebo. The separately published Apache-2.0
+[real SO-101 ROS 2 pick-and-place recordings](https://huggingface.co/datasets/legalaspro/so101_pickplace_auto_v1/blob/5f6a8322afe3a65ac82388bbdae08f3924e68339/README.md)
+are a possible future input, not the paired Cartpole contract or the
+fixed-gripper SO-101 reaching recipe. They use six joint positions and
+commands, including the gripper, at 50 Hz. A shared Isaac/MuJoCo/physical
+task and verified calibration, action and timing mapping are still
+required before fitting. The published dataset file list contains no
+original bags or robot-specific calibration. Only metadata was inspected.

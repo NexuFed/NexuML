@@ -87,6 +87,22 @@ def test_isaac_local_play_requires_prepared_display(monkeypatch):
         definition.build(EnvironmentBuildContext(purpose="play", viewer="local", device="cuda:0"))
 
 
+@pytest.mark.parametrize("returning_close", [True, False])
+def test_isaac_local_play_rejects_conflicting_launch_modes(monkeypatch, returning_close):
+    monkeypatch.setenv("DISPLAY", ":99")
+    monkeypatch.delenv("LIVESTREAM", raising=False)
+    definition = IsaacLabEnvironment(physics="isaacsim_physx")
+    if returning_close:
+        scope = definition.rollout_scope()
+        message = "requires a direct job scope"
+    else:
+        monkeypatch.setattr(sys, "argv", ["play", "--no-window"])
+        scope = definition.job_scope()
+        message = "cannot use the native --no-window flag"
+    with scope, pytest.raises(ValueError, match=message):
+        definition.build(EnvironmentBuildContext(purpose="play", viewer="local", device="cuda:0"))
+
+
 @pytest.mark.parametrize("factory,name,task,obs_size,action_size,period", _REFERENCES)
 def test_static_contract_identity_configuration_and_inference(
     factory, name, task, obs_size, action_size, period, monkeypatch

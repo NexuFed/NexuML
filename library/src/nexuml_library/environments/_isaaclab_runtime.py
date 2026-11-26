@@ -160,6 +160,11 @@ def _launch_environment(
         _process_launcher, owner._launcher = owner._launcher, None
     if local:
         app = import_module("omni.kit.app").get_app()
+        # This binding registers the native Window type returned by omni.appwindow.
+        import_module("carb.windowing")
+        window = import_module("omni.appwindow").get_default_app_window()
+        if window is None or not window.get_window():
+            raise RuntimeError("Isaac local playback could not open an X11 window")
         manager = app.get_extension_manager()
         if any(manager.get_enabled_extension_id(name) for name in _KIT_EDITOR_EXTENSIONS):
             raise RuntimeError("Isaac local playback cannot load Kit authoring extensions")
@@ -217,14 +222,19 @@ def _create_environment(owner, definition, context):
         and (context.purpose != "play" or context.viewer == "viser")
     )
     local = context.purpose == "play" and context.viewer == "local"
-    if local and (
-        not os.environ.get("DISPLAY")
-        or os.environ.get("HEADLESS", "0") != "0"
-        or os.environ.get("XR", "0") != "0"
-    ):
-        raise ValueError(
-            "Isaac local playback requires a prepared X11 display with HEADLESS=0 and XR=0"
-        )
+    if local:
+        if _process_returning_close:
+            raise ValueError("Isaac local playback requires a direct job scope")
+        if "--no-window" in sys.argv:
+            raise ValueError("Isaac local playback cannot use the native --no-window flag")
+        if (
+            not os.environ.get("DISPLAY")
+            or os.environ.get("HEADLESS", "0") != "0"
+            or os.environ.get("XR", "0") != "0"
+        ):
+            raise ValueError(
+                "Isaac local playback requires a prepared X11 display with HEADLESS=0 and XR=0"
+            )
     if device.type != "cuda" or not torch.cuda.is_available():
         raise ValueError("Isaac Lab requires a working single-GPU CUDA device")
     if context.purpose == "eval" and context.num_envs != 1:
