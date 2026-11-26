@@ -202,6 +202,12 @@ passed **3,739 tests and 604 subtests** (16 skipped, 124 deselected) in
 `6a491a8da1af70a525d65005832e06900da205dd8136846de1310ac692d0b635`.
 Log: `/tmp/opencode/nexuml-native-receipt-regression-0sDVRT/pytest.log`.
 
+The standard regression for acknowledged native rollout shutdown
+(`808921d7`) passed **3,744 tests and 604 subtests** (16 skipped, 125
+deselected) in 565.72 s. The recorded input hash matched the commit:
+`04a105a86a5e9a1933da9a04487aa07faf71280b4b3cc3d34818df6a8a3a822c`.
+Log: `/tmp/opencode/rollout-scope-standard-qBhSfr/pytest.log`.
+
 ## Spec precedence for this candidate
 
 - The original Isaac [rollout](../add-isaaclab-gpu-robotics/specs/isaaclab-rollout-collection/spec.md)
