@@ -1,5 +1,7 @@
 """Private conversion of NexuML tensor interaction semantics to TorchRL."""
 
+from contextlib import ExitStack
+
 import torch
 from tensordict import TensorDict
 
@@ -16,6 +18,7 @@ class _TorchRLEnvironmentAdapter(EnvBase):
     def __init__(self, runtime, device="cpu", seed=None):
         device = torch.device(device)
         self.runtime = runtime
+        self._owned_resources: ExitStack | None = None
         contract = runtime.contract
         self._grouped = bool(contract.groups)
         batch = (
@@ -279,6 +282,11 @@ class _TorchRLEnvironmentAdapter(EnvBase):
         self._seed = seed
 
     def close(self, *, raise_if_closed=True):
-        if not self.is_closed:
-            self.runtime.close()
+        if self.is_closed:
+            return
         self.is_closed = True
+        if self._owned_resources is None:
+            self.runtime.close()
+        else:
+            resources, self._owned_resources = self._owned_resources, None
+            resources.close()

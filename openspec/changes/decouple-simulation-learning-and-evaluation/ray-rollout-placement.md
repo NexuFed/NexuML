@@ -34,3 +34,16 @@ env -u RAY_ADDRESS CUDA_VISIBLE_DEVICES='' .venv/bin/python -m pytest \
 Receipts: `/tmp/opencode/rv-x0oJJ9/probe.log` and
 `/tmp/opencode/rb-AJNTEi/pytest.log`. No remote native Kit worker, GPU
 rollout, two-node topology or grouped distributed learner is qualified.
+
+## Worker-owned scope (3.2, CPU slice)
+
+Distributed factories enter the provider's `job_scope()` in the rollout
+worker before building the environment, and close the runtime before
+leaving that scope. Direct collection retains the caller's whole-job
+scope. The CPU Ray trace observed `enter → build → close → leave` in each
+worker PID on iterator exhaustion, learner failure, and interruption.
+A failed build also unwound its scope. The combined Ray suite passed
+**48 tests**; **202** non-system evaluation, grouped-learning, and
+Isaac preflight checks passed separately. Ray receipt:
+`/tmp/opencode/rw-vjuOZy/pytest.log`. Native Kit lifetime and GPU placement
+remain unqualified.

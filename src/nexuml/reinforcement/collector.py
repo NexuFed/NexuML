@@ -1,5 +1,6 @@
 """Execution-local collector factories and the Lightning iterable bridge."""
 
+from contextlib import ExitStack
 from dataclasses import dataclass, replace
 from typing import Any, cast
 
@@ -17,16 +18,19 @@ class EnvironmentFactory:
 
     definition: EnvironmentDefinition
     context: EnvironmentBuildContext
+    owns_job_scope: bool = False
 
     def __call__(self):
         from nexuml.reinforcement.torchrl_env import _TorchRLEnvironmentAdapter
 
-        runtime = self.definition.build(self.context)
-        try:
-            return _TorchRLEnvironmentAdapter(runtime, self.context.device, self.context.seed)
-        except BaseException:
-            runtime.close()
-            raise
+        with ExitStack() as resources:
+            if self.owns_job_scope:
+                resources.enter_context(self.definition.job_scope())
+            runtime = self.definition.build(self.context)
+            resources.callback(runtime.close)
+            adapter = _TorchRLEnvironmentAdapter(runtime, self.context.device, self.context.seed)
+            adapter._owned_resources = resources.pop_all()
+            return adapter
 
 
 def _ray_placement_init(placement: RayCollectorSpec) -> dict[str, Any]:
@@ -120,6 +124,7 @@ def build_collector(definition, training: ReinforcementLearningSpec, policy, dev
                 worker_rank=rank + index,
                 seed=None if context.seed is None else context.seed + index * context.num_envs,
             ),
+            owns_job_scope=spec.backend != "direct",
         )
         for index in range(spec.num_collectors)
     ]

@@ -1,5 +1,6 @@
 """Opted-in real Ray proof: factories, copied weights, exhaustion and learner failure."""
 
+from contextlib import contextmanager
 import json
 import os
 import signal
@@ -11,6 +12,7 @@ from uuid import uuid4
 
 import pytest
 import torch
+from pydantic import PrivateAttr
 
 from nexuml.core.components import EnvironmentBuildContext
 from nexuml.core.discovery import environment
@@ -21,7 +23,7 @@ from nexuml.core.types import (
     ReinforcementLearningSpec,
     RLEvaluationSpec,
 )
-from nexuml.reinforcement.collector import build_collector, synchronize_policy
+from nexuml.reinforcement.collector import EnvironmentFactory, build_collector, synchronize_policy
 from nexuml.training.lightning import NexuSession
 from nexuml_library.environments.gymnasium import GymnasiumEnvironment
 from nexuml_library.reinforcement.algorithms.ppo import PPO
@@ -77,21 +79,33 @@ def traced_environment(tmp_path):
     @environment(f"RayLifecycleTest_{uuid4().hex}")
     class TracedGym(GymnasiumEnvironment):
         events: str
+        _scope_pid: int | None = PrivateAttr(default=None)
+
+        def _record(self, event, rank=None):
+            with open(self.events, "a") as output:
+                output.write(json.dumps([event, os.getpid(), rank]) + "\n")
+
+        @contextmanager
+        def job_scope(self):
+            assert self._scope_pid is None
+            self._scope_pid = os.getpid()
+            self._record("enter")
+            try:
+                yield
+            finally:
+                self._record("leave")
+                self._scope_pid = None
 
         def build(self, context: EnvironmentBuildContext):
+            assert self._scope_pid == os.getpid()
             runtime = super().build(context)
-            path = self.events
-
-            def record(event):
-                with open(path, "a") as output:
-                    output.write(json.dumps([event, os.getpid(), context.worker_rank]) + "\n")
-
-            record("build")
+            self._record("build", context.worker_rank)
             close = runtime.close
 
             def traced_close():
+                assert self._scope_pid == os.getpid()
                 close()
-                record("close")
+                self._record("close", context.worker_rank)
 
             runtime.close = traced_close
             return runtime
@@ -106,6 +120,28 @@ def assert_remote_environments_closed(definition):
     assert len(builds) == 2 and all(pid != os.getpid() for pid, _ in builds)
     assert {rank for _, rank in builds} == {0, 1}
     assert builds == closes
+    for pid, _ in builds:
+        assert [event for event, owner, _ in events if owner == pid] == [
+            "enter",
+            "build",
+            "close",
+            "leave",
+        ]
+
+
+def test_worker_scope_unwinds_failed_build(traced_environment, monkeypatch):
+    def fail(self, context):
+        assert self._scope_pid == os.getpid()
+        raise RuntimeError("worker build failure")
+
+    monkeypatch.setattr(type(traced_environment), "build", fail)
+    factory = EnvironmentFactory(
+        traced_environment, EnvironmentBuildContext(purpose="train"), owns_job_scope=True
+    )
+    with pytest.raises(RuntimeError, match="worker build failure"):
+        factory()
+    events = [json.loads(line) for line in Path(traced_environment.events).read_text().splitlines()]
+    assert [event for event, _, _ in events] == ["enter", "leave"]
 
 
 @pytest.mark.requires_system
