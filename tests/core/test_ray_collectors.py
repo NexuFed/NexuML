@@ -14,12 +14,17 @@ import torch
 
 from nexuml.core.components import EnvironmentBuildContext
 from nexuml.core.discovery import environment
-from nexuml.core.types import CollectorSpec, ReinforcementLearningSpec, RLEvaluationSpec
+from nexuml.core.types import (
+    CollectorSpec,
+    RayEvaluationSpec,
+    ReinforcementLearningSpec,
+    RLEvaluationSpec,
+)
 from nexuml.reinforcement.collector import build_collector, synchronize_policy
 from nexuml.training.lightning import NexuSession
 from nexuml_library.environments.gymnasium import GymnasiumEnvironment
 from nexuml_library.reinforcement.algorithms.ppo import PPO
-from nexuml_library.scenarios.reinforcement.gymnasium import cartpole_ppo
+from nexuml_library.scenarios.reinforcement.gymnasium import cartpole_ppo, pendulum_ppo
 
 
 @pytest.fixture
@@ -52,7 +57,13 @@ def local_ray(request, monkeypatch):
 
         monkeypatch.setattr(ray, "init", isolated_init)
         if getattr(request, "param", True):
-            ray.init(address="local", num_cpus=2, num_gpus=0, include_dashboard=False)
+            ray.init(
+                address="local",
+                num_cpus=2,
+                num_gpus=0,
+                include_dashboard=False,
+                resources={"snapshot-test": 1},
+            )
         try:
             yield ray
         finally:
@@ -93,6 +104,87 @@ def assert_remote_environments_closed(definition):
     assert len(builds) == 2 and all(pid != os.getpid() for pid, _ in builds)
     assert {rank for _, rank in builds} == {0, 1}
     assert builds == closes
+
+
+@pytest.mark.requires_system
+@pytest.mark.requires_optional("ray")
+@pytest.mark.requires_optional("torchrl")
+@pytest.mark.requires_optional("gymnasium")
+def test_snapshot_evaluation_uses_fresh_ray_workers_and_preserves_runtime(
+    local_ray, tmp_path, monkeypatch
+):
+    pytest.importorskip("tensorboard")
+    monkeypatch.setenv("NEXUML_LOGS_ROOT", str(tmp_path / "logs"))
+    scenario = pendulum_ppo(total_frames=64, frames_per_batch=32)
+    scenario.training.algorithm = PPO(update_epochs=1, minibatch_size=16)
+    scenario.training.evaluation = RLEvaluationSpec(
+        at_start=True,
+        every_n_frames=32,
+        episodes=2,
+        max_steps_per_episode=4,
+        seed=23,
+        ray=RayEvaluationSpec(resources={"snapshot-test": 1}, scheduling="skip_if_busy"),
+    )
+    result = NexuSession(scenario, log_dir=tmp_path, enable_progress_bar=False).run()
+    assert int(result.lightning_module.frames) == 64
+    assert int(result.lightning_module.batches) == 2
+    reports = [
+        json.loads(path.read_text()) for path in sorted(tmp_path.rglob("evaluation-frame-*.json"))
+    ]
+    frames = [r["source_training_frames"] for r in reports]
+    assert frames in ([0, 64], [0, 32, 64])
+    assert [r["source_training_batches"] for r in reports] == [frame // 32 for frame in frames]
+    assert len({r["snapshot_sha256"] for r in reports}) == len(reports)
+    assert len({r["evaluator_pid"] for r in reports}) == len(reports)
+    for receipt in reports:
+        assert receipt["evaluator_pid"] != os.getpid()
+        assert receipt["evaluator_node_id"]
+        assert receipt["evaluator_resources"] == {"CPU": 1.0, "snapshot-test": 1.0}
+        assert [ep["seed"] for ep in receipt["episode_report"]["episodes"]] == [23, 24]
+    assert local_ray.is_initialized()
+    assert local_ray.get(local_ray.remote(lambda: "alive").remote(), timeout=10) == "alive"
+
+
+@pytest.mark.requires_system
+@pytest.mark.requires_optional("ray")
+@pytest.mark.requires_optional("torchrl")
+@pytest.mark.requires_optional("gymnasium")
+def test_ray_snapshot_cancels_running_evaluator_without_shutting_down_ray(
+    local_ray, tmp_path, monkeypatch
+):
+    from nexuml.evaluation import _ray
+
+    started = str(tmp_path / "started")
+    closed = str(tmp_path / "closed")
+
+    def blocking_worker(*args):
+        try:
+            Path(started).touch()
+            gate = Event()
+            for _ in range(600):
+                gate.wait(0.1)
+        finally:
+            Path(closed).touch()
+
+    monkeypatch.setattr(_ray, "_evaluate_on_worker", blocking_worker)
+    spec = RayEvaluationSpec(timeout_s=30, resources={"snapshot-test": 1})
+    scenario = pendulum_ppo()
+    owner = NexuSession(scenario, log_dir=tmp_path).lightning_module
+    pending = _ray.RayEvaluation(owner.policy, scenario, owner=owner, spec=spec)
+
+    def cancel_when_running():
+        if Path(started).exists():
+            raise KeyboardInterrupt
+
+    with pytest.raises(KeyboardInterrupt):
+        try:
+            pending.result(wait=True, check_cancelled=cancel_when_running)
+        finally:
+            pending.close()
+    assert Path(closed).is_file()
+    with pytest.raises(local_ray.exceptions.TaskCancelledError):
+        local_ray.get(pending.reference, timeout=1)
+    assert local_ray.is_initialized()
 
 
 @pytest.mark.requires_system

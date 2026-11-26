@@ -12,7 +12,12 @@ import torch
 
 from nexuml.core.compiler import compile
 from nexuml.core.policy import CompiledPolicy
-from nexuml.core.types import ProcessEvaluationSpec, RLEvaluationSpec, RLVideoSpec
+from nexuml.core.types import (
+    ProcessEvaluationSpec,
+    RayEvaluationSpec,
+    RLEvaluationSpec,
+    RLVideoSpec,
+)
 from nexuml.evaluation import _process
 from nexuml.training.lightning import NexuSession
 from nexuml_library.scenarios.reinforcement.gymnasium import pendulum_ppo
@@ -70,18 +75,31 @@ def test_fit_evaluates_start_periodic_and_required_final_snapshots(tmp_path, mon
         seed=23,
         process=ProcessEvaluationSpec(),
     )
-    evaluate = _process.evaluate_in_fresh_process
     reports = []
-
-    def observe(policy, scenario, **kwargs):
-        before = {key: value.detach().clone() for key, value in policy.state_dict().items()}
-        receipt = evaluate(policy, scenario, **kwargs)
-        torch.testing.assert_close(policy.state_dict(), before, rtol=0, atol=0)
-        reports.append(receipt)
-        return receipt
-
-    monkeypatch.setattr(_process, "evaluate_in_fresh_process", observe)
     session = NexuSession(scenario, log_dir=tmp_path, enable_progress_bar=False)
+    module = session.lightning_module
+    publish = module._publish_snapshot
+    base = _process.ProcessEvaluation
+
+    class ObservedProcess(base):
+        def __init__(self, policy, scenario, **kwargs):
+            self.actor = policy
+            self.before = {
+                key: value.detach().clone() for key, value in policy.state_dict().items()
+            }
+            super().__init__(policy, scenario, **kwargs)
+
+        def result(self, **kwargs):
+            receipt = super().result(**kwargs)
+            torch.testing.assert_close(self.actor.state_dict(), self.before, rtol=0, atol=0)
+            return receipt
+
+    def observe(receipt):
+        reports.append(receipt)
+        publish(receipt)
+
+    monkeypatch.setattr(_process, "ProcessEvaluation", ObservedProcess)
+    monkeypatch.setattr(module, "_publish_snapshot", observe)
     session.run()
     assert [report["source_training_frames"] for report in reports] == [0, 64, 96]
     assert [report["source_training_batches"] for report in reports] == [0, 2, 3]
@@ -212,8 +230,12 @@ def test_timeout_reaps_owned_worker_and_removes_temporary_snapshot(tmp_path, mon
         return worker
 
     monkeypatch.setattr(_process.subprocess, "Popen", record_worker)
-    with pytest.raises(RuntimeError, match="CPU snapshot evaluation exceeded"):
-        _process.evaluate_in_fresh_process(policy, scenario, owner=owner, timeout_s=0.001)
+    pending = _process.ProcessEvaluation(policy, scenario, owner=owner, timeout_s=0.001)
+    try:
+        with pytest.raises(RuntimeError, match="CPU snapshot evaluation exceeded"):
+            pending.result(wait=True)
+    finally:
+        pending.close()
     (worker,) = workers
     assert worker.returncode is not None
     assert not list(tmp_path.iterdir())
@@ -222,3 +244,19 @@ def test_timeout_reaps_owned_worker_and_removes_temporary_snapshot(tmp_path, mon
 def test_cpu_process_placement_does_not_silently_disable_video():
     with pytest.raises(ValueError, match="does not support video"):
         RLEvaluationSpec(process=ProcessEvaluationSpec(), video=RLVideoSpec(enabled=True))
+
+
+def test_ray_placement_validation_and_missing_connection(monkeypatch):
+    import sys
+
+    from nexuml.evaluation._ray import require_ray_runtime
+
+    with pytest.raises(ValueError, match="custom Ray resources"):
+        RayEvaluationSpec(resources={"GPU": 1})
+    with pytest.raises(ValueError, match="not both"):
+        RLEvaluationSpec(ray=RayEvaluationSpec(), process=ProcessEvaluationSpec())
+    with pytest.raises(ValueError, match="does not support video"):
+        RLEvaluationSpec(ray=RayEvaluationSpec(), video=RLVideoSpec(enabled=True))
+    monkeypatch.setitem(sys.modules, "ray", SimpleNamespace(is_initialized=lambda: False))
+    with pytest.raises(ValueError, match="existing Ray runtime"):
+        require_ray_runtime()

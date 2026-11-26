@@ -64,3 +64,24 @@ Video, GPU and Ray placement are not qualified by these tests.
 Receipt: `/tmp/opencode/nexuml-cpu-snapshot-milestone-aJ4XdI/`. The source and
 test digest (using the acceptance matrix's command) is
 `18c25d3a47ed2ad3138dc7432750859d108d5ceaa5ed29cf3206486fd1014ffd`.
+
+## CPU Ray snapshot evaluation (4.2)
+
+The SDK can select `RayEvaluationSpec` on a caller-owned Ray runtime. Each
+request uses one non-retrying, single-use task with one CPU slot and
+optional custom resources. It ships the same digest-verified inference
+package and resolved evaluation configuration; it never ships the live
+learner. The existing logger records the source frame and the worker's
+actual process, Ray node and assigned resources. The driver does not create,
+own or stop the Ray runtime.
+
+The pinned Ray 2.57.0 integration ran the canonical Pendulum PPO learner to
+64 transitions. Fresh CPU evaluator tasks reserved `snapshot-test: 1`;
+their metrics and two seeded episodes per snapshot had verified provenance.
+A running task accepted cancellation, executed its cleanup, and left the
+borrowed runtime callable. Both real Ray tests passed, as did 98 focused
+local/preflight tests. Logs:
+`/tmp/opencode/rs-EcQqi2/pytest.log`; both wheel and source archive contents
+also passed the packaging check in
+`/tmp/opencode/nexuml-ray-snapshot-artifacts-7Pxb12/`.
+This is same-host Ray task evidence, not GPU or multi-node acceptance.

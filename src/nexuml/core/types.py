@@ -660,6 +660,24 @@ class ProcessEvaluationSpec(SpecModel):
     )
 
 
+class RayEvaluationSpec(ProcessEvaluationSpec):
+    """One CPU snapshot evaluator on the caller's existing Ray runtime."""
+
+    resources: dict[str, Annotated[float, Field(gt=0, allow_inf_nan=False)]] = Field(
+        default_factory=dict
+    )
+
+    @field_validator("resources")
+    @classmethod
+    def validate_resources(cls, value: dict[str, float]) -> dict[str, float]:
+        if any(
+            not name.strip() or name in {"CPU", "GPU", "memory", "object_store_memory"}
+            for name in value
+        ):
+            raise ValueError("Ray evaluation resources must be named custom Ray resources")
+        return value
+
+
 class RLEvaluationSpec(SpecModel):
     """Fresh episodic policy evaluation, not dataset evaluation phases."""
 
@@ -673,6 +691,7 @@ class RLEvaluationSpec(SpecModel):
     process: ProcessEvaluationSpec | None = Field(
         default=None, exclude_if=lambda value: value is None
     )
+    ray: RayEvaluationSpec | None = Field(default=None, exclude_if=lambda value: value is None)
 
     @model_validator(mode="after")
     def validate_recording(self) -> Self:
@@ -680,6 +699,11 @@ class RLEvaluationSpec(SpecModel):
             raise ValueError("evaluation.video requires evaluation.episodes > 0")
         if self.process is not None and self.video.enabled:
             raise ValueError("Fresh CPU-process fit evaluation does not support video")
+        if self.ray is not None:
+            if self.process is not None:
+                raise ValueError("Select either CPU-process or Ray fit evaluation, not both")
+            if self.video.enabled:
+                raise ValueError("Ray CPU fit evaluation does not support video")
         return self
 
 

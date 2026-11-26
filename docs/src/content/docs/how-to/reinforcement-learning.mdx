@@ -191,6 +191,33 @@ Cancellation stops the owned evaluator without reporting success.
 Neither schedule enables automatic Isaac fit evaluation, video, a separate
 evaluator GPU or Ray placement. Omit `process` to keep in-process evaluation.
 
+### Place CPU snapshot evaluation on an existing Ray runtime
+
+Use the Python SDK from a driver already connected to a trusted Ray cluster.
+Prepare the same NexuML packages and the evaluation task on the target
+workers. The evaluator does not start Ray, upload code, or shut down the
+caller's connection.
+
+```python
+from nexuml.core.types import RayEvaluationSpec
+from nexuml.training.lightning import NexuSession
+
+scenario.training.evaluation.ray = RayEvaluationSpec(
+    scheduling="skip_if_busy",
+    resources={"evaluation_cpu": 1},
+)
+NexuSession(scenario).run()
+```
+
+`evaluation_cpu` is an example custom Ray resource that must be advertised
+by the intended workers. Omit `resources` for any worker with one CPU slot.
+Do not set both `process` and `ray`. Each task receives the inference package
+and resolved evaluation configuration, not the live learner or its optimizer.
+Reports identify the source frame, worker process, Ray node and assigned
+resources. Snapshot waits, skips and final evaluation use the same scheduling
+rules as the local process. CPU Ray evaluation does not qualify distributed
+collection, GPU evaluation, remote video or multi-node compatibility.
+
 Task outcomes are separate from return. A provider may report boolean `task_success`
 alone, or also a finite nonnegative floating `joint_error_rad`. Evaluation emits
 `eval/rl/task_success_rate` using any-step success once per episode; it emits

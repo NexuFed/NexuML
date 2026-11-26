@@ -27,11 +27,15 @@ def _digest(path: Path) -> str:
         return hashlib.file_digest(stream, "sha256").hexdigest()
 
 
-def _worker(root: Path, digest: str) -> None:
-    def cancel(signum, _frame):
-        raise SystemExit(128 + signum)
+def evaluate_snapshot(root: Path, digest: str) -> dict:
+    """Evaluate a verified actor using prepared inputs.
 
-    signal.signal(signal.SIGTERM, cancel)
+    Returns:
+        Metrics, episode report, and immutable source provenance.
+
+    Raises:
+        ValueError: If the digest or inference-only package requirement fails.
+    """
     artifact = root / "policy" / PACKAGE_FILENAME
     if _digest(artifact) != digest:
         raise ValueError("Evaluation snapshot digest mismatch")
@@ -56,19 +60,46 @@ def _worker(root: Path, digest: str) -> None:
             },
         )
     (report,) = reports
-    (root / "result.json").write_text(
-        json.dumps(
-            {
-                "snapshot_sha256": digest,
-                "source_training_frames": frame,
-                "source_training_batches": version,
-                "evaluator_pid": os.getpid(),
-                "metrics": metrics,
-                "episode_report": report,
-            },
-            allow_nan=False,
-        )
+    return {
+        "snapshot_sha256": digest,
+        "source_training_frames": frame,
+        "source_training_batches": version,
+        "evaluator_pid": os.getpid(),
+        "metrics": metrics,
+        "episode_report": report,
+    }
+
+
+def _worker(root: Path, digest: str) -> None:
+    def cancel(signum, _frame):
+        raise SystemExit(128 + signum)
+
+    signal.signal(signal.SIGTERM, cancel)
+    (root / "result.json").write_text(json.dumps(evaluate_snapshot(root, digest), allow_nan=False))
+
+
+def prepare_snapshot(root: Path, policy, scenario, owner) -> tuple[Path, str, int, int]:
+    """Capture independent evaluation inputs on the learner's update boundary.
+
+    Returns:
+        Actor package path, digest, source frame, and source update.
+    """
+    frame, version = int(owner.frames), int(owner.batches)
+    package = export_package(
+        policy, root / "policy", metadata={"training_batches": version}, lightning_module=owner
     )
+    artifact = package / PACKAGE_FILENAME
+    ResolvedConfig.from_scenario(scenario).save(root / "evaluation.yaml")
+    return artifact, _digest(artifact), frame, version
+
+
+def validate_receipt(result: dict, sha256: str, frame: int, version: int) -> None:
+    if (
+        result["snapshot_sha256"] != sha256
+        or result["source_training_frames"] != frame
+        or result["source_training_batches"] != version
+    ):
+        raise RuntimeError("Snapshot evaluation returned unrelated source provenance")
 
 
 def _terminate(worker: subprocess.Popen) -> None:
@@ -86,19 +117,12 @@ class ProcessEvaluation:
     """One immutable snapshot and its evaluator; caller owns close on every path."""
 
     def __init__(self, policy, scenario, *, owner, timeout_s: float):
-        self.frame, self.version = int(owner.frames), int(owner.batches)
         self.timeout_s = timeout_s
         with ExitStack() as stack:
             self.root = Path(stack.enter_context(TemporaryDirectory(prefix="nexuml-evaluation-")))
-            package = export_package(
-                policy,
-                self.root / "policy",
-                metadata={"training_batches": self.version},
-                lightning_module=owner,
+            self.artifact, self.sha256, self.frame, self.version = prepare_snapshot(
+                self.root, policy, scenario, owner
             )
-            self.artifact = package / PACKAGE_FILENAME
-            self.sha256 = _digest(self.artifact)
-            ResolvedConfig.from_scenario(scenario).save(self.root / "evaluation.yaml")
             self.log = stack.enter_context((self.root / "worker.log").open("w+b"))
             self.worker = subprocess.Popen(
                 [sys.executable, "-m", __name__, str(self.root), self.sha256],
@@ -140,31 +164,10 @@ class ProcessEvaluation:
             output = self.log.read().decode(errors="replace")
             raise RuntimeError(f"CPU snapshot evaluation exited {self.worker.returncode}: {output}")
         result = json.loads(result_path.read_text())
-        if (
-            result["snapshot_sha256"] != self.sha256
-            or _digest(self.artifact) != self.sha256
-            or result["source_training_frames"] != self.frame
-            or result["source_training_batches"] != self.version
-        ):
-            raise RuntimeError("CPU snapshot evaluation returned unrelated source provenance")
+        if _digest(self.artifact) != self.sha256:
+            raise RuntimeError("CPU snapshot was modified during evaluation")
+        validate_receipt(result, self.sha256, self.frame, self.version)
         return result
-
-
-def evaluate_in_fresh_process(
-    policy, scenario, *, owner, timeout_s: float, check_cancelled: Callable[[], None] | None = None
-) -> dict:
-    """Export the post-update actor and block on one fresh CPU evaluator.
-
-    Returns:
-        Evaluation receipt with verified source frame, update, and digest.
-    """
-    pending = ProcessEvaluation(policy, scenario, owner=owner, timeout_s=timeout_s)
-    try:
-        result = pending.result(wait=True, check_cancelled=check_cancelled)
-        assert result is not None
-        return result
-    finally:
-        pending.close()
 
 
 if __name__ == "__main__":

@@ -100,6 +100,7 @@ def test_distribution_artifacts() -> None:
             "nexuml/__init__.py",
             "nexuml/api/app.py",
             "nexuml/evaluation/_process.py",
+            "nexuml/evaluation/_ray.py",
             "nexuml/interaction/playback.py",
         ),
         core_wheel,
@@ -115,7 +116,12 @@ def test_distribution_artifacts() -> None:
     )
     _require_names(
         core_sdist_names,
-        ("README.md", "src/nexuml/__init__.py", "src/nexuml/evaluation/_process.py"),
+        (
+            "README.md",
+            "src/nexuml/__init__.py",
+            "src/nexuml/evaluation/_process.py",
+            "src/nexuml/evaluation/_ray.py",
+        ),
         core_sdist,
     )
     assert not any(
