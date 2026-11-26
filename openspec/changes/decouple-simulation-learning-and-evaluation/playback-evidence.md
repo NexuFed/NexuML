@@ -26,7 +26,7 @@ and non-headless display; `HEADLESS` can independently force headless.
 `isaaclab_physx/app/kit_launcher.py` treats livestream mode `1` as public
 advertisement (uses `PUBLIC_IP`) and mode `2` as private. Both enable the
 Kit stream extension and set TCP 49100 signaling / UDP 47998 media.
-Neither mode is enabled by this change: no local, X11/RDP or TigerVNC
+Neither mode is enabled by this change: no local, forwarded X11 or TigerVNC
 display is qualified, and no approved WebRTC client lane is available.
 The CI job consumes an already-prepared `NEXUML_ISAAC_IMAGE`; the
 existing image recipe is not an automatic publication path. Do not treat
@@ -244,13 +244,13 @@ runtime, job-local installation or a native viewer endpoint.
 
 ## Native Kit display probes (4a.1 and 4a.4, partial)
 
-On an existing X11/RDP display, Lab's default non-headless Kit experience
+On existing forwarded X11 display `:11`, Lab's default non-headless Kit experience
 reached at least **60** control ticks on an actual exported two-lane
 Cartpole policy before the 140 s bound cancelled the requested 240 ticks.
 That experience loads the native stage, script editor and prim-manipulator
 extensions. It does not prove a bounded playback-only display. Selecting
 the upstream headless-rendering experience while requesting a non-headless
-window did not reach the viewport or control-loop witness. No X11/RDP Kit
+window did not reach the viewport or control-loop witness. No forwarded X11 Kit
 viewer, native local desktop, TigerVNC or WebRTC support is inferred.
 Probe logs: `/tmp/opencode/nexuml-kit-local-native-WNPXME/` and
 `/tmp/opencode/nexuml-kit-minimal-dpOhMT/`. No network route or display was
@@ -263,10 +263,16 @@ camera settings but depends on `isaaclab.python.kit`, the desktop editor
 experience. The base declares the stage, property and script editors and
 the prim manipulator; the camera profile does not remove those dependencies.
 At `21a33086`, a native launch of the GUI camera profile on the prepared
-X11/RDP display logged startup of the viewport and all four editor
+forwarded X11 display logged startup of the viewport and all four editor
 extensions. The probe timed out after 85 s (exit 124) before the launcher
 returned; its process and window were gone afterward. It did not run a
 policy or establish graceful close. Receipts: `/tmp/opencode/kit-camera-profile-lE14VN/`.
+
+The display socket belongs to a VS Code Dev Containers proxy; its X11
+window manager reports Weston, not an identified RDP server. The operator
+observed the resulting Isaac Lab and Kit windows on their Windows desktop
+with blank contents. This verifies remote window forwarding, not Vulkan
+presentation of live policy frames. No GUI was opened to confirm the route.
 
 The pinned Kit install also ships `omni.app.viewport.kit`, labeled
 `support_level = "Sample"`. It selects no renderer or default stage and
