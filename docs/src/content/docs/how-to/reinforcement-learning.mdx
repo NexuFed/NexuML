@@ -578,7 +578,29 @@ Synchronous CPU Ray collection is also validated with a local CPU learner. Insta
 `nexuml[reinforcement,ray]` and select `training.collector.backend="ray"`. Environment,
 storage and policy devices must be CPU; `frames_per_batch` must be divisible by
 `num_collectors * num_envs_per_collector`. The finite loader disables Lightning's
-lookahead so synchronous rollouts follow learner updates and policy synchronization.
+lookahead. Every learner update must synchronize all rollout workers
+(`policy_sync_interval_batches=1`). The collector rejects short batches
+and stale policy versions before PPO sees them.
+
+For a prepared Ray Core cluster, configure the address and the resources
+advertised by the intended rollout workers:
+
+```yaml
+training:
+  collector:
+    backend: ray
+    ray:
+      address: auto
+      resources: {rollout: 1}
+      label_selector: {role: cpu-rollout}
+```
+
+Use `auto` for existing Ray discovery, a concrete Ray Core `host:port`, or
+omit the address to borrow a runtime already initialized by the caller.
+An explicit placement never starts a local cluster. Omitting `collector.ray`
+retains the existing local CPU default. Each worker consumes one CPU, no
+GPU, and any requested custom resources. The cluster operator supplies
+the resources and labels; these are not Ray Jobs or Ray Train settings.
 
 TorchRL 0.14 kills Ray actors without closing environments. A private, lazy teardown
 repair closes remote collectors before actor termination, including iterator exhaustion.

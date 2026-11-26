@@ -623,6 +623,39 @@ class TrainingSpec(SpecModel):
         return value
 
 
+class RayCollectorSpec(SpecModel):
+    """Existing Ray Core target and constraints for each synchronous CPU worker."""
+
+    address: str | None = None
+    resources: dict[str, Annotated[float, Field(gt=0, allow_inf_nan=False)]] = Field(
+        default_factory=dict
+    )
+    label_selector: dict[str, str] = Field(default_factory=dict)
+
+    @field_validator("address")
+    @classmethod
+    def validate_address(cls, value: str | None) -> str | None:
+        if value is not None and value != "auto":
+            from nexuml.execution.definitions import RayClusterTarget
+
+            RayClusterTarget.validate_address(value)
+            if not re.fullmatch(r"(?:[A-Za-z0-9_.-]+|\[[0-9A-Fa-f:.]+\]):[0-9]{1,5}", value) or (
+                not 0 < int(value.rsplit(":", 1)[1]) <= 65535
+            ):
+                raise ValueError("Ray collector address must be 'auto' or a Ray Core host:port")
+        return value
+
+    @field_validator("resources")
+    @classmethod
+    def validate_resources(cls, value: dict[str, float]) -> dict[str, float]:
+        if any(
+            not name.strip() or name in {"CPU", "GPU", "memory", "object_store_memory"}
+            for name in value
+        ):
+            raise ValueError("Ray collector resources must be named custom Ray resources")
+        return value
+
+
 class CollectorSpec(SpecModel):
     """Rollout topology and synchronization, independent of learner placement."""
 
@@ -634,11 +667,14 @@ class CollectorSpec(SpecModel):
     storing_device: str = "cpu"
     policy_device: str = "auto"
     policy_sync_interval_batches: int = Field(default=1, gt=0)
+    ray: RayCollectorSpec | None = Field(default=None, exclude_if=lambda value: value is None)
 
     @model_validator(mode="after")
     def validate_topology(self) -> Self:
         if self.backend == "direct" and self.num_collectors != 1:
             raise ValueError("direct collection requires num_collectors=1")
+        if self.ray is not None and self.backend != "ray":
+            raise ValueError("collector.ray placement requires backend='ray'")
         return self
 
 

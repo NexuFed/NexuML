@@ -16,6 +16,7 @@ from nexuml.core.components import EnvironmentBuildContext
 from nexuml.core.discovery import environment
 from nexuml.core.types import (
     CollectorSpec,
+    RayCollectorSpec,
     RayEvaluationSpec,
     ReinforcementLearningSpec,
     RLEvaluationSpec,
@@ -63,6 +64,7 @@ def local_ray(request, monkeypatch):
                 num_gpus=0,
                 include_dashboard=False,
                 resources={"snapshot-test": 1},
+                labels={"nexuml-test-placement": "cpu-rollout"},
             )
         try:
             yield ray
@@ -237,6 +239,61 @@ def test_ray_factories_copied_policy_sync_and_iterator_exhaustion(
 @pytest.mark.requires_optional("ray")
 @pytest.mark.requires_optional("torchrl")
 @pytest.mark.requires_optional("gymnasium")
+def test_ray_collector_placement_on_borrowed_cluster(local_ray, monkeypatch):
+    from ray._private.state import state
+    from ray.core.generated.gcs_pb2 import ActorTableData  # ty: ignore[unresolved-import]
+    from tensordict.nn import TensorDictModule
+
+    existing = local_ray.get_runtime_context().gcs_address
+    another = "192.0.2.1:6379"  # A documentation address; mismatch must fail without contact.
+    selector = {"nexuml-test-placement": "in(cpu-rollout,cpu-alternate)"}
+    policy = TensorDictModule(torch.nn.Linear(3, 1), in_keys=["observation"], out_keys=["action"])
+    definition = GymnasiumEnvironment(env_name="Pendulum-v1")
+    training = ReinforcementLearningSpec(
+        algorithm=PPO(),
+        total_frames=8,
+        frames_per_batch=8,
+        collector=CollectorSpec(
+            backend="ray",
+            ray=RayCollectorSpec(resources={"snapshot-test": 1}, label_selector=selector),
+        ),
+    )
+    assert training.collector.ray is not None
+    init = Mock(side_effect=AssertionError("must borrow the fixture's Ray runtime"))
+    monkeypatch.setattr(local_ray, "init", init)
+    monkeypatch.setenv("RAY_ADDRESS", another)
+    for address in (another, "auto"):
+        training.collector.ray.address = address
+        with pytest.raises(ValueError, match="conflicts with the initialized"):
+            build_collector(definition, training, policy, "cpu")
+
+    for address in (None, existing, "auto"):
+        if address == "auto":
+            monkeypatch.setenv("RAY_ADDRESS", existing)
+        training.collector.ray.address = address
+        collector = build_collector(definition, training, policy, "cpu")
+        try:
+            worker = collector.remote_collectors[0]
+            row = state._connect_and_get_accessor().get_actor_info(worker._actor_id)
+            actor = ActorTableData.FromString(row)
+            assert dict(actor.required_resources) == {"CPU": 1.0, "snapshot-test": 1.0}
+            assert set(actor.label_selector) == set(selector)
+            expression = actor.label_selector["nexuml-test-placement"]
+            assert expression.startswith("in(") and expression.endswith(")")
+            assert set(expression[3:-1].split(",")) == {"cpu-rollout", "cpu-alternate"}
+            assert next(iter(collector)).numel() == 8
+        finally:
+            collector.shutdown()
+        assert local_ray.is_initialized()
+        assert local_ray.get_runtime_context().gcs_address == existing
+    init.assert_not_called()
+    assert local_ray.get(local_ray.remote(lambda: "alive").remote(), timeout=10) == "alive"
+
+
+@pytest.mark.requires_system
+@pytest.mark.requires_optional("ray")
+@pytest.mark.requires_optional("torchrl")
+@pytest.mark.requires_optional("gymnasium")
 @pytest.mark.parametrize(
     "local_ray", [True, False], indirect=True, ids=["caller-owned", "collector-owned"]
 )
@@ -328,19 +385,111 @@ def test_ray_close_failure_kills_owned_actors_releases_lease_and_is_repeatable(m
 
 @pytest.mark.requires_optional("torchrl")
 @pytest.mark.parametrize(
-    "collector, frames",
+    "collector, frames, error",
     [
-        (CollectorSpec(backend="ray", sync=False), 8),
-        (CollectorSpec(backend="ray", env_device="cuda"), 8),
-        (CollectorSpec(backend="ray", num_collectors=2), 3),
+        (CollectorSpec(backend="ray", sync=False), 8, "synchronous CPU collectors only"),
+        (
+            CollectorSpec(backend="ray", policy_sync_interval_batches=2),
+            8,
+            "policy_sync_interval_batches=1",
+        ),
+        (CollectorSpec(backend="ray", env_device="cuda"), 8, "synchronous CPU collectors only"),
+        (CollectorSpec(backend="ray", num_collectors=2), 3, "frames_per_batch must be divisible"),
     ],
 )
-def test_unvalidated_ray_topologies_fail_before_allocation(collector, frames):
+def test_unvalidated_ray_topologies_fail_before_allocation(collector, frames, error):
     training = ReinforcementLearningSpec(
         algorithm=PPO(), collector=collector, frames_per_batch=frames
     )
-    with pytest.raises(ValueError, match="Ray"):
+    with pytest.raises(ValueError, match=error):
         build_collector(GymnasiumEnvironment(), training, torch.nn.Linear(3, 1), "cpu")
+
+
+def test_ray_placement_config_round_trips_without_changing_default_dump():
+    assert "ray" not in CollectorSpec(backend="ray").model_dump()
+    config = {
+        "address": "head.example:6379",
+        "resources": {"rollout": 0.5},
+        "label_selector": {"role": "cpu-rollout"},
+    }
+    spec = CollectorSpec.model_validate({"backend": "ray", "ray": config})
+    assert isinstance(spec.ray, RayCollectorSpec)
+    assert spec.model_dump()["ray"] == config
+    for backend in ("direct", "process"):
+        with pytest.raises(ValueError, match="placement requires backend='ray'"):
+            CollectorSpec(backend=backend, ray=spec.ray)
+
+
+@pytest.mark.parametrize(
+    "placement",
+    [
+        {"address": address}
+        for address in (
+            "local",
+            "http://head.example:8265",
+            "ray://head.example:10001",
+            "user:password@head.example:6379",
+            "head.example",
+            "head.example:6379/path",
+            "head.example:65536",
+        )
+    ]
+    + [
+        {"resources": {name: amount}}
+        for name, amount in (
+            ("CPU", 1),
+            ("GPU", 1),
+            ("memory", 1),
+            ("", 1),
+            ("rollout", 0),
+            ("rollout", float("inf")),
+        )
+    ]
+    + [{"label_selector": {"role": 1}}, {"num_gpus": 1}, {"runtime_env": {}}],
+)
+def test_invalid_ray_placement_config_rejected(placement):
+    with pytest.raises(ValueError):
+        CollectorSpec.model_validate({"backend": "ray", "ray": placement})
+
+
+@pytest.mark.requires_optional("ray")
+@pytest.mark.requires_optional("torchrl")
+@pytest.mark.parametrize(
+    "address, env_address, attempted, error, message",
+    [
+        (None, None, None, ValueError, "requires an initialized Ray runtime or address"),
+        ("auto", None, None, ConnectionError, "Could not find any running Ray instance"),
+        ("auto", "local", None, ValueError, "not start Local Ray"),
+        ("auto", "http://head.example:8265", None, ValueError, "Ray Core host:port"),
+        ("auto", "head.example:6379", "head.example:6379", ConnectionError, "unreachable target"),
+        ("head.example:6379", "local", "head.example:6379", ConnectionError, "unreachable target"),
+    ],
+)
+def test_ray_placement_never_falls_back_to_local(
+    monkeypatch, address, env_address, attempted, error, message
+):
+    import ray
+    from ray._private import services
+
+    monkeypatch.delenv("RAY_ADDRESS", raising=False)
+    if env_address is not None:
+        monkeypatch.setenv("RAY_ADDRESS", env_address)
+    monkeypatch.setattr(services, "find_gcs_addresses", lambda: set())
+    monkeypatch.setattr(services, "find_bootstrap_address", lambda temp_dir: None)
+    assert not ray.is_initialized()
+    init = Mock(side_effect=ConnectionError("unreachable target"))
+    monkeypatch.setattr(ray, "init", init)
+    training = ReinforcementLearningSpec(
+        algorithm=PPO(),
+        collector=CollectorSpec(backend="ray", ray=RayCollectorSpec(address=address)),
+    )
+    with pytest.raises(error, match=message):
+        build_collector(GymnasiumEnvironment(), training, torch.nn.Linear(3, 1), "cpu")
+    if attempted is None:
+        init.assert_not_called()
+    else:
+        init.assert_called_once_with(address=attempted)
+    assert not ray.is_initialized()
 
 
 @pytest.mark.requires_optional("ray")

@@ -8,7 +8,7 @@ from torch.utils.data import IterableDataset
 from tensordict import TensorDict
 
 from nexuml.core.components import EnvironmentBuildContext, EnvironmentDefinition
-from nexuml.core.types import ReinforcementLearningSpec
+from nexuml.core.types import RayCollectorSpec, ReinforcementLearningSpec
 
 
 @dataclass(frozen=True, slots=True)
@@ -27,6 +27,35 @@ class EnvironmentFactory:
         except BaseException:
             runtime.close()
             raise
+
+
+def _ray_placement_init(placement: RayCollectorSpec) -> dict[str, Any]:
+    import ray
+    from ray._private.services import (
+        canonicalize_bootstrap_address,
+        get_ray_address_from_environment,
+    )
+
+    existing = ray.get_runtime_context().gcs_address if ray.is_initialized() else None
+    address = placement.address
+    if address is None:
+        if existing is None:
+            raise ValueError(
+                "collector.ray placement requires an initialized Ray runtime or address"
+            )
+        return {"address": existing}
+    if address == "auto":
+        # Ray's auto discovery can honor RAY_ADDRESS=local; never pass that on to ray.init.
+        address = get_ray_address_from_environment(address, temp_dir=None)
+        if address is None or address == "auto":
+            raise ConnectionError("Ray collector auto discovery did not return a concrete address")
+        placement.validate_address(address)
+    target = canonicalize_bootstrap_address(address)
+    if target is None:
+        raise ConnectionError("Ray collector placement requires an existing cluster address")
+    if existing is not None and target != existing:
+        raise ValueError("collector.ray address conflicts with the initialized Ray runtime")
+    return {"address": target}
 
 
 def build_collector(definition, training: ReinforcementLearningSpec, policy, device, rank=0) -> Any:
@@ -51,12 +80,12 @@ def build_collector(definition, training: ReinforcementLearningSpec, policy, dev
             selected = torch.device(value)
         except (RuntimeError, TypeError) as error:
             raise ValueError(f"collector.{name} is not a Torch device: {value!r}") from error
-        if selected.type == "cuda" and (selected.index or 0) >= torch.cuda.device_count():
+        if (
+            spec.backend != "ray"
+            and selected.type == "cuda"
+            and (selected.index or 0) >= torch.cuda.device_count()
+        ):
             raise ValueError(f"collector.{name} CUDA device {value!r} is unavailable")
-    try:
-        from torchrl.collectors import Collector
-    except ImportError as error:
-        raise ImportError("Reinforcement collection requires nexuml[reinforcement]") from error
     if spec.backend == "ray":
         if not spec.sync or any(
             torch.device(value).type != "cpu"
@@ -65,11 +94,17 @@ def build_collector(definition, training: ReinforcementLearningSpec, policy, dev
             raise ValueError(
                 "Ray collection supports a CPU learner and synchronous CPU collectors only"
             )
+        if spec.policy_sync_interval_batches != 1:
+            raise ValueError("Ray collection requires policy_sync_interval_batches=1")
         width = spec.num_collectors * spec.num_envs_per_collector
         if training.frames_per_batch % width:
             raise ValueError(
                 "Ray frames_per_batch must be divisible by collectors times environments"
             )
+    try:
+        from torchrl.collectors import Collector
+    except ImportError as error:
+        raise ImportError("Reinforcement collection requires nexuml[reinforcement]") from error
     context = EnvironmentBuildContext(
         purpose="train",
         seed=training.seed,
@@ -102,16 +137,27 @@ def build_collector(definition, training: ReinforcementLearningSpec, policy, dev
         except ImportError as error:
             raise ImportError("Ray collection requires nexuml[reinforcement,ray]") from error
         constructor = cast(Any, _GracefulRayCollector)
+        remote_configs: dict[str, Any] = {"num_cpus": 1, "num_gpus": 0}
+        ray_init_config: dict[str, Any] = {
+            "address": "local",
+            "num_cpus": spec.num_collectors,
+            "num_gpus": 0,
+            "include_dashboard": False,
+        }
+        if spec.ray is not None:
+            from ray._common.ray_option_utils import validate_actor_options
+
+            ray_init_config = _ray_placement_init(spec.ray)
+            if spec.ray.resources:
+                remote_configs["resources"] = spec.ray.resources
+            if spec.ray.label_selector:
+                remote_configs["label_selector"] = spec.ray.label_selector
+            validate_actor_options(remote_configs, in_options=False)
         # Exception to the front door: override its actor-kill hook, including automatic shutdown.
         topology.update(
             collector_kwargs={"auto_register_policy_transforms": False},
-            remote_configs={"num_cpus": 1, "num_gpus": 0},
-            ray_init_config={
-                "address": "local",
-                "num_cpus": spec.num_collectors,
-                "num_gpus": 0,
-                "include_dashboard": False,
-            },
+            remote_configs=remote_configs,
+            ray_init_config=ray_init_config,
         )
     else:
         topology["backend"] = spec.backend
