@@ -168,6 +168,11 @@ trusted complete export or `--trainer-checkpoint`, optionally with a trusted
 nexuml play ./policy --viewer headless --device cuda:0 --num-envs 8 --steps 60
 ```
 
+An explicitly supplied scenario can set `playback_viewer`
+to `headless` or `viser`. `--viewer` overrides the scenario. A policy
+package alone defaults to headless; saved training or evaluation viewer
+settings do not activate playback viewing.
+
 Omit `--steps` and `--episodes` for continuous playback. Counts are actual
 native ticks, transitions across the batch, and completed episodes. Several
 episodes can finish on the same tick. `--seed` and `--stochastic` select

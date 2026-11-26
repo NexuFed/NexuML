@@ -15,6 +15,7 @@ from typer.testing import CliRunner
 from nexuml.cli.main import app
 from nexuml.core.compiler import compile
 from nexuml.core.components import EnvironmentDefinition
+from nexuml.core.config import ResolvedConfig
 from nexuml.core.export import export_package
 from nexuml.core.policy import CompiledPolicy
 from nexuml.core.types import RLVideoSpec, SensorProcessingContract
@@ -231,6 +232,24 @@ def test_playback_cli_loads_policy_and_rejects_unqualified_viewer(tmp_path):
     assert "5 steps, 15 transitions" in result.output
     unsupported = runner.invoke(app, ["play", str(package), "--viewer", "webrtc"])
     assert unsupported.exit_code == 1 and "only supports headless" in unsupported.output
+
+
+def test_playback_viewer_uses_explicit_scenario_and_cli_override_not_artifact(tmp_path):
+    scenario = cartpole_ppo()
+    scenario.playback_viewer = "webrtc"
+    policy = CompiledPolicy.from_pipeline(compile(scenario))
+    package = export_package(policy, tmp_path / "policy")
+    config = tmp_path / "play.yaml"
+    ResolvedConfig.from_scenario(scenario).save(config)
+    runner = CliRunner()
+
+    args = ["play", str(package), "--steps", "2"]
+    assert "2 transitions" in runner.invoke(app, args).output
+    explicit = [*args, "--config", str(config)]
+    unsupported = runner.invoke(app, explicit)
+    assert unsupported.exit_code == 1 and "only supports headless" in unsupported.output
+    override = runner.invoke(app, [*explicit, "--viewer", "headless"])
+    assert override.exit_code == 0 and "2 transitions" in override.output
 
 
 def test_playback_cli_reaps_local_runtime_on_sigterm(tmp_path, monkeypatch):

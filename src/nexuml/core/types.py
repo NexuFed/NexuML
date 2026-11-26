@@ -18,6 +18,7 @@ from nexuml.core.components import (
     ExecutionBackendDefinition,
     LayerDefinition,
     LoaderBackendDefinition,
+    PlaybackViewer,
     RLAlgorithmDefinition,
 )
 from nexuml.core.factory import factory_values, normalize_json_value, resolve_factory
@@ -1069,6 +1070,9 @@ class ScenarioSpec(SpecModel):
     interaction: InteractionSpec | None = None
     policy: PolicySpec | None = None
     policy_evaluation: PolicyEvaluationSpec | None = None
+    playback_viewer: PlaybackViewer = Field(
+        default="headless", exclude_if=lambda value: value == "headless"
+    )
     evaluation: EvaluationSpec = Field(default_factory=EvaluationSpec)
     logging: LoggingSpec | None = None
     callbacks: list[CallbackSpec] = Field(default_factory=list)

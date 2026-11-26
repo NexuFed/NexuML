@@ -452,8 +452,8 @@ def play_cmd(
         None, "--execution-profile", help="Trusted Ray Jobs profile for an explicit scenario."
     ),
     device: str = typer.Option("cpu", "--device"),
-    viewer: PlaybackViewer = typer.Option(
-        "headless", "--viewer", help="Select a qualified viewer."
+    viewer: Optional[PlaybackViewer] = typer.Option(
+        None, "--viewer", help="Override the trusted scenario's viewer (default: headless)."
     ),
     num_envs: int = typer.Option(1, "--num-envs", min=1),
     steps: Optional[int] = typer.Option(None, "--steps", min=1, help="Native control ticks."),
@@ -483,6 +483,8 @@ def play_cmd(
         if config_path is not None or scenario_file is not None
         else None
     )
+    # Artifacts supply weights and task semantics, not permission to open a viewer.
+    viewer = viewer or (supplied.playback_viewer if supplied is not None else "headless")
     if execution_profile is not None:
         from ruamel.yaml.error import YAMLError
 

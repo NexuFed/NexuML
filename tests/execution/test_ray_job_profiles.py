@@ -149,13 +149,21 @@ def test_missing_profile_is_actionable(tmp_path, monkeypatch):
     assert "Execution profile error" in result.output
 
 
-def test_play_with_trusted_profile_submits_before_loading_local_weights(tmp_path, monkeypatch):
+@pytest.mark.parametrize(
+    "configured, override, selected",
+    [("headless", None, "headless"), ("viser", None, "viser"), ("viser", "headless", "headless")],
+)
+def test_play_with_trusted_profile_submits_before_loading_local_weights(
+    tmp_path, monkeypatch, configured, override, selected
+):
     from nexuml.core import export
     from nexuml.execution import ray_job
     from nexuml.interaction import playback
 
     config = tmp_path / "play.yaml"
-    ResolvedConfig.from_scenario(ScenarioSpec(name="play-test")).save(config)
+    ResolvedConfig.from_scenario(ScenarioSpec(name="play-test", playback_viewer=configured)).save(
+        config
+    )
     monkeypatch.setattr(export, "load_inference_package", lambda *_: pytest.fail("weights read"))
     monkeypatch.setattr(playback, "play_policy", lambda *_, **__: pytest.fail("played locally"))
     submitted = []
@@ -187,6 +195,7 @@ def test_play_with_trusted_profile_submits_before_loading_local_weights(tmp_path
             "3",
             "--record-format",
             "mp4",
+            *(["--viewer", override] if override is not None else []),
         ],
     )
     assert result.exit_code == 0, result.output
@@ -196,7 +205,7 @@ def test_play_with_trusted_profile_submits_before_loading_local_weights(tmp_path
     assert options["model_package"] == Path("/worker state/actor")
     assert options["device"] == "cuda:0"
     assert options["playback"] == {
-        "viewer": "headless",
+        "viewer": selected,
         "num_envs": 2,
         "steps": 8,
         "episodes": None,

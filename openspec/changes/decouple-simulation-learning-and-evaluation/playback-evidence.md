@@ -32,6 +32,24 @@ The CI job consumes an already-prepared `NEXUML_ISAAC_IMAGE`; the
 existing image recipe is not an automatic publication path. Do not treat
 Kit startup, port binding or a prior editor session as playback evidence.
 
+An explicit scenario can select the typed `playback_viewer`; `--viewer`
+overrides it. A standalone package never opens a viewer by default,
+including when its saved scenario contains a viewer choice. Train/eval
+still use only their own approved settings. The remote CLI forwards the
+resolved play selection without loading local weights. Unqualified modes
+remain rejected.
+
+The public CLI resolved `playback_viewer: viser` without a CLI flag in a
+real native Newton Cartpole job. Headless Chromium connected over the
+loopback WebSocket and used pause, step, reset-all and resume; the CLI
+reported each intervention once. Three simulated worlds with rows 0
+and 1 visible produced 1,440 transitions. The listener was rebound after
+shutdown. Explicit `--viewer headless` on the same scenario ran nine
+transitions with no Viser listener. Focused checks: **375 passed**.
+Receipts: `/tmp/opencode/typed-native-viewer-wY9Xyj/` and
+`/tmp/opencode/play-viewer-final-WHxupw/`. This verifies selection and the
+Viser slice of 4a.1/4a.4; it does not qualify local Kit or WebRTC.
+
 ## Executed local proof
 
 Runtime matches [custom-direct-task.md](custom-direct-task.md).
