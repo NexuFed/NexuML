@@ -210,3 +210,10 @@ The collector closed without shutting down the caller's Ray runtime.
 No CUDA worker was requested in this pairing. A CUDA learner together
 with CUDA workers still fails preflight pending that topology's proof.
 Receipt: `/tmp/opencode/rgcl-PxTiUd/`.
+
+The combined regression at `f1f66e52` passed **188 checks**, including
+both native device directions, worker cleanup, Ray barriers, direct Isaac
+preflight and Arena. Source hashes and results:
+`/tmp/opencode/final-ray-GF37RO/`. The docs check also passed: **67 tests,
+33 subtests**, zero Astro diagnostics and verified rendered links
+(`/tmp/opencode/ray-cuda-transfer-docs-XaEA9B/`).
