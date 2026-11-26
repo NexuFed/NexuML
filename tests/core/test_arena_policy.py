@@ -13,11 +13,13 @@ from tensordict import TensorDict
 from typer.testing import CliRunner
 
 from nexuml.cli.main import app
+from nexuml.core.components import EnvironmentBuildContext
 from nexuml.core.compiler import compile
 from nexuml.core.config import ResolvedConfig
 from nexuml.core.export import export_package
 from nexuml.core.policy import CompiledPolicy
 from nexuml.core.types import LoggingSpec, MLflowSpec
+from nexuml_library.environments.isaaclab import IsaacLabEnvironment
 from nexuml_library.evaluation import arena
 from nexuml_library.evaluation.arena import (
     ArenaBenchmarkEnvironment,
@@ -25,7 +27,13 @@ from nexuml_library.evaluation.arena import (
     run_arena_condition,
 )
 from nexuml_library.environments._isaaclab_so101 import GOALS
-from nexuml_library.evaluation.arena_so101 import CONDITIONS, _TARGETS_RAD, so101_arena_evaluation
+from nexuml_library.evaluation.arena_so101 import (
+    CONDITIONS,
+    _TARGETS_RAD,
+    make_reach_builder,
+    so101_arena_evaluation,
+    so101_arena_training,
+)
 from nexuml_library.scenarios.reinforcement.isaaclab import isaac_so101_joint_reach_ppo
 from test_policy_evaluation_cli import fail_training, native_logging as native_logging
 
@@ -48,6 +56,28 @@ def native(num_envs=1, period=1 / 30):
             device="cpu",
         )
     )
+
+
+def test_arena_training_serializes_the_native_builder_without_loading_it(monkeypatch):
+    scenario = so101_arena_training()
+    definition = scenario.interaction.environment
+    assert isinstance(definition, IsaacLabEnvironment) and definition.arena_factory is not None
+    assert definition.arena_factory.resolve() is make_reach_builder
+    assert scenario.interaction.evaluation_environment is None
+
+    def no_native_builder(*args, **kwargs):
+        pytest.fail("Configuration must not build the native scene")
+
+    monkeypatch.setattr(type(definition.arena_factory), "build", no_native_builder)
+    restored = ResolvedConfig.from_yaml(
+        ResolvedConfig.from_scenario(scenario).to_yaml()
+    ).to_scenario()
+    assert restored.interaction.environment == definition
+    assert definition.describe() == isaac_so101_joint_reach_ppo().interaction.environment.describe()
+    with pytest.raises(ValueError, match="headless state execution"):
+        definition.build(EnvironmentBuildContext("play", render_mode="rgb_array"))
+    with pytest.raises(ValueError, match="requires a distinct task"):
+        IsaacLabEnvironment.model_validate({**definition.model_dump(), "task": "Isaac-Cartpole"})
 
 
 def test_arena_bridge_decodes_the_stock_so101_policy_without_remapping(so101):

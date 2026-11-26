@@ -108,6 +108,63 @@ def isaaclab_process(definition=None, *, returning_close: bool = False):
         signal.signal(signal.SIGTERM, previous_sigterm)
 
 
+def _launch_environment(
+    owner, cfg, launch_simulation, has_kit, *, viewing=False, require_kit=False
+):
+    global _process_launcher
+    # Pinned Lab drops SimulationApp's fast_shutdown argument; Kit honors its own setting.
+    close_setting = " --/app/fastShutdown=false" if _process_returning_close else ""
+    args = {
+        "headless": True,
+        "fast_shutdown": not _process_returning_close,
+        "device": str(owner.device),
+        "visualizer": ["viser"] if viewing else ["none"],
+        "visualizer_explicit": True,
+        "livestream": 0,
+        "enable_cameras": owner._rendering,
+        # Kit's anonymous-data defaults also enable crash-dump upload consent.
+        "kit_args": (
+            "--/crashreporter/enabled=false --/crashreporter/skipOldDumpUpload=true "
+            "--/app/uploadDumpsOnStartup=false --/telemetry/enableAnonymousData=false "
+            "--/telemetry/enableAnonymousAppName=false --/telemetry/enableSentry=false "
+            "--/structuredLog/enable=false" + close_setting
+        ),
+    }
+    if require_kit:
+        args["require_kit"] = True
+    launcher = launch_simulation(cfg, args)
+    launcher.__enter__()
+    owner._launcher = launcher
+    if has_kit():
+        # The owning scope closes Kit after job finalization or the last worker batch.
+        _process_launcher, owner._launcher = owner._launcher, None
+    signal.signal(signal.SIGTERM, _terminate_job)
+
+
+def _register_arena(owner, definition, context, gym):
+    arena = import_module("isaaclab_arena.environments.arena_env_builder")
+    name = definition.task
+    if name in gym.registry:
+        raise ValueError(f"Arena task {name!r} would replace an existing Gym registration")
+    builder = definition.arena_factory.build(
+        device=str(owner.device),
+        num_envs=context.num_envs,
+        seed=context.seed if context.seed is not None else 0,
+    )
+    if not isinstance(builder, arena.ArenaEnvBuilder) or builder.arena_env.name != name:
+        raise ValueError("Arena factory must return a native ArenaEnvBuilder for the declared task")
+    if name in gym.registry:
+        raise ValueError(f"Arena factory registered {name!r} before native construction")
+    try:
+        registered, cfg, _ = builder.build_registered()
+    finally:
+        if (owned_spec := gym.registry.get(name)) is not None:
+            owner._arena_registration = (name, owned_spec)
+    if registered != name:
+        raise ValueError("Arena builder registered a different native task")
+    return cfg
+
+
 def _create_environment(owner, definition, context):
     global _process_definition, _process_launcher, _active_runtime
     if not _process_active:
@@ -189,35 +246,49 @@ def _create_environment(owner, definition, context):
     from nexuml_library.environments._isaaclab_tasks import register_reference_tasks
     import gymnasium as gym
 
-    register_reference_tasks()
-    # Resolve Gym's supported module:task form before Isaac strips the module prefix.
-    module, separator, task = definition.task.partition(":")
-    if separator:
-        import_module(module)
-    registered = gym.spec(task if separator else definition.task)
-    selections = []
-    if definition.physics is not None:
-        selections.append(f"physics={definition.physics}")
-    if definition.presets:
-        selections.append("presets=" + ",".join(definition.presets))
-    cfg = cast(
-        Any,
-        parse_env_cfg(
-            registered.id,
-            device=str(device),
-            num_envs=context.num_envs,
-            overrides=selections,
-        ),
-    )
-    cfg.seed = context.seed if context.seed is not None else 0
-    cfg.compute_final_obs = True
-    physics_type = type(cfg.sim.physics)
-    if definition.task_config is not None:
-        cfg = definition.task_config.build(cfg)
-        cfg = resolve_presets(
-            cfg,
-            selected=(*definition.presets, *((definition.physics,) if definition.physics else ())),
+    composition = definition.arena_factory is not None
+    if composition:
+        from nexuml_library.evaluation.arena import _runtime_identity
+
+        _runtime_identity()
+        physics_type = import_module("isaaclab_physx.physics").PhysxCfg
+        _launch_environment(owner, physics_type(), launch_simulation, has_kit, require_kit=True)
+        cfg = _register_arena(owner, definition, context, gym)
+        cfg.compute_final_obs = True
+        resolved_task = definition.task
+    else:
+        register_reference_tasks()
+        # Resolve Gym's supported module:task form before Isaac strips the module prefix.
+        module, separator, task = definition.task.partition(":")
+        if separator:
+            import_module(module)
+        resolved_task = gym.spec(task if separator else definition.task).id
+        selections = []
+        if definition.physics is not None:
+            selections.append(f"physics={definition.physics}")
+        if definition.presets:
+            selections.append("presets=" + ",".join(definition.presets))
+        cfg = cast(
+            Any,
+            parse_env_cfg(
+                resolved_task,
+                device=str(device),
+                num_envs=context.num_envs,
+                overrides=selections,
+            ),
         )
+        cfg.seed = context.seed if context.seed is not None else 0
+        cfg.compute_final_obs = True
+        physics_type = type(cfg.sim.physics)
+        if definition.task_config is not None:
+            cfg = definition.task_config.build(cfg)
+            cfg = resolve_presets(
+                cfg,
+                selected=(
+                    *definition.presets,
+                    *((definition.physics,) if definition.physics else ()),
+                ),
+            )
     native_envs = import_module("isaaclab.envs")
     marl_config = getattr(native_envs, "DirectMARLEnvCfg", None)
     owner._marl = marl_config is not None and isinstance(cfg, marl_config)
@@ -233,7 +304,7 @@ def _create_environment(owner, definition, context):
         or cfg.seed != (context.seed if context.seed is not None else 0)
         or not cfg.compute_final_obs
         or (definition.physics is not None and type(cfg.sim.physics) is not physics_type)
-        or has_kit()
+        or has_kit() != composition
     ):
         raise ValueError(
             "Native customization changed protected count/device/seed/final-state/runtime settings"
@@ -270,31 +341,8 @@ def _create_environment(owner, definition, context):
             )
         cfg.sim.default_visualizer_cfg = None
         cfg.sim.visualizer_cfgs = []
-    # Pinned Lab drops SimulationApp's fast_shutdown argument; Kit honors its own setting.
-    close_setting = " --/app/fastShutdown=false" if _process_returning_close else ""
-    args = {
-        "headless": True,
-        "fast_shutdown": not _process_returning_close,
-        "device": str(device),
-        "visualizer": ["viser"] if viewing else ["none"],
-        "visualizer_explicit": True,
-        "livestream": 0,
-        "enable_cameras": owner._rendering,
-        # Kit's anonymous-data defaults also enable crash-dump upload consent.
-        "kit_args": (
-            "--/crashreporter/enabled=false --/crashreporter/skipOldDumpUpload=true "
-            "--/app/uploadDumpsOnStartup=false --/telemetry/enableAnonymousData=false "
-            "--/telemetry/enableAnonymousAppName=false --/telemetry/enableSentry=false "
-            "--/structuredLog/enable=false" + close_setting
-        ),
-    }
-    launcher = launch_simulation(cfg, args)
-    launcher.__enter__()
-    owner._launcher = launcher
-    if has_kit():
-        # The owning scope closes Kit after job finalization or the last worker batch.
-        _process_launcher, owner._launcher = owner._launcher, None
-    signal.signal(signal.SIGTERM, _terminate_job)
+    if not composition:
+        _launch_environment(owner, cfg, launch_simulation, has_kit, viewing=viewing)
     if viewing:
         # Viser's Newton viewer imports USD; Kit must select its own USD first when needed.
         import_module("nexuml_library.environments._isaaclab_viser").configure_spectator(
@@ -324,7 +372,7 @@ def _create_environment(owner, definition, context):
         owner._direct = True
     else:
         raise ValueError("Native task is not a supported manager/direct RL environment")
-    owner.resolved_task = registered.id
+    owner.resolved_task = resolved_task
     owner.resolved_config = import_module("isaaclab.utils").to_dict(cfg)
     if owner._rendering:
         from nexuml_library.environments._isaaclab_rgb import position_camera
@@ -338,6 +386,7 @@ class _IsaacLabRuntime:
     def __init__(self, definition, context):
         self.native: Any = None
         self._launcher = None
+        self._arena_registration = None
         self._spectator_type = None
         self.playback_controls: PlaybackControls | None = None
         self._playback_options: IsaacPlaybackOptions | None = None
@@ -822,6 +871,13 @@ class _IsaacLabRuntime:
             except BaseException as error:
                 errors.append(error)
         native = None
+        if self._arena_registration is not None:
+            import gymnasium as gym
+
+            name, spec = self._arena_registration
+            if gym.registry.get(name) is spec:
+                del gym.registry[name]
+            self._arena_registration = None
         launcher, self._launcher = self._launcher, None
         if launcher is not None:
             try:

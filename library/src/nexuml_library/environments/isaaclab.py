@@ -9,6 +9,7 @@ from pydantic import Field, model_validator
 from nexuml.core.components import EnvironmentBuildContext, EnvironmentDefinition, PlaybackViewer
 from nexuml.core.discovery import environment
 from nexuml.core.types import (
+    FactorySpec,
     InteractionContract,
     PhysicalSystemContract,
     PhysicalTensorContract,
@@ -78,9 +79,26 @@ class IsaacLabEnvironment(EnvironmentDefinition):
     contract: InteractionContract | None = None
     bindings: IsaacBindings | None = None
     viewer: ViserSpec | None = None
+    arena_factory: FactorySpec | None = Field(default=None, exclude_if=lambda value: value is None)
 
     @model_validator(mode="after")
     def _validate_profile(self):
+        if self.arena_factory is not None and (
+            self.task in _TASK_PROFILES
+            or ":" in self.task
+            or self.physics != "isaacsim_physx"
+            or self.presets
+            or self.task_config is not None
+            or self.viewer is not None
+            or self.contract is None
+            or self.contract.groups
+            or any(field.modality != "vector" for field in self.contract.observations.values())
+            or self.bindings is None
+        ):
+            raise ValueError(
+                "Arena composition requires a distinct task, explicit state contract/bindings, "
+                "and headless PhysX without native preset or task config overrides"
+            )
         selections = (*self.presets, *((self.physics,) if self.physics is not None else ()))
         if any(
             not item or not item.replace("_", "").replace("-", "").isalnum() for item in selections
@@ -305,6 +323,8 @@ class IsaacLabEnvironment(EnvironmentDefinition):
             raise ValueError(f"Isaac {viewer} playback is not qualified")
 
     def build(self, context: EnvironmentBuildContext) -> "EnvironmentRuntime":
+        if self.arena_factory is not None and context.render_mode is not None:
+            raise ValueError("Arena composition supports headless state execution only")
         if context.purpose == "play":
             self.validate_playback(context.viewer or "headless")
             if context.render_mode is not None and (

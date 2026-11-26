@@ -50,5 +50,42 @@ Receipts: `/tmp/opencode/arena-locked-runtime-W5JZJ6/`,
 `/tmp/opencode/arena-source-eval-j6lXdv/` (unresolved selector),
 and `/tmp/opencode/arena-held-out-VqZ0MN/` (passing run). The latter
 records the hashes of the applied code, policy and effective dependency
-inputs. This is a small benchmark of an existing actor, not general
-task transfer, Arena-composed training, or completion of 1.3–1.4.
+inputs. This first run used an actor trained in stock Isaac Lab.
+
+## Arena-composed training and continuation (1.3–1.4)
+
+The trusted `IsaacLabEnvironment.arena_factory` serializes the installed
+builder function without importing Arena on the submitter. The existing
+Isaac runtime owns Kit, validates the composed native config and contract,
+and removes only its own Gym registration. Arena supplies scene,
+embodiment, reward, success criteria, and environment construction. The
+reference `scripts/isaaclab/so101_arena_train.py` and the held-out suite
+consume the same native builder; neither implements another trainer.
+
+- A fresh public CLI fit with four worlds completed **128 physical frames
+  and eight optimizer steps** and wrote a standalone inference package.
+- A four-world scripted oracle (seed 23) checked the pinned loaded asset,
+  native GPU actions, finite rewards, selected reset isolation, held
+  success, and pre-reset terminal observations. All **4/4** worlds ended
+  successfully by tick **11**. Auto-reset acknowledgement left other rows
+  unchanged, terminal/reset observations were distinct, and the owned
+  Gym registration was released.
+- A new fit initialized its actor exactly from the hashed seed-17 source
+  using `CheckpointLoadSpec`, with a fresh learner. It changed six actor
+  tensors, produced optimizer state and intentionally interrupted at
+  **128/256 frames and eight optimizer steps**. A fresh ordinary CLI resume
+  restored trainer state and reached **256 frames and 16 optimizer steps**.
+  The final export SHA-256 was
+  `e599256073cab2632e69c02c9c1c53f823d9d4af66dc39f0be2150c2f12c65d5`.
+- Separate native processes replayed that export for **24 ticks / 48
+  transitions / four finished episodes**, then evaluated **3/3 held-out
+  successes** through Arena at source frame **256**. This was a warm-start
+  workflow proof, not evidence of from-scratch convergence or a gain over
+  the initial actor.
+
+Receipts: `/tmp/opencode/arena-composed-fit-851kOp/` (ordinary fit),
+`/tmp/opencode/arena-control-e5doIh/` (native control and reset),
+and `/tmp/opencode/arena-warm-fit-e42sE6/` (weight, checkpoint and export
+hashes, interrupted fit, CLI resume, replay and suite). This qualifies
+headless PhysX state-only joint reaching; no pick/place, live Arena,
+physical robot or distributed training claim.

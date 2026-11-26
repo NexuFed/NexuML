@@ -141,6 +141,23 @@ actions for recording. Neither method executes asynchronous goals, and this
 headless entry point does not enable a viewer, physical robot control, or a
 continuous player.
 
+## Compose a headless Arena task
+
+Use a separately prepared Arena 0.4 source checkout with the pinned
+Isaac Lab 3.0 / Isaac Sim 6.2 runtime. `IsaacLabEnvironment.arena_factory`
+is a `FactorySpec` for an installed, trusted function that returns Arena's
+native `ArenaEnvBuilder` for the declared task name. The factory receives
+the worker's `device`, `num_envs`, and `seed` after NexuML has opened Kit.
+It must not start an app, register the task itself, or return a live
+environment. Keep the observation/action contract and bindings explicit.
+
+`scripts/isaaclab/so101_arena_train.py` is the native joint-reaching fit
+reference for `nexuml train --scenario-file`. It uses the ordinary PPO
+learner and supports headless replay of its export. The separate
+`scripts/isaaclab/so101_arena.py` selects Arena's held-out suite; scientific
+scoring still runs in the native evaluator, not in `play`. This profile
+does not qualify camera policies, desktop Kit, WebRTC, or distributed GPU collection.
+
 ### Play a trained policy headlessly
 
 Playback runs fixed weights without training or scientific scoring. Use a

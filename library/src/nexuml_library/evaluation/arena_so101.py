@@ -12,6 +12,7 @@ from nexuml_library.evaluation.arena import ArenaBenchmarkEnvironment
 from nexuml_library.scenarios.reinforcement.isaaclab import isaac_so101_joint_reach_ppo
 
 CONDITIONS = {"near_home": 10000, "left": 10001, "right": 10002}
+ARENA_TRAIN_TASK = "NexuML-Arena-SO101-Joint-Reach"
 _TARGETS_RAD = {
     "near_home": (0.06, -0.24, 0.23, -0.05, 0.06),
     "left": (0.16, -0.19, 0.22, -0.13, 0.18),
@@ -19,27 +20,19 @@ _TARGETS_RAD = {
 }
 
 
-def make_reach_condition(*, condition: str, seed: int, device: str) -> tuple[Any, Any]:
-    """Compose the stock reach controls, scene and held-success predicate in Arena.
+def make_reach_builder(
+    *, device: str, num_envs: int, seed: int, condition: str | None = None
+) -> Any:
+    """Compose native reach controls and rewards with random or held-out goals.
 
     Returns:
-        The Arena-built environment and verified SO-101 policy interface.
-
-    Raises:
-        ValueError: If Arena changes the pinned native action or observation terms.
+        Arena's native scene, embodiment and task builder.
     """
-    from nexuml_library.environments._isaaclab_so101 import (
-        HOME,
-        JOINT_NAMES,
-        TARGET_SCALE,
-        make_so101_config,
-        validate_asset,
-    )
+    from nexuml_library.environments._isaaclab_so101 import HOME, make_so101_config
 
-    target_rad = _TARGETS_RAD[condition]
-    cfg = make_so101_config(device=device, seed=seed)
+    target_rad = None if condition is None else _TARGETS_RAD[condition]
+    cfg = make_so101_config(device=device, seed=seed, num_envs=num_envs)
     configclass = import_module("isaaclab.utils").configclass
-    mdp = import_module("isaaclab.envs.mdp")
     EmbodimentBase = import_module("isaaclab_arena.embodiments.embodiment_base").EmbodimentBase
     Scene = import_module("isaaclab_arena.scene.scene").Scene
     NoTask = import_module("isaaclab_arena.tasks.no_task").NoTask
@@ -56,22 +49,30 @@ def make_reach_condition(*, condition: str, seed: int, device: str) -> tuple[Any
     stock_reset = cfg.events.reset_joint_reach.func
     stock_success = cfg.terminations.success
     arm = stock_success.params["asset_cfg"]
+    arm_resolved = False
 
     def reset(env, env_ids):
         stock_reset(env, env_ids)
-        target = env.joint_reach_target
-        target[slice(None) if env_ids is None else env_ids] = target.new_tensor(target_rad)
-        trace.clear()
+        if target_rad is not None:
+            target = env.joint_reach_target
+            target[slice(None) if env_ids is None else env_ids] = target.new_tensor(target_rad)
+            trace.clear()
 
     def held_success(env):
+        nonlocal arm_resolved
+        if not arm_resolved:
+            # Arena calls the predicate outside Lab's manager-side parameter resolution.
+            arm.resolve(env.scene)
+            arm_resolved = True
         result = stock_success.func(env, **stock_success.params)
-        positions = env.scene[arm.name].data.joint_pos.torch[0, arm.joint_ids]
-        trace.append(
-            {
-                "step": int(env.episode_length_buf[0].item()),
-                "joint_error_rad": float((positions - env.joint_reach_target[0]).abs().mean()),
-            }
-        )
+        if target_rad is not None:
+            positions = env.scene[arm.name].data.joint_pos.torch[0, arm.joint_ids]
+            trace.append(
+                {
+                    "step": int(env.episode_length_buf[0].item()),
+                    "joint_error_rad": float((positions - env.joint_reach_target[0]).abs().mean()),
+                }
+            )
         return result
 
     def record(env, env_id):
@@ -82,7 +83,7 @@ def make_reach_condition(*, condition: str, seed: int, device: str) -> tuple[Any
         return {
             "termination_reason": reason,
             "start_joint_position_rad": list(HOME),
-            "goal_joint_position_rad": list(target_rad),
+            "goal_joint_position_rad": env.joint_reach_target[env_id].tolist(),
             "joint_error_rad": float(env.joint_reach_error[env_id].item()),
             "failure_trace": None if success else list(trace),
         }
@@ -135,24 +136,43 @@ def make_reach_condition(*, condition: str, seed: int, device: str) -> tuple[Any
         return config
 
     environment = Environment(
-        name=f"NexuML-Arena-SO101-{condition}",
+        name=ARENA_TRAIN_TASK if condition is None else f"NexuML-Arena-SO101-{condition}",
         scene=ReachScene(),
         embodiment=ReachArm(),
         task=ReachTask(),
         env_cfg_callback=configure,
-        episode_recorder_terms={"nexuml_reach": Recorder(func=record)},
+        episode_recorder_terms={} if condition is None else {"nexuml_reach": Recorder(func=record)},
     )
-    env = builder.ArenaEnvBuilder(
+    return builder.ArenaEnvBuilder(
         environment,
         builder.ArenaEnvBuilderCfg(
-            device=device, num_envs=1, seed=seed, env_spacing=1.5, solve_relations=False
+            device=device, num_envs=num_envs, seed=seed, env_spacing=1.5, solve_relations=False
         ),
+    )
+
+
+def make_reach_condition(*, condition: str, seed: int, device: str) -> tuple[Any, Any]:
+    """Build the held-out scenario with Arena's maintained runner configuration.
+
+    Returns:
+        The Arena-built environment and verified SO-101 policy interface.
+
+    Raises:
+        ValueError: If Arena changes the pinned native action or observation terms.
+    """
+    from nexuml_library.environments._isaaclab_so101 import (
+        JOINT_NAMES,
+        TARGET_SCALE,
+        validate_asset,
+    )
+
+    mdp = import_module("isaaclab.envs.mdp")
+    env = make_reach_builder(
+        condition=condition, seed=seed, device=device, num_envs=1
     ).make_registered()
     native = env.unwrapped
     try:
         validate_asset(native)
-        # Arena calls the predicate outside Lab's term manager, which normally resolves this.
-        arm.resolve(native.scene)
         if native.action_manager.active_terms != ["arm_action"]:
             raise ValueError("Arena SO-101 must expose only its five arm joints")
         term = native.action_manager.get_term("arm_action")
@@ -195,4 +215,24 @@ def so101_arena_evaluation() -> ScenarioSpec:
         conditions=CONDITIONS,
     )
     scenario.policy_evaluation = PolicyEvaluationSpec(episodes=len(CONDITIONS))
+    return scenario
+
+
+def so101_arena_training() -> ScenarioSpec:
+    """Use the same native composition and existing PPO configuration for ordinary fit.
+
+    Returns:
+        The seed-randomized Arena training scenario, without automatic evaluation.
+    """
+    scenario = isaac_so101_joint_reach_ppo()
+    assert scenario.interaction is not None
+    stock = scenario.interaction.environment
+    assert isinstance(stock, IsaacLabEnvironment)
+    scenario.name = "isaac-arena-so101-joint-reach-ppo"
+    scenario.interaction.environment = IsaacLabEnvironment(
+        task=ARENA_TRAIN_TASK,
+        contract=stock.describe(),
+        bindings=stock.native_bindings(),
+        arena_factory=FactorySpec.from_factory(make_reach_builder),
+    )
     return scenario
