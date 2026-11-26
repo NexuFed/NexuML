@@ -89,3 +89,27 @@ and `/tmp/opencode/arena-warm-fit-e42sE6/` (weight, checkpoint and export
 hashes, interrupted fit, CLI resume, replay and suite). This qualifies
 headless PhysX state-only joint reaching; no pick/place, live Arena,
 physical robot or distributed training claim.
+
+For `532801d8`, both NexuML wheels built offline and replaced their
+editable installs in the isolated Arena profile. Python isolated mode,
+without `PYTHONPATH` or the NexuML checkout as the working directory,
+verified both module origins and loaded the scenario without importing
+Arena. The installed CLI then replayed the packaged Arena actor for **32
+CUDA transitions and two episodes**, cleared the simulation context, and
+exited 0. The upstream Arena dependency itself still uses its documented
+clean source install. Wheel hashes and receipts:
+`/tmp/opencode/arena-composition-wheels-d29oy0/`.
+
+The same wheels loaded the same export in a second, binary-only
+CPU environment. With Torch `2.11.0+cpu` and matching torchvision
+`0.26.0+cpu`, two input rows produced identical finite, bounded actions
+on repeated inference. Isaac Lab, Sim, Arena, MuJoCo, Ray and TorchRL
+were not installed, and Lightning was not imported. The serialized
+Arena factory remained available without importing its runtime.
+Receipts: `/tmp/opencode/arena-actor-cpu-rnfc64/`.
+
+Regression checks: **18** focused Arena tests, **8** native direct Isaac
+transition/lifecycle tests, and the full docs check on Node 22.23.4
+(67 tests, 33 subtests, zero Astro diagnostics and working rendered links).
+Receipts: `/tmp/opencode/arena-composition-direct-KAm1K6/` and
+`/tmp/opencode/arena-composition-docs-bI2TYm/`.

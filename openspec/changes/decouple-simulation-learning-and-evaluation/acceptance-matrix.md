@@ -26,7 +26,7 @@ git ls-files -z --cached --others --exclude-standard -- \
 | Independent local playback | Pass for 4a.2 and 4a.3 | [Playback evidence](playback-evidence.md): state and mixed-sensor headless play, N=1 and native batches, with policy-owned history and selected recurrent/chunk state resets; loopback Viser with bounded task reset options and bounded headless N=1 PhysX GIF/MP4. No viewer recording or remote playback qualified. |
 | Independent evaluation snapshot | Pass for fresh CPU/CUDA process and same-host CPU Ray tasks | [Snapshot boundary](snapshot-boundary.md): periodic GPU inference overlapped a CPU learner and published bounded media with correct policy provenance. Actor/optimizer matched the no-evaluation control. Two-GPU, multi-node and native Isaac fit evaluation remain unqualified. |
 | Native Kit Local/X11/TigerVNC and WebRTC playback | Unqualified | [Native Kit probes](playback-evidence.md#native-kit-display-probes-4a1-and-4a4-partial): Dev Containers X11 forwarded blank windows to the operator. The desktop probe ran actual policy ticks, but neither visible playback frames nor a mutation-restricted surface were verified. No approved end-to-end native WebRTC or TigerVNC reference. |
-| Ray Jobs playback | Pass on one prepared GPU host; remote acceptance open | [Playback evidence](playback-evidence.md#real-ray-jobs-on-one-prepared-gpu-host): real CUDA playback, bounded media and API cancellation with CUDA release and the borrowed Ray runtime intact. The shared-pool producer hit admission timeout with no driver; remote GPU and viewer routing remain unqualified. |
+| Ray Jobs playback | Pass on one prepared GPU host; remote acceptance open | [Playback evidence](playback-evidence.md#real-ray-jobs-on-one-prepared-gpu-host): CUDA playback, bounded media and API cancellation on one host. [Shared-pool follow-up](playback-evidence.md#stock-shared-pool-admission-follow-up): one worker installed the pinned runtime but hit its total guard; the next request hit the admission deadline. No remote export, playback or viewer endpoint qualified. |
 | MuJoCo Warp native API probe | Pass, substrate only | [GPU interop probe](mujoco-warp-probe.md): the pinned packages shared CUDA state with Torch, agreed with CPU for two substeps and reset only the selected row. No NexuML GPU environment, training or throughput claim. |
 | MuJoCo Warp direct reference | Pass for pinned headless Cartpole | [GPU reference](mujoco-warp-reference.md): native resets and terminal flags, 1,024 CUDA transitions and 16 PPO minibatches, fixed actor export and fresh replay. Distributed, split placement and rendering are not qualified. |
 | Matched-geometry runtime profile | Pass for scoped local measurement | [Runtime profile](mujoco-warp-reference.md#task-54--matched-geometry-measured-profile): CPU MuJoCo, CUDA Warp and CUDA PhysX each ran 1,024 transitions with common actor weights. Reports raw warm timing, versions/ABI, explicit EGL success and OSMesa gap. The CPU CI test command and opt-in hardware suite passed locally; no dynamics equivalence or speedup claim. |
@@ -207,6 +207,12 @@ The standard regression for acknowledged native rollout shutdown
 deselected) in 565.72 s. The recorded input hash matched the commit:
 `04a105a86a5e9a1933da9a04487aa07faf71280b4b3cc3d34818df6a8a3a822c`.
 Log: `/tmp/opencode/rollout-scope-standard-qBhSfr/pytest.log`.
+
+The Arena composition regression (`532801d8`) passed **3,745 tests and
+604 subtests** (16 skipped, 125 deselected) in 479.91 s. The recorded
+input hash matched the commit:
+`bb9f85c128f4eff679de2157549e055ccaf91e82a08ab10b09c08fe28e61df2c`.
+Log: `/tmp/opencode/arena-composition-standard-5HyOdh/pytest.log`.
 
 ## Spec precedence for this candidate
 

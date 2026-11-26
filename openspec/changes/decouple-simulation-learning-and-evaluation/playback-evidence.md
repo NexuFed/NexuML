@@ -242,6 +242,26 @@ Receipts and replayable probe: `/tmp/opencode/jp-E6Kx0Y/`. This verifies
 the actual Jobs transport and cleanup on one host, not a remote-worker
 runtime, job-local installation or a native viewer endpoint.
 
+### Stock shared-pool admission follow-up
+
+A fresh whole-GPU request to `pool_gpu_workers` did reach an assigned
+worker. The guarded producer `raysubmit_XZ1gEezgPFei3it3` prepared pinned
+dependencies in 6m31s and installed 321 packages into its private job
+environment. Its 420 s total guard exited 124 before training, leaving no
+qualified policy artifact. The worker image was not changed. Receipts:
+`/tmp/opencode/rp-RgFZUM/`.
+
+A second producer with a 1,200 s cold-install/workload allowance, fresh
+validated output paths and the same 4 GiB disk floor,
+`raysubmit_V6EQvsxj4WPBhkpB`, failed **admission** instead: Ray reported
+its 900 s supervisor timeout with no assigned driver. The autoscaler
+requested one stock GPU worker and requeued it after 600 s. The Kubernetes
+API showed a healthy head and no GPU workers at readback. That establishes
+the observed scheduling failure, not permanent lack of GPUs. No playback
+consumer was submitted for either producer. No direct node operations,
+downscaled GPU requests or local simulator fallback occurred.
+Terminal receipt: `/tmp/opencode/rrp-oHLl76/deadline-status.json`.
+
 ## Native Kit display probes (4a.1 and 4a.4, partial)
 
 On existing forwarded X11 display `:11`, Lab's default non-headless Kit experience
@@ -278,3 +298,11 @@ The pinned Kit install also ships `omni.app.viewport.kit`, labeled
 `support_level = "Sample"`. It selects no renderer or default stage and
 does not depend on Isaac Lab or PhysX. Neither profile qualifies a
 playback-only surface; hiding editor panels does not prevent mutation.
+
+The launcher explicitly rejects the full Isaac Sim streaming experience
+with Lab because it can hang or invalidate PhysX tensor views. Lab's
+default streaming profile instead inherits the editor. The bundled
+`omni.kit.livestream.app` documents a native spectator stream, but it also
+starts a primary stream by default. This source audit did not verify
+spectator input denial, disabled primary streaming, actual endpoints or
+decoded policy frames. No stream or other listener was opened.
