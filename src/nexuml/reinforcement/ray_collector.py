@@ -32,6 +32,8 @@ def _validate_synchronous_rollout(batch, *, version: int, frames: int, workers: 
 class _GracefulRayCollector(RayCollector):
     """Retain TorchRL collection/sync and validate rollout version before consumption."""
 
+    _close_error: Exception | None = None
+
     def __init__(self, *args, **kwargs):
         if version("torchrl").split("+")[0] != "0.14.0":
             raise RuntimeError(
@@ -66,14 +68,23 @@ class _GracefulRayCollector(RayCollector):
             return  # Repeated teardown must not auto-initialize a new Ray runtime.
         try:
             # TorchRL 0.14 otherwise kills actors, also on iterator exhaustion, without close.
-            # ponytail: 30s graceful-close bound; expose a deadline for slower runtimes if needed.
-            ray.get([worker.shutdown.remote() for worker in self.remote_collectors], timeout=30)
+            closing = [worker.shutdown.remote() for worker in self.remote_collectors]
+            _, pending = ray.wait(closing, num_returns=len(closing), timeout=30)
+            if pending:
+                raise TimeoutError("Ray worker close deadline exceeded")
+            ray.get(closing)
+        except Exception as error:
+            # Let TorchRL release the weight-sync actor and transport before reporting failure.
+            self._close_error = error
         finally:
             super().stop_remote_collectors()
 
     def shutdown(self, timeout=None, shutdown_ray=False):
         try:
             super().shutdown(timeout=timeout, shutdown_ray=shutdown_ray)
+            if self._close_error is not None:
+                error, self._close_error = self._close_error, None
+                raise error
         finally:
             # A failed/timed-out remote close must not leak a collector-owned runtime lease.
             self._runtime_lease.release()

@@ -47,3 +47,22 @@ A failed build also unwound its scope. The combined Ray suite passed
 Isaac preflight checks passed separately. Ray receipt:
 `/tmp/opencode/rw-vjuOZy/pytest.log`. Native Kit lifetime and GPU placement
 remain unqualified.
+
+Shutdown now waits for all workers to close, within the same 30-second
+bound, before reading results. A failure from one worker no longer
+interrupts the others' grace period or skips TorchRL's weight-sync
+transport/actor cleanup. The suite passed **49 checks**, including
+close failure, timeout, and repeatable shutdown:
+`/tmp/opencode/rs-S3RSeI/pytest.log`.
+
+## Checkpoint continuation (3.5, CPU slice)
+
+The public session saved an ordinary Pendulum checkpoint after 16
+transitions and four optimizer steps, then interrupted training. Resume
+restored actor and optimizer tensors exactly and created two new Ray
+actors before consuming the remaining batch. That generation started
+at policy version 1 (versions are collector-local). Training reached
+32 transitions, two rollouts, and eight optimizer steps; the exported
+actor reloaded with identical weights and the borrowed Ray runtime
+remained alive. Targeted test receipt: `/tmp/opencode/rr-Phtsbn/pytest.log`.
+This does not qualify native GPU failure/resume or distributed performance.

@@ -392,31 +392,104 @@ def test_ray_lightning_fit_and_failure_close_workers(
     assert local_ray.is_initialized() == caller_owned
 
 
+@pytest.mark.requires_system
 @pytest.mark.requires_optional("ray")
 @pytest.mark.requires_optional("torchrl")
-def test_ray_close_failure_kills_owned_actors_releases_lease_and_is_repeatable(monkeypatch):
+@pytest.mark.requires_optional("gymnasium")
+def test_ray_checkpoint_resumes_with_fresh_workers(local_ray, tmp_path):
+    from lightning.pytorch.callbacks import Callback
+
+    from nexuml.core.export import export_package, load_inference_package
+
+    spec = pendulum_ppo(total_frames=32, frames_per_batch=16)
+    assert spec.interaction is not None and isinstance(spec.training, ReinforcementLearningSpec)
+    spec.training.collector = CollectorSpec(backend="ray", num_collectors=2)
+    spec.training.algorithm = PPO(update_epochs=1, minibatch_size=8)
+    spec.training.evaluation = RLEvaluationSpec(episodes=0)
+    checkpoint = tmp_path / "partial.ckpt"
+    previous_workers = set()
+
+    class Interrupt(Callback):
+        def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
+            previous_workers.update(
+                worker._actor_id for worker in pl_module._collector.remote_collectors
+            )
+            trainer.save_checkpoint(checkpoint)
+            raise RuntimeError("checkpoint interruption")
+
+    options = {"enable_loggers": False, "enable_progress_bar": False}
+    first = NexuSession(spec, log_dir=tmp_path / "first", **options)
+    first.trainer.callbacks.append(Interrupt())  # ty: ignore[missing-attribute]
+    with pytest.raises(RuntimeError, match="checkpoint interruption"):
+        first.fit()
+    assert first.lightning_module._collector is None and len(previous_workers) == 2
+    saved_policy = first.lightning_module.policy.state_dict()
+    saved_optimizers = [optimizer.state_dict() for optimizer in first.trainer.optimizers]
+    assert first.trainer.global_step == 4
+
+    class Restored(Callback):
+        def on_train_batch_start(self, trainer, pl_module, batch, batch_idx):
+            assert int(pl_module.frames) == 16 and trainer.global_step == 4
+            assert torch.all(batch["next", "policy_version"] == 1)
+            workers = {worker._actor_id for worker in pl_module._collector.remote_collectors}
+            assert len(workers) == 2 and workers.isdisjoint(previous_workers)
+            torch.testing.assert_close(pl_module.policy.state_dict(), saved_policy, rtol=0, atol=0)
+            for optimizer, expected in zip(trainer.optimizers, saved_optimizers, strict=True):
+                torch.testing.assert_close(optimizer.state_dict(), expected, rtol=0, atol=0)
+
+    resumed = NexuSession.from_trainer_checkpoint(
+        checkpoint, log_dir=tmp_path / "resumed", **options
+    )
+    resumed.trainer.callbacks.append(Restored())  # ty: ignore[missing-attribute]
+    result = resumed.run()
+    assert int(result.lightning_module.get_buffer("frames")) == 32
+    assert int(result.lightning_module.get_buffer("batches")) == 2
+    assert result.trainer.global_step == 8 and result.policy is not None
+    assert resumed.lightning_module._collector is None
+    assert local_ray.is_initialized()
+    package = export_package(result.policy, tmp_path / "policy", trainer=result.trainer)
+    reloaded, _, _ = load_inference_package(package)
+    torch.testing.assert_close(reloaded.state_dict(), result.policy.state_dict(), rtol=0, atol=0)
+
+
+@pytest.mark.requires_optional("ray")
+@pytest.mark.requires_optional("torchrl")
+@pytest.mark.parametrize("timeout", [False, True])
+def test_ray_close_failure_kills_owned_actors_releases_lease_and_is_repeatable(
+    monkeypatch, timeout
+):
     from nexuml.reinforcement.ray_collector import _GracefulRayCollector
 
     collector = object.__new__(_GracefulRayCollector)
-    worker = Mock()
+    workers = [Mock(), Mock()]
     lease = Mock()
-    collector._remote_collectors = [worker]
+    scheme = Mock()
+    collector._remote_collectors = workers.copy()
     collector._runtime_lease = lease
     collector._stop_event = Event()
     collector._collection_thread = None
-    collector._weight_sync_schemes = None
-    get = Mock(side_effect=TimeoutError("close deadline"))
+    collector._weight_sync_schemes = {"policy": scheme}
+    closing = [worker.shutdown.remote.return_value for worker in workers]
+    wait = Mock(return_value=(closing[:1], closing[1:]) if timeout else (closing, []))
+    get = Mock(side_effect=RuntimeError("failed shutdown"))
     kill = Mock()
+    monkeypatch.setattr("nexuml.reinforcement.ray_collector.ray.wait", wait)
     monkeypatch.setattr("nexuml.reinforcement.ray_collector.ray.get", get)
     monkeypatch.setattr("nexuml.reinforcement.ray_collector.ray.kill", kill)
-    with pytest.raises(TimeoutError, match="close deadline"):
+    error, message = (
+        (TimeoutError, "close deadline") if timeout else (RuntimeError, "failed shutdown")
+    )
+    with pytest.raises(error, match=message):
         collector.shutdown()
-    kill.assert_called_once_with(worker)
-    lease.release.assert_called_once()
+    wait.assert_called_once_with(closing, num_returns=2, timeout=30)
+    assert [call.args for call in kill.call_args_list] == [(workers[1],), (workers[0],)]
+    scheme.shutdown.assert_called_once()
+    assert lease.release.called
     assert not collector.remote_collectors
     collector.shutdown()
-    get.assert_called_once()
-    kill.assert_called_once()
+    assert get.call_count == int(not timeout)
+    assert kill.call_count == 2
+    scheme.shutdown.assert_called_once()
 
 
 @pytest.mark.requires_optional("torchrl")
