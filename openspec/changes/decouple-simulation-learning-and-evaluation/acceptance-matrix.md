@@ -160,6 +160,14 @@ behavior was changed to make these tests pass. The focused CLI suite passed
 Logs: `/tmp/opencode/nexuml-placement-standard-5YAUcL/pytest.log`
 and `/tmp/opencode/nexuml-ray-receipt-qbI9Hz/pytest.log`.
 
+The rerun at `ed0c5e4c` passed **3,739 tests and 604 subtests**
+(16 skipped, 124 deselected) in 455.70 s, using the same standard marker
+selection. Input SHA-256:
+`acbcb0e6f62aca11b596452b4243c0e24fc739eb579209ac32bfe7fe831ed3e2`.
+Log: `/tmp/opencode/nexuml-placement-standard-SfCkZE/pytest.log`.
+The updated docs check passed on Node 22.23.4: 67 tests and 33 subtests,
+zero Astro diagnostics, and rendered links, fragments, and assets verified.
+
 ## Spec precedence for this candidate
 
 - The original Isaac [rollout](../add-isaaclab-gpu-robotics/specs/isaaclab-rollout-collection/spec.md)
