@@ -8,9 +8,9 @@ Primary reference SHALL use exact 29-DoF G1 body and verified hand/actuator/cont
 - **WHEN** matching body/hands and action/observation semantics have been validated
 - **THEN** the compatible actor executes both native paths with separate provenance; incompatible variants reject.
 
-### Requirement: First physical deployment is supervised G1
+### Requirement: Later humanoid deployment is supervised G1
 
-First required physical proof SHALL target approved exact G1 EDU with retained qualified locomotion/balance/whole-body controller, recorded-input and sim-to-sim/full-stack parity, protective workspace/support, independent emergency stop/fallback and explicit authorization. Bounded supervised manipulation and local capture only; no unattended exploration, implicit actuation, automatic promotion or mid-episode swap. Approved compatible experience SHALL feed foundation local-fit handoff. Hardware evidence remains independent.
+The later humanoid physical proof SHALL target approved exact G1 EDU after the SO-101 and LeKiwi physical learning milestones (software readiness may proceed independently) with retained qualified locomotion/balance/whole-body controller, recorded-input and sim-to-sim/full-stack parity, protective workspace/support, independent emergency stop/fallback and explicit authorization. Bounded supervised manipulation and local capture only; no unattended exploration, implicit actuation, automatic promotion or mid-episode swap. Approved compatible experience SHALL feed foundation local-fit handoff. Hardware evidence remains independent.
 
 #### Scenario: G1 hardware is not available
 - **WHEN** simulation and imitation evidence is qualified

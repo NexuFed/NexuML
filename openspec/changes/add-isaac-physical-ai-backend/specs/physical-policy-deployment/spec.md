@@ -14,9 +14,9 @@ Every deployment target SHALL reproduce reference preprocessing, state updates a
 - **WHEN** parity is checked before enabling commands
 - **THEN** deployment is blocked with the semantic mismatch identified
 
-### Requirement: Sim-to-real is an operator-supervised G1 workflow
+### Requirement: Sim-to-real is a staged operator-supervised workflow
 
-The first physical proof SHALL target an approved exact Unitree G1 EDU with verified firmware, calibration, native control access, qualified balance/whole-body controller, protective workspace/support, independent stop and human intervention. Initial task SHALL be bounded supervised upper-body manipulation with retained qualified locomotion/balance controller. SO-101 and LeKiwi remain simulation-first; additional physical arm trials are optional and separately authorized. The G1 integration receipt from integrate-robotics-stack-and-teleoperation SHALL satisfy the shared gate. Hardware enablement SHALL require explicit operator action and SHALL NOT run through normal CI or unattended exploration.
+Physical learning milestones SHALL target approved SO-101 leader/follower first, then LeKiwi V1, then later exact Unitree G1 EDU as the first humanoid. Each SHALL establish matching simulation/recorded-input parity, verified native control access, calibration, protective workspace/support, independent stop and human intervention before separately authorized bounded motion. Early milestones SHALL record demonstrations and corrections, ACT baseline and compatible pretrained SmolVLA adaptation, held-out evidence and rollback; LeKiwi SHALL qualify base/arm controls. Initial G1 physical task SHALL be bounded supervised upper-body manipulation with retained qualified locomotion/balance/whole-body controller and verified firmware. The matching integration receipts from integrate-robotics-stack-and-teleoperation SHALL satisfy the shared gates. Missing hardware SHALL block its physical proof only. Hardware enablement SHALL require explicit operator action and SHALL NOT run through normal CI or unattended exploration.
 
 #### Scenario: The hardware enable gate is absent
 - **WHEN** a simulation-validated policy is loaded on a connected robot workstation

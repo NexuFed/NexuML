@@ -10,7 +10,11 @@ Every R01–R10 row SHALL be discoverable as a native Isaac learning reference w
 
 ### Requirement: LeKiwi is the primary mobile simulation reference
 
-Exact LeKiwi V1 SHALL use maintained LeIsaac assets or validated official URDF conversion and explicit base/arm/gripper controls. Demonstrate human simulated teleop, validated episodes, actual learned manipulation, export/play and integrated native navigate/pick/transport/place with measured outcomes/classical baseline. Hardware optional.
+Exact LeKiwi V1 SHALL use maintained LeIsaac assets or validated official URDF conversion and explicit base/arm/gripper controls. Demonstrate human simulated teleop, validated episodes, actual learned manipulation, export/play and integrated native navigate/pick/transport/place with measured outcomes/classical baseline. Physical LeKiwi V1 SHALL be the second separately authorized physical learning milestone after SO-101. Physical evidence SHALL be separate from simulation evidence and require calibrated base/arm controls, recorded-input parity, independent stop/fallback, actual demonstrations and supervised task/correction capture with held-out local adaptation comparison.
+
+#### Scenario: Physical hardware or approval is absent
+- **WHEN** the matching simulation workflow is qualified
+- **THEN** the physical milestone remains blocked without preventing independent software qualification.
 
 #### Scenario: A simulated LeKiwi reaches an object
 - **WHEN** the system reference invokes qualified navigation and learned manipulation
