@@ -55,6 +55,27 @@ transport/actor cleanup. The suite passed **49 checks**, including
 close failure, timeout, and repeatable shutdown:
 `/tmp/opencode/rs-S3RSeI/pytest.log`.
 
+### Native actor shutdown blocker
+
+At `dd1bd204`, a real Ray actor received the existing `EnvironmentFactory`,
+reserved one GPU, entered its own Kit 6.2 / Isaac Lab 3.0 scope and built
+the unchanged two-world PhysX Cartpole. Three zero-action steps produced
+**six physical transitions** with CUDA rewards and terminal/truncation
+tensors. On ordinary factory-owned close, Kit cleared `SimulationContext`
+and the actor process exited, but Ray returned `ActorDiedError` instead of
+acknowledging shutdown. The caller-owned Ray runtime remained alive.
+
+Passing `fast_shutdown=False` to the published Lab launcher in an isolated
+diagnostic did not change the result. The pinned `KitLauncher` allowlist
+does not forward `fast_shutdown` to `SimulationApp`, whose default fast
+close may terminate its owning process. Do not treat a generic actor death
+as successful teardown; it is indistinguishable at that boundary from a
+genuine lost worker. Native collection stays disabled pending a supported,
+acknowledged lifecycle, independently of multi-node availability.
+Receipts: `/tmp/opencode/jr-x2o97S/` and `/tmp/opencode/jr-full-2E6fPu/`.
+These probes did not run TorchRL distributed PPO or verify native
+cancellation, checkpoint resume, or object-store cleanup.
+
 ## Checkpoint continuation (3.5, CPU slice)
 
 The public session saved an ordinary Pendulum checkpoint after 16
