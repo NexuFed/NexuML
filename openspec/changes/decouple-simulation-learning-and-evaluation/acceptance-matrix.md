@@ -35,7 +35,7 @@ git ls-files -z --cached --others --exclude-standard -- \
 | Arena composed training and evaluation | Blocked | Compatible prepared Arena runtime absent; hermetic evaluator protocol is not native composition or scoring. |
 | Approved three-domain physical ROS 2 and mixed objectives | Blocked | No approved matching real episodes available; simulated pairs and hermetic evidence do not count. |
 | Existing supervised/dataset regression, NEX-234 real-data run | Pass for fixtures; real-data rerun blocked | Existing CPU and CUDA dataset SDK checks passed. Original approved dataset unavailable. |
-| Package and image verification | Partially verified locally | Existing packaging gate includes the evaluator, playback and native-task modules. Wheels and source archives passed locally. Candidate images can be qualified through Harbor if needed. Public release delivery is deferred until the complete change is merged. |
+| Package and image verification | Pass for local wheels and a pinned headless Isaac image | Installed Cartpole train/export/play/evaluate passed in the binary-only workstation image. No Harbor upload was needed. Public release delivery is deferred until the complete change is merged. |
 
 Integrated native regression: **10 passed in 137.19 s**. This includes the
 manager/direct transition oracles across PhysX, Newton and OVPhysX, SO-101
@@ -96,8 +96,22 @@ and rejection of unsupported video. Both packages resolved from the isolated
 prefix. Gymnasium supplied the classic-control task; Ray and native robotics
 packages (Isaac, MuJoCo, ROS, CARLA, Newton and LeRobot) were absent.
 See `learner.log` and `learner-packages.txt` in the same receipt directory.
-Task 6.3 remains open for candidate image verification and the unqualified
-split and distributed recipes, not for public release delivery.
+Task 6.3 remains open for the unqualified split and distributed recipes,
+not for public release delivery.
+
+The existing binary-only Isaac workstation build produced image
+`sha256:1f03b8cf62699c098b0e590076b972446b51102086767aaa103c475b964b2d6b`
+from the pinned NVIDIA base and Lab VCS cache. Included core/library wheels
+had SHA-256 `be22e9898436e9298d13fdccf75e73b46de65a0d9cade9a63cdd04a241b15382`
+and `e20b6a053d700f36c9728f44642cc722a118c5d84cab4bcce45cd4339a3ab931`.
+Without mounting checkout sources, the installed CLI trained Cartpole for
+256 native transitions, exported the actor, played 8 ticks across 2 lanes,
+and completed one fresh evaluation at source frame 256. The container
+exited 0 and was removed. Evidence:
+`/tmp/opencode/nexuml-decouple-isaac-image-wuM5d8/` (build) and
+`/tmp/opencode/nexuml-isaac-container-proof-IvfR34/` (invocation, logs and
+artifact). This qualifies those image contents, not later commits or a
+display/streaming path.
 
 The first standard non-system regression reported **3,631 passed and 12
 failed**. Failures were in execution test fixtures: an old evaluation-spec
