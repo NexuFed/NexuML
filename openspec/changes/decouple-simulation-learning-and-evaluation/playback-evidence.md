@@ -308,8 +308,10 @@ its own environment on the stock Ray image.
   active.
 
 Headless had no viewer endpoint. This is not remote recording, Viser,
-local Kit, WebRTC, or a multi-node training proof. CLI, SDK, and
-operator-owned viewer prerequisites are in the [native configuration
+local Kit, WebRTC, or a multi-node training proof. The locked install
+was not binary-only: the producer log records two sdist builds and the
+Isaac Lab Git build. See the [worker dependency audit](ray-rollout-placement.md#worker-dependency-setup-diagnostic-34-not-native-qualification).
+CLI, SDK, and operator-owned viewer prerequisites are in the [native configuration
 guide](../../../docs/src/content/docs/how-to/isaac-native-configuration.mdx).
 Receipts and hashes: `/tmp/opencode/nex212-remote-ES504T/`.
 

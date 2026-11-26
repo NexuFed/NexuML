@@ -1,5 +1,6 @@
 """Opt-in same-geometry Cartpole timing; each lane runs in a fresh process."""
 
+from contextlib import ExitStack, contextmanager
 from importlib.metadata import version
 import json
 from math import isfinite
@@ -10,7 +11,8 @@ import resource
 import subprocess
 import sys
 import tarfile
-from time import perf_counter
+from tempfile import TemporaryDirectory
+from time import perf_counter, sleep, time
 from typing import Any, cast
 
 import pytest
@@ -21,6 +23,7 @@ ARCHIVE = (
     ROOT / "openspec/changes/decouple-simulation-learning-and-evaluation/local-fit-receipts.tar.gz"
 )
 LOCK = "/tmp/opencode/nexuml-decouple-native-gpu.lock"
+RAY_LOCK = "/tmp/opencode/nexuml-decouple-ray-cpu.lock"
 XML_SHA = "d9657349921533445007a0f83eac74d2ba274ba0cc49c585618d00bb98b75704"
 BASE_SHA = "99899fb561134f94b18fcd1cccb2b8efc6b9b4a48c910b9f7e987e1ca588d4a2"
 
@@ -37,6 +40,14 @@ BASE_SHA = "99899fb561134f94b18fcd1cccb2b8efc6b9b4a48c910b9f7e987e1ca588d4a2"
         ),
         pytest.param(
             "isaac", marks=[pytest.mark.requires_gpu, pytest.mark.requires_optional("isaaclab")]
+        ),
+        pytest.param(
+            "isaac-ray",
+            marks=[
+                pytest.mark.requires_gpu,
+                pytest.mark.requires_optional("isaaclab"),
+                pytest.mark.requires_optional("ray"),
+            ],
         ),
     ],
 )
@@ -56,6 +67,11 @@ def test_paired_cartpole_profile(lane, tmp_path):
         env["CUDA_VISIBLE_DEVICES"] = ""
     else:
         command[:0] = ["flock", "-F", "-w", "180", LOCK]
+    if lane == "isaac-ray":
+        command[:0] = ["flock", "-F", "-w", "180", RAY_LOCK]
+        env["PYTHONPATH"] = os.pathsep.join(
+            filter(None, [str(Path(__file__).resolve().parent), env.get("PYTHONPATH")])
+        )
     started = perf_counter()
     with (tmp_path / "child.log").open("w") as log:
         result = subprocess.run(
@@ -70,11 +86,69 @@ def test_paired_cartpole_profile(lane, tmp_path):
     report = json.loads((tmp_path / "profile.json").read_text())
     assert report["counts"] == [1024, 8, 16, 32] and len(report["warm_windows"]) == 3
     assert report["actor_start_sha256"] == BASE_SHA
+    if lane == "isaac-ray":
+        assert report["ray"]["plasma_empty"] and report["device"] == "cpu"
+        assert [row["policy_version"] for row in report["rollouts"]] == list(range(1, 9))
+        assert report["weight_payload_tensor_bytes"] > 0
+        assert all(row["rollout_payload_tensor_bytes"] > 0 for row in report["rollouts"])
+
+
+@contextmanager
+def _ray_scope(scenario):
+    import ray
+    from ray._private.internal_api import memory_summary
+
+    from nexuml.core.types import CollectorSpec, RayCollectorSpec
+
+    # Ray's local domain sockets need a shorter path than pytest's case directory.
+    with TemporaryDirectory(prefix="rb-", dir="/tmp/opencode") as directory:
+        ray.init(
+            address="local",
+            num_cpus=3,
+            num_gpus=1,
+            object_store_memory=96 * 2**20,
+            include_dashboard=False,
+            log_to_driver=False,
+            _temp_dir=directory,
+        )
+        try:
+            scenario.training.accelerator = "cpu"
+            scenario.training.collector = CollectorSpec(
+                backend="ray",
+                num_envs_per_collector=8,
+                env_device="cuda:0",
+                policy_device="cuda:0",
+                storing_device="cpu",
+                ray=RayCollectorSpec(address=ray.get_runtime_context().gcs_address, num_gpus=1),
+            )
+
+            def receipt(root):
+                assert ray.is_initialized()
+                assert "isaacsim" not in sys.modules and "omni.kit.app" not in sys.modules
+                logs = (Path(directory) / "session_latest/logs").glob("worker-*.out")
+                closed = [log for log in logs if "SimulationContext cleared" in log.read_text()]
+                assert len(closed) == 1
+                pid = int(closed[0].stem.rsplit("-", 1)[1])
+                (root / "ray-worker.log").write_bytes(closed[0].read_bytes())
+                # The resource token can be reassigned before the old process is reaped.
+                deadline = perf_counter() + 12
+                while Path(f"/proc/{pid}").exists():
+                    assert perf_counter() < deadline, pid
+                    sleep(0.1)
+                assert ray.get(ray.remote(num_gpus=1)(lambda: True).remote(), timeout=15)
+                memory = memory_summary(stats_only=True)
+                assert "0 objects" in memory, memory
+                return {"worker_pid": pid, "plasma_empty": True, "object_store_budget": 96 * 2**20}
+
+            yield receipt
+        finally:
+            ray.shutdown()
 
 
 def _profile(lane, root):
     entered = perf_counter()
     from lightning.pytorch.callbacks import Callback
+    from tensordict import TensorDict
     import torch
 
     from mujoco_warp_reference import MujocoWarpCartpole
@@ -88,7 +162,8 @@ def _profile(lane, root):
 
     assert _digest(root / "cartpole.xml") == XML_SHA
     torch.set_num_threads(4)
-    device = "cpu" if lane == "mujoco" else "cuda:0"
+    remote = lane == "isaac-ray"
+    device = "cpu" if lane == "mujoco" or remote else "cuda:0"
     scenario = _scenario("mujoco" if lane == "mujoco" else "isaac", root)
     assert scenario.interaction is not None and isinstance(
         scenario.training, ReinforcementLearningSpec
@@ -119,7 +194,8 @@ def _profile(lane, root):
 
         def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
             ended = tick()
-            assert str(batch["action"].device) == device and batch.batch_size == (8, 16)
+            expected_shape = (1, 8, 16) if remote else (8, 16)
+            assert str(batch["action"].device) == device and batch.batch_size == expected_shape
             losses = {
                 name.removeprefix("train/rl/"): float(value)
                 for name, value in trainer.callback_metrics.items()
@@ -128,6 +204,7 @@ def _profile(lane, root):
             assert len(losses) == 3 and all(map(isfinite, losses.values()))
             self.rows.append(
                 {
+                    "end_epoch_s": time(),
                     "collect_s": self.update - self.previous,
                     "update_s": ended - self.update,
                     "terminated": int(batch["next", "terminated"].sum()),
@@ -136,18 +213,19 @@ def _profile(lane, root):
                     "losses": losses,
                 }
             )
+            if remote:
+                versions = batch["next", "policy_version"]
+                assert (versions == batch_idx + 1).all()
+                self.rows[-1].update(
+                    policy_version=batch_idx + 1,
+                    rollout_payload_tensor_bytes=sum(
+                        tensor.nbytes for tensor in batch.values(True, True)
+                    ),
+                )
             self.last = ended
             self.previous = tick()
 
     timing = Timing()
-    session = NexuSession(
-        scenario, log_dir=root / "fit", enable_loggers=False, enable_progress_bar=False
-    )
-    module = session.lightning_module
-    assert isinstance(module, NexuRLLightningModule)
-    module.policy.load_state_dict(base, strict=True)
-    trainer = cast(Any, session.trainer)
-    trainer.callbacks.append(timing)
     contract = definition.describe()
     assert contract.physical is not None and contract.control_period_s == 1 / 60
     packages = ["torch", "torchrl", "tensordict", "lightning", "gymnasium"]
@@ -163,16 +241,30 @@ def _profile(lane, root):
             ).strip(),
         }
     isaaclab_revision = None
-    if lane == "isaac":
+    if lane == "isaac" or remote:
         from nexuml_library.environments.isaaclab import IsaacLabEnvironment
 
         assert isinstance(definition, IsaacLabEnvironment)
         isaaclab_revision = definition.revision
         packages += ["isaaclab", "isaacsim", "warp-lang"]
+        if remote:
+            packages.append("ray")
     else:
         packages += ["mujoco"] + (["mujoco-warp", "warp-lang"] if lane == "warp" else [])
 
-    with definition.job_scope():
+    with ExitStack() as scope:
+        ray_receipt = scope.enter_context(_ray_scope(scenario)) if remote else None
+        session = NexuSession(
+            scenario, log_dir=root / "fit", enable_loggers=False, enable_progress_bar=False
+        )
+        module = session.lightning_module
+        assert isinstance(module, NexuRLLightningModule)
+        module.policy.load_state_dict(base, strict=True)
+        trainer = cast(Any, session.trainer)
+        trainer.callbacks.append(timing)
+        if not remote:
+            scope.enter_context(definition.job_scope())
+        fit_start_epoch_s = time()
         started = tick()
         session.fit()
         finished = tick()
@@ -224,11 +316,18 @@ def _profile(lane, root):
                 "post_last_batch": finished - timing.last,
                 "fit_total": finished - started,
             },
+            "fit_start_epoch_s": fit_start_epoch_s,
             "peak_rss_kib_before_app_exit": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
             "peak_torch_cuda_bytes": torch.cuda.max_memory_allocated(device) if gpu else None,
             "rollouts": timing.rows,
             "warm_windows": warm,
         }
+        if ray_receipt is not None:
+            report["ray"] = ray_receipt(root)
+            weights = TensorDict.from_module(module.algorithm.rollout_policy).data
+            report["weight_payload_tensor_bytes"] = sum(
+                t.nbytes for t in weights.values(True, True)
+            )
         (root / "profile.json").write_text(json.dumps(report, indent=2, allow_nan=False) + "\n")
 
 

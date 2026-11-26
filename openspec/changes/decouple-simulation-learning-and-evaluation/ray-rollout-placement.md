@@ -246,3 +246,66 @@ No new NexuML config is exposed by these probes. The full hash-pinned
 Isaac binary set, installed learner import boundary, distinct worker
 nodes, GPU learner and actor admission/cleanup still require an actual
 combined run.
+
+The frozen `isaac` + `ray` lock export (CPython 3.12, Linux x86-64,
+excluding workspace wheels) resolved **319** packages. **316** had a
+compatible hash-pinned wheel. There was no matching locked wheel for
+`antlr4-python3-runtime==4.9.3`, `idna-ssl==1.1.0`, or the Isaac Lab
+3.0.0 Git pin. The earlier stock-worker `uv sync --locked` log shows
+source builds for all three. That playback proves the functional path,
+not a binary-only install. To test the full binary-only Ray environment,
+first supply approved immutable wheels for these three inputs or a
+compatible upstream lock. No source build, dependency exclusion, or new
+worker config was used in this audit. Receipt:
+`/tmp/opencode/nex212-isaac-ray-lock-C1UYDj/`.
+
+## Matched one-host PhysX profile (3.5 slice)
+
+The existing opt-in Cartpole profile ran the same native PhysX task in
+two fresh processes on the RTX 4080 SUPER (driver 610.43.03): direct
+CUDA collection and CUDA learner, then one whole-GPU Ray actor and a CPU
+learner. Both used the frozen actor initialized at seed 17, fit seed 31,
+eight worlds, 16 decisions per world per batch, and one PPO epoch with
+minibatches of 64. Each completed
+**1,024 physical frames, eight batches, 16 PPO minibatch updates and 32
+optimizer steps** with finite losses. The Ray learner never imported Kit;
+the worker accepted and returned all eight expected behavior versions.
+
+| Lane | Fit start to first collection (s) | Batches 3–4 (frames/s) | Batches 5–6 (frames/s) | Batches 7–8 (frames/s) | Total fit (s) |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Direct CUDA | 4.96 | 959 | 962 | 394 | 6.83 |
+| One CUDA Ray worker, CPU learner | 9.96 | 1,065 | 1,035 | 16 | 27.10 |
+
+The windows measure collection/handoff and optimizer/weight publication;
+they are not independent replicates. In batches 3–6, the Ray lane took
+0.4403 s collecting and 0.0476 s updating/publishing, compared with
+0.4737 s and 0.0597 s for direct. The final Ray fetch took 16.08 s:
+the pinned TorchRL finite collector calls `env.close()` before yielding
+its last batch. The otherwise comparable final-window time therefore
+includes Kit teardown, not just rollout latency. Retain the full fit time
+and report that cost separately from steady-state throughput.
+
+Ray batches carried **10,496 bytes of tensor data** each; one policy
+publication carried **18,440 tensor bytes**. These are logical payloads,
+not serialized wire bytes. The receiver verified a fresh GPU allocation
+after native close and exact actor PID reaping. The 96 MiB Plasma store
+had zero retained objects. Device-wide GPU samples until the final batch
+peaked at 3,797 MiB (direct) and 4,040 MiB (Ray), including the 1,098 MiB
+ambient baseline. Mean utilization over the three measured windows was
+13% (6 samples) and 3% (83 samples, dominated by close); these are not
+worker-exclusive GPU measurements. Learner process peak RSS was 4,509,436
+KiB and 1,161,016 KiB respectively; the latter excludes Ray and Kit
+worker RSS.
+
+Direct/Ray runs ended 56/57 episodes (all terminations), with sampled
+reward sums 13.82966/13.78006 and actor L2 changes 0.228491/0.179992.
+Neither equal actor initialization nor native task identity makes the
+stochastic CPU/GPU runs trajectory-equivalent. This is a local systems
+profile, not a learning-quality comparison or a speedup claim.
+
+All four opt-in Cartpole profile lanes passed in 62.62 s:
+`NEXUML_RUN_SIMULATOR_TESTS=1 .venv/bin/python -m pytest -q -ra tests/fixtures/test_mujoco_warp_profile.py`.
+Source, lock, phase and GPU receipts:
+`/tmp/opencode/nex212-cartpole-ray-profile-dfEXwr/`. Split-GPU and
+multi-node timings, network bytes, and grouped native rollouts remain
+unqualified; task 3.5 stays open.

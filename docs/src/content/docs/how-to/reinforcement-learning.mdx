@@ -634,9 +634,11 @@ It waits at most 30 seconds; failed/timed-out close still kills owned actors and
 the runtime lease, then reports the error. Repeated teardown is safe. Caller-owned Ray
 runtimes remain alive; collector-owned local runtimes stop after collection.
 
-Ray learner placement, asynchronous/GPU Ray collection and nested
-learner/collector placement remain rejected. ROS/CARLA reference runs
-use a single direct collector.
+For a prepared GPU worker and a CPU learner, see
+[state-only PhysX rollouts on Ray](/how-to/isaac-native-configuration/#run-physx-rollouts-on-a-ray-gpu-worker).
+That one-host qualification does not cover a GPU learner with GPU collectors,
+multi-node collection, or asynchronous updates. ROS/CARLA reference runs use
+a single direct collector.
 
 ## Scenario and dependency matrix
 
