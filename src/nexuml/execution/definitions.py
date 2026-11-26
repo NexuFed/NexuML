@@ -61,6 +61,7 @@ class LocalExecution(ExecutionBackendDefinition):
 
         observer = kwargs.pop("observer", None)
         on_trained = kwargs.pop("on_trained", None)
+        on_completed = kwargs.pop("on_completed", None)
         kwargs.pop("review", None)
         kwargs.pop("authorized_root", None)
         kwargs.pop("frozen_plan", None)
@@ -79,6 +80,8 @@ class LocalExecution(ExecutionBackendDefinition):
                     from nexuml.execution.artifacts import export_requests
 
                     result.artifacts.extend(export_requests(result, session.scenario.exports))
+                if on_completed is not None:
+                    on_completed(result)
                 return result
             except BaseException as primary:
                 try:

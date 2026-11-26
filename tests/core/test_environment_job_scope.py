@@ -253,9 +253,14 @@ def test_train_scopes_effective_resume_and_its_exports(
         lifetime.events.append("export")
         return path
 
+    def report(operation):
+        assert operation == "train" and lifetime.active == "resumed"
+        lifetime.events.append("receipt")
+
     monkeypatch.setattr(NexuSession, "run", run)
     monkeypatch.setattr("nexuml.core.provenance.snapshot_scenario_file_run", snapshot)
     monkeypatch.setattr("nexuml.core.export.export_package", export)
+    monkeypatch.setattr("nexuml.cli.main._print_worker_identity", report)
     result = runner.invoke(app, command)
     assert result.exit_code == 0, (result.output, result.exception)
     assert lifetime.events == [
@@ -264,6 +269,7 @@ def test_train_scopes_effective_resume_and_its_exports(
         "checkpoint",
         *(["provenance"] if original_file else []),
         "export",
+        "receipt",
         "exit:resumed",
     ]
     assert initialized_logger.statuses == []
@@ -313,6 +319,7 @@ def test_train_failure_unwinds_only_after_session_cleanup_and_outputs(
         app, ["train", "--scenario-file", "job.py", "--artifact-dir", str(tmp_path)]
     )
     assert result.exit_code == 1 and result.exception is error
+    assert "Training complete!" not in result.output
     assert lifetime.error is error
     assert lifetime.events == [
         "enter:training",

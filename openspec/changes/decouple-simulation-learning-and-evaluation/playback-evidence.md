@@ -26,9 +26,9 @@ and non-headless display; `HEADLESS` can independently force headless.
 `isaaclab_physx/app/kit_launcher.py` treats livestream mode `1` as public
 advertisement (uses `PUBLIC_IP`) and mode `2` as private. Both enable the
 Kit stream extension and set TCP 49100 signaling / UDP 47998 media.
-Neither mode is enabled by this change: the current profile has no
-prepared local, X11 or TigerVNC display, and no approved WebRTC client
-lane. The CI job consumes an already-prepared `NEXUML_ISAAC_IMAGE`; the
+Neither mode is enabled by this change: no local, X11/RDP or TigerVNC
+display is qualified, and no approved WebRTC client lane is available.
+The CI job consumes an already-prepared `NEXUML_ISAAC_IMAGE`; the
 existing image recipe is not an automatic publication path. Do not treat
 Kit startup, port binding or a prior editor session as playback evidence.
 

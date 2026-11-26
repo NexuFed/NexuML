@@ -318,13 +318,34 @@ def train_cmd(
             )
         provenance_captured = True
 
-    result = run(scenario, trainer_checkpoint=trainer_checkpoint, on_trained=capture_provenance)
+    receipt_printed = False
+
+    def report_completed(result):
+        nonlocal receipt_printed
+        _print_training_receipt(result)
+        receipt_printed = True
+
+    result = run(
+        scenario,
+        trainer_checkpoint=trainer_checkpoint,
+        on_trained=capture_provenance,
+        on_completed=report_completed,
+    )
     if not provenance_captured:
         capture_provenance(result)
 
     if isinstance(result, str):
         _print_job_submission(result, scenario, worker_input=trainer_checkpoint)
-        return
+    elif not receipt_printed:
+        _print_training_receipt(result)
+
+
+def _print_training_receipt(result: Any) -> None:
+    """Report fit and artifacts before a native job can exit during shutdown.
+
+    Raises:
+        typer.Exit: If a backend reported an unsuccessful run.
+    """
     status = result.get("status", "unknown") if isinstance(result, dict) else "succeeded"
     console.print(
         f"Execution finished: {status}"

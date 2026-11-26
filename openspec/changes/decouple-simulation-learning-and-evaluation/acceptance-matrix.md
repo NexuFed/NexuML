@@ -130,6 +130,34 @@ exited 0 and was removed. Evidence:
 artifact). This qualifies those image contents, not later commits or a
 display/streaming path.
 
+The rebuilt `fc3149e9` image
+(`sha256:d0e9407afdf553159074e671abc610d7a522e737884a0bbefa033011ae665aee`)
+also trained to source frame **256**, exported the actor, played eight
+ticks over two environments and evaluated one episode. The container
+exited 0 without a checkout mount and was removed. The no-network
+attempt could not fetch the native ground-plane asset; normal access to
+the configured Isaac assets was required. Build and runtime receipts:
+`/tmp/opencode/nexuml-isaac-current-owqwqO/` and
+`/tmp/opencode/nexuml-isaac-current-runtime-BusKF0/`.
+
+The successful image run exposed a missing CLI receipt: Kit fast
+shutdown ended the process after export but before the CLI could print
+fit counters, the completed package and worker identity. The CLI now
+reports these after export inside the existing local job scope.
+Provenance remains before export. No receipt is printed on a failed
+fit, provenance capture or export; the process exit status still
+determines job success. Focused ownership/CLI checks passed **125**;
+bootstrap, execution dispatch and ownership checks passed **266**.
+
+The rebuilt receipt candidate
+(`sha256:1676f2c47153d1c1bc814efc2703e749d87cd766d1f3eb063f8d2015f84a0f97`)
+passed the installed CLI smoke without source mounts. Training printed its
+completion once, with **256 physical frames, 8 optimizer steps, `cuda:0`**,
+and the exported package. Playback ran **16 transitions** and evaluation
+completed one episode at source frame 256. The container exited 0 and
+was removed. Receipt logs, source/wheel hashes and image ID:
+`/tmp/opencode/nexuml-native-receipt-image-GyjRNv/`.
+
 The first standard non-system regression reported **3,631 passed and 12
 failed**. Failures were in execution test fixtures: an old evaluation-spec
 stub, a test that expected a new local-only task in the remote inventory, reliance

@@ -81,6 +81,8 @@ docker run --rm --gpus '"device=0"' --shm-size=2g \
 
 That command illustrates process startup, not persistent training output: mount
 your owned workspace and select durable logs/export destinations for real runs.
+The native task still needs access to its Isaac assets, including the ground
+plane; the workstation image does not bundle every task asset.
 Inside an existing pod, use `/usr/local/bin/nexuml-isaac nexuml ...` so Kit's
 bindings are initialized before the ordinary CLI. The wrapper only exports the
 vendor environment and executes the command; it never installs dependencies.
