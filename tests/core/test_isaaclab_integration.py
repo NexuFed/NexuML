@@ -663,6 +663,8 @@ def test_native_checkpoint_remaining_budget_export_and_scalar_replay(tmp_path, r
                 "nexuml",
                 "play",
                 tmp_path / reference / "resume/policy",
+                "--viewer",
+                "headless",
                 "--device",
                 "cuda:0",
                 "--num-envs",

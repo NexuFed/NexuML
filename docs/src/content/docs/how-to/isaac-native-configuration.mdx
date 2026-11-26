@@ -34,6 +34,10 @@ extraction and runs no package maintainer scripts, installs no Mesa or driver
 packages and changes no global package database. Its client-library `ldd` checks
 must pass before application execution. This is a source-checkout dependency
 profile, not a general system installer or proof of renderer/display support.
+This recorded source-checkout installation is not binary-only. A binary-only
+stock Ray worker needs a complete compatible wheel set before submission.
+The standalone Isaac image uses a different dependency profile: Isaac Sim
+comes from its pinned NVIDIA base, not from the stock worker's Python lock.
 
 An equivalent trusted profile is:
 
@@ -170,8 +174,16 @@ one policy version, and is consumed by the learner; the worker does not
 receive an RPC per physics step. Automatic Isaac fit evaluation remains
 disabled.
 
-This is verified on one prepared host with a CPU learner. It does not
-qualify a GPU learner, multi-node collection, grouped tasks or Arena.
+To target a specific prepared worker group, use `ray.resources` and/or
+`ray.label_selector` with values the operator has advertised to Ray Core.
+These apply to every collector actor. A Ray Jobs `entrypoint_resources`
+reservation places the job driver, not the collectors inside it.
+
+This is verified on one prepared host with a CPU learner. Direct Isaac
+training still puts the simulator, policy and learner on one CUDA index.
+Separate-GPU learning, multi-node collection, grouped Ray tasks and Arena
+collection on Ray are not qualified. Do not copy the one-host settings
+and increase the worker or device counts for those layouts.
 
 ## Compose a headless Arena task
 
@@ -203,7 +215,9 @@ nexuml play ./policy --viewer headless --device cuda:0 --num-envs 8 --steps 60
 An explicitly supplied scenario can set `playback_viewer`
 to `headless` or `viser`. `--viewer` overrides the scenario. A policy
 package alone defaults to headless; saved training or evaluation viewer
-settings do not activate playback viewing.
+settings do not activate playback viewing. The qualified Newton Cartpole
+camera tasks still supply RGB, depth and segmentation to the policy without
+a window, stream or recording.
 
 Omit `--steps` and `--episodes` for continuous playback. Counts are actual
 native ticks, transitions across the batch, and completed episodes. Several
@@ -284,8 +298,10 @@ simulator.
 Remote interactive viewers and recording are not qualified. Viser would
 require an approved private route to its loopback endpoint and an explicit,
 provider-supported play spectator. Local Kit would need a prepared GPU
-display. Native WebRTC would require a supported Kit/encoder profile and an
-approved private route for both TCP signaling and UDP media. The command
+display. The Ray Jobs HTTP endpoint and Kubernetes TCP port forwarding do
+not carry native WebRTC UDP media. The repository's separate
+`.k8s/isaac/` NetBird workstation templates document the Isaac Sim editor
+path (TCP 49100 and UDP 47998), not NexuML policy playback. The command
 does not provision these routes or fall back to local playback.
 
 ## Typed functions, not override strings

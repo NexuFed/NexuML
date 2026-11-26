@@ -325,6 +325,18 @@ settings, worker sizes, cluster nodes, or scheduling constraints changed.
 
 ## Native Kit display probes (4a.1 and 4a.4, partial)
 
+The explicit public `play --viewer headless` path passed for both
+package-owned and externally owned Newton camera processing. Each fresh
+export replayed six control ticks over four environments (24 transitions),
+with no display or livestream environment selected. Separate native
+sensor oracles on the same task verified nonblank RGB, depth in metres,
+exact segmentation classes, the terminal scene before autoreset, and
+selected history reset. Both exports kept exact portable inference
+parity. This confirms camera observations do not require a viewer; it
+does not qualify a Kit camera policy or a visible viewport. Four native
+tests passed in 124.71 s, with source hashes and child logs in
+`/tmp/opencode/nex212-headless-sensors-yTvxj3/`.
+
 On existing forwarded X11 display `:11`, Lab's default non-headless Kit experience
 reached at least **60** control ticks on an actual exported two-lane
 Cartpole policy before the 140 s bound cancelled the requested 240 ticks.
@@ -368,6 +380,14 @@ starts a primary stream by default. This source audit did not verify
 spectator input denial, disabled primary streaming, actual endpoints or
 decoded policy frames. No stream or other listener was opened.
 
+Keep the standalone workstation path separate from Ray Jobs. The prepared
+`.k8s/isaac/pod.yaml` launches the editor, and the pod-local NetBird sidecar
+provides the operator-managed private route for TCP 49100 and UDP 47998.
+The operator confirmed the editor stream previously worked. That is not a
+NexuML playback witness. On the follow-up Kubernetes API check the editor
+container was terminated (exit 139) while NetBird was Ready. A Ready
+sidecar is not a running Kit server. No pod or network settings changed.
+
 A separate private Xvfb diagnostic opened no operator window and no TCP
 display listener. Vulkan reported an XCB-presentable RTX 4080 SUPER, but
 both the default Lab experience and the headless-rendering experience
@@ -376,3 +396,19 @@ returned. Neither produced a policy viewport or pixel witness. XCB
 capability is not evidence of usable Kit playback. Receipts:
 `/tmp/opencode/private-x-vulkan-osAPu3/` and
 `/tmp/opencode/kit-private-presentation-r2qHgd/`.
+
+Repeating the same private display test with a five-minute bound showed
+why the shorter attempts were inconclusive: the default experience
+spent over 110 seconds waiting for RTX shader compilation and completed
+startup in 123 seconds. It then drove the exported policy for 24 PhysX
+ticks (48 CUDA transitions); the two 1280×720 snapshots show the moving
+Cartpole, and native environment/app teardown appeared in the log.
+Stage, property, console, script editor and prim-manipulator extensions
+were active, so this is not the playback-only local mode. The minimal
+headless-rendering experience also reached startup, then the non-headless
+Lab launcher tried to import its missing `omni.kit.widget.toolbar`. The
+vendor process returned zero despite that startup traceback. This probe
+therefore requires actual rollout and viewport receipts, not exit status
+alone. No user-visible window or external listener was opened. Receipts:
+`/tmp/opencode/nex212-kit-local-5fypgF/` and
+`/tmp/opencode/nex212-kit-minimal-lLzpHS/`.

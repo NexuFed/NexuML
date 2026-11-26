@@ -259,6 +259,15 @@ compatible upstream lock. No source build, dependency exclusion, or new
 worker config was used in this audit. Receipt:
 `/tmp/opencode/nex212-isaac-ray-lock-C1UYDj/`.
 
+The standalone Isaac image manifest already pins the local Lab and ANTLR
+wheel hashes (`containers/isaac/artifacts.json`). These receipts establish
+the two image inputs, not an Isaac+Ray Python dependency closure on the
+stock worker. The standalone profile takes Sim from its NVIDIA base.
+The pip-based stock profile still needs an approved immutable `idna-ssl`
+binary or a compatible upstream lock, followed by a full binary-only
+worker install. A matching hash for a locally built cached `idna-ssl`
+wheel is not approval to use it.
+
 ## Matched one-host PhysX profile (3.5 slice)
 
 The existing opt-in Cartpole profile ran the same native PhysX task in
