@@ -212,8 +212,8 @@ trusted complete export or `--trainer-checkpoint`, optionally with a trusted
 nexuml play ./policy --viewer headless --device cuda:0 --num-envs 8 --steps 60
 ```
 
-An explicitly supplied scenario can set `playback_viewer`
-to `headless` or `viser`. `--viewer` overrides the scenario. A policy
+An explicitly supplied scenario can set `playback_viewer`.
+`--viewer` overrides the scenario. A policy
 package alone defaults to headless; saved training or evaluation viewer
 settings do not activate playback viewing. The qualified Newton Cartpole
 camera tasks still supply RGB, depth and segmentation to the policy without
@@ -243,8 +243,7 @@ viewer also shows the declared task reset options. Selecting one starts
 new episodes for all instances without advancing physics. The viewer
 can send only the named options, not code or arbitrary simulator commands.
 Training and evaluation do not expose those simulation controls.
-Unset `LIVESTREAM` or set it to `0` for headless and spectator jobs. Local
-Kit and WebRTC playback are not qualified.
+Unset `LIVESTREAM` or set it to `0` for headless and spectator jobs.
 
 For the qualified single-environment, headless Kit PhysX manager profile,
 record independently of playback:
@@ -259,6 +258,22 @@ when playback continues. The manifest names the source artifact and
 environment, native tick indices, and monotonic capture times. The video
 uses the nominal renderer rate, not the actual wall-clock cadence. Viser
 recording, direct-task RGB and vectorized RGB capture are not enabled.
+
+### Play in a local Kit viewport
+
+Use a prepared X11 display with GPU presentation and the pinned Isaac
+runtime. For a state-only, single-agent PhysX policy:
+
+```bash
+nexuml play ./policy --viewer local --device cuda:0 --steps 120
+```
+
+This opens a native viewport without the Isaac Sim authoring editor.
+Leave `HEADLESS`, `LIVESTREAM` and `XR` unset or `0`. The first launch can
+take several minutes while Kit compiles shaders. This is playback only:
+no training or evaluation viewer, no `--record`, and no Viser controls.
+The X11 transport must actually present GPU frames; a forwarded window
+alone does not prove it works. WebRTC and TigerVNC playback are not qualified.
 
 ### Submit playback through Ray Jobs
 
@@ -297,8 +312,8 @@ simulator.
 
 Remote interactive viewers and recording are not qualified. Viser would
 require an approved private route to its loopback endpoint and an explicit,
-provider-supported play spectator. Local Kit would need a prepared GPU
-display. The Ray Jobs HTTP endpoint and Kubernetes TCP port forwarding do
+provider-supported play spectator. Local Kit needs a prepared GPU display.
+The Ray Jobs HTTP endpoint and Kubernetes TCP port forwarding do
 not carry native WebRTC UDP media. The repository's separate
 `.k8s/isaac/` NetBird workstation templates document the Isaac Sim editor
 path (TCP 49100 and UDP 47998), not NexuML policy playback. The command

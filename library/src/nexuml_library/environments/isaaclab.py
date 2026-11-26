@@ -341,7 +341,7 @@ class IsaacLabEnvironment(EnvironmentDefinition):
             )
 
     def validate_playback(self, viewer: PlaybackViewer) -> None:
-        """Require an explicit play spectator configuration before starting Viser.
+        """Validate playback mode without opening a native application.
 
         Raises:
             ValueError: If the selected viewer is unqualified or not opted in.
@@ -351,6 +351,15 @@ class IsaacLabEnvironment(EnvironmentDefinition):
                 raise ValueError(
                     "Viser playback requires an explicit ViserSpec with purpose 'play'"
                 )
+        elif viewer == "local":
+            contract = self.describe()
+            if (
+                self.physics != "isaacsim_physx"
+                or self.arena_factory is not None
+                or contract.groups
+                or any(field.modality != "vector" for field in contract.observations.values())
+            ):
+                raise ValueError("Isaac local playback requires single-agent PhysX state")
         elif viewer != "headless":
             raise ValueError(f"Isaac {viewer} playback is not qualified")
 

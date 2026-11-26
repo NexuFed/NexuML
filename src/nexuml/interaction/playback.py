@@ -137,6 +137,7 @@ def play_policy(
                 if fps is None or not math.isfinite(fps) or fps <= 0:
                     raise ValueError("Recording requires renderer FPS metadata or video.fps")
             controls = getattr(runtime, "playback_controls", None)
+            viewer_is_running = getattr(runtime, "playback_is_running", None)
             if controls is not None:
                 if not isinstance(controls, PlaybackControls) or controls.num_envs != num_envs:
                     raise ValueError("Playback control inbox does not match the native batch")
@@ -151,7 +152,7 @@ def play_policy(
                 and any(actor.processor is not None for actor in policy.actors.values())
             )
             while True:
-                if stop.is_set():
+                if stop.is_set() or (viewer_is_running is not None and not viewer_is_running()):
                     reason = "stop_requested"
                     break
                 single_step = False
@@ -242,7 +243,7 @@ def play_policy(
                 if episodes is not None and completed >= episodes:
                     reason = "episode_limit"
                     break
-                if stop.is_set():
+                if stop.is_set() or (viewer_is_running is not None and not viewer_is_running()):
                     reason = "stop_requested"
                     break
                 if ends:

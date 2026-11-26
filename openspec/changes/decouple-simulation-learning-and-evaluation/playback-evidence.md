@@ -337,6 +337,20 @@ does not qualify a Kit camera policy or a visible viewport. Four native
 tests passed in 124.71 s, with source hashes and child logs in
 `/tmp/opencode/nex212-headless-sensors-yTvxj3/`.
 
+The pinned native `validate_launch` resolved `none` (normalized to an
+empty list), `viser`, local `kit`, and headless `kit` with livestream
+mode 2 for the PhysX reference without loading a Kit application.
+Explicit `none` with livestreaming failed before allocation. This checks
+the upstream configuration mapping, not live WebRTC. Receipt:
+`/tmp/opencode/nex212-kit-config-scan-fBP0L3/validated-scan.log`.
+
+An additional real local Chromium Viser spectator run passed in 214.19 s.
+Native training and replay trajectories matched the headless control;
+failure and cancellation released the listeners. The separate public
+Ray-profile browser fixture requires worker-local ext4 at `/tmp/ray` and
+was not run as a remote proof on this host. No mounts or guards were
+changed. Local receipt: `/tmp/opencode/nex212-native-viser-local-V6gXnL/`.
+
 On existing forwarded X11 display `:11`, Lab's default non-headless Kit experience
 reached at least **60** control ticks on an actual exported two-lane
 Cartpole policy before the 140 s bound cancelled the requested 240 ticks.
@@ -412,3 +426,37 @@ therefore requires actual rollout and viewport receipts, not exit status
 alone. No user-visible window or external listener was opened. Receipts:
 `/tmp/opencode/nex212-kit-local-5fypgF/` and
 `/tmp/opencode/nex212-kit-minimal-lLzpHS/`.
+
+## Local Kit viewport
+
+The pinned rendering experience can show a local viewport without the
+authoring desktop. The Lab launcher needs its native toolbar module;
+playback disables its timeline and manipulation tools, omits the
+optional task GUI panel, and refuses to proceed if the stage, property,
+script, console, extensions or prim-manipulator editors load. The
+existing direct Kit process scope owns startup and teardown. In the
+diagnostic, returning close crashed (exit 139) after native environment
+close; the ordinary direct Kit shutdown ran the same 48 transitions
+and exited 0. This does not qualify returning close for a GUI Ray worker.
+Receipts: `/tmp/opencode/nex212-kit-playback-window-X8hKjS/` and
+`/tmp/opencode/nex212-kit-window-fast-DDH5SQ/`.
+
+The public CLI and SDK each used `local` on a private Xvfb display
+with Vulkan on an RTX 4080 SUPER (610.43.03). The same frame-256 actor
+ran 24 control ticks across two native PhysX environments. SDK evidence
+showed moving Cartpoles in a 1280×720 window, 45.4% changed pixels in
+the center crop, and identical actor tensors before and after playback.
+Both runs reported native context cleanup and exited 0. Bare CLI with
+no display rejected `local` before Kit startup and separately rejected
+`webrtc`. The viewer-close unit case verifies no extra action or reset
+after the native app reports it is closed. No user-visible window or
+network listener was created. Exact source hashes, captures and logs:
+
+- `/tmp/opencode/nex212-local-sdk-KwXniG/`
+- `/tmp/opencode/nex212-local-cli-a6fIY6/`
+- `/tmp/opencode/nex212-local-preflight-pEiUsG/`
+
+This qualifies a prepared local X11 viewport for state-only,
+single-agent PhysX play. It does not qualify forwarded Windows X11,
+TigerVNC, native WebRTC, or a Kit training/evaluation spectator. Keep
+tasks 4a.1 and 4a.4 open for their outstanding modes.

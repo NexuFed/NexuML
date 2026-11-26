@@ -268,6 +268,23 @@ binary or a compatible upstream lock, followed by a full binary-only
 worker install. A matching hash for a locally built cached `idna-ssl`
 wheel is not approval to use it.
 
+The `idna-ssl` 1.1.0 and ANTLR 4.9.3 PyPI release APIs advertise only
+sdists. PyPI now has a Lab 3.0.0 wheel, but its SHA-256 differs from the
+reviewed wheel in the image manifest and the vendor `v3.0.0` release
+points to `e3f7d9f`, not the pinned `70ab24f`. The version label alone is
+not sufficient to substitute it. A read-only search inside the local
+pinned combined image also found no `idna-ssl` wheel in `/isaac-sim` or
+`/env`; this does not justify extracting and repackaging installed files.
+Receipt: `/tmp/opencode/nex212-vendor-wheel-audit-VjLEya/`.
+
+Read-only admission prerequisites were refreshed without submitting
+an incompatible job. The local RTX 4080 SUPER is the only visible GPU.
+The only Kubernetes allocation with more than one GPU was eight V100s
+on driver 535.247.01, outside this Isaac profile. Both Ray GPU worker
+groups request one GPU per pod. This inventory does not measure free
+capacity or prove admission across suitable single-GPU nodes. Receipts:
+`/tmp/opencode/nex212-placement-prereqs-BxJtrk/`.
+
 ## Matched one-host PhysX profile (3.5 slice)
 
 The existing opt-in Cartpole profile ran the same native PhysX task in

@@ -71,9 +71,20 @@ def test_isaac_play_rejects_unqualified_modes_before_native_startup():
         IsaacLabEnvironment(physics="newton_mjwarp").build(
             EnvironmentBuildContext(purpose="play", device="cuda:0", render_mode="rgb_array")
         )
-    for mode in ("local", "webrtc"):
-        with pytest.raises(ValueError, match=f"{mode} playback is not qualified"):
-            definition.build(EnvironmentBuildContext(purpose="play", viewer=mode))
+    with pytest.raises(ValueError, match="local playback requires single-agent PhysX state"):
+        IsaacLabEnvironment(physics="newton_mjwarp").build(
+            EnvironmentBuildContext(purpose="play", viewer="local")
+        )
+    with pytest.raises(ValueError, match="webrtc playback is not qualified"):
+        definition.build(EnvironmentBuildContext(purpose="play", viewer="webrtc"))
+
+
+def test_isaac_local_play_requires_prepared_display(monkeypatch):
+    monkeypatch.delenv("DISPLAY", raising=False)
+    monkeypatch.delenv("LIVESTREAM", raising=False)
+    definition = IsaacLabEnvironment(physics="isaacsim_physx")
+    with definition.job_scope(), pytest.raises(ValueError, match="requires a prepared X11 display"):
+        definition.build(EnvironmentBuildContext(purpose="play", viewer="local", device="cuda:0"))
 
 
 @pytest.mark.parametrize("factory,name,task,obs_size,action_size,period", _REFERENCES)

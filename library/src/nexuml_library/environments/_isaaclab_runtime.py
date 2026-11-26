@@ -1,6 +1,6 @@
 """Process-owned Isaac application and execution-local transition normalization."""
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from contextlib import contextmanager
 from importlib import import_module
 from importlib.metadata import distribution
@@ -31,6 +31,23 @@ _process_definition = None
 _process_launcher = None
 _process_returning_close = False
 _active_runtime = None
+
+_KIT_EDITOR_EXTENSIONS = (
+    "omni.kit.window.stage",
+    "omni.kit.window.property",
+    "omni.kit.window.script_editor",
+    "omni.kit.manipulator.prim",
+    "omni.kit.window.extensions",
+    "omni.kit.window.console",
+)
+_KIT_LOCAL_ARGS = (
+    " --enable omni.kit.widget.toolbar"
+    " --/exts/omni.renderer.core/present/enabled=true"
+    " --/exts/omni.kit.widget.toolbar/Grab/enabled=false"
+    " --/exts/omni.kit.widget.toolbar/PlayButton/enabled=false"
+    " --/exts/omni.kit.widget.toolbar/SelectionButton/enabled=false"
+    " --/exts/omni.kit.widget.toolbar/TransformButton/enabled=false"
+)
 
 
 def _terminate_job(signum, _frame):
@@ -109,16 +126,16 @@ def isaaclab_process(definition=None, *, returning_close: bool = False):
 
 
 def _launch_environment(
-    owner, cfg, launch_simulation, has_kit, *, viewing=False, require_kit=False
+    owner, cfg, launch_simulation, has_kit, *, viewing=False, local=False, require_kit=False
 ):
     global _process_launcher
     # Pinned Lab drops SimulationApp's fast_shutdown argument; Kit honors its own setting.
     close_setting = " --/app/fastShutdown=false" if _process_returning_close else ""
     args = {
-        "headless": True,
+        "headless": not local,
         "fast_shutdown": not _process_returning_close,
         "device": str(owner.device),
-        "visualizer": ["viser"] if viewing else ["none"],
+        "visualizer": ["kit"] if local else ["viser"] if viewing else ["none"],
         "visualizer_explicit": True,
         "livestream": 0,
         "enable_cameras": owner._rendering,
@@ -127,9 +144,12 @@ def _launch_environment(
             "--/crashreporter/enabled=false --/crashreporter/skipOldDumpUpload=true "
             "--/app/uploadDumpsOnStartup=false --/telemetry/enableAnonymousData=false "
             "--/telemetry/enableAnonymousAppName=false --/telemetry/enableSentry=false "
-            "--/structuredLog/enable=false" + close_setting
+            "--/structuredLog/enable=false" + close_setting + (_KIT_LOCAL_ARGS if local else "")
         ),
     }
+    if local:
+        # The default non-headless experience loads the authoring editor.
+        args["experience"] = "isaaclab.python.headless.rendering.kit"
     if require_kit:
         args["require_kit"] = True
     launcher = launch_simulation(cfg, args)
@@ -138,6 +158,12 @@ def _launch_environment(
     if has_kit():
         # The owning scope closes Kit after job finalization or the last worker batch.
         _process_launcher, owner._launcher = owner._launcher, None
+    if local:
+        app = import_module("omni.kit.app").get_app()
+        manager = app.get_extension_manager()
+        if any(manager.get_enabled_extension_id(name) for name in _KIT_EDITOR_EXTENSIONS):
+            raise RuntimeError("Isaac local playback cannot load Kit authoring extensions")
+        owner.playback_is_running = app.is_running
     signal.signal(signal.SIGTERM, _terminate_job)
 
 
@@ -190,6 +216,15 @@ def _create_environment(owner, definition, context):
         and context.purpose in definition.viewer.purposes
         and (context.purpose != "play" or context.viewer == "viser")
     )
+    local = context.purpose == "play" and context.viewer == "local"
+    if local and (
+        not os.environ.get("DISPLAY")
+        or os.environ.get("HEADLESS", "0") != "0"
+        or os.environ.get("XR", "0") != "0"
+    ):
+        raise ValueError(
+            "Isaac local playback requires a prepared X11 display with HEADLESS=0 and XR=0"
+        )
     if device.type != "cuda" or not torch.cuda.is_available():
         raise ValueError("Isaac Lab requires a working single-GPU CUDA device")
     if context.purpose == "eval" and context.num_envs != 1:
@@ -342,7 +377,9 @@ def _create_environment(owner, definition, context):
         cfg.sim.default_visualizer_cfg = None
         cfg.sim.visualizer_cfgs = []
     if not composition:
-        _launch_environment(owner, cfg, launch_simulation, has_kit, viewing=viewing)
+        if local:
+            cfg.ui_window_class_type = None
+        _launch_environment(owner, cfg, launch_simulation, has_kit, viewing=viewing, local=local)
     if viewing:
         # Viser's Newton viewer imports USD; Kit must select its own USD first when needed.
         import_module("nexuml_library.environments._isaaclab_viser").configure_spectator(
@@ -351,6 +388,8 @@ def _create_environment(owner, definition, context):
         owner._spectator_type = cfg.sim.visualizer_cfgs[0].class_type
     owner._context_class = import_module("isaaclab.sim").SimulationContext
     owner.native = gym.make(definition.task, cfg=cfg).unwrapped
+    if local and import_module("omni.kit.viewport.utility").get_active_viewport() is None:
+        raise RuntimeError("Isaac local playback could not open a native Kit viewport")
     if viewing:
         visualizers = cast(Any, owner.native).sim.visualizers
         if (
@@ -389,6 +428,7 @@ class _IsaacLabRuntime:
         self._arena_registration = None
         self._spectator_type = None
         self.playback_controls: PlaybackControls | None = None
+        self.playback_is_running: Callable[[], bool] | None = None
         self._playback_options: IsaacPlaybackOptions | None = None
         self._context_class = None
         self._closed = False
@@ -843,6 +883,7 @@ class _IsaacLabRuntime:
         if self._closed:
             return
         self._closed = True
+        self.playback_is_running = None
         self._terminal_frame = None
         errors = []
         context_class = self._context_class

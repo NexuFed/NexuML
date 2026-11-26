@@ -25,7 +25,7 @@ git ls-files -z --cached --others --exclude-standard -- \
 | Complete standalone inference and bounded local fits | Pass, scoped | [Local-fit handoff](local-fit-handoff.md): installed package and native SO-101 repeats; matched PhysX / CPU MuJoCo actor fit, test-only combination, second fit and replay. Not production federation, promotion or general learning improvement. |
 | Independent local playback | Pass for 4a.2 and 4a.3 | [Playback evidence](playback-evidence.md): state and mixed-sensor headless play, N=1 and native batches, with policy-owned history and selected recurrent/chunk state resets; loopback Viser with bounded task reset options and bounded headless N=1 PhysX GIF/MP4. Does not qualify viewer recording. |
 | Independent evaluation snapshot | Pass for fresh CPU/CUDA process and same-host CPU Ray tasks | [Snapshot boundary](snapshot-boundary.md): periodic GPU inference overlapped a CPU learner and published bounded media with correct policy provenance. Actor/optimizer matched the no-evaluation control. Two-GPU, multi-node and native Isaac fit evaluation remain unqualified. |
-| Native Kit Local/X11/TigerVNC and WebRTC playback | Unqualified | [Native Kit probes](playback-evidence.md#native-kit-display-probes-4a1-and-4a4-partial): actual policy frames appeared in a private Xvfb Kit editor, but the editor loaded mutation controls. Dev Containers X11 forwarded blank windows. No approved end-to-end native WebRTC or TigerVNC reference. |
+| Native local Kit playback | Pass for private Xvfb and state-only PhysX | [Local viewport](playback-evidence.md#local-kit-viewport): public CLI and SDK each ran 48 GPU transitions, with fixed actor state, changing viewport pixels, no editor extensions and exit 0. Dev Containers forwarded X11, TigerVNC and WebRTC remain unqualified. |
 | Ray Jobs playback | Pass remotely, headless (4a.5) | [Stock-pool evidence](playback-evidence.md#stock-pool-headless-playback-and-cancellation): locked job-local dependencies, hash-verified export replay on a fresh CUDA worker pod, eight ticks, clean SDK stop and GPU release. Separate one-host media proof; no remote viewer or recording claim. |
 | MuJoCo Warp native API probe | Pass, substrate only | [GPU interop probe](mujoco-warp-probe.md): the pinned packages shared CUDA state with Torch, agreed with CPU for two substeps and reset only the selected row. No NexuML GPU environment, training or throughput claim. |
 | MuJoCo Warp direct reference | Pass for pinned headless Cartpole | [GPU reference](mujoco-warp-reference.md): native resets and terminal flags, 1,024 CUDA transitions and 16 PPO minibatches, fixed actor export and fresh replay. Distributed, split placement and rendering are not qualified. |
@@ -130,6 +130,14 @@ owning caller shut it down. Ray warned the filesystem was over 95% full;
 the run did not require spilling. Receipts:
 `/tmp/opencode/nex212-installed-ray-r4c6RA/`. This remains a one-host CPU
 proof, not binary-only installation of the stock Isaac worker profile.
+
+With the local viewer code present, both distributions passed the
+existing archive check. The 107-package binary CPU install loaded the
+frame-256 PhysX actor from installed wheels, twice yielding the same
+deterministic action with imports of Ray, Lightning, TorchRL, Gymnasium,
+simulators and ROS explicitly blocked. No blocked import was attempted.
+Candidate source and artifact hashes, dependency check and action:
+`/tmp/opencode/nex212-local-viewer-distributions-zlzxZH/`.
 
 The existing binary-only Isaac workstation build produced image
 `sha256:1f03b8cf62699c098b0e590076b972446b51102086767aaa103c475b964b2d6b`

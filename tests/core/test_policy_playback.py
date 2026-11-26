@@ -102,6 +102,14 @@ def test_playback_resets_only_completed_rows_and_leaves_weights_unchanged(playba
     torch.testing.assert_close(policy.state_dict(), weights)
 
 
+def test_native_viewer_close_stops_without_another_action_or_reset(playback):
+    policy, definition, runtime, _ = playback
+    runtime.playback_is_running = lambda: runtime.calls < 1
+    actual = play_policy(policy, definition, num_envs=3, seed=23)
+    assert actual == PlaybackResult(1, 3, 1, "stop_requested")
+    assert runtime.closed and not runtime.masks
+
+
 def test_playback_package_history_tracks_only_live_and_reset_rows(playback, monkeypatch):
     policy, definition, runtime, _ = playback
     declared = definition.describe()
