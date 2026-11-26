@@ -55,6 +55,7 @@ def make_reach_condition(*, condition: str, seed: int, device: str) -> tuple[Any
     trace: deque = deque(maxlen=128)
     stock_reset = cfg.events.reset_joint_reach.func
     stock_success = cfg.terminations.success
+    arm = stock_success.params["asset_cfg"]
 
     def reset(env, env_ids):
         stock_reset(env, env_ids)
@@ -64,8 +65,7 @@ def make_reach_condition(*, condition: str, seed: int, device: str) -> tuple[Any
 
     def held_success(env):
         result = stock_success.func(env, **stock_success.params)
-        robot = env.scene["robot"]
-        positions = robot.data.joint_pos.torch[0, : len(JOINT_NAMES)]
+        positions = env.scene[arm.name].data.joint_pos.torch[0, arm.joint_ids]
         trace.append(
             {
                 "step": int(env.episode_length_buf[0].item()),
@@ -151,6 +151,8 @@ def make_reach_condition(*, condition: str, seed: int, device: str) -> tuple[Any
     native = env.unwrapped
     try:
         validate_asset(native)
+        # Arena calls the predicate outside Lab's term manager, which normally resolves this.
+        arm.resolve(native.scene)
         if native.action_manager.active_terms != ["arm_action"]:
             raise ValueError("Arena SO-101 must expose only its five arm joints")
         term = native.action_manager.get_term("arm_action")
