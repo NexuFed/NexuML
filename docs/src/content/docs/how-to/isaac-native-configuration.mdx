@@ -141,6 +141,38 @@ actions for recording. Neither method executes asynchronous goals, and this
 headless entry point does not enable a viewer, physical robot control, or a
 continuous player.
 
+## Run PhysX rollouts on a Ray GPU worker
+
+On a prepared Ray Core cluster, a single CPU learner can collect state-only
+PhysX rollouts from a headless GPU worker. Install matching NexuML, Ray,
+TorchRL and TensorDict versions on both sides, and the pinned Isaac runtime
+and native assets on the worker. Set `training.accelerator: cpu` and
+`training.devices: 1` in the scenario. Replace its `training.collector` with:
+
+```yaml
+backend: ray
+num_collectors: 1
+num_envs_per_collector: 2
+sync: true
+env_device: cuda:0
+policy_device: cuda:0
+storing_device: cpu
+ray:
+  address: ray-head.internal:6379
+  num_gpus: 1
+```
+
+Use your Ray **Core** address, not the Ray Jobs HTTPS endpoint. The worker
+requests one CPU and one whole GPU; `cuda:0` is relative to that worker's
+assigned GPU. Use a frame batch divisible by the number of collectors times
+environments. Each batch crosses the process boundary once, is checked for
+one policy version, and is consumed by the learner; the worker does not
+receive an RPC per physics step. Automatic Isaac fit evaluation remains
+disabled.
+
+This is verified on one prepared host with a CPU learner. It does not
+qualify a GPU learner, multi-node collection, grouped tasks or Arena.
+
 ## Compose a headless Arena task
 
 Use a separately prepared Arena 0.4 source checkout with the pinned

@@ -255,7 +255,12 @@ class IsaacLabEnvironment(EnvironmentDefinition):
         self, training: ReinforcementLearningSpec, *, device: str | None = None
     ) -> None:
         collector = training.collector
-        if collector.backend != "direct" or not collector.sync or collector.num_collectors != 1:
+        ray_gpu = (
+            collector.backend == "ray" and collector.ray is not None and collector.ray.num_gpus == 1
+        )
+        if not ray_gpu and (
+            collector.backend != "direct" or not collector.sync or collector.num_collectors != 1
+        ):
             raise ValueError(
                 "Isaac Lab requires one synchronous direct collector: backend='direct', "
                 "sync=True, num_collectors=1"
@@ -266,6 +271,50 @@ class IsaacLabEnvironment(EnvironmentDefinition):
                 "Isaac Lab requires training.devices=1 or one explicit GPU index, "
                 "and training.strategy='auto'"
             )
+        if ray_gpu:
+            collector.validate_ray_gpu_devices()
+            if training.accelerator != "cpu" or (device is not None and device != "cpu"):
+                raise ValueError("Isaac Lab Ray collection requires an explicit CPU learner")
+            contract = self.describe()
+            if (
+                self.physics != "isaacsim_physx"
+                or self.arena_factory is not None
+                or self.viewer is not None
+                or contract.groups
+                or any(field.modality != "vector" for field in contract.observations.values())
+            ):
+                raise ValueError(
+                    "Isaac Lab Ray collection requires headless single-agent PhysX state"
+                )
+        else:
+            self._validate_direct_devices(training, device, learner_index)
+        if ray_gpu and (not collector.sync or collector.policy_sync_interval_batches != 1):
+            raise ValueError("Isaac Lab Ray collection requires synchronous updates every batch")
+        if training.frames_per_batch % (
+            collector.num_envs_per_collector * collector.num_collectors
+        ):
+            raise ValueError(
+                "Isaac Lab frames_per_batch must be divisible by collector.num_envs_per_collector"
+            )
+        evaluation = training.evaluation
+        if (
+            evaluation.episodes > 0
+            or evaluation.at_start
+            or evaluation.every_n_frames is not None
+            or evaluation.video.enabled
+        ):
+            raise ValueError(
+                "Isaac Lab does not support automatic fit evaluation or video. Disable episodes, "
+                "at_start, every_n_frames, and video; use fresh-process replay instead: "
+                "nexuml evaluate <policy-package> --device cuda:0 "
+                "--override training.evaluation.episodes=3"
+            )
+
+    @staticmethod
+    def _validate_direct_devices(
+        training: ReinforcementLearningSpec, device: str | None, learner_index: int | None
+    ) -> None:
+        collector = training.collector
         configured_devices = {
             "collector.env_device": collector.env_device,
             "collector.storing_device": collector.storing_device,
@@ -289,23 +338,6 @@ class IsaacLabEnvironment(EnvironmentDefinition):
             raise ValueError(
                 "Isaac Lab environment, storage, policy, and learner must use the same CUDA "
                 "device index (cuda means cuda:0)"
-            )
-        if training.frames_per_batch % collector.num_envs_per_collector:
-            raise ValueError(
-                "Isaac Lab frames_per_batch must be divisible by collector.num_envs_per_collector"
-            )
-        evaluation = training.evaluation
-        if (
-            evaluation.episodes > 0
-            or evaluation.at_start
-            or evaluation.every_n_frames is not None
-            or evaluation.video.enabled
-        ):
-            raise ValueError(
-                "Isaac Lab does not support automatic fit evaluation or video. Disable episodes, "
-                "at_start, every_n_frames, and video; use fresh-process replay instead: "
-                "nexuml evaluate <policy-package> --device cuda:0 "
-                "--override training.evaluation.episodes=3"
             )
 
     def validate_playback(self, viewer: PlaybackViewer) -> None:

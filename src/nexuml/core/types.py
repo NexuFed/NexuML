@@ -625,9 +625,10 @@ class TrainingSpec(SpecModel):
 
 
 class RayCollectorSpec(SpecModel):
-    """Existing Ray Core target and constraints for each synchronous CPU worker."""
+    """Existing Ray Core target and constraints for each synchronous worker."""
 
     address: str | None = None
+    num_gpus: int = Field(default=0, strict=True, ge=0, le=1, exclude_if=lambda value: value == 0)
     resources: dict[str, Annotated[float, Field(gt=0, allow_inf_nan=False)]] = Field(
         default_factory=dict
     )
@@ -676,7 +677,20 @@ class CollectorSpec(SpecModel):
             raise ValueError("direct collection requires num_collectors=1")
         if self.ray is not None and self.backend != "ray":
             raise ValueError("collector.ray placement requires backend='ray'")
+        if self.ray is not None and self.ray.num_gpus:
+            self.validate_ray_gpu_devices()
         return self
+
+    def validate_ray_gpu_devices(self) -> None:
+        if (self.env_device, self.policy_device, self.storing_device) != (
+            "cuda:0",
+            "cuda:0",
+            "cpu",
+        ):
+            raise ValueError(
+                "Ray GPU collection requires env_device='cuda:0', "
+                "policy_device='cuda:0', and storing_device='cpu'"
+            )
 
 
 class RLVideoSpec(SpecModel):

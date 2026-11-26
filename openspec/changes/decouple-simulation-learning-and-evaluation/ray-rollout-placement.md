@@ -1,6 +1,6 @@
 # Ray collection placement and policy versions
 
-**Verified on one host with Ray 2.57.0 and TorchRL 0.14.0, CPU only.**
+**Initial CPU qualification on one host with Ray 2.57.0 and TorchRL 0.14.0.**
 `collector.ray` selects an existing Ray Core target or a borrowed runtime.
 Ray's native options carry custom resources and label selectors to each
 one-CPU actor. Conflicting targets and explicit discovery without an existing
@@ -154,3 +154,30 @@ at policy version 1 (versions are collector-local). Training reached
 actor reloaded with identical weights and the borrowed Ray runtime
 remained alive. Targeted test receipt: `/tmp/opencode/rr-Phtsbn/pytest.log`.
 This does not qualify native GPU failure/resume or distributed performance.
+
+## Public one-host CUDA rollout with a CPU learner (3.4/3.5 slice)
+
+The ordinary training command now accepts an explicit `collector.ray.num_gpus: 1`.
+Ray schedules that reservation for each actor on the named Core cluster;
+the worker uses its logical `cuda:0` for PhysX and policy inference and
+returns CPU-staged batches. The existing synchronous version barrier and
+PPO learner-side GAE are unchanged. The pinned Isaac lane rejects grouped,
+interactive, Arena, non-PhysX and non-state requests. Neither a GPU learner
+nor a private local Ray fallback is enabled in this configuration.
+
+The unmodified public CLI, with CUDA hidden from the learner process, ran
+two two-world PhysX rollouts for **64 physical frames / eight optimizer
+steps** and exported at frame 64. The exact worker PID exited, the owner
+could allocate the GPU again, and Ray reported zero Plasma objects. The
+native checkpoint regression interrupted a 32-frame fit at frame 16,
+then resumed using a fresh GPU actor. Exact saved actor and optimizer
+state, the first new policy version, finite behavior log probabilities,
+final counters and reloaded export all passed. The prior native
+failure/cancellation proofs remain scoped to the worker lifetime.
+
+Receipts: `/tmp/opencode/native-ray-ppo-public-vVWr0v/` (CLI),
+`/tmp/opencode/rgp-iWwTyg/` (native resume) and
+`/tmp/opencode/gpu-ray-regression-7wbf47/` (184 real CPU Ray, barrier,
+Isaac preflight and Arena checks). This is one host and a CPU learner,
+not separate GPU learner, two-node worker placement, grouped rollout
+or a matched-throughput claim.

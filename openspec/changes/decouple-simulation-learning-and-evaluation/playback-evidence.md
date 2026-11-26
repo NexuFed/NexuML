@@ -324,3 +324,12 @@ default streaming profile instead inherits the editor. The bundled
 starts a primary stream by default. This source audit did not verify
 spectator input denial, disabled primary streaming, actual endpoints or
 decoded policy frames. No stream or other listener was opened.
+
+A separate private Xvfb diagnostic opened no operator window and no TCP
+display listener. Vulkan reported an XCB-presentable RTX 4080 SUPER, but
+both the default Lab experience and the headless-rendering experience
+requested with a window reached the 70 s bound before the launcher
+returned. Neither produced a policy viewport or pixel witness. XCB
+capability is not evidence of usable Kit playback. Receipts:
+`/tmp/opencode/private-x-vulkan-osAPu3/` and
+`/tmp/opencode/kit-private-presentation-r2qHgd/`.

@@ -436,6 +436,29 @@ def test_preflight_accepts_same_cuda_device_without_probing(
     assert IsaacLabEnvironment().validate_training(training, device=learner) is None
 
 
+def test_gpu_ray_preflight_keeps_learner_placement_separate(training):
+    training.accelerator = "cpu"
+    training.collector = CollectorSpec.model_validate(
+        {
+            "backend": "ray",
+            "num_collectors": 2,
+            "env_device": "cuda:0",
+            "policy_device": "cuda:0",
+            "storing_device": "cpu",
+            "ray": {"num_gpus": 1},
+        }
+    )
+    definition = IsaacLabEnvironment()
+    definition.validate_training(training, device="cpu")
+    with pytest.raises(ValueError, match="explicit CPU learner"):
+        definition.validate_training(training, device="cuda:0")
+    with pytest.raises(ValueError, match="headless single-agent PhysX state"):
+        definition.model_copy(update={"physics": "newton_mjwarp"}).validate_training(training)
+    training.collector.sync = False
+    with pytest.raises(ValueError, match="synchronous updates every batch"):
+        definition.validate_training(training)
+
+
 def test_base_provider_validation_remains_optional_no_op():
     class PortableEnvironment(EnvironmentDefinition):
         def describe(self):

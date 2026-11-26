@@ -91,13 +91,16 @@ def build_collector(definition, training: ReinforcementLearningSpec, policy, dev
         ):
             raise ValueError(f"collector.{name} CUDA device {value!r} is unavailable")
     if spec.backend == "ray":
-        if not spec.sync or any(
+        gpu_worker = spec.ray is not None and spec.ray.num_gpus == 1
+        if gpu_worker:
+            spec.validate_ray_gpu_devices()
+        if not spec.sync or torch.device(device).type != "cpu":
+            raise ValueError("Ray collection requires a CPU learner and synchronous collectors")
+        if not gpu_worker and any(
             torch.device(value).type != "cpu"
-            for value in (device, spec.env_device, spec.storing_device, policy_device)
+            for value in (spec.env_device, spec.storing_device, policy_device)
         ):
-            raise ValueError(
-                "Ray collection supports a CPU learner and synchronous CPU collectors only"
-            )
+            raise ValueError("Ray collection without a GPU reservation requires CPU collectors")
         if spec.policy_sync_interval_batches != 1:
             raise ValueError("Ray collection requires policy_sync_interval_batches=1")
         width = spec.num_collectors * spec.num_envs_per_collector
@@ -153,6 +156,7 @@ def build_collector(definition, training: ReinforcementLearningSpec, policy, dev
             from ray._common.ray_option_utils import validate_actor_options
 
             ray_init_config = _ray_placement_init(spec.ray)
+            remote_configs["num_gpus"] = spec.ray.num_gpus
             if spec.ray.resources:
                 remote_configs["resources"] = spec.ray.resources
             if spec.ray.label_selector:

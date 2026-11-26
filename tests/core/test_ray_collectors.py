@@ -59,11 +59,12 @@ def local_ray(request, monkeypatch):
             )
 
         monkeypatch.setattr(ray, "init", isolated_init)
-        if getattr(request, "param", True):
+        profile = getattr(request, "param", True)
+        if profile:
             ray.init(
                 address="local",
                 num_cpus=2,
-                num_gpus=0,
+                num_gpus=int(profile == "gpu"),
                 include_dashboard=False,
                 resources={"snapshot-test": 1},
                 labels={"nexuml-test-placement": "cpu-rollout"},
@@ -432,14 +433,44 @@ def test_ray_lightning_fit_and_failure_close_workers(
 @pytest.mark.requires_optional("ray")
 @pytest.mark.requires_optional("torchrl")
 @pytest.mark.requires_optional("gymnasium")
+@pytest.mark.parametrize(
+    "local_ray",
+    [
+        pytest.param(True, id="cpu"),
+        pytest.param(
+            "gpu",
+            id="native-gpu-worker",
+            marks=[
+                pytest.mark.requires_gpu,
+                pytest.mark.requires_simulator,
+                pytest.mark.requires_optional("isaaclab"),
+            ],
+        ),
+    ],
+    indirect=True,
+)
 def test_ray_checkpoint_resumes_with_fresh_workers(local_ray, tmp_path):
     from lightning.pytorch.callbacks import Callback
 
     from nexuml.core.export import export_package, load_inference_package
 
-    spec = pendulum_ppo(total_frames=32, frames_per_batch=16)
+    if local_ray.cluster_resources().get("GPU") == 1:
+        from nexuml_library.scenarios.reinforcement.isaaclab import isaac_cartpole_ppo
+
+        spec = isaac_cartpole_ppo(total_frames=32, frames_per_batch=16, num_envs=2)
+        spec.training.accelerator = "cpu"
+        spec.training.collector = CollectorSpec(
+            backend="ray",
+            num_envs_per_collector=2,
+            env_device="cuda:0",
+            policy_device="cuda:0",
+            ray=RayCollectorSpec(num_gpus=1),
+        )
+    else:
+        spec = pendulum_ppo(total_frames=32, frames_per_batch=16)
+        spec.training.collector = CollectorSpec(backend="ray", num_collectors=2)
     assert spec.interaction is not None and isinstance(spec.training, ReinforcementLearningSpec)
-    spec.training.collector = CollectorSpec(backend="ray", num_collectors=2)
+    worker_count = spec.training.collector.num_collectors
     spec.training.algorithm = PPO(update_epochs=1, minibatch_size=8)
     spec.training.evaluation = RLEvaluationSpec(episodes=0)
     checkpoint = tmp_path / "partial.ckpt"
@@ -458,7 +489,7 @@ def test_ray_checkpoint_resumes_with_fresh_workers(local_ray, tmp_path):
     first.trainer.callbacks.append(Interrupt())  # ty: ignore[missing-attribute]
     with pytest.raises(RuntimeError, match="checkpoint interruption"):
         first.fit()
-    assert first.lightning_module._collector is None and len(previous_workers) == 2
+    assert first.lightning_module._collector is None and len(previous_workers) == worker_count
     saved_policy = first.lightning_module.policy.state_dict()
     saved_optimizers = [optimizer.state_dict() for optimizer in first.trainer.optimizers]
     assert first.trainer.global_step == 4
@@ -467,8 +498,10 @@ def test_ray_checkpoint_resumes_with_fresh_workers(local_ray, tmp_path):
         def on_train_batch_start(self, trainer, pl_module, batch, batch_idx):
             assert int(pl_module.frames) == 16 and trainer.global_step == 4
             assert torch.all(batch["next", "policy_version"] == 1)
+            assert batch["action"].device.type == "cpu"
+            assert torch.isfinite(batch["action_log_prob"]).all()
             workers = {worker._actor_id for worker in pl_module._collector.remote_collectors}
-            assert len(workers) == 2 and workers.isdisjoint(previous_workers)
+            assert len(workers) == worker_count and workers.isdisjoint(previous_workers)
             torch.testing.assert_close(pl_module.policy.state_dict(), saved_policy, rtol=0, atol=0)
             for optimizer, expected in zip(trainer.optimizers, saved_optimizers, strict=True):
                 torch.testing.assert_close(optimizer.state_dict(), expected, rtol=0, atol=0)
@@ -532,13 +565,17 @@ def test_ray_close_failure_kills_owned_actors_releases_lease_and_is_repeatable(
 @pytest.mark.parametrize(
     "collector, frames, error",
     [
-        (CollectorSpec(backend="ray", sync=False), 8, "synchronous CPU collectors only"),
+        (CollectorSpec(backend="ray", sync=False), 8, "synchronous collectors"),
         (
             CollectorSpec(backend="ray", policy_sync_interval_batches=2),
             8,
             "policy_sync_interval_batches=1",
         ),
-        (CollectorSpec(backend="ray", env_device="cuda"), 8, "synchronous CPU collectors only"),
+        (
+            CollectorSpec(backend="ray", env_device="cuda"),
+            8,
+            "without a GPU reservation requires CPU collectors",
+        ),
         (CollectorSpec(backend="ray", num_collectors=2), 3, "frames_per_batch must be divisible"),
     ],
 )
@@ -590,11 +627,42 @@ def test_ray_placement_config_round_trips_without_changing_default_dump():
             ("rollout", float("inf")),
         )
     ]
-    + [{"label_selector": {"role": 1}}, {"num_gpus": 1}, {"runtime_env": {}}],
+    + [
+        {"label_selector": {"role": 1}},
+        {"num_gpus": 0.5},
+        {"num_gpus": 2},
+        {"num_gpus": True},
+        {"runtime_env": {}},
+    ],
 )
 def test_invalid_ray_placement_config_rejected(placement):
     with pytest.raises(ValueError):
         CollectorSpec.model_validate({"backend": "ray", "ray": placement})
+
+
+@pytest.mark.parametrize(
+    "devices,valid",
+    [
+        ({"env_device": "cpu"}, False),
+        ({"env_device": "cuda:1"}, False),
+        ({"policy_device": "auto"}, False),
+        ({"storing_device": "cuda:0"}, False),
+        ({}, True),
+    ],
+)
+def test_ray_gpu_placement_requires_worker_local_mapping(devices, valid):
+    config = {
+        "backend": "ray",
+        "ray": {"address": "head.example:6379", "num_gpus": 1},
+        "env_device": "cuda:0",
+        "policy_device": "cuda:0",
+        **devices,
+    }
+    if valid:
+        assert CollectorSpec.model_validate(config).model_dump()["ray"]["num_gpus"] == 1
+    else:
+        with pytest.raises(ValueError, match="Ray GPU collection requires"):
+            CollectorSpec.model_validate(config)
 
 
 @pytest.mark.requires_optional("ray")
