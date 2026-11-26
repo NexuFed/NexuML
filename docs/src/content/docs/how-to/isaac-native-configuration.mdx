@@ -273,7 +273,10 @@ Leave `HEADLESS`, `LIVESTREAM` and `XR` unset or `0`. The first launch can
 take several minutes while Kit compiles shaders. This is playback only:
 no training or evaluation viewer, no `--record`, and no Viser controls.
 The X11 transport must actually present GPU frames; a forwarded window
-alone does not prove it works. WebRTC and TigerVNC playback are not qualified.
+alone does not prove it works. A prepared, loopback-only TigerVNC display
+was verified separately with decoded policy frames from an authenticated
+client. NexuML does not start or configure TigerVNC. This does not qualify
+forwarded Windows X11 or WebRTC.
 
 ### Submit playback through Ray Jobs
 

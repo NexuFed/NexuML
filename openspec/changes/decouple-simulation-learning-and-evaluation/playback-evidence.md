@@ -473,7 +473,20 @@ conflicting launch modes. Receipts:
 `/tmp/opencode/nex212-window-guards-gv7esm/` and
 `/tmp/opencode/nex212-window-binding-cUggU1/`.
 
-This qualifies a prepared local X11 viewport for state-only,
-single-agent PhysX play. It does not qualify forwarded Windows X11,
-TigerVNC, native WebRTC, or a Kit training/evaluation spectator. Keep
-tasks 4a.1 and 4a.4 open for their outstanding modes.
+An independently prepared TigerVNC 1.13.1 display also passed with the
+hardened SDK. The older snapshot client negotiated RFB and received a
+framebuffer update but timed out before writing a decoded image. A
+fresh binary-only VNCDoTool client authenticated to the loopback server
+and decoded two 1280×720 images at different ticks of the same
+**24-tick / 48-transition** PhysX rollout. The GPU app exited 0; the
+harness verified the server process, listener and X11 socket were gone
+and removed its temporary credentials. This is an authenticated
+loopback display proof, not a remote tunnel or WebRTC proof. No system
+packages or project dependencies were installed. Exact server package
+hashes, viewer pins, credentials-free logs, and frames:
+`/tmp/opencode/nex212-tigervnc-client-At71Rs/`.
+
+These tests qualify prepared Xvfb and loopback TigerVNC displays for
+state-only, single-agent PhysX play. They do not qualify forwarded
+Windows X11, native WebRTC, or a Kit training/evaluation spectator.
+Keep tasks 4a.1 and 4a.4 open for their outstanding modes.
