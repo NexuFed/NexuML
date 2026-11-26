@@ -936,6 +936,7 @@ def test_recorded_interrupt_resume_export_reload_and_cli_replay(factory, tmp_pat
     created = set((tmp_path / "tensorboard").glob("**/artifacts/evaluation/*.json")) - before
     assert len(created) == 1
     replay_json = created.pop()
-    assert replay_json.stem == "frame_000000000000"
+    assert replay_json.stem == "frame_000000000032"
+    assert json.loads(replay_json.read_text())["frame_step"] == 32
     assert {file.suffix for file in replay_json.parent.iterdir()} == {".json", ".mp4"}
     assert resumed.lightning_module._collector is None

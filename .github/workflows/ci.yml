@@ -268,7 +268,8 @@ jobs:
           CUDA_VISIBLE_DEVICES: ""
         run: >-
           python -m pytest tests/core/test_simulation_scenarios.py
-          tests/core/test_rl_evaluation.py tests/tracking/test_evaluation_media.py -q
+          tests/core/test_rl_evaluation.py tests/tracking/test_evaluation_media.py
+          tests/fixtures/test_mujoco_warp_profile.py::test_paired_cartpole_profile[mujoco] -q
 
   isaaclab:
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.isaaclab }}

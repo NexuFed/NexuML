@@ -68,7 +68,7 @@ All tasks are new, unchecked. Existing historical evidence remains scoped to its
 - [x] 5.1 Probe native MuJoCo/Warp or maintained Playground compatibility and tensor interop; choose smallest supported path. Retain Gymnasium MuJoCo. Coordinate with existing MuJoCo GPU and dependency-composition requirements; use upstream assets and existing image pipeline rather than a second framework.
 - [x] 5.2 Implement a native GPU-capable reference through the existing EnvironmentDefinition/Runtime boundary; prove actual device-native physics, batch/reset and TorchRL training with unchanged learner/collector code. Qualify direct and distributed placement as supported by the pinned provider, with explicit evidence of any gaps.
 - [x] 5.3 Demonstrate a matched task/contract across Isaac and MuJoCo (e.g. equivalent control/state Cartpole, not categorical vs continuous). Known-action semantic probes, same model/algorithm and exported-policy evaluation with explicit mappings; distinguish physics/quality differences from correctness.
-- [ ] 5.4 Record native/CPU/GPU benchmark, package/ABI/render profiles, CI smoke and opt-in hardware evidence. Reuse existing MuJoCo/Playground acceptance tasks rather than duplicating their entire reference matrix.
+- [x] 5.4 Record native/CPU/GPU benchmark, package/ABI/render profiles, CI smoke and opt-in hardware evidence. Reuse existing MuJoCo/Playground acceptance tasks rather than duplicating their entire reference matrix.
 
 ## 6. Staged system-level integrations and release
 

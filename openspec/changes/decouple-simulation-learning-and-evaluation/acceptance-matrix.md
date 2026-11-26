@@ -1,11 +1,12 @@
 # Acceptance matrix — current local candidate
 
-Base `fcb4a81a150b0eb272be6708315ea3fa64e00813`, uncommitted change candidate.
 See linked records for the tested source/asset hashes, interpreter and native
-versions, exact invocations and raw receipts. This is not a release matrix.
+versions, exact invocations and raw receipts. Each result applies to its
+recorded candidate. This is not a release matrix.
 
-The standard regression candidate's source, tests, docs and build inputs
-have SHA-256 `56cf595c0ce320ebba8400bb46e0a94fa6f98e73f32ee8177feb7aa16d091f9d`.
+The first standard regression used base `fcb4a81a150b0eb272be6708315ea3fa64e00813`
+and uncommitted inputs with SHA-256
+`56cf595c0ce320ebba8400bb46e0a94fa6f98e73f32ee8177feb7aa16d091f9d`.
 Recompute from the repository root (includes untracked candidate files):
 
 ```bash
@@ -25,9 +26,10 @@ git ls-files -z --cached --others --exclude-standard -- \
 | Independent local playback | Pass for 4a.2 and 4a.3 | [Playback evidence](playback-evidence.md): state and mixed-sensor headless play, N=1 and native batches, with policy-owned history and selected recurrent/chunk state resets; loopback Viser with bounded task reset options and bounded headless N=1 PhysX GIF/MP4. No viewer recording or remote playback qualified. |
 | Independent evaluation snapshot | Pass for fresh CPU/CUDA process and same-host CPU Ray tasks | [Snapshot boundary](snapshot-boundary.md): periodic GPU inference overlapped a CPU learner and published bounded media with correct policy provenance. Actor/optimizer matched the no-evaluation control. Two-GPU, multi-node and native Isaac fit evaluation remain unqualified. |
 | Native Kit Local/X11/TigerVNC and WebRTC playback | Unqualified | A native X11/RDP Kit probe ran actual policy ticks but failed to qualify a bounded display surface. No approved, end-to-end native WebRTC stream or TigerVNC reference. |
-| Remote Ray Jobs playback | Transport verified; GPU acceptance open | CLI/SDK worker dispatch has no local fallback. Local and hermetic checks do not qualify actual worker playback, cancellation or viewer routing. |
+| Remote Ray Jobs playback | Transport verified; GPU acceptance open | CLI/SDK worker dispatch has no local fallback. The corrected producer hit the Ray supervisor admission timeout with no driver. Local signal cleanup does not qualify remote playback, cancellation or viewer routing. |
 | MuJoCo Warp native API probe | Pass, substrate only | [GPU interop probe](mujoco-warp-probe.md): the pinned packages shared CUDA state with Torch, agreed with CPU for two substeps and reset only the selected row. No NexuML GPU environment, training or throughput claim. |
 | MuJoCo Warp direct reference | Pass for pinned headless Cartpole | [GPU reference](mujoco-warp-reference.md): native resets and terminal flags, 1,024 CUDA transitions and 16 PPO minibatches, fixed actor export and fresh replay. Distributed, split placement and rendering are not qualified. |
+| Matched-geometry runtime profile | Pass for scoped local measurement | [Runtime profile](mujoco-warp-reference.md#task-54--matched-geometry-measured-profile): CPU MuJoCo, CUDA Warp and CUDA PhysX each ran 1,024 transitions with common actor weights. Reports raw warm timing, versions/ABI, explicit EGL success and OSMesa gap. The CPU CI test command and opt-in hardware suite passed locally; no dynamics equivalence or speedup claim. |
 | Matched native Isaac and CPU MuJoCo task | Pass, paired reference (5.3) | [Paired Cartpole](local-fit-handoff.md#paired-result): signed effort oracle, shared actor/PPO, and fresh evaluation of one exported package on both engines. Distinct dynamics and reward scales; not GPU MuJoCo learning. |
 | Original matched SO-101 learning/throughput gate | Fail | [Baseline](baseline.md): zero held-out successes for both learners; NexuML achieved 73% of native warm throughput. The longer-budget follow-up did not rerun this gate. |
 | Placement readiness | Pass for fixed SO-101 treatment | [Independent revisit](so101-placement-readiness.md): fresh reset seeds gave 96/96 successes for each learner, with NexuML 78.52% of native warm throughput. This warrants implementing placement, not claiming it works. |
@@ -40,7 +42,7 @@ git ls-files -z --cached --others --exclude-standard -- \
 | Arena composed training and evaluation | Blocked | Compatible prepared Arena runtime absent; hermetic evaluator protocol is not native composition or scoring. |
 | Approved three-domain physical ROS 2 and mixed objectives | Blocked | No approved matching real episodes available; simulated pairs and hermetic evidence do not count. |
 | Existing supervised/dataset regression, NEX-234 real-data run | Pass for fixtures; real-data rerun blocked | Existing CPU and CUDA dataset SDK checks passed. Original approved dataset unavailable. |
-| Package and image verification | Pass for local wheels and a pinned headless Isaac image | Installed Cartpole train/export/play/evaluate passed in the binary-only workstation image. No Harbor upload was needed. Public release delivery is deferred until the complete change is merged. |
+| Package and image verification | Pass for local wheels and a pinned headless Isaac image | Installed Cartpole train/export/play/evaluate passed in the binary-only workstation image. [Installed MuJoCo Warp](mujoco-warp-reference.md#installed-binary-only-profile) passed without Isaac or Ray. No Harbor upload was needed. Public release delivery is deferred until the complete change is merged. |
 
 Integrated native regression: **10 passed in 137.19 s**. This includes the
 manager/direct transition oracles across PhysX, Newton and OVPhysX, SO-101

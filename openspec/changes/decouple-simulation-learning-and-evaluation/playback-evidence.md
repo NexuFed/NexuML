@@ -216,10 +216,11 @@ does not establish Ray service cancellation. Receipt:
 
 The next bounded existing-pool GPU job with the ordinary module bootstrap
 was not admitted in its admission window. A stop request was sent for that
-job only. It had not yet reached a worker when last checked, so it did not
-qualify the new bootstrap on a remote Isaac worker or produce a policy for
-playback. Do not retry the same allocation or count the earlier Kit crash
-as a playback attempt. Receipts: `/tmp/opencode/nexuml-remote-play-ZtrXQj/`.
+job only and accepted while it was pending. Final status is `FAILED`: the
+Ray supervisor timed out at 900 seconds with no assigned driver node.
+This is a terminal admission failure, not a verified remote playback
+cancellation. No remote actor package or playback was produced.
+Receipts: `/tmp/opencode/nexuml-remote-play-ZtrXQj/`.
 
 ## Native Kit display probes (4a.1 and 4a.4, partial)
 
