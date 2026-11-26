@@ -737,6 +737,32 @@ class ReinforcementLearningSpec(SpecModel):
     strategy: str | StrategySpec = "auto"
     precision: str | int = "32-true"
 
+    @staticmethod
+    def single_gpu_index(devices: int | str) -> int | None:
+        """Read Lightning's explicit one-GPU index syntax, distinct from a device count.
+
+        Returns:
+            The selected logical GPU index, or None for a count or automatic placement.
+        """
+        if isinstance(devices, str) and re.fullmatch(r"(?:0|[1-9][0-9]*),", devices):
+            return int(devices[:-1])
+        return None
+
+    @classmethod
+    def validate_learner_devices(cls, devices: int | str, accelerator: str) -> None:
+        """Keep one learner and permit explicit selection of one visible GPU.
+
+        Raises:
+            ValueError: If the selection is not one device or an explicit GPU is not requested.
+        """
+        index = cls.single_gpu_index(devices)
+        if devices not in (1, "auto") and index is None:
+            raise ValueError("Reinforcement training supports one learner device")
+        if index is not None and accelerator not in ("gpu", "cuda"):
+            raise ValueError(
+                "An explicit RL learner GPU index requires the gpu or cuda accelerator"
+            )
+
 
 class TargetSpec(SpecModel):
     """Specification for a synthetic target."""
@@ -1027,7 +1053,8 @@ class ScenarioSpec(SpecModel):
                 raise ValueError(
                     "Ray learner placement for RL is not validated; use local execution"
                 )
-            if self.training.devices not in (1, "auto") or self.training.strategy != "auto":
+            self.training.validate_learner_devices(self.training.devices, self.training.accelerator)
+            if self.training.strategy != "auto":
                 raise ValueError("RL currently supports one learner with training.strategy='auto'")
         return self
 

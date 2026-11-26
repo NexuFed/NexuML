@@ -40,12 +40,23 @@ def build_collector(definition, training: ReinforcementLearningSpec, policy, dev
         ValueError: If an unvalidated Ray collector topology is requested.
     """
     definition.validate_training(training, device=str(device))
+    spec = training.collector
+    policy_device = str(device) if spec.policy_device == "auto" else spec.policy_device
+    for name, value in (
+        ("env_device", spec.env_device),
+        ("policy_device", policy_device),
+        ("storing_device", spec.storing_device),
+    ):
+        try:
+            selected = torch.device(value)
+        except (RuntimeError, TypeError) as error:
+            raise ValueError(f"collector.{name} is not a Torch device: {value!r}") from error
+        if selected.type == "cuda" and (selected.index or 0) >= torch.cuda.device_count():
+            raise ValueError(f"collector.{name} CUDA device {value!r} is unavailable")
     try:
         from torchrl.collectors import Collector
     except ImportError as error:
         raise ImportError("Reinforcement collection requires nexuml[reinforcement]") from error
-    spec = training.collector
-    policy_device = str(device) if spec.policy_device == "auto" else spec.policy_device
     if spec.backend == "ray":
         if not spec.sync or any(
             torch.device(value).type != "cpu"

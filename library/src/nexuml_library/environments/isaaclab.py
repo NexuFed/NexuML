@@ -242,8 +242,12 @@ class IsaacLabEnvironment(EnvironmentDefinition):
                 "Isaac Lab requires one synchronous direct collector: backend='direct', "
                 "sync=True, num_collectors=1"
             )
-        if training.devices != 1 or training.strategy != "auto":
-            raise ValueError("Isaac Lab requires training.devices=1 and training.strategy='auto'")
+        learner_index = training.single_gpu_index(training.devices)
+        if (training.devices != 1 and learner_index is None) or training.strategy != "auto":
+            raise ValueError(
+                "Isaac Lab requires training.devices=1 or one explicit GPU index, "
+                "and training.strategy='auto'"
+            )
         configured_devices = {
             "collector.env_device": collector.env_device,
             "collector.storing_device": collector.storing_device,
@@ -252,7 +256,7 @@ class IsaacLabEnvironment(EnvironmentDefinition):
             configured_devices["collector.policy_device"] = collector.policy_device
         if device is not None:
             configured_devices["learner device"] = device
-        indices = set()
+        indices = set() if learner_index is None else {learner_index}
         for name, value in configured_devices.items():
             try:
                 parsed = torch.device(value)

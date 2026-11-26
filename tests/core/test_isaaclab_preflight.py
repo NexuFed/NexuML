@@ -122,6 +122,42 @@ def test_cpu_session_fit_rejects_resolved_device_before_media(tmp_path, monkeypa
     assert session.lightning_module._collector is None
 
 
+def test_explicit_learner_device_is_distinct_from_device_count():
+    from nexuml.core.config import ResolvedConfig
+
+    scenario = isaac_cartpole_ppo()
+    training = scenario.training
+    training.devices = "1,"
+    training.collector.env_device = "cuda:1"
+    training.collector.policy_device = "cuda:1"
+    training.collector.storing_device = "cuda:1"
+    restored = ResolvedConfig.from_yaml(
+        ResolvedConfig.from_scenario(scenario).to_yaml()
+    ).to_scenario()
+    assert restored.training.devices == "1,"
+    assert restored.interaction is not None
+    restored.interaction.environment.validate_training(restored.training, device="cuda:1")
+    with pytest.raises(ValueError, match="same CUDA device index"):
+        restored.interaction.environment.validate_training(restored.training, device="cuda:0")
+    with pytest.raises(ValueError, match="gpu or cuda accelerator"):
+        ReinforcementLearningSpec.validate_learner_devices("1,", "cpu")
+    with pytest.raises(ValueError, match="supports one learner device"):
+        ReinforcementLearningSpec.validate_learner_devices("0,1", "gpu")
+
+
+def test_rollout_device_is_checked_before_build(tmp_path, monkeypatch):
+    scenario = cartpole_ppo()
+    training = scenario.training
+    training.collector.storing_device = "cuda:4"
+    monkeypatch.setattr(torch.cuda, "device_count", lambda: 1)
+    monkeypatch.setattr(GymnasiumEnvironment, "build", forbidden)
+    assert scenario.interaction is not None
+    with pytest.raises(
+        ValueError, match="collector.storing_device CUDA device 'cuda:4' is unavailable"
+    ):
+        build_collector(scenario.interaction.environment, training, None, "cpu")
+
+
 @pytest.mark.requires_optional("torchrl")
 def test_fit_start_revalidates_mutated_training(monkeypatch):
     module = NexuRLLightningModule(isaac_cartpole_ppo())

@@ -37,7 +37,7 @@ All tasks are new, unchecked. Existing historical evidence remains scoped to its
 
 ## 2. Independent device placement
 
-- [ ] 2.1 Extend existing collector config/validation for independent environment, rollout policy, storage and learner devices; preserve direct single-GPU defaults, native batches and no forced host copies.
+- [x] 2.1 Extend existing collector config/validation for independent environment, rollout policy, storage and learner devices; preserve direct single-GPU defaults, native batches and no forced host copies.
 - [ ] 2.2 Qualify same-host separate-GPU simulation/inference and learner with one synchronous collector; verify explicit device mapping, supported transfers, actual frame budgets, correct terminal/GAE semantics, policy updates and resource cleanup. Compare with same-GPU baseline; keep unsupported layouts fail-closed.
 - [ ] 2.3 Test CPU/GPU transition ownership and batch boundaries; record GPU memory/utilization and copy throughput separately from physics/learning time.
 

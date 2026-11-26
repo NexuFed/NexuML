@@ -733,9 +733,6 @@ class NexuSession:
 
         Returns:
             The ``lightning.Trainer`` instance (creating it on first call).
-
-        Raises:
-            ValueError: If RL requests multiple learner devices.
         """
         if self._trainer is not None:
             return self._trainer
@@ -777,9 +774,11 @@ class NexuSession:
         resolved_accelerator = self.accelerator if self.accelerator != "auto" else tr.accelerator
         resolved_devices = self.devices if self.devices != "auto" else tr.devices
         if reinforcement:
-            if resolved_devices not in (1, "auto"):
-                raise ValueError("Reinforcement training supports one learner device")
-            resolved_devices = 1
+            ReinforcementLearningSpec.validate_learner_devices(
+                resolved_devices, resolved_accelerator
+            )
+            if resolved_devices == "auto":
+                resolved_devices = 1
         resolved_strategy = (
             cast(Any, tr.strategy.build()) if isinstance(tr.strategy, StrategySpec) else tr.strategy
         )

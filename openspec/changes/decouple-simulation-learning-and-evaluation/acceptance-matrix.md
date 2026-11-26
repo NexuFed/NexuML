@@ -29,7 +29,8 @@ git ls-files -z --cached --others --exclude-standard -- \
 | MuJoCo Warp native API probe | Pass, substrate only | [GPU interop probe](mujoco-warp-probe.md): the pinned packages shared CUDA state with Torch, agreed with CPU for two substeps and reset only the selected row. No NexuML GPU environment, training or throughput claim. |
 | Matched native Isaac and CPU MuJoCo task | Pass, paired reference (5.3) | [Paired Cartpole](local-fit-handoff.md#paired-result): signed effort oracle, shared actor/PPO, and fresh evaluation of one exported package on both engines. Distinct dynamics and reward scales; not GPU MuJoCo learning. |
 | Original matched SO-101 learning/throughput gate | Fail | [Baseline](baseline.md): zero held-out successes for both learners; NexuML achieved 73% of native warm throughput. The longer-budget follow-up did not rerun this gate. |
-| Cross-simulator GPU and distributed placement | Blocked | No qualifying decision to expand from the original matched gate. This host exposes one GPU; no qualified split or multi-node allocation was used. |
+| Placement readiness | Pass for fixed SO-101 treatment | [Independent revisit](so101-placement-readiness.md): fresh reset seeds gave 96/96 successes for each learner, with NexuML 78.52% of native warm throughput. This warrants implementing placement, not claiming it works. |
+| Split GPU and distributed collection | Unverified | Separate collector and single-learner configuration is supported; the native split and multi-node lanes still need actual allocation and qualification. This host exposes one GPU. |
 | CARLA 0.9.16 | Pass for pinned dedicated-server reference | [Live evidence](carla-live-evidence.md): exact ticks, matching camera and ego snapshots, observed collision ordering, extra-tick rejection, cleanup, and public train/evaluate/export/reload. The exported policy inferred identically without CARLA installed. |
 | Modern Gazebo deterministic stepping | Pass for isolated Jazzy/Harmonic reference | [Live evidence](gazebo-exact-step-evidence.md): eight accepted native goals, exact tick/clock/sample matching, signed motion, reset epoch, two-world isolation and cancellation cleanup. The standalone proof is not a NexuML Gazebo runtime adapter. |
 | Arena composed training and evaluation | Blocked | Compatible prepared Arena runtime absent; hermetic evaluator protocol is not native composition or scoring. |
@@ -128,6 +129,10 @@ skipped and 115 deselected, in 449.27 s. It used Python 3.12.16,
 `python -m pytest -q --tb=short --disable-warnings -m 'not requires_system and not requires_hardware and not requires_simulator and not requires_data'`.
 Skipped and deselected tests are not qualification evidence. Log:
 `/tmp/opencode/nexuml-decouple-standard-rerun-pPzzlp/pytest.log`.
+
+After GPU/Ray evaluation and the CARLA export fix, standard regression at
+`124ea1cd` passed **3,649 tests and 604 subtests** (16 skipped, 119 deselected)
+in 508.84 s. Log: `/tmp/opencode/nexuml-decouple-regression-kpLIcT/pytest.log`.
 
 ## Spec precedence for this candidate
 

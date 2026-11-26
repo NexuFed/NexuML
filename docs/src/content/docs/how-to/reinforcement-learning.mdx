@@ -779,6 +779,10 @@ state policies, not image policies, IK controllers or hardware deployment claims
 
 Supported training geometry is one synchronous **direct** native batch, one learner
 device and the same explicit CUDA device for simulation, rollout policy and storage.
+To select a logical learner GPU by index instead of the default count, set
+`training.accelerator=gpu` and `-O 'training.devices=0,'`. The trailing comma
+selects index 0 rather than asking for zero devices. Use the same index in
+the collector fields for the qualified native direct path.
 `frames_per_batch` must divide evenly by `num_envs_per_collector`: N=32 and T=32
 counts 1024 frames. Process/Ray collectors, asynchronous or multi-GPU execution and
 mixed devices are rejected before launch. The existing policy/PPO/Lightning/session
