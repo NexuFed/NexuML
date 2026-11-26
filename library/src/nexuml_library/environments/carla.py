@@ -2,6 +2,7 @@
 
 import math
 import random
+from importlib import import_module
 from queue import Empty, Queue
 from time import monotonic
 from typing import Any
@@ -70,7 +71,8 @@ class CarlaLaneFollowingEnvironment(EnvironmentDefinition):
         if context.num_envs != 1 or context.worker_rank != 0:
             raise ValueError("CARLA requires one direct collector and a dedicated server")
         try:
-            import carla  # ty: ignore[unresolved-import]
+            # Keep the native client out of Torch Package's policy dependency graph.
+            carla = import_module("carla")
         except ImportError as error:
             raise ImportError(
                 "CARLA requires a matching simulator server and CARLA Python client built for "

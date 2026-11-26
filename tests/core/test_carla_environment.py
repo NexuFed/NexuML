@@ -1,9 +1,10 @@
 """CARLA configuration, fake-server wiring, and a separately opted-in live smoke."""
 
-import copy
 import builtins
+import copy
 import sys
-from types import SimpleNamespace
+from importlib.util import find_spec
+from types import ModuleType, SimpleNamespace
 
 import pytest
 import torch
@@ -21,7 +22,14 @@ from nexuml_library.reinforcement.algorithms.ppo import PPO
 from nexuml_library.scenarios.reinforcement.carla import carla_lane_following_ppo
 
 
-def test_contract_round_trip_and_export_without_carla(tmp_path, monkeypatch):
+@pytest.mark.parametrize("client_available", [False, True], ids=["no-client", "client-available"])
+def test_contract_round_trip_and_export_without_carla(tmp_path, monkeypatch, client_available):
+    if not client_available:
+        monkeypatch.setitem(sys.modules, "carla", None)
+    elif find_spec("carla") is None:
+        # Torch Package must see an importable client even on simulator-free CI.
+        monkeypatch.setitem(sys.modules, "carla", ModuleType("carla"))
+
     spec = carla_lane_following_ppo(total_frames=16, frames_per_batch=16)
     restored = ResolvedConfig.from_yaml(ResolvedConfig.from_scenario(spec).to_yaml()).to_scenario()
     assert restored.interaction is not None and restored.policy is not None
