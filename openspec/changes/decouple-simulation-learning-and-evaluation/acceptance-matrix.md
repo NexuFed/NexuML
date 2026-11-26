@@ -196,6 +196,12 @@ Log: `/tmp/opencode/nexuml-placement-standard-SfCkZE/pytest.log`.
 The updated docs check passed on Node 22.23.4: 67 tests and 33 subtests,
 zero Astro diagnostics, and rendered links, fragments, and assets verified.
 
+The standard regression for the native CLI receipt fix (`d98bd710`)
+passed **3,739 tests and 604 subtests** (16 skipped, 124 deselected) in
+460.06 s. The recorded input hash matched the committed receipt change:
+`6a491a8da1af70a525d65005832e06900da205dd8136846de1310ac692d0b635`.
+Log: `/tmp/opencode/nexuml-native-receipt-regression-0sDVRT/pytest.log`.
+
 ## Spec precedence for this candidate
 
 - The original Isaac [rollout](../add-isaaclab-gpu-robotics/specs/isaaclab-rollout-collection/spec.md)
