@@ -83,4 +83,8 @@ and [snapshot API](https://github.com/carla-simulator/carla/blob/0.9.16/PythonAP
 Focused fake CARLA/ROS and playback tests: **25 passed, 2 live cases
 deselected**. The fake CARLA server injected extra ticks, a moved world
 snapshot, a missing ego and camera timeout, then verified owned cleanup.
-No current live CARLA/Gazebo or physical ROS 2 qualification.
+Follow-up native results are in [CARLA live evidence](carla-live-evidence.md)
+and [Gazebo exact-step evidence](gazebo-exact-step-evidence.md). Neither is
+physical ROS 2 evidence. The simulation-only ROS 2 adapter rejects physical
+execution before connecting; its fake-transport tests also verify rejection
+of out-of-range commands and the bounded wait on missing feedback.
