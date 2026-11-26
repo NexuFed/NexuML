@@ -217,3 +217,32 @@ preflight and Arena. Source hashes and results:
 `/tmp/opencode/final-ray-GF37RO/`. The docs check also passed: **67 tests,
 33 subtests**, zero Astro diagnostics and verified rendered links
 (`/tmp/opencode/ray-cuda-transfer-docs-XaEA9B/`).
+
+## Worker dependency setup diagnostic (3.4, not native qualification)
+
+Ray's `py_executable` can run `uv run --frozen`, but that puts dependency
+setup inside worker startup. A cold-cache miss failed in the worker
+process, and the raylet retried after its 60 s registration timeout.
+Stock-pool Isaac cold setup took nearly seven minutes, so this probe does
+not justify putting the entire install inside `py_executable`.
+Receipt: `/tmp/opencode/rev-Qc2M3g/`.
+
+Ray 2.57's native actor `runtime_env.uv` instead installs before launching
+the actor. In a clean local Ray/pip/virtualenv runtime, the plugin installed
+a lock-exported CPU wheel with `--require-hashes --only-binary :all:` and
+passed `uv pip check`. The actor loaded the package from its own environment;
+the owner could not import it before or after. An invalid hash raised
+`RuntimeEnvSetupError` before the actor ran, and the caller could still
+submit a separate task. Receipts: `/tmp/opencode/rh-35EdBB/`.
+
+The plugin requires `pip` and `virtualenv` in the base runtime. If Ray is
+started inside a virtualenv, the plugin clones that environment first. A
+probe against the full development environment timed out while copying it
+and left a clone helper, which was stopped before removing that attempt's
+temporary copy (`/tmp/opencode/ru-mW40Z2/`). Launching Ray from an already
+heavy learner environment is not a qualified substitute for stock workers.
+
+No new NexuML config is exposed by these probes. The full hash-pinned
+Isaac binary set, installed learner import boundary, distinct worker
+nodes, GPU learner and actor admission/cleanup still require an actual
+combined run.
