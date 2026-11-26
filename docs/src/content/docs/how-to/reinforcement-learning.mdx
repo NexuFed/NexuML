@@ -561,6 +561,19 @@ Direct collection and synchronous process collection are validated. Configure
 and `policy_sync_interval_batches` (default 1) for copied worker policies.
 Environment/device topology and learner placement are separate concerns.
 
+For direct Gymnasium Pendulum, the CPU simulator and learner can leave
+rollout inference and storage on `cuda:0`:
+
+```bash
+nexuml train pendulum-ppo \
+  -O training.accelerator=cpu -O training.collector.env_device=cpu \
+  -O training.collector.policy_device=cuda:0 -O training.collector.storing_device=cuda:0
+```
+
+This moves actions and observations between CPU and CUDA during collection,
+and each completed rollout back to the CPU learner. It did not speed up the
+small qualified reference. This is not an Isaac split-GPU recipe.
+
 Synchronous CPU Ray collection is also validated with a local CPU learner. Install
 `nexuml[reinforcement,ray]` and select `training.collector.backend="ray"`. Environment,
 storage and policy devices must be CPU; `frames_per_batch` must be divisible by

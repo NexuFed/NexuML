@@ -117,6 +117,9 @@ also match the Git objects at the measured revision; subsequent
 worktree changes to the collector and types are outside this receipt.
 Probe SHA-256:
 `66eff41bd8e51f5b36ba48b212e881d945ed07e136e5b565b567b696eac6c99b`.
+The documented public CLI placement also completed a 64-transition smoke
+with eight optimizer steps and reported learner device `cpu`:
+`/tmp/opencode/nexuml-cuda-rollout-cli-WpEqx8/cli.log`.
 The SHA-256 of the `sha256sum cpu.json split.json cpu-copies.json
 split-copies.json cpu-gpu.csv split-gpu.csv` output is
 `73b470e396cdc43580317fad316e93c7e1c179ce136f4af6cde22e77fdc01236`.
