@@ -222,6 +222,26 @@ This is a terminal admission failure, not a verified remote playback
 cancellation. No remote actor package or playback was produced.
 Receipts: `/tmp/opencode/nexuml-remote-play-ZtrXQj/`.
 
+### Real Ray Jobs on one prepared GPU host
+
+At `d538f481`, a disposable Ray 2.57.0 runtime on the local RTX 4080 SUPER
+(driver 610.43.03) ran the normal CLI through the Jobs service on loopback.
+The worker used the prepared Isaac Lab 3.0/Sim 6.2 interpreter and reserved one
+GPU. The separate submitter hid CUDA and printed only a job ID. On the
+assigned worker, headless PhysX ran **8 ticks and 8 transitions**; Ray
+reported `SUCCEEDED` with exit 0. GIF and MP4 each decoded exactly three
+frames; the manifest records native ticks 1–3 and the input policy SHA-256
+`2086f0ef48328eeb83c3b94351e5fb6dba20e8bc4cd7a49d3e8b173c47d86403`.
+
+A second, continuous SDK submission produced its bounded two-frame GIF
+while `RUNNING`. The Jobs API stopped it with `SIGTERM`, not a force kill.
+It cleared `SimulationContext`, reached `STOPPED`, and left no owned CUDA
+process or temporary NexuML configuration. The caller-owned Ray runtime
+then assigned its GPU to a new task before the probe owner shut it down.
+Receipts and replayable probe: `/tmp/opencode/jp-E6Kx0Y/`. This verifies
+the actual Jobs transport and cleanup on one host, not a remote-worker
+runtime, job-local installation or a native viewer endpoint.
+
 ## Native Kit display probes (4a.1 and 4a.4, partial)
 
 On an existing X11/RDP display, Lab's default non-headless Kit experience
