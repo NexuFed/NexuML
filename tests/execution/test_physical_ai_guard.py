@@ -848,17 +848,19 @@ finally:
             with self.subTest(signal=sig, detached=detached):
                 self.receipt.unlink(missing_ok=True)
                 ready = self.root / f"ready-{sig}-{detached}.json"
+                staging = ready.with_suffix(".tmp")
                 descendant = (
                     "import signal,time; signal.signal(signal.SIGTERM,signal.SIG_IGN); "
                     "print('ready',flush=True); time.sleep(30)"
                 )
                 child = (
-                    "import subprocess,sys,os,json,signal,time; "
+                    "import subprocess,sys,os,json,signal,time; from pathlib import Path; "
                     "signal.signal(signal.SIGTERM,signal.SIG_IGN); "
                     f"p=subprocess.Popen({python(descendant)!r},stdout=subprocess.PIPE,"
                     f"start_new_session={detached!r}); "
                     "p.stdout.readline(); "
-                    f"open({str(ready)!r},'w').write(json.dumps([os.getpid(),p.pid])); "
+                    f"Path({str(staging)!r}).write_text(json.dumps([os.getpid(),p.pid])); "
+                    f"os.replace({str(staging)!r},{str(ready)!r}); "
                     "time.sleep(30)"
                 )
                 invocation = [
