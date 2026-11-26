@@ -23,7 +23,7 @@ git ls-files -z --cached --others --exclude-standard -- \
 | Native project-owned direct task | Pass, state-only Newton | [Custom direct task](custom-direct-task.md): native RSL-RL and NexuML through the same task, 256 transitions each, control/termination/reset parity, separate exports and fresh replays. |
 | Headless scripted/policy interaction, direct native bindings | Pass, selected references | [Interaction foundation](interaction-foundation.md) and [binding cleanup](native-binding-cleanup.md): known controls, fixed clock, same-step reset and read-only spectator parity. |
 | Complete standalone inference and bounded local fits | Pass, scoped | [Local-fit handoff](local-fit-handoff.md): installed package and native SO-101 repeats; matched PhysX / CPU MuJoCo actor fit, test-only combination, second fit and replay. Not production federation, promotion or general learning improvement. |
-| Independent local playback | Pass for 4a.2 and 4a.3 | [Playback evidence](playback-evidence.md): state and mixed-sensor headless play, N=1 and native batches, with policy-owned history and selected recurrent/chunk state resets; loopback Viser with bounded task reset options and bounded headless N=1 PhysX GIF/MP4. No viewer recording or remote playback qualified. |
+| Independent local playback | Pass for 4a.2 and 4a.3 | [Playback evidence](playback-evidence.md): state and mixed-sensor headless play, N=1 and native batches, with policy-owned history and selected recurrent/chunk state resets; loopback Viser with bounded task reset options and bounded headless N=1 PhysX GIF/MP4. Does not qualify viewer recording. |
 | Independent evaluation snapshot | Pass for fresh CPU/CUDA process and same-host CPU Ray tasks | [Snapshot boundary](snapshot-boundary.md): periodic GPU inference overlapped a CPU learner and published bounded media with correct policy provenance. Actor/optimizer matched the no-evaluation control. Two-GPU, multi-node and native Isaac fit evaluation remain unqualified. |
 | Native Kit Local/X11/TigerVNC and WebRTC playback | Unqualified | [Native Kit probes](playback-evidence.md#native-kit-display-probes-4a1-and-4a4-partial): Dev Containers X11 forwarded blank windows to the operator. The desktop probe ran actual policy ticks, but neither visible playback frames nor a mutation-restricted surface were verified. No approved end-to-end native WebRTC or TigerVNC reference. |
 | Ray Jobs playback | Pass remotely, headless (4a.5) | [Stock-pool evidence](playback-evidence.md#stock-pool-headless-playback-and-cancellation): locked job-local dependencies, hash-verified export replay on a fresh CUDA worker pod, eight ticks, clean SDK stop and GPU release. Separate one-host media proof; no remote viewer or recording claim. |
@@ -214,6 +214,16 @@ The Arena composition regression (`532801d8`) passed **3,745 tests and
 input hash matched the commit:
 `bb9f85c128f4eff679de2157549e055ccaf91e82a08ab10b09c08fe28e61df2c`.
 Log: `/tmp/opencode/arena-composition-standard-5HyOdh/pytest.log`.
+
+The combined rollout candidate (`b774aafa`) passed **3,758 tests and
+604 subtests** (16 skipped, 127 deselected) in 515.40 s. The recorded
+input hash matched that revision:
+`09039ef361d6ef6c6a987cdd6f0aa9f4e206dde99a4b00fb02b2b0a848d25cd4`.
+The later remote milestone changed only documentation and OpenSpec
+evidence and passed its own docs check (67 tests, 33 subtests, zero Astro
+diagnostics, rendered links verified).
+Logs: `/tmp/opencode/rollout-final-standard-LWXuuh/pytest.log` and
+`/tmp/opencode/remote-play-docs-yAehUP/docs.log`.
 
 ## Spec precedence for this candidate
 
