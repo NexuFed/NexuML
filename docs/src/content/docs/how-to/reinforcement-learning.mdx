@@ -170,7 +170,7 @@ mode and a fixed seed make CPU comparisons useful, not a cross-platform determin
 fails validation. Evaluation-environment overrides must retain compatible observation/action
 fields and action semantics.
 
-### Evaluate snapshots in a fresh CPU process
+### Evaluate snapshots in a fresh process
 
 For a CPU-capable task and one learner process, add
 `-O 'training.evaluation.process={"timeout_s":120}'` to the training command.
@@ -188,8 +188,14 @@ not queue a backlog. Fit completion waits for any in-flight result and
 evaluates the final actor if that exact snapshot has not already completed.
 Cancellation stops the owned evaluator without reporting success.
 
-Neither schedule enables automatic Isaac fit evaluation, video, a separate
-evaluator GPU or Ray placement. Omit `process` to keep in-process evaluation.
+Set `device: cuda:0` (or another explicit visible index) to place the fresh
+process on a local GPU. The selected GPU must exist and must not be the
+learner's GPU. For a task with an RGB renderer, `video` records bounded GIF
+or MP4 to the normal evaluation artifact sink, verified against the source
+snapshot. Gymnasium Pendulum is qualified for GPU inference and CPU physics
+alongside a CPU learner. This does not enable automatic Isaac fit evaluation
+or qualify a two-GPU learner/evaluator pairing. Omit `process` to keep
+in-process evaluation.
 
 ### Place CPU snapshot evaluation on an existing Ray runtime
 

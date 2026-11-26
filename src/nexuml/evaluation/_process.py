@@ -1,4 +1,4 @@
-"""Isolated CPU worker and owned process lifetime for fit evaluation."""
+"""Fresh snapshot evaluation and its owned process lifetime."""
 
 from collections.abc import Callable
 from contextlib import ExitStack
@@ -19,7 +19,7 @@ from nexuml.core.export import (
     export_package,
     load_inference_package,
 )
-from nexuml.evaluation.policy import evaluate_policy
+from nexuml.evaluation.policy import evaluate_policy, resolve_policy_evaluation
 
 
 def _digest(path: Path) -> str:
@@ -27,7 +27,7 @@ def _digest(path: Path) -> str:
         return hashlib.file_digest(stream, "sha256").hexdigest()
 
 
-def evaluate_snapshot(root: Path, digest: str) -> dict:
+def evaluate_snapshot(root: Path, digest: str, *, device: str = "cpu", media_sink=None) -> dict:
     """Evaluate a verified actor using prepared inputs.
 
     Returns:
@@ -50,9 +50,10 @@ def evaluate_snapshot(root: Path, digest: str) -> dict:
     reports: list[dict] = []
     with definition.job_scope():
         metrics = evaluate_policy(
-            actor,
+            actor.to(device),
             scenario,
             frame_step=frame,
+            media_sink=media_sink,
             episode_report_sink=reports.append,
             provenance={
                 "source_policy_files_sha256": metadata["policy_files_sha256"],
@@ -65,17 +66,26 @@ def evaluate_snapshot(root: Path, digest: str) -> dict:
         "source_training_frames": frame,
         "source_training_batches": version,
         "evaluator_pid": os.getpid(),
+        "evaluator_device": device,
         "metrics": metrics,
         "episode_report": report,
     }
 
 
-def _worker(root: Path, digest: str) -> None:
+def _worker(root: Path, digest: str, device: str) -> None:
     def cancel(signum, _frame):
         raise SystemExit(128 + signum)
 
     signal.signal(signal.SIGTERM, cancel)
-    (root / "result.json").write_text(json.dumps(evaluate_snapshot(root, digest), allow_nan=False))
+
+    def capture(frames, metadata):
+        import numpy as np
+
+        np.save(root / "frames.npy", frames, allow_pickle=False)
+        (root / "media.json").write_text(json.dumps(metadata, allow_nan=False))
+
+    receipt = evaluate_snapshot(root, digest, device=device, media_sink=capture)
+    (root / "result.json").write_text(json.dumps(receipt, allow_nan=False))
 
 
 def prepare_snapshot(root: Path, policy, scenario, owner) -> tuple[Path, str, int, int]:
@@ -116,8 +126,11 @@ def _terminate(worker: subprocess.Popen) -> None:
 class ProcessEvaluation:
     """One immutable snapshot and its evaluator; caller owns close on every path."""
 
-    def __init__(self, policy, scenario, *, owner, timeout_s: float):
+    def __init__(self, policy, scenario, *, owner, timeout_s: float, device: str = "cpu"):
         self.timeout_s = timeout_s
+        self.device = device
+        _, spec, _ = resolve_policy_evaluation(scenario)
+        self.video = spec.video
         with ExitStack() as stack:
             self.root = Path(stack.enter_context(TemporaryDirectory(prefix="nexuml-evaluation-")))
             self.artifact, self.sha256, self.frame, self.version = prepare_snapshot(
@@ -125,8 +138,8 @@ class ProcessEvaluation:
             )
             self.log = stack.enter_context((self.root / "worker.log").open("w+b"))
             self.worker = subprocess.Popen(
-                [sys.executable, "-m", __name__, str(self.root), self.sha256],
-                env={**os.environ, "CUDA_VISIBLE_DEVICES": ""},
+                [sys.executable, "-m", __name__, str(self.root), self.sha256, device],
+                env={**os.environ, "CUDA_VISIBLE_DEVICES": ""} if device == "cpu" else None,
                 stdout=self.log,
                 stderr=subprocess.STDOUT,
             )
@@ -154,7 +167,7 @@ class ProcessEvaluation:
             except subprocess.TimeoutExpired as error:
                 if monotonic() >= self.deadline:
                     raise RuntimeError(
-                        f"CPU snapshot evaluation exceeded {self.timeout_s:g} s"
+                        f"{self.device.upper()} snapshot evaluation exceeded {self.timeout_s:g} s"
                     ) from error
         if check_cancelled is not None:
             check_cancelled()
@@ -162,13 +175,41 @@ class ProcessEvaluation:
         if self.worker.returncode != 0 or not result_path.is_file():
             self.log.seek(max(0, self.log.seek(0, os.SEEK_END) - 3000))
             output = self.log.read().decode(errors="replace")
-            raise RuntimeError(f"CPU snapshot evaluation exited {self.worker.returncode}: {output}")
+            raise RuntimeError(
+                f"{self.device.upper()} snapshot evaluation exited {self.worker.returncode}: "
+                f"{output}"
+            )
         result = json.loads(result_path.read_text())
         if _digest(self.artifact) != self.sha256:
             raise RuntimeError("CPU snapshot was modified during evaluation")
         validate_receipt(result, self.sha256, self.frame, self.version)
+        if result["evaluator_device"] != self.device:
+            raise RuntimeError("Snapshot evaluation returned unrelated device provenance")
         return result
+
+    def publish_media(self, loggers, report: dict) -> None:
+        if not self.video.enabled:
+            return
+        import numpy as np
+
+        from nexuml.tracking.logger import log_evaluation_media
+
+        metadata = json.loads((self.root / "media.json").read_text())
+        frames = np.load(self.root / "frames.npy", allow_pickle=False, mmap_mode="r")
+        if (
+            frames.ndim != 4
+            or frames.dtype != np.uint8
+            or frames.shape[-1] != 3
+            or not 0 < len(frames) <= self.video.max_frames
+            or not 0 < min(frames.shape[1:3]) <= max(frames.shape[1:3]) <= self.video.max_size
+            or metadata["captured_frames"] != len(frames)
+            or metadata["frame_step"] != self.frame
+            or metadata["provenance"]["source_policy_files_sha256"]
+            != report["episode_report"]["source_policy_files_sha256"]
+        ):
+            raise RuntimeError("Snapshot evaluator returned invalid media")
+        log_evaluation_media(loggers, list(frames), metadata, self.video, step=self.frame)
 
 
 if __name__ == "__main__":
-    _worker(Path(sys.argv[1]), sys.argv[2])
+    _worker(Path(sys.argv[1]), sys.argv[2], sys.argv[3])

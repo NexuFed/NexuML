@@ -75,6 +75,8 @@ class RayEvaluation:
                 check_cancelled()
                 result = json.loads(self.ray.get(self.reference))
                 validate_receipt(result, self.sha256, self.frame, self.version)
+                if result["evaluator_device"] != "cpu":
+                    raise RuntimeError("Ray CPU evaluation returned unrelated device provenance")
                 return result
             if monotonic() >= self.deadline:
                 raise RuntimeError(f"Ray snapshot evaluation exceeded {self.timeout_s:g} s")

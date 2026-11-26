@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping
 from keyword import iskeyword
 from math import isclose, prod
+import re
 from typing import TYPE_CHECKING, Annotated, Any, Literal, Self, cast
 
 from pydantic import BaseModel, ConfigDict, Field, StrictInt, field_validator, model_validator
@@ -651,16 +652,27 @@ class RLVideoSpec(SpecModel):
     fps: float | None = Field(default=None, gt=0, allow_inf_nan=False)
 
 
-class ProcessEvaluationSpec(SpecModel):
-    """Evaluation in a fresh CPU process, without a shared native runtime."""
-
+class _SnapshotEvaluationSpec(SpecModel):
     timeout_s: float = Field(default=120, gt=0, allow_inf_nan=False)
     scheduling: Literal["blocking", "skip_if_busy"] = Field(
         default="blocking", exclude_if=lambda value: value == "blocking"
     )
 
 
-class RayEvaluationSpec(ProcessEvaluationSpec):
+class ProcessEvaluationSpec(_SnapshotEvaluationSpec):
+    """Evaluation in a fresh process on CPU or a selected local GPU."""
+
+    device: str = Field(default="cpu", exclude_if=lambda value: value == "cpu")
+
+    @field_validator("device")
+    @classmethod
+    def validate_device(cls, value: str) -> str:
+        if value != "cpu" and not re.fullmatch(r"cuda:(0|[1-9][0-9]*)", value):
+            raise ValueError("Process evaluation requires cpu or an explicit cuda:N device")
+        return value
+
+
+class RayEvaluationSpec(_SnapshotEvaluationSpec):
     """One CPU snapshot evaluator on the caller's existing Ray runtime."""
 
     resources: dict[str, Annotated[float, Field(gt=0, allow_inf_nan=False)]] = Field(
@@ -697,8 +709,6 @@ class RLEvaluationSpec(SpecModel):
     def validate_recording(self) -> Self:
         if self.video.enabled and self.episodes == 0:
             raise ValueError("evaluation.video requires evaluation.episodes > 0")
-        if self.process is not None and self.video.enabled:
-            raise ValueError("Fresh CPU-process fit evaluation does not support video")
         if self.ray is not None:
             if self.process is not None:
                 raise ValueError("Select either CPU-process or Ray fit evaluation, not both")

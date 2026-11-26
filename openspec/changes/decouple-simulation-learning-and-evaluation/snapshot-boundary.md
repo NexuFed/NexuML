@@ -85,3 +85,28 @@ local/preflight tests. Logs:
 also passed the packaging check in
 `/tmp/opencode/nexuml-ray-snapshot-artifacts-7Pxb12/`.
 This is same-host Ray task evidence, not GPU or multi-node acceptance.
+
+## Periodic evaluation on a separate local GPU (4.3)
+
+The `process.device` option selects a visible `cuda:N` distinct from the
+learner GPU, or the default CPU. Missing and shared GPU placements fail
+before collection. Worker capture uses the existing bounded RGB path; the
+parent verifies source policy/frame and capture bounds before it publishes
+GIF/MP4 using the existing logger.
+
+With an RTX 4080 SUPER, the CPU Pendulum PPO learner requested evaluation
+at frame **32**. The worker completed a step with CUDA actions and rewards
+before the learner continued to frames **64** and **96**. Those two periodic
+requests were recorded as skipped while the worker was gated after its GPU
+step. The final actor was evaluated in a new process at frame **96**. Both
+reports used seeds 23/24, distinct actor hashes, and capped two-frame media;
+the MP4s decoded with two frames. Exact final actor and optimizer tensors
+matched a seed-matched run without evaluation.
+
+Cancelling an already active CUDA worker returned 143, reaped the worker
+and removed its snapshot without an evaluation receipt. **2 GPU**, **2 Ray
+CPU**, and **248 focused CPU** checks passed. Raw GPU logs/artifacts:
+`/tmp/opencode/nexuml-gpu-snapshot-IQkafG/`; Ray regression:
+`/tmp/opencode/rs-vkIRwO/pytest.log`. Pendulum physics remains CPU. No
+two-GPU learner/evaluator pairing, remote GPU, or automatic Isaac fit
+evaluation is claimed.

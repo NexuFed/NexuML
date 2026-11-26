@@ -195,6 +195,12 @@ class NexuRLLightningModule(L.LightningModule):
         if spec.episodes and (spec.process is not None or spec.ray is not None):
             if self.trainer.world_size != 1:
                 raise ValueError("Snapshot fit evaluation requires one learner process")
+            if spec.process is not None and spec.process.device.startswith("cuda:"):
+                device_index = int(spec.process.device.split(":")[1])
+                if device_index >= torch.cuda.device_count():
+                    raise ValueError(f"Snapshot evaluator GPU {spec.process.device} is unavailable")
+                if self.device == torch.device(spec.process.device):
+                    raise ValueError("Snapshot evaluator GPU must differ from the learner GPU")
             if spec.ray is not None:
                 from nexuml.evaluation._ray import require_ray_runtime
 
@@ -228,6 +234,11 @@ class NexuRLLightningModule(L.LightningModule):
         key, pending = self._pending_evaluation
         report = pending.result(wait=wait, check_cancelled=self._check_snapshot_cancelled)
         if report is not None:
+            from nexuml.evaluation._process import ProcessEvaluation
+
+            self._check_snapshot_cancelled()
+            if isinstance(pending, ProcessEvaluation):
+                pending.publish_media(self.trainer.loggers, report)
             self._close_snapshot()
             self._publish_snapshot(report)
             self._evaluation_cache = (key, dict(report["metrics"]))
@@ -310,7 +321,11 @@ class NexuRLLightningModule(L.LightningModule):
 
                 assert spec.process is not None
                 pending = ProcessEvaluation(
-                    self.policy, self.scenario, owner=self, timeout_s=spec.process.timeout_s
+                    self.policy,
+                    self.scenario,
+                    owner=self,
+                    timeout_s=spec.process.timeout_s,
+                    device=spec.process.device,
                 )
             self._pending_evaluation = (key, pending)
             if allow_skip:

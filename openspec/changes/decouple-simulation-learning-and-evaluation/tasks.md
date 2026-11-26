@@ -53,7 +53,7 @@ All tasks are new, unchecked. Existing historical evidence remains scoped to its
 
 - [x] 4.1 Reuse existing evaluation configuration and dispatch; add minimal placement selection and immutable actor/processor/adapter snapshot at consistent update boundary with digest and source frame/version.
 - [x] 4.2 Support separate fresh-process and Ray evaluation workers; retain native Arena suite runner, ordinary replay, package/checkpoint CLI evaluation and existing loggers. Bound queue/in-flight work; explicit failure/cancel and final-evaluation semantics.
-- [ ] 4.3 Prove periodic evaluation on a separate GPU/node while learner progresses; unchanged training env/optimizer, correct snapshot identity, condition seeds, metrics, report and bounded media. Test slow evaluation, cancellation and final completion. Retain explicit rejection of unsupported in-process Isaac fit evaluation.
+- [x] 4.3 Prove periodic evaluation on a separate GPU/node while learner progresses; unchanged training env/optimizer, correct snapshot identity, condition seeds, metrics, report and bounded media. Test slow evaluation, cancellation and final completion. Retain explicit rejection of unsupported in-process Isaac fit evaluation.
 
 ## 4a. Policy playback and native viewer selection (independently deliverable after native environment foundation)
 
