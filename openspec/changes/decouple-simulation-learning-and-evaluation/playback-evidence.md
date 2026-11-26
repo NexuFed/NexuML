@@ -207,6 +207,13 @@ Tests verified literal argv, discharge of owned resources on local SIGTERM,
 and unchanged CLI/SDK job semantics: **273 passed**. Live producer and
 remote playback receipts are separate from this transport change.
 
+An actual local process launched from the generated worker entrypoint
+recorded two frames from continuous Pendulum playback. Sending SIGTERM to
+the owned process group returned 143, removed the temporary worker config,
+and left no process group. The transport submission was mocked, so this
+does not establish Ray service cancellation. Receipt:
+`/tmp/opencode/nexuml-job-play-cancel-LqfTjf/`.
+
 The next bounded existing-pool GPU job with the ordinary module bootstrap
 was not admitted in its admission window. A stop request was sent for that
 job only. It had not yet reached a worker when last checked, so it did not
