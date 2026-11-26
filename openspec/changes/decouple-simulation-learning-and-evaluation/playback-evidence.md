@@ -256,9 +256,19 @@ Probe logs: `/tmp/opencode/nexuml-kit-local-native-WNPXME/` and
 `/tmp/opencode/nexuml-kit-minimal-dpOhMT/`. No network route or display was
 provisioned and no fallback was enabled.
 
+The pinned Lab launcher selects `isaaclab.python.rendering.kit` for
+non-headless camera jobs. This is the maintained GUI rendering profile,
+distinct from the headless profile probed above. It adds Replicator and
+camera settings but depends on `isaaclab.python.kit`, the desktop editor
+experience. The base declares the stage, property and script editors and
+the prim manipulator; the camera profile does not remove those dependencies.
+At `21a33086`, a native launch of the GUI camera profile on the prepared
+X11/RDP display logged startup of the viewport and all four editor
+extensions. The probe timed out after 85 s (exit 124) before the launcher
+returned; its process and window were gone afterward. It did not run a
+policy or establish graceful close. Receipts: `/tmp/opencode/kit-camera-profile-lE14VN/`.
+
 The pinned Kit install also ships `omni.app.viewport.kit`, labeled
 `support_level = "Sample"`. It selects no renderer or default stage and
-does not depend on Isaac Lab or PhysX. Isaac Sim's `isaacsim.exp.base`
-and the Lab default desktop experience both include the stage and property
-editors. None is a qualified Isaac Lab playback-only experience; hiding
-editor panels is not proof that arbitrary mutation is disabled.
+does not depend on Isaac Lab or PhysX. Neither profile qualifies a
+playback-only surface; hiding editor panels does not prevent mutation.
