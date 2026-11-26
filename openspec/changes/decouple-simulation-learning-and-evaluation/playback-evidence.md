@@ -207,6 +207,13 @@ Tests verified literal argv, discharge of owned resources on local SIGTERM,
 and unchanged CLI/SDK job semantics: **273 passed**. Live producer and
 remote playback receipts are separate from this transport change.
 
+The next bounded existing-pool GPU job with the ordinary module bootstrap
+was not admitted in its admission window. A stop request was sent for that
+job only. It had not yet reached a worker when last checked, so it did not
+qualify the new bootstrap on a remote Isaac worker or produce a policy for
+playback. Do not retry the same allocation or count the earlier Kit crash
+as a playback attempt. Receipts: `/tmp/opencode/nexuml-remote-play-ZtrXQj/`.
+
 ## Native Kit display probes (4a.1 and 4a.4, partial)
 
 On an existing X11/RDP display, Lab's default non-headless Kit experience
