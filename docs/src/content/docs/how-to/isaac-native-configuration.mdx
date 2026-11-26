@@ -254,7 +254,7 @@ can run the selected environment:
 ```bash
 nexuml play /worker/artifacts/policy --config ./play.yaml \
   --execution-profile ./approved-isaac-worker.yaml \
-  --viewer headless --device cuda:0 --num-envs 2 --steps 60
+  --viewer headless --device cuda:0 --num-envs 1 --steps 8
 ```
 
 The policy or trainer checkpoint and optional recording destination are
@@ -262,9 +262,31 @@ absolute **worker** paths. They are not opened on the submitter, uploaded,
 or downloaded by `play`. Put artifacts in an authorized location the job can
 read and write. Submission prints the job ID and requested allocation, not a
 success result. Use Ray Jobs status, logs, and stop operations for that ID.
-An interactive Viser worker also needs an existing, approved private route
-to its loopback port. The command does not set up a route or fall back to
-local playback.
+The SDK uses the same workflow:
+
+```python
+from nexuml.execution import submit_ray_job
+
+job_id = submit_ray_job(
+    scenario,  # Explicit playback scenario with a trusted Ray Jobs execution profile.
+    operation="play",
+    model_package="/worker/artifacts/policy",
+    device="cuda:0",
+    playback={"viewer": "headless", "num_envs": 1, "steps": 8},
+)
+```
+
+Headless playback on a stock GPU worker needs no viewer endpoint. Keep the
+policy on a location that survives worker replacement. A future Studio
+caller can submit, track, and stop the same job without hosting the
+simulator.
+
+Remote interactive viewers and recording are not qualified. Viser would
+require an approved private route to its loopback endpoint and an explicit,
+provider-supported play spectator. Local Kit would need a prepared GPU
+display. Native WebRTC would require a supported Kit/encoder profile and an
+approved private route for both TCP signaling and UDP media. The command
+does not provision these routes or fall back to local playback.
 
 ## Typed functions, not override strings
 

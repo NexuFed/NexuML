@@ -206,7 +206,7 @@ and two live system tests deselected. Viser controls and headless GIF/MP4
 capture are qualified separately; viewer recording, Local Kit and WebRTC,
 and remote Ray Jobs playback are not enabled by this proof.
 
-## Ray Jobs playback transport (4a.5, partial)
+## Ray Jobs playback transport (4a.5)
 
 The public CLI and `submit_ray_job(..., operation="play")` submit an explicit
 resolved scenario through the existing Jobs SDK. Packages, checkpoints and
@@ -279,6 +279,47 @@ the observed scheduling failure, not permanent lack of GPUs. No playback
 consumer was submitted for either producer. No direct node operations,
 downscaled GPU requests or local simulator fallback occurred.
 Terminal receipt: `/tmp/opencode/rrp-oHLl76/deadline-status.json`.
+
+### Stock-pool headless playback and cancellation
+
+At `254b5bc1`, the trusted TLS Ray Jobs endpoint accepted three independent
+jobs through the existing CLI and SDK. The submitter had CUDA hidden and
+did not open the policy or start a local simulator. Every job reserved
+one whole GPU from `pool_gpu_workers` and installed the locked runtime in
+its own environment on the stock Ray image.
+
+- `raysubmit_jhrmdKr6BwfEF1Ma` trained native PhysX Cartpole for **128
+  CUDA transitions / eight optimizer steps** on an RTX 4070 at
+  `student-worker-6` and exported to the shared volume. Cold preparation
+  took 6m54s; the guard observed exit 0 at 459.05 s with free disk above
+  its 4 GiB floor.
+- `raysubmit_FTFpUawdiRS6afhp` ran on a fresh worker pod on the same host
+  after the producer pod was gone. It verified the frame-128 export hash
+  `7d1fe85347adcf2a922d1a2886572377cd756e464449276b1e0b553d7eb4c439`
+  and the actor/adapter files before running **eight native ticks and
+  eight CUDA transitions**. The context cleared and Ray reported
+  `SUCCEEDED`, exit 0.
+- A separately submitted continuous SDK job,
+  `raysubmit_hffv9UysJPDA42Ly`, used the same digest. Ray accepted stop
+  after native setup and entry into the real-time loop. SIGTERM unwound
+  playback and cleared `SimulationContext`. Ray reached `STOPPED`,
+  freed the GPU and pool token, and later drained the idle worker pod.
+  The borrowed head stayed Ready; no submitted qualification job remained
+  active.
+
+Headless had no viewer endpoint. This is not remote recording, Viser,
+local Kit, WebRTC, or a multi-node training proof. CLI, SDK, and
+operator-owned viewer prerequisites are in the [native configuration
+guide](../../../docs/src/content/docs/how-to/isaac-native-configuration.mdx).
+Receipts and hashes: `/tmp/opencode/nex212-remote-ES504T/`.
+
+The admission trace explains why free CIP capacity was not enough:
+Argo CD reconciled the RayCluster's declared zero replicas before the
+operator could create a pod. The retry of the same launch ID did not
+write a new scale request. On the successful run, Ray emitted a new
+launch ID and KubeRay created its pod before the next Argo CD reset.
+This was an observed scale race, not a GPU or RAM shortage. No GitOps
+settings, worker sizes, cluster nodes, or scheduling constraints changed.
 
 ## Native Kit display probes (4a.1 and 4a.4, partial)
 
