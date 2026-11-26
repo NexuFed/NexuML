@@ -10,7 +10,12 @@ Primary reference SHALL use exact 29-DoF G1 body and verified hand/actuator/cont
 
 ### Requirement: Later humanoid deployment is supervised G1
 
-The later humanoid physical proof SHALL target approved exact G1 EDU after the SO-101 and LeKiwi physical learning milestones (software readiness may proceed independently) with retained qualified locomotion/balance/whole-body controller, recorded-input and sim-to-sim/full-stack parity, protective workspace/support, independent emergency stop/fallback and explicit authorization. Bounded supervised manipulation and local capture only; no unattended exploration, implicit actuation, automatic promotion or mid-episode swap. Approved compatible experience SHALL feed foundation local-fit handoff. Hardware evidence remains independent.
+The first humanoid physical proof SHALL follow the SO-101 and LeKiwi physical learning milestones and use the exact approved G1 EDU with its qualified locomotion, balance and whole-body controller. Software readiness may proceed independently. Unattended exploration, implicit actuation, automatic promotion and mid-episode policy swaps SHALL NOT be allowed. Only approved compatible experience SHALL feed the foundation local-fit handoff. Hardware evidence remains independent.
+
+#### Scenario: A supervised G1 session is requested
+- **WHEN** an operator requests a physical session
+- **THEN** it can proceed only with recorded-input, sim-to-sim and full-stack parity evidence, a protective workspace and support, an independent emergency stop and fallback, and explicit authorization for the session.
+- **AND** the session is limited to bounded, supervised manipulation and local capture.
 
 #### Scenario: G1 hardware is not available
 - **WHEN** simulation and imitation evidence is qualified
