@@ -76,6 +76,24 @@ Receipts: `/tmp/opencode/jr-x2o97S/` and `/tmp/opencode/jr-full-2E6fPu/`.
 These probes did not run TorchRL distributed PPO or verify native
 cancellation, checkpoint resume, or object-store cleanup.
 
+### Finite actor budgets preserve worker errors
+
+Pinned TorchRL launches its actors with an infinite frame budget even
+for a finite synchronous run. Ray 2.57 tests actor truthiness when
+serializing an exception. TorchRL derives a non-integer `__len__` from
+the infinite budget, so Ray killed the actor while trying to report
+the real error. The same failure reproduced through the ordinary CPU
+collector, without Kit.
+
+Each worker now receives its share of the finite full-batch budget.
+A two-worker run requesting 20 frames at eight per batch still
+returned three eight-frame batches. The worker reported its original
+exception, both workers closed, and borrowed Ray stayed available.
+The real and hermetic Ray suites passed **51 checks**. Failure and
+passing receipts: `/tmp/opencode/ray-error-before-Owalx7/` and
+`/tmp/opencode/ray-frame-bounds-pgX6EK/`. A placement fixture now
+uses bounded actions so it does not fail randomly on contract validation.
+
 ### Native Warp factory lifecycle (3.2, one-host slice)
 
 At `5989d6a5`, two successive Ray actors each reserved the same RTX 4080

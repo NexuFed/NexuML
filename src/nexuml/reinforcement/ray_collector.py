@@ -47,6 +47,17 @@ class _GracefulRayCollector(RayCollector):
         self._published_version = 0
         super().__init__(*args, **kwargs)
 
+    def _make_collector(self, cls, *, env_maker, policy, other_params):
+        # Ray checks actor truthiness when reporting errors; TorchRL's infinite budget breaks len().
+        batches = (self.total_frames + self.frames_per_batch - 1) // self.frames_per_batch
+        if policy is not None:
+            other_params["policy"] = policy
+        return cls(
+            env_maker,
+            total_frames=batches * other_params["frames_per_batch"],
+            **other_params,
+        )
+
     def _weight_update_impl(self, policy_or_weights=None, *, worker_ids=None, **kwargs):
         if worker_ids is not None:
             raise ValueError("Synchronous RL requires updating every Ray rollout worker")

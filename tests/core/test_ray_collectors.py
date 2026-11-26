@@ -229,6 +229,38 @@ def test_ray_snapshot_cancels_running_evaluator_without_shutting_down_ray(
 @pytest.mark.requires_optional("ray")
 @pytest.mark.requires_optional("torchrl")
 @pytest.mark.requires_optional("gymnasium")
+def test_ray_worker_error_remains_actionable_and_other_batches_finish(
+    local_ray, traced_environment
+):
+    from tensordict.nn import TensorDictModule
+
+    policy = TensorDictModule(
+        torch.nn.Sequential(torch.nn.Linear(3, 1), torch.nn.Tanh()),
+        in_keys=["observation"],
+        out_keys=["action"],
+    )
+    training = ReinforcementLearningSpec(
+        algorithm=PPO(),
+        total_frames=20,
+        frames_per_batch=8,
+        collector=CollectorSpec(backend="ray", num_collectors=2),
+    )
+    collector = build_collector(traced_environment, training, policy, "cpu")
+    try:
+        worker = collector.remote_collectors[0]
+        with pytest.raises(local_ray.exceptions.RayTaskError, match="unavailable_for_test"):
+            local_ray.get(worker.get_distant_attr.remote("unavailable_for_test"), timeout=10)
+        assert [batch.numel() for batch in collector] == [8, 8, 8]
+    finally:
+        collector.shutdown()
+    assert_remote_environments_closed(traced_environment)
+    assert local_ray.is_initialized()
+
+
+@pytest.mark.requires_system
+@pytest.mark.requires_optional("ray")
+@pytest.mark.requires_optional("torchrl")
+@pytest.mark.requires_optional("gymnasium")
 @pytest.mark.parametrize("num_envs", [1, 2])
 def test_ray_factories_copied_policy_sync_and_iterator_exhaustion(
     local_ray,
@@ -283,7 +315,11 @@ def test_ray_collector_placement_on_borrowed_cluster(local_ray, monkeypatch):
     existing = local_ray.get_runtime_context().gcs_address
     another = "192.0.2.1:6379"  # A documentation address; mismatch must fail without contact.
     selector = {"nexuml-test-placement": "in(cpu-rollout,cpu-alternate)"}
-    policy = TensorDictModule(torch.nn.Linear(3, 1), in_keys=["observation"], out_keys=["action"])
+    policy = TensorDictModule(
+        torch.nn.Sequential(torch.nn.Linear(3, 1), torch.nn.Tanh()),
+        in_keys=["observation"],
+        out_keys=["action"],
+    )
     definition = GymnasiumEnvironment(env_name="Pendulum-v1")
     training = ReinforcementLearningSpec(
         algorithm=PPO(),
