@@ -3,8 +3,10 @@ from __future__ import annotations
 import json
 import re
 import shlex
+import signal
 import subprocess
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from ruamel.yaml import YAML
@@ -145,6 +147,69 @@ def test_missing_profile_is_actionable(tmp_path, monkeypatch):
     )
     assert result.exit_code == 1
     assert "Execution profile error" in result.output
+
+
+def test_play_with_trusted_profile_submits_before_loading_local_weights(tmp_path, monkeypatch):
+    from nexuml.core import export
+    from nexuml.execution import ray_job
+    from nexuml.interaction import playback
+
+    config = tmp_path / "play.yaml"
+    ResolvedConfig.from_scenario(ScenarioSpec(name="play-test")).save(config)
+    monkeypatch.setattr(export, "load_inference_package", lambda *_: pytest.fail("weights read"))
+    monkeypatch.setattr(playback, "play_policy", lambda *_, **__: pytest.fail("played locally"))
+    submitted = []
+    monkeypatch.setattr(
+        ray_job, "submit_ray_job", lambda spec, **kwargs: submitted.append((spec, kwargs)) or "id"
+    )
+    result = runner.invoke(
+        main.app,
+        [
+            "play",
+            "/worker state/actor",
+            "--config",
+            str(config),
+            "--execution-profile",
+            str(PROFILE),
+            "--device",
+            "cuda:0",
+            "--num-envs",
+            "2",
+            "--steps",
+            "8",
+            "--seed",
+            "23",
+            "--stochastic",
+            "--real-time",
+            "--record",
+            "/worker state/video",
+            "--record-frames",
+            "3",
+            "--record-format",
+            "mp4",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    ((scenario, options),) = submitted
+    assert isinstance(scenario.execution, RayJobsSDKExecution)
+    assert options["operation"] == "play"
+    assert options["model_package"] == Path("/worker state/actor")
+    assert options["device"] == "cuda:0"
+    assert options["playback"] == {
+        "viewer": "headless",
+        "num_envs": 2,
+        "steps": 8,
+        "episodes": None,
+        "seed": 23,
+        "stochastic": True,
+        "real_time": True,
+        "record": Path("/worker state/video"),
+        "record_frames": 3,
+        "record_format": "mp4",
+    }
+    assert "Ray job submitted: id" in result.output
+    assert "Worker recording output (not yet produced)" in result.output
+    assert "Playback complete:" not in result.output
 
 
 @pytest.mark.parametrize("source", ["name", "config", "file"])
@@ -304,7 +369,9 @@ def test_profile_reaches_sdk_without_reentering_profile_selection(monkeypatch):
 
     monkeypatch.setattr(sdk, "JobSubmissionClient", Client)
 
-    def assert_remote_config(args):
+    def assert_remote_config(command):
+        assert command[4:6] == ["-m", "nexuml.cli.main"]
+        args = command[6:]
         assert args[:2] == ["train", "--config"]
         remote = ResolvedConfig.load(Path(args[2]))
         assert isinstance(remote.execution, LocalExecution)
@@ -313,8 +380,14 @@ def test_profile_reaches_sdk_without_reentering_profile_selection(monkeypatch):
             "version": "1",
             "params": {},
         }
+        return 0
 
-    monkeypatch.setattr(main, "app", assert_remote_config)
+    monkeypatch.setattr(signal, "signal", lambda *_: None)
+    monkeypatch.setattr(
+        subprocess,
+        "Popen",
+        lambda command: SimpleNamespace(wait=lambda: assert_remote_config(command)),
+    )
     scenario = ScenarioSpec(name="test", execution=load_ray_job_profile(PROFILE))
     assert isinstance(scenario.execution, RayJobsSDKExecution)
     for _ in range(2):
@@ -329,7 +402,9 @@ def test_profile_reaches_sdk_without_reentering_profile_selection(monkeypatch):
         assert submitted["entrypoint"].startswith("uv sync --locked ")
         assert " && exec /tmp/ray/nexuml-envs/" in submitted["entrypoint"]
         bootstrap = shlex.split(submitted["entrypoint"])[-1]
-        exec(compile(bootstrap, "<profile-bootstrap>", "exec"), {})
+        with pytest.raises(SystemExit) as worker:
+            exec(compile(bootstrap, "<profile-bootstrap>", "exec"), {})
+        assert worker.value.code == 0
     assert (
         calls[0]["runtime_env"]["env_vars"]["UV_PROJECT_ENVIRONMENT"]
         != (calls[1]["runtime_env"]["env_vars"]["UV_PROJECT_ENVIRONMENT"])

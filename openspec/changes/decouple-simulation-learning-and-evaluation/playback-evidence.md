@@ -187,3 +187,36 @@ The broader regression passed **776 tests**, with 14 opt-in cases skipped
 and two live system tests deselected. Viser controls and headless GIF/MP4
 capture are qualified separately; viewer recording, Local Kit and WebRTC,
 and remote Ray Jobs playback are not enabled by this proof.
+
+## Ray Jobs playback transport (4a.5, partial)
+
+The public CLI and `submit_ray_job(..., operation="play")` submit an explicit
+resolved scenario through the existing Jobs SDK. Packages, checkpoints and
+recordings use absolute worker paths, not submitter paths. The driver does
+not load the artifact or start a simulator. The worker runs normal local CLI
+playback in a separate module process. The submission result is a job ID,
+not proof of successful playback or viewer readiness.
+
+The existing Ray job runner previously embedded `app(argv)` for training.
+A real GPU Cartpole producer using that path reached the worker, then
+failed with a Kit crash (exit 139). The ordinary module subprocess was
+already necessary for evaluation; it now executes train, export, evaluate
+and play alike. Ray signals the owned job process tree, and the bootstrap
+waits for the CLI process and cleans its temporary resolved configuration.
+Tests verified literal argv, discharge of owned resources on local SIGTERM,
+and unchanged CLI/SDK job semantics: **273 passed**. Live producer and
+remote playback receipts are separate from this transport change.
+
+## Native Kit display probes (4a.1 and 4a.4, partial)
+
+On an existing X11/RDP display, Lab's default non-headless Kit experience
+reached at least **60** control ticks on an actual exported two-lane
+Cartpole policy before the 140 s bound cancelled the requested 240 ticks.
+That experience loads the native stage, script editor and prim-manipulator
+extensions. It does not prove a bounded playback-only display. Selecting
+the upstream headless-rendering experience while requesting a non-headless
+window did not reach the viewport or control-loop witness. No X11/RDP Kit
+viewer, native local desktop, TigerVNC or WebRTC support is inferred.
+Probe logs: `/tmp/opencode/nexuml-kit-local-native-WNPXME/` and
+`/tmp/opencode/nexuml-kit-minimal-dpOhMT/`. No network route or display was
+provisioned and no fallback was enabled.

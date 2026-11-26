@@ -176,7 +176,7 @@ new episodes for all instances without advancing physics. The viewer
 can send only the named options, not code or arbitrary simulator commands.
 Training and evaluation do not expose those simulation controls.
 Unset `LIVESTREAM` or set it to `0` for headless and spectator jobs. Local
-Kit, WebRTC and remote playback are not qualified.
+Kit and WebRTC playback are not qualified.
 
 For the qualified single-environment, headless Kit PhysX manager profile,
 record independently of playback:
@@ -191,6 +191,26 @@ when playback continues. The manifest names the source artifact and
 environment, native tick indices, and monotonic capture times. The video
 uses the nominal renderer rate, not the actual wall-clock cadence. Viser
 recording, direct-task RGB and vectorized RGB capture are not enabled.
+
+### Submit playback through Ray Jobs
+
+Use an explicit scenario and a trusted Ray Jobs profile for a worker that
+can run the selected environment:
+
+```bash
+nexuml play /worker/artifacts/policy --config ./play.yaml \
+  --execution-profile ./approved-isaac-worker.yaml \
+  --viewer headless --device cuda:0 --num-envs 2 --steps 60
+```
+
+The policy or trainer checkpoint and optional recording destination are
+absolute **worker** paths. They are not opened on the submitter, uploaded,
+or downloaded by `play`. Put artifacts in an authorized location the job can
+read and write. Submission prints the job ID and requested allocation, not a
+success result. Use Ray Jobs status, logs, and stop operations for that ID.
+An interactive Viser worker also needs an existing, approved private route
+to its loopback port. The command does not set up a route or fall back to
+local playback.
 
 ## Typed functions, not override strings
 

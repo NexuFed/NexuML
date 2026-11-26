@@ -6,11 +6,13 @@ import inspect
 import json
 import os
 import shlex
+import signal
 import socket
 import sys
 import warnings
 from contextlib import ExitStack
 from pathlib import Path
+from threading import current_thread, main_thread
 from typing import Any, Literal, Optional, cast
 
 import typer
@@ -425,6 +427,9 @@ def play_cmd(
     trainer_checkpoint: Optional[Path] = typer.Option(None, "--trainer-checkpoint"),
     config_path: Optional[Path] = typer.Option(None, "--config", "-c"),
     scenario_file: Optional[Path] = typer.Option(None, "--scenario-file"),
+    execution_profile: Optional[Path] = typer.Option(
+        None, "--execution-profile", help="Trusted Ray Jobs profile for an explicit scenario."
+    ),
     device: str = typer.Option("cpu", "--device"),
     viewer: PlaybackViewer = typer.Option(
         "headless", "--viewer", help="Select a qualified viewer."
@@ -439,20 +444,14 @@ def play_cmd(
     record_frames: Optional[int] = typer.Option(None, "--record-frames", min=1),
     record_format: Literal["gif", "mp4", "both"] = typer.Option("gif", "--record-format"),
 ):
-    """Select a local environment without replacing packaged policy weights.
+    """Play locally or submit to a trusted worker without replacing packaged weights.
 
     Raises:
         typer.BadParameter: If the source, viewer or supplied environment is unsupported.
         typer.Exit: If loading or playback fails.
         ValueError: If no playable interaction environment is supplied.
     """
-    from nexuml.core.export import (
-        PACKAGE_FILENAME,
-        _restore_packaged_policy,
-        load_inference_package,
-    )
-    from nexuml.execution.definitions import LocalExecution
-    from nexuml.interaction.playback import play_policy
+    from nexuml.execution.definitions import LocalExecution, RayJobsSDKExecution
 
     if (model_package is None) == (trainer_checkpoint is None):
         raise typer.BadParameter("Provide exactly one MODEL_PACKAGE or --trainer-checkpoint.")
@@ -463,10 +462,69 @@ def play_cmd(
         if config_path is not None or scenario_file is not None
         else None
     )
-    if supplied is not None and not isinstance(supplied.execution, LocalExecution):
-        raise typer.BadParameter("Playback does not yet submit remote execution profiles.")
-    with ExitStack() as job, ExitStack() as artifacts:
+    if execution_profile is not None:
+        from ruamel.yaml.error import YAMLError
+
+        from nexuml.execution import load_ray_job_profile
+
+        if supplied is None:
+            raise typer.BadParameter("--execution-profile requires --config or --scenario-file.")
         try:
+            supplied.execution = load_ray_job_profile(execution_profile)
+        except (OSError, ValueError, YAMLError) as error:
+            raise typer.BadParameter(f"Invalid Ray Jobs profile: {error}") from error
+    if supplied is not None and isinstance(supplied.execution, RayJobsSDKExecution):
+        from nexuml.execution.ray_job import submit_ray_job
+
+        try:
+            job_id = submit_ray_job(
+                supplied,
+                operation="play",
+                model_package=model_package,
+                trainer_checkpoint=trainer_checkpoint,
+                device=device,
+                playback={
+                    "viewer": viewer,
+                    "num_envs": num_envs,
+                    "steps": steps,
+                    "episodes": episodes,
+                    "seed": seed,
+                    "stochastic": stochastic,
+                    "real_time": real_time,
+                    "record": record,
+                    "record_frames": record_frames,
+                    "record_format": record_format,
+                },
+            )
+        except (ValueError, RuntimeError, OSError, ImportError) as error:
+            console.print(f"Playback submission failed: {error}", markup=False)
+            raise typer.Exit(1) from error
+        _print_job_submission(
+            job_id, supplied, operation="play", worker_input=model_package or trainer_checkpoint
+        )
+        if record is not None:
+            console.print(f"  Worker recording output (not yet produced): {record}", markup=False)
+        return
+    if supplied is not None and not isinstance(supplied.execution, LocalExecution):
+        raise typer.BadParameter("Playback accepts local or Ray Jobs SDK execution only.")
+
+    from nexuml.core.export import (
+        PACKAGE_FILENAME,
+        _restore_packaged_policy,
+        load_inference_package,
+    )
+    from nexuml.interaction.playback import play_policy
+
+    with ExitStack() as job, ExitStack() as artifacts:
+        if current_thread() is main_thread():
+
+            def cancel(signum, _frame):
+                raise SystemExit(128 + signum)
+
+            previous = signal.signal(signal.SIGTERM, cancel)
+            job.callback(signal.signal, signal.SIGTERM, previous)
+        try:
+            _print_worker_identity("play")
             if trainer_checkpoint is not None:
                 model_package = _checkpoint_policy_package(trainer_checkpoint, artifacts)
             assert model_package is not None
@@ -609,7 +667,7 @@ def _print_job_submission(
     job_id: str,
     scenario: Any,
     *,
-    operation: Literal["train", "evaluate", "export"] = "train",
+    operation: Literal["train", "evaluate", "export", "play"] = "train",
     worker_input: Path | None = None,
     output: Path | None = None,
 ) -> None:
@@ -648,13 +706,11 @@ def _print_job_submission(
         console.print(
             f"  Requested worker export output (not yet produced): {output}", markup=False
         )
-    console.print(
-        "  Worker allocation/device and setup/learning phase: unknown until observed in job logs."
-    )
+    console.print("  Worker allocation/device and progress: unknown until observed in job logs.")
     console.print("Submission only; use Ray Jobs status/logs to monitor remote execution.")
 
 
-def _print_worker_identity(operation: Literal["train", "evaluate", "export"]) -> None:
+def _print_worker_identity(operation: Literal["train", "evaluate", "export", "play"]) -> None:
     """Read only Ray's declared submission identity; never initialize a Ray client."""
     raw = os.environ.get("RAY_JOB_CONFIG_JSON_ENV_VAR")
     if not raw:

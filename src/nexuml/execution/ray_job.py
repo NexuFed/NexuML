@@ -6,12 +6,78 @@ import json
 import math
 import shlex
 from collections.abc import Sequence
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid4
 
 if TYPE_CHECKING:
     from nexuml.core.types import ScenarioSpec
+
+
+def _playback_worker_path(name: str, value: Any) -> str:
+    """Validate a worker path lexically without accessing it on the submitter.
+
+    Returns:
+        The literal path to pass to the worker.
+
+    Raises:
+        ValueError: If the path is not absolute or contains traversal or NUL.
+    """
+    if type(value) is str or isinstance(value, Path):
+        text = str(value)
+        path = PurePosixPath(text)
+        if path.is_absolute() and ".." not in path.parts and "\x00" not in text:
+            return text
+    raise ValueError(f"playback {name} must be an absolute worker path without traversal or NUL")
+
+
+def _playback_argv(playback: dict[str, Any] | None) -> list[str]:
+    """Validate and encode only the existing play CLI options.
+
+    Returns:
+        Literal arguments for the worker play command.
+
+    Raises:
+        ValueError: If the options contain unknown keys or invalid values.
+    """
+    if playback is None:
+        return []
+    if type(playback) is not dict:
+        raise ValueError("playback must be a plain dict of play options")
+    argv = []
+    for name, value in playback.items():
+        if type(name) is not str:
+            raise ValueError("playback option names must be strings")
+        if value is None and name in {"steps", "episodes", "seed", "record", "record_frames"}:
+            continue
+        flag = "--" + name.replace("_", "-")
+        if name in {"stochastic", "real_time"}:
+            if type(value) is not bool:
+                raise ValueError(f"playback {name} must be a bool")
+            if value:
+                argv.append(flag)
+            continue
+        if name in {"num_envs", "steps", "episodes", "seed", "record_frames"}:
+            minimum = 0 if name == "seed" else 1
+            if type(value) is not int or value < minimum:
+                raise ValueError(f"playback {name} must be an integer >= {minimum}")
+        elif name == "viewer":
+            if type(value) is not str or value not in {"headless", "viser", "webrtc", "local"}:
+                raise ValueError("playback viewer must be headless, viser, webrtc or local")
+        elif name == "record_format":
+            if type(value) is not str or value not in {"gif", "mp4", "both"}:
+                raise ValueError("playback record_format must be gif, mp4 or both")
+        elif name == "record":
+            value = _playback_worker_path(name, value)
+        else:
+            raise ValueError(f"unknown playback option: {name}")
+        argv += [flag, str(value)]
+    recording = playback.get("record") is not None
+    if recording != (playback.get("record_frames") is not None):
+        raise ValueError("playback record and finite record_frames are required together")
+    if recording and playback.get("num_envs", 1) != 1:
+        raise ValueError("playback recording requires a single environment")
+    return argv
 
 
 def _ray_job_argv(
@@ -30,6 +96,7 @@ def _ray_job_argv(
     wall_seconds: float | None = None,
     case_options: dict[str, Any] | None = None,
     submission_id: str | None = None,
+    playback: dict[str, Any] | None = None,
     **_kwargs: Any,
 ) -> list[str]:
     """Validate operation inputs without reading worker paths and build literal CLI argv.
@@ -40,8 +107,12 @@ def _ray_job_argv(
     Raises:
         ValueError: If an input is missing, malformed or irrelevant to the operation.
     """
-    if operation not in {"train", "evaluate", "export", "acceptance"}:
-        raise ValueError("ray-jobs-sdk operation must be train, evaluate, export or acceptance")
+    if operation not in {"train", "evaluate", "export", "play", "acceptance"}:
+        raise ValueError(
+            "ray-jobs-sdk operation must be train, evaluate, export, play or acceptance"
+        )
+    if playback is not None and operation != "play":
+        raise ValueError(f"{operation} does not accept playback")
     if export_kind != "train_package":
         raise ValueError("Ray Jobs SDK checkpoint export supports complete train_package only")
     inputs = {
@@ -54,6 +125,7 @@ def _ray_job_argv(
     allowed = {
         "train": {"trainer_checkpoint"},
         "evaluate": {"model_package", "trainer_checkpoint", "device"},
+        "play": {"model_package", "trainer_checkpoint", "device"},
         "export": {"checkpoint", "output"},
         "acceptance": set(),
     }[operation]
@@ -61,6 +133,12 @@ def _ray_job_argv(
         if value is not None:
             if name not in allowed:
                 raise ValueError(f"{operation} does not accept {name}")
+            if operation == "play":
+                if name != "device":
+                    _playback_worker_path(name, value)
+                    continue
+                if type(value) is not str:
+                    raise ValueError("playback device must be a string")
             if not isinstance(value, (str, Path)) or not str(value).strip() or "\x00" in str(value):
                 raise ValueError(f"{name} must be a nonempty argument without NUL bytes")
     if isinstance(overrides, str) or not isinstance(overrides, (list, tuple)):
@@ -132,17 +210,23 @@ def _ray_job_argv(
     }.items():
         if value is not None:
             raise ValueError(f"{operation} does not accept {name}")
-    if operation == "evaluate":
+    if operation in {"evaluate", "play"}:
         if (model_package is None) == (trainer_checkpoint is None):
-            raise ValueError("evaluate requires exactly one model_package or trainer_checkpoint")
+            raise ValueError(
+                f"{operation} requires exactly one model_package or trainer_checkpoint"
+            )
         weights = (
             str(model_package)
             if model_package is not None
             else f"--trainer-checkpoint={trainer_checkpoint}"
         )
-        argv = ["evaluate", weights, "--config", config_path]
+        argv = [operation, weights, "--config", config_path]
         if device is not None:
             argv += ["--device", str(device)]
+        if operation == "play":
+            if _kwargs.keys() - {"review"}:
+                raise ValueError("play accepts only fixed inputs and playback options")
+            return argv + _playback_argv(playback)
         for value in overrides:
             argv += ["-O", value]
         return argv
@@ -187,8 +271,12 @@ def submit_ray_job(
     output: str | Path | None = None,
     device: str | None = None,
     overrides: Sequence[str] = (),
+    playback: dict[str, Any] | None = None,
 ) -> str:
     """Submit through shared execution dispatch without constructing a local runtime.
+
+    Play requires one absolute worker-local package or checkpoint path. The optional
+    ``playback`` mapping takes existing play CLI options; recording paths are worker-local.
 
     Returns:
         Ray's asynchronous submission ID, not a training result.
@@ -199,8 +287,8 @@ def submit_ray_job(
     from nexuml.execution.definitions import RayJobsSDKExecution
     from nexuml.execution.service import run
 
-    if operation not in {"train", "evaluate", "export"}:
-        raise ValueError("submit_ray_job operation must be train, evaluate or export")
+    if operation not in {"train", "evaluate", "export", "play"}:
+        raise ValueError("submit_ray_job operation must be train, evaluate, export or play")
     if not isinstance(scenario.execution, RayJobsSDKExecution):
         raise ValueError("submit_ray_job requires registered execution type='ray-jobs-sdk'")
     return run(
@@ -212,6 +300,7 @@ def submit_ray_job(
         output=output,
         device=device,
         overrides=overrides,
+        playback=playback,
     )
 
 
@@ -271,8 +360,7 @@ def _submit_ray_job(scenario: ScenarioSpec, **kwargs: Any) -> str:
     remote = scenario.model_copy(update={"execution": LocalExecution()})
     config = ResolvedConfig.from_scenario(remote).to_yaml()
     acceptance = argv[0] == "acceptance"
-    evaluation = argv[0] == "evaluate"
-    config_index = 3 if evaluation else 2
+    config_index = 3 if argv[0] in {"evaluate", "play"} else 2
     bootstrap = "\n".join(
         [
             "from pathlib import Path",
@@ -280,9 +368,17 @@ def _submit_ray_job(scenario: ScenarioSpec, **kwargs: Any) -> str:
             *(
                 ["import json", "import runpy"]
                 if acceptance
-                else ["import subprocess", "import sys"]
-                if evaluation
-                else ["from nexuml.cli.main import app"]
+                else [
+                    "import signal",
+                    "import subprocess",
+                    "import sys",
+                    "cancel_signal = 0",
+                    "def on_stop(signum, frame):",
+                    "    global cancel_signal",
+                    "    cancel_signal = signum",
+                    "signal.signal(signal.SIGTERM, on_stop)",
+                    "signal.signal(signal.SIGINT, on_stop)",
+                ]
             ),
             "with TemporaryDirectory(prefix='nexuml-ray-job-') as directory:",
             "    config = Path(directory) / 'scenario.yaml'",
@@ -306,16 +402,17 @@ def _submit_ray_job(scenario: ScenarioSpec, **kwargs: Any) -> str:
                         if argv[0] == "train" and kwargs.get("trainer_checkpoint") is not None
                         else []
                     ),
-                    *(
-                        [
-                            # Kit can segfault when evaluation is embedded in Python -c.
-                            '    code = subprocess.call([sys.executable, "-u", "-X", '
-                            '"faulthandler", "-m", "nexuml.cli.main", *argv])',
-                            "    raise SystemExit(128 - code if code < 0 else code)",
-                        ]
-                        if evaluation
-                        else ["    app(argv)"]
-                    ),
+                    "    if cancel_signal: raise SystemExit(128 + cancel_signal)",
+                    # Kit can segfault when the CLI is embedded in Python -c.
+                    '    child = subprocess.Popen([sys.executable, "-u", "-X", '
+                    '"faulthandler", "-m", "nexuml.cli.main", *argv])',
+                    # Ray signals existing descendants; cover a stop during spawn.
+                    "    if cancel_signal and child.poll() is None:",
+                    "        try: child.send_signal(cancel_signal)",
+                    "        except ProcessLookupError: pass",
+                    "    code = child.wait()",
+                    "    if cancel_signal: raise SystemExit(128 + cancel_signal)",
+                    "    raise SystemExit(128 - code if code < 0 else code)",
                 ]
             ),
         ]

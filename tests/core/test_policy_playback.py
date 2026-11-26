@@ -233,6 +233,33 @@ def test_playback_cli_loads_policy_and_rejects_unqualified_viewer(tmp_path):
     assert unsupported.exit_code == 1 and "only supports headless" in unsupported.output
 
 
+def test_playback_cli_reaps_local_runtime_on_sigterm(tmp_path, monkeypatch):
+    import signal
+
+    from nexuml_library.environments.gymnasium import _GymnasiumRuntime
+
+    policy = CompiledPolicy.from_pipeline(compile(cartpole_ppo()))
+    package = export_package(policy, tmp_path / "policy")
+    close = _GymnasiumRuntime.close
+    closed = []
+    former = signal.getsignal(signal.SIGTERM)
+
+    def cancel(*_):
+        assert signal.getsignal(signal.SIGTERM) != former
+        signal.raise_signal(signal.SIGTERM)
+
+    def record_close(runtime):
+        close(runtime)
+        closed.append(runtime)
+
+    monkeypatch.setattr(_GymnasiumRuntime, "step", cancel)
+    monkeypatch.setattr(_GymnasiumRuntime, "close", record_close)
+    result = CliRunner().invoke(app, ["play", str(package), "--steps", "2"])
+    assert result.exit_code == 143 and "Playback complete:" not in result.output
+    assert len(closed) == 1
+    assert signal.getsignal(signal.SIGTERM) == former
+
+
 def test_playback_requires_simulation_opt_in(playback, monkeypatch):
     policy, definition, _, contexts = playback
     monkeypatch.setattr(

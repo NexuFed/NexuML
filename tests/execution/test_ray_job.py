@@ -9,6 +9,7 @@ import subprocess
 import sys
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Any
 from uuid import uuid4
 
 import pytest
@@ -138,9 +139,9 @@ def test_submission_preserves_native_sdk_options_and_caller(jobs_client, monkeyp
     assert lower_model(scenario) == before
 
 
-@pytest.mark.parametrize("exit_code", [0, 7])
+@pytest.mark.parametrize("exit_code", [0, 7, 143])
 def test_remote_bootstrap_uses_local_cli_and_cleans_config(jobs_client, monkeypatch, exit_code):
-    from nexuml.cli import main
+    import signal
 
     scenario = isaac_cartpole_learning_ppo(total_frames=128, frames_per_batch=64, num_envs=2)
     scenario.name = "quoted ' \" ; $(touch should-not-exist)\nscenario"
@@ -149,16 +150,25 @@ def test_remote_bootstrap_uses_local_cli_and_cleans_config(jobs_client, monkeypa
     expected = lower_model(scenario)
     expected["execution"] = {"type": "local", "version": "1", "params": {}}
     paths = []
+    handlers = {}
 
-    def remote_cli(args):
+    def remote_cli(command):
+        assert command[4:6] == ["-m", "nexuml.cli.main"]
+        args = command[6:]
         assert args[:2] == ["train", "--config"]
         path = Path(args[2])
         paths.append(path)
         restored = ResolvedConfig.load(path)
         assert lower_model(restored) == expected
-        raise SystemExit(exit_code)
+        if exit_code == 143:
+            handlers[signal.SIGTERM](signal.SIGTERM, None)
+            return -signal.SIGTERM
+        return exit_code
 
-    monkeypatch.setattr(main, "app", remote_cli)
+    monkeypatch.setattr(signal, "signal", handlers.__setitem__)
+    monkeypatch.setattr(
+        subprocess, "Popen", lambda command: SimpleNamespace(wait=lambda: remote_cli(command))
+    )
     submit_ray_job(scenario)
     code = shlex.split(jobs_client.submission["entrypoint"])[-1]
     with pytest.raises(SystemExit) as error:
@@ -476,6 +486,75 @@ def test_registered_sdk_roundtrip_and_distinct_kuberay_identity():
         ),
         (
             {
+                "operation": "play",
+                "model_package": Path("/worker/policy ' ;\n$(literal)"),
+                "device": "cuda:0",
+                "playback": {
+                    "viewer": "viser",
+                    "num_envs": 1,
+                    "steps": 5,
+                    "episodes": 2,
+                    "seed": 0,
+                    "stochastic": True,
+                    "real_time": True,
+                    "record": "/worker/movie ' ;\n$(literal)",
+                    "record_frames": 3,
+                    "record_format": "both",
+                },
+            },
+            [
+                "play",
+                "/worker/policy ' ;\n$(literal)",
+                "--config",
+                "CONFIG",
+                "--device",
+                "cuda:0",
+                "--viewer",
+                "viser",
+                "--num-envs",
+                "1",
+                "--steps",
+                "5",
+                "--episodes",
+                "2",
+                "--seed",
+                "0",
+                "--stochastic",
+                "--real-time",
+                "--record",
+                "/worker/movie ' ;\n$(literal)",
+                "--record-frames",
+                "3",
+                "--record-format",
+                "both",
+            ],
+        ),
+        (
+            {
+                "operation": "play",
+                "trainer_checkpoint": "/worker/check ' ;$(literal).ckpt",
+                "playback": {
+                    "num_envs": 64,
+                    "steps": None,
+                    "episodes": None,
+                    "seed": None,
+                    "stochastic": False,
+                    "real_time": False,
+                    "record": None,
+                    "record_frames": None,
+                },
+            },
+            [
+                "play",
+                "--trainer-checkpoint=/worker/check ' ;$(literal).ckpt",
+                "--config",
+                "CONFIG",
+                "--num-envs",
+                "64",
+            ],
+        ),
+        (
+            {
                 "operation": "export",
                 "checkpoint": "/worker/a ' ;.ckpt",
                 "output": "/worker/out $(literal)",
@@ -504,11 +583,13 @@ def test_lifecycle_bootstrap_preserves_literal_argv_and_resets_execution(
         ),
     )
     before = lower_model(scenario)
+    inputs_before = copy.deepcopy(kwargs)
     received = []
     paths = []
+    weights_first = kwargs.get("operation") in {"evaluate", "play"}
 
     def cli(argv):
-        config_index = 3 if argv[0] == "evaluate" else 2
+        config_index = 3 if weights_first else 2
         path = Path(argv[config_index])
         paths.append(path)
         remote = ResolvedConfig.load(path)
@@ -520,23 +601,24 @@ def test_lifecycle_bootstrap_preserves_literal_argv_and_resets_execution(
         }
         received.append([*argv[:config_index], "CONFIG", *argv[config_index + 1 :]])
 
-    monkeypatch.setitem(sys.modules, "nexuml.cli.main", SimpleNamespace(app=cli))
-    evaluation = kwargs.get("operation") == "evaluate"
-    if evaluation:
+    import signal
 
-        def launch(command):
-            assert command[:6] == [
-                sys.executable,
-                "-u",
-                "-X",
-                "faulthandler",
-                "-m",
-                "nexuml.cli.main",
-            ]
-            cli(command[6:])
-            return -11
+    def launch(command):
+        assert command[:6] == [
+            sys.executable,
+            "-u",
+            "-X",
+            "faulthandler",
+            "-m",
+            "nexuml.cli.main",
+        ]
+        cli(command[6:])
+        return -11
 
-        monkeypatch.setattr(subprocess, "call", launch)
+    monkeypatch.setattr(signal, "signal", lambda *_: None)
+    monkeypatch.setattr(
+        subprocess, "Popen", lambda command: SimpleNamespace(wait=lambda: launch(command))
+    )
     validations = []
     monkeypatch.setattr(
         "nexuml.execution.ray_job._validate_remote_resume",
@@ -549,18 +631,16 @@ def test_lifecycle_bootstrap_preserves_literal_argv_and_resets_execution(
     for secret in ("private-dashboard", "/private/ca.pem", "private-submission-token"):
         assert secret not in bootstrap
     worker = compile(bootstrap, "<mock-worker>", "exec")
-    if evaluation:
-        with pytest.raises(SystemExit) as stopped:
-            exec(worker, {})
-        assert stopped.value.code == 139
-    else:
+    with pytest.raises(SystemExit) as stopped:
         exec(worker, {})
+    assert stopped.value.code == 139
     assert received == [expected]
     assert len(validations) == int(
         kwargs.get("operation", "train") == "train" and kwargs.get("trainer_checkpoint") is not None
     )
     assert not paths[0].parent.exists()
     assert lower_model(scenario) == before
+    assert kwargs == inputs_before
 
 
 @pytest.mark.parametrize(
@@ -616,6 +696,130 @@ def test_shared_preflight_and_submission_reject_invalid_operations_before_sdk(
     assert jobs_client.count == 0
 
 
+@pytest.mark.parametrize(
+    "invalid, message",
+    [
+        ({"model_package": None}, "exactly one model_package or trainer_checkpoint"),
+        ({"trainer_checkpoint": "/worker/policy.ckpt"}, "exactly one"),
+        ({"model_package": "relative/policy"}, "absolute worker path"),
+        ({"model_package": "file:///worker/policy"}, "absolute worker path"),
+        ({"model_package": "/worker/../policy"}, "absolute worker path"),
+        ({"model_package": "/worker/policy\x00"}, "absolute worker path"),
+        ({"model_package": None, "trainer_checkpoint": Path("relative.ckpt")}, "absolute worker"),
+        ({"model_package": None, "trainer_checkpoint": "/worker/a/../b.ckpt"}, "traversal"),
+        ({"model_package": None, "trainer_checkpoint": "/worker/a\x00.ckpt"}, "NUL"),
+        ({"device": Path("cpu")}, "device"),
+        ({"device": "cuda:\x00"}, "device"),
+        ({"device": " "}, "device"),
+        ({"overrides": ["name=x"]}, "does not accept overrides"),
+        ({"checkpoint": "/worker/checkpoint"}, "does not accept checkpoint"),
+        ({"output": "/worker/output"}, "does not accept output"),
+        ({"playback": []}, "plain dict"),
+        ({"playback": {1: "viewer"}}, "option names"),
+        ({"playback": {"scenario_file": "/worker/task.py"}}, "unknown playback option"),
+        ({"playback": {"viewer": "desktop"}}, "viewer"),
+        ({"playback": {"viewer": ["viser"]}}, "viewer"),
+        ({"playback": {"viewer": None}}, "viewer"),
+        ({"playback": {"num_envs": 0}}, "num_envs"),
+        ({"playback": {"num_envs": True}}, "num_envs"),
+        ({"playback": {"steps": float("inf")}}, "steps"),
+        ({"playback": {"steps": 0}}, "steps"),
+        ({"playback": {"episodes": "1"}}, "episodes"),
+        ({"playback": {"episodes": 0}}, "episodes"),
+        ({"playback": {"seed": -1}}, "seed"),
+        ({"playback": {"seed": 0.0}}, "seed"),
+        ({"playback": {"stochastic": "true"}}, "stochastic"),
+        ({"playback": {"real_time": 1}}, "real_time"),
+        ({"playback": {"record": "relative/movie", "record_frames": 2}}, "absolute worker path"),
+        ({"playback": {"record": "/worker/a/../movie", "record_frames": 2}}, "traversal"),
+        ({"playback": {"record": "/worker/movie\x00", "record_frames": 2}}, "NUL"),
+        ({"playback": {"record_frames": 2}}, "required together"),
+        ({"playback": {"record": "/worker/movie"}}, "required together"),
+        ({"playback": {"record": "/worker/movie", "record_frames": 0}}, "record_frames"),
+        ({"playback": {"record": "/worker/movie", "record_frames": float("inf")}}, "record_frames"),
+        ({"playback": {"record": "/worker/movie", "record_frames": None}}, "record_frames"),
+        ({"playback": {"record_format": "avi"}}, "record_format"),
+        (
+            {"playback": {"num_envs": 2, "record": "/worker/movie", "record_frames": 2}},
+            "single environment",
+        ),
+    ],
+)
+def test_invalid_playback_fails_before_submission(jobs_client, invalid, message):
+    from nexuml.execution.service import preflight
+
+    scenario = ScenarioSpec(name="play", execution=RayJobsSDKExecution())
+    kwargs: dict[str, Any] = {"operation": "play", "model_package": "/worker/policy", **invalid}
+    with pytest.raises(ValueError, match=message):
+        preflight(scenario, **kwargs)
+    with pytest.raises(ValueError, match=message):
+        submit_ray_job(scenario, **kwargs)
+    assert jobs_client.connection is None
+    assert jobs_client.count == 0
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"steps": 2},
+        {"command": ["play", "--steps", "2"]},
+        {"scenario_file": "/worker/scenario.py"},
+    ],
+)
+def test_shared_dispatch_rejects_extra_play_inputs(jobs_client, kwargs):
+    from nexuml.execution import service
+
+    scenario = ScenarioSpec(name="play", execution=RayJobsSDKExecution())
+    with pytest.raises(ValueError, match="play accepts only fixed inputs"):
+        service.run(scenario, operation="play", model_package="/worker/policy", **kwargs)
+    assert jobs_client.connection is None
+
+
+@pytest.mark.parametrize("operation", ["train", "evaluate", "export", "acceptance"])
+def test_unrelated_operations_reject_even_empty_playback_options(jobs_client, operation):
+    from nexuml.execution import service
+
+    scenario = ScenarioSpec(name="unrelated", execution=RayJobsSDKExecution())
+    launch = service.run if operation == "acceptance" else submit_ray_job
+    with pytest.raises(ValueError, match=f"{operation} does not accept playback"):
+        launch(scenario, operation=operation, playback={})
+    assert jobs_client.connection is None
+
+
+@pytest.mark.parametrize(
+    "viewer, media_format",
+    [("headless", "gif"), ("local", "mp4"), ("webrtc", "both")],
+)
+def test_playback_preflight_accepts_native_viewer_and_media_literals(viewer, media_format):
+    from nexuml.execution import service
+
+    scenario = ScenarioSpec(name="play", execution=RayJobsSDKExecution())
+    assert service.preflight(
+        scenario,
+        operation="play",
+        model_package="/worker/policy",
+        playback={
+            "viewer": viewer,
+            "record": Path("/worker/movie"),
+            "record_frames": 1,
+            "record_format": media_format,
+        },
+    )["argv"] == [
+        "play",
+        "/worker/policy",
+        "--config",
+        "<remote-config>",
+        "--viewer",
+        viewer,
+        "--record",
+        "/worker/movie",
+        "--record-frames",
+        "1",
+        "--record-format",
+        media_format,
+    ]
+
+
 def test_preflight_and_settings_never_import_runtime_or_open_worker_paths(monkeypatch):
     from nexuml.execution import service
 
@@ -641,6 +845,7 @@ def test_preflight_and_settings_never_import_runtime_or_open_worker_paths(monkey
         {"operation": "evaluate", "model_package": "/not/on/submitter/policy"},
         {"operation": "evaluate", "trainer_checkpoint": "/not/on/submitter.ckpt"},
         {"operation": "export", "checkpoint": "/remote/model.ckpt", "output": "/remote/out"},
+        {"operation": "play", "trainer_checkpoint": "/not/on/submitter.ckpt"},
         {
             "operation": "acceptance",
             "case": "preflight",
@@ -683,6 +888,11 @@ def test_profile_uses_registered_schema_and_submission_cwd(tmp_path, monkeypatch
         {"operation": "evaluate", "model_package": "/worker/only/policy"},
         {"operation": "export", "checkpoint": "/worker/model.ckpt", "output": "/worker/policy"},
         {
+            "operation": "play",
+            "model_package": "/worker/only/policy",
+            "playback": {"record": "/worker/only/movie", "record_frames": 1},
+        },
+        {
             "operation": "acceptance",
             "case": "preflight",
             "attempt_root": "/mnt/data/nexuml-qualification/campaign/attempt",
@@ -709,6 +919,14 @@ def test_submission_never_opens_artifacts_or_imports_local_runtime(
 
     monkeypatch.setattr(builtins, "__import__", guarded_import)
     monkeypatch.setattr(Path, "open", lambda *_args, **_kw: pytest.fail("opened worker path"))
+    original_stat = Path.stat
+
+    def guarded_stat(path, *args, **kw):
+        if path.is_relative_to("/worker"):
+            pytest.fail(f"stat on worker path: {path}")
+        return original_stat(path, *args, **kw)
+
+    monkeypatch.setattr(Path, "stat", guarded_stat)
     monkeypatch.setattr("torch.cuda._lazy_init", lambda: pytest.fail("initialized CUDA"))
     launch = service.run if kwargs.get("operation") == "acceptance" else submit_ray_job
     assert launch(scenario, **kwargs) == "raysubmit_test"
@@ -889,7 +1107,7 @@ def test_normal_lifecycle_rejects_acceptance_arguments(
 
 def test_public_submission_convenience_does_not_expose_acceptance(jobs_client):
     scenario = ScenarioSpec(name="public", execution=RayJobsSDKExecution())
-    with pytest.raises(ValueError, match="operation must be train, evaluate or export"):
+    with pytest.raises(ValueError, match="operation must be train, evaluate, export or play"):
         submit_ray_job(scenario, operation="acceptance")
     assert jobs_client.connection is None
 
