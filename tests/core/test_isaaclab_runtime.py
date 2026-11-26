@@ -839,9 +839,12 @@ def test_headless_native_constructor_failure_releases_its_partial_context(
 
 
 @pytest.mark.parametrize("physics", ["newton_mjwarp", "isaacsim_physx", "ovphysx"])
-def test_canonical_wheel_launch_and_profile_specific_owned_shutdown(native_launch, physics):
+@pytest.mark.parametrize("returning_close", [False, True])
+def test_canonical_wheel_launch_and_profile_specific_owned_shutdown(
+    native_launch, physics, returning_close
+):
     native_launch.kit_after_launch = physics == "isaacsim_physx"
-    with _isaaclab_runtime.isaaclab_process():
+    with _isaaclab_runtime.isaaclab_process(returning_close=returning_close):
         runtime = native_launch.build(physics=physics)
         assert native_launch.parsed == [
             (
@@ -853,7 +856,8 @@ def test_canonical_wheel_launch_and_profile_specific_owned_shutdown(native_launc
                 },
             )
         ]
-        assert native_launch.args[0]["fast_shutdown"] is True
+        assert native_launch.args[0]["fast_shutdown"] is not returning_close
+        assert ("--/app/fastShutdown=false" in native_launch.args[0]["kit_args"]) is returning_close
         assert native_launch.native.cfg.compute_final_obs
         assert native_launch.native.cfg.observations.policy.history_length == 7
         assert native_launch.native.cfg.observations.policy.enable_corruption is True

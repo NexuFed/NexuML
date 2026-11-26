@@ -327,6 +327,16 @@ class IsaacLabEnvironment(EnvironmentDefinition):
 
         return isaaclab_process(self)
 
+    def rollout_scope(self) -> AbstractContextManager[None]:
+        """Keep the worker alive to report the outcome after native teardown.
+
+        Returns:
+            A native scope whose close returns to the worker.
+        """
+        from nexuml_library.environments._isaaclab_runtime import isaaclab_process
+
+        return isaaclab_process(self, returning_close=True)
+
 
 __all__ = [
     "IsaacLabEnvironment",

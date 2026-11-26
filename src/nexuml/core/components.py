@@ -210,6 +210,14 @@ class EnvironmentDefinition(ComponentDefinition):
         """Return a resource-free whole-job scope unless a provider owns native lifetime."""
         return nullcontext()
 
+    def rollout_scope(self) -> AbstractContextManager[None]:
+        """Own collector-local resources without terminating the host worker on close.
+
+        Returns:
+            The provider's job scope unless the worker needs a distinct close policy.
+        """
+        return self.job_scope()
+
     def checkpoint_identity(self) -> dict:
         """Describe the environment configuration required for continuation.
 

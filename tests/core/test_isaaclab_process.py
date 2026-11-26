@@ -62,6 +62,21 @@ def test_process_cleanup_failure_preserves_primary(monkeypatch):
     assert "Kit close failed" in "\n".join(primary.__notes__)
 
 
+@pytest.mark.parametrize("primary", [ValueError("worker build failed"), KeyboardInterrupt()])
+def test_rollout_scope_closes_native_app_and_returns_failure_to_worker(monkeypatch, primary):
+    from nexuml_library.environments.isaaclab import IsaacLabEnvironment
+
+    exits = []
+    launcher = SimpleNamespace(__exit__=lambda *args: exits.append(args))
+    definition = IsaacLabEnvironment()
+    with pytest.raises(type(primary)) as caught, definition.rollout_scope():
+        monkeypatch.setattr(runtime, "_process_launcher", launcher)
+        raise primary
+    assert caught.value is primary
+    assert exits == [(None, None, None)]
+    assert not runtime._process_active and not runtime._process_returning_close
+
+
 @pytest.mark.parametrize("primary", [asyncio.CancelledError(), BaseException("cancelled")])
 def test_base_exception_cancellation_gets_nonzero_native_close_status(monkeypatch, primary):
     exits = []

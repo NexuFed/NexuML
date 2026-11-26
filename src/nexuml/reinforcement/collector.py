@@ -25,7 +25,7 @@ class EnvironmentFactory:
 
         with ExitStack() as resources:
             if self.owns_job_scope:
-                resources.enter_context(self.definition.job_scope())
+                resources.enter_context(self.definition.rollout_scope())
             runtime = self.definition.build(self.context)
             resources.callback(runtime.close)
             adapter = _TorchRLEnvironmentAdapter(runtime, self.context.device, self.context.seed)

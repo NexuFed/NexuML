@@ -29,6 +29,7 @@ from nexuml_library.environments.isaaclab_config import IsaacPlaybackOptions
 _process_active = False
 _process_definition = None
 _process_launcher = None
+_process_returning_close = False
 _active_runtime = None
 
 
@@ -42,15 +43,15 @@ def _terminate_job(signum, _frame):
 
 
 @contextmanager
-def isaaclab_process(definition=None):
-    """Fast-close an owned Kit app after the complete Python job finishes.
+def isaaclab_process(definition=None, *, returning_close: bool = False):
+    """Close an owned Kit app after the complete job or the worker's rollout lifetime.
 
     Raises:
         RuntimeError: If a nested scope selects a different native job.
     """
-    global _process_active, _process_definition, _process_launcher
+    global _process_active, _process_definition, _process_launcher, _process_returning_close
     if _process_active:
-        if (
+        if returning_close != _process_returning_close or (
             definition is not None
             and _process_definition is not None
             and definition != _process_definition
@@ -63,6 +64,7 @@ def isaaclab_process(definition=None):
     previous_sigterm = signal.signal(signal.SIGTERM, _terminate_job)
     _process_active = True
     _process_definition = definition
+    _process_returning_close = returning_close
     try:
         try:
             primary = None
@@ -81,13 +83,17 @@ def isaaclab_process(definition=None):
                         primary.add_note(f"Isaac environment cleanup also failed: {error}")
         except BaseException as primary:
             if _process_launcher is not None:
-                traceback.print_exception(primary)
-                # Upstream maps Exception/SystemExit/KeyboardInterrupt, not async cancellation.
-                shutdown = primary
-                if not isinstance(primary, (Exception, SystemExit, KeyboardInterrupt)):
-                    shutdown = SystemExit(1)
                 try:
-                    _process_launcher.__exit__(type(shutdown), shutdown, shutdown.__traceback__)
+                    if returning_close:
+                        # The worker reports the Python exception, not a native process exit.
+                        _process_launcher.__exit__(None, None, None)
+                    else:
+                        traceback.print_exception(primary)
+                        # Upstream does not map async cancellation to a nonzero status.
+                        shutdown = primary
+                        if not isinstance(primary, (Exception, SystemExit, KeyboardInterrupt)):
+                            shutdown = SystemExit(1)
+                        _process_launcher.__exit__(type(shutdown), shutdown, shutdown.__traceback__)
                 except BaseException as error:
                     primary.add_note(f"Isaac process shutdown also failed: {error}")
             raise
@@ -98,6 +104,7 @@ def isaaclab_process(definition=None):
         _process_launcher = None
         _process_active = False
         _process_definition = None
+        _process_returning_close = False
         signal.signal(signal.SIGTERM, previous_sigterm)
 
 
@@ -263,9 +270,11 @@ def _create_environment(owner, definition, context):
             )
         cfg.sim.default_visualizer_cfg = None
         cfg.sim.visualizer_cfgs = []
+    # Pinned Lab drops SimulationApp's fast_shutdown argument; Kit honors its own setting.
+    close_setting = " --/app/fastShutdown=false" if _process_returning_close else ""
     args = {
         "headless": True,
-        "fast_shutdown": True,
+        "fast_shutdown": not _process_returning_close,
         "device": str(device),
         "visualizer": ["viser"] if viewing else ["none"],
         "visualizer_explicit": True,
@@ -276,14 +285,14 @@ def _create_environment(owner, definition, context):
             "--/crashreporter/enabled=false --/crashreporter/skipOldDumpUpload=true "
             "--/app/uploadDumpsOnStartup=false --/telemetry/enableAnonymousData=false "
             "--/telemetry/enableAnonymousAppName=false --/telemetry/enableSentry=false "
-            "--/structuredLog/enable=false"
+            "--/structuredLog/enable=false" + close_setting
         ),
     }
     launcher = launch_simulation(cfg, args)
     launcher.__enter__()
     owner._launcher = launcher
     if has_kit():
-        # Kit's fast close must follow whole-job checkpoint/export/logger finalization.
+        # The owning scope closes Kit after job finalization or the last worker batch.
         _process_launcher, owner._launcher = owner._launcher, None
     signal.signal(signal.SIGTERM, _terminate_job)
     if viewing:

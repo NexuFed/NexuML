@@ -111,6 +111,38 @@ shared factory. The probe did not use the public Ray PPO collector,
 exercise cancellation or move rollout batches over the object store.
 GPU Ray training remains disabled.
 
+### Returning native shutdown (3.2)
+
+Native rollout workers now enter an explicit worker scope, separate from
+the whole-job scope used by direct CLI train, evaluate and play. The pinned
+Lab launcher drops the `SimulationApp` keyword `fast_shutdown`. Its
+supported Kit argument sets `/app/fastShutdown=false`, so Kit tears down
+its extensions and returns. The worker scope propagates the original
+Python failure instead of asking Kit to terminate the host with an exit
+code. Missing acknowledgements and real actor death remain errors.
+
+On one RTX 4080 SUPER, a Ray actor using the ordinary `EnvironmentFactory`
+ran six CUDA PhysX transitions, cleared the simulation context, and
+acknowledged native close in 11.15 s. Then the existing TorchRL-backed
+collector ran three fresh, successive native workers. Each reserved a
+whole GPU and placed the project PPO actor/critic and two PhysX worlds
+together; CPU-staged four-transition batches had finite log probabilities
+and values and the expected policy version. On ordinary exhaustion, an
+exception injected after a real GPU step, and cancellation with a batch
+already in flight, respectively, Kit stopped, the exact actor PID exited,
+and the borrowed runtime remained usable. Plasma returned to zero
+objects after each phase. No partial failed/cancelled batch was consumed.
+The probe supplied the actor and critic together explicitly; the
+existing public PPO algorithm and its learner-side GAE were not changed.
+
+Proofs: `/tmp/opencode/kit-native-setting-ZgGrX9/` (native flag),
+`/tmp/opencode/kp-6X5RF2/` (production scope and simple policy),
+`/tmp/opencode/kv-l27AWt/` (production scope and PPO actor/critic).
+The headless focused suites passed **347** unit checks and **2** native
+direct frame-budget/cancellation regressions. Task 3.2 qualifies the
+worker lifecycle on one host, not public GPU PPO, multi-node placement,
+GPU checkpoint continuation or distributed throughput (3.4–3.5).
+
 ## Checkpoint continuation (3.5, CPU slice)
 
 The public session saved an ordinary Pendulum checkpoint after 16
