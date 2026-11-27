@@ -329,9 +329,10 @@ selected worker. Playback of exported weights is a separate, independent run.
 
 ### Native WebRTC playback
 
-This mode is not yet qualified: the prepared-image playback test timed out
-in native startup before the signaling listener was confirmed. The editor's
-working streaming profile is not a substitute for this playback test.
+This mode is not yet qualified. In a local diagnostic, Kit bound the TCP
+signaling port but its startup did not finish and playback never stepped
+the policy. The editor's working stream is not a substitute for policy
+playback.
 
 Choose `--viewer webrtc` only on a prepared interactive Isaac/Kit worker.
 In the trusted `play_scenario.py`, return the same compatible task from

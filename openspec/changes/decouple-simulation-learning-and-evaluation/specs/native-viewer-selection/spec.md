@@ -18,11 +18,12 @@ Viser SHALL reuse the existing native read-only training/evaluation implementati
 
 ### Requirement: Native WebRTC and local Kit viewing use prepared infrastructure
 
-WebRTC SHALL use native Kit streaming in the existing CI-distributed Isaac image with qualified GPU, encoder and graphics support and approved private connectivity. Local mode SHALL use a native Kit window on a prepared display. Neither mode SHALL provision VPN/NetBird, routes, firewalls, SSH or Kubernetes forwarding, VNC servers or graphical sessions, expose a viewer publicly by default or silently substitute another viewer.
+WebRTC SHALL use native Kit streaming with qualified GPU, encoder, graphics and private connectivity. Local mode SHALL use a native Kit window on a prepared display. Neither mode SHALL provision networking, forwarding, VNC or graphical sessions, expose a viewer publicly by default or silently substitute another viewer.
 
 #### Scenario: A remote operator uses the native streaming client
-- **WHEN** an approved private connection provides the required native TCP and UDP reachability and the qualified worker starts WebRTC play
+- **WHEN** an approved private connection provides the required native TCP and UDP reachability and a standalone graphics pod starts WebRTC play outside Ray training
 - **THEN** the client displays the actual live policy rollout and the job exposes and reports the configured supported signaling and media endpoints without managing the external network.
+- **AND** the existing Isaac image may be used as a comparison runtime, not as a requirement for installing the Python stack.
 
 #### Scenario: A prepared local or remote graphical display is selected
 - **WHEN** native display and graphics prerequisites are present

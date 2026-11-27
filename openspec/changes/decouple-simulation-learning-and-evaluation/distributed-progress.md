@@ -476,11 +476,28 @@ start: the scheduler reported insufficient GPUs/memory on the cached
 candidate nodes. The Job was deleted without using the existing
 workstation pod or changing network policy. The same vendor command
 in a local Docker container with no network reached renderer startup
-but did not produce the vendor ready marker; its paired Python
-stage did not run. This local result is not a NetBird media test.
+but did not produce the vendor ready marker in the retained log.
+Docker attach did not capture the harness's socket checks, so this is
+not a signaling or NetBird media receipt.
 Manifests, scheduler events, launcher script and logs:
 `/tmp/opencode/nexuml-vendor-stream-control-gkKfL1/` and
 `/tmp/opencode/nexuml-local-vendor-stream-control-hKK9G2/`.
+The repeat captured socket checks inside the isolated container. The
+vendor CLI opened TCP 49100 on the RTX 4080 SUPER (driver 610.43.03).
+The immediate shutdown check still found that listener after the
+wrapper stopped, so the test removed its container without starting
+the paired Python process. This qualifies signaling only, not the
+vendor ready marker, graceful release, or decoded media.
+Receipt: `/tmp/opencode/nexuml-vendor-control-receipt-y4CEgm/`.
+In a separate network-isolated container on the same local GPU/image,
+the current NexuML wheels also opened TCP 49100 (28 s) before app
+initialization returned. At 75 s the watchdog found
+`SimulationApp.__init__` still blocked in `_update_without_ready`.
+The process exited without policy ticks or the CLI endpoint receipt,
+and the socket was closed. A bound port is not evidence that Kit was
+ready or that a client could decode media; the remaining failure is
+after socket bind, before usable playback.
+Receipt: `/tmp/opencode/nexuml-webrtc-signaling-parity-FJNO2S/`.
 
 **Real ROS 2 three-domain and mixed-objective proofs (1b/6.2a):** no
 authorized episodes with a matching embodiment, calibrated controlled
@@ -675,13 +692,26 @@ env -u RAY_ADDRESS -u RAY_API_SERVER_ADDRESS .venv/bin/ray job submit \
 - The existing opt-in Isaac CI job now exercises the same generated
   `uv.lock`: a fresh learner prefix uses `--no-default-groups
   --no-install-workspace --no-build` with the three existing extras, then
-  installs the two application wheels. Running this CI step locally on
-  CUDA passed the 123-package check (Torch 2.11.0+cu130, TorchRL 0.15.0),
-  confirmed no simulator packages, fit and
-  reloaded the 32-frame export, then resumed and reloaded a 48-frame
-  export (8→12 optimizer steps). This validates direct PPO, not the
-  remote collector pin. Reproduction and log:
-  `/tmp/opencode/nexuml-locked-cuda-ci-RPtlCZ/{run.sh,ci.log}`.
+  installs the two application wheels. With the regenerated lock, CUDA
+  passed the 126-package check (Torch 2.11.0+cu130, TorchRL 0.14.0,
+  TensorDict 0.14.2), confirmed no simulator packages, and fit/exported
+  32 frames. Resume entered training with 32 frames and eight restored
+  optimizer steps, then reached 48 frames and 12 steps. Both exports
+  reloaded. This CI smoke validates direct PPO. Exact step and log:
+  `/tmp/opencode/nexuml-locked-cuda-resume-OkQAgL/{run.sh,ci.log}`.
+- A temporary Kit-less dependency-group trial consumed the same workspace
+  resolution after staging the already approved Lab and ANTLR artifacts.
+  Its 240-package prefix passed `uv pip check`, ran 32 native CUDA
+  Cartpole frames/eight optimizer steps and reloaded the export without
+  Isaac Sim. The trial required `--inexact` and skipping both packages
+  during sync; it is not the requested clean install and that group was
+  not retained. `uv sync --locked --extra isaac --no-build` into an
+  empty prefix fails first on the Lab Git source. Binary-only resolution
+  also rejects Isaac Sim 6.2's `idna-ssl==1.1.0`, which has no usable
+  wheel. A compatible upstream release or an approved binary source is
+  needed; no alternate lock, source build or dependency omission added.
+  Receipts: `/tmp/opencode/nexuml-package-lane.quhTJJaf/` and
+  `/tmp/opencode/nexuml-staged-kitless-lock-Jkfajr/`.
 - CUDA learner plus native CUDA rollout actor resumed on one shared GPU
   from a partial checkpoint: fresh actor identity, exact restored policy
   and Adam state, policy version 1 in the fresh collector, CPU transport,
