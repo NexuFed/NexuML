@@ -310,6 +310,10 @@ ray`, `num_collectors: 2`, `collector.ray.num_gpus: 1`, actor role
 selectors, prepared `py_executable` and CPU object-store storage. Also
 reserve the evaluator GPU if testing periodic native snapshots. Do not
 rerun with TLS disabled or on the idle-inventory assumption.
+The [wheel audit](ray-rollout-placement.md#worker-dependency-setup-diagnostic-34-not-native-qualification)
+records `idna-ssl==1.1.0`, `antlr4-python3-runtime==4.9.3` and
+the exact Isaac Lab source pin. The last two have reviewed image wheels;
+the stock-worker install still needs an approved binary closure.
 
 **WebRTC (4a.1/4a.4):** run the ordinary `nexuml play` command in the
 [WebRTC how-to](../../../docs/src/content/docs/how-to/isaac-native-configuration.mdx#native-webrtc-playback)
@@ -322,9 +326,17 @@ Vulkan/RTX initialization but timed out twice (150 s and 100 s), using
 both the explicit minimal rendering experience and the maintained Lab
 streaming selection. Neither showed a signaling receipt, policy ticks,
 or a client connection. Kit logged OmniHub and NGX problems; the logs do
-not isolate the exact native startup fault. Treat this as a **native
-startup failure**, separate from the absent approved external client.
-No host ports were published. Receipts:
+not establish the low-level graphics cause. A separate native-only
+`KitLauncher` run through the image's `/usr/local/bin/nexuml-isaac` entrypoint
+also timed out (85 s), with no NexuML imports, task, policy or local-toolbar
+settings. Its 45 s traceback stopped in Isaac Sim's
+`SimulationApp._wait_for_viewport` → `_update_without_ready`. This
+reproduces the **prepared-runtime startup failure** outside the training
+and playback code. First rerun `kit_only.py` in the approved graphics
+profile; require `KIT_ONLY_SIGNAL_LISTENER` before repeating the playback
+test. The approved external media client is still a separate gate.
+No host ports were published. Script and stack:
+`/tmp/opencode/nexuml-kit-only-stream-3dYSbY/`. Playback receipts:
 `/tmp/opencode/nexuml-stream-configured-6hHQ5o/` and
 `/tmp/opencode/nexuml-stream-native-experience-Zb1wOX/`.
 
@@ -350,6 +362,9 @@ Do not run a synthetic/real mix or physical control as a substitute.
   and Adam state, policy version 1 in the fresh collector, CPU transport,
   native CUDA learner and 32 frames/eight optimizer steps. **1 passed**;
   `/tmp/opencode/nexuml-final-cuda-transport-v2/`.
+- Standalone CUDA and Ray whole-GPU snapshot evaluators both passed again
+  after the worker-visible device check (**2 passed**), without a
+  concurrent native learner. Receipt: `/tmp/opencode/nexuml-snapshot-assignment-proof/`.
 - Role-owner, Ray Train and missing-resource admission suite: **6 passed**.
   The missing actor role timed out without shutting down borrowed Ray.
   Geometry, viewer/provider, CI and DDP guard suite: **152 passed, 17 skipped**.
