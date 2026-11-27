@@ -728,6 +728,33 @@ def test_ray_missing_role_admission_is_bounded_and_preserves_borrowed_runtime(lo
     assert local_ray.get(local_ray.remote(lambda: True).remote(), timeout=10)
 
 
+@pytest.mark.requires_system
+@pytest.mark.requires_optional("ray")
+@pytest.mark.requires_optional("torchrl")
+@pytest.mark.requires_optional("gymnasium")
+def test_ray_partial_admission_closes_started_worker(local_ray, traced_environment):
+    from tensordict.nn import TensorDictModule
+
+    training = ReinforcementLearningSpec(
+        algorithm=PPO(),
+        total_frames=8,
+        frames_per_batch=8,
+        collector=CollectorSpec(
+            backend="ray",
+            num_collectors=2,
+            ray=RayCollectorSpec(resources={"snapshot-test": 1}, admission_timeout_s=12),
+        ),
+    )
+    policy = TensorDictModule(torch.nn.Linear(3, 1), in_keys=["observation"], out_keys=["action"])
+    with pytest.raises(TimeoutError, match=r"1/2 collector\(s\) did not start"):
+        build_collector(traced_environment, training, policy, "cpu")
+    events = [json.loads(line) for line in Path(traced_environment.events).read_text().splitlines()]
+    assert [event for event, _, _ in events] == ["enter", "build", "close", "leave"]
+    assert len({pid for _, pid, _ in events}) == 1 and events[0][1] != os.getpid()
+    assert local_ray.is_initialized()
+    assert local_ray.get(local_ray.remote(lambda: True).remote(), timeout=10)
+
+
 def test_ray_placement_config_round_trips_without_changing_default_dump():
     assert "ray" not in CollectorSpec(backend="ray").model_dump()
     config = {
