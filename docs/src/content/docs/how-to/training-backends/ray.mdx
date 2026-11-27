@@ -504,6 +504,15 @@ selectors. The learner may use its own GPU independently. A trusted prepared
 interpreter at `collector.ray.py_executable` lets the rollout worker import
 Isaac without installing it in the learner environment. Use the same
 Python, Ray, PyTorch, TensorDict and TorchRL versions across that transport.
+
+For a simulator-free learner, select `library`, `reinforcement` and `ray`
+from the workspace lock and exclude the default dependency groups. The
+default `native-sources` group includes MuJoCo tooling. The opt-in Isaac CI
+job installs the selected dependencies with `uv sync --locked --no-build`,
+adds the workspace wheels, and verifies a CUDA fit, export and resume
+without simulator packages. This installed learner smoke uses direct PPO;
+the remote collector's TorchRL version constraint below still applies.
+
 Prepare the worker interpreter before starting the fit. Install pinned
 wheels once per job, not inside each actor. The qualified binary-only
 Kit-less Newton/MJWarp evaluator job shipped bootstrap files as a Ray

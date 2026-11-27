@@ -330,8 +330,8 @@ NEXUML_RUN_SIMULATOR_TESTS=1 NEXUML_TEST_RAY_NATIVE_SNAPSHOT=1 \
 | 3.4–3.5 | Actor admission, CUDA learner, published weights and native checkpoint/recovery proven with local resources | Three-node fit, export and resume passed with a simulator-free GPU learner; matched direct, remote and two-node DDP rates measured. Grouped Ray rollout unsupported |
 | 4.4 | Rank-zero snapshots, separate process/Ray GPU evaluation and bounded cancellation | Native Kit-less PPO and separate-node GPU snapshot evaluation overlapped; final snapshot drained |
 | 4a.1, 4a.4, 4a.6 | Typed viewer selection, CLI mapping, native headless RGB and selected-rank/collector Viser routing tested | Live two-node Viser attach, disconnect and listener cleanup passed, including injected cancellation. Native WebRTC startup and client media remain open under 4a.4 |
-| 6.3 | Binary installed learner and prepared-image CI recipe retained; role interpreter selection implemented | Binary Kit-less profile passed on stock workers; full-Kit stock-worker dependency closure and remaining deployment profiles unqualified |
-| 1b, 6.2a | Existing simulator-only SDK and recipe validation retained | Real ROS 2 proof needs authorized matching data |
+| 6.3 | Generated workspace lock drives the installed CUDA learner smoke in existing opt-in GPU CI; role interpreter selection implemented | Staged binary Kit-less profile passed on stock workers; clean workspace-lock native worker installs and full-Kit dependency closure still unqualified |
+| 1b, 6.2a | Existing simulator-only SDK, ROS 2 adapter and safety checks retained | Real-robot learning deferred, not passed; needs authorized matching data if revisited |
 
 **Same-host peer NCCL and co-located native DDP:** requires two compatible
 GPUs in one worker, not the two-node topology already tested. On an
@@ -659,6 +659,16 @@ env -u RAY_ADDRESS -u RAY_API_SERVER_ADDRESS .venv/bin/ray job submit \
   passed, and the installed CLI again trained 32 frames on `cuda:0` and
   replayed eight CPU ticks. The disposable environment was removed after
   preserving wheels, package versions, hashes and receipts.
+- The existing opt-in Isaac CI job now exercises the same generated
+  `uv.lock`: a fresh learner prefix uses `--no-default-groups
+  --no-install-workspace --no-build` with the three existing extras, then
+  installs the two application wheels. Running this CI step locally on
+  CUDA passed the 123-package check (Torch 2.11.0+cu130, TorchRL 0.15.0),
+  confirmed no simulator packages, fit and
+  reloaded the 32-frame export, then resumed and reloaded a 48-frame
+  export (8→12 optimizer steps). This validates direct PPO, not the
+  remote collector pin. Reproduction and log:
+  `/tmp/opencode/nexuml-locked-cuda-ci-RPtlCZ/{run.sh,ci.log}`.
 - CUDA learner plus native CUDA rollout actor resumed on one shared GPU
   from a partial checkpoint: fresh actor identity, exact restored policy
   and Adam state, policy version 1 in the fresh collector, CPU transport,
