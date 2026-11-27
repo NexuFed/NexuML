@@ -174,6 +174,14 @@ global advantage moments and small status and log tensors. Counts include
 collective startup but not TCP overhead. The trace contains no rollout
 buffers. Trace: `/tmp/opencode/nexuml-peer-so101-nccl-smh315/`.
 
+Batching PPO logs into one vector mean cut all-reduces from **230 to 166
+per rank** (2,838,604 input bytes), with the 64 gradient buckets and 64
+advantage-moment reductions unchanged. Both native pods finished the
+matched repeat (`nex212-peer-fcd5402c`). Real CPU/Gloo ranks retained
+metric and parameter parity with the single-process minibatch reference.
+This traced run measures collective count, not a new throughput gain.
+Wheel hashes and trace: `/tmp/opencode/nexuml-peer-so101-metric-vector-XhSw9L/`.
+
 ## Additional acceptance at `d8579994`
 
 - Ray Train V2 trained and resumed native Isaac Newton/Warp Cartpole on

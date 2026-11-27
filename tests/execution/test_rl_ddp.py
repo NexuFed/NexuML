@@ -85,6 +85,14 @@ def test_ddp_ppo_matches_global_minibatches_and_resumes(tmp_path):
 
     class ReferenceTrace(Callback):
         def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
+            metrics = trainer.callback_metrics
+            assert {"train/rl/reward", "train/rl/loss_objective"} <= metrics.keys()
+            torch.testing.assert_close(
+                metrics, ranks[0]["metrics"][batch_idx], atol=2e-6, rtol=2e-5
+            )
+            torch.testing.assert_close(
+                ranks[0]["metrics"][batch_idx], ranks[1]["metrics"][batch_idx], atol=0, rtol=0
+            )
             for name, value in pl_module.named_parameters():
                 torch.testing.assert_close(
                     value, ranks[0]["updates"][batch_idx][name], atol=2e-6, rtol=2e-5

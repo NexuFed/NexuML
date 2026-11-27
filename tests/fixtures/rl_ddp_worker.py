@@ -43,7 +43,13 @@ def run(directory, mode):
     config = scenario()
     checkpoint = directory / "partial.ckpt"
     rank = int(os.environ["RANK"])
-    receipts: dict[str, Any] = {"seeds": [], "rollouts": [], "rng": [], "updates": []}
+    receipts: dict[str, Any] = {
+        "seeds": [],
+        "rollouts": [],
+        "rng": [],
+        "updates": [],
+        "metrics": [],
+    }
     original_build = GymnasiumEnvironment.build
     request = NexuRLLightningModule._request_fit_evaluation
     evaluator = None
@@ -84,6 +90,7 @@ def run(directory, mode):
             receipts["updates"].append(
                 {name: value.detach().clone() for name, value in pl_module.named_parameters()}
             )
+            receipts["metrics"].append(dict(trainer.callback_metrics))
             if mode == "fit" and batch_idx == 0:
                 trainer.save_checkpoint(checkpoint)
             if mode == "fit" and batch_idx == 1:

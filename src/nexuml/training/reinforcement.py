@@ -211,28 +211,25 @@ class NexuRLLightningModule(L.LightningModule):
         if not isinstance(optimizers, (list, tuple)):
             optimizers = [optimizers]
         metrics = self.algorithm.update(rollout, lightning_module=self, optimizers=optimizers)
-        sync_dist = self.trainer.world_size > 1
+        if "reward" in rollout["next"].keys():
+            metrics["reward"] = rollout["next", "reward"].float().mean()
+        if self.trainer.world_size > 1:
+            # Equal rank-local batch sizes make one vector mean equivalent to scalar syncs.
+            names = sorted(metrics)
+            values = torch.stack(
+                [torch.as_tensor(metrics[name], device=self.device).reshape(()) for name in names]
+            )
+            reduced = self.trainer.strategy.reduce(values, reduce_op="mean")
+            metrics = dict(zip(names, reduced.unbind(), strict=True))
         self.frames.add_(rollout.numel() * self.trainer.world_size)
         self.batches.add_(1)
-        for name, value in metrics.items():
-            self.log(
-                f"train/rl/{name}",
-                value,
-                on_step=True,
-                on_epoch=False,
-                batch_size=rollout.numel(),
-                sync_dist=sync_dist,
-            )
+        self.log_dict(
+            {f"train/rl/{name}": value for name, value in metrics.items()},
+            on_step=True,
+            on_epoch=False,
+            batch_size=rollout.numel(),
+        )
         self.log("train/rl/frames", self.frames.float(), on_step=True, on_epoch=False, batch_size=1)
-        if "reward" in rollout["next"].keys():
-            self.log(
-                "train/rl/reward",
-                rollout["next", "reward"].float().mean(),
-                on_step=True,
-                on_epoch=False,
-                batch_size=1,
-                sync_dist=sync_dist,
-            )
         for group in self.policy.contract.groups:
             self.log(
                 f"train/rl/{group}/agent_reward_mean",
