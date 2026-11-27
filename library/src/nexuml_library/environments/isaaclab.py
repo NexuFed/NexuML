@@ -20,6 +20,7 @@ from .isaaclab_config import (
     IsaacBindings,
     IsaacTaskConfigSpec,
     ViserSpec,
+    WebRTCSpec,
     isaac_task_config,
 )
 
@@ -79,6 +80,7 @@ class IsaacLabEnvironment(EnvironmentDefinition):
     contract: InteractionContract | None = None
     bindings: IsaacBindings | None = None
     viewer: ViserSpec | None = None
+    webrtc: WebRTCSpec | None = Field(default=None, exclude_if=lambda value: value is None)
     arena_factory: FactorySpec | None = Field(default=None, exclude_if=lambda value: value is None)
 
     @model_validator(mode="after")
@@ -174,6 +176,7 @@ class IsaacLabEnvironment(EnvironmentDefinition):
         """
         identity = super().checkpoint_identity()
         identity["params"].pop("viewer", None)
+        identity["params"].pop("webrtc", None)
         return identity
 
     def describe(self) -> InteractionContract:
@@ -266,15 +269,18 @@ class IsaacLabEnvironment(EnvironmentDefinition):
                 "sync=True, num_collectors=1"
             )
         learner_index = training.single_gpu_index(training.devices)
-        if (training.devices != 1 and learner_index is None) or training.strategy != "auto":
-            raise ValueError(
-                "Isaac Lab requires training.devices=1 or one explicit GPU index, "
-                "and training.strategy='auto'"
-            )
+        training.validate_learner_devices(training.devices, training.accelerator)
+        if training.strategy not in ("auto", "ddp"):
+            raise ValueError("Isaac Lab requires training.strategy='auto' or 'ddp'")
         if ray_gpu:
             collector.validate_ray_gpu_devices()
-            if training.accelerator != "cpu" or (device is not None and device != "cpu"):
-                raise ValueError("Isaac Lab Ray collection requires an explicit CPU learner")
+            if training.accelerator not in ("cpu", "cuda", "gpu"):
+                raise ValueError("Isaac Lab Ray collection requires explicit CPU/CUDA learning")
+            requested_device = "cpu" if training.accelerator == "cpu" else "cuda"
+            if device is not None and torch.device(device).type != requested_device:
+                raise ValueError(
+                    "Resolved Isaac Ray learner differs from its configured accelerator"
+                )
             contract = self.describe()
             if (
                 self.physics != "isaacsim_physx"
@@ -298,21 +304,40 @@ class IsaacLabEnvironment(EnvironmentDefinition):
             )
         evaluation = training.evaluation
         if (
-            evaluation.episodes > 0
+            evaluation.episodes
             or evaluation.at_start
-            or evaluation.every_n_frames is not None
+            or evaluation.every_n_frames
             or evaluation.video.enabled
+        ) and not (
+            (evaluation.process is not None and evaluation.process.device.startswith("cuda:"))
+            or (evaluation.ray is not None and evaluation.ray.num_gpus == 1)
         ):
             raise ValueError(
-                "Isaac Lab does not support automatic fit evaluation or video. Disable episodes, "
-                "at_start, every_n_frames, and video; use fresh-process replay instead: "
+                "Isaac Lab does not support automatic fit evaluation in-process. "
+                "Select an independent GPU evaluator or use fresh-process replay: "
                 "nexuml evaluate <policy-package> --device cuda:0 "
                 "--override training.evaluation.episodes=3"
             )
 
-    @staticmethod
+    def validate_distributed_training(self, world_size: int) -> None:
+        if self.arena_factory is not None or self.describe().groups:
+            raise ValueError("Isaac rank-local DDP does not yet support Arena or grouped tasks")
+        if (
+            self.viewer is not None
+            and "train" in self.viewer.purposes
+            and (self.viewer.train_rank is None or self.viewer.train_rank >= world_size)
+        ):
+            raise ValueError("Distributed Isaac Viser requires an explicit in-range train_rank")
+
+    def validate_ray_train(self) -> None:
+        if self.physics not in ("newton_mjwarp", "newton_vbd", "ovphysx") or self.arena_factory:
+            raise ValueError(
+                "Ray Train invokes training off the main thread. Select an explicit Kit-less "
+                "Isaac configuration or use torchrun for Kit PhysX/Arena."
+            )
+
     def _validate_direct_devices(
-        training: ReinforcementLearningSpec, device: str | None, learner_index: int | None
+        self, training: ReinforcementLearningSpec, device: str | None, learner_index: int | None
     ) -> None:
         collector = training.collector
         configured_devices = {
@@ -334,11 +359,23 @@ class IsaacLabEnvironment(EnvironmentDefinition):
             if parsed.type != "cuda":
                 raise ValueError(f"Isaac Lab requires a CUDA device for {name}, got {value!r}")
             indices.add(parsed.index if parsed.index is not None else 0)
-        if len(indices) != 1:
+        if (
+            learner_index is not None
+            and device is not None
+            and torch.device(device) != torch.device("cuda", learner_index)
+        ):
+            raise ValueError("Resolved learner must use the selected CUDA device index")
+        if len(indices) != 1 and learner_index is None:
             raise ValueError(
-                "Isaac Lab environment, storage, policy, and learner must use the same CUDA "
-                "device index (cuda means cuda:0)"
+                "Isaac split placement requires an explicit learner CUDA device index "
+                "(training.devices='N,')"
             )
+        if len(indices) != 1 and (
+            self.physics != "isaacsim_physx"
+            or self.arena_factory is not None
+            or self.describe().groups
+        ):
+            raise ValueError("Isaac split placement is limited to single-agent PhysX")
 
     def validate_playback(self, viewer: PlaybackViewer) -> None:
         """Validate playback mode without opening a native application.
@@ -351,7 +388,9 @@ class IsaacLabEnvironment(EnvironmentDefinition):
                 raise ValueError(
                     "Viser playback requires an explicit ViserSpec with purpose 'play'"
                 )
-        elif viewer == "local":
+        elif viewer in ("local", "webrtc"):
+            if viewer == "webrtc" and self.webrtc is None:
+                raise ValueError("Isaac webrtc playback requires explicit private network settings")
             contract = self.describe()
             if (
                 self.physics != "isaacsim_physx"
@@ -359,7 +398,7 @@ class IsaacLabEnvironment(EnvironmentDefinition):
                 or contract.groups
                 or any(field.modality != "vector" for field in contract.observations.values())
             ):
-                raise ValueError("Isaac local playback requires single-agent PhysX state")
+                raise ValueError(f"Isaac {viewer} playback requires single-agent PhysX state")
         elif viewer != "headless":
             raise ValueError(f"Isaac {viewer} playback is not qualified")
 

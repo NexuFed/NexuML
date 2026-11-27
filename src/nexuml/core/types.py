@@ -633,6 +633,9 @@ class RayCollectorSpec(SpecModel):
         default_factory=dict
     )
     label_selector: dict[str, str] = Field(default_factory=dict)
+    py_executable: str | None = Field(
+        default=None, min_length=1, exclude_if=lambda value: value is None
+    )
 
     @field_validator("address")
     @classmethod
@@ -724,7 +727,12 @@ class ProcessEvaluationSpec(_SnapshotEvaluationSpec):
 
 
 class RayEvaluationSpec(_SnapshotEvaluationSpec):
-    """One CPU snapshot evaluator on the caller's existing Ray runtime."""
+    """One CPU or whole-GPU snapshot evaluator on the existing Ray runtime."""
+
+    num_gpus: int = Field(default=0, strict=True, ge=0, le=1, exclude_if=lambda value: value == 0)
+    py_executable: str | None = Field(
+        default=None, min_length=1, exclude_if=lambda value: value is None
+    )
 
     resources: dict[str, Annotated[float, Field(gt=0, allow_inf_nan=False)]] = Field(
         default_factory=dict
@@ -764,7 +772,7 @@ class RLEvaluationSpec(SpecModel):
             if self.process is not None:
                 raise ValueError("Select either CPU-process or Ray fit evaluation, not both")
             if self.video.enabled:
-                raise ValueError("Ray CPU fit evaluation does not support video")
+                raise ValueError("Ray fit evaluation does not support video")
         return self
 
 
@@ -801,14 +809,14 @@ class ReinforcementLearningSpec(SpecModel):
 
     @classmethod
     def validate_learner_devices(cls, devices: int | str, accelerator: str) -> None:
-        """Keep one learner and permit explicit selection of one visible GPU.
+        """Validate either a learner count or one explicit GPU index.
 
         Raises:
-            ValueError: If the selection is not one device or an explicit GPU is not requested.
+            ValueError: If the selection is not a positive count or valid GPU index.
         """
         index = cls.single_gpu_index(devices)
-        if devices not in (1, "auto") and index is None:
-            raise ValueError("Reinforcement training supports one learner device")
+        if devices != "auto" and index is None and not (type(devices) is int and devices >= 1):
+            raise ValueError("RL devices must be a positive count, 'auto', or one GPU index")
         if index is not None and accelerator not in ("gpu", "cuda"):
             raise ValueError(
                 "An explicit RL learner GPU index requires the gpu or cuda accelerator"
@@ -1102,14 +1110,11 @@ class ScenarioSpec(SpecModel):
         if isinstance(self.training, ReinforcementLearningSpec):
             if self.interaction is None or self.policy is None:
                 raise ValueError("reinforcement training requires scenario.interaction and policy")
-            if self.execution.component_name not in {"local", "ray-jobs-sdk"}:
-                # ponytail: single learner; enable Ray placement after distributed lifecycle tests.
-                raise ValueError(
-                    "Ray learner placement for RL is not validated; use local execution"
-                )
             self.training.validate_learner_devices(self.training.devices, self.training.accelerator)
-            if self.training.strategy != "auto":
-                raise ValueError("RL currently supports one learner with training.strategy='auto'")
+            if self.execution.component_name not in {"local", "ray-jobs-sdk", "ray-cluster"}:
+                raise ValueError("RL requires Local, Ray Jobs or Ray Train execution")
+            if self.training.strategy not in ("auto", "ddp"):
+                raise ValueError("RL supports only strategy='auto' or 'ddp'")
         return self
 
     @field_validator("execution", mode="before")

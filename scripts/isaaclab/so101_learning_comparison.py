@@ -72,8 +72,8 @@ def _native_env(width, seed):
             env.close()
 
 
-def _rsl_rl(output, seed, batches, entered, *, low_exploration=False, snapshots=()):
-    with _native_env(WIDTH, seed) as env:
+def _rsl_rl(output, seed, batches, entered, *, width=WIDTH, low_exploration=False, snapshots=()):
+    with _native_env(width, seed) as env:
         from isaaclab_rl.rsl_rl import RslRlVecEnvWrapper
         from rsl_rl.runners import OnPolicyRunner
 
@@ -123,7 +123,7 @@ def _rsl_rl(output, seed, batches, entered, *, low_exploration=False, snapshots=
 
         def record_batch(**metrics):
             rows.append((metrics["collect_time"], metrics["learn_time"], metrics["loss_dict"]))
-            frames = len(rows) * WIDTH * HORIZON
+            frames = len(rows) * width * HORIZON
             if frames in snapshots:
                 with torch.random.fork_rng(devices=[DEVICE]):
                     runner.export_policy_to_jit(str(output), f"frame-{frames}.pt")
@@ -146,6 +146,7 @@ def _rsl_rl(output, seed, batches, entered, *, low_exploration=False, snapshots=
             output,
             seed,
             batches,
+            width,
             frames,
             optimizer_steps,
             rows,
@@ -156,14 +157,14 @@ def _rsl_rl(output, seed, batches, entered, *, low_exploration=False, snapshots=
         )
 
 
-def _nexuml(output, seed, batches, entered, *, low_exploration=False, snapshots=()):
+def _nexuml(output, seed, batches, entered, *, width=WIDTH, low_exploration=False, snapshots=()):
     from lightning.pytorch.callbacks import Callback
 
     from nexuml.core.export import export_package
     from nexuml.training.lightning import NexuSession
     from nexuml_library.scenarios.reinforcement.isaaclab import isaac_so101_joint_reach_ppo
 
-    scenario = isaac_so101_joint_reach_ppo(batches * WIDTH * HORIZON, WIDTH * HORIZON, WIDTH)
+    scenario = isaac_so101_joint_reach_ppo(batches * width * HORIZON, width * HORIZON, width)
     training: Any = scenario.training
     training.seed = seed
     training.algorithm = training.algorithm.model_copy(
@@ -176,7 +177,7 @@ def _nexuml(output, seed, batches, entered, *, low_exploration=False, snapshots=
             "entropy_coef": ENTROPY,
             "max_grad_norm": GRAD_NORM,
             "update_epochs": EPOCHS,
-            "minibatch_size": WIDTH * HORIZON // MINIBATCHES,
+            "minibatch_size": width * HORIZON // MINIBATCHES,
         }
     )
     assert scenario.interaction is not None
@@ -214,7 +215,7 @@ def _nexuml(output, seed, batches, entered, *, low_exploration=False, snapshots=
                 if key.startswith("train/rl/loss")
             }
             self.rows.append((self.update_start - self.previous, end - self.update_start, losses))
-            frames = len(self.rows) * WIDTH * HORIZON
+            frames = len(self.rows) * width * HORIZON
             if frames in snapshots:
                 assert frames == int(pl_module.frames)
                 with torch.random.fork_rng(devices=[DEVICE]):
@@ -240,6 +241,7 @@ def _nexuml(output, seed, batches, entered, *, low_exploration=False, snapshots=
             output,
             seed,
             batches,
+            width,
             int(module.frames),
             int(module.algorithm.updates),
             timing.rows,
@@ -251,9 +253,9 @@ def _nexuml(output, seed, batches, entered, *, low_exploration=False, snapshots=
 
 
 def _training_receipt(
-    output, seed, batches, frames, updates, rows, setup, training, initial, final
+    output, seed, batches, width, frames, updates, rows, setup, training, initial, final
 ):
-    assert frames == batches * WIDTH * HORIZON
+    assert frames == batches * width * HORIZON
     assert updates == batches * EPOCHS * MINIBATCHES
     assert len(rows) == batches
     assert all(losses and all(isfinite(x) for x in losses.values()) for _, _, losses in rows)
@@ -262,6 +264,8 @@ def _training_receipt(
         {
             "seed": seed,
             "frames": frames,
+            "num_envs": width,
+            "steps_per_env": HORIZON,
             "rollouts": batches,
             "minibatch_updates": updates,
             "timing_seconds": {
@@ -349,12 +353,22 @@ def main():
     parser.add_argument(
         "--smoke", action="store_true", help="Run two rollouts, not the quality gate."
     )
+    parser.add_argument("--width", type=int, default=WIDTH)
+    parser.add_argument("--rollouts", type=int, help="Bound a throughput run by rollout count.")
     args = parser.parse_args()
+    if args.width < 1 or (args.rollouts is not None and (args.rollouts < 1 or args.smoke)):
+        parser.error("width and rollout count must be positive; --smoke fixes the rollout count")
     torch.set_float32_matmul_precision("medium")
     if args.stage == "train":
         args.output.mkdir(parents=True)
         run = _rsl_rl if args.backend == "rsl-rl" else _nexuml
-        run(args.output, args.seed, 2 if args.smoke else ROLLOUTS, entered)
+        run(
+            args.output,
+            args.seed,
+            2 if args.smoke else (args.rollouts or ROLLOUTS),
+            entered,
+            width=args.width,
+        )
     else:
         assert json.loads((args.output / "train.json").read_text())["seed"] == args.seed
         _evaluate(args.backend, args.output)

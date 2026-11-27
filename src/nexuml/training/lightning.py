@@ -770,7 +770,7 @@ class NexuSession:
 
         tr = self.scenario.training
         reinforcement = isinstance(tr, ReinforcementLearningSpec)
-        max_epochs = 1 if reinforcement else tr.max_epochs
+        max_epochs = -1 if reinforcement else tr.max_epochs
         resolved_accelerator = self.accelerator if self.accelerator != "auto" else tr.accelerator
         resolved_devices = self.devices if self.devices != "auto" else tr.devices
         if reinforcement:
@@ -779,6 +779,14 @@ class NexuSession:
             )
             if resolved_devices == "auto":
                 resolved_devices = 1
+            if type(resolved_devices) is int:
+                from nexuml.execution.semantics import ensure_distributed_semantics
+
+                world_size = resolved_devices * self.num_nodes
+                if world_size > 1:
+                    ensure_distributed_semantics(
+                        self.scenario, world_size=world_size, accelerator=resolved_accelerator
+                    )
         resolved_strategy = (
             cast(Any, tr.strategy.build()) if isinstance(tr.strategy, StrategySpec) else tr.strategy
         )
@@ -799,6 +807,7 @@ class NexuSession:
             logger=self.trainer_loggers,
             callbacks=self.trainer_callbacks or None,
             num_sanity_val_steps=0 if reinforcement or max_epochs == 0 else 2,
+            use_distributed_sampler=not reinforcement,
             log_every_n_steps=1,
         )
         return self._trainer
@@ -1018,6 +1027,8 @@ class NexuSession:
 
     def _resolve_scenario(self, scenario: ScenarioSpec | None) -> ScenarioSpec:
         if self.trainer_checkpoint is not None:
+            if scenario is not None and isinstance(scenario.training, ReinforcementLearningSpec):
+                return scenario
             return load_scenario_from_trainer_checkpoint(
                 self.trainer_checkpoint,
                 fallback=scenario,
@@ -1521,7 +1532,8 @@ def create_runtime_artifacts_from_trainer_checkpoint(
     restored_scenario = restored_scenario.model_copy(update={"checkpoint": None})
     if isinstance(restored_scenario.training, ReinforcementLearningSpec):
         module = NexuRLLightningModule.load_from_checkpoint(
-            checkpoint_path, scenario=restored_scenario
+            checkpoint_path,
+            scenario=restored_scenario if require_policy else scenario or restored_scenario,
         )
         return RuntimeArtifacts(module.pipeline, module, None, None, module.policy)
     if require_policy:

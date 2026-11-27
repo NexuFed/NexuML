@@ -21,16 +21,26 @@ from nexuml.core.types import InteractionContract
 class BoundedNormal(Independent):
     """Tanh-squashed Gaussian shared by inference and TorchRL probability losses."""
 
-    def __init__(self, loc, scale, low, high, min_scale=1e-4):
-        low, high = low.to(loc), high.to(loc)
+    def __init__(self, loc, scale, low=None, high=None, min_scale=1e-4, *, unit_event_ndim=None):
         self.loc = loc
+        base = Normal(loc, scale.clamp_min(min_scale))
+        tanh = TanhTransform(cache_size=1)
+        if unit_event_ndim is not None:
+            # A [-1, 1] contract needs neither affine rounding nor device-side bounds checks.
+            self.low, self.high = -1, 1
+            upper = 1 - torch.finfo(loc.dtype).eps / 2
+            self._lower_interior, self._upper_interior = -upper, upper
+            super().__init__(TransformedDistribution(base, [tanh]), unit_event_ndim)
+            return
+        if low is None or high is None:
+            raise ValueError("A bounded Gaussian requires both non-unit bounds")
+        low, high = low.to(loc), high.to(loc)
         self.low = low
         self.high = high
-        base = Normal(loc, scale.clamp_min(min_scale))
         transformed = TransformedDistribution(
             base,
             [
-                TanhTransform(cache_size=1),
+                tanh,
                 AffineTransform((low + high) / 2, (high - low) / 2),
             ],
         )
@@ -134,6 +144,7 @@ class _GaussianAdapter(nn.Module):
         self.parameter_keys = {"loc": definition.loc_key, "scale": definition.scale_key}
         self.action_key = definition.action_key
         self.min_scale = definition.min_scale
+        self._unit_event_ndim = len(field.shape) if field.low == -1 and field.high == 1 else None
         dtype = getattr(torch, field.dtype)
         for key in ("low", "high"):
             bound = torch.as_tensor(getattr(field, key), dtype=dtype)
@@ -145,6 +156,8 @@ class _GaussianAdapter(nn.Module):
 
     @property
     def distribution_kwargs(self):
+        if self._unit_event_ndim is not None:
+            return {"unit_event_ndim": self._unit_event_ndim, "min_scale": self.min_scale}
         return {"low": self.low, "high": self.high, "min_scale": self.min_scale}
 
     def forward(self, output, *, deterministic=True):

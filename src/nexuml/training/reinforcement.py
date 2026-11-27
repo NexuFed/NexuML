@@ -1,6 +1,7 @@
 """Lightning-owned manual optimization; episode evaluation has a shared owner."""
 
 import logging
+from contextlib import nullcontext
 from typing import TYPE_CHECKING, Any
 
 import lightning as L
@@ -18,7 +19,13 @@ from nexuml.evaluation.policy import (
     evaluate_policy,
     resolve_policy_evaluation,
 )
-from nexuml.reinforcement.collector import RolloutDataset, build_collector, synchronize_policy
+from nexuml.execution.semantics import ensure_distributed_semantics
+from nexuml.reinforcement.collector import (
+    RolloutDataset,
+    build_collector,
+    collective_guard,
+    synchronize_policy,
+)
 
 if TYPE_CHECKING:
     from nexuml.evaluation._process import ProcessEvaluation
@@ -66,6 +73,7 @@ class NexuRLLightningModule(L.LightningModule):
         self._evaluation_cache = None
         self._pending_evaluation: tuple[tuple, ProcessEvaluation | RayEvaluation] | None = None
         self._next_evaluation_frame = None
+        self._resume_world_size = None
         self.register_buffer("frames", torch.tensor(0, dtype=torch.int64))
         self.register_buffer("batches", torch.tensor(0, dtype=torch.int64))
         self.save_hyperparameters(
@@ -87,9 +95,12 @@ class NexuRLLightningModule(L.LightningModule):
     def configure_optimizers(self):
         return self.algorithm.configure_optimizers()
 
+    def on_save_checkpoint(self, checkpoint):
+        if self.trainer.world_size > 1:
+            checkpoint["rl_world_size"] = self.trainer.world_size
+
     def on_load_checkpoint(self, checkpoint):
-        if not self.policy.contract.groups:
-            return
+        self._resume_world_size = checkpoint.get("rl_world_size", 1)
         saved = ScenarioSpec.model_validate(
             restore_model_data(checkpoint["hyper_parameters"]["scenario"], ScenarioSpec)
         )
@@ -106,31 +117,80 @@ class NexuRLLightningModule(L.LightningModule):
             != self.training_spec.collector.num_envs_per_collector
         ):
             raise ValueError(
-                "Grouped checkpoint requires unchanged task configuration, contracts, "
+                "RL checkpoint requires unchanged task configuration, contracts, "
                 "sharing, algorithm and count"
             )
+        if self._resume_world_size > 1 and (
+            saved.training.frames_per_batch != self.training_spec.frames_per_batch
+            or saved.training.seed != self.training_spec.seed
+        ):
+            raise ValueError("DDP RL checkpoint requires unchanged frame geometry and base seed")
+
+    def _fit_training(self, **updates):
+        spec = self.training_spec
+        collector = spec.collector
+        if self.trainer.world_size > 1 and self.device.type == "cuda":
+            collector = collector.model_copy(
+                update={
+                    "env_device": str(self.device),
+                    "policy_device": str(self.device),
+                    "storing_device": str(self.device),
+                }
+            )
+        return spec.model_copy(
+            update={"collector": collector, "evaluation": self.evaluation_spec, **updates}
+        )
+
+    def _rank_guard(self, phase):
+        return (
+            collective_guard(self.trainer.strategy.root_device, phase)
+            if self.trainer.world_size > 1
+            else nullcontext()
+        )
 
     def train_dataloader(self):
         remaining = max(0, self.training_spec.total_frames - int(self.frames))
+        world_size = self.trainer.world_size
+        global_batch = self.training_spec.frames_per_batch
+        if world_size > 1 and remaining % global_batch:
+            raise ValueError("Remaining DDP RL frames must be divisible by global frames_per_batch")
+        rank_batch = global_batch // world_size
         if remaining and self._collector is None:
             assert self.scenario.interaction is not None
-            # Placement and checkpoint restoration precede this hook; resume respects the budget.
-            self._collector = build_collector(
-                self.scenario.interaction.environment,
-                self.training_spec.model_copy(
-                    update={"total_frames": remaining, "evaluation": self.evaluation_spec}
-                ),
-                self.algorithm.rollout_policy,
-                self.device,
-                self.global_rank,
-            )
+            seed = self.training_spec.seed
+            if world_size > 1:
+                assert seed is not None
+                # A resumed rank starts a new stream, not the previous simulator trajectory.
+                seed += (
+                    int(self.batches)
+                    * world_size
+                    * self.training_spec.collector.num_envs_per_collector
+                )
+            with self._rank_guard("collector setup"):
+                self._collector = build_collector(
+                    self.scenario.interaction.environment,
+                    self._fit_training(
+                        total_frames=remaining // world_size, frames_per_batch=rank_batch, seed=seed
+                    ),
+                    self.algorithm.rollout_policy,
+                    self.device,
+                    self.global_rank,
+                )
+                if world_size > 1:
+                    assert seed is not None
+                    rank_seed = seed + self.global_rank
+                    torch.random.default_generator.manual_seed(rank_seed)
+                    if self.device.type == "cuda":
+                        with torch.cuda.device(self.device):
+                            torch.cuda.manual_seed(rank_seed)
         return DataLoader(
             RolloutDataset(
                 self._collector if self._collector is not None else (),
                 # Lightning adds restored epoch progress; collection owns only remaining frames.
-                batches=(int(self.batches) + -(-remaining // self.training_spec.frames_per_batch))
-                if remaining
-                else 0,
+                batches=int(self.batches) + -(-remaining // global_batch) if remaining else 0,
+                rank_batch=rank_batch if world_size > 1 else None,
+                remaining_batches=remaining // global_batch,
+                device=self.device,
             ),
             batch_size=None,
             num_workers=0,
@@ -146,11 +206,17 @@ class NexuRLLightningModule(L.LightningModule):
         if not isinstance(optimizers, (list, tuple)):
             optimizers = [optimizers]
         metrics = self.algorithm.update(rollout, lightning_module=self, optimizers=optimizers)
-        self.frames.add_(rollout.numel())
+        sync_dist = self.trainer.world_size > 1
+        self.frames.add_(rollout.numel() * self.trainer.world_size)
         self.batches.add_(1)
         for name, value in metrics.items():
             self.log(
-                f"train/rl/{name}", value, on_step=True, on_epoch=False, batch_size=rollout.numel()
+                f"train/rl/{name}",
+                value,
+                on_step=True,
+                on_epoch=False,
+                batch_size=rollout.numel(),
+                sync_dist=sync_dist,
             )
         self.log("train/rl/frames", self.frames.float(), on_step=True, on_epoch=False, batch_size=1)
         if "reward" in rollout["next"].keys():
@@ -160,6 +226,7 @@ class NexuRLLightningModule(L.LightningModule):
                 on_step=True,
                 on_epoch=False,
                 batch_size=1,
+                sync_dist=sync_dist,
             )
         for group in self.policy.contract.groups:
             self.log(
@@ -169,57 +236,124 @@ class NexuRLLightningModule(L.LightningModule):
                 on_epoch=False,
                 batch_size=1,
             )
-        if int(self.batches) % self.training_spec.collector.policy_sync_interval_batches == 0:
+        collector = self.training_spec.collector
+        shared_actor = (
+            collector.backend == "direct"
+            and getattr(self._collector, "policy", None) is self.algorithm.rollout_policy
+        )
+        sync_interval = collector.policy_sync_interval_batches
+        if not shared_actor and (sync_interval == 1 or int(self.batches) % sync_interval == 0):
             synchronize_policy(self._collector, self.algorithm.rollout_policy)
         interval = self.evaluation_spec.every_n_frames
-        if (
-            interval is not None
-            and self._next_evaluation_frame is not None
-            and int(self.frames) >= self._next_evaluation_frame
-        ):
-            self._request_fit_evaluation()
-            self._next_evaluation_frame = (int(self.frames) // interval + 1) * interval
-        else:
-            self._finish_snapshot(wait=False)
+        if interval is not None:
+            with self._rank_guard("periodic evaluation"):
+                if self.trainer.is_global_zero:
+                    if (
+                        self._next_evaluation_frame is not None
+                        and int(self.frames) >= self._next_evaluation_frame
+                    ):
+                        self._request_fit_evaluation()
+                        self._next_evaluation_frame = (int(self.frames) // interval + 1) * interval
+                    else:
+                        self._finish_snapshot(wait=False)
 
     def on_fit_start(self):
         self.fit_device = str(self.device)
         assert self.scenario.interaction is not None
-        self.scenario.interaction.environment.validate_training(
-            self.training_spec.model_copy(update={"evaluation": self.evaluation_spec}),
-            device=str(self.device),
-        )
+        world_size = self.trainer.world_size
+        if self._resume_world_size is not None and world_size != self._resume_world_size:
+            raise ValueError("RL checkpoint continuation requires the saved learner world size")
+        if (
+            self._resume_world_size is not None
+            and int(self.frames) > self.training_spec.total_frames
+        ):
+            raise ValueError(
+                "RL total_frames is smaller than the checkpoint's restored frame count"
+            )
+        if world_size > 1:
+            from lightning.pytorch.strategies import DDPStrategy
+
+            ensure_distributed_semantics(
+                self.scenario, world_size=world_size, accelerator=self.device.type
+            )
+            if not isinstance(self.trainer.strategy, DDPStrategy):
+                raise ValueError("Distributed RL requires Lightning DDP")
+            backend = "nccl" if self.device.type == "cuda" else "gloo"
+            if torch.distributed.get_backend() != backend:
+                raise ValueError(f"Distributed RL on {self.device.type} requires {backend}")
+            if any(
+                isinstance(module, torch.nn.modules.batchnorm._BatchNorm)
+                for module in self.modules()
+            ):
+                raise ValueError("DDP PPO does not support batch-dependent BatchNorm")
         from nexuml.tracking.logger import preflight_evaluation_media
 
         spec = self.evaluation_spec
-        if spec.episodes and (spec.process is not None or spec.ray is not None):
-            if self.trainer.world_size != 1:
-                raise ValueError("Snapshot fit evaluation requires one learner process")
-            if spec.process is not None and spec.process.device.startswith("cuda:"):
-                device_index = int(spec.process.device.split(":")[1])
-                if device_index >= torch.cuda.device_count():
-                    raise ValueError(f"Snapshot evaluator GPU {spec.process.device} is unavailable")
-                if self.device == torch.device(spec.process.device):
+        with self._rank_guard("fit setup"):
+            self.scenario.interaction.environment.validate_training(
+                self._fit_training(), device=str(self.device)
+            )
+            if not self.trainer.is_global_zero:
+                return
+            if (
+                spec.episodes
+                and spec.process is not None
+                and spec.process.device.startswith("cuda:")
+            ):
+                evaluator = torch.device(spec.process.device)
+                if world_size > 1:
+                    raise ValueError(
+                        "DDP GPU evaluation requires an independently reserved Ray GPU"
+                    )
+                if evaluator.index >= torch.cuda.device_count():
+                    raise ValueError(f"Snapshot evaluator GPU {evaluator} is unavailable")
+                if self.device == evaluator:
                     raise ValueError("Snapshot evaluator GPU must differ from the learner GPU")
-            if spec.ray is not None:
+                collector = self.training_spec.collector
+                if collector.backend != "ray" and any(
+                    device.type == "cuda" and (device.index or 0) == evaluator.index
+                    for device in map(
+                        torch.device,
+                        (
+                            collector.env_device,
+                            collector.storing_device,
+                            str(self.device)
+                            if collector.policy_device == "auto"
+                            else collector.policy_device,
+                        ),
+                    )
+                ):
+                    raise ValueError(
+                        "Snapshot evaluator GPU must differ from local collection GPUs"
+                    )
+            if spec.episodes and spec.ray is not None:
                 from nexuml.evaluation._ray import require_ray_runtime
 
                 require_ray_runtime()
-        preflight_evaluation_media(self.trainer.loggers, spec.video)
-        if spec.every_n_frames is not None:
-            self._next_evaluation_frame = (
-                int(self.frames) // spec.every_n_frames + 1
-            ) * spec.every_n_frames
-        if spec.at_start and int(self.frames) == 0:
-            self._request_fit_evaluation()
+            preflight_evaluation_media(self.trainer.loggers, spec.video)
+            if spec.every_n_frames is not None:
+                self._next_evaluation_frame = (
+                    int(self.frames) // spec.every_n_frames + 1
+                ) * spec.every_n_frames
+            if spec.at_start and int(self.frames) == 0:
+                self._request_fit_evaluation()
 
     def on_fit_end(self):
         spec = self.evaluation_spec
         # Fit-end also runs when a resumed checkpoint has no remaining training batches.
         if spec.episodes and (
-            spec.at_start or spec.every_n_frames or spec.video.enabled or spec.ray is not None
+            spec.at_start
+            or spec.every_n_frames
+            or spec.video.enabled
+            or spec.ray is not None
+            or spec.process is not None
         ):
-            self.evaluate_current_policy()
+            with self._rank_guard("final evaluation"):
+                self.evaluate_current_policy()
+
+    def on_train_epoch_end(self):
+        # RL runs one finite rollout stream, including when reopening a completed checkpoint.
+        self.trainer.should_stop = True
 
     def _request_fit_evaluation(self) -> None:
         placement = self.evaluation_spec.process or self.evaluation_spec.ray
@@ -282,6 +416,8 @@ class NexuRLLightningModule(L.LightningModule):
         """
         from nexuml.tracking.logger import log_evaluation_media
 
+        if not self.trainer.is_global_zero:
+            return {}
         self._finish_snapshot(wait=not allow_skip)
         definition, spec, seed = resolve_policy_evaluation(self.scenario)
         key = (

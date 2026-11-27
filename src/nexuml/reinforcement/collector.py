@@ -1,6 +1,6 @@
 """Execution-local collector factories and the Lightning iterable bridge."""
 
-from contextlib import ExitStack
+from contextlib import ExitStack, contextmanager
 from copy import deepcopy
 from dataclasses import dataclass, replace
 from typing import Any, cast
@@ -101,10 +101,8 @@ def build_collector(definition, training: ReinforcementLearningSpec, policy, dev
             raise ValueError(
                 "Ray collection requires synchronous collectors and a CPU/CUDA learner"
             )
-        if learner_device == "cuda" and (gpu_worker or spec.ray is None):
-            raise ValueError(
-                "A Ray CUDA learner requires explicit Ray placement and CPU rollout workers"
-            )
+        if learner_device == "cuda" and spec.ray is None:
+            raise ValueError("A Ray CUDA learner requires explicit Ray placement")
         if not gpu_worker and any(
             torch.device(value).type != "cpu"
             for value in (spec.env_device, spec.storing_device, policy_device)
@@ -136,8 +134,10 @@ def build_collector(definition, training: ReinforcementLearningSpec, policy, dev
             definition.model_copy(deep=True),
             replace(
                 context,
-                worker_rank=rank + index,
-                seed=None if context.seed is None else context.seed + index * context.num_envs,
+                worker_rank=rank * spec.num_collectors + index,
+                seed=None
+                if context.seed is None
+                else (context.seed + (rank * spec.num_collectors + index) * context.num_envs),
             ),
             owns_job_scope=spec.backend != "direct",
         )
@@ -173,6 +173,8 @@ def build_collector(definition, training: ReinforcementLearningSpec, policy, dev
                 remote_configs["resources"] = spec.ray.resources
             if spec.ray.label_selector:
                 remote_configs["label_selector"] = spec.ray.label_selector
+            if spec.ray.py_executable is not None:
+                remote_configs["runtime_env"] = {"py_executable": spec.ray.py_executable}
             validate_actor_options(remote_configs, in_options=False)
         # Exception to the front door: override its actor-kill hook, including automatic shutdown.
         topology.update(
@@ -210,10 +212,13 @@ def build_collector(definition, training: ReinforcementLearningSpec, policy, dev
 class RolloutDataset(IterableDataset):
     """Each iteration requests one rollout; no hidden epoch-hook collection."""
 
-    def __init__(self, collector, batches):
+    def __init__(self, collector, batches, *, rank_batch=None, remaining_batches=0, device=None):
         super().__init__()
         self.collector = collector
         self.batches = batches
+        self.rank_batch = rank_batch
+        self.remaining_batches = remaining_batches
+        self.device = device
 
     def __len__(self):
         # Disables Lightning lookahead before policy synchronization.
@@ -221,7 +226,37 @@ class RolloutDataset(IterableDataset):
         return self.batches
 
     def __iter__(self):
-        yield from self.collector
+        if self.rank_batch is None:
+            yield from self.collector
+            return
+        rollouts = iter(self.collector)
+        for _ in range(self.remaining_batches):
+            with collective_guard(self.device, "rollout collection"):
+                batch = next(rollouts, None)
+                if batch is None or batch.numel() != self.rank_batch or batch.names[-1] != "time":
+                    raise RuntimeError("Rank did not collect its complete on-policy batch")
+            yield batch
+
+
+@contextmanager
+def collective_guard(device, phase):
+    """Fail every live rank before any proceeds past a rank-local operation.
+
+    Raises:
+        RuntimeError: If another rank could not complete this operation.
+    """
+    failure = None
+    try:
+        yield
+    except BaseException as error:
+        failure = error
+    rank = torch.distributed.get_rank()
+    failed_rank = torch.tensor(rank + 1 if failure is not None else 0, device=device)
+    torch.distributed.all_reduce(failed_rank, op=torch.distributed.ReduceOp.MAX)
+    if failure is not None:
+        raise failure
+    if int(failed_rank):
+        raise RuntimeError(f"DDP RL {phase} failed on rank {int(failed_rank) - 1}")
 
 
 def synchronize_policy(collector, policy) -> None:

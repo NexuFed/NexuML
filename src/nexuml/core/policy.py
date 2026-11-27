@@ -1,5 +1,6 @@
 """Complete deployable policy: neural graph, action semantics and portable I/O."""
 
+import math
 from typing import Any, cast
 
 import torch
@@ -397,6 +398,21 @@ class CompiledPolicy(nn.Module):
                 raise ValueError(f"{role} {key!r} must have shape {expected_shape}")
             if str(tensor.dtype).removeprefix("torch.") != field.dtype:
                 raise ValueError(f"{role} {key!r} must have dtype {field.dtype!r}")
+            if (
+                tensor.is_cuda
+                and tensor.dtype == torch.float32
+                and tensor.numel() > 0
+                and require_finite
+                and isinstance(field.low, (int, float))
+                and isinstance(field.high, (int, float))
+                and math.isfinite(field.low)
+                and math.isfinite(field.high)
+                and field.num_values is None
+            ):
+                # One host check for finite, scalar-bounded CUDA fields; retain exact errors below.
+                lo, hi = torch.aminmax(tensor)
+                if (lo >= field.low) & (hi <= field.high):
+                    continue
             if field.low is not None:
                 low = torch.as_tensor(field.low, device=tensor.device).reshape(
                     field.shape if isinstance(field.low, list) else ()

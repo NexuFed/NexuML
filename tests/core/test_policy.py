@@ -83,6 +83,37 @@ def test_bounded_normal_interior_sampling_and_log_prob_match_existing_transforms
     torch.testing.assert_close(current.log_prob(actual), old.log_prob(reference), rtol=0, atol=0)
 
 
+@pytest.mark.parametrize("dtype", [torch.float16, torch.bfloat16, torch.float32, torch.float64])
+def test_unit_bounded_normal_matches_affine_samples_modes_and_likelihoods(dtype):
+    loc = torch.tensor([[-30.0, 0.2], [0.3, 30.0]], dtype=dtype)
+    scale = torch.ones_like(loc)
+    bound = torch.ones(2, dtype=dtype)
+    reference = BoundedNormal(loc, scale, -bound, bound)
+    unit = BoundedNormal(loc, scale, unit_event_ndim=1)
+    torch.manual_seed(6)
+    samples = reference.rsample()
+    torch.manual_seed(6)
+    torch.testing.assert_close(unit.rsample(), samples, rtol=0, atol=0)
+    torch.testing.assert_close(unit.mode, reference.mode, rtol=0, atol=0)
+    torch.testing.assert_close(unit.log_prob(samples), reference.log_prob(samples), rtol=0, atol=0)
+
+
+@pytest.mark.requires_gpu
+def test_cuda_fast_bound_check_keeps_error_diagnostics():
+    field = TensorFieldContract(shape=(1,), dtype="float32", low=-1, high=1)
+    fields = {"action": field}
+    batch = TensorDict({"action": torch.zeros(2, 1, device="cuda:0")}, batch_size=[2])
+    CompiledPolicy._validate_fields(batch, fields, "Action")
+    for invalid, description in [
+        (float("nan"), "nonfinite"),
+        (float("inf"), "upper bound"),
+        (-2.0, "lower bound"),
+    ]:
+        batch["action"][0, 0] = invalid
+        with pytest.raises(ValueError, match=description):
+            CompiledPolicy._validate_fields(batch, fields, "Action")
+
+
 @pytest.mark.parametrize("bounds", [(-2.0, 1.0), (0.0, 1.0), (-3.0, 9.0), (1.0, 2.0)])
 @pytest.mark.parametrize("location", [-20.0, 20.0])
 @pytest.mark.parametrize("dtype", [torch.float16, torch.bfloat16, torch.float32, torch.float64])

@@ -442,6 +442,78 @@ through the distributed trainer. The synthetic first-run recipe includes an eval
 algorithm, so do not send it unchanged to Ray Train. Local execution and SDK Jobs
 retain their existing global-state semantics.
 
+### Rank-local PPO and independent rollout workers
+
+Use **Ray Train** for co-located DDP. Set `execution.workers` to a fixed
+count, reserve one whole GPU per CUDA rank in `resources_per_worker`, and
+set `training.accelerator: gpu`, `strategy: ddp`, `precision: 32-true` and an
+explicit seed. The rank-local collector is `direct`, synchronous, with
+`env_device: cuda`, `storing_device: cuda`, and `policy_device: auto`. Here
+unindexed `cuda` means the GPU assigned to the rank. Leave `training.devices`
+as `1` or `auto` when using Ray Train; it is not the worker count.
+
+`total_frames`, `frames_per_batch` and PPO `minibatch_size` count **global**
+transitions. `num_envs_per_collector` counts environments **per rank**.
+For example, with two ranks and 256 environments each, a global batch of
+16,384 frames is 32 ticks per rank. A global minibatch of 2,048 contributes
+1,024 samples per rank and yields eight synchronized PPO minibatch updates
+per rollout per PPO epoch. The total budget must contain whole global
+batches; both batch and minibatch geometry must divide evenly. Lightning's
+`global_step` counts the actor and critic optimizer steps separately.
+
+GAE runs on each rank's trajectories, advantage normalization uses global
+minibatch statistics, and DDP averages gradients. Neither Ray nor DDP moves
+rollout buffers between ranks. Rank zero owns metrics publication, policy
+exports and snapshot evaluation. A continuation restores weights, optimizer
+and frame counters with the same world size, task, seed and geometry, but
+opens fresh simulators. An explicit Ray Train `--trainer-checkpoint` stages
+one trusted local checkpoint through Ray's object store, not one path per
+rank. Size the store for the checkpoint. The final Ray result carries
+`checkpoint.ckpt`; configured exports write on rank zero to their specified
+worker paths. Use storage visible to your workflow.
+
+The qualified distributed learner is single-agent PPO on two CPU/Gloo
+ranks, including same-host Ray Train. Ray Train runs user code on a
+background thread; the pinned Kit launcher requires a main thread. Select
+an explicitly Kit-less Isaac configuration on Ray Train. Use torchrun for
+Kit PhysX, with the same rank-local learner. CUDA DDP requires separate peer
+NCCL and native acceptance. Run this on the **allocated workers**, before
+loading Isaac (use the same rendezvous for multi-node torchrun):
+
+```bash
+.venv/bin/python -m torch.distributed.run --standalone --nproc-per-node=2 \
+  scripts/isaaclab/nccl_preflight.py
+```
+
+Use **Ray Jobs or local execution with `collector.backend: ray`** instead
+when a separate learner consumes remote experience. Keep
+`policy_sync_interval_batches: 1` and `storing_device: cpu` for Ray's
+object-store transport. Configure `collector.ray.num_gpus: 1`, worker-local
+`env_device` and `policy_device: cuda:0`, plus the existing resource or label
+selectors. The learner may use its own GPU independently. A trusted prepared
+interpreter at `collector.ray.py_executable` lets the rollout worker import
+Isaac without installing it in the learner environment. Use the same
+Python, Ray, PyTorch, TensorDict and TorchRL versions across that transport.
+The native rollout shutdown/version adapter is pinned to **TorchRL 0.14.0**;
+the default lock can resolve 0.15 for direct learning, not this Ray
+collector lane. Do not mix Ray collectors with co-located DDP.
+
+For independent native snapshot evaluation, set
+`training.evaluation.ray.num_gpus: 1`, choose evaluator resources separately,
+and, if needed, select `training.evaluation.ray.py_executable`. Reserve
+capacity for the evaluator in addition to the learner(s) and any collectors.
+`scheduling: skip_if_busy` coalesces periodic snapshots; the final
+evaluation still has to succeed. Ray evaluation currently reports metrics
+without video. A single learner can also use
+`training.evaluation.process.device: cuda:1` (on a different GPU from the
+learner and the training simulator).
+
+DDP replicates model, gradients and optimizer state per rank. Splitting
+inference from simulation can free renderer or rollout memory; it does
+not let a policy or its optimizer exceed one learner device. Use a smaller
+model/minibatch or a separately qualified memory-efficient training
+strategy for large visual/VLA models. Sharded PPO is not enabled.
+
 ## Shared datasets and S3 WebDataset
 
 ```text

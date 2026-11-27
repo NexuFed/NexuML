@@ -205,7 +205,7 @@ def _probe(placement, profile_copies):
 
     def before_collect():
         nonlocal observations, resets, collect_start, window_start
-        assert sync_calls == len(rows)
+        assert sync_calls == (len(rows) if cuda else 0)
         if len(rows) == warmup:
             if cuda:
                 torch.cuda.reset_peak_memory_stats(device)
@@ -290,7 +290,7 @@ def _probe(placement, profile_copies):
         metrics = update(batch, **kwargs)
         stop("gae_and_optimize", tick)
         assert metrics and all(isfinite(x) for x in metrics.values())
-        rows[-1]["losses"] = metrics
+        rows[-1]["losses"] = {key: float(value) for key, value in metrics.items()}
         return metrics
 
     def synchronize(col, policy):
@@ -341,7 +341,8 @@ def _probe(placement, profile_copies):
         if collector is not None:
             assert collector.closed and environment.is_closed and not runtime.envs
     assert native_calls == int(module.frames) == batches * FRAMES
-    assert len(rows) == sync_calls == int(module.batches) == batches
+    assert len(rows) == int(module.batches) == batches
+    assert sync_calls == (batches if cuda else 0)
     updates = batches * (FRAMES // 64)
     assert int(module.algorithm.updates) == updates and trainer.global_step == 2 * updates
     assert all(

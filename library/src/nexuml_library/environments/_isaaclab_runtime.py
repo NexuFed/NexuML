@@ -11,6 +11,7 @@ from pathlib import Path
 import signal
 import subprocess
 import sys
+from threading import current_thread, main_thread
 from time import monotonic_ns
 import traceback
 from typing import Any, cast
@@ -78,7 +79,8 @@ def isaaclab_process(definition=None, *, returning_close: bool = False):
             _process_definition = definition
         yield
         return
-    previous_sigterm = signal.signal(signal.SIGTERM, _terminate_job)
+    on_main_thread = current_thread() is main_thread()
+    previous_sigterm = signal.signal(signal.SIGTERM, _terminate_job) if on_main_thread else None
     _process_active = True
     _process_definition = definition
     _process_returning_close = returning_close
@@ -122,11 +124,20 @@ def isaaclab_process(definition=None, *, returning_close: bool = False):
         _process_active = False
         _process_definition = None
         _process_returning_close = False
-        signal.signal(signal.SIGTERM, previous_sigterm)
+        if on_main_thread and previous_sigterm is not None:
+            signal.signal(signal.SIGTERM, previous_sigterm)
 
 
 def _launch_environment(
-    owner, cfg, launch_simulation, has_kit, *, viewing=False, local=False, require_kit=False
+    owner,
+    cfg,
+    launch_simulation,
+    has_kit,
+    *,
+    viewing=False,
+    local=False,
+    streaming="",
+    require_kit=False,
 ):
     global _process_launcher
     # Pinned Lab drops SimulationApp's fast_shutdown argument; Kit honors its own setting.
@@ -135,41 +146,53 @@ def _launch_environment(
         "headless": not local,
         "fast_shutdown": not _process_returning_close,
         "device": str(owner.device),
-        "visualizer": ["kit"] if local else ["viser"] if viewing else ["none"],
+        "visualizer": ["kit"] if local or streaming else ["viser"] if viewing else ["none"],
         "visualizer_explicit": True,
-        "livestream": 0,
+        "livestream": 2 if streaming else 0,
         "enable_cameras": owner._rendering,
         # Kit's anonymous-data defaults also enable crash-dump upload consent.
         "kit_args": (
             "--/crashreporter/enabled=false --/crashreporter/skipOldDumpUpload=true "
             "--/app/uploadDumpsOnStartup=false --/telemetry/enableAnonymousData=false "
             "--/telemetry/enableAnonymousAppName=false --/telemetry/enableSentry=false "
-            "--/structuredLog/enable=false" + close_setting + (_KIT_LOCAL_ARGS if local else "")
+            "--/structuredLog/enable=false"
+            + close_setting
+            + (_KIT_LOCAL_ARGS if local or streaming else "")
+            + streaming
         ),
     }
-    if local:
+    if local or streaming:
         # The default non-headless experience loads the authoring editor.
         args["experience"] = "isaaclab.python.headless.rendering.kit"
     if require_kit:
         args["require_kit"] = True
+    if current_thread() is not main_thread():
+        validate_launch = import_module("isaaclab.app.sim_launcher").validate_launch
+        _, kit_sources = validate_launch(cfg, args.copy())
+        if kit_sources:
+            raise ValueError(f"Off-thread Isaac requires a Kit-less configuration: {kit_sources}")
     launcher = launch_simulation(cfg, args)
     launcher.__enter__()
     owner._launcher = launcher
     if has_kit():
         # The owning scope closes Kit after job finalization or the last worker batch.
         _process_launcher, owner._launcher = owner._launcher, None
-    if local:
+    if local or streaming:
         app = import_module("omni.kit.app").get_app()
-        # This binding registers the native Window type returned by omni.appwindow.
-        import_module("carb.windowing")
-        window = import_module("omni.appwindow").get_default_app_window()
-        if window is None or not window.get_window():
-            raise RuntimeError("Isaac local playback could not open an X11 window")
+        if local:
+            # This binding registers the native Window type returned by omni.appwindow.
+            import_module("carb.windowing")
+            window = import_module("omni.appwindow").get_default_app_window()
+            if window is None or not window.get_window():
+                raise RuntimeError("Isaac local playback could not open an X11 window")
         manager = app.get_extension_manager()
+        if streaming and not manager.get_enabled_extension_id("omni.kit.livestream.app"):
+            raise RuntimeError("Isaac WebRTC could not start the native Kit streaming extension")
         if any(manager.get_enabled_extension_id(name) for name in _KIT_EDITOR_EXTENSIONS):
             raise RuntimeError("Isaac local playback cannot load Kit authoring extensions")
         owner.playback_is_running = app.is_running
-    signal.signal(signal.SIGTERM, _terminate_job)
+    if current_thread() is main_thread():
+        signal.signal(signal.SIGTERM, _terminate_job)
 
 
 def _register_arena(owner, definition, context, gym):
@@ -220,8 +243,19 @@ def _create_environment(owner, definition, context):
         definition.viewer is not None
         and context.purpose in definition.viewer.purposes
         and (context.purpose != "play" or context.viewer == "viser")
+        and (
+            context.purpose != "train" or context.worker_rank == (definition.viewer.train_rank or 0)
+        )
     )
     local = context.purpose == "play" and context.viewer == "local"
+    streaming = context.purpose == "play" and context.viewer == "webrtc"
+    stream_args = ""
+    if streaming:
+        if _process_returning_close or os.environ.get("XR", "0") != "0":
+            raise ValueError("Isaac WebRTC requires a direct playback process without XR")
+        from nexuml_library.environments._isaaclab_webrtc import preflight
+
+        stream_args = preflight(definition.webrtc)
     if local:
         if _process_returning_close:
             raise ValueError("Isaac local playback requires a direct job scope")
@@ -387,9 +421,17 @@ def _create_environment(owner, definition, context):
         cfg.sim.default_visualizer_cfg = None
         cfg.sim.visualizer_cfgs = []
     if not composition:
-        if local:
+        if local or streaming:
             cfg.ui_window_class_type = None
-        _launch_environment(owner, cfg, launch_simulation, has_kit, viewing=viewing, local=local)
+        _launch_environment(
+            owner,
+            cfg,
+            launch_simulation,
+            has_kit,
+            viewing=viewing,
+            local=local,
+            streaming=stream_args,
+        )
     if viewing:
         # Viser's Newton viewer imports USD; Kit must select its own USD first when needed.
         import_module("nexuml_library.environments._isaaclab_viser").configure_spectator(
@@ -400,6 +442,10 @@ def _create_environment(owner, definition, context):
     owner.native = gym.make(definition.task, cfg=cfg).unwrapped
     if local and import_module("omni.kit.viewport.utility").get_active_viewport() is None:
         raise RuntimeError("Isaac local playback could not open a native Kit viewport")
+    if streaming:
+        from nexuml_library.environments._isaaclab_webrtc import report_endpoint
+
+        report_endpoint(definition.webrtc)
     if viewing:
         visualizers = cast(Any, owner.native).sim.visualizers
         if (

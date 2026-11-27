@@ -75,7 +75,7 @@ def test_isaac_play_rejects_unqualified_modes_before_native_startup():
         IsaacLabEnvironment(physics="newton_mjwarp").build(
             EnvironmentBuildContext(purpose="play", viewer="local")
         )
-    with pytest.raises(ValueError, match="webrtc playback is not qualified"):
+    with pytest.raises(ValueError, match="requires explicit private network settings"):
         definition.build(EnvironmentBuildContext(purpose="play", viewer="webrtc"))
 
 
@@ -371,9 +371,9 @@ def training(monkeypatch):
         ({"env_device": "cuda:-1"}, "CUDA device for collector.env_device"),
         ({"storing_device": "cpu"}, "CUDA device for collector.storing_device"),
         ({"policy_device": "cpu"}, "CUDA device for collector.policy_device"),
-        ({"env_device": "cuda:1"}, "same CUDA device index"),
-        ({"storing_device": "cuda:1"}, "same CUDA device index"),
-        ({"policy_device": "cuda:1"}, "same CUDA device index"),
+        ({"env_device": "cuda:1"}, "explicit learner CUDA device index"),
+        ({"storing_device": "cuda:1"}, "explicit learner CUDA device index"),
+        ({"policy_device": "cuda:1"}, "explicit learner CUDA device index"),
     ],
 )
 def test_preflight_rejects_collector_topology_and_devices(training, changes, match):
@@ -385,13 +385,12 @@ def test_preflight_rejects_collector_topology_and_devices(training, changes, mat
 @pytest.mark.parametrize(
     "changes,match",
     [
-        ({"devices": "auto"}, "training.devices=1"),
-        ({"devices": "1"}, "training.devices=1"),
-        ({"devices": 2}, "training.devices=1"),
-        ({"strategy": "ddp"}, "training.strategy='auto'"),
+        ({"devices": "1"}, "positive count"),
+        ({"devices": 0}, "positive count"),
+        ({"strategy": "fsdp"}, "training.strategy='auto' or 'ddp'"),
         (
             {"strategy": StrategySpec(factory="lightning.pytorch.strategies:SingleDeviceStrategy")},
-            "training.strategy='auto'",
+            "training.strategy='auto' or 'ddp'",
         ),
         ({"frames_per_batch": 1_025}, "frames_per_batch must be divisible"),
     ],
@@ -477,8 +476,10 @@ def test_gpu_ray_preflight_keeps_learner_placement_separate(training):
     )
     definition = IsaacLabEnvironment()
     definition.validate_training(training, device="cpu")
-    with pytest.raises(ValueError, match="explicit CPU learner"):
+    with pytest.raises(ValueError, match="differs from its configured accelerator"):
         definition.validate_training(training, device="cuda:0")
+    training.accelerator = "gpu"
+    definition.validate_training(training, device="cuda:0")
     with pytest.raises(ValueError, match="headless single-agent PhysX state"):
         definition.model_copy(update={"physics": "newton_mjwarp"}).validate_training(training)
     training.collector.sync = False

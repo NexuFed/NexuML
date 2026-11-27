@@ -426,7 +426,9 @@ def test_rl_current_evaluation_cache_and_hooks_follow_authoritative_block(fake, 
     # Only evaluator hooks/cache are under test, not a fake PPO training proof.
     monkeypatch.setattr(PPO, "build", lambda self, context: nn.Identity())
     module = NexuRLLightningModule(scenario, policy=policy)
-    monkeypatch.setattr(module, "_trainer", SimpleNamespace(loggers=[]))
+    monkeypatch.setattr(
+        module, "_trainer", SimpleNamespace(loggers=[], world_size=1, is_global_zero=True)
+    )
     preflights, media = [], []
     monkeypatch.setattr(
         "nexuml.tracking.logger.preflight_evaluation_media",

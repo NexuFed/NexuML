@@ -79,6 +79,9 @@ class GymnasiumEnvironment(EnvironmentDefinition):
         finally:
             probe.close()
 
+    def validate_distributed_training(self, world_size: int) -> None:
+        """Each rank constructs and seeds its own Gymnasium environment."""
+
     def validate_playback(self, viewer: PlaybackViewer) -> None:
         """Allow simulated Gymnasium environments to use their ordinary runtime.
 

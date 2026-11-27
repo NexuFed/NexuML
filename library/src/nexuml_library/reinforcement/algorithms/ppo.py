@@ -31,6 +31,12 @@ class PPO(RLAlgorithmDefinition):
     minibatch_size: int = Field(default=256, gt=0)
     max_grad_norm: float = Field(default=0.5, gt=0)
 
+    def validate_distributed_training(self, frames_per_batch: int, world_size: int) -> None:
+        if self.minibatch_size % world_size or frames_per_batch % self.minibatch_size:
+            raise ValueError(
+                "Global PPO minibatch_size must divide frames_per_batch and be divisible by ranks"
+            )
+
     def build(self, context: RLAlgorithmBuildContext) -> nn.Module:
         try:
             # Keep learner-only dependencies out of portable actor manifests.
@@ -133,12 +139,26 @@ class _PPORuntime(nn.Module):
         with torch.no_grad():
             self.gae(rollout)
         flat = rollout.reshape(-1)
+        world_size = lightning_module.trainer.world_size
+        self.loss.normalize_advantage = world_size == 1
         metrics = {}
         count = 0
         for _ in range(self.definition.update_epochs):
             permutation = torch.randperm(flat.numel(), device=flat.device)
-            for indices in permutation.split(self.definition.minibatch_size):
-                losses = self.loss(flat[indices])
+            for indices in permutation.split(self.definition.minibatch_size // world_size):
+                minibatch = flat[indices]
+                if world_size > 1:
+                    advantage = minibatch["advantage"]
+                    values = advantage.to(torch.float64)
+                    moments = torch.stack((values.sum(), values.square().sum()))
+                    torch.distributed.all_reduce(moments)
+                    size = values.numel() * world_size
+                    mean = moments[0] / size
+                    std = ((moments[1] - moments[0] * mean) / (size - 1)).clamp_min(0).sqrt()
+                    minibatch["advantage"] = (
+                        (values - mean) / std.clamp_min(torch.finfo(torch.float32).resolution)
+                    ).to(advantage.dtype)
+                losses = self.loss(minibatch)
                 loss = sum(losses[key] for key in ("loss_objective", "loss_critic", "loss_entropy"))
                 for optimizer in optimizers:
                     optimizer.zero_grad()
@@ -153,5 +173,5 @@ class _PPORuntime(nn.Module):
                 self.updates.add_(1)
                 count += 1
                 for key in ("loss_objective", "loss_critic", "loss_entropy", "clip_fraction"):
-                    metrics[key] = metrics.get(key, 0.0) + float(losses[key].detach())
+                    metrics[key] = metrics.get(key, 0.0) + losses[key].detach()
         return {key: value / count for key, value in metrics.items()}

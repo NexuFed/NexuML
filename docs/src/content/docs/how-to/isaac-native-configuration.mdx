@@ -313,14 +313,57 @@ policy on a location that survives worker replacement. A future Studio
 caller can submit, track, and stop the same job without hosting the
 simulator.
 
-Remote interactive viewers and recording are not qualified. Viser would
+Remote interactive viewers and recording require separate qualification. Viser would
 require an approved private route to its loopback endpoint and an explicit,
 provider-supported play spectator. Local Kit needs a prepared GPU display.
-The Ray Jobs HTTP endpoint and Kubernetes TCP port forwarding do
-not carry native WebRTC UDP media. The repository's separate
-`.k8s/isaac/` NetBird workstation templates document the Isaac Sim editor
-path (TCP 49100 and UDP 47998), not NexuML policy playback. The command
-does not provision these routes or fall back to local playback.
+For DDP training, an opted-in `ViserSpec(train_rank=N)` displays the actual
+training simulation of one explicitly selected rank. The remaining ranks
+stay headless. Playback of exported weights is a separate, independent run.
+
+### Native WebRTC playback
+
+Choose `--viewer webrtc` only on a prepared interactive Isaac/Kit worker.
+In the trusted playback scenario set
+`IsaacLabEnvironment.webrtc = WebRTCSpec(advertise_address=PRIVATE_IP, private_network=True)`.
+The IPv4 address must be assigned to that worker. The pinned Kit streamer
+owns wildcard sockets; the advertised address is **not** a network access
+control. Only opt in after the operator has restricted reachability to the
+approved private network. The runtime checks Vulkan and the NVIDIA encoder
+library and reports the actual TCP signaling listener on 49100 and the
+UDP media endpoint on 47998 (UDP may await a client).
+
+```bash
+nexuml play /worker/artifacts/policy --scenario-file play_scenario.py \
+  --viewer webrtc --device cuda:0 --num-envs 1 --real-time
+```
+
+With NVIDIA's native client, connect to the advertised private address,
+verify actual policy-driven motion over TCP signaling **and** UDP media,
+then stop the run and verify both sockets close. The Ray Jobs HTTP endpoint
+and TCP port forwarding cannot carry UDP media. The `.k8s/isaac/`
+workstation templates document a prepared NetBird route for the Isaac Sim
+editor; that editor test does not qualify policy playback. NexuML does not
+configure network access, displays, or tunnels. WebRTC and local Kit are
+playback-only and never fall back to another mode.
+
+### Direct CUDA placement
+
+`isaac-cartpole-ppo` defaults to one GPU for simulation, inference, storage
+and optimization. For single-agent PhysX on a multi-GPU host, select an
+explicit learner index (`training.devices: '1,'`), set `collector.env_device`
+and `storing_device` to `cuda:0`, and set `policy_device` to `cuda:0` for
+co-located inference or `cuda:1` for separate inference. The direct path
+uses TorchRL/TensorDict device transfer without an imposed CPU staging
+step; actual peer access depends on the machine. Run the same seed and
+geometry on the baseline and split paths. Multi-GPU acceptance requires
+two visible compatible devices.
+
+Headless Newton/Warp and OvPhysX can use Isaac Lab's maintained Kit-less
+launcher when physics and sensors permit it. Full Kit remains required for
+Kit PhysX, local and WebRTC viewing, and Kit-backed sensors. Do not swap
+physics or renderers just to make a scenario launch. See
+[Ray training](/how-to/training-backends/ray/#rank-local-ppo-and-independent-rollout-workers)
+for the separate roles and resource reservations.
 
 ## Typed functions, not override strings
 

@@ -1,7 +1,7 @@
 """Fresh snapshot evaluation and its owned process lifetime."""
 
 from collections.abc import Callable
-from contextlib import ExitStack
+from contextlib import ExitStack, contextmanager
 import hashlib
 import json
 import os
@@ -27,7 +27,9 @@ def _digest(path: Path) -> str:
         return hashlib.file_digest(stream, "sha256").hexdigest()
 
 
-def evaluate_snapshot(root: Path, digest: str, *, device: str = "cpu", media_sink=None) -> dict:
+def evaluate_snapshot(
+    root: Path, digest: str, *, device: str = "cpu", media_sink=None, receipt_sink=None
+) -> dict:
     """Evaluate a verified actor using prepared inputs.
 
     Returns:
@@ -60,16 +62,19 @@ def evaluate_snapshot(root: Path, digest: str, *, device: str = "cpu", media_sin
                 "source_training_frames": frame,
             },
         )
-    (report,) = reports
-    return {
-        "snapshot_sha256": digest,
-        "source_training_frames": frame,
-        "source_training_batches": version,
-        "evaluator_pid": os.getpid(),
-        "evaluator_device": device,
-        "metrics": metrics,
-        "episode_report": report,
-    }
+        (report,) = reports
+        receipt = {
+            "snapshot_sha256": digest,
+            "source_training_frames": frame,
+            "source_training_batches": version,
+            "evaluator_pid": os.getpid(),
+            "evaluator_device": device,
+            "metrics": metrics,
+            "episode_report": report,
+        }
+        if receipt_sink is not None:
+            receipt_sink(receipt)
+        return receipt
 
 
 def _worker(root: Path, digest: str, device: str) -> None:
@@ -84,8 +89,11 @@ def _worker(root: Path, digest: str, device: str) -> None:
         np.save(root / "frames.npy", frames, allow_pickle=False)
         (root / "media.json").write_text(json.dumps(metadata, allow_nan=False))
 
-    receipt = evaluate_snapshot(root, digest, device=device, media_sink=capture)
-    (root / "result.json").write_text(json.dumps(receipt, allow_nan=False))
+    def write_receipt(receipt):
+        (root / "result.json").write_text(json.dumps(receipt, allow_nan=False))
+
+    # Kit's standard fast shutdown may exit the process on leaving its scope.
+    evaluate_snapshot(root, digest, device=device, media_sink=capture, receipt_sink=write_receipt)
 
 
 def prepare_snapshot(root: Path, policy, scenario, owner) -> tuple[Path, str, int, int]:
@@ -123,6 +131,32 @@ def _terminate(worker: subprocess.Popen) -> None:
         worker.wait(timeout=5)
 
 
+@contextmanager
+def _snapshot_process(root, digest, device):
+    with (root / "worker.log").open("w+b") as log:
+        worker = subprocess.Popen(
+            [sys.executable, "-m", __name__, str(root), digest, device],
+            env={**os.environ, "CUDA_VISIBLE_DEVICES": ""} if device == "cpu" else None,
+            stdout=log,
+            stderr=subprocess.STDOUT,
+        )
+        try:
+            yield worker, log
+        finally:
+            _terminate(worker)
+
+
+def _read_result(root, worker, log, device):
+    result_path = root / "result.json"
+    if worker.returncode != 0 or not result_path.is_file():
+        log.seek(max(0, log.seek(0, os.SEEK_END) - 3000))
+        output = log.read().decode(errors="replace")
+        raise RuntimeError(
+            f"{device.upper()} snapshot evaluation exited {worker.returncode}: {output}"
+        )
+    return json.loads(result_path.read_text())
+
+
 class ProcessEvaluation:
     """One immutable snapshot and its evaluator; caller owns close on every path."""
 
@@ -136,14 +170,9 @@ class ProcessEvaluation:
             self.artifact, self.sha256, self.frame, self.version = prepare_snapshot(
                 self.root, policy, scenario, owner
             )
-            self.log = stack.enter_context((self.root / "worker.log").open("w+b"))
-            self.worker = subprocess.Popen(
-                [sys.executable, "-m", __name__, str(self.root), self.sha256, device],
-                env={**os.environ, "CUDA_VISIBLE_DEVICES": ""} if device == "cpu" else None,
-                stdout=self.log,
-                stderr=subprocess.STDOUT,
+            self.worker, self.log = stack.enter_context(
+                _snapshot_process(self.root, self.sha256, device)
             )
-            stack.callback(_terminate, self.worker)
             self.deadline = monotonic() + timeout_s
             self.resources = stack.pop_all()
 
@@ -171,15 +200,7 @@ class ProcessEvaluation:
                     ) from error
         if check_cancelled is not None:
             check_cancelled()
-        result_path = self.root / "result.json"
-        if self.worker.returncode != 0 or not result_path.is_file():
-            self.log.seek(max(0, self.log.seek(0, os.SEEK_END) - 3000))
-            output = self.log.read().decode(errors="replace")
-            raise RuntimeError(
-                f"{self.device.upper()} snapshot evaluation exited {self.worker.returncode}: "
-                f"{output}"
-            )
-        result = json.loads(result_path.read_text())
+        result = _read_result(self.root, self.worker, self.log, self.device)
         if _digest(self.artifact) != self.sha256:
             raise RuntimeError("CPU snapshot was modified during evaluation")
         validate_receipt(result, self.sha256, self.frame, self.version)

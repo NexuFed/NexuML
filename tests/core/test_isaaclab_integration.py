@@ -134,6 +134,32 @@ def test_native_so101_signed_controls_and_held_outcomes(tmp_path):
     assert "SO101_NATIVE_TIMEOUT_NOT_SUCCESS_VERIFIED" in log
 
 
+def test_native_snapshot_evaluator_uses_its_own_gpu_process(tmp_path):
+    log = _run(
+        [ROOT / "tests/fixtures/isaaclab_snapshot.py"],
+        tmp_path,
+        "snapshot",
+        process_scope=False,
+        extra_env={"TMPDIR": str(tmp_path)},
+    )
+    assert "NATIVE_SNAPSHOT_RECEIPT_VERIFIED" in log
+
+
+@pytest.mark.requires_optional("ray")
+@pytest.mark.skipif(
+    os.getenv("NEXUML_TEST_RAY_NATIVE_SNAPSHOT") != "1", reason="opt-in real Ray GPU task"
+)
+def test_native_snapshot_evaluator_runs_on_a_ray_gpu(tmp_path):
+    log = _run(
+        [ROOT / "tests/fixtures/isaaclab_snapshot.py", "--ray"],
+        tmp_path,
+        "ray-snapshot",
+        process_scope=False,
+        extra_env={"TMPDIR": "/tmp/opencode", "RAY_ADDRESS": "local"},
+    )
+    assert "NATIVE_SNAPSHOT_RECEIPT_VERIFIED" in log
+
+
 def test_native_terminal_pixels_match_the_ending_scene_not_reset_scene(tmp_path):
     log = _run([ROOT / "tests/fixtures/isaaclab_terminal_rgb.py"], tmp_path, "terminal-rgb")
     assert "NATIVE_TERMINAL_PIXEL_AND_SCENE_IDENTITY_VERIFIED" in log

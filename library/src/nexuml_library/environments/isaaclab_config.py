@@ -159,12 +159,41 @@ class IsaacBindings(SpecModel):
         return self
 
 
+class WebRTCSpec(SpecModel):
+    """Explicit native streaming endpoint on an operator-approved private network."""
+
+    advertise_address: str
+    private_network: Literal[True]
+
+    @field_validator("advertise_address")
+    @classmethod
+    def _validate_address(cls, value: str) -> str:
+        from ipaddress import IPv4Address, IPv4Network
+
+        address = IPv4Address(value)
+        if not any(
+            address in IPv4Network(network)
+            for network in (
+                "127.0.0.0/8",
+                "10.0.0.0/8",
+                "172.16.0.0/12",
+                "192.168.0.0/16",
+                "100.64.0.0/10",
+            )
+        ):
+            raise ValueError("Isaac WebRTC requires a private or loopback IPv4 address")
+        return str(address)
+
+
 class ViserSpec(SpecModel):
     """Inert loopback-only spectator settings, never a simulator control surface."""
 
     model_config = ConfigDict(frozen=True, validate_default=True, allow_inf_nan=False)
 
     purposes: tuple[Literal["train", "eval", "play"], ...] = Field(default=("train",), min_length=1)
+    train_rank: Annotated[StrictInt, Field(ge=0)] | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
     bind_address: Literal["127.0.0.1", "localhost"] = "127.0.0.1"
     # Native Viser can retry up to 1000 consecutive ports after a bind failure.
     port: Annotated[StrictInt, Field(ge=1, le=64535)] = 8080
@@ -179,6 +208,8 @@ class ViserSpec(SpecModel):
 
     @model_validator(mode="after")
     def _require_playback_purpose(self):
+        if self.train_rank is not None and "train" not in self.purposes:
+            raise ValueError("Viser train_rank requires an explicit 'train' purpose")
         if self.playback_controls and "play" not in self.purposes:
             raise ValueError("Viser playback controls require an explicit 'play' purpose")
         return self

@@ -43,7 +43,7 @@ def launch_options(scenario: Any, environment: dict[str, str]) -> dict[str, Any]
     if scenario.training.devices not in ("auto", local):
         raise ValueError("torchrun local world-size differs from reviewed training.devices.")
     if world > 1:
-        ensure_distributed_semantics(scenario)
+        ensure_distributed_semantics(scenario, world_size=world)
     return {"devices": local, "num_nodes": world // local, "enable_loggers": rank == 0}
 
 

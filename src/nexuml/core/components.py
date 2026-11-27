@@ -237,6 +237,17 @@ class EnvironmentDefinition(ComponentDefinition):
     ) -> None:
         """Optionally reject unsupported training settings before runtime allocation."""
 
+    def validate_distributed_training(self, world_size: int) -> None:
+        """Require explicit provider support for one simulator per learner rank.
+
+        Raises:
+            ValueError: If the provider has not opted in to rank-local DDP.
+        """
+        raise ValueError("This environment does not support rank-local DDP training")
+
+    def validate_ray_train(self) -> None:
+        """Optionally reject providers that cannot start on Ray Train's training thread."""
+
     def validate_local_fit(self) -> None:
         """Require explicit provider support for bounded simulated online learning.
 
@@ -298,6 +309,14 @@ class RLAlgorithmDefinition(ComponentDefinition):
 
     kind = "rl_algorithm"
     supports_bounded_local_fit: ClassVar[bool] = False
+
+    def validate_distributed_training(self, frames_per_batch: int, world_size: int) -> None:
+        """Require an algorithm that preserves its update semantics under DDP.
+
+        Raises:
+            ValueError: If the algorithm has not opted in to rank-local DDP.
+        """
+        raise ValueError("This algorithm does not support rank-local DDP training")
 
     @abstractmethod
     def build(self, context: RLAlgorithmBuildContext) -> "nn.Module":

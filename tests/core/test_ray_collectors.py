@@ -623,21 +623,10 @@ def test_unvalidated_ray_topologies_fail_before_allocation(collector, frames, er
         build_collector(GymnasiumEnvironment(), training, torch.nn.Linear(3, 1), "cpu")
 
 
-@pytest.mark.parametrize(
-    "collector",
-    [
-        CollectorSpec(backend="ray", policy_device="cpu"),
-        CollectorSpec(
-            backend="ray",
-            env_device="cuda:0",
-            policy_device="cuda:0",
-            ray=RayCollectorSpec(num_gpus=1),
-        ),
-    ],
-)
-def test_ray_cuda_learner_needs_explicit_placement_and_cpu_workers(collector):
+def test_ray_cuda_learner_needs_explicit_placement():
+    collector = CollectorSpec(backend="ray", policy_device="cpu")
     training = ReinforcementLearningSpec(algorithm=PPO(), collector=collector)
-    with pytest.raises(ValueError, match="requires explicit Ray placement and CPU rollout"):
+    with pytest.raises(ValueError, match="requires explicit Ray placement"):
         build_collector(GymnasiumEnvironment(), training, None, "cuda:0")
 
 

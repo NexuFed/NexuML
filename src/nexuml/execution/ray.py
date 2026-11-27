@@ -4,14 +4,17 @@ from __future__ import annotations
 
 import os
 from collections.abc import Mapping
+from contextlib import ExitStack
 from datetime import datetime, timezone
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import Any, cast
 from uuid import uuid4
 
 import lightning as L
 
 from nexuml.core.serialization import lower_model, restore_model_data
-from nexuml.core.types import ScenarioSpec, StrategySpec
+from nexuml.core.types import ReinforcementLearningSpec, ScenarioSpec, StrategySpec
 from nexuml.execution.definitions import RayClusterExecution, RayClusterTarget
 from nexuml.execution.semantics import ExecutionError, ensure_distributed_semantics
 
@@ -75,13 +78,17 @@ def _prepare_session_trainer(session: Any) -> L.Trainer:
         raise RayExecutionError("Ray execution requires the nexuml[ray] extra") from error
 
     training = session.scenario.training
-    callbacks = [*session.trainer_callbacks, RayTrainReportCallback()]
+    reinforcement = isinstance(training, ReinforcementLearningSpec)
+    callbacks = list(session.trainer_callbacks)
+    if not reinforcement:
+        callbacks.append(RayTrainReportCallback())
+    max_epochs = -1 if reinforcement else training.max_epochs
     resolved_accelerator = (
         session.accelerator if session.accelerator != "auto" else training.accelerator
     )
 
     trainer = L.Trainer(
-        max_epochs=training.max_epochs,
+        max_epochs=max_epochs,
         accelerator=resolved_accelerator,
         devices="auto",
         strategy=_ray_strategy(training.strategy),
@@ -92,7 +99,8 @@ def _prepare_session_trainer(session: Any) -> L.Trainer:
         enable_model_summary=False,
         logger=session.trainer_loggers,
         callbacks=callbacks,
-        num_sanity_val_steps=0 if training.max_epochs == 0 else 2,
+        num_sanity_val_steps=0 if reinforcement or max_epochs == 0 else 2,
+        use_distributed_sampler=not reinforcement,
         log_every_n_steps=1,
     )
     prepared = prepare_trainer(trainer)
@@ -131,6 +139,7 @@ def _final_metrics(result: Any) -> dict[str, float | int]:
                 metrics[str(key)] = int(value)
             elif isinstance(value, (int, float)):
                 metrics[str(key)] = value
+    metrics.update(getattr(result, "interaction_results", {}))
     metrics.setdefault("nexuml/completed", 1)
     return metrics
 
@@ -149,6 +158,9 @@ def train_loop_per_worker(config: dict[str, Any]) -> None:
     from nexuml.training.lightning import NexuSession
 
     scenario = ScenarioSpec.model_validate(restore_model_data(config["scenario"], ScenarioSpec))
+    if isinstance(scenario.training, ReinforcementLearningSpec):
+        _train_rl_worker(train, scenario, config.get("trainer_checkpoint"))
+        return
     session = NexuSession.from_scenario(
         scenario,
         enable_loggers=train.get_context().get_world_rank() == 0,
@@ -156,6 +168,58 @@ def train_loop_per_worker(config: dict[str, Any]) -> None:
     _prepare_session_trainer(session)
     result = session.run()
     train.report(_final_metrics(result))
+
+
+def _train_rl_worker(train: Any, scenario: ScenarioSpec, checkpoint_ref: Any) -> None:
+    from nexuml.execution.artifacts import export_requests
+    from nexuml.training.lightning import NexuSession
+    from nexuml.training.reinforcement import NexuRLLightningModule
+
+    assert scenario.interaction is not None
+    environment = scenario.interaction.environment
+    environment.validate_ray_train()
+    with ExitStack() as resources:
+        trainer_checkpoint = None
+        checkpoint = train.get_checkpoint()
+        if checkpoint is not None:
+            directory = resources.enter_context(checkpoint.as_directory())
+            trainer_checkpoint = str(Path(directory) / "checkpoint.ckpt")
+        elif checkpoint_ref is not None:
+            import ray
+
+            directory = resources.enter_context(TemporaryDirectory(prefix="nexuml-ray-resume-"))
+            target = Path(directory) / "checkpoint.ckpt"
+            target.write_bytes(ray.get(checkpoint_ref))
+            trainer_checkpoint = str(target)
+        session = NexuSession.from_scenario(
+            scenario,
+            enable_loggers=train.get_context().get_world_rank() == 0,
+            trainer_checkpoint=trainer_checkpoint,
+        )
+        trainer = _prepare_session_trainer(session)
+        session._log_run_metadata_artifacts()
+        resources.enter_context(environment.rollout_scope())
+        result = session.run()
+        module = result.lightning_module
+        assert isinstance(module, NexuRLLightningModule)
+        metrics = _final_metrics(result)
+        metrics.update(
+            {
+                "train/rl/frames": int(module.frames),
+                "train/rl/batches": int(module.batches),
+                "train/rl/optimizer_steps": trainer.global_step,
+            }
+        )
+        with TemporaryDirectory(prefix="nexuml-ray-rl-") as directory:
+            path = Path(directory) / "checkpoint.ckpt"
+            trainer.save_checkpoint(path)
+            with module._rank_guard("export"):
+                if trainer.is_global_zero:
+                    result.artifacts.extend(export_requests(result, scenario.exports, str(path)))
+            checkpoint = (
+                train.Checkpoint.from_directory(directory) if trainer.is_global_zero else None
+            )
+            train.report(metrics, checkpoint=checkpoint)
 
 
 def _scaling_config(execution: RayClusterExecution) -> Any:
@@ -293,7 +357,7 @@ def _connect(execution: RayClusterExecution) -> dict[str, Any]:
     return dict(ray.get_runtime_context().runtime_env)
 
 
-def run_ray(scenario: ScenarioSpec) -> Any:
+def run_ray(scenario: ScenarioSpec, *, trainer_checkpoint: str | Path | None = None) -> Any:
     """Execute one resolved scenario with Ray Train and return Ray's native Result.
 
     Returns:
@@ -309,18 +373,36 @@ def run_ray(scenario: ScenarioSpec) -> Any:
 
     _ensure_distributed_semantics(scenario)
     execution.preflight(scenario)
+    reinforcement = isinstance(scenario.training, ReinforcementLearningSpec)
+    if trainer_checkpoint is not None and not reinforcement:
+        raise RayExecutionError("Ray Train checkpoint input is supported for RL only")
+    if trainer_checkpoint is not None and not Path(trainer_checkpoint).is_file():
+        raise RayExecutionError("Ray Train requires a readable local trainer checkpoint file")
     runtime_env = _connect(execution)
     try:
-        from ray.train.torch import TorchTrainer
+        from ray.train.torch import TorchConfig, TorchTrainer
     except ImportError as error:
         raise RayExecutionError("Ray execution requires the nexuml[ray] extra") from error
 
     run_name = f"{scenario.name}-{datetime.now(timezone.utc):%Y%m%dT%H%M%SZ}-{uuid4().hex[:8]}"
+    worker_config: dict[str, Any] = {"scenario": lower_model(scenario)}
+    torch_config = None
+    if reinforcement:
+        assert isinstance(scenario.training, ReinforcementLearningSpec)
+        spec = scenario.policy_evaluation or scenario.training.evaluation
+        evaluator = spec.process or spec.ray
+        timeout = max(180, int(evaluator.timeout_s) + 30) if evaluator else 180
+        torch_config = TorchConfig(timeout_s=timeout)
+        if trainer_checkpoint is not None:
+            import ray
+
+            worker_config["trainer_checkpoint"] = ray.put(Path(trainer_checkpoint).read_bytes())
     trainer = TorchTrainer(
         train_loop_per_worker=train_loop_per_worker,
-        train_loop_config={"scenario": lower_model(scenario)},
+        train_loop_config=worker_config,
         scaling_config=_scaling_config(execution),
         run_config=_run_config(scenario, execution, runtime_env, run_name),
+        torch_config=torch_config,
     )
     return trainer.fit()
 

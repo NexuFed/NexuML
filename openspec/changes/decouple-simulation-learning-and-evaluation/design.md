@@ -23,7 +23,7 @@ Product direction: use native robotics tools for initial training where they suf
 
 Goals: one public scenario/CLI/SDK workflow; exchange native environments without rewriting learner code; independently place simulation, inference, training and evaluation; preserve physical correctness and GPU-native paths; clean provider boundaries; preserve reproducible export and existing supervised/local-fit functionality.
 
-Non-goals: universal scene DSL, generic robot/sensor/physics reimplementation, simulator fleet service, custom transport, RLlib/second trainer, immediate asynchronous PPO or DDP RL, universal checkpoint portability, real-robot online exploration, all simulators or all benchmarks in one release. No sibling repository, cluster configuration, licensing or credential changes. No new compatibility lanes without evidence and approval.
+Non-goals: universal scene DSL, generic robot/sensor/physics reimplementation, simulator fleet service, custom transport, RLlib/second trainer, asynchronous PPO, general model parallelism, universal checkpoint portability, real-robot online exploration, all simulators or all benchmarks in one release. No sibling repository, cluster configuration, licensing or credential changes. No new compatibility lanes without evidence and approval.
 
 ## Decisions
 
@@ -136,6 +136,14 @@ NexuFL owns federation membership, transport, privacy/security policies, aggrega
 1. Same-process/same GPU: retain existing CUDA-resident fast path. No mandatory CPU staging or Ray.
 2. Same host/separate GPUs: explicitly choose simulation/inference/storage and learner devices; preserve native vectorization. Use supported TorchRL transfer and measure direct peer/host copies rather than assuming P2P.
 3. Ray: persistent actors own native vectorized environments and rollout policy/critic replicas. Assign explicit CPU/GPU resources and custom resources or supported labels, with worker-visible logical device indices. Actor-local inference and full rollout batches are the default; no per-step remote environment RPC. Existing Ray cluster address is explicit or inherited; no implicit private local Ray cluster, no shutdown of borrowed cluster.
+4. Co-located DDP: each Lightning rank owns its own synchronous direct
+   collector, simulator, actor, critic and rollout tensors. Ray Train
+   places workers; it does not ship trajectories between ranks. A fixed
+   worker count and uniform local minibatch sizes make DDP gradient means
+   equivalent to the matching global optimizer minibatch. Frames and PPO
+   minibatch size are global; simulator width is per rank. GAE follows
+   local trajectories; minibatch advantage moments are reduced across ranks.
+   This lane is initially limited to single-agent PPO and opted-in providers.
 
 For synchronous PPO/IPPO/MAPPO, collect only one policy version per update, wait for worker acknowledgment of the updated rollout weights before next collection, preserve time and environment axes through GAE, and count actual transitions. Include behavior log probabilities, value/critic inputs or values needed by the algorithm, terminal/final observations, terminated/truncated, state/masks and worker/seed identity. Never use reset observations to bootstrap time-limit truncation. Keep current on-policy update cadence; reject unsupported asynchronous/stale batches, partial updates, multi-learner strategies and invalid frame geometry before allocation. Derive deterministic nonoverlapping worker seeds. A failed worker aborts the affected update unless a proven retry protocol can recover complete version-consistent data; do not replay partial on-policy batches.
 

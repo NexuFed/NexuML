@@ -27,6 +27,27 @@ For PPO/IPPO/MAPPO, each update SHALL use complete rollouts from one policy vers
 - **WHEN** the corresponding supported workflow is executed
 - **THEN** The inconsistent batch is rejected and no partial optimizer update is performed.
 
+### Requirement: Co-located DDP does not transmit rollout storage
+
+For synchronous single-agent PPO, Lightning DDP ranks SHALL own their
+simulator, inference, rollout storage, GAE and updates. Ray Train MAY place
+ranks but SHALL NOT send their rollouts between them. Unsupported tasks,
+geometry and placements SHALL fail explicitly.
+
+#### Scenario: Ranks consume one global PPO batch
+- **WHEN** The learners update on equal complete local shards
+- **THEN** Frame counts and advantage normalization use the global batch
+  geometry, optimizer steps stay in lockstep, and rank zero owns export
+  and evaluation.
+
+#### Scenario: The learner resumes with new simulator instances
+- **GIVEN** A checkpoint from a supported DDP run with compatible world size,
+  task and batch geometry
+- **WHEN** The run resumes with a remaining frame budget
+- **THEN** Each rank starts a new, independently seeded simulator and restores
+  shared weights, optimizer state and global counters, without claiming
+  continuation of the physical trajectories.
+
 ### Requirement: Collection resources and payloads remain bounded
 
 Remote collection SHALL transfer batched TensorDict experience and versioned policy weights by maintained mechanisms rather than defaulting to per-step network RPC. In-flight batches, object-store memory and cleanup SHALL be bounded; failures SHALL be actionable and cancellation SHALL release owned resources. Native vectorization and dtype SHALL be preserved.

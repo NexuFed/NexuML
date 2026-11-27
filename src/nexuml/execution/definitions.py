@@ -77,9 +77,9 @@ class LocalExecution(ExecutionBackendDefinition):
                 if on_trained is not None:
                     on_trained(result)
                 if session.scenario.exports:
-                    from nexuml.execution.artifacts import export_requests
+                    from nexuml.execution.artifacts import export_local_training
 
-                    result.artifacts.extend(export_requests(result, session.scenario.exports))
+                    result.artifacts.extend(export_local_training(result, session.scenario.exports))
                 if on_completed is not None:
                     on_completed(result)
                 return result
@@ -312,9 +312,33 @@ class RayClusterExecution(ExecutionBackendDefinition):
 
     def preflight(self, scenario: Any, **kwargs: Any) -> dict[str, Any]:
         from nexuml.execution.semantics import ensure_distributed_semantics
-        from nexuml.core.types import StrategySpec
+        from nexuml.core.types import ReinforcementLearningSpec, StrategySpec
 
-        ensure_distributed_semantics(scenario)
+        training = scenario.training
+        if isinstance(training, ReinforcementLearningSpec):
+            if not isinstance(self.workers, int):
+                raise ValueError("Ray Train RL requires a fixed worker count")
+            gpus = self.resources_per_worker.get("GPU", 0)
+            if (
+                (gpus == 1 and training.accelerator not in ("gpu", "cuda"))
+                or (gpus == 0 and training.accelerator != "cpu")
+                or gpus not in (0, 1)
+                or training.devices not in (1, "auto")
+            ):
+                raise ValueError("Ray Train RL requires CPU or one whole CUDA GPU per rank")
+            if training.collector.backend != "direct":
+                raise ValueError("Ray Train RL requires direct collection in each rank")
+            ensure_distributed_semantics(scenario, world_size=self.workers)
+            assert scenario.interaction is not None
+            evaluation = scenario.policy_evaluation or training.evaluation
+            environment = scenario.interaction.environment
+            environment.validate_ray_train()
+            environment.validate_training(training.model_copy(update={"evaluation": evaluation}))
+            # Fit-owned export/resume is supported for frame-based RL, not standalone export.
+            if kwargs.get("operation", "train") == "train":
+                return {}
+        else:
+            ensure_distributed_semantics(scenario)
         if isinstance(scenario.training.strategy, str) and scenario.training.strategy not in {
             "auto",
             "ddp",
@@ -338,7 +362,10 @@ class RayClusterExecution(ExecutionBackendDefinition):
     def run(self, scenario: Any, **kwargs: Any) -> Any:
         from nexuml.execution import run_ray
 
-        return run_ray(scenario)
+        checkpoint = kwargs.get("trainer_checkpoint")
+        if checkpoint is None:
+            return run_ray(scenario)
+        return run_ray(scenario, trainer_checkpoint=checkpoint)
 
     def discover(self, **kwargs: Any) -> Any:
         from nexuml.execution.resources import ray_resources

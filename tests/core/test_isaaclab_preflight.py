@@ -4,6 +4,7 @@ import builtins
 
 import pytest
 import torch
+import lightning as L
 
 from nexuml.core.components import EnvironmentDefinition
 from nexuml.core.types import RLEvaluationSpec, RLVideoSpec, ReinforcementLearningSpec
@@ -51,9 +52,9 @@ def no_native_runtime(monkeypatch):
         ("collector", {"num_collectors": 2}, "num_collectors=1"),
         ("collector", {"env_device": "cpu"}, "CUDA device for collector.env_device"),
         ("collector", {"storing_device": "cpu"}, "CUDA device for collector.storing_device"),
-        ("collector", {"policy_device": "cuda:1"}, "same CUDA device index"),
-        (None, {"devices": 2}, "training.devices=1|supports one learner"),
-        (None, {"strategy": "ddp"}, "training.strategy='auto'"),
+        ("collector", {"policy_device": "cuda:1"}, "explicit learner CUDA device index"),
+        (None, {"devices": 0}, "positive count"),
+        (None, {"strategy": "fsdp"}, "strategy='auto' or 'ddp'"),
         (None, {"frames_per_batch": 1_025}, "frames_per_batch must be divisible"),
         (None, {"evaluation": RLEvaluationSpec()}, "fresh-process replay"),
         ("evaluation", {"at_start": True}, "fresh-process replay"),
@@ -102,6 +103,7 @@ def test_valid_defaults_construct_cpu_module_but_reject_cpu_fit(factory, monkeyp
     assert module._collector is None
     monkeypatch.setattr("nexuml.tracking.logger.preflight_evaluation_media", forbidden)
     monkeypatch.setattr(module, "evaluate_current_policy", forbidden)
+    module.trainer = L.Trainer(accelerator="cpu", devices=1)
     with pytest.raises(ValueError, match="CUDA device for learner device"):
         module.on_fit_start()
 
@@ -134,14 +136,18 @@ def test_explicit_learner_device_is_distinct_from_device_count():
     restored = ResolvedConfig.from_yaml(
         ResolvedConfig.from_scenario(scenario).to_yaml()
     ).to_scenario()
+    assert isinstance(restored.training, ReinforcementLearningSpec)
     assert restored.training.devices == "1,"
     assert restored.interaction is not None
     restored.interaction.environment.validate_training(restored.training, device="cuda:1")
-    with pytest.raises(ValueError, match="same CUDA device index"):
+    with pytest.raises(ValueError, match="selected CUDA device index"):
         restored.interaction.environment.validate_training(restored.training, device="cuda:0")
+    restored.training.collector.env_device = "cuda:0"
+    restored.training.collector.storing_device = "cuda:0"
+    restored.interaction.environment.validate_training(restored.training, device="cuda:1")
     with pytest.raises(ValueError, match="gpu or cuda accelerator"):
         ReinforcementLearningSpec.validate_learner_devices("1,", "cpu")
-    with pytest.raises(ValueError, match="supports one learner device"):
+    with pytest.raises(ValueError, match="positive count"):
         ReinforcementLearningSpec.validate_learner_devices("0,1", "gpu")
 
 
@@ -162,6 +168,7 @@ def test_rollout_device_is_checked_before_build(tmp_path, monkeypatch):
 def test_fit_start_revalidates_mutated_training(monkeypatch):
     module = NexuRLLightningModule(isaac_cartpole_ppo())
     module.training_spec.collector.sync = False
+    module.trainer = L.Trainer(accelerator="cpu", devices=1)
     monkeypatch.setattr("nexuml.tracking.logger.preflight_evaluation_media", forbidden)
     with pytest.raises(ValueError, match="synchronous direct collector"):
         module.on_fit_start()
