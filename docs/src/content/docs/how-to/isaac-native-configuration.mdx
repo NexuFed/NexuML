@@ -329,10 +329,13 @@ selected worker. Playback of exported weights is a separate, independent run.
 
 ### Native WebRTC playback
 
-This mode is not yet qualified. In a local diagnostic, Kit bound the TCP
-signaling port but its startup did not finish and playback never stepped
-the policy. The editor's working stream is not a substitute for policy
-playback.
+Installed playback ran 120 policy steps in an isolated graphics runtime
+and released its signaling listener on completion and cancellation.
+Decoded remote playback is not yet qualified. A cold Kit start can take
+more than two minutes; wait for the CLI's endpoint receipt, not just a
+TCP bind. Provide the task's Isaac assets through an approved route or
+a prepared `ISAACSIM_ASSET_ROOT`. The editor's working stream is not a
+substitute for policy playback.
 
 Choose `--viewer webrtc` only on a prepared interactive Isaac/Kit worker.
 In the trusted `play_scenario.py`, return the same compatible task from

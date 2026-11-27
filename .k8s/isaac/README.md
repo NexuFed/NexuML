@@ -86,7 +86,9 @@ a Pod that used a single-use key.
 Use a separate copy of `pod.yaml` with a unique name and its own run directory.
 Keep the private ingress-deny label and the `wt0` address check. Verify that
 the approved NetBird setup and policy apply to the new pod before starting it.
-Do not run the editor and policy playback at the same time in that pod.
+Use the current NexuML wheels on the prepared graphics runtime; an older
+editor image does not contain the playback launcher fix. Do not run the
+editor and policy playback at the same time in that pod.
 
 In a trusted playback scenario for the exported policy, configure the
 environment with `WebRTCSpec(advertise_address=os.environ["ISAACSIM_HOST"],
@@ -100,11 +102,13 @@ exec nexuml play "$NEXUML_WORKSPACE_ROOT/runs/cartpole/policy" \
 ```
 
 Use paths to your actual export and scenario. This is a qualification
-recipe, not a confirmed policy stream: first require the CLI's TCP
-signaling receipt, then check decoded policy motion through the NVIDIA
-client over the private TCP/UDP route. Stop the playback pod and verify
-the stream closes. An editor stream or a TCP-only check does not pass
-policy playback.
+recipe, not a confirmed policy stream. Provide the task's Isaac assets
+through an approved asset route or set `ISAACSIM_ASSET_ROOT` to a prepared
+local mirror. Allow several minutes for cold Kit initialization. First
+require the CLI's TCP signaling receipt, then check decoded policy motion
+through the NVIDIA client over the private TCP/UDP route. Stop the
+playback pod and verify the stream closes. An editor stream or a
+TCP-only check does not pass policy playback.
 
 ## Train
 

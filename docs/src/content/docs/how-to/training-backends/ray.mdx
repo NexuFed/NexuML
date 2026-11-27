@@ -550,7 +550,12 @@ Activation checkpointing trades compute for saved-activation memory, not
 model or rollout memory. Lightning's upstream FSDP can shard weights,
 gradients and optimizer state, but its wrapping and checkpoint semantics
 need separate qualification with PPO's two optimizers and rollout actor.
-This change does not enable FSDP/DeepSpeed for PPO or require CPU offload.
+Rank-local PPO currently requires `32-true` DDP. It does not qualify
+mixed precision, FSDP/DeepSpeed, PEFT or parameter freezing. Adapter-only
+training can reduce gradient and optimizer memory, but still needs the
+base weights for rollout inference. Any such extension must preserve
+policy publication, checkpoint/export, and local-fit tensor roles. No
+CPU offload or model conversion is selected implicitly.
 
 ## Shared datasets and S3 WebDataset
 

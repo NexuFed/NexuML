@@ -348,7 +348,7 @@ NEXUML_RUN_SIMULATOR_TESTS=1 NEXUML_TEST_RAY_NATIVE_SNAPSHOT=1 \
 | 2a.4 | Synthetic pressure, transfer, terminal/GAE and weight-parity fixture; public native RGB fit fixture | Co-located native image-input fit passes; split visual and large-model results unqualified |
 | 3.4–3.5 | Actor admission, CUDA learner, published weights and native checkpoint/recovery proven with local resources | Three-node fit, export and resume passed with a simulator-free GPU learner; matched direct, remote and two-node DDP rates measured. Grouped Ray rollout unsupported |
 | 4.4 | Rank-zero snapshots, separate process/Ray GPU evaluation and bounded cancellation | Native Kit-less PPO and separate-node GPU snapshot evaluation overlapped; final snapshot drained |
-| 4a.1, 4a.4, 4a.6 | Typed viewer selection, CLI mapping, native headless RGB and selected-rank/collector Viser routing tested | Live two-node Viser attach, disconnect and listener cleanup passed, including injected cancellation. Native WebRTC startup and client media remain open under 4a.4 |
+| 4a.1, 4a.4, 4a.6 | Typed viewer selection, restricted native Kit toolbar, endpoint admission, native headless RGB and selected-rank/collector Viser routing tested | Two-node Viser attach, disconnect and cancel passed. Installed local WebRTC ran the policy and released sockets on completion/cancel; decoded private TCP+UDP and forwarded Windows X11 remain open under 4a.4 |
 | 6.3 | Generated workspace lock drives the installed CUDA learner smoke in existing opt-in GPU CI; role interpreter selection implemented | Staged binary Kit-less profile passed on stock workers; clean workspace-lock native worker installs and full-Kit dependency closure still unqualified |
 | 1b, 6.2a | Existing simulator-only SDK, ROS 2 adapter and safety checks retained | Real-robot learning deferred, not passed; needs authorized matching data if revisited |
 
@@ -389,11 +389,13 @@ NEXUML_RUN_SIMULATOR_TESTS=1 TMPDIR=/tmp/opencode OMP_NUM_THREADS=1 \
   .venv/bin/python -m pytest -q tests/core/test_isaaclab_integration.py \
   -k native_ppo_placement
 for inference in cuda:0 cuda:1; do
-  .venv/bin/nexuml train isaac-cartpole-ppo \
+  nsys profile --trace=cuda,nvtx --output="$EVIDENCE/split-${inference#cuda:}" \
+    .venv/bin/nexuml train isaac-cartpole-ppo \
     -O training.devices=1, -O training.collector.env_device=cuda:0 \
     -O training.collector.storing_device=cuda:0 \
     -O "training.collector.policy_device=$inference" \
     -O training.total_frames=2048 -O training.frames_per_batch=1024
+  nsys stats --report cuda_gpu_mem_size_sum "$EVIDENCE/split-${inference#cuda:}.nsys-rep"
 done
 ```
 
@@ -468,7 +470,7 @@ exit. Prior TigerVNC playback remains qualified; a Kit editor session
 or open signaling listener does not count as a policy stream.
 
 ```bash
-timeout -k 10s 90s .venv/bin/nexuml play "$POLICY" --scenario-file "$PLAY_SCENARIO" \
+timeout -k 10s 300s .venv/bin/nexuml play "$POLICY" --scenario-file "$PLAY_SCENARIO" \
   --viewer webrtc --device cuda:0 --num-envs 1 --steps 120 --real-time
 ```
 
@@ -520,6 +522,59 @@ and the socket was closed. A bound port is not evidence that Kit was
 ready or that a client could decode media; the remaining failure is
 after socket bind, before usable playback.
 Receipt: `/tmp/opencode/nexuml-webrtc-signaling-parity-FJNO2S/`.
+
+The same pinned image on an allocated RTX 4000 Ada (`580.126.20`) reproduced
+the short-bound result: installed playback bound TCP at 29 s, and the vendor
+editor at 31 s. Neither reached a ready receipt in the test window. The
+ingress-denied task Job was deleted; it was not a NetBird client test.
+Receipt: `/tmp/opencode/nexuml-stream-admitted-NbkGgC/`.
+
+Do not attribute that timeout to the stream extension alone. NVIDIA's
+Python example stalled before it enabled the extension, and moving
+NexuML's extension enable after Kit launch still hit the startup watchdog.
+Extending the baseline's cold bound exposed the actual Python defect:
+Kit reached Lab's post-launch setup around 130 s, then failed to import
+`omni.kit.widget.toolbar`. Lab initializes that toolbar for livestream as
+well as local playback. `24d8a2ec` enables the existing restricted toolbar
+in both modes without enabling X11 presentation or authoring in WebRTC.
+The patched wheels reached native scene construction with no toolbar
+error. In a network-isolated pod/container, supply the required task
+assets locally; the initial patched local test lacked the ground-plane USD.
+Control logs and exact scripts:
+`/tmp/opencode/nexuml-vendor-python-example-fjfMVb/` and
+`/tmp/opencode/nexuml-stream-toolbar-HPcKP7/`.
+
+With five checksum-recorded NVIDIA Cartpole assets supplied through
+`ISAACSIM_ASSET_ROOT`, the same installed wheels ran **120 steps / 120
+transitions**, exit 0, in a network-isolated container on the RTX 4080 SUPER.
+The endpoint receipt showed TCP `0.0.0.0:49100` and UDP `awaiting client:47998`.
+A second process observed changing native policy observations and sent
+SIGTERM after five steps; it exited 143. Neither process left a TCP listener
+or UDP socket on the requested ports. This proves server-side playback
+and shutdown, not UDP delivery or decoded frames. Reproduce from the
+receipt directory with the preserved wheels and assets:
+
+```bash
+d=/tmp/opencode/nexuml-stream-toolbar-HPcKP7
+sha256sum -c "$d/wheels.sha256"
+sha256sum -c "$d/assets.sha256"
+RECEIPT="$d/replay-complete" WHEELS="$d/wheels" ASSETS="$d/assets" \
+  bash "$d/run-with-assets.sh"
+RECEIPT="$d/replay-cancel" WHEELS="$d/wheels" ASSETS="$d/assets" PROBE="$d/cancel.py" \
+  bash "$d/run-with-assets.sh"
+```
+
+The patched non-preempting cluster replay could not schedule, including
+after broadening the allowed RTX models and staging the same asset set.
+Both owned Jobs were deleted; no existing workstation, enrollment or
+network settings changed. The exact qualification script and scheduler
+events are in `cluster.sh`, `cluster-ada-admission.log`, and
+`cluster-admission.log` in the receipt directory. Use the
+[standalone private pod profile](../../../.k8s/isaac/README.md#try-standalone-policy-playback)
+for the actual NVIDIA client/UDP test, not the isolated harness.
+Local Kit regression on private Xvfb passed **24 steps / 48 transitions**
+and cleared the native context:
+`/tmp/opencode/nexuml-toolbar-local-regression-xBDJbZ/`.
 
 **Real ROS 2 three-domain and mixed-objective proofs (1b/6.2a):** no
 authorized episodes with a matching embodiment, calibrated controlled
@@ -770,8 +825,18 @@ env -u RAY_ADDRESS -u RAY_API_SERVER_ADDRESS .venv/bin/ray job submit \
 - Focused type checks pass. The repository-wide type checker still reports
   115 diagnostics with the prepared runtime (including absent optional
   packages and existing fixture issues); the preceding tree reports 126.
+- Follow-up regression: real CPU/Gloo **5 passed** (including parity,
+  checkpoint resume, failure/cancel and rank-zero export); viewer, native
+  definitions/runtime and Ray collector batch **295 passed, 19 skipped**
+  before the toolbar fix. The final viewer/runtime slice with the toolbar
+  and interface/graphics/port tests **196 passed**. Gloo and batch receipts:
+  `/tmp/opencode/nexuml-final-gloo-VUyUlz/` and
+  `/tmp/opencode/nexuml-decouple-followup-YX4v5Q/`.
 
 ```bash
+UV_PROJECT_ENVIRONMENT="$(mktemp -d /tmp/opencode/nexuml-native-cold-XXXXXX)/.venv" \
+  uv sync --locked --python 3.12 --extra isaac --no-build
+
 TMPDIR=/tmp/opencode CUDA_VISIBLE_DEVICES='' OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 \
   NEXUML_RUN_SYSTEM_TESTS=0 NEXUML_RUN_SIMULATOR_TESTS=0 NEXUML_RUN_HARDWARE_TESTS=0 \
   .venv/bin/python -m pytest --basetemp=/tmp/opencode/nexuml-decouple-cpu -q
