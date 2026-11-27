@@ -505,7 +505,11 @@ interpreter at `collector.ray.py_executable` lets the rollout worker import
 Isaac without installing it in the learner environment. Use the same
 Python, Ray, PyTorch, TensorDict and TorchRL versions across that transport.
 Set `collector.ray.num_cpus` and `admission_timeout_s` for your approved
-worker pool; the latter bounds startup of all collectors together.
+worker pool; the latter bounds startup and each policy publication.
+The learner publishes one detached CPU weight snapshot through Ray's
+object store and waits for every collector to apply it. This needs no
+separate TorchRL rendezvous actor on the stock Ray head, and does not
+move the learner off CUDA or change the direct CUDA/DDP path.
 The native rollout shutdown/version adapter is pinned to **TorchRL 0.14.0**;
 the default lock can resolve 0.15 for direct learning, not this Ray
 collector lane. Do not mix Ray collectors with co-located DDP.

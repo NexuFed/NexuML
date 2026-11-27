@@ -166,8 +166,8 @@ def test_snapshot_evaluation_uses_fresh_ray_workers_and_preserves_runtime(
         ray=RayEvaluationSpec(resources={"snapshot-test": 1}, scheduling="skip_if_busy"),
     )
     result = NexuSession(scenario, log_dir=tmp_path, enable_progress_bar=False).run()
-    assert int(result.lightning_module.frames) == 64
-    assert int(result.lightning_module.batches) == 2
+    assert int(result.lightning_module.get_buffer("frames")) == 64
+    assert int(result.lightning_module.get_buffer("batches")) == 2
     reports = [
         json.loads(path.read_text()) for path in sorted(tmp_path.rglob("evaluation-frame-*.json"))
     ]
@@ -269,6 +269,8 @@ def test_ray_factories_copied_policy_sync_and_iterator_exhaustion(
     traced_environment,
     num_envs,
 ):
+    from ray._private.state import actors
+    from ray._private.test_utils import wait_for_condition
     from tensordict.nn import TensorDictModule
 
     linear = torch.nn.Linear(3, 1)
@@ -298,9 +300,10 @@ def test_ray_factories_copied_policy_sync_and_iterator_exhaustion(
             next(iterator)
         assert_remote_environments_closed(traced_environment)
         assert local_ray.is_initialized() and not collector.remote_collectors
-        for worker in workers:
-            with pytest.raises(local_ray.exceptions.RayActorError):
-                local_ray.get(worker.__ray_ready__.remote(), timeout=5)
+        wait_for_condition(
+            lambda: all(actors(worker._actor_id.hex())["State"] == "DEAD" for worker in workers),
+            timeout=5,
+        )
     finally:
         collector.shutdown()
 
@@ -596,6 +599,43 @@ def test_ray_checkpoint_resumes_with_fresh_workers(local_ray, tmp_path, request,
     package = export_package(result.policy, tmp_path / "policy", trainer=result.trainer)
     reloaded, _, _ = load_inference_package(package)
     torch.testing.assert_close(reloaded.state_dict(), result.policy.state_dict(), rtol=0, atol=0)
+
+
+@pytest.mark.requires_optional("ray")
+@pytest.mark.requires_optional("torchrl")
+def test_ray_publication_commits_only_after_all_acknowledge(monkeypatch):
+    from ray.exceptions import GetTimeoutError
+    from tensordict import TensorDict
+
+    from nexuml.reinforcement import ray_collector
+
+    collector = object.__new__(ray_collector._GracefulRayCollector)
+    workers = [Mock(), Mock()]
+    collector._remote_collectors = workers.copy()
+    collector._admission_timeout_s = 7
+    collector._published_version = 0
+    collector._weight_sync_initialized = False
+    weights = TensorDict({"weight": torch.ones(2, requires_grad=True)}, [])
+    put = Mock()
+    get = Mock(side_effect=GetTimeoutError("worker did not reply"))
+    monkeypatch.setattr(ray_collector.ray, "put", put)
+    monkeypatch.setattr(ray_collector.ray, "get", get)
+
+    try:
+        with pytest.raises(GetTimeoutError, match="did not reply"):
+            collector.update_policy_weights_(weights)
+    finally:
+        collector._remote_collectors.clear()
+    get.assert_called_once_with(
+        [worker.update_policy_weights_.remote.return_value for worker in workers], timeout=7
+    )
+    assert all(
+        worker.update_policy_weights_.remote.call_args.args == (put.return_value,)
+        for worker in workers
+    )
+    staged = put.call_args.args[0]["weight"]
+    assert staged.device.type == "cpu" and not staged.requires_grad
+    assert not collector._weight_sync_initialized and collector._published_version == 0
 
 
 @pytest.mark.requires_optional("ray")

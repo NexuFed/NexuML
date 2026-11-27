@@ -1,9 +1,10 @@
-"""Lazy Ray-specific teardown repair for the pinned TorchRL collector."""
+"""Synchronous Ray policy publication and teardown for the pinned TorchRL collector."""
 
 from importlib.metadata import version
 
 import ray
 import torch
+from tensordict import TensorDictBase
 from torchrl.collectors.distributed.ray import RayCollector
 
 
@@ -44,6 +45,8 @@ class _GracefulRayCollector(RayCollector):
             **kwargs.get("collector_kwargs", {}),
             "track_policy_version": True,
         }
+        # The default Gloo scheme starts an extra actor outside the prepared rollout runtime.
+        kwargs["weight_sync_schemes"] = {}
         self._published_version = 0
         self._admission_timeout_s = admission_timeout_s
         self._unadmitted_refs = {}
@@ -63,7 +66,6 @@ class _GracefulRayCollector(RayCollector):
 
     def add_collectors(self, *args, **kwargs):
         super().add_collectors(*args, **kwargs)
-        # TorchRL registers weight receivers with an unbounded get after this call.
         self._unadmitted_refs = {worker.stats.remote(): worker for worker in self.remote_collectors}
         if self._unadmitted_refs:
             ready, pending = ray.wait(
@@ -92,10 +94,21 @@ class _GracefulRayCollector(RayCollector):
             **other_params,
         )
 
-    def _weight_update_impl(self, policy_or_weights=None, *, worker_ids=None, **kwargs):
+    def _weight_update_impl(
+        self, policy_or_weights=None, *, worker_ids=None, model_id=None, weights_dict=None, **kwargs
+    ):
         if worker_ids is not None:
             raise ValueError("Synchronous RL requires updating every Ray rollout worker")
-        super()._weight_update_impl(policy_or_weights, **kwargs)
+        if model_id not in (None, "policy") or weights_dict is not None or kwargs:
+            raise ValueError("Synchronous RL publishes only the rollout policy")
+        if not isinstance(policy_or_weights, TensorDictBase):
+            raise TypeError("Synchronous RL requires a complete policy TensorDict")
+        weights = ray.put(policy_or_weights.detach().cpu())
+        acknowledgements = [
+            worker.update_policy_weights_.remote(weights) for worker in self.remote_collectors
+        ]
+        ray.get(acknowledgements, timeout=self._admission_timeout_s)
+        self._weight_sync_initialized = True
         self._published_version += 1
 
     def iterator(self):
