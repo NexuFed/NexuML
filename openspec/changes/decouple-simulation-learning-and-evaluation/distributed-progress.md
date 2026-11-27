@@ -379,7 +379,29 @@ NEXUML_RUN_SIMULATOR_TESTS=1 NEXUML_TEST_RAY_NATIVE_SNAPSHOT=1 \
 | 4.4 | Rank-zero snapshots, separate process/Ray GPU evaluation and bounded cancellation | Native Kit-less PPO and separate-node GPU snapshot evaluation overlapped; final snapshot drained |
 | 4a.1, 4a.4, 4a.6 | Typed viewer selection, restricted native Kit toolbar, endpoint admission, native headless RGB and selected-rank/collector Viser routing tested | Two-node Viser attach, disconnect and cancel passed. NVIDIA client decoded and displayed moving Cartpole policy playback via private NetBird. Socket release passed in separate runs. Forwarded Windows X11 remains unqualified. |
 | 6.3 | One workspace lock pins official Isaac packages; existing opt-in GPU CI covers a simulator-free learner and the prepared Kit image | Fresh pod passed Newton fit/resume and headless PhysX playback in one environment. Upstream metadata conflicts remain; this does not qualify graphics or new stock-Ray placements. |
-| 1b, 6.2a | Existing simulator-only SDK, ROS 2 adapter and safety checks retained | Real-robot learning deferred, not passed; needs authorized matching data if revisited |
+| 1b, 6.2a | Existing simulator-only SDK and ROS 2 adapter retained; live Isaac Sim bridge fixture in progress | Pending live joint response, timeout/hold, and episode capture; physical data is no longer an acceptance gate |
+
+**SIL preflight (scope revised in `119483e6`):** in the cached prepared Isaac
+Sim 6.2 image, a GPU container with no external network started the Jazzy
+RMW, message bindings and native `isaacsim.ros2.bridge` 5.1.4. The desktop
+experience also started Kit and authored the two-joint stage but stalled on
+`SimulationApp.update()` after timeline play, before controller admission.
+The standalone `SimulationApp` with the Lab no-viewport experience
+stalled earlier, in `_update_without_ready` during initialization.
+These are launch failures, not missing hardware or ROS data. The same
+two-joint stage advanced four ticks (0.0667 s) and exited with the bridge
+off. With the bridge on, the update stalled with or without a clock graph,
+before any NexuML node connected. No command receipt or bridge episodes
+were emitted. This isolates the stall to that bridge-enabled launch path,
+not the arm asset or the NexuML ROS adapter.
+
+The independent CPU MuJoCo check exercised signed joint position targets
+at the same declared 0.2 s control period. Two 8-step SDK behavior-cloning
+fits reloaded the first updated tensors and used an episode-disjoint split.
+This is only a native MuJoCo/data-fit check, not the three-lane proof.
+ROS adapter and local-fit regressions: 72 passed, two skipped.
+Scratch invocations and receipts: `/tmp/opencode/nexuml-isaac-sil-PvOcGn/`.
+Replay that comparison with `bash /tmp/opencode/nexuml-isaac-sil-PvOcGn/compare.sh control bridge clock`.
 
 **Same-host peer NCCL and co-located native DDP:** requires two compatible
 GPUs in one worker, not the two-node topology already tested. On an
