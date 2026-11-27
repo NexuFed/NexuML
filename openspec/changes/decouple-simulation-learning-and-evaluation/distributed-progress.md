@@ -905,8 +905,8 @@ env -u RAY_ADDRESS -u RAY_API_SERVER_ADDRESS .venv/bin/ray job submit \
   installed 238 dependencies without source builds or native package skips.
   Both installed application wheels brought the count to 240;
   `uv pip check` passed and Isaac Sim was absent. The unmodified runtime
-  rejected the wheel's ordinary archive origin. The runtime now verifies
-  the exact reviewed Lab wheel's SHA-256, its recorded files, and the
+  rejected the wheel's ordinary archive origin. The first runtime fix
+  verified the local wheel's SHA-256, its install records and the
   imported Lab entry point without generating fake VCS metadata.
   The installed Kit-less Newton Cartpole fit and fresh-context resume
   passed on CUDA: **32→48 frames, 8→12 optimizer steps**, both exports
@@ -926,6 +926,44 @@ env -u RAY_ADDRESS -u RAY_API_SERVER_ADDRESS .venv/bin/ray job submit \
   portable native worker install; full Kit additionally retains the
   upstream `idna-ssl` edge. Viser, Arena and full Kit were not qualified
   with the archive-origin path.
+- An isolated loopback HTTP test served the same two wheels by URL.
+  `uv lock` recorded their exact SHA-256 values and a fresh native
+  `uv sync --locked --no-build` passed `uv pip check`. After shutting
+  down the wheel endpoint, a fresh uv cache still passed the offline
+  lock check and the simulator-free learner's locked install plan.
+  This avoids the local-path check failure. Plain URL sources and
+  PEP 508 URL requirements with SHA-256 fragments both produced PEP
+  610 archive metadata without a digest after locked sync. This test
+  was not a published endpoint or a stock-worker deployment. The checked
+  upstream Lab release lists demo assets, not the exact wheel; the
+  existing repository publishes the two NexuML packages, not
+  third-party wheels. Probe and receipts:
+  `/tmp/opencode/nexuml-kitless-url-QJ3fWb/probe.py` and
+  `/tmp/opencode/nexuml-kitless-url-sync-Gg5Ovu/` and
+  `/tmp/opencode/nexuml-kitless-pep508-WlOCl0/`.
+- The native runtime now matches the installed RECORD manifest to the
+  reviewed Lab wheel and verifies all 3,194 hashed payload files before
+  accepting archive-installed Lab, without reopening the source archive
+  or relying on a version string. A new empty environment repeated the
+  URL-based locked sync and installed both NexuML wheels. After shutting
+  down the wheel endpoint, the isolated CUDA process fit and resumed
+  **32→48 frames, 8→12 optimizer steps**, reloaded both exports and
+  cleared both native contexts. No input wheel was staged in that
+  checkout. The simulator-free learner plan and lock check again passed
+  with an empty cache and the endpoint offline. Focused tests: **265
+  passed**, including a modified installed file and a shadowed import
+  rejection. Receipts:
+  `/tmp/opencode/nexuml-kitless-url-fit-V4xcpM/`. Re-run from the repo:
+
+  ```bash
+  out=$(mktemp -d /tmp/opencode/nexuml-kitless-url-fit-XXXXXX)
+  .venv/bin/python /tmp/opencode/nexuml-kitless-url-QJ3fWb/probe.py "$out" --fit
+  ```
+
+  This closes the archive provenance and dependency-isolation gaps in
+  the Kit-less proof. Shared-lock integration still needs a stable
+  wheel URL reachable from CI and stock workers; the loopback URL and
+  generated test lock were not committed. Full Kit is unchanged.
 - The prepared-image CI smoke now uses the image entrypoint and
   `/env/bin/python`, with checkout sources first on `PYTHONPATH` and
   pulls disabled. The previous checkout `.venv` command failed in a

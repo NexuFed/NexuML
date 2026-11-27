@@ -1,6 +1,7 @@
 """CPU-only proofs of Isaac transition normalization and owned lifetime."""
 
 import asyncio
+from base64 import urlsafe_b64encode
 import builtins
 from hashlib import sha256
 import json
@@ -9,7 +10,6 @@ import sys
 import traceback
 from types import SimpleNamespace
 from typing import Any
-from zipfile import ZipFile
 
 import pytest
 import torch
@@ -581,7 +581,7 @@ def native_launch(monkeypatch, tmp_path):
             read_text=lambda filename: (
                 json.dumps(state.origin) if filename == "direct_url.json" else state.record
             ),
-            locate_file=lambda name: source,
+            locate_file=lambda name: source.parent.parent / name,
         ),
     )
     monkeypatch.setattr(torch.cuda, "is_available", lambda: True)
@@ -878,43 +878,36 @@ def test_canonical_wheel_launch_and_profile_specific_owned_shutdown(
         assert native_launch.native.events[-2:] == ["job.finalized", "launcher.exit"]
 
 
-def test_reviewed_lab_wheel_matches_artifact_manifest():
+def test_reviewed_lab_wheel_revision_matches_artifact_manifest():
     manifest = Path(__file__).resolve().parents[2] / "containers/isaac/artifacts.json"
     policy = json.loads(manifest.read_text())
-    assert _isaaclab_runtime._LAB_WHEEL_SHA256 == policy["lab_sha256"]
     assert _isaaclab_runtime._LAB_WHEEL_REVISION == policy["lab_revision"]
 
 
-@pytest.mark.parametrize("invalid", [None, "hash", "record", "import", "missing", "remote"])
-def test_archive_origin_requires_the_reviewed_lab_wheel(
-    native_launch, tmp_path, monkeypatch, invalid
-):
-    archive = tmp_path / "isaaclab-3.0.0-py3-none-any.whl"
+@pytest.mark.parametrize("invalid", [None, "record", "content", "missing", "shadowed"])
+def test_archive_origin_requires_reviewed_installed_files(native_launch, monkeypatch, invalid):
     source = Path(native_launch.module.__file__)
     source.parent.mkdir(parents=True)
-    source.write_text("# reviewed source\n" if invalid != "import" else "# different source\n")
-    record = "isaaclab/__init__.py,sha256=reviewed,18\n"
-    with ZipFile(archive, "w") as wheel:
-        wheel.writestr("isaaclab/__init__.py", "# reviewed source\n")
-        wheel.writestr("isaaclab-3.0.0.dist-info/RECORD", record)
-    if invalid != "hash":
-        monkeypatch.setattr(
-            _isaaclab_runtime, "_LAB_WHEEL_SHA256", sha256(archive.read_bytes()).hexdigest()
-        )
+    payload = b"reviewed"
+    digest = urlsafe_b64encode(sha256(payload).digest()).decode().rstrip("=")
+    row = ["isaaclab/__init__.py", f"sha256={digest}", str(len(payload))]
+    manifest = json.dumps([row], separators=(",", ":")).encode()
+    monkeypatch.setattr(_isaaclab_runtime, "_LAB_RECORD_SHA256", sha256(manifest).hexdigest())
+    if invalid != "missing":
+        source.write_bytes(b"modified" if invalid == "content" else payload)
+    if invalid == "shadowed":
+        native_launch.module.__file__ += ".shadow"
     native_launch.origin = {
         "archive_info": {},
-        "url": f"https://example.invalid/{archive.name}"
-        if invalid == "remote"
-        else archive.as_uri(),
+        "url": "https://example.invalid/isaaclab-3.0.0-py3-none-any.whl",
     }
-    native_launch.record = "" if invalid == "record" else record
-    if invalid == "missing":
-        archive.unlink()
+    native_launch.record = "" if invalid == "record" else ",".join(row) + "\n"
+    native_launch.record += "isaaclab-3.0.0.dist-info/direct_url.json,sha256=installer,123\n"
     with _isaaclab_runtime.isaaclab_process():
         if invalid is None:
             native_launch.build(physics="newton_mjwarp").close()
         else:
-            with pytest.raises(ValueError, match="does not match the reviewed local wheel"):
+            with pytest.raises(ValueError, match="reviewed wheel|import origin differs"):
                 native_launch.build(physics="newton_mjwarp")
             assert not native_launch.launchers
 

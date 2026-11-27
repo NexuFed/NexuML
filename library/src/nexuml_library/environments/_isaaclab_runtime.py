@@ -2,7 +2,9 @@
 
 from collections.abc import Callable, Mapping
 from contextlib import contextmanager
-from hashlib import file_digest
+from base64 import urlsafe_b64encode
+import csv
+from hashlib import file_digest, sha256
 from importlib import import_module
 from importlib.metadata import distribution
 import json
@@ -16,8 +18,6 @@ from threading import current_thread, main_thread
 from time import monotonic_ns
 import traceback
 from typing import Any, cast
-from urllib.parse import unquote, urlsplit
-from zipfile import ZipFile
 
 import torch
 from tensordict import TensorDict, TensorDictBase
@@ -36,9 +36,13 @@ _process_launcher = None
 _process_returning_close = False
 _active_runtime = None
 
-# Exact reviewed output for the pinned Lab revision (containers/isaac/artifacts.json).
-_LAB_WHEEL_SHA256 = "3ce4b0bfba6b0038b8e762785ab82ad458f764d424a07b4167010ef31b807399"
+# Sorted, hashed RECORD rows of the reviewed wheel in containers/isaac/artifacts.json.
+_LAB_RECORD_SHA256 = "f609821e45a928df3c00dc1f1869e6113ca5ca2c9099508f2d31845957663a3f"
 _LAB_WHEEL_REVISION = "70ab24fec3eabf51222817db0cdb5a4e7133bd7e"
+_LAB_INSTALLER_RECORDS = {
+    f"isaaclab-3.0.0.dist-info/{name}"
+    for name in ("direct_url.json", "INSTALLER", "REQUESTED", "uv_cache.json")
+}
 
 _KIT_EDITOR_EXTENSIONS = (
     "omni.kit.window.stage",
@@ -237,27 +241,32 @@ def _register_arena(owner, definition, context, gym):
     return cfg
 
 
-def _local_lab_wheel_revision(installed, origin, source_file):
-    if "archive_info" not in origin:
+def _lab_wheel_revision(installed):
+    rows = list(csv.reader((installed.read_text("RECORD") or "").splitlines()))
+    if any(len(row) != 3 for row in rows):
         return None
-    url = urlsplit(origin.get("url", ""))
-    if url.scheme != "file" or url.netloc:
+    # Installer metadata and the generated CLI outside site-packages aren't wheel payload.
+    payload = sorted(
+        [path, digest, size]
+        for path, digest, size in rows
+        if digest and path not in _LAB_INSTALLER_RECORDS and not path.startswith("../")
+    )
+    if (
+        sha256(json.dumps(payload, separators=(",", ":")).encode()).hexdigest()
+        != _LAB_RECORD_SHA256
+    ):
         return None
-    path = Path(unquote(url.path))
-    if not path.is_absolute() or path.suffix != ".whl" or not path.is_file():
-        return None
+    # Check the manifest before following any paths from it.
     try:
-        with path.open("rb") as stream:
-            if file_digest(stream, "sha256").hexdigest() != _LAB_WHEEL_SHA256:
+        for name, digest, size in payload:
+            path = Path(str(installed.locate_file(name)))
+            if not path.is_file() or path.stat().st_size != int(size):
                 return None
-            with ZipFile(stream) as wheel:
-                original = wheel.read("isaaclab-3.0.0.dist-info/RECORD").decode().splitlines()
-                if Path(source_file).read_bytes() != wheel.read("isaaclab/__init__.py"):
+            with path.open("rb") as stream:
+                encoded = urlsafe_b64encode(file_digest(stream, "sha256").digest()).decode()
+                if f"sha256={encoded.rstrip('=')}" != digest:
                     return None
     except OSError:
-        return None
-    recorded = set((installed.read_text("RECORD") or "").splitlines())
-    if any(row not in recorded for row in original if not row.endswith(",,")):
         return None
     return _LAB_WHEEL_REVISION
 
@@ -333,9 +342,9 @@ def _create_environment(owner, definition, context):
     origin = json.loads(installed.read_text("direct_url.json") or "{}")
     revision = origin.get("vcs_info", {}).get("commit_id")
     if revision is None and "archive_info" in origin:
-        revision = _local_lab_wheel_revision(installed, origin, source_file)
+        revision = _lab_wheel_revision(installed)
         if revision is None:
-            raise ValueError("Isaac Lab archive does not match the reviewed local wheel")
+            raise ValueError("Installed Isaac Lab does not match the reviewed wheel")
     if revision is not None:
         if (
             Path(str(installed.locate_file("isaaclab/__init__.py"))).resolve()
