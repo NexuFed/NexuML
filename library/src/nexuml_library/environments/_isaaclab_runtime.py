@@ -166,16 +166,13 @@ def _launch_environment(
             "--/telemetry/enableAnonymousAppName=false --/telemetry/enableSentry=false "
             "--/structuredLog/enable=false"
             + close_setting
-            + (_KIT_LOCAL_ARGS if local or streaming else "")
+            + (_KIT_LOCAL_ARGS if local else "")
             + streaming
         ),
     }
-    if local:
-        # The default non-headless experience loads the authoring editor.
+    if local or streaming:
+        # The default Kit viewport and streaming experiences both load authoring extensions.
         args["experience"] = "isaaclab.python.headless.rendering.kit"
-    elif streaming:
-        # Let the pinned launcher resolve its streaming-compatible Lab experience.
-        args["enable_cameras"] = True
     if require_kit:
         args["require_kit"] = True
     if current_thread() is not main_thread():

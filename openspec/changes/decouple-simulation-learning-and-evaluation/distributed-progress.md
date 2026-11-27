@@ -371,16 +371,29 @@ bypassing TLS on the external endpoint. Do not use this tunnel for WebRTC.
   into job runtime environments. This does not prove native simulation or
   replica updates. Receipts: `/tmp/opencode/nexuml-ray-nccl-plain-5sk1VB/`.
 - Initial prepared-image jobs were scheduled to GPU nodes but took longer
-  than the wait window to pull the image from Harbor. The isolated
-  WebRTC pod selected the existing ingress-deny policy; it did not get
-  past the image pull. No changes were made to the old workstation,
-  worker pools, nodes, or networking.
+  than the wait window to pull the image from Harbor. An extended
+  attempt verified the pinned image and CUDA runtime on one RTX 4000
+  Ada; the other pod could not allocate the GPU on the node targeted
+  for its cached image. No changes were made to the old workstation,
+  worker pools, nodes, or networking. Receipts:
+  `/tmp/opencode/nexuml-pod-peer-kfKet2/` and
+  `/tmp/opencode/nexuml-pod-peer-long-Pz4zu8/`.
+- On a subsequently allocated RTX 4000 Ada, the installed CLI fit and
+  exported 64 PhysX frames (four optimizer steps). The protected WebRTC
+  play process stalled before the listener, first at Kit UI setup and
+  again in `SimulationApp._update_without_ready` after removing local
+  X11/toolbar options and the authoring experience. No external media
+  test was possible. Receipts: `/tmp/opencode/nexuml-pod-stream-cached-H7C5hk/`
+  and `/tmp/opencode/nexuml-minimal-stream-pod-LdDUuJ/`.
 - The Kit-less Newton/Ray profile resolves with binary wheels while
   omitting the full Isaac Sim extra and its `idna-ssl` dependency. The
   reviewed Lab and ANTLR wheel hashes matched; the Lab install retained
   genuine VCS metadata via the existing offline cache workflow. See
   `/tmp/opencode/nexuml-kitless-binary-nik4LR/` for the hash-qualified
-  dependency list. This does not establish a binary PhysX worker profile.
+  dependency list and actual 239-package install with clean `uv pip check`.
+  Ray Train's placement-group cleaner inherited the GPU-only interpreter
+  and could not launch on the unmounted stock head; the first fit was
+  intentionally stopped. This does not establish a binary PhysX profile.
 
 To rerun the two-node NCCL probe, use one terminal for the authenticated
 Kubernetes tunnel and another for the submission:

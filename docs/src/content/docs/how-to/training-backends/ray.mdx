@@ -472,6 +472,12 @@ rank. Size the store for the checkpoint. The final Ray result carries
 `checkpoint.ckpt`; configured exports write on rank zero to their specified
 worker paths. Use storage visible to your workflow.
 
+`target.py_executable` also reaches Ray Train's controller helpers, including
+placement-group cleanup. A path mounted only on GPU workers is not a
+cluster-wide Python command. Keep the command usable on non-training nodes
+as well; each training rank still needs its prepared CUDA environment and a
+whole GPU reservation.
+
 The qualified distributed learner is single-agent PPO on two CPU/Gloo
 ranks, including same-host Ray Train. Ray Train runs user code on a
 background thread; the pinned Kit launcher requires a main thread. Select
