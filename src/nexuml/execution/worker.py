@@ -55,6 +55,7 @@ def main() -> None:
     """
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", required=True)
+    parser.add_argument("--trainer-checkpoint", type=Path)
     args = parser.parse_args()
     if args.config.startswith("s3://"):
         from nexuml.storage.s3 import S3Client
@@ -67,7 +68,10 @@ def main() -> None:
         raise ValueError(
             "Remote worker requires a derived Local or RayCluster config, not an outer job."
         )
-    run(scenario, **launch_options(scenario, dict(os.environ)))
+    options = launch_options(scenario, dict(os.environ))
+    if args.trainer_checkpoint is not None:
+        options["trainer_checkpoint"] = args.trainer_checkpoint
+    run(scenario, **options)
 
 
 if __name__ == "__main__":

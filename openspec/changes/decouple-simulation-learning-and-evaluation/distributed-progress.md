@@ -179,7 +179,7 @@ learning and 2-GPU transfer/latency evidence are still unqualified.
 ```bash
 NEXUML_RUN_SIMULATOR_TESTS=1 TMPDIR=/tmp/opencode OMP_NUM_THREADS=1 \
   .venv/bin/python -m pytest -q tests/core/test_isaaclab_integration.py \
-  -k native_rgb_ppo_placement
+  -k native_ppo_placement
 .venv/bin/python tests/fixtures/visual_rollout_pressure.py --frames 2048 --side 128 --batch 64
 # On a compatible two-GPU host, re-run the same workload with explicit roles:
 .venv/bin/python tests/fixtures/visual_rollout_pressure.py --frames 2048 --side 128 \
@@ -187,6 +187,11 @@ NEXUML_RUN_SIMULATOR_TESTS=1 TMPDIR=/tmp/opencode OMP_NUM_THREADS=1 \
 .venv/bin/python tests/fixtures/visual_rollout_pressure.py --frames 2048 --side 128 \
   --batch 64 --simulation cuda:0 --inference cuda:1 --learner cuda:1
 ```
+
+The native split cases in this test use the state-only PhysX reference.
+The native RGB reference is Newton and remains co-located by provider
+validation; the separate synthetic RGB fixture exercises explicit devices
+without asserting native camera qualification.
 
 Raw measurements: `/tmp/opencode/nexuml-visual-pressure-0plGFI/`.
 

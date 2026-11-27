@@ -168,24 +168,29 @@ def test_native_terminal_pixels_match_the_ending_scene_not_reset_scene(tmp_path)
 @pytest.mark.parametrize(
     "inference,learner",
     [(0, 0), (0, 1), (1, 1)],
-    ids=["colocated", "split-learner", "split-inference"],
+    ids=["rgb-colocated", "physx-split-learner", "physx-split-inference"],
 )
-def test_native_rgb_ppo_placement(tmp_path, inference, learner):
+def test_native_ppo_placement(tmp_path, inference, learner):
     import torch
 
     from nexuml.core.config import ResolvedConfig
     from nexuml.core.export import load_inference_package
     from nexuml.core.types import ExportSpec
     from nexuml_library.reinforcement.algorithms.ppo import PPO
+    from nexuml_library.scenarios.reinforcement.isaaclab import isaac_cartpole_ppo
     from nexuml_library.scenarios.reinforcement.isaaclab_sensors import isaac_rgb_cartpole_ppo
 
-    if torch.cuda.device_count() <= learner:
-        pytest.skip("split native RGB PPO needs two compatible visible CUDA devices")
-    scenario = isaac_rgb_cartpole_ppo(total_frames=128, frames_per_batch=64)
+    # The RGB reference uses Newton; direct split placement is only supported with PhysX.
+    reference = isaac_cartpole_ppo if learner else isaac_rgb_cartpole_ppo
+    scenario = reference(total_frames=128, frames_per_batch=64, num_envs=4)
     training = scenario.training
     training.devices = f"{learner},"
     training.collector.policy_device = f"cuda:{inference}"
     training.algorithm = PPO(minibatch_size=32, update_epochs=1)
+    assert scenario.interaction is not None
+    scenario.interaction.environment.validate_training(training, device=f"cuda:{learner}")
+    if torch.cuda.device_count() <= learner:
+        pytest.skip("split native PPO needs two compatible visible CUDA devices")
     policy_path = tmp_path / "policy"
     scenario.exports = [ExportSpec(kind="train_package", output=str(policy_path))]
     config_path = tmp_path / "train.yaml"
@@ -193,7 +198,7 @@ def test_native_rgb_ppo_placement(tmp_path, inference, learner):
     log = _run(
         ["-m", "nexuml.cli.main", "train", "--config", config_path],
         tmp_path,
-        "native-rgb",
+        "native-placement",
         process_scope=False,
     )
     assert f"Fit device observed at start: cuda:{learner}" in log

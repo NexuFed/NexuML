@@ -23,14 +23,18 @@ scenario = runpy.run_path(str(WORKER))["scenario"]
 
 def _torchrun(directory, mode):
     entrypoint = [str(WORKER), str(directory), mode]
-    if mode == "public":
+    if mode in ("public", "public-resume"):
         from nexuml.core.config import ResolvedConfig
         from nexuml.core.types import ExportSpec
 
         config = scenario()
+        if mode == "public-resume":
+            config.training.total_frames = 48
         config.exports = [ExportSpec(kind="train_package", output=str(directory / "policy"))]
         ResolvedConfig.from_scenario(config).save(directory / "worker.yaml")
         entrypoint = ["-m", "nexuml.execution.worker", "--config", str(directory / "worker.yaml")]
+        if mode == "public-resume":
+            entrypoint.extend(["--trainer-checkpoint", str(directory / "full.ckpt")])
     result = subprocess.run(
         [
             sys.executable,
@@ -48,7 +52,7 @@ def _torchrun(directory, mode):
     )
     assert result.returncode == 0, (result.stdout + result.stderr)[-20000:]
     assert "backend=gloo" in result.stderr
-    if mode not in ("failure", "cancel", "public", "overbudget"):
+    if mode in ("fit", "resume"):
         return tuple(torch.load(directory / f"{mode}-{i}.pt", weights_only=False) for i in range(2))
 
 
@@ -122,6 +126,11 @@ def test_ddp_ppo_matches_global_minibatches_and_resumes(tmp_path):
             resumed[0]["updates"][0][key], resumed[1]["updates"][0][key], atol=0, rtol=0
         )
     _torchrun(tmp_path, "overbudget")
+    from nexuml.core.export import load_inference_package
+
+    _torchrun(tmp_path, "public-resume")
+    _, _, metadata = load_inference_package(tmp_path / "policy")
+    assert metadata["training_frames"] == 48
 
 
 def test_ddp_rank_local_collection_failure_aborts_both_ranks(tmp_path):
