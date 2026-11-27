@@ -140,6 +140,18 @@ def test_public_ddp_worker_exports_one_completed_rank_zero_policy(tmp_path):
     assert metadata["training_frames"] == 32
 
 
+def test_ddp_checkpoint_rejects_a_changed_actor_graph():
+    config = scenario()
+    checkpoint = {
+        "rl_world_size": 2,
+        "hyper_parameters": dict(NexuRLLightningModule(config).hparams),
+    }
+    changed = config.model_copy(deep=True)
+    changed.pipeline.stages["changed"] = changed.pipeline.stages.pop("policy")
+    with pytest.raises(ValueError, match="unchanged actor graph"):
+        NexuRLLightningModule(changed).on_load_checkpoint(checkpoint)
+
+
 @pytest.mark.requires_optional("ray")
 @pytest.mark.skipif(
     os.getenv("NEXUML_TEST_RAY_TRAIN") != "1", reason="opt-in real Ray Train cluster"

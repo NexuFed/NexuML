@@ -179,11 +179,11 @@ To target a specific prepared worker group, use `ray.resources` and/or
 These apply to every collector actor. A Ray Jobs `entrypoint_resources`
 reservation places the job driver, not the collectors inside it.
 
-This is verified on one prepared host with a CPU learner. Direct Isaac
-training still puts the simulator, policy and learner on one CUDA index.
+This profile was verified with a CPU learner and one GPU collector. A CUDA
+learner was additionally tested with a collector sharing one physical GPU
+for transport and checkpoint recovery, not production placement.
 Separate-GPU learning, multi-node collection, grouped Ray tasks and Arena
-collection on Ray are not qualified. Do not copy the one-host settings
-and increase the worker or device counts for those layouts.
+collection on Ray are not qualified. Direct Isaac training defaults to one GPU.
 
 ## Compose a headless Arena task
 
@@ -323,6 +323,10 @@ the zero-based collector index. Use the private loopback route to the
 selected worker. Playback of exported weights is a separate, independent run.
 
 ### Native WebRTC playback
+
+This mode is not yet qualified: the prepared-image playback test timed out
+in native startup before the signaling listener was confirmed. The editor's
+working streaming profile is not a substitute for this playback test.
 
 Choose `--viewer webrtc` only on a prepared interactive Isaac/Kit worker.
 In the trusted `play_scenario.py`, return the same compatible task from

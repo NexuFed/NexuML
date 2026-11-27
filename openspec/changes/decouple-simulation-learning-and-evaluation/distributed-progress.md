@@ -11,7 +11,7 @@ native and viewer evidence; none of it qualifies co-located DDP.
   Keep live viewing optional and preserve the existing Kit playback path.
 - [x] Measure equivalent co-located Isaac and RSL-RL at larger vector widths.
   Record throughput before deciding whether an optimization is warranted.
-- [ ] Run integrated regressions and record exact commands and outstanding
+- [x] Run integrated regressions and record exact commands and outstanding
   resource gates; leave unqualified acceptance tasks unchecked.
 
 Available locally: one RTX 4080 SUPER and the existing pinned Isaac runtime.
@@ -88,6 +88,8 @@ absolute throughput improved at all three widths. Do not infer a generic
 distributed speedup or visual-policy throughput from this state-only run.
 Fresh held-out replay at width 1,024 gave **0/64** final successes per
 learner (32 episodes each for seeds 17 and 43, also zero at initialization).
+All episodes timed out. Mean terminal joint error fell from 0.177 to
+0.106 rad for RSL-RL and 0.164 to 0.141 rad for NexuML.
 The timing budget did not reach the task's learning target. This does not
 replace the previously qualified longer-budget state-policy evidence.
 
@@ -122,6 +124,9 @@ for width in 256 1024 4096; do
 done
 ```
 
+For held-out replay, use the same `backend`, training `seed` and existing
+output directory in `so101_learning_comparison.py "$backend" evaluate "$seed" "$OUTPUT"`.
+
 ## Additional acceptance at `d8579994`
 
 - Ray Train V2 trained and resumed native Isaac Newton/Warp Cartpole on
@@ -155,7 +160,12 @@ The unchanged lock passed `uv lock --check --offline`.
 
 ## Visual and memory-pressure probes
 
-Native headless sensor-policy and terminal-pixel gates passed (**3 tests**).
+Native headless sensor and terminal-pixel oracles passed (**3 tests**).
+Separately, the public CLI trained the 32×32 native RGB Cartpole policy
+and critic on one GPU for 128 frames and eight optimizer steps, and loaded
+the resulting export. This proves the image-input fit path, not learning
+quality. The split learner and split inference cases skipped for lack of a
+second GPU. Log: `/tmp/opencode/nexuml-rgb-ppo-public/`.
 The separate synthetic RGB probe ran a small convolutional actor, same-GPU
 inference and GPU Adam with exact publication of the modified weights.
 At `256×3×64×64` and `2048×3×128×128`, uint8 rollout storage was 3 and
@@ -163,10 +173,13 @@ At `256×3×64×64` and `2048×3×128×128`, uint8 rollout storage was 3 and
 and Adam state used 3,872 bytes. Peak additional CUDA allocation during
 the first inference/update was 9.9/12.4 MiB and 44/68.1 MiB, respectively.
 These are cold phase timings and allocator peaks, not VLA throughput
-or an estimate of engine/renderer memory. The 2-GPU transfer/latency and
-native image-policy learning gates still require separate resources.
+or an estimate of engine/renderer memory. Split native image-policy
+learning and 2-GPU transfer/latency evidence are still unqualified.
 
 ```bash
+NEXUML_RUN_SIMULATOR_TESTS=1 TMPDIR=/tmp/opencode OMP_NUM_THREADS=1 \
+  .venv/bin/python -m pytest -q tests/core/test_isaaclab_integration.py \
+  -k native_rgb_ppo_placement
 .venv/bin/python tests/fixtures/visual_rollout_pressure.py --frames 2048 --side 128 --batch 64
 # On a compatible two-GPU host, re-run the same workload with explicit roles:
 .venv/bin/python tests/fixtures/visual_rollout_pressure.py --frames 2048 --side 128 \
@@ -189,6 +202,17 @@ NEXUML_RUN_SIMULATOR_TESTS=1 NEXUML_TEST_RAY_NATIVE_SNAPSHOT=1 \
 ```
 
 ## Pending acceptance and reproduction
+
+| Task | Software status | Live status |
+| --- | --- | --- |
+| 2.2 | Explicit GPU roles, validation, and TorchRL device transfers implemented | Separate-device and P2P receipts need a compatible GPU pair |
+| 2a.2–2a.3 | NCCL preflight and matched benchmark runnable | Single GPU passes functional checks; peer scaling, collective bytes and interference unmeasured |
+| 2a.4 | Synthetic pressure, transfer and weight-parity fixture; public native RGB fit fixture | Co-located native image-input fit passes; split visual and large-model results unqualified |
+| 3.4–3.5 | Actor admission, CUDA learner, published weights and native checkpoint/recovery proven with local resources | Two distinct collector nodes plus learner GPU never allocated; remote grouped rollout remains unsupported |
+| 4.4 | Rank-zero snapshots, separate process/Ray GPU evaluation and bounded cancellation | Native snapshots pass; native fit/eval overlap on distinct devices unverified |
+| 4a.1, 4a.4, 4a.6 | Typed WebRTC preflight and selected-rank/collector Viser routing | Native WebRTC startup failed; external media, forwarded X11 and actual distributed spectator unverified |
+| 6.3 | Binary installed learner and prepared-image CI recipe retained; role interpreter selection implemented | Stock-worker native wheels and matching deployed role profiles unqualified |
+| 1b, 6.2a | Existing simulator-only SDK and recipe validation retained | Real ROS 2 proof needs authorized matching data |
 
 **Peer NCCL and co-located native DDP:** requires two compatible GPUs.
 On an allocated worker with two visible GPUs, run the actual collective
@@ -221,11 +245,47 @@ state evidence; CLI completion alone does not establish peer-to-peer copies.
 ```bash
 for inference in cuda:0 cuda:1; do
   .venv/bin/nexuml train isaac-cartpole-ppo \
-    -O "training.devices='1,'" -O training.collector.env_device=cuda:0 \
+    -O training.devices=1, -O training.collector.env_device=cuda:0 \
     -O training.collector.storing_device=cuda:0 \
     -O "training.collector.policy_device=$inference" \
     -O training.total_frames=2048 -O training.frames_per_batch=1024
 done
+```
+
+**Native fit/evaluation overlap (4.4):** on the same two-GPU worker,
+run a single native fit on `cuda:0` with snapshots in a child on `cuda:1`.
+Capture concurrent process/device activity, snapshot frame/digest receipts,
+and cleanup on completion and cancellation; command success alone is not
+an overlap measurement.
+
+```bash
+.venv/bin/python - <<'PY'
+from nexuml.core.config import ResolvedConfig
+from nexuml.core.types import ProcessEvaluationSpec, RLEvaluationSpec
+from nexuml_library.scenarios.reinforcement.isaaclab import isaac_cartpole_ppo
+
+spec = isaac_cartpole_ppo(total_frames=8192)
+spec.policy_evaluation = RLEvaluationSpec(
+    episodes=1, at_start=True, every_n_frames=2048, max_steps_per_episode=16,
+    process=ProcessEvaluationSpec(device="cuda:1", scheduling="skip_if_busy"),
+)
+ResolvedConfig.from_scenario(spec).save("native-overlap.yaml")
+PY
+.venv/bin/nexuml train --config native-overlap.yaml
+```
+
+**Distributed Viser (4a.6):** after the headless peer DDP test, generate
+the same `peer-ddp.yaml` with this addition before saving, and rerun its
+torchrun command with a prepared private loopback browser route. Verify
+only rank 1 listens, disconnect without changing training counters or
+policy, then cancel and confirm the listener closes.
+
+```python
+from nexuml_library.environments.isaaclab_config import ViserSpec
+env = spec.interaction.environment
+spec.interaction.environment = env.model_copy(
+    update={"viewer": ViserSpec(train_rank=1, port=17391, max_visible_envs=2)}
+)
 ```
 
 **Multi-node independent collection (3.4/3.5) and CI profile (6.3):**
@@ -273,3 +333,47 @@ authorized episodes with a matching embodiment, calibrated controlled
 joints, units, timing and held-out splits were supplied. The
 [local-fit handoff](local-fit-handoff.md) names those prerequisites.
 Do not run a synthetic/real mix or physical control as a substitute.
+
+## Post-merge checks
+
+- Verified local browser Viser train/replay, read-only parity, failure and
+  cancellation cleanup, plus isolated sensor/trajectory storage. **3
+  passed** with existing Chromium; no distributed native rank claim.
+  Receipts: `/tmp/opencode/nexuml-viser-local-browser-v2/`.
+- The installed learner used the binary lock with the `reinforcement`,
+  `ray` and `library` extras and both application wheels. `uv pip check`
+  passed, and the installed CLI again trained 32 frames on `cuda:0` and
+  replayed eight CPU ticks. The disposable environment was removed after
+  preserving wheels, package versions, hashes and receipts.
+- CUDA learner plus native CUDA rollout actor resumed on one shared GPU
+  from a partial checkpoint: fresh actor identity, exact restored policy
+  and Adam state, policy version 1 in the fresh collector, CPU transport,
+  native CUDA learner and 32 frames/eight optimizer steps. **1 passed**;
+  `/tmp/opencode/nexuml-final-cuda-transport-v2/`.
+- Role-owner, Ray Train and missing-resource admission suite: **6 passed**.
+  The missing actor role timed out without shutting down borrowed Ray.
+  Geometry, viewer/provider, CI and DDP guard suite: **152 passed, 17 skipped**.
+- Docs check with Node 22.23.4 built both targets and verified rendered
+  links; locked dependencies, Ruff and strict OpenSpec passed.
+- At `70204139`, both wheels and source distributions rebuilt offline
+  and passed the package layout/metadata check (1 passed, 2 opt-in
+  resolver checks skipped). Artifacts and hashes:
+  `/tmp/opencode/nexuml-stable-artifacts-MLAL8r/`.
+- The standard suite at `70204139` passed: **3,776 passed, 154 skipped,
+  604 subtests passed**. The final ordered actor graph checkpoint guard
+  rejected changed actor definitions before collection and passed the
+  focused PPO, grouped, evaluation and DDP suite (**172 passed, 15 skipped**).
+- Focused type checks pass. The repository-wide type checker still reports
+  115 diagnostics with the prepared runtime (including absent optional
+  packages and existing fixture issues); the preceding tree reports 126.
+
+```bash
+TMPDIR=/tmp/opencode CUDA_VISIBLE_DEVICES='' OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 \
+  NEXUML_RUN_SYSTEM_TESTS=0 NEXUML_RUN_SIMULATOR_TESTS=0 NEXUML_RUN_HARDWARE_TESTS=0 \
+  .venv/bin/python -m pytest --basetemp=/tmp/opencode/nexuml-decouple-cpu -q
+
+NEXUML_RUN_SYSTEM_TESTS=1 NEXUML_TEST_RAY_TRAIN=1 \
+  TMPDIR=/tmp/opencode OMP_NUM_THREADS=1 .venv/bin/python -m pytest -q \
+  tests/execution/test_rl_ddp.py tests/core/test_ray_collectors.py \
+  -k 'ddp or ray_train_round_trip or admission'
+```

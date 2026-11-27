@@ -165,6 +165,43 @@ def test_native_terminal_pixels_match_the_ending_scene_not_reset_scene(tmp_path)
     assert "NATIVE_TERMINAL_PIXEL_AND_SCENE_IDENTITY_VERIFIED" in log
 
 
+@pytest.mark.parametrize(
+    "inference,learner",
+    [(0, 0), (0, 1), (1, 1)],
+    ids=["colocated", "split-learner", "split-inference"],
+)
+def test_native_rgb_ppo_placement(tmp_path, inference, learner):
+    import torch
+
+    from nexuml.core.config import ResolvedConfig
+    from nexuml.core.export import load_inference_package
+    from nexuml.core.types import ExportSpec
+    from nexuml_library.reinforcement.algorithms.ppo import PPO
+    from nexuml_library.scenarios.reinforcement.isaaclab_sensors import isaac_rgb_cartpole_ppo
+
+    if torch.cuda.device_count() <= learner:
+        pytest.skip("split native RGB PPO needs two compatible visible CUDA devices")
+    scenario = isaac_rgb_cartpole_ppo(total_frames=128, frames_per_batch=64)
+    training = scenario.training
+    training.devices = f"{learner},"
+    training.collector.policy_device = f"cuda:{inference}"
+    training.algorithm = PPO(minibatch_size=32, update_epochs=1)
+    policy_path = tmp_path / "policy"
+    scenario.exports = [ExportSpec(kind="train_package", output=str(policy_path))]
+    config_path = tmp_path / "train.yaml"
+    ResolvedConfig.from_scenario(scenario).save(config_path)
+    log = _run(
+        ["-m", "nexuml.cli.main", "train", "--config", config_path],
+        tmp_path,
+        "native-rgb",
+        process_scope=False,
+    )
+    assert f"Fit device observed at start: cuda:{learner}" in log
+    assert "Optimizer steps: 8" in log
+    _, _, metadata = load_inference_package(policy_path)
+    assert metadata["training_frames"] == 128
+
+
 @pytest.mark.parametrize("owner", ["package", "external"])
 def test_native_multimodal_values_terminal_scene_and_history(tmp_path, owner):
     import numpy as np

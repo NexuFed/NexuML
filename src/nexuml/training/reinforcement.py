@@ -107,6 +107,8 @@ class NexuRLLightningModule(L.LightningModule):
         )
         assert saved.interaction is not None
         assert self.scenario.interaction is not None
+        if list(saved.pipeline.stages.items()) != list(self.scenario.pipeline.stages.items()):
+            raise ValueError("RL checkpoint requires an unchanged actor graph")
         if (
             saved.interaction.environment.describe() != self.policy.contract
             or saved.interaction.environment.checkpoint_identity()

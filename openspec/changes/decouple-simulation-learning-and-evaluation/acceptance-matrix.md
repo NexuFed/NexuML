@@ -22,6 +22,16 @@ limits. The evidence below does not broaden the historical lanes.
 | Large-width native SO-101 throughput | Pass for measurement, not for the 90% target. Median 28,575 / 99,015 / 283,886 frames/s at widths 256 / 1,024 / 4,096. |
 | Installed simulator-free CUDA learner | Pass from installed wheels: 32 frames, eight optimizer steps, export, eight CPU replay transitions. Not a released image or binary stock-worker profile qualification. |
 
+Post-merge evidence at `70204139` and the follow-up checkpoint guard is
+recorded in the [ledger](distributed-progress.md#post-merge-checks):
+3,776 standard tests passed; single-GPU CUDA transport resumed with a
+fresh native actor; browser Viser passed locally. The
+[native RGB fit](distributed-progress.md#visual-and-memory-pressure-probes)
+ran on one GPU; the two-device cases skipped. Prepared-image WebRTC
+playback timed out before reporting a listener, independently of the
+missing external client. No new multi-GPU, multi-node, or live WebRTC
+qualification.
+
 ## Historical evidence
 
 The first standard regression used base `fcb4a81a150b0eb272be6708315ea3fa64e00813`
