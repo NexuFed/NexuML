@@ -315,6 +315,17 @@ checked as well. The enhanced test passed for co-located native RGB and
 PhysX; its two split cases skipped on one visible GPU. Logs:
 `/tmp/opencode/nexuml-native-split-oracle/`.
 
+A separate six-transition synthetic RGB TensorDict now checks TorchRL
+GAE after transfer to the configured learner, before flattening.
+The oracle distinguishes true termination from timeout bootstrapping and
+pre-reset pixels from the next episode. It passed on CPU and `cuda:0`;
+the 96 MiB pressure run still measured 68.1 MiB peak additional update
+allocation, with all phases recorded in
+`/tmp/opencode/nexuml-visual-gae-6GLgAQ/visual-pressure.json`.
+The separate real CUDA/Ray worker regressions passed (2 tests), including
+CPU collection and a native Newton GPU worker. Neither is a same-host
+split GPU receipt. Logs: `/tmp/opencode/nexuml-split-regressions-Q1V7wj/`.
+
 Raw measurements: `/tmp/opencode/nexuml-visual-pressure-0plGFI/`.
 
 ```bash
@@ -334,7 +345,7 @@ NEXUML_RUN_SIMULATOR_TESTS=1 NEXUML_TEST_RAY_NATIVE_SNAPSHOT=1 \
 | --- | --- | --- |
 | 2.2 | Explicit GPU roles, validation, and TorchRL device transfers implemented | Separate-device and P2P receipts need a compatible GPU pair |
 | 2a.2–2a.3 | NCCL preflight and matched benchmark runnable | Two-node fit/resume, strong/weak scaling, fixed-global held-out outcomes and NCCL payloads measured; same-host peer still unqualified |
-| 2a.4 | Synthetic pressure, transfer and weight-parity fixture; public native RGB fit fixture | Co-located native image-input fit passes; split visual and large-model results unqualified |
+| 2a.4 | Synthetic pressure, transfer, terminal/GAE and weight-parity fixture; public native RGB fit fixture | Co-located native image-input fit passes; split visual and large-model results unqualified |
 | 3.4–3.5 | Actor admission, CUDA learner, published weights and native checkpoint/recovery proven with local resources | Three-node fit, export and resume passed with a simulator-free GPU learner; matched direct, remote and two-node DDP rates measured. Grouped Ray rollout unsupported |
 | 4.4 | Rank-zero snapshots, separate process/Ray GPU evaluation and bounded cancellation | Native Kit-less PPO and separate-node GPU snapshot evaluation overlapped; final snapshot drained |
 | 4a.1, 4a.4, 4a.6 | Typed viewer selection, CLI mapping, native headless RGB and selected-rank/collector Viser routing tested | Live two-node Viser attach, disconnect and listener cleanup passed, including injected cancellation. Native WebRTC startup and client media remain open under 4a.4 |
@@ -374,6 +385,9 @@ then run the placements below. Capture actual allocator/transfer and terminal
 state evidence; CLI completion alone does not establish peer-to-peer copies.
 
 ```bash
+NEXUML_RUN_SIMULATOR_TESTS=1 TMPDIR=/tmp/opencode OMP_NUM_THREADS=1 \
+  .venv/bin/python -m pytest -q tests/core/test_isaaclab_integration.py \
+  -k native_ppo_placement
 for inference in cuda:0 cuda:1; do
   .venv/bin/nexuml train isaac-cartpole-ppo \
     -O training.devices=1, -O training.collector.env_device=cuda:0 \

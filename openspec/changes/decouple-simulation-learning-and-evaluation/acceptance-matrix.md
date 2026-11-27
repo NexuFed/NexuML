@@ -24,7 +24,8 @@ limits. The evidence below does not broaden the historical lanes.
 | Large-width native SO-101 throughput | Pass for measurement, not for the 90% target. Median 28,575 / 99,015 / 283,886 frames/s at widths 256 / 1,024 / 4,096. |
 | Two-node native SO-101 | At 1,024 environments per rank, 186,586 warm frames/s (88.9% of RSL-RL). Fixed-global scaling was slower than one GPU. Both fixed-global checkpoint replays achieved 0/32 held-out successes. |
 | Selected-rank Viser | Pass on two native ranks: private browser attach/disconnect, bounded rank-one view, normal and cancellation cleanup. 63.8→86.8 ms median warm batch time in one matched Cartpole run. |
-| Installed simulator-free CUDA learner | Pass from installed wheels: 32 frames, eight optimizer steps, export, eight CPU replay transitions. Not a released image or binary stock-worker profile qualification. |
+| Installed simulator-free CUDA learner | Pass from the generated workspace lock and installed wheels: 32 frames/eight optimizer steps, then fresh resume to 48 frames/12 steps and reload of both exports. This direct-PPO CI check does not qualify a clean native simulator install or a released image. |
+| Direct native placement and visual pressure | Co-located PhysX and native RGB each passed the device, weight and behavior likelihood checks. Synthetic RGB terminal/truncation GAE matched the oracle on CPU and one GPU; split native/P2P and split visual qualification require a compatible GPU pair. |
 
 Post-merge evidence at `70204139` and the follow-up checkpoint guard is
 recorded in the [ledger](distributed-progress.md#post-merge-checks):

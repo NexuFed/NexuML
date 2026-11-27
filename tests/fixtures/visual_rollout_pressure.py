@@ -7,6 +7,7 @@ from time import perf_counter
 import torch
 from tensordict import TensorDict
 from torch import nn
+from torchrl.objectives.value.functional import vec_generalized_advantage_estimate
 
 
 def _step(devices, phase):
@@ -38,6 +39,48 @@ def _model(device):
 
 def _bytes(tensors):
     return sum(v.numel() * v.element_size() for v in tensors)
+
+
+def _check_gae(sim, learner):
+    # Two environments: middle tick terminates one and times out the other.
+    # An ended scene (pixel 8) and the next reset scene (pixel 32) must not alias.
+    states = torch.tensor([0, 4, 32], dtype=torch.uint8, device=sim)
+    next_states = torch.tensor([4, 8, 64], dtype=torch.uint8, device=sim)
+
+    def pixels(values):
+        return values.view(1, 3, 1, 1, 1).expand(2, 3, 3, 4, 4).clone()
+
+    following = TensorDict(
+        {
+            "rgb": pixels(next_states),
+            "reward": torch.tensor([1.0, 1.0, 2.0], device=sim).view(1, 3, 1).expand(2, -1, -1),
+            "done": torch.tensor([[False, True, False]] * 2, device=sim).unsqueeze(-1),
+            "terminated": torch.tensor(
+                [[False, True, False], [False, False, False]], device=sim
+            ).unsqueeze(-1),
+        },
+        [2, 3],
+        device=sim,
+    )
+    rollout = TensorDict({"rgb": pixels(states), "next": following}, [2, 3], device=sim).to(learner)
+    following = rollout["next"]
+    assert rollout["rgb"].dtype == following["rgb"].dtype == torch.uint8
+    advantages, targets = vec_generalized_advantage_estimate(
+        0.5,
+        0.5,
+        rollout["rgb"][..., 0, 0, :1].float(),
+        following["rgb"][..., 0, 0, :1].float(),
+        following["reward"],
+        following["done"],
+        following["terminated"],
+    )
+    assert advantages.device == targets.device == learner
+    torch.testing.assert_close(
+        advantages.squeeze(-1).cpu(), torch.tensor([[2.25, -3.0, 2.0], [3.25, 1.0, 2.0]])
+    )
+    torch.testing.assert_close(
+        targets.squeeze(-1).cpu(), torch.tensor([[2.25, 1.0, 34.0], [3.25, 5.0, 34.0]])
+    )
 
 
 def _run(frames, side, batch, sim, inference, learner):
@@ -77,6 +120,7 @@ def _run(frames, side, batch, sim, inference, learner):
     torch.testing.assert_close(
         actor.state_dict(), {k: v.to(inference) for k, v in fit.state_dict().items()}
     )
+    _check_gae(sim, learner)
     print(
         json.dumps(
             {
@@ -100,6 +144,7 @@ def _run(frames, side, batch, sim, inference, learner):
                 "update": fit_peak,
                 "publication": publication,
                 "version_barrier": "copied weights equal at update boundary",
+                "terminal_gae": "matched termination, truncation and post-reset targets",
             },
             indent=2,
         )
