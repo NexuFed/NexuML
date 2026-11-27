@@ -900,10 +900,11 @@ receipts are under `nexuml/isaac-workstation/runs/nex212-isaac-official-e7evdb/`
 the pod-local environment and cache were not retained. The retry still
 reported the same three `uv pip check` metadata conflicts; the maintainer
 accepted these exact pins for the verified workspace profile. No override
-was added. This closes the clean-install and same-environment runtime
-check, not the full §6.3 acceptance: fresh-install windowed/WebRTC
-graphics and same-host split placement were not tested. The existing
-prepared graphics and previously qualified Ray lanes remain separate.
+was added. This closes §6.3 for the supported runtime profiles:
+the lock-backed learner and headless native paths, the existing prepared
+graphics image, and the previously qualified DDP, Ray collection and
+evaluation lanes. The fresh-install lane did not test windowed/WebRTC
+graphics or OvPhysX. Same-host split remains open under 2.2 and 2a.4.
 
 ## Post-merge checks
 

@@ -26,6 +26,7 @@ limits. The evidence below does not broaden the historical lanes.
 | Selected-rank Viser | Pass on two native ranks: private browser attach/disconnect, bounded rank-one view, normal and cancellation cleanup. 63.8→86.8 ms median warm batch time in one matched Cartpole run. |
 | Standalone private WebRTC playback | Pass for decoded Cartpole policy motion in the NVIDIA client over NetBird. TCP 49100 was established and the policy process owned UDP 47998. Separate runs without a client verified normal and graceful cancellation cleanup. The client run released both sockets after the deadline wrapper used SIGKILL, so graceful shutdown after a client session is not qualified. Forwarded Windows X11 remains unqualified. |
 | Installed simulator-free CUDA learner | Pass from the generated workspace lock and installed wheels: 32 frames/eight optimizer steps, then fresh resume to 48 frames/12 steps and reload of both exports. This direct-PPO CI check does not qualify a clean native simulator install or a released image. |
+| Fresh official Isaac install (§6.3) | Pass on an RTX 5080 pod: one locked environment ran Newton CUDA fit/resume without Kit and 24 headless PhysX playback steps with Kit. The three accepted upstream metadata conflicts remain. Graphics playback is qualified separately on the prepared image; this pod did not exercise OvPhysX. |
 | Direct native placement and visual pressure | Co-located PhysX and native RGB each passed the device, weight and behavior likelihood checks. Synthetic RGB terminal/truncation GAE matched the oracle on CPU and one GPU; split native/P2P and split visual qualification require a compatible GPU pair. |
 
 Post-merge evidence at `70204139` and the follow-up checkpoint guard is
@@ -150,9 +151,9 @@ with two rollout actors, then the installed CLI exported and played the
 fixed actor for eight transitions. The actor reports source frame 32,
 with package SHA-256
 `e14a0b94b2b3d3490dcf8e2969f4b4a9ea1572a2296b8a4294755c8e5e849260`.
-Receipts and wheel hashes: `/tmp/opencode/ri-jhl2lN/`. Task 6.3 remains
-open for unqualified split and distributed GPU recipes, not public release
-delivery.
+Receipts and wheel hashes: `/tmp/opencode/ri-jhl2lN/`. See the newer
+runtime and distributed receipts above for §6.3. Same-host split remains
+open under 2.2 and 2a.4; public release delivery is a separate check.
 
 Rebuilding both wheels at `29d60590` and using an isolated CPython 3.12
 environment installed **107 packages as binaries**. PyTorch CPU wheel URLs
