@@ -1,11 +1,15 @@
 """Typed definition for loading NexuML exported datasets."""
 
+from __future__ import annotations
+
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from nexuml.core.components import DataSourceDefinition
 from nexuml.core.discovery import data_source
-from nexuml.data.dataset import NexuDataset
-from nexuml.data.exported import ExportedDataset as _ExportedDatasetRuntime
+
+if TYPE_CHECKING:
+    from nexuml.data.dataset import NexuDataset
 
 
 @data_source("ExportedDataset")
@@ -22,7 +26,9 @@ class ExportedDataset(DataSourceDefinition):
     s3_profile: str | None = None
 
     def build(self) -> NexuDataset:
-        return _ExportedDatasetRuntime(**self.model_dump())
+        from nexuml.data.exported import ExportedDataset as Runtime
+
+        return Runtime(**self.model_dump())
 
 
 __all__ = ["ExportedDataset"]

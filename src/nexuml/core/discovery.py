@@ -20,12 +20,15 @@ from pathlib import Path
 from typing import Any, Callable, TypeVar
 
 from nexuml.core.components import (
+    ActionAdapterDefinition,
     ComponentDefinition,
     DataSourceDefinition,
+    EnvironmentDefinition,
     EvalAlgorithmDefinition,
     ExecutionBackendDefinition,
     LayerDefinition,
     LoaderBackendDefinition,
+    RLAlgorithmDefinition,
 )
 
 logger = logging.getLogger(__name__)
@@ -220,6 +223,45 @@ def loader_backend(
     )
 
 
+def environment(
+    key: str, *, version: str = "1"
+) -> Callable[[type[DefinitionT]], type[DefinitionT]]:
+    """Register a portable environment definition.
+
+    Returns:
+        Definition class decorator.
+    """
+    return _component_decorator(
+        key, kind="environment", expected_type=EnvironmentDefinition, version=version
+    )
+
+
+def action_adapter(
+    key: str, *, version: str = "1"
+) -> Callable[[type[DefinitionT]], type[DefinitionT]]:
+    """Register a deployable action-adapter definition.
+
+    Returns:
+        Definition class decorator.
+    """
+    return _component_decorator(
+        key, kind="action_adapter", expected_type=ActionAdapterDefinition, version=version
+    )
+
+
+def rl_algorithm(
+    key: str, *, version: str = "1"
+) -> Callable[[type[DefinitionT]], type[DefinitionT]]:
+    """Register a checkpointable RL-algorithm definition.
+
+    Returns:
+        Definition class decorator.
+    """
+    return _component_decorator(
+        key, kind="rl_algorithm", expected_type=RLAlgorithmDefinition, version=version
+    )
+
+
 def execution_backend(
     key: str, *, version: str = "1"
 ) -> Callable[[type[DefinitionT]], type[DefinitionT]]:
@@ -309,8 +351,8 @@ class Scanner:
             self._record_error(package_path, "import", exc)
             return found
 
+        found.extend(self.scan_module(package))
         if not hasattr(package, "__path__"):
-            found.extend(self.scan_module(package))
             return found
 
         def _on_walk_error(name: str) -> None:
@@ -440,22 +482,29 @@ def _is_package_dir(dir_path: Path) -> bool:
 def _collect_package_paths_under_root(root: str) -> list[str]:
     """Return importable package paths under a local library root.
 
-    Scans flat and nested packages. Assumes the root is on PYTHONPATH or
-    will be added temporarily during scanning.
+    Accepts a package directory, a container of packages, or a src-layout project.
+    Keeps package-qualified names so relative imports resolve correctly.
     """
     root_path = Path(root).expanduser().resolve()
     if not root_path.exists() or not root_path.is_dir():
         logger.debug("Library root does not exist or is not a directory: %s", root)
         return []
 
-    scan_root = root_path / "src" if (root_path / "src").is_dir() else root_path
+    package_root = _is_package_dir(root_path)
+    if package_root:
+        scan_root = root_path.parent
+    else:
+        scan_root = root_path / "src" if (root_path / "src").is_dir() else root_path
 
-    # Add root to sys.path temporarily so subpackages are importable
+    # Discovered modules must remain importable for config restoration and worker startup.
     import sys
 
     str_root = str(scan_root)
     if str_root not in sys.path:
         sys.path.insert(0, str_root)
+
+    if package_root:
+        return [root_path.name]
 
     packages: list[str] = []
     for child in scan_root.iterdir():

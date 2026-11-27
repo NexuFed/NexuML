@@ -3,6 +3,13 @@ title: Add a custom data source
 description: Build a NexuDataset from an immutable definition and return explicit feature and label TensorDicts.
 ---
 
+Sources with fixed episode/group partitions can override runtime
+`validate_split_type(split_type)` to reject unsafe repartitioning. The creator
+calls it before metadata changes or source composition; ordinary sources keep a
+no-op default. Use `split_type="keep"` for [local LeRobot data](/how-to/lerobot-data/).
+Composition preserves source-owned `(x, y)` pairs; metadata-backed labels retain
+the existing aggregate label-merging rules.
+
 **Goal:** make your dataset reusable in scenarios. **Prerequisites:** PyTorch/TensorDict,
 installed NexuML, and a [discoverable library](/how-to/custom-library/).
 Save this as `my_library/data/my_dataset.py`:

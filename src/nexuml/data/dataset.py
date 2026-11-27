@@ -5,12 +5,16 @@ from __future__ import annotations
 import copy
 import logging
 from collections.abc import Sequence, Sized
-from typing import Any, Self, cast
+from typing import TYPE_CHECKING, Any, Self, cast
 
 import numpy as np
 import pandas as pd
 import torch
 from tensordict import TensorDict
+
+if TYPE_CHECKING:
+    from tensordict.base import CompatibleType
+    from tensordict.utils import NestedKey
 from torch.utils.data import Dataset, Subset
 
 logger = logging.getLogger(__name__)
@@ -185,6 +189,9 @@ class NexuDataset(torch.utils.data.Dataset):
 
         self.meta = meta.reset_index(drop=True)
 
+    def validate_split_type(self, split_type: str) -> None:
+        """Let sources reject unsafe repartitioning before metadata is changed or merged."""
+
     def get_split(self, split: str) -> Self:
         """Return a view of this dataset filtered to a single split.
 
@@ -246,7 +253,7 @@ class NexuDataset(torch.utils.data.Dataset):
         if not self.label_names:
             return None
 
-        y_dict: dict[str, torch.Tensor] = {}
+        y_dict: dict[NestedKey, CompatibleType] = {}
         for name in self.label_names:
             if name not in row.index:
                 continue

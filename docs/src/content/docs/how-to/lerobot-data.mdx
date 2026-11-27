@@ -1,0 +1,121 @@
+---
+title: Read local LeRobot demonstrations
+description: Load offline episode-partitioned state and video data through the maintained reader.
+---
+
+`LeRobotDataSource` exposes finalized **LeRobot v3.0** datasets as ordinary
+frame-level NexuML `(x, y)` TensorDict pairs. The reader integration is exercised
+against LeRobot **0.6.1**. Install the optional `nexuml[robots]` dependencies in
+your approved environment before building a dataset; discovery and configuration
+do not import LeRobot, Isaac or ROS. RGB video decoding requires PyAV.
+State/action and local video features are supported. Image-backed features
+(`dtype="image"`) are unsupported, including unselected columns: upstream image
+decoding can follow remote references. Such schemas are rejected before metadata
+or reader construction. Convert them explicitly with upstream tools first.
+
+## Explicit episode splits and shapes
+
+Supply a local dataset root, its repository identity and disjoint episode IDs.
+The root must already contain `meta/info.json`, `meta/stats.json`,
+`meta/tasks.parquet`, episode metadata parquet shards, and the selected episodes'
+data/video files. Finalize upstream recordings before reading them.
+There is no download, Hub fallback, streaming or replacement storage engine.
+
+```python
+from nexuml.core.types import DataSpec, DatasetSpec, LoaderSpec, TargetSpec
+from nexuml.data.creator import NexuDataCreator
+from nexuml_library.data.lerobot import LeRobotDataSource
+
+source = LeRobotDataSource(
+    root="/approved/local/demonstrations",
+    repo_id="your-organization/your-dataset",
+    split_episodes={"train": (0, 1), "val": (2,), "test": (3,)},
+    input_keys=("observation.state",),
+    action_key="action",
+)
+data = DataSpec(
+    datasets=[DatasetSpec(source=source, split_type="keep", modality="robot")],
+    # Set these to the actual reader tensor dimensions for your dataset.
+    input_shapes={"observation.state": [6]},
+    feature_key="observation.state",
+    targets=[TargetSpec(type="regression", key="action", num_outputs=6)],
+    loader=LoaderSpec(batch_size=32, num_workers=0),
+)
+module = NexuDataCreator().build(data)
+module.setup()
+x, y = next(iter(module.train_dataloader()))
+state = x["observation.state"]
+actions = y["action"]
+```
+
+Use `DataSpec.datasets` with **`split_type="keep"`**. The `DataSpec.source`
+shortcut and default `fit`/`all` row splits overwrite episode membership and are
+rejected. Ratio fields do not repartition these explicit episode splits. A split
+may be empty, but at least one episode must be selected overall. Episode IDs must
+be nonnegative integers and cannot repeat within or across splits. Input keys must
+be nonempty, unique and exclude the action target.
+For multiple sources, every LeRobot `DatasetSpec` must use `split_type="keep"`;
+this is checked before source metadata is changed or merged. The ordinary creator
+and loader preserve each source's tensor pair through the aggregate dataset.
+
+To consume RGB as well, add your actual video key, for example
+`"observation.images.wrist"`, to `input_keys` and supply its reader shape in
+`input_shapes` (typically `[3, height, width]`, not the stored HWC shape).
+The source preserves the maintained reader's tensors, dtypes and decoding/unit
+semantics unchanged, copying returned tensors to avoid shared-buffer mutation.
+It adds no normalization, augmentation or transforms. In particular, upstream RGB
+decoding may return float CHW values in `[0, 1]`; this is not a NexuML fitted
+normalization step. Upstream video-depth decoding/unit conversion also remains unchanged.
+Fit any learned normalization separately using training episodes only.
+
+## Inspect identities, timing and declared provenance
+
+```python
+dataset = module.dataset
+train = dataset.get_split("train")
+rows = train.take([1, 0])  # Views retain the original reader mapping.
+print(rows.meta[["episode_index", "frame_index", "timestamp", "index", "source_index"]])
+print(dataset.info)             # Original info.json, including additional fields.
+print(dataset.provenance)       # Local root, repo identity, selection and key mapping.
+print(dataset.episode_metadata) # Selected upstream episode records.
+```
+
+`meta["index"]` is the dataset's original global frame index.
+`meta["source_index"]` is the row index in the episode-filtered maintained reader;
+it is not necessarily the global index. `get_split()` and nested `take()` map
+through this column rather than double-subsetting the reader.
+
+Per-frame scalar columns retain timestamps, episode/frame/task indices and any
+other stored scalar annotations. Task text, selected episode metadata and declared
+top-level `provenance` are retained in `meta`; vector/video tensors are not
+eagerly materialized there. `label_names=[]` prevents these annotations from being
+inferred as supervised labels. Only `action_key` enters `y`.
+
+Provenance is retained **when supplied**, not invented: repository IDs and
+`robot_type` do not prove hardware origin, calibration, licensing, controller
+revision, intervention boundaries or permitted use. Review the actual dataset's
+licenses, retention and authorized-use metadata before training. Dataset content
+hashes and complete consumption reports are not produced by this slice.
+
+## Scope and checks
+
+This source reads single frames, not observation histories or action chunks. It
+does not align multi-rate sensors, resample, pad, quarantine samples, validate
+physical action bounds or produce a timing/quality report. Full format-security,
+alignment, quality and source-group leakage checks remain task 7.2 work; assigning
+distinct episode IDs alone cannot prevent leakage between derived episodes. Language/structured event
+metadata remains upstream data, not an automatic tokenizer or model processor.
+No capture tools, model weights, simulator startup or hardware actuation occur.
+
+Focused offline CPU regression tests create tiny state and video recordings using
+upstream recording APIs; no external assets are fetched:
+
+```bash
+CPU_VISIBLE_DEVICES='' CUDA_VISIBLE_DEVICES='' .venv/bin/python -m pytest -q tests/core/test_lerobot_data.py
+```
+
+Optional reader tests skip without LeRobot; video tests additionally require PyAV
+and a public CPU H.264 encoder. Missing local prerequisites raise actionable
+`FileNotFoundError`; unsupported schema versions, missing selected episodes/keys
+and missing feature shapes fail explicitly rather than attempting conversion or
+remote repair.

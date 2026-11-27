@@ -6,6 +6,7 @@ import pytest
 from pydantic import ValidationError
 
 from nexuml.core.config import ResolvedConfig
+from nexuml.core.components import ExecutionBackendDefinition
 from nexuml.core.registry import get_component_registry
 from nexuml.core.serialization import lower_model
 from nexuml.core.types import ScenarioSpec
@@ -24,6 +25,7 @@ def test_default_local_identity():
 )
 def test_builtin_round_trip(name):
     definition = get_component_registry().get_type("execution_backend", name)()
+    assert isinstance(definition, ExecutionBackendDefinition)
     config = ResolvedConfig.from_scenario(ScenarioSpec(name=name, execution=definition))
     restored = ResolvedConfig.from_yaml(config.to_yaml())
     assert type(restored.execution) is type(definition)
@@ -82,4 +84,4 @@ def test_ray_settings_survive_registered_config():
 )
 def test_credential_bearing_ray_targets_are_rejected(address):
     with pytest.raises(ValidationError):
-        RayClusterExecution(target={"address": address})
+        RayClusterExecution.model_validate({"target": {"address": address}})

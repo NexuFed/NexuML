@@ -65,3 +65,19 @@ def test_apply_overrides_missing_path():
 def test_apply_overrides_no_overrides_returns_input():
     scenario = {"a": 1}
     assert apply_overrides(scenario, []) is scenario
+
+
+def test_overrides_rebuild_frozen_rl_components_without_mutating_originals():
+    from nexuml_library.scenarios.reinforcement.gymnasium import cartpole_ppo
+
+    scenario = cartpole_ppo()
+    original = scenario.training.algorithm
+    result = apply_overrides(
+        scenario, ["training.algorithm.update_epochs=1", "training.algorithm.minibatch_size=8"]
+    )
+    assert result is scenario
+    assert scenario.training.algorithm.update_epochs == 1
+    assert scenario.training.algorithm.minibatch_size == 8
+    assert original.update_epochs == 10 and original.minibatch_size == 256
+    with pytest.raises(ValueError):
+        apply_overrides(scenario, ["training.algorithm.minibatch_size=0"])

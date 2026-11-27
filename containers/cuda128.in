@@ -1,5 +1,5 @@
 # Container-only backend pins; public package bounds stay in the workspace manifests.
-# Both manifests and every declared extra are inputs to scripts/container_lock.py.
+# Both manifests are inputs; the standard all/dev extras exclude native robotics.
 torch==2.11.0+cu128
 torchaudio==2.11.0+cu128
 torchvision==0.26.0+cu128

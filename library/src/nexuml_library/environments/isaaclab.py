@@ -1,0 +1,453 @@
+"""Portable native task declarations; simulation exists only inside an owned job."""
+
+from contextlib import AbstractContextManager
+from typing import TYPE_CHECKING, Literal
+
+import torch
+from pydantic import Field, model_validator
+
+from nexuml.core.components import EnvironmentBuildContext, EnvironmentDefinition, PlaybackViewer
+from nexuml.core.discovery import environment
+from nexuml.core.types import (
+    FactorySpec,
+    InteractionContract,
+    PhysicalSystemContract,
+    PhysicalTensorContract,
+    ReinforcementLearningSpec,
+    TensorFieldContract,
+)
+from .isaaclab_config import (
+    IsaacBindings,
+    IsaacTaskConfigSpec,
+    ViserSpec,
+    WebRTCSpec,
+    isaac_task_config,
+)
+
+if TYPE_CHECKING:
+    from nexuml.interaction.runtime import EnvironmentRuntime
+
+
+_TASK_PROFILES: dict[str, tuple[int, int, float, str, str]] = {
+    "Isaac-Cartpole": (
+        4,
+        1,
+        1 / 60,
+        "Pinned Cartpole state-only policy observations.",
+        "Joint order: slider_to_cart; continuous joint effort = 100 * action N.",
+    ),
+    "Isaac-Cartpole-Direct": (
+        4,
+        1,
+        1 / 60,
+        "Relative cart/pole positions followed by relative cart/pole velocities.",
+        "Joint order: slider_to_cart; continuous joint effort = 100 * action N.",
+    ),
+    "Isaac-Reach-Franka": (
+        32,
+        7,
+        1 / 30,
+        "Pinned Franka Reach state-only policy observations.",
+        "Joint order: panda_joint1, panda_joint2, panda_joint3, panda_joint4, "
+        "panda_joint5, panda_joint6, panda_joint7; joint-position targets = "
+        "pinned default joint pose + 0.5 * action rad (default-pose offsets).",
+    ),
+    "NexuML-SO101-Joint-Reach": (
+        15,
+        5,
+        1 / 30,
+        "Five arm positions (rad), velocities (rad/s), and target positions (rad), "
+        "each ordered shoulder_pan, shoulder_lift, elbow_flex, wrist_flex, wrist_roll.",
+        "Joint order: shoulder_pan, shoulder_lift, elbow_flex, wrist_flex, wrist_roll; "
+        "absolute joint-position targets = 0.5 * action rad in [-0.5, 0.5], "
+        "without default-pose offsets, using the pinned SO101_CFG PhysX asset; "
+        "gripper is fixed at 0.2555162024919699 rad, not a policy control.",
+    ),
+}
+
+
+@environment("IsaacLabEnvironment", version="2")
+class IsaacLabEnvironment(EnvironmentDefinition):
+    """Trusted registered task plus explicit portable configuration and I/O meaning."""
+
+    task: str = Field(default="Isaac-Cartpole", min_length=1, pattern=r"\S")
+    revision: Literal["70ab24fec3eabf51222817db0cdb5a4e7133bd7e",] = (
+        "70ab24fec3eabf51222817db0cdb5a4e7133bd7e"
+    )
+    physics: str | None = "isaacsim_physx"
+    presets: tuple[str, ...] = ()
+    task_config: IsaacTaskConfigSpec | None = None
+    contract: InteractionContract | None = None
+    bindings: IsaacBindings | None = None
+    viewer: ViserSpec | None = None
+    webrtc: WebRTCSpec | None = Field(default=None, exclude_if=lambda value: value is None)
+    arena_factory: FactorySpec | None = Field(default=None, exclude_if=lambda value: value is None)
+
+    @model_validator(mode="after")
+    def _validate_profile(self):
+        if self.arena_factory is not None and (
+            self.task in _TASK_PROFILES
+            or ":" in self.task
+            or self.physics != "isaacsim_physx"
+            or self.presets
+            or self.task_config is not None
+            or self.viewer is not None
+            or self.contract is None
+            or self.contract.groups
+            or any(field.modality != "vector" for field in self.contract.observations.values())
+            or self.bindings is None
+        ):
+            raise ValueError(
+                "Arena composition requires a distinct task, explicit state contract/bindings, "
+                "and headless PhysX without native preset or task config overrides"
+            )
+        selections = (*self.presets, *((self.physics,) if self.physics is not None else ()))
+        if any(
+            not item or not item.replace("_", "").replace("-", "").isalnum() for item in selections
+        ):
+            raise ValueError(
+                "Native physics/presets must be named selections, not override strings"
+            )
+        if len(set(self.presets)) != len(self.presets):
+            raise ValueError("Native presets must be unique and ordered")
+        if self.task == "NexuML-SO101-Joint-Reach" and self.physics != "isaacsim_physx":
+            raise ValueError(
+                "SO-101 joint reach requires its validated PhysX asset/control profile"
+            )
+        if self.task not in _TASK_PROFILES and (self.contract is None or self.bindings is None):
+            raise ValueError("Custom native tasks require an explicit contract and bindings")
+        if (
+            self.bindings is not None
+            and not self.bindings.groups
+            and any(not path for path in self.bindings.observations.values())
+        ):
+            raise ValueError("Single-agent native observation paths must be nonempty")
+        if self.contract is not None:
+            if self.contract.num_envs != 1:
+                raise ValueError(
+                    "Environment count belongs to the collector, not the task contract"
+                )
+            if self.contract.control_period_s is None:
+                raise ValueError("Native tasks require an explicit control period")
+            bindings = self.native_bindings()
+            if self.contract.groups:
+                if tuple(bindings.groups) != tuple(self.contract.groups):
+                    raise ValueError("Native group bindings must match ordered contract groups")
+                if self.contract.critic_observations or bindings.critic_observations:
+                    raise ValueError(
+                        "Privileged critic state has no qualified pre-reset final-state source"
+                    )
+                for name, group in self.contract.groups.items():
+                    binding = bindings.groups[name]
+                    if set(binding.observations) != set(group.observations):
+                        raise ValueError(
+                            "Native group observation bindings must match the contract"
+                        )
+                    if set(group.actions) != {binding.action}:
+                        raise ValueError("Native groups require one explicitly bound action")
+                    if binding.critic_observations or binding.processing != "processed":
+                        raise ValueError("Native grouped raw/privileged processing is unsupported")
+                if bindings.processing != "processed":
+                    raise ValueError("Native grouped raw processing is unsupported")
+                return self
+            if bindings.groups:
+                raise ValueError("Grouped native bindings require a grouped contract")
+            if set(bindings.observations) != set(self.contract.observations):
+                raise ValueError("Native observation bindings must exactly match the contract")
+            if set(self.contract.actions) != {bindings.action}:
+                raise ValueError("Native single-agent tasks require one explicitly bound action")
+            if bindings.direct_controls is not None:
+                physical = self.contract.actions[bindings.action].physical
+                if physical is None or physical.control_mode is None:
+                    raise ValueError(
+                        "Procedural direct controls require a typed physical action contract"
+                    )
+        return self
+
+    def native_bindings(self) -> IsaacBindings:
+        """Return declared native paths, with the maintained reference's explicit mapping."""
+        return self.bindings or IsaacBindings(observations={"observation": ("policy",)})
+
+    def checkpoint_identity(self) -> dict:
+        """Retain native task meaning while permitting display-only viewer changes.
+
+        Returns:
+            Task-defining declaration with spectator settings excluded.
+        """
+        identity = super().checkpoint_identity()
+        identity["params"].pop("viewer", None)
+        identity["params"].pop("webrtc", None)
+        return identity
+
+    def describe(self) -> InteractionContract:
+        if self.contract is not None:
+            return self.contract
+        obs_size, action_size, period, observation_description, mapping = _TASK_PROFILES[self.task]
+        observation_physical = action_physical = system_physical = None
+        if self.task == "NexuML-SO101-Joint-Reach":
+            from ._isaaclab_so101 import (
+                ASSET_LAYER_SHA256,
+                ASSET_MANIFEST_ID,
+                ASSET_SOURCE,
+                JOINT_NAMES,
+            )
+
+            mapping += (
+                f" Asset={ASSET_SOURCE}; sha256={ASSET_LAYER_SHA256['so101_new_calib.usda']}."
+            )
+            observation_physical = PhysicalTensorContract(
+                units=("rad",) * 5 + ("rad/s",) * 5 + ("rad",) * 5,
+                frame="robot_joint",
+                joints=JOINT_NAMES * 3,
+                sensor_id="simulation:joint-state-and-task-goal",
+            )
+            action_physical = PhysicalTensorContract(
+                units=("rad",),
+                frame="robot_joint",
+                joints=JOINT_NAMES,
+                control_mode="absolute_position",
+                scale=(0.5,),
+                offset=(0.0,),
+            )
+            system_physical = PhysicalSystemContract(
+                embodiment_id="simulation:so101-calibrated-fixed-gripper",
+                asset_source=ASSET_SOURCE,
+                asset_id=ASSET_MANIFEST_ID,
+                calibration_id="simulation:usd-authored-joint-zero",
+            )
+        return InteractionContract(
+            observations={
+                "observation": TensorFieldContract(
+                    shape=(obs_size,),
+                    dtype="float32",
+                    modality="vector",
+                    description=observation_description,
+                    physical=observation_physical,
+                )
+            },
+            actions={
+                "action": TensorFieldContract(
+                    shape=(action_size,),
+                    dtype="float32",
+                    low=-1,
+                    high=1,
+                    rate_hz=1 / period,
+                    description=(
+                        f"task={self.task}; physics={self.physics}; "
+                        f"normalized dimensionless [-1, 1] controls; period={period} s. {mapping}"
+                    ),
+                    physical=action_physical,
+                )
+            },
+            action_space="continuous",
+            num_envs=1,
+            control_period_s=period,
+            physical=system_physical,
+        )
+
+    def validate_local_fit(self) -> None:
+        """Allow local simulation learning without viewer access.
+
+        Raises:
+            ValueError: If a viewer has been configured for this recipe.
+        """
+        if self.viewer is not None:
+            raise ValueError("Interactive local fit requires headless simulation")
+
+    def validate_training(
+        self, training: ReinforcementLearningSpec, *, device: str | None = None
+    ) -> None:
+        collector = training.collector
+        ray_gpu = (
+            collector.backend == "ray" and collector.ray is not None and collector.ray.num_gpus == 1
+        )
+        if not ray_gpu and (
+            collector.backend != "direct" or not collector.sync or collector.num_collectors != 1
+        ):
+            raise ValueError(
+                "Isaac Lab requires one synchronous direct collector: backend='direct', "
+                "sync=True, num_collectors=1"
+            )
+        learner_index = training.single_gpu_index(training.devices)
+        training.validate_learner_devices(training.devices, training.accelerator)
+        if training.strategy not in ("auto", "ddp"):
+            raise ValueError("Isaac Lab requires training.strategy='auto' or 'ddp'")
+        if ray_gpu:
+            collector.validate_ray_gpu_devices()
+            if training.accelerator not in ("cpu", "cuda", "gpu"):
+                raise ValueError("Isaac Lab Ray collection requires explicit CPU/CUDA learning")
+            requested_device = "cpu" if training.accelerator == "cpu" else "cuda"
+            if device is not None and torch.device(device).type != requested_device:
+                raise ValueError(
+                    "Resolved Isaac Ray learner differs from its configured accelerator"
+                )
+            contract = self.describe()
+            if self.viewer is not None and (
+                self.viewer.purposes != ("train",)
+                or self.viewer.train_rank is None
+                or self.viewer.train_rank >= collector.num_collectors
+            ):
+                raise ValueError("Ray Isaac Viser requires an explicit in-range train_rank")
+            if (
+                self.physics not in ("isaacsim_physx", "newton_mjwarp")
+                or self.arena_factory is not None
+                or contract.groups
+                or any(field.modality != "vector" for field in contract.observations.values())
+            ):
+                raise ValueError(
+                    "Isaac Lab Ray collection requires single-agent state "
+                    "with PhysX or Newton/MJWarp"
+                )
+        else:
+            self._validate_direct_devices(training, device, learner_index)
+        if ray_gpu and (not collector.sync or collector.policy_sync_interval_batches != 1):
+            raise ValueError("Isaac Lab Ray collection requires synchronous updates every batch")
+        if training.frames_per_batch % (
+            collector.num_envs_per_collector * collector.num_collectors
+        ):
+            raise ValueError(
+                "Isaac Lab frames_per_batch must be divisible by collector.num_envs_per_collector"
+            )
+        evaluation = training.evaluation
+        if (
+            evaluation.episodes
+            or evaluation.at_start
+            or evaluation.every_n_frames
+            or evaluation.video.enabled
+        ) and not (
+            (evaluation.process is not None and evaluation.process.device.startswith("cuda:"))
+            or (evaluation.ray is not None and evaluation.ray.num_gpus == 1)
+        ):
+            raise ValueError(
+                "Isaac Lab does not support automatic fit evaluation in-process. "
+                "Select an independent GPU evaluator or use fresh-process replay: "
+                "nexuml evaluate <policy-package> --device cuda:0 "
+                "--override training.evaluation.episodes=3"
+            )
+
+    def validate_distributed_training(self, world_size: int) -> None:
+        if self.arena_factory is not None or self.describe().groups:
+            raise ValueError("Isaac rank-local DDP does not yet support Arena or grouped tasks")
+        if (
+            self.viewer is not None
+            and "train" in self.viewer.purposes
+            and (self.viewer.train_rank is None or self.viewer.train_rank >= world_size)
+        ):
+            raise ValueError("Distributed Isaac Viser requires an explicit in-range train_rank")
+
+    def validate_ray_train(self) -> None:
+        if self.physics not in ("newton_mjwarp", "newton_vbd", "ovphysx") or self.arena_factory:
+            raise ValueError(
+                "Ray Train invokes training off the main thread. Select an explicit Kit-less "
+                "Isaac configuration or use torchrun for Kit PhysX/Arena."
+            )
+
+    def _validate_direct_devices(
+        self, training: ReinforcementLearningSpec, device: str | None, learner_index: int | None
+    ) -> None:
+        collector = training.collector
+        configured_devices = {
+            "collector.env_device": collector.env_device,
+            "collector.storing_device": collector.storing_device,
+        }
+        if collector.policy_device != "auto":
+            configured_devices["collector.policy_device"] = collector.policy_device
+        if device is not None:
+            configured_devices["learner device"] = device
+        indices = set() if learner_index is None else {learner_index}
+        for name, value in configured_devices.items():
+            try:
+                parsed = torch.device(value)
+            except (RuntimeError, TypeError) as error:
+                raise ValueError(
+                    f"Isaac Lab requires a CUDA device for {name}, got {value!r}"
+                ) from error
+            if parsed.type != "cuda":
+                raise ValueError(f"Isaac Lab requires a CUDA device for {name}, got {value!r}")
+            indices.add(parsed.index if parsed.index is not None else 0)
+        if (
+            learner_index is not None
+            and device is not None
+            and torch.device(device) != torch.device("cuda", learner_index)
+        ):
+            raise ValueError("Resolved learner must use the selected CUDA device index")
+        if len(indices) != 1 and learner_index is None:
+            raise ValueError(
+                "Isaac split placement requires an explicit learner CUDA device index "
+                "(training.devices='N,')"
+            )
+        if len(indices) != 1 and (
+            self.physics != "isaacsim_physx"
+            or self.arena_factory is not None
+            or self.describe().groups
+        ):
+            raise ValueError("Isaac split placement is limited to single-agent PhysX")
+
+    def validate_playback(self, viewer: PlaybackViewer) -> None:
+        """Validate playback mode without opening a native application.
+
+        Raises:
+            ValueError: If the selected viewer is unqualified or not opted in.
+        """
+        if viewer == "viser":
+            if self.viewer is None or "play" not in self.viewer.purposes:
+                raise ValueError(
+                    "Viser playback requires an explicit ViserSpec with purpose 'play'"
+                )
+        elif viewer in ("local", "webrtc"):
+            if viewer == "webrtc" and self.webrtc is None:
+                raise ValueError("Isaac webrtc playback requires explicit private network settings")
+            contract = self.describe()
+            if (
+                self.physics != "isaacsim_physx"
+                or self.arena_factory is not None
+                or contract.groups
+                or any(field.modality != "vector" for field in contract.observations.values())
+            ):
+                raise ValueError(f"Isaac {viewer} playback requires single-agent PhysX state")
+        elif viewer != "headless":
+            raise ValueError(f"Isaac {viewer} playback is not qualified")
+
+    def build(self, context: EnvironmentBuildContext) -> "EnvironmentRuntime":
+        if self.arena_factory is not None and context.render_mode is not None:
+            raise ValueError("Arena composition supports headless state execution only")
+        if context.purpose == "play":
+            self.validate_playback(context.viewer or "headless")
+            if context.render_mode is not None and (
+                context.viewer not in (None, "headless")
+                or self.physics != "isaacsim_physx"
+                or context.num_envs != 1
+            ):
+                raise ValueError("Isaac playback recording requires headless N=1 Kit PhysX")
+        from nexuml_library.environments._isaaclab_runtime import _IsaacLabRuntime
+
+        return _IsaacLabRuntime(self, context)
+
+    def job_scope(self) -> AbstractContextManager[None]:
+        """Own native lifetime through checkpoint/export and logger finalization.
+
+        Returns:
+            Lazy whole-job scope; entering it alone allocates no simulator.
+        """
+        from nexuml_library.environments._isaaclab_runtime import isaaclab_process
+
+        return isaaclab_process(self)
+
+    def rollout_scope(self) -> AbstractContextManager[None]:
+        """Keep the worker alive to report the outcome after native teardown.
+
+        Returns:
+            A native scope whose close returns to the worker.
+        """
+        from nexuml_library.environments._isaaclab_runtime import isaaclab_process
+
+        return isaaclab_process(self, returning_close=True)
+
+
+__all__ = [
+    "IsaacLabEnvironment",
+    "IsaacTaskConfigSpec",
+    "IsaacBindings",
+    "ViserSpec",
+    "isaac_task_config",
+]

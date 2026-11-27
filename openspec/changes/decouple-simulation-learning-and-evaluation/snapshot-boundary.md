@@ -1,0 +1,112 @@
+# Task 4.1 — local snapshot seam
+
+The existing `NexuRLLightningModule.training_step` finishes PPO optimization,
+increments physical frames/batches and synchronizes the rollout policy before
+the periodic evaluation check. `export_package` can already copy the complete
+deployable actor at this boundary. Reuse it rather than designing a second
+checkpoint or reconstructing a policy from optimizer state.
+
+A bounded CPU Pendulum probe used a canonical `NexuSession` with three
+32-transition updates. A batch-end callback captured the policy at **32**
+physical transitions using `export_package` and launched one fresh CPU
+evaluator. The learner reached **96** and its weights changed. The worker
+reloaded all actor tensors exactly as captured, completed two 12-step
+episodes at seeds 23 and 24, and attributed the report to frame **32**.
+Neither optimizer state nor a Lightning checkpoint was in the snapshot;
+the worker's training and collector dependencies were blocked. The snapshot
+package digest remained unchanged when rechecked after training and replay:
+`4656b5a97b70f0e2711a525db89f18758e4e9fb2ebbac49a54b0a793ddf6be14`.
+Logs, exported tensors and report:
+`/tmp/opencode/nexuml-decouple-snapshot-boundary-XH1goD/`.
+
+## Configured blocking CPU mode
+
+`training.evaluation.process` uses the same initial, periodic, and required
+final hooks as local fit evaluation. At the completed update boundary the
+learner exports an inference-only package to a private temporary directory.
+The worker verifies the digest before loading it, uses the ordinary
+evaluator, and returns metrics plus episode, policy, and source-frame
+provenance. The parent validates the snapshot digest, frame and batch again,
+then publishes through the existing logger. The trainer waits for at most one
+worker, fails on an unsuccessful exit, and terminates a timed-out worker.
+
+The CPU Pendulum integration configured 96 transitions, batches of 32,
+periodic interval 64 and two four-step episodes per evaluation. Distinct
+worker processes evaluated frame/batch pairs **0/0**, **64/2** and **96/3**
+at seeds 23/24. Each snapshot had a distinct digest; live actor tensors were
+unchanged by evaluation and all three receipts landed in TensorBoard's
+artifact directory. A timeout test reaped the owned worker and removed the
+temporary package. Existing in-process validation, policy export, evaluation
+and playback regression: **247 passed, 14 optional cases skipped** in 41.34 s.
+Logs and reports: `/tmp/opencode/nexuml-decouple-process-eval-final-wz56G5/`.
+The public `nexuml train` override also passed at 0/0, 16/1 and 32/2:
+`/tmp/opencode/nexuml-decouple-process-cli-56TeQU/`.
+
+This completes the minimal placement and snapshot requirements in 4.1.
+
+## Bounded overlap in a fresh CPU process
+
+`process.scheduling: skip_if_busy` starts one snapshot worker at a time. A
+busy worker causes an explicit skip metric at the requested frame, never a
+queued backlog. Fit end waits for the pending receipt and evaluates the final
+actor if that exact policy is not already evaluated. Errors fail the fit;
+cancelled or timed-out snapshots are reaped without publishing a receipt.
+
+A gated subprocess let the real Pendulum PPO learner reach frames **32, 64,
+and 96** while the frame-zero worker was still running. The learner recorded
+all three skipped requests, then finalized exactly two independent receipts
+at **0/0** and **96/3**, with distinct actor digests and seeds 23/24. Worker
+failure and a Lightning cancellation during final drain both reaped the worker
+and removed its scratch artifacts without reporting success. **97 focused
+tests passed**, including the unchanged native Isaac fit-evaluation rejection.
+Video, GPU and Ray placement are not qualified by these tests.
+
+Receipt: `/tmp/opencode/nexuml-cpu-snapshot-milestone-aJ4XdI/`. The source and
+test digest (using the acceptance matrix's command) is
+`18c25d3a47ed2ad3138dc7432750859d108d5ceaa5ed29cf3206486fd1014ffd`.
+
+## CPU Ray snapshot evaluation (4.2)
+
+The SDK can select `RayEvaluationSpec` on a caller-owned Ray runtime. Each
+request uses one non-retrying, single-use task with one CPU slot and
+optional custom resources. It ships the same digest-verified inference
+package and resolved evaluation configuration; it never ships the live
+learner. The existing logger records the source frame and the worker's
+actual process, Ray node and assigned resources. The driver does not create,
+own or stop the Ray runtime.
+
+The pinned Ray 2.57.0 integration ran the canonical Pendulum PPO learner to
+64 transitions. Fresh CPU evaluator tasks reserved `snapshot-test: 1`;
+their metrics and two seeded episodes per snapshot had verified provenance.
+A running task accepted cancellation, executed its cleanup, and left the
+borrowed runtime callable. Both real Ray tests passed, as did 98 focused
+local/preflight tests. Logs:
+`/tmp/opencode/rs-EcQqi2/pytest.log`; both wheel and source archive contents
+also passed the packaging check in
+`/tmp/opencode/nexuml-ray-snapshot-artifacts-7Pxb12/`.
+This is same-host Ray task evidence, not GPU or multi-node acceptance.
+
+## Periodic evaluation on a separate local GPU (4.3)
+
+The `process.device` option selects a visible `cuda:N` distinct from the
+learner GPU, or the default CPU. Missing and shared GPU placements fail
+before collection. Worker capture uses the existing bounded RGB path; the
+parent verifies source policy/frame and capture bounds before it publishes
+GIF/MP4 using the existing logger.
+
+With an RTX 4080 SUPER, the CPU Pendulum PPO learner requested evaluation
+at frame **32**. The worker completed a step with CUDA actions and rewards
+before the learner continued to frames **64** and **96**. Those two periodic
+requests were recorded as skipped while the worker was gated after its GPU
+step. The final actor was evaluated in a new process at frame **96**. Both
+reports used seeds 23/24, distinct actor hashes, and capped two-frame media;
+the MP4s decoded with two frames. Exact final actor and optimizer tensors
+matched a seed-matched run without evaluation.
+
+Cancelling an already active CUDA worker returned 143, reaped the worker
+and removed its snapshot without an evaluation receipt. **2 GPU**, **2 Ray
+CPU**, and **248 focused CPU** checks passed. Raw GPU logs/artifacts:
+`/tmp/opencode/nexuml-gpu-snapshot-IQkafG/`; Ray regression:
+`/tmp/opencode/rs-vkIRwO/pytest.log`. Pendulum physics remains CPU. No
+two-GPU learner/evaluator pairing, remote GPU, or automatic Isaac fit
+evaluation is claimed.

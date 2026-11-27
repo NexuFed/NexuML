@@ -1,0 +1,47 @@
+<?xml version="1.0"?>
+<robot name="two_joint">
+  <link name="world"/>
+  <link name="base">
+    <inertial><mass value="1"/><inertia ixx="0.1" ixy="0" ixz="0" iyy="0.1" iyz="0" izz="0.1"/></inertial>
+  </link>
+  <link name="left">
+    <inertial><mass value="1"/><inertia ixx="0.1" ixy="0" ixz="0" iyy="0.1" iyz="0" izz="0.1"/></inertial>
+  </link>
+  <link name="right">
+    <inertial><mass value="1"/><inertia ixx="0.1" ixy="0" ixz="0" iyy="0.1" iyz="0" izz="0.1"/></inertial>
+  </link>
+  <joint name="anchor" type="fixed">
+    <parent link="world"/><child link="base"/><origin xyz="0 0 1"/>
+  </joint>
+  <joint name="joint1" type="revolute">
+    <parent link="base"/><child link="left"/><origin xyz="0 -0.25 0"/>
+    <axis xyz="0 0 1"/><limit lower="-1" upper="1" velocity="20" effort="20"/>
+  </joint>
+  <joint name="joint2" type="revolute">
+    <parent link="base"/><child link="right"/><origin xyz="0 0.25 0"/>
+    <axis xyz="0 0 1"/><limit lower="-1" upper="1" velocity="20" effort="20"/>
+  </joint>
+  <ros2_control name="TwoJointSystem" type="system">
+    <hardware><plugin>gz_ros2_control/GazeboSimSystem</plugin></hardware>
+    <joint name="joint1">
+      <command_interface name="position"/>
+      <state_interface name="position"><param name="initial_value">0.0</param></state_interface>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="joint2">
+      <command_interface name="position"/>
+      <state_interface name="position"><param name="initial_value">0.0</param></state_interface>
+      <state_interface name="velocity"/>
+    </joint>
+  </ros2_control>
+  <gazebo>
+    <plugin filename="libgz_ros2_control-system.so" name="gz_ros2_control::GazeboSimROS2ControlPlugin">
+      <parameters>controllers.yaml</parameters>
+      <ros><namespace>/two_joint</namespace></ros>
+    </plugin>
+    <plugin filename="gz-sim-joint-state-publisher-system" name="gz::sim::systems::JointStatePublisher">
+      <joint_name>joint1</joint_name>
+      <joint_name>joint2</joint_name>
+    </plugin>
+  </gazebo>
+</robot>

@@ -1,0 +1,134 @@
+"""Private WebRTC startup validation without creating a Kit application."""
+
+from types import SimpleNamespace
+import socket
+
+import pytest
+
+from nexuml_library.environments import _isaaclab_webrtc
+from nexuml_library.environments.isaaclab import IsaacLabEnvironment
+from nexuml_library.environments.isaaclab_config import WebRTCSpec
+
+
+@pytest.mark.parametrize("address", ["8.8.8.8", "0.0.0.0", "example.org", "::1"])
+def test_stream_rejects_non_private_or_non_ipv4_address(address):
+    with pytest.raises(ValueError):
+        WebRTCSpec(advertise_address=address, private_network=True)
+
+
+def test_web_rtc_opt_in_can_only_change_playback():
+    spec = WebRTCSpec(advertise_address="100.64.0.10", private_network=True)
+    definition = IsaacLabEnvironment(webrtc=spec)
+    assert definition.checkpoint_identity() == IsaacLabEnvironment().checkpoint_identity()
+    definition.validate_playback("webrtc")
+    with pytest.raises(ValueError, match="private_network"):
+        WebRTCSpec.model_validate({"advertise_address": "127.0.0.1"})
+
+
+@pytest.mark.parametrize(
+    "kind,port,endpoint",
+    [
+        (socket.SOCK_STREAM, "_SIGNAL_PORT", "TCP signaling"),
+        (socket.SOCK_DGRAM, "_MEDIA_PORT", "UDP media"),
+    ],
+)
+def test_web_rtc_requires_requested_local_ports(monkeypatch, kind, port, endpoint):
+    psutil = pytest.importorskip("psutil")
+    spec = WebRTCSpec(advertise_address="127.0.0.1", private_network=True)
+    monkeypatch.setattr(
+        psutil,
+        "net_if_addrs",
+        lambda: {"lo": [SimpleNamespace(family=socket.AF_INET, address="127.0.0.1")]},
+    )
+    with socket.socket(socket.AF_INET, kind) as busy:
+        busy.bind(("127.0.0.1", 0))
+        monkeypatch.setattr(_isaaclab_webrtc, "_SIGNAL_PORT", 0)
+        monkeypatch.setattr(_isaaclab_webrtc, "_MEDIA_PORT", 0)
+        monkeypatch.setattr(_isaaclab_webrtc, port, busy.getsockname()[1])
+        with pytest.raises(ValueError, match=f"{endpoint} port"):
+            _isaaclab_webrtc.preflight(spec)
+
+
+@pytest.mark.parametrize("missing", ["interface", "libvulkan.so.1", "libnvidia-encode.so.1"])
+def test_web_rtc_rejects_missing_private_interface_or_graphics(monkeypatch, missing):
+    psutil = pytest.importorskip("psutil")
+    spec = WebRTCSpec(advertise_address="127.0.0.1", private_network=True)
+    loopback = SimpleNamespace(family=socket.AF_INET, address="127.0.0.1")
+    monkeypatch.setattr(
+        psutil, "net_if_addrs", lambda: {"lo": [] if missing == "interface" else [loopback]}
+    )
+    monkeypatch.setattr(_isaaclab_webrtc, "_SIGNAL_PORT", 0)
+    monkeypatch.setattr(_isaaclab_webrtc, "_MEDIA_PORT", 0)
+
+    def load(name):
+        if name == missing:
+            raise OSError(name)
+        return SimpleNamespace(NvEncodeAPICreateInstance=object())
+
+    monkeypatch.setattr(_isaaclab_webrtc.ctypes, "CDLL", load)
+    if missing == "interface":
+        with pytest.raises(ValueError, match="IPv4 is not assigned"):
+            _isaaclab_webrtc.preflight(spec)
+    else:
+        with pytest.raises(RuntimeError, match="requires Vulkan graphics and the NVIDIA encoder"):
+            _isaaclab_webrtc.preflight(spec)
+
+
+def test_web_rtc_reports_listener_separately_from_media_socket(monkeypatch, capsys):
+    pytest.importorskip("psutil")
+    spec = WebRTCSpec(advertise_address="127.0.0.1", private_network=True)
+    with (
+        socket.socket(socket.AF_INET, socket.SOCK_STREAM) as signal,
+        socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as media,
+    ):
+        signal.bind(("127.0.0.1", 0))
+        media.bind(("127.0.0.1", 0))
+        signal_port, media_port = signal.getsockname()[1], media.getsockname()[1]
+        monkeypatch.setattr(_isaaclab_webrtc, "_SIGNAL_PORT", signal_port)
+        monkeypatch.setattr(_isaaclab_webrtc, "_MEDIA_PORT", media_port)
+        with pytest.raises(RuntimeError, match="did not open TCP signaling"):
+            _isaaclab_webrtc.report_endpoint(spec)
+
+        signal.listen()
+        _isaaclab_webrtc.report_endpoint(spec)
+        report = capsys.readouterr().out
+        assert f"TCP 127.0.0.1:{signal_port}" in report
+        assert f"UDP 127.0.0.1:{media_port}" in report
+
+        media.close()
+        _isaaclab_webrtc.report_endpoint(spec)
+        assert f"UDP awaiting client:{media_port}" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("viewer", ["webrtc", "local", "headless"])
+def test_playback_uses_minimal_toolbar_only_for_interactive_kit(viewer):
+    from nexuml_library.environments._isaaclab_runtime import _launch_environment
+
+    streaming = viewer == "webrtc"
+    local = viewer == "local"
+    stream_arg = " --/exts/omni.kit.livestream.app/primaryStream/publicIp=127.0.0.1"
+
+    def check(_cfg, args):
+        assert args["headless"] is not local
+        assert args["livestream"] == (2 if streaming else 0)
+        assert (stream_arg in args["kit_args"]) == streaming
+        assert ("present/enabled=true" in args["kit_args"]) == local
+        interactive = local or streaming
+        experience = "isaaclab.python.headless.rendering.kit" if interactive else None
+        assert args.get("experience") == experience
+        assert ("--enable omni.kit.widget.toolbar" in args["kit_args"]) == interactive
+        for tool in ("Grab", "PlayButton", "SelectionButton", "TransformButton"):
+            assert (
+                f"omni.kit.widget.toolbar/{tool}/enabled=false" in args["kit_args"]
+            ) == interactive
+        raise RuntimeError("stop before native launch")
+
+    with pytest.raises(RuntimeError, match="stop before native launch"):
+        _launch_environment(
+            SimpleNamespace(device="cuda:0", _rendering=False),
+            None,
+            check,
+            lambda: False,
+            local=local,
+            streaming=stream_arg if streaming else "",
+        )

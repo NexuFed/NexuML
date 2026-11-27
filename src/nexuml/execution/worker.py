@@ -43,7 +43,7 @@ def launch_options(scenario: Any, environment: dict[str, str]) -> dict[str, Any]
     if scenario.training.devices not in ("auto", local):
         raise ValueError("torchrun local world-size differs from reviewed training.devices.")
     if world > 1:
-        ensure_distributed_semantics(scenario)
+        ensure_distributed_semantics(scenario, world_size=world)
     return {"devices": local, "num_nodes": world // local, "enable_loggers": rank == 0}
 
 
@@ -55,6 +55,7 @@ def main() -> None:
     """
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", required=True)
+    parser.add_argument("--trainer-checkpoint", type=Path)
     args = parser.parse_args()
     if args.config.startswith("s3://"):
         from nexuml.storage.s3 import S3Client
@@ -67,7 +68,10 @@ def main() -> None:
         raise ValueError(
             "Remote worker requires a derived Local or RayCluster config, not an outer job."
         )
-    run(scenario, **launch_options(scenario, dict(os.environ)))
+    options = launch_options(scenario, dict(os.environ))
+    if args.trainer_checkpoint is not None:
+        options["trainer_checkpoint"] = args.trainer_checkpoint
+    run(scenario, **options)
 
 
 if __name__ == "__main__":

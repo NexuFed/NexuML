@@ -12,6 +12,7 @@ from fastapi.testclient import TestClient
 from nexuml.api.app import create_app
 from nexuml.api.security import Settings
 from nexuml.api.operations import TERMINAL, Operations
+from nexuml.api.worker import _authorize_execution_paths
 
 TOKEN = "private-execution-test-token-" * 3
 ORIGIN = "http://127.0.0.1:3000"
@@ -187,3 +188,34 @@ def test_discovery_rejects_unauthorized_paths_and_credential_urls(runtime):
             rejected = client.post("/api/v1/execution/discover", json=ray_request)
             assert rejected.status_code == 422 and secret not in rejected.text
             assert rejected.json()["error"]["fields"][0]["loc"][:2] == ["execution", "params"]
+
+
+@pytest.mark.parametrize("field", ["template", "handoff"])
+@pytest.mark.parametrize("path_kind", ["absolute", "traversal", "symlink"])
+def test_selected_execution_paths_are_authorized_without_discovery(tmp_path, field, path_kind):
+    from nexuml.execution.definitions import KubernetesJobExecution
+
+    outside = tmp_path.parent / "unauthorized-private.yaml"
+    if path_kind == "absolute":
+        path = str(outside)
+    elif path_kind == "traversal":
+        path = "../unauthorized-private.yaml"
+    else:
+        (tmp_path / "escape").symlink_to(outside)
+        path = "escape"
+    params = {"template": path} if field == "template" else {"handoff": {"destination": path}}
+    with pytest.raises(ValueError, match="authorized working directory|traversal"):
+        _authorize_execution_paths(KubernetesJobExecution.model_validate(params), tmp_path)
+
+
+def test_authorized_execution_paths_preserve_local_and_s3_handoff(tmp_path):
+    from nexuml.execution.definitions import KubernetesJobExecution, LocalExecution
+
+    _authorize_execution_paths(LocalExecution(), tmp_path)
+    for destination in ("handoff", "s3://bucket/config"):
+        _authorize_execution_paths(
+            KubernetesJobExecution.model_validate(
+                {"template": "template.yaml", "handoff": {"destination": destination}}
+            ),
+            tmp_path,
+        )

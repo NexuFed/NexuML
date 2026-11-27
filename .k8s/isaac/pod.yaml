@@ -1,0 +1,116 @@
+# Prepare the NetBird key and private peer policy before applying.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: isaac-workstation
+  namespace: rglitza
+  labels:
+    app.kubernetes.io/name: isaac-workstation
+  annotations:
+    netbird.io/setup-key: isaac-workstation
+    sidecar.istio.io/inject: "false"
+spec:
+  runtimeClassName: nvidia
+  restartPolicy: OnFailure
+  automountServiceAccountToken: false
+  terminationGracePeriodSeconds: 60
+  imagePullSecrets:
+    - name: regcred
+  nodeSelector:
+    kubernetes.io/arch: amd64
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: nvidia.com/gpu.product
+                operator: In
+                values: [NVIDIA-RTX-4000-Ada-Generation]
+              - key: nvidia.com/cuda.driver.major
+                operator: Gt
+                values: ["594"]
+  securityContext:
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: isaac
+      image: harbor.ika.rub.de/library/nexuml-isaac@sha256:c0009c013a7c1f6fff881e9ad8f39f0f13749e97710ef72fd5d4ff81fa77455e
+      imagePullPolicy: IfNotPresent
+      workingDir: /isaac-sim
+      args:
+        - /bin/bash
+        - -c
+        - |
+          set -euo pipefail
+          for ((attempt=0; attempt<90; attempt++)); do
+            ISAACSIM_HOST="$(ip -o -4 addr show dev wt0 2>/dev/null |
+              awk 'NR == 1 {split($4, addr, "/"); print addr[1]}' || true)"
+            if [[ -n "$ISAACSIM_HOST" ]]; then break; fi
+            sleep 1
+          done
+          if [[ -z "$ISAACSIM_HOST" ]]; then
+            echo "NetBird sidecar did not assign an IPv4 address to wt0" >&2
+            exit 1
+          fi
+          export ISAACSIM_HOST
+          mkdir -p "$NEXUML_WORKSPACE_ROOT"/{assets,tasks,runs}
+          exec /isaac-sim/runheadless.sh --enable isaacsim.ros2.bridge
+      env:
+        - name: NVIDIA_DRIVER_CAPABILITIES
+          value: compute,utility,graphics,video
+        - name: ACCEPT_EULA
+          value: "Y"
+        - name: OMNI_KIT_ACCEPT_EULA
+          value: "YES"
+        - name: OMNI_CRASHREPORTER_ENABLED
+          value: "0"
+        - name: OMNI_CRASHREPORTER_SKIPOLDDUMPUPLOAD
+          value: "1"
+        - name: ISAACSIM_SIGNAL_PORT
+          value: "49100"
+        - name: ISAACSIM_STREAM_PORT
+          value: "47998"
+        # Select the same unused domain for external ROS nodes.
+        - name: ROS_DOMAIN_ID
+          value: "42"
+        - name: NEXUML_WORKSPACE_ROOT
+          value: /mnt/persistent/nexuml/isaac-workstation
+        - name: NEXUML_DATA_ROOT
+          value: /mnt/persistent/nexuml/isaac-workstation/assets
+        - name: NEXUML_LOGS_ROOT
+          value: /mnt/persistent/nexuml/isaac-workstation/runs
+      ports:
+        - name: signaling
+          containerPort: 49100
+          protocol: TCP
+        - name: media
+          containerPort: 47998
+          protocol: UDP
+      resources:
+        requests:
+          cpu: "4"
+          memory: 32Gi
+        limits:
+          cpu: "8"
+          memory: 48Gi
+          nvidia.com/gpu: "1"
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1234
+        runAsGroup: 1234
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: [ALL]
+      volumeMounts:
+        - name: workspace
+          mountPath: /mnt/persistent
+        - name: shared-memory
+          mountPath: /dev/shm
+  volumes:
+    - name: workspace
+      persistentVolumeClaim:
+        claimName: seaweedfs
+    - name: shared-memory
+      emptyDir:
+        medium: Memory
+        sizeLimit: 2Gi

@@ -1,0 +1,25 @@
+# The setup key itself is supplied by a namespaced Secret, not this manifest.
+apiVersion: netbird.io/v1
+kind: NBSetupKey
+metadata:
+  name: isaac-workstation
+  namespace: rglitza
+spec:
+  secretKeyRef:
+    name: isaac-netbird-enrollment
+    key: setup-key
+---
+# Prevent direct access to the unauthenticated editor over the cluster network.
+# This may force NetBird to use its relay; verify actual media before relying on it.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: isaac-workstation-private
+  namespace: rglitza
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: isaac-workstation
+  policyTypes:
+    - Ingress
+  ingress: []

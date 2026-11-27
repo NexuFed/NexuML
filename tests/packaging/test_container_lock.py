@@ -46,7 +46,9 @@ def test_release_stamping_does_not_stale_lock(checkout):
     for relative in ("pyproject.toml", "library/pyproject.toml"):
         manifest = checkout / relative
         manifest.write_text(
-            re.sub(r'version = "[^"]+"', 'version = "0.2.3rc99"', manifest.read_text())
+            re.sub(
+                r'(?m)^version = "[^"]+"', 'version = "0.2.3rc99"', manifest.read_text(), count=1
+            )
         )
     assert container_lock.fingerprint(checkout) == before
     container_lock.check(checkout)
@@ -81,7 +83,12 @@ def test_dependency_changes_stale_lock(checkout, relative, old, new):
 )
 def test_index_source_and_constraint_changes_stale_lock(checkout, relative, configuration):
     manifest = checkout / relative
-    manifest.write_text(manifest.read_text() + configuration)
+    text = manifest.read_text()
+    if configuration.startswith("\n[tool.uv]\n") and "\n[tool.uv]\n" in text:
+        text = re.sub(r"(?m)^constraint-dependencies = .+$", configuration.splitlines()[-1], text)
+    else:
+        text += configuration
+    manifest.write_text(text)
     with pytest.raises(ValueError, match="stale"):
         container_lock.check(checkout)
 
@@ -133,7 +140,9 @@ def test_generator_is_binary_only_scoped_and_sanitized(checkout, monkeypatch):
         assert env["UV_CACHE_DIR"].startswith(env["TMPDIR"])
         assert command[:3] == ["uv", "pip", "compile"]
         assert command[3:6] == ["pyproject.toml", "library/pyproject.toml", "containers/cuda128.in"]
-        for flag in ("--all-extras", "--generate-hashes", "--only-binary=:all:", "--no-annotate"):
+        assert command[6:10] == ["--extra", "all", "--extra", "dev"]
+        assert "--all-extras" not in command
+        for flag in ("--generate-hashes", "--only-binary=:all:", "--no-annotate"):
             assert flag in command
         assert "--emit-index-annotation" in command
         for flag, value in (
@@ -206,6 +215,10 @@ def test_external_lock_has_hashes_and_exact_cu128_pins():
     }.items():
         assert any(line.startswith(f"{name}=={version} ") for line in requirements)
     assert any(line.startswith("nvidia-dali-cuda120==") for line in requirements)
+    assert any(line.startswith("torchrl==") for line in requirements)
+    assert not any(
+        line.startswith(("isaaclab==", "isaacsim==", "lerobot==")) for line in requirements
+    )
     assert re.search(
         r"nvidia-dali-cuda120==[^\n]+(?:\n    --hash=sha256:[^\n]+)+"
         r"\n    # from https://pypi.nvidia.com/\n",

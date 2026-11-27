@@ -1,0 +1,635 @@
+---
+title: Author native Isaac task configuration
+description: Configure native tasks and isolate approved runtime dependencies without replacing physics.
+---
+
+Use `IsaacLabEnvironment` for a trusted installed native task, portable I/O
+meaning and typed configuration. The current environment component version is
+**2**, for Isaac Lab 3.0.0, Isaac Sim 6.2.0 and Python 3.12. Source checkouts
+use the pinned Lab revision `70ab24fec3eabf51222817db0cdb5a4e7133bd7e`.
+Restore current-schema definitions directly; there is no legacy native-config
+reader. Historical EA results do not qualify this runtime.
+
+Static scenario discovery, `describe()`, resolve and YAML restoration do not
+launch Isaac, execute configuration functions or allocate CUDA. Native execution
+requires the matching runtime, assets/licences and one available CUDA device.
+Do not replace an active environment to run these examples. Monitor native runs
+and stop owned work at **4 GiB free disk**.
+
+The adapter passes startup settings that disable Kit crash-report uploads and
+structured, anonymous and Sentry telemetry before native initialization. Conflicting
+crash-reporter environment overrides fail without changing the environment.
+Licence acceptance stays
+an explicit operator decision; it is not inferred from telemetry preferences.
+Ordinary failure logs remain available. These settings neither supply missing
+graphics libraries nor qualify a renderer or display.
+
+## Install from the workspace lock
+
+On a GPU worker with Python 3.12, a compatible NVIDIA driver and the system
+libraries for the selected renderer, install from the NexuML checkout:
+
+```bash
+uv sync --locked --python 3.12 --extra isaac
+```
+
+The lock uses NVIDIA's published Isaac Lab and Isaac Sim packages. No separate
+Kit-less environment is needed: Newton with no Kit sensors or viewers leaves
+Kit unused. Isaac Sim PhysX still starts Kit even with `--viewer headless`.
+The existing prepared image remains the documented route for remote graphics.
+
+With this lock, `uv pip check` reports three accepted metadata conflicts.
+Isaac Sim 6.2 pins `urllib3==2.7.0` and `requests==2.32.3`; the workspace
+uses `urllib3==2.8.0` for Isaac Lab and `requests==2.34.2` for a security fix.
+OvPhysX requires `packaging<24`, but the shared lock uses `25.0` for
+compatibility with Ray and LeRobot. The cluster check passed Newton and
+headless Isaac Sim PhysX; it did not exercise OvPhysX. Investigate any
+additional discrepancies rather than ignoring `uv pip check` failures.
+
+## Recorded remote qualification profile
+
+For Ubuntu 22.04 amd64 workers, the private setup helper supplies missing
+GL/Xt/XRandR client libraries from thirteen pinned Ubuntu archives, including the
+GLVND EGL dispatcher required for `libEGL.so.1`. It verifies every hash before
+extraction and runs no package maintainer scripts, installs no Mesa or driver
+packages and changes no global package database. Its client-library `ldd` checks
+must pass before application execution. This is a source-checkout dependency
+profile, not a general system installer or proof of renderer/display support.
+This recorded source-checkout installation is not binary-only. A binary-only
+stock Ray worker needs a complete compatible wheel set before submission.
+The standalone Isaac image uses a different dependency profile: Isaac Sim
+comes from its pinned NVIDIA base, not from the stock worker's Python lock.
+
+An equivalent trusted profile is:
+
+```yaml
+type: ray-jobs-sdk
+version: "1"
+params:
+  setup_command:
+    - sh
+    - -c
+    - 'uv sync --locked --python 3.12 --all-packages --all-extras && "$UV_PROJECT_ENVIRONMENT/bin/python" tests/fixtures/physical_ai_native_setup.py'
+  py_executable: >-
+    sh -c 'export LD_LIBRARY_PATH="$UV_PROJECT_ENVIRONMENT/native-runtime/usr/lib/x86_64-linux-gnu${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"; exec "$UV_PROJECT_ENVIRONMENT/bin/python" -u -X faulthandler "$@"' nexuml-private-python
+  entrypoint_resources:
+    pool_gpu_workers: 1
+  runtime_env:
+    env_vars:
+      OMNI_CRASHREPORTER_ENABLED: "0"
+      OMNI_CRASHREPORTER_SKIPOLDDUMPUPLOAD: "1"
+```
+
+Before selecting Kit, the operator must separately review and accept NVIDIA's
+licence; only then add `OMNI_KIT_ACCEPT_EULA: "YES"` to that job's environment.
+The recorded campaign had explicit approval. The profile deliberately does not
+grant licence acceptance to another user. Save the approved profile as
+`QUALIFIED_PROFILE.yaml`, then use fresh submitter evidence directories:
+
+```bash
+export RAY_API_SERVER_ADDRESS=https://ray.ika.rub.de
+for recipe in isaac-cartpole-ppo isaac-custom-cartpole-ppo isaac-franka-reach-ppo isaac-so101-joint-reach-ppo; do
+  CUDA_VISIBLE_DEVICES='' python scripts/physical_ai_acceptance.py \
+    --case recipe --recipe "$recipe" --frames 2048 --batch 256 --envs 4 \
+    --profile QUALIFIED_PROFILE.yaml --ca "$RAY_CA_BUNDLE" \
+    --output "$EVIDENCE_ROOT/$recipe" --wall-seconds 1800 \
+    --queue-seconds 900 --concurrency 1 --submit || break
+done
+```
+
+These wiring smokes require changed finite actors, the requested physical-frame
+budget, real interrupted continuation, checkpoint export and fresh replay on the
+declared PhysX backend. Native task horizons stay unchanged; these checks are not
+convergence or SO-101 behavior-cloning proof. The separate declared
+Newton learning recipe and its frozen protocol are documented in
+[Train state-only Isaac Cartpole](/how-to/isaac-cartpole/#frozen-remote-learning-qualification).
+
+The same profile can separately execute six fixed native transition/control and
+checkpoint fixtures; these are not public-CLI training proof:
+
+```bash
+CUDA_VISIBLE_DEVICES='' python scripts/physical_ai_acceptance.py \
+  --case regression --suite native-state --profile QUALIFIED_PROFILE.yaml \
+  --ca "$RAY_CA_BUNDLE" --output "$EVIDENCE_ROOT/native-state" \
+  --wall-seconds 3600 --queue-seconds 900 --concurrency 1 --submit
+```
+
+All six must execute and pass; missing/skipped cases do not qualify. They check
+manager final/reset/GAE semantics on PhysX and Newton, genuine SO-101 signed
+controls/held-success/timeouts, custom native configuration, exact current
+actor/critic/optimizer continuation, portable actor inference and scalar replay.
+Their bounded fixture counters remain separate from the 2,048-frame CLI runs.
+
+Record the source/profile hashes and retrieve case/guard/setup receipts, configs
+and stage logs before worker cleanup. Guards retain visible-cgroup peak/current/
+limit/events, including Ray, setup and cache—not application-only RAM peaks. The
+campaign must measure application-only RAM separately and cannot infer parallel
+capacity from a nominal envelope or a visible-cgroup peak. Do not silently increase
+RAM/plasma allocations. Keep the 4 GiB disk stop and independent viewer/renderer/
+resource gates. Store run-specific receipts and measurements outside source commits.
+
+## Step an Isaac task without a policy
+
+The headless Python runtime accepts contracted `TensorDict` actions from a
+script or a `CompiledPolicy`. Both use the native action validator and step
+path. Use one owned native scope and close the runtime inside it:
+
+```python
+import torch
+from tensordict import TensorDict
+
+from nexuml.core.components import EnvironmentBuildContext
+from nexuml.interaction import TraceableEnvironmentRuntime
+from nexuml_library.environments.isaaclab import IsaacLabEnvironment
+
+definition = IsaacLabEnvironment(task="Isaac-Cartpole", physics="isaacsim_physx")
+with definition.job_scope():
+    runtime = definition.build(EnvironmentBuildContext(purpose="play", device="cuda:0"))
+    try:
+        runtime.reset(seed=23)
+        action = TensorDict({"action": torch.tensor([0.5], device="cuda:0")}, [])
+        if not isinstance(runtime, TraceableEnvironmentRuntime):
+            raise ValueError("This provider does not record fixed-step actions")
+        transition = runtime.step_recorded(action, source="script:cart-effort")
+    finally:
+        runtime.close()
+```
+
+`step_recorded` is opt-in and currently qualified for headless, single-agent
+state interaction. It records the source label, contracted action, the tensor
+submitted to the simulator, host monotonic issue time, native control-step
+indices, and the verified control period. The submitted tensor is **not**
+measured actuator feedback. Native step indices are not sensor acquisition
+timestamps; sensor binding rate and validity rules still apply. No timestamp
+is synthesized for observations without one. Ordinary `step` does not clone
+actions for recording. Neither method executes asynchronous goals, and this
+headless entry point does not enable a viewer, physical robot control, or a
+continuous player.
+
+## Run PhysX rollouts on a Ray GPU worker
+
+On a prepared Ray Core cluster, a single CPU learner can collect state-only
+PhysX rollouts from a headless GPU worker. The same configuration supports
+Kit-less Newton/MJWarp. Install matching NexuML, Ray, TorchRL and TensorDict
+versions on both sides, and the pinned Isaac runtime and native assets on
+the worker. Set `training.accelerator: cpu` and
+`training.devices: 1` in the scenario. Replace its `training.collector` with:
+
+```yaml
+backend: ray
+num_collectors: 1
+num_envs_per_collector: 2
+sync: true
+env_device: cuda:0
+policy_device: cuda:0
+storing_device: cpu
+ray:
+  address: ray-head.internal:6379
+  num_gpus: 1
+```
+
+Use your Ray **Core** address, not the Ray Jobs HTTPS endpoint. The worker
+requests one CPU and one whole GPU; `cuda:0` is relative to that worker's
+assigned GPU. Use a frame batch divisible by the number of collectors times
+environments. Each batch crosses the process boundary once, is checked for
+one policy version, and is consumed by the learner; the worker does not
+receive an RPC per physics step. In-process Isaac fit evaluation remains
+disabled; native snapshot evaluation needs an independently reserved GPU.
+
+To target a specific prepared worker group, use `ray.resources` and/or
+`ray.label_selector` with values the operator has advertised to Ray Core.
+These apply to every collector actor. A Ray Jobs `entrypoint_resources`
+reservation places the job driver, not the collectors inside it.
+
+PhysX was verified with one GPU collector and a CPU learner, and for CUDA
+transport and checkpoint recovery sharing one GPU. Kit-less Newton/MJWarp
+passed on three distinct Ray nodes with two GPU collectors and a
+simulator-free CUDA learner. Use `training.accelerator: gpu` on the learner
+and set `ray.py_executable` to the prepared native worker Python command.
+Grouped tasks, Arena, and full-Kit multi-node collection remain unqualified.
+Direct Isaac training defaults to one GPU.
+
+## Compose a headless Arena task
+
+Use a separately prepared Arena 0.4 source checkout with the pinned
+Isaac Lab 3.0 / Isaac Sim 6.2 runtime. `IsaacLabEnvironment.arena_factory`
+is a `FactorySpec` for an installed, trusted function that returns Arena's
+native `ArenaEnvBuilder` for the declared task name. The factory receives
+the worker's `device`, `num_envs`, and `seed` after NexuML has opened Kit.
+It must not start an app, register the task itself, or return a live
+environment. Keep the observation/action contract and bindings explicit.
+
+`scripts/isaaclab/so101_arena_train.py` is the native joint-reaching fit
+reference for `nexuml train --scenario-file`. It uses the ordinary PPO
+learner and supports headless replay of its export. The separate
+`scripts/isaaclab/so101_arena.py` selects Arena's held-out suite; scientific
+scoring still runs in the native evaluator, not in `play`. This profile
+does not qualify camera policies, desktop Kit, WebRTC, or distributed GPU collection.
+
+### Play a trained policy headlessly
+
+Playback runs fixed weights without training or scientific scoring. Use a
+trusted complete export or `--trainer-checkpoint`, optionally with a trusted
+`--config` or `--scenario-file` supplying a compatible environment:
+
+```bash
+nexuml play ./policy --viewer headless --device cuda:0 --num-envs 8 --steps 60
+```
+
+An explicitly supplied scenario can set `playback_viewer`.
+`--viewer` overrides the scenario. A policy
+package alone defaults to headless; saved training or evaluation viewer
+settings do not activate playback viewing. The qualified Newton Cartpole
+camera tasks still supply RGB, depth and segmentation to the policy without
+a window, stream or recording.
+
+Omit `--steps` and `--episodes` for continuous playback. Counts are actual
+native ticks, transitions across the batch, and completed episodes. Several
+episodes can finish on the same tick. `--seed` and `--stochastic` select
+repeatable sampled actions where supported; deterministic actions are the
+default. `--real-time` paces at the declared native control period without
+changing physics. The Python entry point is
+`nexuml.interaction.playback.play_policy`; pass an optional `threading.Event`
+to stop it, and use the same caller-owned `definition.job_scope()` shown above.
+
+For a loopback-only spectator, put `ViserSpec(purposes=("play",), port=PORT)`
+on the trusted Isaac environment and explicitly select `--viewer viser`.
+The same viewer settings can select displayed instances independently of
+`--num-envs`. It is read-only by default: pausing its display does not
+pause physics. For simulation controls, set `playback_controls=True` on
+that explicit play configuration. Pause, resume, single step, reset all,
+and wall-clock speed changes run between native control ticks. To reset
+one instance on a supported manager task, select that instance first;
+direct tasks expose reset-all but not arbitrary selected reset.
+Manual resets are interventions, not completed episodes.
+For tasks that expose an `IsaacBindings.playback_options` factory, the
+viewer also shows the declared task reset options. Selecting one starts
+new episodes for all instances without advancing physics. The viewer
+can send only the named options, not code or arbitrary simulator commands.
+Training and evaluation do not expose those simulation controls.
+Unset `LIVESTREAM` or set it to `0` for headless and spectator jobs.
+
+For the qualified single-environment, headless Kit PhysX manager profile,
+record independently of playback:
+
+```bash
+nexuml play ./policy --viewer headless --device cuda:0 --steps 120 \
+  --record ./playback-media --record-frames 30 --record-format both
+```
+
+The output directory must not exist. Capture stops at the frame limit even
+when playback continues. The manifest names the source artifact and
+environment, native tick indices, and monotonic capture times. The video
+uses the nominal renderer rate, not the actual wall-clock cadence. Viser
+recording, direct-task RGB and vectorized RGB capture are not enabled.
+
+### Play in a local Kit viewport
+
+Use a prepared X11 display with GPU presentation and the pinned Isaac
+runtime. For a state-only, single-agent PhysX policy:
+
+```bash
+nexuml play ./policy --viewer local --device cuda:0 --steps 120
+```
+
+This opens a native viewport without the Isaac Sim authoring editor.
+Leave `HEADLESS`, `LIVESTREAM` and `XR` unset or `0`. The first launch can
+take several minutes while Kit compiles shaders. This is playback only:
+no training or evaluation viewer, no `--record`, and no Viser controls.
+The X11 transport must actually present GPU frames; a forwarded window
+alone does not prove it works. A prepared, loopback-only TigerVNC display
+was verified separately with decoded policy frames from an authenticated
+client. NexuML does not start or configure TigerVNC. This does not qualify
+forwarded Windows X11 or WebRTC.
+
+### Submit playback through Ray Jobs
+
+Use an explicit scenario and a trusted Ray Jobs profile for a worker that
+can run the selected environment:
+
+```bash
+nexuml play /worker/artifacts/policy --config ./play.yaml \
+  --execution-profile ./approved-isaac-worker.yaml \
+  --viewer headless --device cuda:0 --num-envs 1 --steps 8
+```
+
+The policy or trainer checkpoint and optional recording destination are
+absolute **worker** paths. They are not opened on the submitter, uploaded,
+or downloaded by `play`. Put artifacts in an authorized location the job can
+read and write. Submission prints the job ID and requested allocation, not a
+success result. Use Ray Jobs status, logs, and stop operations for that ID.
+The SDK uses the same workflow:
+
+```python
+from nexuml.execution import submit_ray_job
+
+job_id = submit_ray_job(
+    scenario,  # Explicit playback scenario with a trusted Ray Jobs execution profile.
+    operation="play",
+    model_package="/worker/artifacts/policy",
+    device="cuda:0",
+    playback={"viewer": "headless", "num_envs": 1, "steps": 8},
+)
+```
+
+Headless playback on a stock GPU worker needs no viewer endpoint. Keep the
+policy on a location that survives worker replacement. A future Studio
+caller can submit, track, and stop the same job without hosting the
+simulator.
+
+Remote interactive viewers and recording require separate qualification. Viser would
+require an approved private route to its loopback endpoint and an explicit,
+provider-supported play spectator. Local Kit needs a prepared GPU display.
+For DDP training, an opted-in `ViserSpec(train_rank=N)` displays the actual
+training simulation of one explicitly selected rank. The remaining ranks
+stay headless. On two GPU nodes, private browser attach, disconnect, and
+listener cleanup passed with the Newton/MJWarp spectator on one rank.
+In the synchronous Ray collector lane, the same field selects
+the zero-based collector index. Use the private loopback route to the
+selected worker. Playback of exported weights is a separate, independent run.
+
+### Native WebRTC playback
+
+The NVIDIA client displayed moving Cartpole policy playback over NetBird
+from a separate prepared graphics pod. Separate runs verified that
+playback releases its sockets on completion and cancellation. Cold Kit
+startup can take several minutes; wait for the CLI's endpoint receipt,
+not just a TCP bind. Provide the task's Isaac assets through an approved
+route or a prepared `ISAACSIM_ASSET_ROOT`.
+
+Choose `--viewer webrtc` only on a prepared interactive Isaac/Kit worker.
+In the trusted `play_scenario.py`, return the same compatible task from
+`scenario()`, replacing its immutable environment definition with
+`env.model_copy(update={"webrtc": WebRTCSpec(advertise_address=PRIVATE_IP, private_network=True)})`.
+The IPv4 address must be assigned to that worker. The pinned Kit streamer
+owns wildcard sockets; the advertised address is **not** a network access
+control. Only opt in after the operator has restricted reachability to the
+approved private network. The runtime checks Vulkan and the NVIDIA encoder
+library and reports the actual TCP signaling listener on 49100 and the
+UDP media endpoint on 47998 (UDP may await a client).
+
+```bash
+nexuml play /worker/artifacts/policy --scenario-file play_scenario.py \
+  --viewer webrtc --device cuda:0 --num-envs 1 --real-time
+```
+
+With NVIDIA's native client, connect to the advertised private address,
+verify actual policy-driven motion over TCP signaling **and** UDP media,
+then stop the run and verify both sockets close. The Ray Jobs HTTP endpoint
+and TCP port forwarding cannot carry UDP media. The `.k8s/isaac/`
+workstation templates document the prepared NetBird route for the editor
+and a separate playback pod. NexuML does not configure network access,
+displays, or tunnels. WebRTC and local Kit are playback-only and never
+fall back to another mode.
+
+### Direct CUDA placement
+
+`isaac-cartpole-ppo` defaults to one GPU for simulation, inference, storage
+and optimization. For single-agent PhysX on a multi-GPU host, select an
+explicit learner index (`training.devices: '1,'`), set `collector.env_device`
+and `storing_device` to `cuda:0`, and set `policy_device` to `cuda:0` for
+co-located inference or `cuda:1` for separate inference. The direct path
+uses TorchRL/TensorDict device transfer without an imposed CPU staging
+step; actual peer access depends on the machine. Run the same seed and
+geometry on the baseline and split paths. Multi-GPU acceptance requires
+two visible compatible devices.
+
+Headless Newton/Warp and OvPhysX can use Isaac Lab's maintained Kit-less
+launcher when physics and sensors permit it. Full Kit remains required for
+Kit PhysX, local and WebRTC viewing, and Kit-backed sensors. Do not swap
+physics or renderers just to make a scenario launch. See
+[Ray training](/how-to/training-backends/ray/#rank-local-ppo-and-independent-rollout-workers)
+for the separate roles and resource reservations.
+
+## Typed functions, not override strings
+
+Put customization in an importable operator-owned module, not a script's
+`__main__`, lambda, closure or bound method. Keep native annotation imports out of
+module initialization:
+
+```python
+# my_tasks/configuration.py — trusted, installed local code
+from __future__ import annotations
+
+from copy import deepcopy
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from isaaclab.envs import ManagerBasedRLEnvCfg
+
+
+def set_horizon(cfg: ManagerBasedRLEnvCfg, *, seconds: float) -> None:
+    if seconds <= 0:
+        raise ValueError("seconds must be positive")
+    cfg.episode_length_s = seconds
+
+
+def replace_horizon(
+    cfg: ManagerBasedRLEnvCfg, *, seconds: float
+) -> ManagerBasedRLEnvCfg:
+    replacement = deepcopy(cfg)
+    set_horizon(replacement, seconds=seconds)
+    return replacement
+```
+
+```python
+from my_tasks.configuration import set_horizon
+from nexuml_library.environments.isaaclab import (
+    IsaacLabEnvironment, IsaacTaskConfigSpec, isaac_task_config,
+)
+
+definition = IsaacLabEnvironment(
+    task="Isaac-Cartpole",
+    physics="isaacsim_physx",
+    task_config=isaac_task_config(set_horizon, seconds=2.0),
+)
+# Equivalent inert representation, also usable during static restoration:
+customization = IsaacTaskConfigSpec(
+    factory="my_tasks.configuration:set_horizon", kwargs={"seconds": 2.0},
+)
+```
+
+The synchronous function receives the **resolved native config**, not an empty
+config or live environment. Annotate its first positional config parameter, every
+named option and its return. Options must be finite JSON-safe values; positional
+option lists, variadic signatures and native objects in YAML are rejected.
+Annotations are not evaluated or used to coerce arguments. Returning `None`
+retains the mutated input; returning a config selects that replacement.
+
+The native job resolves the registered task and presets, applies runtime-owned
+count/device/seed/final-observation settings, invokes customization, then resolves
+and validates the result before stepping. Do not allocate an application or
+environment in a customization function or at module import. Count comes from
+`training.collector.num_envs_per_collector`, not the environment declaration.
+Customization cannot change protected count, device, seed, final-observation or
+selected physics/runtime ownership.
+
+`physics` selects a named native backend, for example `isaacsim_physx` or
+`newton_mjwarp`; `presets=("installed_preset_name",)` selects ordered native preset
+names declared by that task. `physics=None` leaves the task's native selection.
+Unknown presets and incompatible selections fail; there is no automatic backend
+fallback or universal task/backend support claim. Do not pass strings such as
+`"sim.dt=..."` as presets. Solver, material, reward, reset, randomization and
+curriculum changes belong in the typed function and must retain a matching
+physical/task contract.
+
+Noise/history are not disabled globally. The maintained manager-based state
+recipes explicitly select `enable_corruption=False` and `history_length=0` through
+their configuration function. Custom tasks retain native settings unless their
+function changes them. Replay never silently calls `play_mode()`; use a separate
+compatible evaluation definition for deliberately different semantics.
+
+## Contracts, bindings and a registered custom task
+
+An arbitrary registered task needs both an explicit `InteractionContract` and
+`IsaacBindings`. Field shapes exclude the environment batch; declare dtype,
+physical meaning, control period and action decoding, not just matching widths.
+The contract's `num_envs` stays 1; the collector owns the live count.
+
+Bindings map declared observation fields to tuples of **literal mapping keys**:
+`{"observation": ("policy",)}` reads native `observations["policy"]`.
+`("sensors", "camera.rgb")` means two keys, not a dotted attribute expression.
+Every declared observation must be mapped, and `action` names the single declared
+action field. Bindings are not configuration overrides or automatic contract
+inference. A binding declaration alone does not establish sensor support.
+
+Tasks that report per-transition outcomes can return `info["task_outcomes"]`
+from native `step`. Each value is a tensor with one scalar per environment on
+the simulator device. Record it before native autoreset so the ending
+transition keeps the correct task outcome. NexuML copies these reported
+values into the interaction result; it does not infer success from reward.
+
+The installed `isaac-custom-cartpole-ppo` scenario is a real Gym-registered
+`NexuML-Custom-Cartpole` manager task, not a renamed built-in. Its registration
+starts with a 3-second horizon and spacing 2; the scenario customizes the resolved
+config to **2 seconds** and **spacing 3** with `newton_mjwarp`. It explicitly reuses
+the maintained Cartpole contract (float32 state `[4]`, continuous action `[1]`,
+100-N effort scale, 60-Hz control) and binds `observation` to `("policy",)`:
+
+```python
+from nexuml_library.scenarios.reinforcement.isaaclab_custom import (
+    isaac_custom_cartpole_ppo,
+)
+
+scenario = isaac_custom_cartpole_ppo(
+    total_frames=32, frames_per_batch=16, num_envs=2,
+)
+definition = scenario.interaction.environment
+assert definition.task == "NexuML-Custom-Cartpole"
+assert definition.task_config.kwargs == {
+    "episode_length_s": 2.0, "env_spacing": 3.0,
+}
+```
+
+For external tasks, install the trusted registration package locally and use
+Gym's `"my_tasks:Registered-Task"` form to import its registrations at execution.
+Static restoration does not run that package. A missing registration or wrong
+native workflow, spaces, bindings, rates or protected settings is an error, not
+permission to infer a replacement contract.
+
+### Procedural controls in a direct task
+
+`nexuml_isaac_tasks.centering_cartpole` is an independently runnable Isaac
+registration. It defines a centering reward and track limit, and reuses the
+native direct Cartpole asset, simulation, actuator and reset code. Use the
+registered Gym ID `NexuML-Cartpole-Direct-Centering` with Isaac Lab after
+importing that module. The NexuML scenario `isaac-custom-direct-cartpole-ppo`
+uses the same registration and native configuration via `module:task`; it
+does not wrap or replace the task's reward, reset or simulation code.
+
+A direct task may implement the actuator mapping in Python instead of exposing
+an Isaac action-manager term. Pair the typed action contract with
+`IsaacBindings(direct_controls=FactorySpec.from_factory(describe_controls), ...)`.
+That trusted function receives the live native environment and returns a
+`PhysicalTensorContract` read from the actual mechanism. It must inspect the
+implemented actuator, joint order, scale and other control semantics, not
+echo the expected policy contract. NexuML calls it only in the native job and
+rejects mismatches before interaction. Manager and grouped tasks do not use
+this binding.
+
+Direct tasks must expose pre-reset final observations alongside same-step
+autoreset. NexuML can acknowledge those reset rows without resetting twice.
+It rejects arbitrary partial reset requests when the direct workflow cannot
+perform them through its public API. This example qualifies the headless
+state-only Newton profile; it does not qualify other backends or camera paths.
+
+## Normal CLI and whole-job Python ownership
+
+Use the ordinary CLI in the prepared environment; no manual application-launch
+prefix or alternate trainer is needed:
+
+```bash
+export PYTHONPATH="$PWD/src:$PWD/library/src"
+export NEXUML_LOGS_ROOT=/tmp/opencode/isaac-custom-job
+.venv/bin/python -m nexuml resolve isaac-custom-cartpole-ppo \
+  --output /tmp/opencode/isaac-custom.yaml
+# Native execution: only with the approved stack/device/assets already available.
+.venv/bin/python -m nexuml train --config /tmp/opencode/isaac-custom.yaml \
+  -O training.total_frames=32 -O training.frames_per_batch=16 \
+  -O training.collector.num_envs_per_collector=2 \
+  -O training.algorithm.update_epochs=1 -O training.algorithm.minibatch_size=8
+.venv/bin/python -m nexuml train --trainer-checkpoint /approved/run/intermediate.ckpt
+# Separately exported complete policy; replay runs in a fresh process.
+.venv/bin/python -m nexuml evaluate /approved/run/policy --device cuda:0 \
+  -O training.evaluation.episodes=2 -O training.evaluation.max_steps_per_episode=120
+```
+
+These are bounded execution instructions, not evidence of native acceptance.
+Training requires one synchronous direct collector, one GPU and matching
+simulation/storage/policy/learner devices; `frames_per_batch` must be divisible by
+the collector count. Automatic start/periodic/final in-fit evaluation and video
+remain disabled for these recipes; use separate-process evaluation.
+
+`train` scopes the effective `session.scenario`, including checkpoint-restored
+definitions, through final outputs and failure cleanup. `evaluate` scopes the
+selected `interaction.evaluation_environment` when present, otherwise the training
+definition, through evaluation artifacts/logger cleanup. It does not always own
+the training environment. A completed-budget resume allocates no simulator.
+
+Python callers must keep the same scope around **all** work, not just `run()`:
+
+```python
+from nexuml.core.export import export_package
+from nexuml.training.lightning import NexuSession
+
+session = NexuSession(scenario=scenario)  # also resolves a supplied trainer checkpoint
+definition = session.scenario.interaction.environment
+with definition.job_scope():
+    try:
+        result = session.run()
+        export_package(result.policy, "/approved/new-output/policy")
+        # Save any additional checkpoints/provenance before leaving this scope.
+    except BaseException as primary:
+        try:
+            session.finalize_loggers("failed")
+        except BaseException as cleanup:
+            primary.add_note(f"Logger cleanup also failed: {cleanup!r}")
+        raise
+    else:
+        session.finalize_loggers("success")
+```
+
+For Python replay, scope the selected evaluation definition returned by
+`nexuml.evaluation.policy.resolve_policy_evaluation(scenario)` around
+`evaluate_policy(...)` and any artifact/logger cleanup. Same-job nested scopes
+join the owner; conflicting definitions/runtimes reject. Entering a scope is lazy.
+Native launcher state determines whether Kit owns process-terminating fast-close;
+finish outputs and explicit cleanup before scope exit, not in `atexit`.
+
+## Trust and unqualified paths
+
+Importable does not mean sandboxed: configuration functions, task registrations
+and policy packages are trusted executable local code. Remote requests must not
+choose factories, recipes, processors, archives or private paths. Actor-only
+inference does not reconstruct a simulator or execute saved configuration functions.
+
+`ViserSpec` is an inert, loopback-only declaration; omitted means no viewer.
+See [read-only viewing](/how-to/isaac-read-only-viser/) for explicit training and separate
+replay activation, display controls, private forwarding and ownership. The isolated
+[constructor boundary](/explanation/isaac-spectator-boundary/) is distinct from
+actual training/replay browser acceptance. Native/backend, policy sensor and MARL
+support still require their own real checks; viewing does not establish them.
+See [fixed-group IPPO/MAPPO](/how-to/isaac-multi-agent-learning/) for the qualified
+Pendulum/Handover paths and explicit limits on other grouped combinations.
+See [SO-101 local fit](/how-to/so101-local-fit/) for its separate capture/qualification
+and unchanged quality protocol.

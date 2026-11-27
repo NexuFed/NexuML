@@ -1,0 +1,9 @@
+# Native compatibility bounds; not public NexuML dependency policy.
+transformers==5.10.4
+numpy==2.3.1
+urllib3==2.8.0
+usd-exchange==3.0.1
+requests==2.34.2
+psutil==5.9.8
+uvicorn==0.29.0
+virtualenv==21.7.8

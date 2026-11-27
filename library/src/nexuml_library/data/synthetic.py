@@ -5,11 +5,15 @@ from nexuml.core.discovery import data_source
 import math
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import torch
 from pydantic import Field
 from tensordict import TensorDict
+
+if TYPE_CHECKING:
+    from tensordict.base import CompatibleType
+    from tensordict.utils import NestedKey
 
 from nexuml.data.dataset import NexuDataset
 from nexuml.core.components import DataSourceDefinition
@@ -144,7 +148,9 @@ class _SyntheticDatasetRuntime(NexuDataset):
         )
 
         if self._targets:
-            y_data = {key: val[index] for key, val in self._targets.items()}
+            y_data: dict[NestedKey, CompatibleType] = {
+                key: val[index] for key, val in self._targets.items()
+            }
             # Always include reconstruction target
             y_data["reconstruction_target"] = self._features[index]
             y = TensorDict(y_data, batch_size=[])

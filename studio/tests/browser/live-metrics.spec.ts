@@ -3,6 +3,7 @@ import {parseDocument,stringify} from "yaml";
 import {apiAction,applyYaml,loadStudio,observe,openRun,reviewRun} from "./helpers";
 
 test("real batch loss charts update while training and retain finalized classification metrics on reconnect",async({page},testInfo)=>{
+  test.setTimeout(240000); // Real CPU epochs plus configuration/reconnect must fit the same test budget.
   const failures:string[]=[];page.on("pageerror",error=>failures.push(error.message));
   await loadStudio(page);
   await page.locator(".welcome").getByRole("button",{name:"Choose a recipe",exact:true}).click();
@@ -37,7 +38,7 @@ test("real batch loss charts update while training and retain finalized classifi
   await expect(loss.locator("svg")).not.toHaveAttribute("aria-label",first!,{timeout:15000});
   await expect(page.locator(".status-grid")).toContainText("running");
   await page.screenshot({path:testInfo.outputPath("live-training-loss.png"),fullPage:true});
-  await expect(page.locator(".status-grid")).toContainText("succeeded",{timeout:90000});
+  await expect(page.locator(".status-grid")).toContainText("succeeded",{timeout:180000});
   for(const key of ["val/accuracy","val/f1","test/accuracy","test/f1"]){
     await expect(page.locator(".metric").filter({has:page.locator("span",{hasText:key})})).toBeVisible();
   }

@@ -1,0 +1,492 @@
+# Local policy playback — partial 4a qualification
+
+The local `nexuml play` and `nexuml.interaction.playback.play_policy` paths
+use the complete actor and the same semantic contract check, inference RNG
+isolation and native job scope as evaluation. They do not create a trainer
+or produce benchmark metrics. Providers must opt in to simulated playback.
+Unsupported viewers, benchmark-only environments, unsupported remote
+profiles and incompatible contracts fail closed. A runtime returning native
+autoreset state acknowledges exactly the ended rows; a runtime requiring
+explicit resets uses the same selected reset boundary. Neither path uses
+terminal observations as the next action input on a finished row.
+
+## Pinned launcher audit
+
+Isaac Lab revision `70ab24fec3eabf51222817db0cdb5a4e7133bd7e` normalizes
+`visualizer` and `livestream` in `isaaclab/app/sim_launcher.py`. If
+`livestream` is omitted or `-1`, it inherits the `LIVESTREAM` environment
+variable. This can implicitly select Kit, including for Viser. NexuML
+passes `livestream=0` and rejects a conflicting override before allocation.
+Offscreen sensors still resolve from the native sensor/renderer config:
+`test_native_multimodal_values_terminal_scene_and_history[package]` passed
+alongside the state-only and Viser guards (`3 passed in 41.06 s`).
+
+On this pinned version, local viewing needs the native `kit` visualizer
+and non-headless display; `HEADLESS` can independently force headless.
+`isaaclab_physx/app/kit_launcher.py` treats livestream mode `1` as public
+advertisement (uses `PUBLIC_IP`) and mode `2` as private. Both enable the
+Kit stream extension and set TCP 49100 signaling / UDP 47998 media.
+Neither mode is enabled by this change: no local, forwarded X11 or TigerVNC
+display is qualified, and no approved WebRTC client lane is available.
+The CI job consumes an already-prepared `NEXUML_ISAAC_IMAGE`; the
+existing image recipe is not an automatic publication path. Do not treat
+Kit startup, port binding or a prior editor session as playback evidence.
+
+An explicit scenario can select the typed `playback_viewer`; `--viewer`
+overrides it. A standalone package never opens a viewer by default,
+including when its saved scenario contains a viewer choice. Train/eval
+still use only their own approved settings. The remote CLI forwards the
+resolved play selection without loading local weights. Unqualified modes
+remain rejected.
+
+The public CLI resolved `playback_viewer: viser` without a CLI flag in a
+real native Newton Cartpole job. Headless Chromium connected over the
+loopback WebSocket and used pause, step, reset-all and resume; the CLI
+reported each intervention once. Three simulated worlds with rows 0
+and 1 visible produced 1,440 transitions. The listener was rebound after
+shutdown. Explicit `--viewer headless` on the same scenario ran nine
+transitions with no Viser listener. Focused checks: **375 passed**.
+Receipts: `/tmp/opencode/typed-native-viewer-wY9Xyj/` and
+`/tmp/opencode/play-viewer-final-WHxupw/`. This verifies selection and the
+Viser slice of 4a.1/4a.4; it does not qualify local Kit or WebRTC.
+
+## Executed local proof
+
+Runtime matches [custom-direct-task.md](custom-direct-task.md).
+
+- `nexuml play PATH --device cuda:0 --num-envs 8 --steps 60 --seed 23`:
+  **60 ticks, 480 transitions, 24 episodes**. The native integration test
+  rebuilt its policy and passed both scalar evaluation and vector play.
+  Logs: `/tmp/opencode/nexuml-decouple-playback-final-5XHR05/`.
+- `nexuml play --trainer-checkpoint PATH --device cuda:0 --steps 4 --seed 23`:
+  **4 ticks, 4 transitions** in a fresh N=1 job, no optimizer or collection.
+  The supported trainer-checkpoint path reuses evaluation's policy export
+  helper. Logs: `/tmp/opencode/nexuml-decouple-headless-play-x0NQgH/`.
+- Native mixed RGB/depth/segmentation/state PPO integration:
+  **6 ticks, 24 transitions, 4 episodes** through an exported package in
+  headless playback with four environments. The same test passed checkpoint
+  continuation, torch-package inference without simulator or learner modules,
+  and fresh evaluation. Logs: `/tmp/opencode/nexuml-decouple-playback-mixed-M3NxDv/`.
+- The existing trained native Pendulum IPPO export ran 10 ticks with N=1
+  and N=3, yielding 10/30 transitions and 2/6 completed episodes.
+  The native job explicitly loaded the trusted `isaaclab_marl_config`
+  module from `tests/fixtures`; the export does not provide native task
+  code. Logs: `/tmp/opencode/nexuml-decouple-marl-qualified-nOD0Gt/`.
+- The browser connected to the actual public CLI (`--viewer viser`,
+  `--num-envs 8`, `--real-time`), with a play-only Viser configuration and
+  visible rows 1 and 3. Chromium rendered changing native output over
+  loopback on TCP 35585, with no simulation mutators on the spectator.
+  SIGTERM exited with 143, and the exact port could be rebound immediately.
+  Logs and rendered frames: `/tmp/opencode/nexuml-decouple-viser-play-dsKeJO/`.
+  This does not qualify a tunnel, control mutation, or a remote worker.
+- Hermetic playback, existing evaluation, native config/runtime, Arena
+  protocol, simulated ROS and CARLA coverage: **493 passed, 2 live tests
+  deselected**. Covered independent per-row reset, fixed actor tensors,
+  seeded stochastic action parity, caller RNG restoration, clean SDK stop,
+  unsupported playback preflight and unchanged trainer/evaluator options.
+  Scoped lint/type and strict OpenSpec checks passed. `npm --prefix docs run
+  check` passed with zero diagnostics and rendered links/assets checked.
+
+## Opt-in Viser controls
+
+The browser callback only queues bounded playback requests. The regular
+playback loop owns simulation and applies requests between control ticks.
+Allowed speeds are 0.25×, 0.5×, 1× and 2× wall-clock targets, never changes
+to the physics timestep. Selected explicit reset is available only on a
+native manager task; direct tasks retain reset-all. The train/eval path
+does not receive an inbox even when a trusted config opts in to play
+controls for the same Viser definition.
+
+Real Chromium drove a trained Newton Cartpole export with three simulated
+instances and two initially visible. Pause held tick **101**. Single step
+reached **102** and no more. At tick 102, reset-row-1 changed episode
+counters `[36, 47, 37] → [36, 0, 37]`; reset-all changed them to
+`[0, 0, 0]` with no physics advance. All resets and steps ran on the owner
+thread. The browser selected 2× pacing, resumed and disconnected; ticks
+continued and a second browser reconnected. SIGTERM exited 143 and the
+loopback port was rebound. Native, browser, and per-reset receipts:
+`/tmp/opencode/nexuml-decouple-interactive-play-DKA409/`.
+
+The post-control scoped suite passed **503 tests**, with two live system
+tests deselected. It verifies bounded/invalid control admission and
+independence of train, eval and play construction. Scoped lint/type and
+strict OpenSpec checks passed. **4 native read-only spectator tests passed
+in 44.48 s**, including identical noisy/nonnoisy trajectories and cleanup
+after partial startup. Logs:
+`/tmp/opencode/nexuml-decouple-controls-spectator-QwaKU1/`.
+
+## Bounded headless recording
+
+Playback uses the same RGB validation, sizing and GIF/MP4 encoders as
+evaluation but publishes a playback manifest, not evaluation metrics.
+The CLI requires a separate frame budget and a new output directory.
+At the limit it finalizes the video without ending playback. The manifest
+separates completed native control ticks from monotonic capture timestamps
+and identifies the policy/checkpoint bytes and configured environment.
+
+The headless N=1 Kit PhysX manager reference recorded both formats, with
+**three captured native ticks** in a run that completed **eight ticks**.
+The policy digest matched, capture times increased, and the GIF and
+three-frame MP4 decoded. Receipts:
+`/tmp/opencode/nexuml-decouple-native-record-LLX2De/`. Hermetic tests proved
+that playback continues after publishing, that existing media targets are
+not overwritten, and that cancellation finalizes its captured prefix.
+In the native continuous run, SIGTERM at tick 3 exited **143**; the
+manifest recorded `cancelled` and the MP4 decoded exactly the two
+previous frames. Receipts:
+`/tmp/opencode/nexuml-decouple-record-cancel-NXd3Ec/`.
+The focused capture/evaluation/playback/native-validation suite passed
+**443**, with 14 opt-in cases skipped.
+
+## Installed playback boundary
+
+Offline-built NexuML and library wheels passed all **11 playback tests**
+from an isolated installation target using the prepared dependency
+environment. The subprocess played an exported CPU actor for 12 native
+transitions while forbidding and asserting zero attempts to import
+Lightning, NexuML training, TorchRL, Ray, Isaac, Warp/Newton and ROS.
+Discovery no longer loads the dataset exporter or trainer callbacks on
+behalf of unrelated declarations. The related dataset export, callback,
+native API and CLI regression passed **111 tests**, with one opt-in case
+skipped. Scoped lint, types, docs and strict OpenSpec checks passed.
+
+Wheel and test receipts (not published):
+`/tmp/opencode/nexuml-decouple-clean-playback-wheels-HqKeIe/`.
+
+## Policy-owned playback state (4a.2)
+
+Playback uses the existing `CompiledPolicy` state API per session. The same
+mask clears history, recurrent state and chunk cursors for ended or selected
+rows before acting on the reset observation. A viewer reset-all starts new
+policy state without stepping the simulator. Isaac forwards raw package-owned
+sensor inputs during play so that only the package advances that history.
+Externally processed observations stay runtime-owned. The training and
+scientific evaluation inputs are unchanged.
+
+The three-lane tests check different termination/truncation ticks, selected
+and full viewer resets, package history, and a GRU and two-command chunk
+fixture without changing actor weights. Native tests passed for the exported
+mixed-sensor actor (four lanes, six ticks) and the camera/final-observation
+oracle (**2 passed in 58.98 s**). Logs:
+`/tmp/opencode/nexuml-decouple-stateful-play-6zSE75/`. The broader focused
+suite passed **378 tests**. A direct baseline comparison for schema-1
+dataset local fit matched two fixtures exactly in manifest, counts, metrics,
+and updated tensors; the ordinary PPO numerical baseline check still passes.
+
+The externally processed mixed-sensor policy also trained, exported, and
+replayed through the unchanged runtime-owned history path. The paired
+Isaac/CPU MuJoCo regression ran in the same check (**2 passed in 149.26 s**).
+Logs: `/tmp/opencode/nexuml-decouple-stateful-parity-uMwfbL/`.
+
+## Bounded task commands (4a.3)
+
+Only an explicitly controlled Viser play session resolves a task's optional
+native reset binding. The browser sends a declared name and choice through
+the existing bounded queue. The owner checks the choice again, applies it at
+a full reset boundary, clears policy state, and counts the intervention
+separately from completed episodes. There are no free-form actuator commands.
+
+Chromium used a trained SO-101 export on three native PhysX lanes with two
+visible. **Positive** and **Negative** reset all lanes at paused tick 74
+without advancing physics. The new policy inputs exactly matched the native
+target tensors, then single step reached 75. Resume and browser reconnection
+worked; SIGTERM exited 143 and TCP 34133 could be rebound. This run exposed
+the Viser USD import before Kit startup; deferring Viser construction until
+after the launcher enters fixed it without changing the backend. Both Newton
+spectator trajectory comparisons and native SO-101 held outcomes passed
+(**3 tests in 38.91 s**). Browser and native logs:
+`/tmp/opencode/nexuml-decouple-task-commands-native-FtQchz/`.
+The existing real-browser read-only gate also passed after the startup-order
+fix (**1 test in 213.66 s**). It compared native training state and rollout
+trajectories with headless runs and verified failure/cancellation cleanup.
+Logs: `/tmp/opencode/nexuml-decouple-spectator-readonly-final-1KbSf4/`.
+
+The broader regression passed **776 tests**, with 14 opt-in cases skipped
+and two live system tests deselected. Viser controls and headless GIF/MP4
+capture are qualified separately; viewer recording, Local Kit and WebRTC,
+and remote Ray Jobs playback are not enabled by this proof.
+
+## Ray Jobs playback transport (4a.5)
+
+The public CLI and `submit_ray_job(..., operation="play")` submit an explicit
+resolved scenario through the existing Jobs SDK. Packages, checkpoints and
+recordings use absolute worker paths, not submitter paths. The driver does
+not load the artifact or start a simulator. The worker runs normal local CLI
+playback in a separate module process. The submission result is a job ID,
+not proof of successful playback or viewer readiness.
+
+The existing Ray job runner previously embedded `app(argv)` for training.
+A real GPU Cartpole producer using that path reached the worker, then
+failed with a Kit crash (exit 139). The ordinary module subprocess was
+already necessary for evaluation; it now executes train, export, evaluate
+and play alike. Ray signals the owned job process tree, and the bootstrap
+waits for the CLI process and cleans its temporary resolved configuration.
+Tests verified literal argv, discharge of owned resources on local SIGTERM,
+and unchanged CLI/SDK job semantics: **273 passed**. Live producer and
+remote playback receipts are separate from this transport change.
+
+An actual local process launched from the generated worker entrypoint
+recorded two frames from continuous Pendulum playback. Sending SIGTERM to
+the owned process group returned 143, removed the temporary worker config,
+and left no process group. The transport submission was mocked, so this
+does not establish Ray service cancellation. Receipt:
+`/tmp/opencode/nexuml-job-play-cancel-LqfTjf/`.
+
+The next bounded existing-pool GPU job with the ordinary module bootstrap
+was not admitted in its admission window. A stop request was sent for that
+job only and accepted while it was pending. Final status is `FAILED`: the
+Ray supervisor timed out at 900 seconds with no assigned driver node.
+This is a terminal admission failure, not a verified remote playback
+cancellation. No remote actor package or playback was produced.
+Receipts: `/tmp/opencode/nexuml-remote-play-ZtrXQj/`.
+
+### Real Ray Jobs on one prepared GPU host
+
+At `d538f481`, a disposable Ray 2.57.0 runtime on the local RTX 4080 SUPER
+(driver 610.43.03) ran the normal CLI through the Jobs service on loopback.
+The worker used the prepared Isaac Lab 3.0/Sim 6.2 interpreter and reserved one
+GPU. The separate submitter hid CUDA and printed only a job ID. On the
+assigned worker, headless PhysX ran **8 ticks and 8 transitions**; Ray
+reported `SUCCEEDED` with exit 0. GIF and MP4 each decoded exactly three
+frames; the manifest records native ticks 1–3 and the input policy SHA-256
+`2086f0ef48328eeb83c3b94351e5fb6dba20e8bc4cd7a49d3e8b173c47d86403`.
+
+A second, continuous SDK submission produced its bounded two-frame GIF
+while `RUNNING`. The Jobs API stopped it with `SIGTERM`, not a force kill.
+It cleared `SimulationContext`, reached `STOPPED`, and left no owned CUDA
+process or temporary NexuML configuration. The caller-owned Ray runtime
+then assigned its GPU to a new task before the probe owner shut it down.
+Receipts and replayable probe: `/tmp/opencode/jp-E6Kx0Y/`. This verifies
+the actual Jobs transport and cleanup on one host, not a remote-worker
+runtime, job-local installation or a native viewer endpoint.
+
+### Stock shared-pool admission follow-up
+
+A fresh whole-GPU request to `pool_gpu_workers` did reach an assigned
+worker. The guarded producer `raysubmit_XZ1gEezgPFei3it3` prepared pinned
+dependencies in 6m31s and installed 321 packages into its private job
+environment. Its 420 s total guard exited 124 before training, leaving no
+qualified policy artifact. The worker image was not changed. Receipts:
+`/tmp/opencode/rp-RgFZUM/`.
+
+A second producer with a 1,200 s cold-install/workload allowance, fresh
+validated output paths and the same 4 GiB disk floor,
+`raysubmit_V6EQvsxj4WPBhkpB`, failed **admission** instead: Ray reported
+its 900 s supervisor timeout with no assigned driver. The autoscaler
+requested one stock GPU worker and requeued it after 600 s. The Kubernetes
+API showed a healthy head and no GPU workers at readback. That establishes
+the observed scheduling failure, not permanent lack of GPUs. No playback
+consumer was submitted for either producer. No direct node operations,
+downscaled GPU requests or local simulator fallback occurred.
+Terminal receipt: `/tmp/opencode/rrp-oHLl76/deadline-status.json`.
+
+### Stock-pool headless playback and cancellation
+
+At `254b5bc1`, the trusted TLS Ray Jobs endpoint accepted three independent
+jobs through the existing CLI and SDK. The submitter had CUDA hidden and
+did not open the policy or start a local simulator. Every job reserved
+one whole GPU from `pool_gpu_workers` and installed the locked runtime in
+its own environment on the stock Ray image.
+
+- `raysubmit_jhrmdKr6BwfEF1Ma` trained native PhysX Cartpole for **128
+  CUDA transitions / eight optimizer steps** on an RTX 4070 at
+  `student-worker-6` and exported to the shared volume. Cold preparation
+  took 6m54s; the guard observed exit 0 at 459.05 s with free disk above
+  its 4 GiB floor.
+- `raysubmit_FTFpUawdiRS6afhp` ran on a fresh worker pod on the same host
+  after the producer pod was gone. It verified the frame-128 export hash
+  `7d1fe85347adcf2a922d1a2886572377cd756e464449276b1e0b553d7eb4c439`
+  and the actor/adapter files before running **eight native ticks and
+  eight CUDA transitions**. The context cleared and Ray reported
+  `SUCCEEDED`, exit 0.
+- A separately submitted continuous SDK job,
+  `raysubmit_hffv9UysJPDA42Ly`, used the same digest. Ray accepted stop
+  after native setup and entry into the real-time loop. SIGTERM unwound
+  playback and cleared `SimulationContext`. Ray reached `STOPPED`,
+  freed the GPU and pool token, and later drained the idle worker pod.
+  The borrowed head stayed Ready; no submitted qualification job remained
+  active.
+
+Headless had no viewer endpoint. This is not remote recording, Viser,
+local Kit, WebRTC, or a multi-node training proof. The locked install
+was not binary-only: the producer log records two sdist builds and the
+Isaac Lab Git build. See the [worker dependency audit](ray-rollout-placement.md#worker-dependency-setup-diagnostic-34-not-native-qualification).
+CLI, SDK, and operator-owned viewer prerequisites are in the [native configuration
+guide](../../../docs/src/content/docs/how-to/isaac-native-configuration.mdx).
+Receipts and hashes: `/tmp/opencode/nex212-remote-ES504T/`.
+
+The admission trace explains why free CIP capacity was not enough:
+Argo CD reconciled the RayCluster's declared zero replicas before the
+operator could create a pod. The retry of the same launch ID did not
+write a new scale request. On the successful run, Ray emitted a new
+launch ID and KubeRay created its pod before the next Argo CD reset.
+This was an observed scale race, not a GPU or RAM shortage. No GitOps
+settings, worker sizes, cluster nodes, or scheduling constraints changed.
+
+## Native Kit display probes (4a.1 and 4a.4, partial)
+
+The explicit public `play --viewer headless` path passed for both
+package-owned and externally owned Newton camera processing. Each fresh
+export replayed six control ticks over four environments (24 transitions),
+with no display or livestream environment selected. Separate native
+sensor oracles on the same task verified nonblank RGB, depth in metres,
+exact segmentation classes, the terminal scene before autoreset, and
+selected history reset. Both exports kept exact portable inference
+parity. This confirms camera observations do not require a viewer; it
+does not qualify a Kit camera policy or a visible viewport. Four native
+tests passed in 124.71 s, with source hashes and child logs in
+`/tmp/opencode/nex212-headless-sensors-yTvxj3/`.
+
+The pinned native `validate_launch` resolved `none` (normalized to an
+empty list), `viser`, local `kit`, and headless `kit` with livestream
+mode 2 for the PhysX reference without loading a Kit application.
+Explicit `none` with livestreaming failed before allocation. This checks
+the upstream configuration mapping, not live WebRTC. Receipt:
+`/tmp/opencode/nex212-kit-config-scan-fBP0L3/validated-scan.log`.
+
+An additional real local Chromium Viser spectator run passed in 214.19 s.
+Native training and replay trajectories matched the headless control;
+failure and cancellation released the listeners. The separate public
+Ray-profile browser fixture requires worker-local ext4 at `/tmp/ray` and
+was not run as a remote proof on this host. No mounts or guards were
+changed. Local receipt: `/tmp/opencode/nex212-native-viser-local-V6gXnL/`.
+
+On existing forwarded X11 display `:11`, Lab's default non-headless Kit experience
+reached at least **60** control ticks on an actual exported two-lane
+Cartpole policy before the 140 s bound cancelled the requested 240 ticks.
+That experience loads the native stage, script editor and prim-manipulator
+extensions. It does not prove a bounded playback-only display. Selecting
+the upstream headless-rendering experience while requesting a non-headless
+window did not reach the viewport or control-loop witness. No forwarded X11 Kit
+viewer, native local desktop, TigerVNC or WebRTC support is inferred.
+Probe logs: `/tmp/opencode/nexuml-kit-local-native-WNPXME/` and
+`/tmp/opencode/nexuml-kit-minimal-dpOhMT/`. No network route or display was
+provisioned and no fallback was enabled.
+
+The pinned Lab launcher selects `isaaclab.python.rendering.kit` for
+non-headless camera jobs. This is the maintained GUI rendering profile,
+distinct from the headless profile probed above. It adds Replicator and
+camera settings but depends on `isaaclab.python.kit`, the desktop editor
+experience. The base declares the stage, property and script editors and
+the prim manipulator; the camera profile does not remove those dependencies.
+At `21a33086`, a native launch of the GUI camera profile on the prepared
+forwarded X11 display logged startup of the viewport and all four editor
+extensions. The probe timed out after 85 s (exit 124) before the launcher
+returned; its process and window were gone afterward. It did not run a
+policy or establish graceful close. Receipts: `/tmp/opencode/kit-camera-profile-lE14VN/`.
+
+The display socket belongs to a VS Code Dev Containers proxy; its X11
+window manager reports Weston, not an identified RDP server. The operator
+observed the resulting Isaac Lab and Kit windows on their Windows desktop
+with blank contents. This verifies remote window forwarding, not Vulkan
+presentation of live policy frames. No GUI was opened to confirm the route.
+
+The pinned Kit install also ships `omni.app.viewport.kit`, labeled
+`support_level = "Sample"`. It selects no renderer or default stage and
+does not depend on Isaac Lab or PhysX. Neither profile qualifies a
+playback-only surface; hiding editor panels does not prevent mutation.
+
+The launcher explicitly rejects the full Isaac Sim streaming experience
+with Lab because it can hang or invalidate PhysX tensor views. Lab's
+default streaming profile instead inherits the editor. The bundled
+`omni.kit.livestream.app` documents a native spectator stream, but it also
+starts a primary stream by default. This source audit did not verify
+spectator input denial, disabled primary streaming, actual endpoints or
+decoded policy frames. No stream or other listener was opened.
+
+Keep the standalone workstation path separate from Ray Jobs. The prepared
+`.k8s/isaac/pod.yaml` launches the editor, and the pod-local NetBird sidecar
+provides the operator-managed private route for TCP 49100 and UDP 47998.
+The operator confirmed the editor stream previously worked. That is not a
+NexuML playback witness. On the follow-up Kubernetes API check the editor
+container was terminated (exit 139) while NetBird was Ready. A Ready
+sidecar is not a running Kit server. No pod or network settings changed.
+
+A separate private Xvfb diagnostic opened no operator window and no TCP
+display listener. Vulkan reported an XCB-presentable RTX 4080 SUPER, but
+both the default Lab experience and the headless-rendering experience
+requested with a window reached the 70 s bound before the launcher
+returned. Neither produced a policy viewport or pixel witness. XCB
+capability is not evidence of usable Kit playback. Receipts:
+`/tmp/opencode/private-x-vulkan-osAPu3/` and
+`/tmp/opencode/kit-private-presentation-r2qHgd/`.
+
+Repeating the same private display test with a five-minute bound showed
+why the shorter attempts were inconclusive: the default experience
+spent over 110 seconds waiting for RTX shader compilation and completed
+startup in 123 seconds. It then drove the exported policy for 24 PhysX
+ticks (48 CUDA transitions); the two 1280×720 snapshots show the moving
+Cartpole, and native environment/app teardown appeared in the log.
+Stage, property, console, script editor and prim-manipulator extensions
+were active, so this is not the playback-only local mode. The minimal
+headless-rendering experience also reached startup, then the non-headless
+Lab launcher tried to import its missing `omni.kit.widget.toolbar`. The
+vendor process returned zero despite that startup traceback. This probe
+therefore requires actual rollout and viewport receipts, not exit status
+alone. No user-visible window or external listener was opened. Receipts:
+`/tmp/opencode/nex212-kit-local-5fypgF/` and
+`/tmp/opencode/nex212-kit-minimal-lLzpHS/`.
+
+## Local Kit viewport
+
+The pinned rendering experience can show a local viewport without the
+authoring desktop. The Lab launcher needs its native toolbar module;
+playback disables its timeline and manipulation tools, omits the
+optional task GUI panel, and refuses to proceed if the stage, property,
+script, console, extensions or prim-manipulator editors load. The
+existing direct Kit process scope owns startup and teardown. In the
+diagnostic, returning close crashed (exit 139) after native environment
+close; the ordinary direct Kit shutdown ran the same 48 transitions
+and exited 0. This does not qualify returning close for a GUI Ray worker.
+Receipts: `/tmp/opencode/nex212-kit-playback-window-X8hKjS/` and
+`/tmp/opencode/nex212-kit-window-fast-DDH5SQ/`.
+
+The public CLI and SDK each used `local` on a private Xvfb display
+with Vulkan on an RTX 4080 SUPER (610.43.03). The same frame-256 actor
+ran 24 control ticks across two native PhysX environments. SDK evidence
+showed moving Cartpoles in a 1280×720 window, 45.4% changed pixels in
+the center crop, and identical actor tensors before and after playback.
+Both runs reported native context cleanup and exited 0. Bare CLI with
+no display rejected `local` before Kit startup and separately rejected
+`webrtc`. The viewer-close unit case verifies no extra action or reset
+after the native app reports it is closed. No user-visible window or
+network listener was created. Exact source hashes, captures and logs:
+
+- `/tmp/opencode/nex212-local-sdk-KwXniG/`
+- `/tmp/opencode/nex212-local-cli-a6fIY6/`
+- `/tmp/opencode/nex212-local-preflight-pEiUsG/`
+
+In a matched pair of fresh processes at `e38e4d14`, the same actor, seed,
+and 24-tick/two-environment budget produced bit-identical observations
+and actions in local and headless modes (maximum absolute difference
+zero). Both processes cleared their native contexts. Receipt:
+`/tmp/opencode/nex212-local-trajectory-rD4o3u/`.
+
+The hardened entry point rejects the vendor `--no-window` flag and
+returning-close worker scope before native allocation. It checks Kit's
+native OS window handle as well as its viewport, because a headless
+Kit app can have a viewport object. With the windowing binding loaded,
+the same public CLI completed 48 transitions and exited 0; a nonempty
+but nonexistent display exited nonzero with an X11 error and no
+playback receipt. The focused suite passed 76 tests, including both
+conflicting launch modes. Receipts:
+`/tmp/opencode/nex212-window-guards-gv7esm/` and
+`/tmp/opencode/nex212-window-binding-cUggU1/`.
+
+An independently prepared TigerVNC 1.13.1 display also passed with the
+hardened SDK. The older snapshot client negotiated RFB and received a
+framebuffer update but timed out before writing a decoded image. A
+fresh binary-only VNCDoTool client authenticated to the loopback server
+and decoded two 1280×720 images at different ticks of the same
+**24-tick / 48-transition** PhysX rollout. The GPU app exited 0; the
+harness verified the server process, listener and X11 socket were gone
+and removed its temporary credentials. This is an authenticated
+loopback display proof, not a remote tunnel or WebRTC proof. No system
+packages or project dependencies were installed. Exact server package
+hashes, viewer pins, credentials-free logs, and frames:
+`/tmp/opencode/nex212-tigervnc-client-At71Rs/`.
+
+These tests qualify prepared Xvfb and loopback TigerVNC displays for
+state-only, single-agent PhysX play. They do not qualify forwarded
+Windows X11, native WebRTC, or a Kit training/evaluation spectator.
+Keep tasks 4a.1 and 4a.4 open for their outstanding modes.

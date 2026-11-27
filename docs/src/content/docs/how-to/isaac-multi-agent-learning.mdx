@@ -1,0 +1,183 @@
+---
+title: Fixed-group IPPO and MAPPO
+description: Exercise native fixed-group policy training, continuation and grouped evaluation.
+---
+
+This slice extends the existing scenario/compiler/Lightning/policy flow. It does
+not introduce another trainer or require MARL for offline imitation.
+
+**Qualification status:** portable policies, grouped CPU boundaries and native
+TorchRL numerics are verified. Bounded Pendulum and Handover jobs have exercised
+both algorithms on the pinned **Newton MJWarp** backend, with real actor/critic
+updates, current resume, clean actor export and fresh replay. Qualification uses
+two environments, 64 physical frames and an explicitly saved 0.1-second test
+horizon; it is not a convergence or universal-backend claim. Owned jobs monitor
+the maintainer-revised **4 GiB stop threshold**.
+
+## Registered remote CLI qualification
+
+Use the registered SDK campaign to exercise all four references through public
+CLI subprocesses: untrained export, interrupted training, current checkpoint
+resume, checkpoint export, fresh grouped evaluation and exhausted resume. The
+commands below select two environments and **128 physical frames** each, without
+shortening native episode horizons. These are smoke protocols, not convergence
+tests or substitutes for the earlier 64-frame/0.1-second fixture protocol above.
+
+Use a trusted qualified worker profile with the existing private locked setup:
+
+```yaml
+type: ray-jobs-sdk
+version: "1"
+params:
+  setup_command: [uv, sync, --locked, --python, "3.12", --all-packages, --all-extras]
+  entrypoint_resources:
+    pool_gpu_workers: 1
+```
+
+Save it as `QUALIFIED_PROFILE.yaml`. With the approved Jobs endpoint, CA and durable
+worker mount already available, the campaign shape is:
+
+```bash
+export RAY_API_SERVER_ADDRESS=https://ray.ika.rub.de
+for recipe in isaac-pendulum-ippo isaac-pendulum-mappo isaac-handover-ippo isaac-handover-mappo; do
+  CUDA_VISIBLE_DEVICES='' python scripts/physical_ai_acceptance.py \
+    --case recipe --recipe "$recipe" --frames 128 --batch 32 --envs 2 \
+    --profile QUALIFIED_PROFILE.yaml --ca "$RAY_CA_BUNDLE" \
+    --output "$EVIDENCE_ROOT/$recipe" --wall-seconds 1800 \
+    --queue-seconds 900 --concurrency 1 --submit || break
+done
+```
+
+Choose a new submitter `EVIDENCE_ROOT`; each attempt also gets a new durable worker
+root under `/mnt/data/nexuml-qualification`. The receipt retains the literal CLI
+commands, configuration, original source identity, partial/final counters and
+checkpoint/export hashes. Retrieve the private stage logs and check their receipt
+hashes after termination; do not equate submission with a pass. No private inputs
+are uploaded automatically. Setup changes only the owned environment, not an image
+or driver; unavailable native dependencies still fail visibly.
+
+The grouped acceptance check compares every named actor and critic owner between
+the actual partial and final checkpoints, requires finite changed weights and an
+advancing algorithm-update count, and checks populated optimizer states for all
+owners. Native optimizer construction separately enforces unique parameter
+ownership. Pendulum has two actors with two IPPO critics or one MAPPO central
+critic; Handover shares one actor between its two hands, with two IPPO critics or
+one MAPPO central critic. Physical frames are not multiplied by agent count.
+These checks do not expand native grouped-sensor support or establish learning
+quality, live viewing, parallel capacity or the complete recovery matrix.
+
+## Authoring
+
+The bounded reference definitions are:
+
+```python
+from nexuml_library.scenarios.reinforcement.isaaclab_marl import (
+    isaac_pendulum_ippo,
+    isaac_pendulum_mappo,
+    isaac_handover_ippo,
+    isaac_handover_mappo,
+)
+
+scenario = isaac_pendulum_mappo(
+    total_frames=64, frames_per_batch=16, num_envs=2,
+)
+```
+
+Use ordinary `NexuSession` inside the selected environment's `job_scope()`, or the
+normal CLI after native qualification. Existing resume/checkpoint/export ownership
+remains unchanged. Training remains one synchronous direct CUDA environment batch
+on the pinned prepared stack; no installs or alternate environments are needed or
+authorized.
+
+`InteractionContract.groups` persists ordered group names and each group's fixed
+ordered agent identities, local observation fields and action semantics.
+`PolicySpec.groups` maps those groups to existing `PipelineSpec` graphs, ordinary
+action adapters and one `actor_id` per agent. Equal actor IDs refer to one actual
+local actor object and one optimizer. Sharing requires identical observation,
+action, physical and processing meaning plus the same graph/adapter—not merely
+equal dimensions. Different IDs build independent actors.
+
+Pendulum's `cart`/`pendulum` groups have observation widths 4/3 and one continuous
+action each. The declarations preserve 100 N cart effort, 50 Nm pendulum effort
+and 120 Hz physics / 60 Hz control. Handover's `hands` group contains
+`right_hand`/`left_hand`, 157 observations and 20 controls each, with a shared actor.
+Those controls are native joint/tendon limit-scaled targets, not SO-101 offsets.
+
+The Handover recipe deliberately does **not** use its separate 290D privileged
+state: the pinned native autoreset API does not supply a qualified pre-reset copy.
+Its MAPPO critic is derived from the actual final actor observations. Independent
+privileged native bindings reject instead of bootstrapping from reset state.
+
+## Axes and boundaries
+
+- Live root batch: `[N]`, even evaluation with `N=1`.
+- Rollout root: `[N,T]`; group child: `[N,T,A_g]`.
+- Continuous actions: `[N,T,A_g,D_g]`; categorical actions: int64 `[N,T,A_g]`.
+- Action log probabilities: `[N,T,A_g]`; only event dimensions are reduced.
+- Rewards, values, targets and boolean signals: `[N,T,A_g,1]`.
+- Native GAE runs before environment/time flattening to `[M]` / `[M,A_g]`.
+- Frames and resume budgets count `N*T`, never agent samples or optimizer steps.
+
+`InteractionStep.groups` carries typed per-agent rewards, validity and raw/effective
+endings. Native `reset_buf` owns the environment boundary. A terminal sample stays
+valid; later inactive samples do not train until the actual native reset. Other
+agents continue. True pre-reset `final_obs` supplies bootstrap inputs, while cached
+post-reset observations start the next episode without another native reset.
+
+Learning validity does not erase real centralized world state. An inactive body's
+observations can still inform a continuing agent's MAPPO value. Team rewards are
+explicit declarations verified against actual equal native signals; no reward
+mean/sum is manufactured as a learning signal or success measure. Reporting uses
+named per-agent/group metrics.
+
+## Native numerics and optimization
+
+`IPPO` uses local compiled critics. `MAPPO` uses native `CrossGroupCritic` encoders,
+shared trunk and distinct group heads; different widths are not padded. Actors
+always see their declared local fields. Image-based centralized critics require
+an explicit existing compiled `critic_encoders` graph producing `features`.
+
+Both use native TorchRL 0.14 `IPPOLoss`/`MAPPOLoss` and `MultiAgentGAE`, not copied
+PPO or GAE equations. Defaults are:
+
+```python
+normalize_advantage = False
+average_gae = False
+value_norm = None
+```
+
+Other normalization selections reject until validity-aware statistics and
+checkpoint continuation are qualified. `shifted_valid` is an estimator-specific
+trajectory-shift key, not an agent loss mask. The integration uses the separate
+group `valid` mask and genuine termination/truncation facts.
+
+Each unique actor/critic parameter has one optimizer owner. Applicable group losses
+accumulate before shared parameters step once. An all-invalid independent actor
+does not step—even with warmed Adam momentum or weight decay—and stale gradients
+are cleared to `None`. All-invalid batches skip numerical reductions/steps.
+
+## Artifacts and support limits
+
+Current checkpoints preserve actor sharing, training critics, unique optimizer
+state and physical-frame counters through existing Lightning ownership. Resume
+rejects changed task configuration, contracts, sharing, algorithm or environment
+count before collection; viewer-only changes remain allowed. Complete
+actor-only exports contain local actors/adapters/processing definitions, not
+critics, optimizers or privileged inference inputs. Existing `CompiledPolicy`
+caller-owned history initialization/step/reset works for grouped portable actors;
+stateless `forward()` remains the processed-tensor interface.
+
+CPU tests cover heterogeneous widths, shared and independent actors, grouped
+images/vectors, different continuous/categorical adapters, history/reset, numerical
+targets, unique optimizer steps and export/reload. These are **not** claims of
+native grouped image/categorical/sensor/history support. The current native adapter
+rejects unqualified grouped sensor/history processing and privileged final-state
+bindings. Dynamic membership, heterogeneous padding and single-actor hybrid action
+spaces are unsupported.
+
+The opt-in N3 regression is
+`tests/core/test_isaaclab_marl_integration.py`: both Pendulum algorithms and Handover
+sharing, actual final observations and reset caching, actor/critic dependencies,
+real updates, current resume, clean inference and fresh replay. Other backends and
+grouped sensor/action combinations need their own native qualification. Do not
+substitute another renderer, bypass pins or upgrade the stack.

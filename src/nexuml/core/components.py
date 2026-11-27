@@ -2,10 +2,22 @@
 
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
+from contextlib import AbstractContextManager, nullcontext
 from dataclasses import dataclass, field
-from typing import Annotated, Any, ClassVar, Literal
+from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Literal, NamedTuple
 
 from pydantic import BaseModel, ConfigDict
+
+if TYPE_CHECKING:
+    from torch import nn
+
+    from nexuml.core.policy import CompiledPolicy
+    from nexuml.core.types import (
+        InteractionContract,
+        PolicyEvaluationSpec,
+        ReinforcementLearningSpec,
+    )
+    from nexuml.interaction.runtime import EnvironmentRuntime
 
 
 @dataclass(frozen=True, slots=True)
@@ -163,6 +175,154 @@ class LoaderBackendDefinition(ComponentDefinition):
         """Build the loader backend runtime."""
 
 
+PlaybackViewer = Literal["headless", "viser", "webrtc", "local"]
+
+
+@dataclass(frozen=True, slots=True)
+class EnvironmentBuildContext:
+    """Execution-local settings for training, evaluation, or playback."""
+
+    purpose: Literal["train", "eval", "play"]
+    seed: int | None = None
+    device: str = "cpu"
+    worker_rank: int = 0
+    num_envs: int = 1
+    render_mode: Literal["rgb_array"] | None = None
+    viewer: PlaybackViewer | None = None
+
+    def __post_init__(self) -> None:
+        if self.purpose not in ("train", "eval", "play"):
+            raise ValueError("environment purpose must be train, eval, or play")
+        if self.num_envs < 1 or self.worker_rank < 0:
+            raise ValueError("num_envs must be positive and worker_rank nonnegative")
+        if self.viewer is not None and (
+            self.purpose != "play" or self.viewer not in ("headless", "viser", "webrtc", "local")
+        ):
+            raise ValueError("An explicit playback viewer requires purpose='play' and a known mode")
+
+
+class EnvironmentDefinition(ComponentDefinition):
+    """Portable environment configuration, never a live simulator or transport."""
+
+    kind = "environment"
+
+    def job_scope(self) -> AbstractContextManager[None]:
+        """Return a resource-free whole-job scope unless a provider owns native lifetime."""
+        return nullcontext()
+
+    def rollout_scope(self) -> AbstractContextManager[None]:
+        """Own collector-local resources without terminating the host worker on close.
+
+        Returns:
+            The provider's job scope unless the worker needs a distinct close policy.
+        """
+        return self.job_scope()
+
+    def checkpoint_identity(self) -> dict:
+        """Describe the environment configuration required for continuation.
+
+        Returns:
+            Portable component identity, without building execution resources.
+        """
+        from nexuml.core.serialization import lower_component
+
+        return lower_component(self)
+
+    @abstractmethod
+    def describe(self) -> "InteractionContract":
+        """Describe tensor I/O without hardware connections or retained resources."""
+
+    def validate_training(
+        self, training: "ReinforcementLearningSpec", *, device: str | None = None
+    ) -> None:
+        """Optionally reject unsupported training settings before runtime allocation."""
+
+    def validate_distributed_training(self, world_size: int) -> None:
+        """Require explicit provider support for one simulator per learner rank.
+
+        Raises:
+            ValueError: If the provider has not opted in to rank-local DDP.
+        """
+        raise ValueError("This environment does not support rank-local DDP training")
+
+    def validate_ray_train(self) -> None:
+        """Optionally reject providers that cannot start on Ray Train's training thread."""
+
+    def validate_local_fit(self) -> None:
+        """Require explicit provider support for bounded simulated online learning.
+
+        Raises:
+            ValueError: If the provider does not support interactive local fit.
+        """
+        raise ValueError("This environment does not support interactive local fit")
+
+    def validate_playback(self, viewer: PlaybackViewer) -> None:
+        """Require provider opt-in before continuous policy interaction.
+
+        Raises:
+            ValueError: If the provider has not authorized simulated playback.
+        """
+        raise ValueError("This environment does not support simulated playback")
+
+    @abstractmethod
+    def build(self, context: EnvironmentBuildContext) -> "EnvironmentRuntime":
+        """Materialize reset/step/close resources at the execution site."""
+
+
+class BenchmarkEnvironmentDefinition(EnvironmentDefinition):
+    """Evaluation-only environment whose upstream suite owns rollouts and scoring."""
+
+    def build(self, context: EnvironmentBuildContext) -> "EnvironmentRuntime":
+        """Reject ordinary training and scalar replay for an upstream suite.
+
+        Raises:
+            ValueError: An upstream suite must be run through policy evaluation.
+        """
+        raise ValueError("An upstream benchmark requires policy evaluation, not environment build")
+
+    @abstractmethod
+    def run_benchmark(
+        self, policy: "CompiledPolicy", spec: "PolicyEvaluationSpec"
+    ) -> tuple[dict[str, float], dict[str, Any]]:
+        """Return the suite's scalar metrics and native per-episode report."""
+
+
+class ActionAdapterDefinition(ComponentDefinition):
+    """Portable configuration for converting neural outputs into valid actions."""
+
+    kind = "action_adapter"
+
+    @abstractmethod
+    def build(self, contract: "InteractionContract") -> "nn.Module":
+        """Build the deployable action adapter, independent of any learner."""
+
+
+class RLAlgorithmBuildContext(NamedTuple):
+    """Learner inputs, deliberately excluding live interaction resources."""
+
+    policy: "CompiledPolicy"
+    contract: "InteractionContract"
+
+
+class RLAlgorithmDefinition(ComponentDefinition):
+    """Portable configuration for a checkpoint-visible reinforcement learner."""
+
+    kind = "rl_algorithm"
+    supports_bounded_local_fit: ClassVar[bool] = False
+
+    def validate_distributed_training(self, frames_per_batch: int, world_size: int) -> None:
+        """Require an algorithm that preserves its update semantics under DDP.
+
+        Raises:
+            ValueError: If the algorithm has not opted in to rank-local DDP.
+        """
+        raise ValueError("This algorithm does not support rank-local DDP training")
+
+    @abstractmethod
+    def build(self, context: RLAlgorithmBuildContext) -> "nn.Module":
+        """Build algorithm-owned checkpointable state, not an environment."""
+
+
 class ExecutionBackendDefinition(ComponentDefinition):
     """Installation-owned placement settings and execution behavior."""
 
@@ -181,6 +341,11 @@ class ExecutionBackendDefinition(ComponentDefinition):
         Raises:
             ValueError: If requested resume or exports are unsupported.
         """
+        operation = kwargs.get("operation", "train")
+        if operation == "evaluate" and not self.capabilities.get("evaluation", False):
+            raise ValueError("Evaluation is unsupported by the selected execution backend.")
+        if operation == "export" and not self.capabilities.get("artifacts", False):
+            raise ValueError("Checkpoint export is unsupported by the selected execution backend.")
         if kwargs.get("trainer_checkpoint") and not self.capabilities.get("resume", False):
             raise ValueError("Trainer checkpoint resume is local-only; the backend owns recovery.")
         if scenario.exports and not self.capabilities.get("artifacts", False):

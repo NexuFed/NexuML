@@ -8,13 +8,13 @@ Defines a reproducible, versioned CUDA container that installs the complete Nexu
 
 ### Requirement: Complete locked workspace image
 
-The container image SHALL install the locked `nexuml` and `nexuml-library` workspace packages together with every optional extra declared by either package. The image SHALL identify its NexuML, Python, Ubuntu, and CUDA versions and SHALL target Linux AMD64.
+The container image SHALL install the locked `nexuml` and `nexuml-library` workspace packages with their `all` extras and the core `dev` extra. Native robotics extras are outside this Python 3.13/CUDA 12.8 profile. The image SHALL identify its NexuML, Python, Ubuntu, and CUDA versions and SHALL target Linux AMD64.
 
 #### Scenario: Complete environment is built
 
 - **WHEN** the container image is built from a current repository revision
 - **THEN** both `nexuml` and `nexuml_library` import from the image environment
-- **AND** dependencies selected by every workspace extra are installed from the committed lockfile.
+- **AND** dependencies selected by the image's extras are installed from the committed lockfile.
 - **AND** the container-specific binary-only hash lock selects a PyTorch backend matching the image's declared CUDA runtime without constraining public package consumers.
 
 #### Scenario: Lockfile is stale

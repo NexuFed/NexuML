@@ -86,6 +86,38 @@ Lightning artifacts handled by the export loader. Exact fields:
 | continue interrupted training | `--trainer-checkpoint` |
 | transfer learning / new architecture | `CheckpointLoadSpec` |
 | distribute a trained model | [export/reload](/how-to/export/) |
+| replay/record a complete policy without training | `nexuml evaluate <policy-package>` |
+
+## RL continuation and complete policy replay
+
+RL checkpoints preserve learner state and actual physical-frame counters. Resume
+consumes the remaining configured frame budget, not a new full budget. Use an
+intermediate checkpoint for interruption recovery; an exhausted checkpoint does
+not imply additional optimizer updates. The [CPU round trip](/how-to/reinforcement-learning/#fast-cpu-round-trip)
+shows small batch-level checkpoint creation and continuation.
+
+```bash
+nexuml export pendulum-ppo --checkpoint "$CHECKPOINT" --output /tmp/opencode/pendulum-policy
+nexuml evaluate /tmp/opencode/pendulum-policy \
+  -O training.evaluation.episodes=1 -O training.evaluation.max_steps_per_episode=16
+```
+
+Use the matching scenario for the checkpoint. Python callers export `result.policy`,
+not raw `result.pipeline`. Complete policy packages preserve action-adapter state
+and interaction contracts, excluding critic/optimizer/rollout/runtime state; they
+cannot resume learning. Supervised training-state sidecars remain unchanged.
+
+Replay creates a separate native evaluation run, not a training session. Source
+frames come from `training_frames`, not optimizer steps. New exports obtain it from
+the supplied RL module's actual `frames` buffer or its trainer; an explicit
+`checkpoint_path` instead reads saved `frames` and records checkpoint SHA256.
+Unknown counters, including older checkpoints and offline policies, remain `null`;
+presentation step zero does not imply an untrained policy. An export without module,
+trainer or checkpoint has no known frame count.
+
+`policy_files_sha256` identifies saved pipeline/action-adapter bytes in both the
+inference package and `metadata.json`, without adding a critic/resumable sidecar.
+It does not prove learning quality. See [media and logging](/how-to/reinforcement-learning/#record-gif-mp4-or-both).
 
 The [Lightning comparison](/explanation/architecture/#coming-from-lightning) maps these
 operations to familiar Lightning concepts. [Generated export APIs](/reference/api/nexuml/core/export/)

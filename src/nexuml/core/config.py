@@ -19,7 +19,8 @@ class ResolvedConfig(ScenarioSpec):
 
     @classmethod
     def from_yaml(cls, yaml_str: str) -> "ResolvedConfig":
-        yaml = YAML()
+        # Resolved config keeps values, not round-trip scalar subclasses in arbitrary kwargs.
+        yaml = YAML(typ="safe", pure=True)
         data = yaml.load(yaml_str) or {}
         return cls.model_validate(restore_model_data(data, cls))
 

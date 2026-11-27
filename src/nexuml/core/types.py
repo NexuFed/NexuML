@@ -3,16 +3,23 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
-from typing import TYPE_CHECKING, Any, Literal, Self, cast
+from keyword import iskeyword
+from math import isclose, prod
+import re
+from typing import TYPE_CHECKING, Annotated, Any, Literal, Self, cast
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictInt, field_validator, model_validator
 
 from nexuml.core.components import (
+    ActionAdapterDefinition,
     DataSourceDefinition,
+    EnvironmentDefinition,
     EvalAlgorithmDefinition,
     ExecutionBackendDefinition,
     LayerDefinition,
     LoaderBackendDefinition,
+    PlaybackViewer,
+    RLAlgorithmDefinition,
 )
 from nexuml.core.factory import factory_values, normalize_json_value, resolve_factory
 from nexuml.execution.definitions import LocalExecution
@@ -145,6 +152,380 @@ class PipelineSpec(SpecModel):
     stages: dict[str, list[LayerSpec]] = Field(default_factory=dict)
 
 
+class PhysicalTensorContract(SpecModel):
+    """Versioned physical interpretation; tensor values retain their numeric bounds."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, allow_inf_nan=False)
+
+    schema_version: Literal[1] = 1
+    units: tuple[Annotated[str, Field(min_length=1, pattern=r"\S")], ...] = Field(min_length=1)
+    frame: str = Field(min_length=1, pattern=r"\S")
+    joints: tuple[Annotated[str, Field(min_length=1, pattern=r"\S")], ...] = ()
+    control_mode: Literal["effort", "absolute_position", "relative_position"] | None = None
+    scale: tuple[float, ...] | None = None
+    offset: tuple[float, ...] | None = None
+    sensor_id: str | None = Field(default=None, min_length=1, pattern=r"\S")
+    class_controls: tuple[tuple[float, ...], ...] | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
+
+    @model_validator(mode="after")
+    def validate_control(self) -> Self:
+        if self.control_mode is None and (self.scale is not None or self.offset is not None):
+            raise ValueError("Physical action scale/offset requires an explicit control mode")
+        if self.control_mode is not None and (not self.joints or self.scale is None):
+            raise ValueError("Physical control requires ordered joints and an explicit scale")
+        if self.control_mode is not None and len(self.joints) != len(set(self.joints)):
+            raise ValueError("Physical action joints must be unique and ordered")
+        if self.scale is not None and any(value == 0 for value in self.scale):
+            raise ValueError("Physical action scale must be nonzero")
+        if self.class_controls is not None and (
+            self.control_mode is None
+            or not self.class_controls
+            or any(len(row) != len(self.joints) for row in self.class_controls)
+        ):
+            raise ValueError("Categorical controls require one physical command per ordered joint")
+        return self
+
+
+class PhysicalSystemContract(SpecModel):
+    """Declared identity, not proof of real hardware calibration or safety."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    schema_version: Literal[1] = 1
+    embodiment_id: str = Field(min_length=1, pattern=r"\S")
+    asset_source: str = Field(min_length=1, pattern=r"\S")
+    asset_id: str = Field(min_length=1, pattern=r"\S")
+    calibration_id: str = Field(min_length=1, pattern=r"\S")
+
+
+class SensorProcessingContract(SpecModel):
+    """Explicit raw sensor meaning and ownership of portable processing/history."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, allow_inf_nan=False)
+
+    owner: Literal["package", "external"]
+    processor_id: str = Field(default="SensorHistoryProcessor", min_length=1, pattern=r"\S")
+    processor_version: str = Field(default="1", min_length=1, pattern=r"\S")
+    assets: dict[str, Annotated[str, Field(pattern=r"^[0-9a-fA-F]{64}$")]] = Field(
+        default_factory=dict
+    )
+    raw_shape: tuple[Annotated[StrictInt, Field(gt=0)], ...]
+    raw_dtype: str = Field(min_length=1, pattern=r"\S")
+    raw_layout: Literal["vector", "HWC", "CHW", "HW"]
+    units: str = Field(min_length=1, pattern=r"\S")
+    scale: float = Field(default=1.0, strict=True)
+    offset: float = Field(default=0.0, strict=True)
+    depth_representation: Literal["z_depth", "range_depth"] | None = None
+    invalid_depth: Literal["reject", "mask_zero"] = "reject"
+    depth_min: float | None = Field(default=None, strict=True)
+    depth_max: float | None = Field(default=None, strict=True)
+    labels: tuple[tuple[Annotated[StrictInt, Field(ge=0)], str], ...] = ()
+    label_set_id: str | None = Field(default=None, min_length=1, pattern=r"\S")
+    history_length: StrictInt = Field(default=1, ge=1)
+    history_order: Literal["oldest_first"] = "oldest_first"
+    initialization: Literal["repeat_first", "zeros"] = "repeat_first"
+    timing: Literal["post_control", "pre_action"] = "post_control"
+    latency_steps: StrictInt = Field(default=0, ge=0)
+
+    @model_validator(mode="after")
+    def validate_sensor(self) -> Self:
+        ids = [identifier for identifier, _ in self.labels]
+        names = [name for _, name in self.labels]
+        if len(set(ids)) != len(ids) or len(set(names)) != len(names):
+            raise ValueError("Segmentation label IDs and values must be unique and ordered")
+        if any(not name.strip() for name in names):
+            raise ValueError("Segmentation label values must be nonempty")
+        if self.depth_min is not None and self.depth_min < 0:
+            raise ValueError("depth_min must be nonnegative")
+        if self.depth_max is not None and (
+            self.depth_min is None or self.depth_max <= self.depth_min
+        ):
+            raise ValueError("Depth bounds must satisfy 0 <= depth_min < depth_max")
+        if self.owner == "package" and self.depth_representation is not None:
+            if self.units != "m" or self.depth_min is None or self.depth_max is None:
+                raise ValueError(
+                    "Package-owned depth requires explicit bounds in metres (units='m')"
+                )
+        return self
+
+
+class TensorFieldContract(SpecModel):
+    """Portable tensor leaf; shape excludes environment and inference batch axes."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, allow_inf_nan=False)
+
+    shape: tuple[Annotated[int, Field(strict=True, gt=0)], ...]
+    dtype: str = Field(min_length=1)
+    modality: str = "generic"
+    low: float | list[float] | None = None
+    high: float | list[float] | None = None
+    num_values: int | None = Field(default=None, gt=0)
+    rate_hz: float | None = Field(default=None, gt=0)
+    description: str | None = None
+    physical: PhysicalTensorContract | None = None
+    axes: tuple[Annotated[str, Field(min_length=1, pattern=r"\S")], ...] | None = None
+    sensor: SensorProcessingContract | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
+
+    @model_validator(mode="after")
+    def validate_bounds(self) -> Self:
+        if self.axes is not None:
+            if len(self.axes) != len(self.shape) or len(set(self.axes)) != len(self.axes):
+                raise ValueError("Named feature axes must be unique and match the tensor rank")
+            if {"batch", "environment"}.intersection(self.axes):
+                raise ValueError("Batch/environment axes belong outside the tensor feature shape")
+        size = prod(self.shape)
+        for name in ("low", "high"):
+            bound = getattr(self, name)
+            if isinstance(bound, list) and len(bound) != size:
+                raise ValueError(f"{name} must contain {size} values for shape {self.shape}")
+        if self.low is not None and self.high is not None:
+            low = self.low if isinstance(self.low, list) else [self.low] * size
+            high = self.high if isinstance(self.high, list) else [self.high] * size
+            if any(lo >= hi for lo, hi in zip(low, high, strict=True)):
+                raise ValueError("low must be less than high for every tensor element")
+        if self.physical is not None:
+            width = self.shape[-1] if self.shape else 1
+            for name in ("units", "scale", "offset"):
+                values = getattr(self.physical, name)
+                if values is not None and len(values) not in (1, width):
+                    raise ValueError(f"Physical {name} must have one or {width} values")
+            if self.physical.joints and len(self.physical.joints) != width:
+                raise ValueError(f"Physical joint order must contain {width} names")
+            if self.physical.class_controls is not None and (
+                self.shape != ()
+                or self.dtype != "int64"
+                or self.num_values != len(self.physical.class_controls)
+            ):
+                raise ValueError(
+                    "Categorical physical controls require matching scalar int64 classes"
+                )
+        return self
+
+
+def _validate_module_identifier(value: str) -> None:
+    # Match public Module/ModuleDict names without importing torch during discovery.
+    reserved = {
+        "training",
+        "T_destination",
+        "forward",
+        "keys",
+        "values",
+        "items",
+        "update",
+        "clear",
+        "pop",
+        "add_module",
+        "register_module",
+        "register_parameter",
+        "register_buffer",
+        "register_backward_hook",
+        "register_full_backward_hook",
+        "register_full_backward_pre_hook",
+        "register_forward_hook",
+        "register_forward_pre_hook",
+        "register_load_state_dict_pre_hook",
+        "register_load_state_dict_post_hook",
+        "register_state_dict_pre_hook",
+        "register_state_dict_post_hook",
+        "call_super_init",
+        "dump_patches",
+        "get_buffer",
+        "get_extra_state",
+        "get_parameter",
+        "get_submodule",
+        "set_extra_state",
+        "set_submodule",
+        "state_dict",
+        "load_state_dict",
+        "parameters",
+        "named_parameters",
+        "buffers",
+        "named_buffers",
+        "children",
+        "named_children",
+        "modules",
+        "named_modules",
+        "apply",
+        "train",
+        "eval",
+        "requires_grad_",
+        "zero_grad",
+        "share_memory",
+        "to",
+        "to_empty",
+        "type",
+        "float",
+        "double",
+        "half",
+        "bfloat16",
+        "cpu",
+        "cuda",
+        "xpu",
+        "ipu",
+        "mtia",
+        "compile",
+        "extra_repr",
+    }
+    if not value.isidentifier() or value.startswith("_") or iskeyword(value) or value in reserved:
+        raise ValueError(f"Invalid module identifier {value!r}")
+
+
+class AgentGroupContract(SpecModel):
+    """Ordered compatible agents sharing one local observation/action interface."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, allow_inf_nan=False)
+
+    agents: tuple[Annotated[str, Field(min_length=1, pattern=r"\S")], ...] = Field(min_length=1)
+    observations: dict[str, TensorFieldContract] = Field(min_length=1)
+    actions: dict[str, TensorFieldContract] = Field(min_length=1)
+    action_space: Literal["continuous", "discrete"]
+
+    @model_validator(mode="after")
+    def validate_agents(self) -> Self:
+        if len(self.agents) != len(set(self.agents)):
+            raise ValueError("Group agent identities must be unique and ordered")
+        reserved = {
+            "reward",
+            "done",
+            "terminated",
+            "truncated",
+            "valid",
+            "raw_terminated",
+            "raw_truncated",
+            "state_value",
+            "advantage",
+            "value_target",
+        }
+        if reserved.intersection(self.observations.keys() | self.actions.keys()):
+            raise ValueError("Group fields must not overwrite learning or transition signals")
+        InteractionContract(
+            observations=self.observations, actions=self.actions, action_space=self.action_space
+        )
+        return self
+
+
+class InteractionContract(SpecModel):
+    """Portable observation/action truth, independent of simulator frameworks."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, allow_inf_nan=False)
+
+    observations: dict[str, TensorFieldContract] = Field(default_factory=dict)
+    actions: dict[str, TensorFieldContract] = Field(default_factory=dict)
+    action_space: Literal["continuous", "discrete", "multi_discrete", "structured"]
+    num_envs: int = Field(default=1, gt=0)
+    control_period_s: float | None = Field(default=None, gt=0)
+    physical: PhysicalSystemContract | None = None
+    groups: dict[str, AgentGroupContract] = Field(
+        default_factory=dict, exclude_if=lambda value: not value
+    )
+    critic_observations: dict[str, TensorFieldContract] = Field(
+        default_factory=dict, exclude_if=lambda value: not value
+    )
+    team_reward: bool = Field(default=False, exclude_if=lambda value: not value)
+
+    @model_validator(mode="after")
+    def validate_keys(self) -> Self:
+        if self.groups:
+            if self.observations or self.actions:
+                raise ValueError("Grouped contracts require empty root observations/actions")
+            agents = []
+            for name, group in self.groups.items():
+                _validate_module_identifier(name)
+                if name in {"next", "collector", "reward", "done", "terminated", "truncated"}:
+                    raise ValueError("Group names must not overwrite root transition metadata")
+                agents.extend(group.agents)
+                self.group_contract(name)
+            if len(agents) != len(set(agents)):
+                raise ValueError("Agent identities must be globally unique across groups")
+        elif not self.observations or not self.actions:
+            raise ValueError("Ungrouped contracts require nonempty observations and actions")
+        for fields in (self.observations, self.actions, self.critic_observations):
+            if any(not key.strip() for key in fields):
+                raise ValueError("interaction field keys must be nonempty")
+        if self.observations.keys() & self.actions.keys():
+            raise ValueError("observation and action keys must be distinct")
+        if self.critic_observations.keys() & (
+            self.observations.keys() | self.actions.keys() | self.groups.keys()
+        ):
+            raise ValueError("Critic-only keys must be distinct from actor fields and groups")
+        for field in self.actions.values():
+            if (
+                field.physical is not None
+                and field.rate_hz is not None
+                and self.control_period_s is not None
+                and not isclose(field.rate_hz * self.control_period_s, 1.0)
+            ):
+                raise ValueError("Physical action rate must agree with the control period")
+        return self
+
+    def group_contract(self, name: str) -> InteractionContract:
+        """Return only this group's actor-visible local contract.
+
+        Returns:
+            Ordinary contract retaining physical identity and control timing.
+        """
+        group = self.groups[name]
+        return InteractionContract(
+            observations=group.observations,
+            actions=group.actions,
+            action_space=group.action_space,
+            num_envs=self.num_envs,
+            control_period_s=self.control_period_s,
+            physical=self.physical,
+        )
+
+
+class InteractionSpec(SpecModel):
+    """Interaction source, separate from datasets and learning algorithms."""
+
+    environment: EnvironmentDefinition
+    evaluation_environment: EnvironmentDefinition | None = None
+
+
+class GroupPolicySpec(SpecModel):
+    """Existing local neural graph and explicit actor identity for each agent."""
+
+    pipeline: PipelineSpec
+    action_adapter: ActionAdapterDefinition
+    actor_ids: tuple[str, ...] = Field(min_length=1)
+    processor: LayerDefinition | None = Field(default=None, exclude_if=lambda value: value is None)
+
+    @field_validator("actor_ids")
+    @classmethod
+    def validate_actor_ids(cls, values: tuple[str, ...]) -> tuple[str, ...]:
+        for value in values:
+            _validate_module_identifier(value)
+        return values
+
+
+class PolicySpec(SpecModel):
+    """Deployable action semantics attached to the scenario's neural pipeline."""
+
+    action_adapter: ActionAdapterDefinition | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
+    batch_mode: Literal["independent", "preserve"] = "independent"
+    processor: LayerDefinition | None = Field(default=None, exclude_if=lambda value: value is None)
+    groups: dict[str, GroupPolicySpec] = Field(
+        default_factory=dict, exclude_if=lambda value: not value
+    )
+
+    @model_validator(mode="after")
+    def validate_grouped_policy(self) -> Self:
+        if self.groups:
+            if self.action_adapter is not None or self.processor is not None:
+                raise ValueError("Grouped policies declare adapters/processors on each group only")
+            for name in self.groups:
+                _validate_module_identifier(name)
+        elif self.action_adapter is None:
+            raise ValueError("Ungrouped policy requires an action_adapter")
+        return self
+
+
 _DEFAULT_OPTIMIZER_KWARGS: dict[str, object] = {"lr": 1e-3}
 
 
@@ -225,6 +606,9 @@ class TrainingSpec(SpecModel):
     metric_keys: list[str] = Field(default_factory=list)
     progress_bar_keys: list[str] | Literal["all", "none"] = Field(default_factory=lambda: ["loss"])
     max_epochs: int = 10
+    max_steps: int | None = Field(default=None, gt=0)
+    seed: int | None = None
+    deterministic: bool = False
     batch_size: BatchSizeSpec = 64
     lr: float = 1e-3
     accelerator: str = "auto"
@@ -238,6 +622,211 @@ class TrainingSpec(SpecModel):
         if isinstance(value, int) and value <= 0:
             raise ValueError("training.batch_size must be positive")
         return value
+
+
+class RayCollectorSpec(SpecModel):
+    """Existing Ray Core target and constraints for each synchronous worker."""
+
+    address: str | None = None
+    num_gpus: int = Field(default=0, strict=True, ge=0, le=1, exclude_if=lambda value: value == 0)
+    num_cpus: float = Field(
+        default=1, gt=0, allow_inf_nan=False, exclude_if=lambda value: value == 1
+    )
+    admission_timeout_s: float = Field(
+        default=600, gt=0, allow_inf_nan=False, exclude_if=lambda value: value == 600
+    )
+    resources: dict[str, Annotated[float, Field(gt=0, allow_inf_nan=False)]] = Field(
+        default_factory=dict
+    )
+    label_selector: dict[str, str] = Field(default_factory=dict)
+    py_executable: str | None = Field(
+        default=None, min_length=1, exclude_if=lambda value: value is None
+    )
+
+    @field_validator("address")
+    @classmethod
+    def validate_address(cls, value: str | None) -> str | None:
+        if value is not None and value != "auto":
+            from nexuml.execution.definitions import RayClusterTarget
+
+            RayClusterTarget.validate_address(value)
+            if not re.fullmatch(r"(?:[A-Za-z0-9_.-]+|\[[0-9A-Fa-f:.]+\]):[0-9]{1,5}", value) or (
+                not 0 < int(value.rsplit(":", 1)[1]) <= 65535
+            ):
+                raise ValueError("Ray collector address must be 'auto' or a Ray Core host:port")
+        return value
+
+    @field_validator("resources")
+    @classmethod
+    def validate_resources(cls, value: dict[str, float]) -> dict[str, float]:
+        if any(
+            not name.strip() or name in {"CPU", "GPU", "memory", "object_store_memory"}
+            for name in value
+        ):
+            raise ValueError("Ray collector resources must be named custom Ray resources")
+        return value
+
+
+class CollectorSpec(SpecModel):
+    """Rollout topology and synchronization, independent of learner placement."""
+
+    backend: Literal["direct", "process", "ray"] = "direct"
+    num_collectors: int = Field(default=1, gt=0)
+    num_envs_per_collector: int = Field(default=1, gt=0)
+    sync: bool = True
+    env_device: str = "cpu"
+    storing_device: str = "cpu"
+    policy_device: str = "auto"
+    policy_sync_interval_batches: int = Field(default=1, gt=0)
+    ray: RayCollectorSpec | None = Field(default=None, exclude_if=lambda value: value is None)
+
+    @model_validator(mode="after")
+    def validate_topology(self) -> Self:
+        if self.backend == "direct" and self.num_collectors != 1:
+            raise ValueError("direct collection requires num_collectors=1")
+        if self.ray is not None and self.backend != "ray":
+            raise ValueError("collector.ray placement requires backend='ray'")
+        if self.ray is not None and self.ray.num_gpus:
+            self.validate_ray_gpu_devices()
+        return self
+
+    def validate_ray_gpu_devices(self) -> None:
+        if (self.env_device, self.policy_device, self.storing_device) != (
+            "cuda:0",
+            "cuda:0",
+            "cpu",
+        ):
+            raise ValueError(
+                "Ray GPU collection requires env_device='cuda:0', "
+                "policy_device='cuda:0', and storing_device='cpu'"
+            )
+
+
+class RLVideoSpec(SpecModel):
+    """Bounded first-episode recording; formats select downloadable artifacts."""
+
+    enabled: bool = False
+    format: Literal["gif", "mp4", "both"] = "gif"
+    max_frames: int = Field(default=500, gt=0)
+    max_size: int = Field(default=256, gt=0)
+    fps: float | None = Field(default=None, gt=0, allow_inf_nan=False)
+
+
+class _SnapshotEvaluationSpec(SpecModel):
+    timeout_s: float = Field(default=120, gt=0, allow_inf_nan=False)
+    scheduling: Literal["blocking", "skip_if_busy"] = Field(
+        default="blocking", exclude_if=lambda value: value == "blocking"
+    )
+
+
+class ProcessEvaluationSpec(_SnapshotEvaluationSpec):
+    """Evaluation in a fresh process on CPU or a selected local GPU."""
+
+    device: str = Field(default="cpu", exclude_if=lambda value: value == "cpu")
+
+    @field_validator("device")
+    @classmethod
+    def validate_device(cls, value: str) -> str:
+        if value != "cpu" and not re.fullmatch(r"cuda:(0|[1-9][0-9]*)", value):
+            raise ValueError("Process evaluation requires cpu or an explicit cuda:N device")
+        return value
+
+
+class RayEvaluationSpec(_SnapshotEvaluationSpec):
+    """One CPU or whole-GPU snapshot evaluator on the existing Ray runtime."""
+
+    num_gpus: int = Field(default=0, strict=True, ge=0, le=1, exclude_if=lambda value: value == 0)
+    py_executable: str | None = Field(
+        default=None, min_length=1, exclude_if=lambda value: value is None
+    )
+
+    resources: dict[str, Annotated[float, Field(gt=0, allow_inf_nan=False)]] = Field(
+        default_factory=dict
+    )
+
+    @field_validator("resources")
+    @classmethod
+    def validate_resources(cls, value: dict[str, float]) -> dict[str, float]:
+        if any(
+            not name.strip() or name in {"CPU", "GPU", "memory", "object_store_memory"}
+            for name in value
+        ):
+            raise ValueError("Ray evaluation resources must be named custom Ray resources")
+        return value
+
+
+class RLEvaluationSpec(SpecModel):
+    """Fresh episodic policy evaluation, not dataset evaluation phases."""
+
+    episodes: int = Field(default=5, ge=0)
+    deterministic: bool = True
+    seed: int | None = None
+    max_steps_per_episode: int | None = Field(default=None, gt=0)
+    every_n_frames: int | None = Field(default=None, gt=0, strict=True)
+    at_start: bool = False
+    video: RLVideoSpec = Field(default_factory=RLVideoSpec)
+    process: ProcessEvaluationSpec | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
+    ray: RayEvaluationSpec | None = Field(default=None, exclude_if=lambda value: value is None)
+
+    @model_validator(mode="after")
+    def validate_recording(self) -> Self:
+        if self.video.enabled and self.episodes == 0:
+            raise ValueError("evaluation.video requires evaluation.episodes > 0")
+        if self.ray is not None:
+            if self.process is not None:
+                raise ValueError("Select either CPU-process or Ray fit evaluation, not both")
+            if self.video.enabled:
+                raise ValueError("Ray fit evaluation does not support video")
+        return self
+
+
+# Keep class identities and archived config names compatible; these options are not RL-specific.
+PolicyEvaluationSpec = RLEvaluationSpec
+PolicyVideoSpec = RLVideoSpec
+
+
+class ReinforcementLearningSpec(SpecModel):
+    """Finite-frame Lightning learning; interaction owns the environment."""
+
+    mode: Literal["reinforcement"] = "reinforcement"
+    algorithm: RLAlgorithmDefinition
+    collector: CollectorSpec = Field(default_factory=CollectorSpec)
+    evaluation: RLEvaluationSpec = Field(default_factory=RLEvaluationSpec)
+    total_frames: int = Field(default=100_000, gt=0)
+    frames_per_batch: int = Field(default=2_048, gt=0)
+    seed: int | None = None
+    accelerator: str = "auto"
+    devices: str | int = "auto"
+    strategy: str | StrategySpec = "auto"
+    precision: str | int = "32-true"
+
+    @staticmethod
+    def single_gpu_index(devices: int | str) -> int | None:
+        """Read Lightning's explicit one-GPU index syntax, distinct from a device count.
+
+        Returns:
+            The selected logical GPU index, or None for a count or automatic placement.
+        """
+        if isinstance(devices, str) and re.fullmatch(r"(?:0|[1-9][0-9]*),", devices):
+            return int(devices[:-1])
+        return None
+
+    @classmethod
+    def validate_learner_devices(cls, devices: int | str, accelerator: str) -> None:
+        """Validate either a learner count or one explicit GPU index.
+
+        Raises:
+            ValueError: If the selection is not a positive count or valid GPU index.
+        """
+        index = cls.single_gpu_index(devices)
+        if devices != "auto" and index is None and not (type(devices) is int and devices >= 1):
+            raise ValueError("RL devices must be a positive count, 'auto', or one GPU index")
+        if index is not None and accelerator not in ("gpu", "cuda"):
+            raise ValueError(
+                "An explicit RL learner GPU index requires the gpu or cuda accelerator"
+            )
 
 
 class TargetSpec(SpecModel):
@@ -335,6 +924,7 @@ class DataSpec(SpecModel):
     datasets: list[DatasetSpec] = Field(default_factory=list)
     loader: LoaderSpec = Field(default_factory=LoaderSpec)
     input_shapes: dict[str, list[int]] = Field(default_factory=dict)
+    input_contracts: dict[str, TensorFieldContract] = Field(default_factory=dict)
     num_classes: int | None = None
     merge_labels: dict[str, dict] | None = None
     feature_key: str = "features"
@@ -346,6 +936,11 @@ class DataSpec(SpecModel):
         total = self.train_split + self.val_split + self.test_split
         if abs(total - 1.0) > 1e-6:
             raise ValueError("train_split + val_split + test_split must sum to 1.0")
+        for key, contract in self.input_contracts.items():
+            if not key.strip():
+                raise ValueError("Input contract keys must be nonempty")
+            if key in self.input_shapes and tuple(self.input_shapes[key]) != contract.shape:
+                raise ValueError(f"Input shape and contract disagree for {key!r}")
         return self
 
 
@@ -498,8 +1093,14 @@ class ScenarioSpec(SpecModel):
 
     name: str
     pipeline: PipelineSpec = Field(default_factory=PipelineSpec)
-    training: TrainingSpec = Field(default_factory=TrainingSpec)
+    training: TrainingSpec | ReinforcementLearningSpec = Field(default_factory=TrainingSpec)
     data: DataSpec = Field(default_factory=DataSpec)
+    interaction: InteractionSpec | None = None
+    policy: PolicySpec | None = None
+    policy_evaluation: PolicyEvaluationSpec | None = None
+    playback_viewer: PlaybackViewer = Field(
+        default="headless", exclude_if=lambda value: value == "headless"
+    )
     evaluation: EvaluationSpec = Field(default_factory=EvaluationSpec)
     logging: LoggingSpec | None = None
     callbacks: list[CallbackSpec] = Field(default_factory=list)
@@ -507,6 +1108,20 @@ class ScenarioSpec(SpecModel):
     checkpoint: CheckpointLoadSpec | None = None
     exports: list[ExportSpec] = Field(default_factory=list)
     execution: ExecutionBackendDefinition = Field(default_factory=LocalExecution)
+
+    @model_validator(mode="after")
+    def validate_reinforcement(self) -> Self:
+        if self.policy_evaluation is not None and (self.interaction is None or self.policy is None):
+            raise ValueError("policy_evaluation requires scenario.interaction and scenario.policy")
+        if isinstance(self.training, ReinforcementLearningSpec):
+            if self.interaction is None or self.policy is None:
+                raise ValueError("reinforcement training requires scenario.interaction and policy")
+            self.training.validate_learner_devices(self.training.devices, self.training.accelerator)
+            if self.execution.component_name not in {"local", "ray-jobs-sdk", "ray-cluster"}:
+                raise ValueError("RL requires Local, Ray Jobs or Ray Train execution")
+            if self.training.strategy not in ("auto", "ddp"):
+                raise ValueError("RL supports only strategy='auto' or 'ddp'")
+        return self
 
     @field_validator("execution", mode="before")
     @classmethod

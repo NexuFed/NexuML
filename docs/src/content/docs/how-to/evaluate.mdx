@@ -3,9 +3,50 @@ title: Evaluate a model
 description: Distinguish pipeline metrics, post-train fitted model state, and reporting algorithms.
 ---
 
-**Goal:** surface metrics from a completed run. **Prerequisites:** a working scenario
-whose pipeline emits the required outputs/labels. Evaluation is part of `nexuml train`;
-there is **no separate top-level `nexuml evaluate` command**.
+**Goal:** evaluate trusted exported models or complete policies without training.
+The package selects the model/test-split or policy/environment path:
+
+```bash
+nexuml evaluate /approved/export
+nexuml evaluate /approved/export --scenario-file experiment.py
+```
+
+Models use the packaged computation, fitted state, dataset test split and existing
+Lightning test hooks. Policies run episodes without creating a learner. Neither
+path creates an optimizer or replaces the exported architecture/weights. Raw weights
+without a complete model definition are insufficient. Packages and Python files
+are trusted executable local code, not a sandbox.
+
+The same `scenario() -> ScenarioSpec` file contract is used for training and
+evaluation. It supplies model data/evaluation/logging, or policy evaluation
+environment, optional `policy_evaluation` and logging. The selected environment is
+`interaction.evaluation_environment` when supplied, otherwise `interaction.environment`.
+Without the flag, embedded package definitions are used.
+
+Existing `test` assignments are respected. Sources without split metadata use the
+existing seeded data-module split; rebuilding cannot recover unrecorded random
+partitions. An empty test split fails instead of borrowing train/validation data.
+Cached preprocessing must already exist; evaluation does not rebuild or overwrite
+it, and never fits pipeline components on the test split.
+
+## Overrides and device placement
+
+```bash
+nexuml evaluate /approved/model -O data.loader.batch_size=128
+nexuml evaluate /approved/model -O evaluation.test_result_metrics=all
+nexuml evaluate /approved/policy --device cuda:0 \
+  -O training.evaluation.episodes=20 -O training.evaluation.seed=123
+```
+
+Model overrides are limited to `data`, `evaluation` and `logging`. Policy overrides
+use `policy_evaluation` or `training.evaluation`, logging and
+`interaction.evaluation_environment`; do not mix the evaluation namespaces. Native
+recipes may save zero in-fit episodes: request standalone episodes explicitly.
+Both paths default to CPU; `--device` selects evaluation placement without changing
+the saved training device. See [policy replay](/how-to/reinforcement-learning/).
+
+Evaluation also remains part of `nexuml train`; the following sections describe
+the same model components used by standalone testing.
 
 ## Pipeline losses and metrics
 

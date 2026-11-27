@@ -8,6 +8,7 @@ import pytest
 
 @pytest.fixture(autouse=True)
 def selected_test_runtime(tmp_path, monkeypatch):
+    monkeypatch.delenv("NEXUML_LOGS_ROOT", raising=False)
     root = Path(__file__).resolve().parents[2]
     monkeypatch.setenv(
         "PYTHONPATH", os.pathsep.join((str(root / "src"), str(root / "library/src")))
