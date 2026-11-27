@@ -11,7 +11,7 @@ metadata:
     sidecar.istio.io/inject: "false"
 spec:
   runtimeClassName: nvidia
-  restartPolicy: Never
+  restartPolicy: OnFailure
   automountServiceAccountToken: false
   terminationGracePeriodSeconds: 60
   imagePullSecrets:

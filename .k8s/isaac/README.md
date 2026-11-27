@@ -77,9 +77,12 @@ Confirm video and keyboard/mouse input. A TCP connection alone does not prove
 UDP media works; `kubectl port-forward` does not forward UDP.
 
 Check the `isaac` container, not just the Pod phase: NetBird can keep the
-Pod `Running` after Isaac exits. With `restartPolicy: Never`, a crashed
-Isaac container will not restart in place. Before replacing the Pod,
-confirm the enrollment key is still usable; the peer address can change.
+Pod `Running` after Isaac exits. `restartPolicy: OnFailure` restarts Isaac
+inside the same Pod after a nonzero exit (including a segfault), but does
+not detect hangs or restart after a clean exit. Reconnect after Kit loads
+again. To adopt this policy on an existing Pod, recreate it once. Before
+doing so, confirm the enrollment key is still usable; the peer address
+can change when the Pod is replaced.
 
 Use Kubernetes attach for remote editing if needed. Save USD scenes under
 `/mnt/persistent/nexuml/isaac-workstation/assets`. The editor exits when the
