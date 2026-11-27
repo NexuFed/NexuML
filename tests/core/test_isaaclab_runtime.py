@@ -1,11 +1,8 @@
 """CPU-only proofs of Isaac transition normalization and owned lifetime."""
 
 import asyncio
-from base64 import urlsafe_b64encode
 import builtins
-from hashlib import sha256
 import json
-from pathlib import Path
 import sys
 import traceback
 from types import SimpleNamespace
@@ -502,7 +499,7 @@ def test_procedural_controls_are_verified_before_native_steps(make_runtime, monk
 
 @pytest.fixture
 def native_launch(monkeypatch, tmp_path):
-    """Exercise the real constructor with fake public native APIs and VCS metadata."""
+    """Exercise the real constructor with fake public APIs and distribution metadata."""
     native = _FakeNative()
     native.device = torch.device("cuda:0")
     native.cfg = _ManagerConfig(
@@ -518,6 +515,7 @@ def native_launch(monkeypatch, tmp_path):
     state = SimpleNamespace(
         module=SimpleNamespace(__file__=str(source)),
         origin={"vcs_info": {"commit_id": IsaacLabEnvironment().revision}},
+        version="3.0.0",
         has_kit=False,
         launchers=[],
         args=[],
@@ -578,9 +576,8 @@ def native_launch(monkeypatch, tmp_path):
         _isaaclab_runtime,
         "distribution",
         lambda name: SimpleNamespace(
-            read_text=lambda filename: (
-                json.dumps(state.origin) if filename == "direct_url.json" else state.record
-            ),
+            version=state.version,
+            read_text=lambda filename: json.dumps(state.origin) if state.origin else None,
             locate_file=lambda name: source.parent.parent / name,
         ),
     )
@@ -878,50 +875,29 @@ def test_canonical_wheel_launch_and_profile_specific_owned_shutdown(
         assert native_launch.native.events[-2:] == ["job.finalized", "launcher.exit"]
 
 
-def test_reviewed_lab_wheel_revision_matches_artifact_manifest():
-    manifest = Path(__file__).resolve().parents[2] / "containers/isaac/artifacts.json"
-    policy = json.loads(manifest.read_text())
-    assert _isaaclab_runtime._LAB_WHEEL_REVISION == policy["lab_revision"]
-
-
-@pytest.mark.parametrize("invalid", [None, "record", "content", "missing", "shadowed"])
-def test_archive_origin_requires_reviewed_installed_files(native_launch, monkeypatch, invalid):
-    source = Path(native_launch.module.__file__)
-    source.parent.mkdir(parents=True)
-    payload = b"reviewed"
-    digest = urlsafe_b64encode(sha256(payload).digest()).decode().rstrip("=")
-    row = ["isaaclab/__init__.py", f"sha256={digest}", str(len(payload))]
-    manifest = json.dumps([row], separators=(",", ":")).encode()
-    monkeypatch.setattr(_isaaclab_runtime, "_LAB_RECORD_SHA256", sha256(manifest).hexdigest())
-    if invalid != "missing":
-        source.write_bytes(b"modified" if invalid == "content" else payload)
-    if invalid == "shadowed":
-        native_launch.module.__file__ += ".shadow"
-    native_launch.origin = {
-        "archive_info": {},
-        "url": "https://example.invalid/isaaclab-3.0.0-py3-none-any.whl",
-    }
-    native_launch.record = "" if invalid == "record" else ",".join(row) + "\n"
-    native_launch.record += "isaaclab-3.0.0.dist-info/direct_url.json,sha256=installer,123\n"
+@pytest.mark.parametrize("physics", ["newton_mjwarp", "isaacsim_physx"])
+def test_index_install_needs_no_vcs_metadata(native_launch, physics):
+    native_launch.origin.clear()
+    native_launch.kit_after_launch = physics == "isaacsim_physx"
     with _isaaclab_runtime.isaaclab_process():
-        if invalid is None:
-            native_launch.build(physics="newton_mjwarp").close()
-        else:
-            with pytest.raises(ValueError, match="reviewed wheel|import origin differs"):
-                native_launch.build(physics="newton_mjwarp")
-            assert not native_launch.launchers
+        native_launch.build(physics=physics).close()
+    assert len(native_launch.launchers) == 1
 
 
 @pytest.mark.parametrize(
-    "invalid", ["revision", "shadowed-import", "missing-origin", "foreign-kit"]
+    "invalid", ["revision", "shadowed-import", "wrong-version", "archive", "foreign-kit"]
 )
 def test_invalid_source_or_foreign_runtime_fails_before_launch(native_launch, invalid):
     if invalid == "revision":
         native_launch.origin["vcs_info"]["commit_id"] = "0" * 40
     elif invalid == "shadowed-import":
-        native_launch.module.__file__ += ".shadow"
-    elif invalid == "missing-origin":
         native_launch.origin.clear()
+        native_launch.module.__file__ += ".shadow"
+    elif invalid == "wrong-version":
+        native_launch.origin.clear()
+        native_launch.version = "3.0.1"
+    elif invalid == "archive":
+        native_launch.origin = {"archive_info": {}}
     else:
         native_launch.has_kit = True
     with _isaaclab_runtime.isaaclab_process():
@@ -936,7 +912,7 @@ def test_unpinned_python_fails_before_launcher_allocation(native_launch, monkeyp
         _isaaclab_runtime, "sys", SimpleNamespace(version_info=(3, 13), modules=sys.modules)
     )
     with _isaaclab_runtime.isaaclab_process():
-        with pytest.raises(ValueError, match="source revision/Python.*pinned profile"):
+        with pytest.raises(ValueError, match="version/Python.*pinned profile"):
             native_launch.build()
     assert native_launch.launchers == []
     assert native_launch.parsed == []

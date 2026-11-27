@@ -2,9 +2,6 @@
 
 from collections.abc import Callable, Mapping
 from contextlib import contextmanager
-from base64 import urlsafe_b64encode
-import csv
-from hashlib import file_digest, sha256
 from importlib import import_module
 from importlib.metadata import distribution
 import json
@@ -35,14 +32,6 @@ _process_definition = None
 _process_launcher = None
 _process_returning_close = False
 _active_runtime = None
-
-# Sorted, hashed RECORD rows of the reviewed wheel in containers/isaac/artifacts.json.
-_LAB_RECORD_SHA256 = "f609821e45a928df3c00dc1f1869e6113ca5ca2c9099508f2d31845957663a3f"
-_LAB_WHEEL_REVISION = "70ab24fec3eabf51222817db0cdb5a4e7133bd7e"
-_LAB_INSTALLER_RECORDS = {
-    f"isaaclab-3.0.0.dist-info/{name}"
-    for name in ("direct_url.json", "INSTALLER", "REQUESTED", "uv_cache.json")
-}
 
 _KIT_EDITOR_EXTENSIONS = (
     "omni.kit.window.stage",
@@ -241,36 +230,6 @@ def _register_arena(owner, definition, context, gym):
     return cfg
 
 
-def _lab_wheel_revision(installed):
-    rows = list(csv.reader((installed.read_text("RECORD") or "").splitlines()))
-    if any(len(row) != 3 for row in rows):
-        return None
-    # Installer metadata and the generated CLI outside site-packages aren't wheel payload.
-    payload = sorted(
-        [path, digest, size]
-        for path, digest, size in rows
-        if digest and path not in _LAB_INSTALLER_RECORDS and not path.startswith("../")
-    )
-    if (
-        sha256(json.dumps(payload, separators=(",", ":")).encode()).hexdigest()
-        != _LAB_RECORD_SHA256
-    ):
-        return None
-    # Check the manifest before following any paths from it.
-    try:
-        for name, digest, size in payload:
-            path = Path(str(installed.locate_file(name)))
-            if not path.is_file() or path.stat().st_size != int(size):
-                return None
-            with path.open("rb") as stream:
-                encoded = urlsafe_b64encode(file_digest(stream, "sha256").digest()).decode()
-                if f"sha256={encoded.rstrip('=')}" != digest:
-                    return None
-    except OSError:
-        return None
-    return _LAB_WHEEL_REVISION
-
-
 def _create_environment(owner, definition, context):
     global _process_definition, _process_launcher, _active_runtime
     if not _process_active:
@@ -339,27 +298,26 @@ def _create_environment(owner, definition, context):
     if source_file is None:
         raise ValueError("Isaac Lab requires a verifiable pinned source origin")
     installed = distribution("isaaclab")
+    if installed.version != "3.0.0" or sys.version_info[:2] != (3, 12):
+        raise ValueError("Isaac Lab version/Python does not match the pinned profile (3.0.0/3.12)")
     origin = json.loads(installed.read_text("direct_url.json") or "{}")
     revision = origin.get("vcs_info", {}).get("commit_id")
-    if revision is None and "archive_info" in origin:
-        revision = _lab_wheel_revision(installed)
-        if revision is None:
-            raise ValueError("Installed Isaac Lab does not match the reviewed wheel")
-    if revision is not None:
+    source = Path(source_file).resolve()
+    installed_source = Path(str(installed.locate_file("isaaclab/__init__.py"))).resolve()
+    if revision is None and (origin or source != installed_source):
         if (
-            Path(str(installed.locate_file("isaaclab/__init__.py"))).resolve()
-            != Path(source_file).resolve()
+            source.parts[-4:] != ("source", "isaaclab", "isaaclab", "__init__.py")
+            or not (source.parents[3] / ".git").exists()
         ):
-            raise ValueError("Isaac Lab import origin differs from its pinned distribution")
-    else:
-        root = Path(source_file).resolve().parents[3]
-        if not (root / ".git").exists():
-            raise ValueError("Isaac Lab requires pinned VCS metadata or a source checkout")
+            raise ValueError("Isaac Lab import origin must be an index install or pinned checkout")
         revision = subprocess.check_output(
-            ["git", "-C", str(root), "rev-parse", "HEAD"], text=True
+            ["git", "-C", str(source.parents[3]), "rev-parse", "HEAD"], text=True
         ).strip()
-    if revision != definition.revision or sys.version_info[:2] != (3, 12):
-        raise ValueError("Isaac Lab source revision/Python does not match the pinned profile")
+    elif source != installed_source:
+        raise ValueError("Isaac Lab import origin differs from its pinned distribution")
+    # An index install has no PEP 610 direct URL; uv.lock pins its wheel hash.
+    if revision is not None and revision != definition.revision:
+        raise ValueError("Isaac Lab source revision does not match the pinned profile")
     existing = sys.modules.get("isaaclab.sim.simulation_context")
     if (
         _active_runtime is not None

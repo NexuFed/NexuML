@@ -862,6 +862,27 @@ Reproduction scripts, viewer and TensorBoard receipts, and evaluation
 log: `/tmp/opencode/nexuml-cartpole-viser-full-f95Pgf/` and
 `/tmp/opencode/nexuml-cartpole-heldout-7rKzGy/`.
 
+### Official Isaac packages on a fresh GPU pod (§6.3)
+
+The workspace now pins NVIDIA's published `isaaclab==3.0.0` in its one
+generated `uv.lock`. No other dependency versions changed. The
+published wheel's 2,379 Python, Kit and TOML files matched the previous
+qualified build byte for byte. Package-index installs do not carry Git
+metadata: NexuML now checks their installed version and import path,
+while still checking revisions on VCS installs and source checkouts.
+This replaces the scratch wheel delivery and manifest checks below.
+
+`rglitza/nex212-isaac-official-wbqxn` installed 297 packages with
+`uv sync --locked --python 3.12 --extra isaac` on an RTX 4090
+using `python:3.12-bookworm` and a checkout on `seaweedfs`. CUDA 13.0
+was available; the original NexuML Git-metadata gate stopped the first
+native run before launch. The fix is covered by index-install tests for
+Newton and PhysX. `uv pip check` reported the existing workspace
+overrides against upstream `isaacsim-kernel` (`urllib3`, `requests`)
+and `ovphysx` (`packaging`) pins. No new overrides or custom wheel
+inputs were added. Normal `uv sync` built `idna-ssl` and ANTLR from
+their upstream PyPI source distributions.
+
 ## Post-merge checks
 
 - Verified local browser Viser train/replay, read-only parity, failure and

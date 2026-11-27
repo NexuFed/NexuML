@@ -14,6 +14,7 @@ members = [
     "nexuml-library",
 ]
 constraints = [
+    { name = "isaaclab", specifier = "==3.0.0", index = "https://pypi.nvidia.com/" },
     { name = "lerobot", specifier = "==0.6.1" },
     { name = "torchrl", specifier = "==0.14.0" },
 ]
@@ -1652,7 +1653,7 @@ wheels = [
 [[package]]
 name = "isaaclab"
 version = "3.0.0"
-source = { git = "https://github.com/isaac-sim/IsaacLab.git?subdirectory=tools%2Fwheel_builder&rev=70ab24fec3eabf51222817db0cdb5a4e7133bd7e#70ab24fec3eabf51222817db0cdb5a4e7133bd7e" }
+source = { registry = "https://pypi.nvidia.com/" }
 dependencies = [
     { name = "alphashape" },
     { name = "botocore" },
@@ -1705,6 +1706,9 @@ dependencies = [
     { name = "urllib3" },
     { name = "usd-exchange" },
     { name = "warp-lang" },
+]
+wheels = [
+    { url = "https://pypi.nvidia.com/isaaclab/isaaclab-3.0.0-py3-none-any.whl", hash = "sha256:625f752c7dd912eb8efade85daeb7a8119d620266852380d17d8f9e701b80bca" },
 ]
 
 [package.optional-dependencies]
@@ -3178,7 +3182,7 @@ requires-dist = [
     { name = "datasets", marker = "extra == 'data'", specifier = ">=2.18" },
     { name = "gymnasium", extras = ["classic-control"], marker = "extra == 'rendering'", specifier = ">=1,<2" },
     { name = "gymnasium", extras = ["mujoco"], marker = "extra == 'mujoco'", specifier = ">=1,<2" },
-    { name = "isaaclab", extras = ["isaacsim", "ov", "viser"], marker = "extra == 'isaac'", git = "https://github.com/isaac-sim/IsaacLab.git?subdirectory=tools%2Fwheel_builder&rev=70ab24fec3eabf51222817db0cdb5a4e7133bd7e" },
+    { name = "isaaclab", extras = ["isaacsim", "ov", "viser"], marker = "extra == 'isaac'", specifier = ">=3.0.0", index = "https://pypi.nvidia.com/" },
     { name = "lerobot", extras = ["dataset", "diffusion"], marker = "extra == 'lerobot'", specifier = ">=0.6" },
     { name = "librosa", marker = "extra == 'audio'", specifier = ">=0.10" },
     { name = "matplotlib", marker = "extra == 'eval'", specifier = ">=3.8" },

@@ -123,10 +123,6 @@ def _qualify_installation():
                 != digest
             ):
                 raise RuntimeError(f"Unqualified spectator source: {relative}")
-    lab = distribution("isaaclab")
-    origin = json.loads(lab.read_text("direct_url.json") or "{}")
-    if origin.get("vcs_info", {}).get("commit_id") != ("70ab24fec3eabf51222817db0cdb5a4e7133bd7e"):
-        raise RuntimeError("Unqualified Isaac Lab spectator revision")
     viser = distribution("viser")
     origin = json.loads(viser.read_text("direct_url.json") or "{}")
     root = Path(str(viser.locate_file("viser"))).resolve()

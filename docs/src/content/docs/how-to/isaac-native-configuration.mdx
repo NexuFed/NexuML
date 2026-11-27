@@ -5,17 +5,16 @@ description: Configure native tasks and isolate approved runtime dependencies wi
 
 Use `IsaacLabEnvironment` for a trusted installed native task, portable I/O
 meaning and typed configuration. The current environment component version is
-**2**, pinned to Isaac Lab `70ab24fec3eabf51222817db0cdb5a4e7133bd7e`
-(Lab 3.0 / Sim 6.2 / Python 3.12). Restore current-schema definitions directly;
-there is no legacy native-config reader. Historical EA results do not qualify
-this runtime.
+**2**, for Isaac Lab 3.0.0, Isaac Sim 6.2.0 and Python 3.12. Source checkouts
+use the pinned Lab revision `70ab24fec3eabf51222817db0cdb5a4e7133bd7e`.
+Restore current-schema definitions directly; there is no legacy native-config
+reader. Historical EA results do not qualify this runtime.
 
 Static scenario discovery, `describe()`, resolve and YAML restoration do not
 launch Isaac, execute configuration functions or allocate CUDA. Native execution
-still requires the prepared, operator-approved stack, assets/licences and one
-available CUDA device. Do not replace an active environment or install another
-stack to run these examples. Monitor native runs and stop owned work at
-**4 GiB free disk**, the maintainer-revised resource threshold.
+requires the matching runtime, assets/licences and one available CUDA device.
+Do not replace an active environment to run these examples. Monitor native runs
+and stop owned work at **4 GiB free disk**.
 
 The adapter passes startup settings that disable Kit crash-report uploads and
 structured, anonymous and Sentry telemetry before native initialization. Conflicting
@@ -24,6 +23,20 @@ Licence acceptance stays
 an explicit operator decision; it is not inferred from telemetry preferences.
 Ordinary failure logs remain available. These settings neither supply missing
 graphics libraries nor qualify a renderer or display.
+
+## Install from the workspace lock
+
+On a GPU worker with Python 3.12, a compatible NVIDIA driver and the system
+libraries for the selected renderer, install from the NexuML checkout:
+
+```bash
+uv sync --locked --python 3.12 --extra isaac
+```
+
+The lock uses NVIDIA's published Isaac Lab and Isaac Sim packages. No separate
+Kit-less environment is needed: Newton with no Kit sensors or viewers leaves
+Kit unused. Isaac Sim PhysX still starts Kit even with `--viewer headless`.
+The existing prepared image remains the documented route for remote graphics.
 
 ## Recorded remote qualification profile
 

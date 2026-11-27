@@ -190,9 +190,6 @@ def main():
     if (args.upgrade or args.upgrade_package) and not args.refresh_lock:
         parser.error("Package upgrades require --refresh-lock")
     policy = json.loads(ARTIFACTS.read_text())
-    lab_source = tomllib.loads((ROOT / "pyproject.toml").read_text())["tool"]["uv"]["sources"]
-    if lab_source["isaaclab"]["rev"] != policy["lab_revision"]:
-        raise ValueError("Isaac Lab workspace revision differs from the approved binary artifact")
     if (HERE / "Dockerfile").read_text().splitlines()[1] != f"FROM {policy['base']}":
         raise ValueError("Dockerfile base differs from the approved artifact manifest")
     expected = fingerprint()

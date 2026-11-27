@@ -203,7 +203,7 @@ environments = ["sys_platform == 'linux' and platform_machine == 'x86_64' and py
 index-strategy = "first-index"
 prerelease = "if-necessary"
 # Ray collection requires the TorchRL 0.14.0 lifecycle in this workspace lock.
-constraint-dependencies = ["lerobot==0.6.1", "torchrl==0.14.0"]
+constraint-dependencies = ["lerobot==0.6.1", "torchrl==0.14.0", "isaaclab==3.0.0"]
 override-dependencies = [
     "packaging==25.0",
     "transformers==5.10.4",
@@ -244,7 +244,7 @@ torch = [{ index = "pytorch-cu130", group = "native-sources" }]
 torchvision = [{ index = "pytorch-cu130", group = "native-sources" }]
 torchaudio = [{ index = "pytorch-cu130", group = "native-sources" }]
 torchcodec = [{ index = "pytorch-cu130", group = "native-sources" }]
-isaaclab = { git = "https://github.com/isaac-sim/IsaacLab.git", rev = "70ab24fec3eabf51222817db0cdb5a4e7133bd7e", subdirectory = "tools/wheel_builder" }
+isaaclab = { index = "nvidia-pypi" }
 mujoco-usd-converter = { index = "pypi" }
 nvidia-dali-cuda120 = [{ index = "nvidia-pypi" }]
 nexuml = { workspace = true } 
