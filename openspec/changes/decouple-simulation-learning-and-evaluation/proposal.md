@@ -6,6 +6,10 @@ The robotics branch already has a portable interaction contract, native Isaac La
 
 The strategic goal is not to outperform or replace Isaac Lab as a simulator/trainer. NexuML is the common local learning backend for NexuFL: compatible clients using Isaac Lab/Arena, MuJoCo and physical ROS 2 robots must be able to start from the same versioned global policy, learn locally and return compatible numeric updates for one global model without transferring raw experience. Native training remains a valid entry point.
 
+This change qualifies the simulator-only handoff. The real-robot learning
+experiments below are retained as follow-up requirements, not release gates;
+the existing ROS 2 adapter and safety checks are unchanged.
+
 ## What Changes
 
 - Run an early, matched native Isaac Lab versus NexuML decision gate on a reward-bearing SO-101 task. Compare correctness, learning, wall-clock/GPU/memory performance, code and dependency burden, export and suitability for repeated external-weight local fitting. Reuse or remove redundant abstractions where upstream preserves semantics; do not treat all later stages as unconditional backlog.

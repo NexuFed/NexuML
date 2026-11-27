@@ -30,7 +30,11 @@ Existing checked tasks and evidence remain scoped to their original versions. Fo
 - [x] 1a.3 Prove a small common actor/task across native Isaac and CPU MuJoCo using existing/native adapters; obtain independent local fits from exactly one base, combine via an explicitly weighted test-only reference average, reload/evaluate and fit a second round. Report per-domain and local-only baselines and update divergence. A CPU reference is sufficient here; GPU Warp work remains §5. If needed use the smallest matched task instead of a forced SO-101 port; select a robot-compatible contract for the eventual ROS 2 proof.
 - [x] 1a.4 Publish the versioned manifest, SDK invocation, update receipt schema, tested provider/algorithm matrix and pinned artifact for NexuFL's separately owned consumer integration. Record real ROS 2 proof prerequisites; do not wait for all simulator/GPU work or build production aggregation in NexuML.
 
-## 1b. Three-domain and mixed-objective evidence (independent hardware/data gate)
+## 1b. Three-domain and mixed-objective evidence (deferred)
+
+Real-robot learning is a follow-up, not a gate for the simulator-only handoff.
+Keep 1b.1, 1b.2, and 6.2a unchecked; no real-data proof is claimed. The
+existing ROS 2 adapter and its safety checks remain in scope.
 
 - [ ] 1b.1 When genuine authorized ROS 2 episodes become available, execute the existing three-domain gate in task 6.2a early, without waiting for §§2–5 or Gazebo/CARLA: reuse a common actor and behavior-cloning objective across compatible Isaac, MuJoCo and physical robot episodes. Compare equal-client and equal-domain reference weights, simulation-only and local-only baselines, and report per-domain/worst-domain regressions. If actual robot data is unavailable, keep 1b blocked and proceed with the verified simulator-only handoff.
 - [ ] 1b.2 After 1a.2 and 1b.1 qualify the prerequisites, evaluate bounded local PPO on Isaac and MuJoCo plus compatible offline imitation/learning on approved real ROS 2 data from the same actor base. Verify exact shared tensor roles, record objective/budget/count semantics and update norms/conflicts, compare candidate metrics against common-objective and single-domain baselines using explicit weighting and predeclared domain gates. Use reference fixtures only; document whether mixed objectives are qualified, unsupported or harmful and hand off evidence to NexuFL. No automatic promotion or unsupervised physical exploration.
