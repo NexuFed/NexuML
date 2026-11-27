@@ -219,6 +219,31 @@ Receipts: `/tmp/opencode/nexuml-native-ray-ddp-J50Adh/`,
 `/tmp/opencode/nexuml-rl-wheel-Zxby1Z/final/`.
 The unchanged lock passed `uv lock --check --offline`.
 
+### Direct versus Ray transport on one GPU
+
+Matched Newton/MJWarp Cartpole on the same RTX 4080 SUPER, 16
+environments, 512 frames per batch, 4,096 total frames and 64 optimizer
+steps. Direct CUDA reached **7,337 warm frames/s**; one Ray CUDA collector
+sharing the learner GPU reached **5,632 frames/s** (23% lower). Median
+collect/update were 55.2/14.6 ms direct versus 67.9/22.8 ms Ray.
+The Ray learner received 41,984 logical TensorDict bytes per rollout and
+copied them CPU-to-GPU in a median 0.18 ms; direct CUDA held 33,792 bytes
+with no host staging. Each published actor had 5,128 tensor bytes. Learner
+Torch-reserved memory peaked at 22 MiB in both lanes; this excludes the
+separate actor and object store. These are same-GPU transport costs, not
+multi-node, dedicated-GPU or task-success conclusions.
+
+Reproduction and raw phase timings:
+`/tmp/opencode/nexuml-newton-ray-transport-profile-UfgtF4/`.
+
+```bash
+for mode in direct ray; do
+  flock /tmp/opencode/nexuml-decouple-native-gpu.lock \
+    env -u RAY_ADDRESS -u RAY_API_SERVER_ADDRESS TMPDIR=/tmp/opencode OMP_NUM_THREADS=1 \
+    .venv/bin/python "$EVIDENCE/rollout_timing.py" "$mode" "$OUTPUT/$mode.json"
+done
+```
+
 ## Visual and memory-pressure probes
 
 Native headless sensor and terminal-pixel oracles passed (**3 tests**).
