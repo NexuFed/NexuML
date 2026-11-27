@@ -545,7 +545,9 @@ bypassing TLS on the external endpoint. Do not use this tunnel for WebRTC.
   prefix for both roles. A post-fit assertion that no simulator module
   had been imported failed: TorchRL's optional `mujoco.mjx` discovery
   imports the installed `mujoco` parent package even without building a
-  simulator. The job failed that assertion, not its fit/resume assertions.
+  simulator. The fit/resume assertions passed, but the isolation
+  assertion failed and the wrapper later reported deadline exit 124.
+  The logs do not distinguish Python shutdown from prefix cleanup.
   Separate learner dependency isolation remains a distinct gate.
   Receipt: `/tmp/opencode/nexuml-ray-newton-publication-tKLqO8/`.
   Earlier attempts failed the inherited working directory or TorchRL's
