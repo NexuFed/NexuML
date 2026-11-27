@@ -109,8 +109,8 @@ exec nexuml play "$NEXUML_WORKSPACE_ROOT/runs/cartpole/policy" \
   --viewer webrtc --device cuda:0 --num-envs 1 --real-time
 ```
 
-Use paths to your actual export and scenario. This is a qualification
-recipe, not a confirmed policy stream. Provide the task's Isaac assets
+Use paths to your actual export and scenario. The NVIDIA client decoded
+moving Cartpole policy video on this private setup. Provide the task's Isaac assets
 through an approved asset route or set `ISAACSIM_ASSET_ROOT` to a prepared
 local mirror. Allow several minutes for cold Kit initialization. First
 require the CLI's TCP signaling receipt, then check decoded policy motion

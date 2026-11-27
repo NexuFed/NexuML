@@ -329,13 +329,12 @@ selected worker. Playback of exported weights is a separate, independent run.
 
 ### Native WebRTC playback
 
-Installed playback ran 120 policy steps in an isolated graphics runtime
-and released its signaling listener on completion and cancellation.
-Decoded remote playback is not yet qualified. A cold Kit start can take
-more than two minutes; wait for the CLI's endpoint receipt, not just a
-TCP bind. Provide the task's Isaac assets through an approved route or
-a prepared `ISAACSIM_ASSET_ROOT`. The editor's working stream is not a
-substitute for policy playback.
+The NVIDIA client displayed moving Cartpole policy playback over NetBird
+from a separate prepared graphics pod. Separate runs verified that
+playback releases its sockets on completion and cancellation. Cold Kit
+startup can take several minutes; wait for the CLI's endpoint receipt,
+not just a TCP bind. Provide the task's Isaac assets through an approved
+route or a prepared `ISAACSIM_ASSET_ROOT`.
 
 Choose `--viewer webrtc` only on a prepared interactive Isaac/Kit worker.
 In the trusted `play_scenario.py`, return the same compatible task from
@@ -357,10 +356,10 @@ With NVIDIA's native client, connect to the advertised private address,
 verify actual policy-driven motion over TCP signaling **and** UDP media,
 then stop the run and verify both sockets close. The Ray Jobs HTTP endpoint
 and TCP port forwarding cannot carry UDP media. The `.k8s/isaac/`
-workstation templates document a prepared NetBird route for the Isaac Sim
-editor; that editor test does not qualify policy playback. NexuML does not
-configure network access, displays, or tunnels. WebRTC and local Kit are
-playback-only and never fall back to another mode.
+workstation templates document the prepared NetBird route for the editor
+and a separate playback pod. NexuML does not configure network access,
+displays, or tunnels. WebRTC and local Kit are playback-only and never
+fall back to another mode.
 
 ### Direct CUDA placement
 

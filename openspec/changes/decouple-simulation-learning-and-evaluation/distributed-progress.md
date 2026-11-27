@@ -377,7 +377,7 @@ NEXUML_RUN_SIMULATOR_TESTS=1 NEXUML_TEST_RAY_NATIVE_SNAPSHOT=1 \
 | 2a.4 | Synthetic pressure, transfer, terminal/GAE and weight-parity fixture; public native RGB fit fixture | Co-located native image-input fit passes; split visual and large-model results unqualified |
 | 3.4–3.5 | Actor admission, CUDA learner, published weights and native checkpoint/recovery proven with local resources | Three-node fit, export and resume passed with a simulator-free GPU learner; matched direct, remote and two-node DDP rates measured. Grouped Ray rollout unsupported |
 | 4.4 | Rank-zero snapshots, separate process/Ray GPU evaluation and bounded cancellation | Native Kit-less PPO and separate-node GPU snapshot evaluation overlapped; final snapshot drained |
-| 4a.1, 4a.4, 4a.6 | Typed viewer selection, restricted native Kit toolbar, endpoint admission, native headless RGB and selected-rank/collector Viser routing tested | Two-node Viser attach, disconnect and cancel passed. Installed local WebRTC ran the policy and released sockets on completion/cancel; decoded private TCP+UDP and forwarded Windows X11 remain open under 4a.4 |
+| 4a.1, 4a.4, 4a.6 | Typed viewer selection, restricted native Kit toolbar, endpoint admission, native headless RGB and selected-rank/collector Viser routing tested | Two-node Viser attach, disconnect and cancel passed. NVIDIA client decoded and displayed moving Cartpole policy playback via private NetBird. Socket release passed in separate runs. Forwarded Windows X11 remains unqualified. |
 | 6.3 | Generated workspace lock drives the installed CUDA learner smoke in existing opt-in GPU CI; role interpreter selection implemented | Staged binary Kit-less profile passed on stock workers; clean workspace-lock native worker installs and full-Kit dependency closure still unqualified |
 | 1b, 6.2a | Existing simulator-only SDK, ROS 2 adapter and safety checks retained | Real-robot learning deferred, not passed; needs authorized matching data if revisited |
 
@@ -643,6 +643,19 @@ sent SIGTERM; it did not report completing the 36,000-step budget.
 The native context cleared, both sockets were released, and the Job
 was deleted. No decoded policy video was confirmed. Logs and replay
 scripts: `/tmp/opencode/nexuml-private-cartpole-retry-lMroq3/`.
+
+The client retry `rglitza/nex212-cartpole-ruwlwk` used the same verified
+wheels, policy and assets on `student-worker-5` (RTX 4090, driver
+580.126.20). The operator supplied a screenshot of the Cartpole viewport
+in the NVIDIA WebRTC Streaming Client and confirmed the cart and pole
+were moving. The server recorded an established TCP 49100 connection on
+the advertised NetBird address and the policy process owning UDP 47998.
+This is decoded policy playback over the prepared private route, not
+editor video or a TCP-forwarding test. The editor was not interrupted.
+Earlier runs verified socket release on completion and cancellation;
+the client retry was still running at confirmation. The optional
+forwarded Windows X11 profile was unavailable. Exact launch scripts,
+logs and socket receipt: `/tmp/opencode/nexuml-cartpole-client-retry-RuWlWk/`.
 
 **Real ROS 2 three-domain and mixed-objective proofs (1b/6.2a):** no
 authorized episodes with a matching embodiment, calibrated controlled
