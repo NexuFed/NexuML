@@ -197,6 +197,9 @@ def test_native_ppo_placement(tmp_path, rgb, inference, learner):
     ResolvedConfig.from_scenario(scenario).save(config_path)
     log = _run([JOB, "cartpole", "placement", config_path], tmp_path, "native-placement")
     assert "NATIVE_PPO_PLACEMENT_AND_ON_POLICY_PARITY_VERIFIED" in log
+    if not rgb:
+        assert "NATIVE_PPO_TERMINAL_AND_GAE_VERIFIED" in log
+        assert "SimulationContext cleared" in log
     _, _, metadata = load_inference_package(policy_path)
     assert metadata["training_frames"] == 128
 

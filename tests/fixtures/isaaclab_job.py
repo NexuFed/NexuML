@@ -500,6 +500,7 @@ def _so101_config():
 
 
 def _placement(config):
+    from contextlib import nullcontext
     from unittest.mock import patch
 
     import torch
@@ -509,15 +510,42 @@ def _placement(config):
     from nexuml.core.types import ReinforcementLearningSpec
     from nexuml.execution import run
     from nexuml.training.reinforcement import NexuRLLightningModule
+    from nexuml_library.environments._isaaclab_runtime import _IsaacLabRuntime
+    from nexuml_library.reinforcement.algorithms.ppo import PPO
 
     scenario = ResolvedConfig.load(config).to_scenario()
     training = scenario.training
     assert isinstance(training, ReinforcementLearningSpec) and isinstance(training.devices, str)
+    algorithm = training.algorithm
+    assert isinstance(algorithm, PPO)
     spec = training.collector
     storing = torch.device(spec.storing_device)
     inference = torch.device(spec.policy_device)
     learner = torch.device(f"cuda:{training.devices.rstrip(',')}")
     transfer = NexuRLLightningModule.transfer_batch_to_device
+    check_terminal = scenario.name == "isaac-cartpole-ppo"
+    native_step = _IsaacLabRuntime.step
+    stepped_frames = 0
+    first_final = None
+
+    def step(runtime, action):
+        nonlocal stepped_frames, first_final
+        if not stepped_frames:
+            # End one episode by leaving the track and another by timeout.
+            native = runtime.native
+            robot = native.scene["robot"]
+            joint_ids, _ = robot.find_joints("slider_to_cart")
+            positions = robot.data.joint_pos.torch.clone()
+            positions[0, joint_ids] = 3.5
+            positions[1, joint_ids] = 2.0
+            robot.write_joint_position_to_sim_index(position=positions)
+            robot.write_joint_velocity_to_sim_index(velocity=torch.zeros_like(positions))
+            native.episode_length_buf[1] = native.max_episode_length - 1
+        transition = native_step(runtime, action)
+        if not stepped_frames:
+            first_final = transition.observation["observation"].clone()
+        stepped_frames += action.numel()
+        return transition
 
     def checked_transfer(module, batch, device, dataloader_idx):
         assert all(tensor.device == storing for tensor in batch.values(True, True))
@@ -530,10 +558,45 @@ def _placement(config):
 
     class Placement(Callback):
         batches = 0
+        gae_batches = 0
+
+        def check_gae(self, gae, _args, batch):
+            assert batch.batch_size == (
+                spec.num_envs_per_collector,
+                training.frames_per_batch // spec.num_envs_per_collector,
+            )
+            value = batch["state_value"]
+            advantage = batch["advantage"]
+            assert advantage.device == learner
+            following = batch["next"]
+            done, term = following["done"], following["terminated"]
+            assert torch.equal(done, term | following["truncated"])
+            next_value = following["state_value"]
+            if self.gae_batches == 0:
+                ending = following[:2, 0].exclude("state_value").clone()
+                ending_value = gae.value_network(ending)["state_value"]
+                torch.testing.assert_close(next_value[:2, 0], ending_value)
+            gamma, lmbda = algorithm.gamma, algorithm.gae_lambda
+            delta = following["reward"] + gamma * (~term) * next_value - value
+            expected = delta.clone()
+            for t in range(delta.shape[1] - 2, -1, -1):
+                expected[:, t] += gamma * lmbda * (~done[:, t]) * expected[:, t + 1]
+            torch.testing.assert_close(advantage, expected)
+            torch.testing.assert_close(batch["value_target"], expected + value)
+            self.gae_batches += 1
 
         def on_train_batch_start(self, trainer, pl_module, batch, batch_idx):
             collector = pl_module._collector
             actor = pl_module.algorithm.rollout_policy
+            if check_terminal and self.batches == 0:
+                term = batch["next", "terminated"][:, 0, 0]
+                trunc = batch["next", "truncated"][:, 0, 0]
+                assert term.tolist() == [True, False, False, False]
+                assert trunc.tolist() == [False, True, False, False]
+                ending = batch["next", "observation"][:, 0]
+                torch.testing.assert_close(ending, first_final, rtol=0, atol=0, check_device=False)
+                assert (ending[:2] != batch["observation"][:2, 1]).any(dim=-1).all()
+                pl_module.algorithm.gae.register_forward_hook(self.check_gae)
             assert collector.env_device == torch.device(spec.env_device)
             assert all(p.device == inference for p in collector.policy.parameters())
             assert all(p.device == learner for p in pl_module.algorithm.critic.parameters())
@@ -554,11 +617,17 @@ def _placement(config):
             self.batches += 1
 
     proof = Placement()
-    with patch.object(NexuRLLightningModule, "transfer_batch_to_device", checked_transfer):
+    with (
+        patch.object(NexuRLLightningModule, "transfer_batch_to_device", checked_transfer),
+        patch.object(_IsaacLabRuntime, "step", step) if check_terminal else nullcontext(),
+    ):
         result = run(scenario, observer=proof, enable_progress_bar=False)
     assert proof.batches == 2 and result.trainer.global_step == 8
     assert result.lightning_module.fit_device == str(learner)
     assert result.lightning_module._collector is None
+    if check_terminal:
+        assert proof.gae_batches == proof.batches and stepped_frames == training.total_frames
+        print("NATIVE_PPO_TERMINAL_AND_GAE_VERIFIED", flush=True)
     print("NATIVE_PPO_PLACEMENT_AND_ON_POLICY_PARITY_VERIFIED", flush=True)
 
 
