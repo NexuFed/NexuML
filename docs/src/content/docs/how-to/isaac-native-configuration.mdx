@@ -323,8 +323,9 @@ stay headless. Playback of exported weights is a separate, independent run.
 ### Native WebRTC playback
 
 Choose `--viewer webrtc` only on a prepared interactive Isaac/Kit worker.
-In the trusted playback scenario set
-`IsaacLabEnvironment.webrtc = WebRTCSpec(advertise_address=PRIVATE_IP, private_network=True)`.
+In the trusted `play_scenario.py`, return the same compatible task from
+`scenario()`, replacing its immutable environment definition with
+`env.model_copy(update={"webrtc": WebRTCSpec(advertise_address=PRIVATE_IP, private_network=True)})`.
 The IPv4 address must be assigned to that worker. The pinned Kit streamer
 owns wildcard sockets; the advertised address is **not** a network access
 control. Only opt in after the operator has restricted reachability to the

@@ -9,7 +9,7 @@ native and viewer evidence; none of it qualifies co-located DDP.
   distributed CUDA. Distinguish rank-local DDP from remote collectors.
 - [ ] Test independent device placement and snapshot evaluators. Keep live
   viewing optional and preserve the existing Kit playback path.
-- [ ] Measure equivalent co-located Isaac and RSL-RL at larger vector widths.
+- [x] Measure equivalent co-located Isaac and RSL-RL at larger vector widths.
   Record throughput before deciding whether an optimization is warranted.
 - [ ] Run integrated regressions and record exact commands and outstanding
   resource gates; leave unqualified acceptance tasks unchecked.
@@ -114,3 +114,121 @@ for width in 256 1024 4096; do
   done
 done
 ```
+
+## Additional acceptance at `d8579994`
+
+- Ray Train V2 trained and resumed native Isaac Newton/Warp Cartpole on
+  one allocated RTX 4080 SUPER. Fit reached 32 frames and resumed via a
+  Ray-staged checkpoint to 48 frames / 48 combined optimizer steps.
+  Both jobs owned fresh simulators. This was one CUDA rank, not DDP.
+  Full Kit is rejected under Ray Train V2's background training thread
+  because the pinned native launcher registers process signal handlers.
+  Full Kit's main-thread launch remains available via torchrun.
+- The standalone native CUDA snapshot and the Ray-scheduled native CUDA
+  snapshot passed using their own processes. The Ray receipt recorded a
+  whole GPU assignment and matched digest, frame, batch and result.
+  This does not establish simultaneous training and evaluation on
+  independently reserved GPUs.
+- A CUDA learner and a PhysX GPU Ray collector shared the one local
+  physical GPU **only as a transport test**: 32 frames, eight optimizer
+  steps, synchronous CPU-staged rollouts and the borrowed Ray runtime
+  survived teardown. This is not a separate-GPU or multi-node result.
+- Built and installed both application wheels into a dedicated learner
+  environment without Isaac Sim/Lab, MuJoCo/Warp or ROS. TorchRL 0.15.0
+  directly trained for 32 frames/eight steps on CUDA; the installed CLI
+  exported and replayed eight CPU transitions. The separately tested
+  TorchRL 0.14.0 remote rollout profile still needs its lifecycle shim:
+  the audited 0.15 source still uses `ray.kill` for collectors and starts
+  them with an unlimited budget. No broad dependency upgrade or override.
+
+Receipts: `/tmp/opencode/nexuml-native-ray-ddp-J50Adh/`,
+`/tmp/opencode/nexuml-cuda-rollout-transport-baXv4z/`, and
+`/tmp/opencode/nexuml-rl-wheel-Zxby1Z/final/`.
+The unchanged lock passed `uv lock --check --offline`.
+
+```bash
+export TMPDIR=/tmp/opencode OMP_NUM_THREADS=1 RAY_TRAIN_V2_ENABLED=1
+mkdir -p "$EVIDENCE"
+# Requires one GPU and 140 MiB of free Ray object-store capacity per command.
+flock /tmp/opencode/nexuml-decouple-native-gpu.lock \
+  .venv/bin/python tests/fixtures/rl_ddp_worker.py "$EVIDENCE" ray-native
+NEXUML_RUN_SIMULATOR_TESTS=1 NEXUML_TEST_RAY_NATIVE_SNAPSHOT=1 \
+  flock /tmp/opencode/nexuml-decouple-native-gpu.lock .venv/bin/python -m pytest \
+  -q tests/core/test_isaaclab_integration.py -k snapshot_evaluator
+```
+
+## Pending acceptance and reproduction
+
+**Peer NCCL and co-located native DDP:** requires two compatible GPUs.
+On an allocated worker with two visible GPUs, run the actual collective
+first. The same preflight can be launched across nodes using your approved
+torchrun rendezvous instead of `--standalone`.
+
+```bash
+.venv/bin/python -m torch.distributed.run --standalone --nproc-per-node=2 \
+  scripts/isaaclab/nccl_preflight.py
+.venv/bin/python - <<'PY'
+from nexuml.core.config import ResolvedConfig
+from nexuml_library.scenarios.reinforcement.isaaclab import isaac_cartpole_ppo
+
+spec = isaac_cartpole_ppo(total_frames=2048, frames_per_batch=1024, num_envs=64)
+spec.training.devices = 2
+spec.training.strategy = "ddp"
+spec.training.collector.env_device = "cuda"
+spec.training.collector.storing_device = "cuda"
+ResolvedConfig.from_scenario(spec).save("peer-ddp.yaml")
+PY
+.venv/bin/python -m torch.distributed.run --standalone --nproc-per-node=2 \
+  -m nexuml.execution.worker --config peer-ddp.yaml
+```
+
+**Same-host split and separate inference (2.2):** requires two compatible
+logical GPUs. Compare to the same command without the device overrides,
+then run the placements below. Capture actual allocator/transfer and terminal
+state evidence; CLI completion alone does not establish peer-to-peer copies.
+
+```bash
+for inference in cuda:0 cuda:1; do
+  .venv/bin/nexuml train isaac-cartpole-ppo \
+    -O "training.devices='1,'" -O training.collector.env_device=cuda:0 \
+    -O training.collector.storing_device=cuda:0 \
+    -O "training.collector.policy_device=$inference" \
+    -O training.total_frames=2048 -O training.frames_per_batch=1024
+done
+```
+
+**Multi-node independent collection (3.4/3.5) and CI profile (6.3):**
+require the trusted Jobs CA, approved binary native worker profile and
+two simultaneously schedulable GPU actor nodes plus a learner GPU.
+Use the configured pool resources and inspect the actual actor nodes:
+logical indices are not proof of distinct placement. Grouped remote
+PhysX collection is still rejected; do not use the state reference
+as its substitute. Verify borrowed runtime ownership, missing/stale
+batches, resumed native workers and network/throughput before widening
+the support matrix.
+
+```bash
+curl --fail --cacert "$RAY_CA_BUNDLE" "$RAY_API_SERVER_ADDRESS/api/version"
+.venv/bin/nexuml backend preflight --config "$QUALIFIED_COLLECTOR_CONFIG"
+REQUESTS_CA_BUNDLE="$RAY_CA_BUNDLE" .venv/bin/nexuml train \
+  --config "$QUALIFIED_COLLECTOR_CONFIG"
+```
+
+The config uses `ray-jobs-sdk` with one learner GPU, `collector.backend:
+ray`, `num_collectors: 2`, `collector.ray.num_gpus: 1`, actor role
+selectors, prepared `py_executable` and CPU object-store storage. Also
+reserve the evaluator GPU if testing periodic native snapshots. Do not
+rerun with TLS disabled or on the idle-inventory assumption.
+
+**WebRTC (4a.1/4a.4):** run the ordinary `nexuml play` command in the
+[WebRTC how-to](../../../docs/src/content/docs/how-to/isaac-native-configuration.mdx#native-webrtc-playback)
+on an approved private graphics worker, with Vulkan/NVENC, TCP 49100 and
+UDP 47998. Require client-decoded policy motion and released sockets on
+exit. Prior TigerVNC playback remains qualified; a Kit editor session
+or open signaling listener does not count as a policy stream.
+
+**Real ROS 2 three-domain and mixed-objective proofs (1b/6.2a):** no
+authorized episodes with a matching embodiment, calibrated controlled
+joints, units, timing and held-out splits were supplied. The
+[local-fit handoff](local-fit-handoff.md) names those prerequisites.
+Do not run a synthetic/real mix or physical control as a substitute.

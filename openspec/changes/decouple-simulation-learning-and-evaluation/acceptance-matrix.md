@@ -4,6 +4,24 @@ See linked records for the tested source/asset hashes, interpreter and native
 versions, exact invocations and raw receipts. Each result applies to its
 recorded candidate. This is not a release matrix.
 
+## Distributed learner follow-up (`d8579994`)
+
+See the [distributed progress ledger](distributed-progress.md) for raw
+receipts, performance breakdowns, exact reproduction commands and scope
+limits. The evidence below does not broaden the historical lanes.
+
+| Lane | Result |
+| --- | --- |
+| Rank-local PPO, CPU/Gloo | Pass on two real ranks; matched single-process GAE/minibatches, actor and critic synchronization, fresh checkpoint continuation and coordinated rollout failure/cancellation. |
+| Ray Train frame lifecycle | Pass on two real same-host CPU workers and separately on one CUDA rank with Kit-less Isaac Newton/Warp; exports and fresh resume. Full Kit on Ray Train's worker thread is unsupported. |
+| CUDA NCCL | Scalar and 1 MiB collectives pass at one rank. Peer NCCL and multi-rank native CUDA are unverified; only one compatible GPU was available locally. |
+| Independent native snapshot | Pass on a separate process and on a whole-GPU Ray task. No simultaneous native learner/evaluator multi-GPU claim. |
+| CUDA learner with a CUDA Ray collector | Pass for synchronous transport with both sharing one physical GPU. Split, separately placed inference and multi-node actor layouts remain unverified. |
+| Large-width native SO-101 throughput | Pass for measurement, not for the 90% target. Median 28,575 / 99,015 / 283,886 frames/s at widths 256 / 1,024 / 4,096. |
+| Installed simulator-free CUDA learner | Pass from installed wheels: 32 frames, eight optimizer steps, export, eight CPU replay transitions. Not a released image or binary stock-worker profile qualification. |
+
+## Historical evidence
+
 The first standard regression used base `fcb4a81a150b0eb272be6708315ea3fa64e00813`
 and uncommitted inputs with SHA-256
 `56cf595c0ce320ebba8400bb46e0a94fa6f98e73f32ee8177feb7aa16d091f9d`.

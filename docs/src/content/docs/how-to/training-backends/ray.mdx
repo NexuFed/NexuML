@@ -508,11 +508,18 @@ without video. A single learner can also use
 `training.evaluation.process.device: cuda:1` (on a different GPU from the
 learner and the training simulator).
 
-DDP replicates model, gradients and optimizer state per rank. Splitting
-inference from simulation can free renderer or rollout memory; it does
-not let a policy or its optimizer exceed one learner device. Use a smaller
-model/minibatch or a separately qualified memory-efficient training
-strategy for large visual/VLA models. Sharded PPO is not enabled.
+Budget physics and rendering separately from the policy. Inference needs
+weights and forward activations; rollout storage scales with environment
+count × horizon × bytes per transition (including sensor tensors). The
+learner additionally needs saved activations, gradients and both Adam
+states. DDP replicates these costs on each rank. Placement can move some
+costs to another GPU; it does not make an oversized policy fit.
+
+Activation checkpointing trades compute for saved-activation memory, not
+model or rollout memory. Lightning's upstream FSDP can shard weights,
+gradients and optimizer state, but its wrapping and checkpoint semantics
+need separate qualification with PPO's two optimizers and rollout actor.
+This change does not enable FSDP/DeepSpeed for PPO or require CPU offload.
 
 ## Shared datasets and S3 WebDataset
 
