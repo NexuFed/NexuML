@@ -841,6 +841,27 @@ env -u RAY_ADDRESS -u RAY_API_SERVER_ADDRESS .venv/bin/ray job submit \
   -- timeout -k 15s 890s python -u ray_nccl_probe.py --pool-resource pool_gpu_workers
 ```
 
+### Full Cartpole fit and held-out evaluation
+
+`rglitza/nex212-cartpole-viser-f95pgf` trained the documented Newton/MJWarp
+Cartpole recipe on one RTX 4090: **2,097,152 frames, 10,240 optimizer
+steps**, then exported and saved its checkpoint. The private Viser
+browser connected, loaded the training scene and live-plot controls, and
+the server stopped normally after the roughly 65-second fit. TensorBoard
+recorded 256 rollout updates. The existing editor was not interrupted.
+
+The first evaluation's TensorBoard writer failed during finalization.
+The evaluation-only retry `rglitza/nex212-cartpole-heldout-7rkzgy` read
+the same export with loggers disabled, ran the 32 reset seeds starting
+at 10000, and exited successfully. All 32 episodes reached the native
+300-step horizon with no early termination or evaluator cutoffs. Mean
+return was **4.895** (SD **0.073**); the near-ideal reference is 5.
+The environment did not emit a success flag. This is one training seed,
+not a multi-seed study or a comparison against a matched untrained run.
+Reproduction scripts, viewer and TensorBoard receipts, and evaluation
+log: `/tmp/opencode/nexuml-cartpole-viser-full-f95Pgf/` and
+`/tmp/opencode/nexuml-cartpole-heldout-7rKzGy/`.
+
 ## Post-merge checks
 
 - Verified local browser Viser train/replay, read-only parity, failure and
