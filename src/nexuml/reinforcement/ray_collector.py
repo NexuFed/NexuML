@@ -34,7 +34,7 @@ class _GracefulRayCollector(RayCollector):
 
     _close_error: Exception | None = None
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, admission_timeout_s=600, **kwargs):
         if version("torchrl").split("+")[0] != "0.14.0":
             raise RuntimeError(
                 "Ray collection's lifecycle adapter is qualified for TorchRL 0.14.0; "
@@ -45,7 +45,41 @@ class _GracefulRayCollector(RayCollector):
             "track_policy_version": True,
         }
         self._published_version = 0
-        super().__init__(*args, **kwargs)
+        self._admission_timeout_s = admission_timeout_s
+        self._unadmitted_refs = {}
+        try:
+            super().__init__(*args, **kwargs)
+        except BaseException as error:
+            if hasattr(self, "_remote_collectors"):
+                try:
+                    # Unscheduled actors cannot acknowledge graceful shutdown.
+                    for worker in self._unadmitted_refs.values():
+                        ray.kill(worker, no_restart=True)
+                        self.remote_collectors.remove(worker)
+                    self.shutdown()
+                except Exception as cleanup:
+                    error.add_note(f"Ray collector startup cleanup also failed: {cleanup}")
+            raise
+
+    def add_collectors(self, *args, **kwargs):
+        super().add_collectors(*args, **kwargs)
+        # TorchRL registers weight receivers with an unbounded get after this call.
+        self._unadmitted_refs = {worker.stats.remote(): worker for worker in self.remote_collectors}
+        if self._unadmitted_refs:
+            ready, pending = ray.wait(
+                list(self._unadmitted_refs),
+                num_returns=len(self._unadmitted_refs),
+                timeout=self._admission_timeout_s,
+            )
+            for ref in ready:
+                self._unadmitted_refs.pop(ref)
+            ray.get(ready)
+            if pending:
+                raise TimeoutError(
+                    f"Ray rollout admission timed out after {self._admission_timeout_s:g} s: "
+                    f"{len(pending)}/{len(self.remote_collectors)} collector(s) did not start. "
+                    "Check the requested GPU/CPU resources, selectors and prepared worker runtime."
+                )
 
     def _make_collector(self, cls, *, env_maker, policy, other_params):
         # Ray checks actor truthiness when reporting errors; TorchRL's infinite budget breaks len().

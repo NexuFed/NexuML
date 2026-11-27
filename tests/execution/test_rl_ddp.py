@@ -22,6 +22,15 @@ scenario = runpy.run_path(str(WORKER))["scenario"]
 
 
 def _torchrun(directory, mode):
+    entrypoint = [str(WORKER), str(directory), mode]
+    if mode == "public":
+        from nexuml.core.config import ResolvedConfig
+        from nexuml.core.types import ExportSpec
+
+        config = scenario()
+        config.exports = [ExportSpec(kind="train_package", output=str(directory / "policy"))]
+        ResolvedConfig.from_scenario(config).save(directory / "worker.yaml")
+        entrypoint = ["-m", "nexuml.execution.worker", "--config", str(directory / "worker.yaml")]
     result = subprocess.run(
         [
             sys.executable,
@@ -29,9 +38,7 @@ def _torchrun(directory, mode):
             "torch.distributed.run",
             "--standalone",
             "--nproc-per-node=2",
-            str(WORKER),
-            str(directory),
-            mode,
+            *entrypoint,
         ],
         cwd=directory,
         env={**os.environ, "CUDA_VISIBLE_DEVICES": "", "OMP_NUM_THREADS": "1"},
@@ -41,7 +48,7 @@ def _torchrun(directory, mode):
     )
     assert result.returncode == 0, (result.stdout + result.stderr)[-20000:]
     assert "backend=gloo" in result.stderr
-    if mode not in ("failure", "cancel"):
+    if mode not in ("failure", "cancel", "public", "overbudget"):
         return tuple(torch.load(directory / f"{mode}-{i}.pt", weights_only=False) for i in range(2))
 
 
@@ -114,6 +121,7 @@ def test_ddp_ppo_matches_global_minibatches_and_resumes(tmp_path):
         torch.testing.assert_close(
             resumed[0]["updates"][0][key], resumed[1]["updates"][0][key], atol=0, rtol=0
         )
+    _torchrun(tmp_path, "overbudget")
 
 
 def test_ddp_rank_local_collection_failure_aborts_both_ranks(tmp_path):
@@ -122,6 +130,14 @@ def test_ddp_rank_local_collection_failure_aborts_both_ranks(tmp_path):
 
 def test_ddp_rank_zero_cancellation_reaps_pending_snapshot(tmp_path):
     _torchrun(tmp_path, "cancel")
+
+
+def test_public_ddp_worker_exports_one_completed_rank_zero_policy(tmp_path):
+    from nexuml.core.export import load_inference_package
+
+    _torchrun(tmp_path, "public")
+    _, _, metadata = load_inference_package(tmp_path / "policy")
+    assert metadata["training_frames"] == 32
 
 
 @pytest.mark.requires_optional("ray")

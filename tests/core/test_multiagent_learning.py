@@ -514,6 +514,7 @@ def test_existing_lightning_step_counts_only_physical_frames_and_labels_group_re
     data = rollout(module.policy, module.algorithm)
     optimizers = module.configure_optimizers()
     records, syncs = {}, []
+    monkeypatch.setattr(module, "_trainer", SimpleNamespace(world_size=1))
     monkeypatch.setattr(module, "optimizers", lambda: optimizers)
     monkeypatch.setattr(module, "manual_backward", ManualOptimization().manual_backward)
     monkeypatch.setattr(module, "clip_gradients", ManualOptimization().clip_gradients)
@@ -627,6 +628,7 @@ def test_serialized_lightning_grouped_counters_and_updates_continue_exactly(
     def wire():
         module = NexuRLLightningModule(scenario)
         optimizers = module.configure_optimizers()
+        monkeypatch.setattr(module, "_trainer", SimpleNamespace(world_size=1))
         monkeypatch.setattr(module, "optimizers", lambda: optimizers)
         monkeypatch.setattr(module, "manual_backward", ManualOptimization().manual_backward)
         monkeypatch.setattr(module, "clip_gradients", ManualOptimization().clip_gradients)

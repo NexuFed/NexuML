@@ -6,6 +6,7 @@ import os
 import signal
 import tempfile
 from threading import Event
+from typing import Any
 from unittest.mock import Mock
 from pathlib import Path
 from uuid import uuid4
@@ -64,7 +65,7 @@ def local_ray(request, monkeypatch):
             ray.init(
                 address="local",
                 num_cpus=2,
-                num_gpus=int(profile == "gpu"),
+                num_gpus=int(profile in ("gpu", "shared-gpu")),
                 include_dashboard=False,
                 resources={"snapshot-test": 1},
                 labels={"nexuml-test-placement": "cpu-rollout"},
@@ -482,10 +483,19 @@ def test_ray_cuda_learner_synchronizes_cpu_workers(local_ray, tmp_path, monkeypa
                 pytest.mark.requires_optional("isaaclab"),
             ],
         ),
+        pytest.param(
+            "shared-gpu",
+            id="native-gpu-worker-cuda-learner-transport",
+            marks=[
+                pytest.mark.requires_gpu,
+                pytest.mark.requires_simulator,
+                pytest.mark.requires_optional("isaaclab"),
+            ],
+        ),
     ],
     indirect=True,
 )
-def test_ray_checkpoint_resumes_with_fresh_workers(local_ray, tmp_path):
+def test_ray_checkpoint_resumes_with_fresh_workers(local_ray, tmp_path, request, monkeypatch):
     from lightning.pytorch.callbacks import Callback
 
     from nexuml.core.export import export_package, load_inference_package
@@ -494,7 +504,10 @@ def test_ray_checkpoint_resumes_with_fresh_workers(local_ray, tmp_path):
         from nexuml_library.scenarios.reinforcement.isaaclab import isaac_cartpole_ppo
 
         spec = isaac_cartpole_ppo(total_frames=32, frames_per_batch=16, num_envs=2)
-        spec.training.accelerator = "cpu"
+        # One actual GPU can prove the CUDA transport; it is not separate-GPU placement.
+        spec.training.accelerator = (
+            "gpu" if request.node.callspec.id.endswith("-transport") else "cpu"
+        )
         spec.training.collector = CollectorSpec(
             backend="ray",
             num_envs_per_collector=2,
@@ -506,6 +519,7 @@ def test_ray_checkpoint_resumes_with_fresh_workers(local_ray, tmp_path):
         spec = pendulum_ppo(total_frames=32, frames_per_batch=16)
         spec.training.collector = CollectorSpec(backend="ray", num_collectors=2)
     assert spec.interaction is not None and isinstance(spec.training, ReinforcementLearningSpec)
+    expected_device = "cuda:0" if spec.training.accelerator == "gpu" else "cpu"
     worker_count = spec.training.collector.num_collectors
     spec.training.algorithm = PPO(update_epochs=1, minibatch_size=8)
     spec.training.evaluation = RLEvaluationSpec(episodes=0)
@@ -520,32 +534,45 @@ def test_ray_checkpoint_resumes_with_fresh_workers(local_ray, tmp_path):
             trainer.save_checkpoint(checkpoint)
             raise RuntimeError("checkpoint interruption")
 
-    options = {"enable_loggers": False, "enable_progress_bar": False}
+    options: dict[str, Any] = {"enable_loggers": False, "enable_progress_bar": False}
     first = NexuSession(spec, log_dir=tmp_path / "first", **options)
-    first.trainer.callbacks.append(Interrupt())  # ty: ignore[missing-attribute]
+    getattr(first.trainer, "callbacks").append(Interrupt())
     with pytest.raises(RuntimeError, match="checkpoint interruption"):
         first.fit()
     assert first.lightning_module._collector is None and len(previous_workers) == worker_count
-    saved_policy = first.lightning_module.policy.state_dict()
+    assert first.runtime.policy is not None
+    saved_policy = first.runtime.policy.state_dict()
     saved_optimizers = [optimizer.state_dict() for optimizer in first.trainer.optimizers]
     assert first.trainer.global_step == 4
 
     class Restored(Callback):
         def on_train_batch_start(self, trainer, pl_module, batch, batch_idx):
             assert int(pl_module.frames) == 16 and trainer.global_step == 4
+            assert str(pl_module.device) == expected_device
             assert torch.all(batch["next", "policy_version"] == 1)
-            assert batch["action"].device.type == "cpu"
+            assert batch["action"].device == pl_module.device
             assert torch.isfinite(batch["action_log_prob"]).all()
             workers = {worker._actor_id for worker in pl_module._collector.remote_collectors}
             assert len(workers) == worker_count and workers.isdisjoint(previous_workers)
-            torch.testing.assert_close(pl_module.policy.state_dict(), saved_policy, rtol=0, atol=0)
+            torch.testing.assert_close(
+                pl_module.policy.state_dict(), saved_policy, rtol=0, atol=0, check_device=False
+            )
             for optimizer, expected in zip(trainer.optimizers, saved_optimizers, strict=True):
-                torch.testing.assert_close(optimizer.state_dict(), expected, rtol=0, atol=0)
+                torch.testing.assert_close(
+                    optimizer.state_dict(), expected, rtol=0, atol=0, check_device=False
+                )
 
     resumed = NexuSession.from_trainer_checkpoint(
         checkpoint, log_dir=tmp_path / "resumed", **options
     )
-    resumed.trainer.callbacks.append(Restored())  # ty: ignore[missing-attribute]
+    transfer = resumed.lightning_module.transfer_batch_to_device
+
+    def checked_transfer(batch, device, dataloader_idx):
+        assert batch["action"].device.type == "cpu"
+        return transfer(batch, device, dataloader_idx)
+
+    monkeypatch.setattr(resumed.lightning_module, "transfer_batch_to_device", checked_transfer)
+    getattr(resumed.trainer, "callbacks").append(Restored())
     result = resumed.run()
     assert int(result.lightning_module.get_buffer("frames")) == 32
     assert int(result.lightning_module.get_buffer("batches")) == 2
@@ -628,6 +655,23 @@ def test_ray_cuda_learner_needs_explicit_placement():
     training = ReinforcementLearningSpec(algorithm=PPO(), collector=collector)
     with pytest.raises(ValueError, match="requires explicit Ray placement"):
         build_collector(GymnasiumEnvironment(), training, None, "cuda:0")
+
+
+@pytest.mark.requires_system
+@pytest.mark.requires_optional("ray")
+@pytest.mark.requires_optional("torchrl")
+def test_ray_missing_role_admission_is_bounded_and_preserves_borrowed_runtime(local_ray):
+    training = ReinforcementLearningSpec(
+        algorithm=PPO(),
+        collector=CollectorSpec(
+            backend="ray",
+            ray=RayCollectorSpec(resources={"not-a-test-resource": 1}, admission_timeout_s=1),
+        ),
+    )
+    with pytest.raises(TimeoutError, match=r"1/1 collector\(s\) did not start"):
+        build_collector(GymnasiumEnvironment(), training, torch.nn.Linear(4, 2), "cpu")
+    assert local_ray.is_initialized()
+    assert local_ray.get(local_ray.remote(lambda: True).remote(), timeout=10)
 
 
 def test_ray_placement_config_round_trips_without_changing_default_dump():

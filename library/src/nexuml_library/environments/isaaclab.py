@@ -282,16 +282,19 @@ class IsaacLabEnvironment(EnvironmentDefinition):
                     "Resolved Isaac Ray learner differs from its configured accelerator"
                 )
             contract = self.describe()
+            if self.viewer is not None and (
+                self.viewer.purposes != ("train",)
+                or self.viewer.train_rank is None
+                or self.viewer.train_rank >= collector.num_collectors
+            ):
+                raise ValueError("Ray Isaac Viser requires an explicit in-range train_rank")
             if (
                 self.physics != "isaacsim_physx"
                 or self.arena_factory is not None
-                or self.viewer is not None
                 or contract.groups
                 or any(field.modality != "vector" for field in contract.observations.values())
             ):
-                raise ValueError(
-                    "Isaac Lab Ray collection requires headless single-agent PhysX state"
-                )
+                raise ValueError("Isaac Lab Ray collection requires single-agent PhysX state")
         else:
             self._validate_direct_devices(training, device, learner_index)
         if ray_gpu and (not collector.sync or collector.policy_sync_interval_batches != 1):

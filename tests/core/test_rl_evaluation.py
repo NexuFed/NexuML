@@ -630,13 +630,15 @@ def test_explicit_fps_and_training_seed_fallback(fake, monkeypatch):
 
 @pytest.mark.requires_optional("torchrl")
 @pytest.mark.requires_optional("gymnasium")
-def test_scheduled_evaluation_follows_sync_before_next_collection(tmp_path, monkeypatch):
+@pytest.mark.parametrize("backend", ["direct", "process"])
+def test_scheduled_evaluation_follows_sync_before_next_collection(tmp_path, monkeypatch, backend):
     from nexuml.training.lightning import NexuSession
     from nexuml.reinforcement.collector import RolloutDataset
     import nexuml.training.reinforcement as module
 
     order = []
     scenario = cartpole_ppo(total_frames=32, frames_per_batch=16)
+    scenario.training.collector.backend = backend
     scenario.training.algorithm = PPO(update_epochs=1, minibatch_size=8)
     scenario.training.evaluation = RLEvaluationSpec(
         episodes=1, max_steps_per_episode=2, every_n_frames=16
@@ -666,10 +668,10 @@ def test_scheduled_evaluation_follows_sync_before_next_collection(tmp_path, monk
     session.run()
     assert order == [
         ("collect", 0),
-        ("sync", 16),
+        *([("sync", 16)] if backend == "process" else []),
         ("eval", 16),
         ("collect", 16),
-        ("sync", 32),
+        *([("sync", 32)] if backend == "process" else []),
         ("eval", 32),
     ]
 

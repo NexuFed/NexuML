@@ -289,6 +289,7 @@ jobs:
             -e NVIDIA_DRIVER_CAPABILITIES=compute,utility,graphics \
             -e ACCEPT_EULA=Y -e OMNI_KIT_ACCEPT_EULA=YES \
             -e NEXUML_RUN_SIMULATOR_TESTS=1 \
+            -e TMPDIR=/workspace/output \
             -e NEXUML_RUN_SYSTEM_TESTS=0 -e NEXUML_RUN_HARDWARE_TESTS=0 \
             --mount "type=bind,source=$GITHUB_WORKSPACE,target=/workspace/nexuml,readonly" \
             --mount "type=bind,source=$RUNNER_TEMP/isaaclab-output,target=/workspace/output" \

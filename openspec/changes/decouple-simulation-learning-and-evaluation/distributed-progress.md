@@ -5,10 +5,10 @@ native and viewer evidence; none of it qualifies co-located DDP.
 
 - [x] Prove two real CPU/Gloo ranks against single-process PPO with matched
   minibatches. Check rank seeds, global counters, resume and failure.
-- [ ] Exercise the same lifecycle through Ray Train and run NCCL before native
-  distributed CUDA. Distinguish rank-local DDP from remote collectors.
-- [ ] Test independent device placement and snapshot evaluators. Keep live
-  viewing optional and preserve the existing Kit playback path.
+- [x] Exercise the lifecycle through two CPU Ray Train ranks and run the
+  available one-rank NCCL preflight. Multi-GPU proof stays separate.
+- [x] Test available device placements and native snapshot evaluators.
+  Keep live viewing optional and preserve the existing Kit playback path.
 - [x] Measure equivalent co-located Isaac and RSL-RL at larger vector widths.
   Record throughput before deciding whether an optimization is warranted.
 - [ ] Run integrated regressions and record exact commands and outstanding
@@ -86,9 +86,15 @@ claim. Baseline NexuML rates were 24,920 / 81,171 / 235,663 frames/s;
 relative rates varied with run ordering and native timing. Final NexuML
 absolute throughput improved at all three widths. Do not infer a generic
 distributed speedup or visual-policy throughput from this state-only run.
+Fresh held-out replay at width 1,024 gave **0/64** final successes per
+learner (32 episodes each for seeds 17 and 43, also zero at initialization).
+The timing budget did not reach the task's learning target. This does not
+replace the previously qualified longer-budget state-policy evidence.
 
 Nsight at width 1,024 measured 11,040 baseline NexuML stream syncs vs
-3,592 RSL-RL (including launch/setup). Py-spy at width 4,096 found
+3,592 RSL-RL (including launch/setup). The final NexuML trace measured
+6,909 synchronizations and 88 ms in that API, down from 320 ms. Py-spy
+at width 4,096 found
 per-distribution recomputation/synchronization of fixed unit bounds and
 the dominant native physics step. The targeted fixes preserve the bounded
 sample, fresh likelihood and action-validation semantics, keep minibatch
@@ -100,7 +106,8 @@ Raw measurements: `/tmp/opencode/nexuml-wide-ppo-baseline-9IXF1K`,
 `/tmp/opencode/nexuml-wide-ppo-candidate-gP8M1U`,
 `/tmp/opencode/nexuml-wide-ppo-final-l1MxPL`,
 `/tmp/opencode/nexuml-rl-nsys-Aydsvv`, and
-`/tmp/opencode/nexuml-rl-cpu-samples-AutsrX`.
+`/tmp/opencode/nexuml-rl-cpu-samples-AutsrX`. Final Nsight/CPU–CUDA
+transfer probe: `/tmp/opencode/nexuml-rl-final-profile-mY2YVs`.
 
 ```bash
 for width in 256 1024 4096; do
@@ -145,6 +152,30 @@ Receipts: `/tmp/opencode/nexuml-native-ray-ddp-J50Adh/`,
 `/tmp/opencode/nexuml-cuda-rollout-transport-baXv4z/`, and
 `/tmp/opencode/nexuml-rl-wheel-Zxby1Z/final/`.
 The unchanged lock passed `uv lock --check --offline`.
+
+## Visual and memory-pressure probes
+
+Native headless sensor-policy and terminal-pixel gates passed (**3 tests**).
+The separate synthetic RGB probe ran a small convolutional actor, same-GPU
+inference and GPU Adam with exact publication of the modified weights.
+At `256×3×64×64` and `2048×3×128×128`, uint8 rollout storage was 3 and
+96 MiB; each replica and the learner gradients used 1,928 bytes apiece
+and Adam state used 3,872 bytes. Peak additional CUDA allocation during
+the first inference/update was 9.9/12.4 MiB and 44/68.1 MiB, respectively.
+These are cold phase timings and allocator peaks, not VLA throughput
+or an estimate of engine/renderer memory. The 2-GPU transfer/latency and
+native image-policy learning gates still require separate resources.
+
+```bash
+.venv/bin/python tests/fixtures/visual_rollout_pressure.py --frames 2048 --side 128 --batch 64
+# On a compatible two-GPU host, re-run the same workload with explicit roles:
+.venv/bin/python tests/fixtures/visual_rollout_pressure.py --frames 2048 --side 128 \
+  --batch 64 --simulation cuda:0 --inference cuda:0 --learner cuda:1
+.venv/bin/python tests/fixtures/visual_rollout_pressure.py --frames 2048 --side 128 \
+  --batch 64 --simulation cuda:0 --inference cuda:1 --learner cuda:1
+```
+
+Raw measurements: `/tmp/opencode/nexuml-visual-pressure-0plGFI/`.
 
 ```bash
 export TMPDIR=/tmp/opencode OMP_NUM_THREADS=1 RAY_TRAIN_V2_ENABLED=1
@@ -226,6 +257,16 @@ on an approved private graphics worker, with Vulkan/NVENC, TCP 49100 and
 UDP 47998. Require client-decoded policy motion and released sockets on
 exit. Prior TigerVNC playback remains qualified; a Kit editor session
 or open signaling listener does not count as a policy stream.
+The installed-wheel playback test in the prepared Isaac image reached
+Vulkan/RTX initialization but timed out twice (150 s and 100 s), using
+both the explicit minimal rendering experience and the maintained Lab
+streaming selection. Neither showed a signaling receipt, policy ticks,
+or a client connection. Kit logged OmniHub and NGX problems; the logs do
+not isolate the exact native startup fault. Treat this as a **native
+startup failure**, separate from the absent approved external client.
+No host ports were published. Receipts:
+`/tmp/opencode/nexuml-stream-configured-6hHQ5o/` and
+`/tmp/opencode/nexuml-stream-native-experience-Zb1wOX/`.
 
 **Real ROS 2 three-domain and mixed-objective proofs (1b/6.2a):** no
 authorized episodes with a matching embodiment, calibrated controlled

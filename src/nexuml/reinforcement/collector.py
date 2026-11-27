@@ -20,10 +20,13 @@ class EnvironmentFactory:
     definition: EnvironmentDefinition
     context: EnvironmentBuildContext
     owns_job_scope: bool = False
+    expects_ray_gpu: bool = False
 
     def __call__(self):
         from nexuml.reinforcement.torchrl_env import _TorchRLEnvironmentAdapter
 
+        if self.expects_ray_gpu and torch.cuda.device_count() != 1:
+            raise RuntimeError("The Ray collector must see exactly one reserved CUDA device")
         with ExitStack() as resources:
             if self.owns_job_scope:
                 resources.enter_context(self.definition.rollout_scope())
@@ -140,6 +143,7 @@ def build_collector(definition, training: ReinforcementLearningSpec, policy, dev
                 else (context.seed + (rank * spec.num_collectors + index) * context.num_envs),
             ),
             owns_job_scope=spec.backend != "direct",
+            expects_ray_gpu=spec.ray is not None and spec.ray.num_gpus == 1,
         )
         for index in range(spec.num_collectors)
     ]
@@ -168,6 +172,7 @@ def build_collector(definition, training: ReinforcementLearningSpec, policy, dev
             from ray._common.ray_option_utils import validate_actor_options
 
             ray_init_config = _ray_placement_init(spec.ray)
+            remote_configs["num_cpus"] = spec.ray.num_cpus
             remote_configs["num_gpus"] = spec.ray.num_gpus
             if spec.ray.resources:
                 remote_configs["resources"] = spec.ray.resources
@@ -176,6 +181,7 @@ def build_collector(definition, training: ReinforcementLearningSpec, policy, dev
             if spec.ray.py_executable is not None:
                 remote_configs["runtime_env"] = {"py_executable": spec.ray.py_executable}
             validate_actor_options(remote_configs, in_options=False)
+            topology["admission_timeout_s"] = spec.ray.admission_timeout_s
         # Exception to the front door: override its actor-kill hook, including automatic shutdown.
         topology.update(
             collector_kwargs={"auto_register_policy_transforms": False},

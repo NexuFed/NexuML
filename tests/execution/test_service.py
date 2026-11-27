@@ -63,7 +63,7 @@ def test_sixth_definition_uses_shared_review_and_dispatch(registry, tmp_path):
 
 def test_local_uses_one_session_observer_and_configured_exports(monkeypatch, registry):
     calls = []
-    result = SimpleNamespace(artifacts=[])
+    result = SimpleNamespace(artifacts=[], lightning_module=object())
     observer = object()
 
     class Session:

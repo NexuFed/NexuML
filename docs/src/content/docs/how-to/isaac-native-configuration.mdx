@@ -318,7 +318,9 @@ require an approved private route to its loopback endpoint and an explicit,
 provider-supported play spectator. Local Kit needs a prepared GPU display.
 For DDP training, an opted-in `ViserSpec(train_rank=N)` displays the actual
 training simulation of one explicitly selected rank. The remaining ranks
-stay headless. Playback of exported weights is a separate, independent run.
+stay headless. In the synchronous Ray collector lane, the same field selects
+the zero-based collector index. Use the private loopback route to the
+selected worker. Playback of exported weights is a separate, independent run.
 
 ### Native WebRTC playback
 

@@ -48,7 +48,7 @@ def jobs_client(monkeypatch):
     return calls
 
 
-def test_ray_job_config_roundtrip_allows_rl_without_enabling_ray_train():
+def test_ray_job_roundtrip_keeps_ray_train_as_a_distinct_rl_backend():
     scenario = isaac_cartpole_learning_ppo()
     scenario.execution = RayJobsSDKExecution(
         address="https://jobs.example.test",
@@ -64,13 +64,12 @@ def test_ray_job_config_roundtrip_allows_rl_without_enabling_ray_train():
 
     assert isinstance(restored.execution, RayJobsSDKExecution)
     assert lower_model(restored) == lower_model(scenario)
-    with pytest.raises(ValueError, match="Ray learner placement"):
-        ScenarioSpec.model_validate(
-            {
-                **{key: getattr(scenario, key) for key in ScenarioSpec.model_fields},
-                "execution": RayClusterExecution(),
-            }
-        )
+    training_job = scenario.model_copy(
+        update={"execution": RayClusterExecution(resources_per_worker={"CPU": 1, "GPU": 1})}
+    )
+    trained = ResolvedConfig.from_yaml(ResolvedConfig.from_scenario(training_job).to_yaml())
+    assert isinstance(trained.execution, RayClusterExecution)
+    assert trained.execution.preflight(trained.to_scenario()) == {}
 
 
 @pytest.mark.parametrize(

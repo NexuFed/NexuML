@@ -74,6 +74,7 @@ class NexuRLLightningModule(L.LightningModule):
         self._pending_evaluation: tuple[tuple, ProcessEvaluation | RayEvaluation] | None = None
         self._next_evaluation_frame = None
         self._resume_world_size = None
+        self._resume_frame_budget = None
         self.register_buffer("frames", torch.tensor(0, dtype=torch.int64))
         self.register_buffer("batches", torch.tensor(0, dtype=torch.int64))
         self.save_hyperparameters(
@@ -116,8 +117,9 @@ class NexuRLLightningModule(L.LightningModule):
             or saved.training.collector.num_envs_per_collector
             != self.training_spec.collector.num_envs_per_collector
         ):
+            kind = "Grouped" if self.policy.contract.groups else "RL"
             raise ValueError(
-                "RL checkpoint requires unchanged task configuration, contracts, "
+                f"{kind} checkpoint requires unchanged task configuration, contracts, "
                 "sharing, algorithm and count"
             )
         if self._resume_world_size > 1 and (
@@ -125,6 +127,7 @@ class NexuRLLightningModule(L.LightningModule):
             or saved.training.seed != self.training_spec.seed
         ):
             raise ValueError("DDP RL checkpoint requires unchanged frame geometry and base seed")
+        self._resume_frame_budget = saved.training.total_frames
 
     def _fit_training(self, **updates):
         spec = self.training_spec
@@ -265,6 +268,7 @@ class NexuRLLightningModule(L.LightningModule):
             raise ValueError("RL checkpoint continuation requires the saved learner world size")
         if (
             self._resume_world_size is not None
+            and (world_size > 1 or self._resume_frame_budget != self.training_spec.total_frames)
             and int(self.frames) > self.training_spec.total_frames
         ):
             raise ValueError(

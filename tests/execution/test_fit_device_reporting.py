@@ -1,6 +1,7 @@
 """Capture fit-device metadata using fake hook owners; never construct a model."""
 
 import ast
+from contextlib import nullcontext
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
@@ -40,7 +41,10 @@ def test_fit_hook_captures_device_before_teardown_without_changing_state(kind, d
         )
         owner.training_spec = SimpleNamespace(model_copy=lambda **kwargs: kwargs)
         owner.evaluation_spec = RLEvaluationSpec(episodes=0)
-        owner.trainer = SimpleNamespace(loggers=[])
+        owner._resume_world_size = None
+        owner._rank_guard = lambda _phase: nullcontext()
+        owner._fit_training = lambda: owner.training_spec
+        owner.trainer = SimpleNamespace(loggers=[], world_size=1, is_global_zero=True)
     namespace["on_fit_start"](owner)
     owner.device = "cpu"  # Simulated Lightning teardown, not the recorded fit placement.
     assert owner.fit_device == device

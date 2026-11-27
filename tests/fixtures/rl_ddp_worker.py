@@ -53,6 +53,9 @@ def run(directory, mode):
             every_n_frames=16,
             process=ProcessEvaluationSpec(scheduling="skip_if_busy"),
         )
+    if mode == "overbudget":
+        config.training.total_frames = 16
+        checkpoint = directory / "full.ckpt"
 
     def cancel_snapshot(module):
         nonlocal evaluator
@@ -83,6 +86,8 @@ def run(directory, mode):
             )
             if mode == "fit" and batch_idx == 0:
                 trainer.save_checkpoint(checkpoint)
+            if mode == "fit" and batch_idx == 1:
+                trainer.save_checkpoint(directory / "full.ckpt")
 
     with ExitStack() as patches:
         patches.enter_context(patch.object(GymnasiumEnvironment, "build", build))
@@ -94,10 +99,17 @@ def run(directory, mode):
             config,
             log_dir=directory / mode,
             enable_progress_bar=False,
-            trainer_checkpoint=checkpoint if mode == "resume" else None,
+            trainer_checkpoint=checkpoint if mode in ("resume", "overbudget") else None,
             **launch_options(config, dict(os.environ)),
         )
         getattr(session.trainer, "callbacks").append(Trace())
+        if mode == "overbudget":
+            try:
+                session.fit()
+            except ValueError as error:
+                assert "smaller than the checkpoint" in str(error) and not receipts["seeds"]
+                return
+            raise AssertionError("training accepted a budget below its restored count")
         if mode == "cancel":
             try:
                 session.fit()

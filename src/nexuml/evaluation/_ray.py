@@ -41,10 +41,13 @@ def require_ray_runtime():
 
 def _evaluate_on_worker(package: bytes, config: bytes, digest: str, timeout_s: float = 120) -> str:
     import ray
+    import torch
 
     context = ray.get_runtime_context()
     resources = context.get_assigned_resources()
     device = "cuda:0" if resources.get("GPU") == 1 else "cpu"
+    if device == "cuda:0" and (torch.cuda.device_count() != 1 or not torch.cuda.is_available()):
+        raise RuntimeError("Ray snapshot GPU assignment did not expose exactly one CUDA device")
     with TemporaryDirectory(prefix="nexuml-ray-evaluation-") as directory:
         root = Path(directory)
         (root / "policy").mkdir()

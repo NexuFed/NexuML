@@ -480,11 +480,38 @@ def test_gpu_ray_preflight_keeps_learner_placement_separate(training):
         definition.validate_training(training, device="cuda:0")
     training.accelerator = "gpu"
     definition.validate_training(training, device="cuda:0")
-    with pytest.raises(ValueError, match="headless single-agent PhysX state"):
+    with pytest.raises(ValueError, match="single-agent PhysX state"):
         definition.model_copy(update={"physics": "newton_mjwarp"}).validate_training(training)
     training.collector.sync = False
     with pytest.raises(ValueError, match="synchronous updates every batch"):
         definition.validate_training(training)
+
+
+@pytest.mark.parametrize(
+    "rank,expected",
+    [(None, False), (0, True), (1, True), (2, False)],
+)
+def test_distributed_viser_requires_one_explicit_in_range_rank(rank, expected):
+    from nexuml_library.environments.isaaclab_config import ViserSpec
+
+    definition = IsaacLabEnvironment(viewer=ViserSpec(train_rank=rank))
+    if expected:
+        definition.validate_distributed_training(2)
+    else:
+        with pytest.raises(ValueError, match="explicit in-range train_rank"):
+            definition.validate_distributed_training(2)
+
+
+def test_viser_is_only_selected_for_the_training_rank_and_explicit_play():
+    from nexuml_library.environments._isaaclab_runtime import _viser_selected
+    from nexuml_library.environments.isaaclab_config import ViserSpec
+
+    viewer = ViserSpec(train_rank=1, purposes=("train", "play"))
+    assert not _viser_selected(viewer, EnvironmentBuildContext(purpose="train", worker_rank=0))
+    assert _viser_selected(viewer, EnvironmentBuildContext(purpose="train", worker_rank=1))
+    assert not _viser_selected(viewer, EnvironmentBuildContext(purpose="eval", worker_rank=1))
+    assert not _viser_selected(viewer, EnvironmentBuildContext(purpose="play", viewer="headless"))
+    assert _viser_selected(viewer, EnvironmentBuildContext(purpose="play", viewer="viser"))
 
 
 def test_base_provider_validation_remains_optional_no_op():

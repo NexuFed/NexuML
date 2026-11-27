@@ -60,6 +60,15 @@ def _terminate_job(signum, _frame):
     raise SystemExit(128 + signum)
 
 
+def _viser_selected(viewer, context):
+    return (
+        viewer is not None
+        and context.purpose in viewer.purposes
+        and (context.purpose != "play" or context.viewer == "viser")
+        and (context.purpose != "train" or context.worker_rank == (viewer.train_rank or 0))
+    )
+
+
 @contextmanager
 def isaaclab_process(definition=None, *, returning_close: bool = False):
     """Close an owned Kit app after the complete job or the worker's rollout lifetime.
@@ -161,9 +170,12 @@ def _launch_environment(
             + streaming
         ),
     }
-    if local or streaming:
+    if local:
         # The default non-headless experience loads the authoring editor.
         args["experience"] = "isaaclab.python.headless.rendering.kit"
+    elif streaming:
+        # Let the pinned launcher resolve its streaming-compatible Lab experience.
+        args["enable_cameras"] = True
     if require_kit:
         args["require_kit"] = True
     if current_thread() is not main_thread():
@@ -189,7 +201,8 @@ def _launch_environment(
         if streaming and not manager.get_enabled_extension_id("omni.kit.livestream.app"):
             raise RuntimeError("Isaac WebRTC could not start the native Kit streaming extension")
         if any(manager.get_enabled_extension_id(name) for name in _KIT_EDITOR_EXTENSIONS):
-            raise RuntimeError("Isaac local playback cannot load Kit authoring extensions")
+            mode = "webrtc" if streaming else "local"
+            raise RuntimeError(f"Isaac {mode} playback cannot load Kit authoring extensions")
         owner.playback_is_running = app.is_running
     if current_thread() is main_thread():
         signal.signal(signal.SIGTERM, _terminate_job)
@@ -239,14 +252,7 @@ def _create_environment(owner, definition, context):
             raise ValueError(f"{name} conflicts with Isaac crash-upload protection; unset it")
     _process_definition = definition
     device = owner.device
-    viewing = (
-        definition.viewer is not None
-        and context.purpose in definition.viewer.purposes
-        and (context.purpose != "play" or context.viewer == "viser")
-        and (
-            context.purpose != "train" or context.worker_rank == (definition.viewer.train_rank or 0)
-        )
-    )
+    viewing = _viser_selected(definition.viewer, context)
     local = context.purpose == "play" and context.viewer == "local"
     streaming = context.purpose == "play" and context.viewer == "webrtc"
     stream_args = ""

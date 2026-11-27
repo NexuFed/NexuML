@@ -36,6 +36,12 @@ class PPO(RLAlgorithmDefinition):
             raise ValueError(
                 "Global PPO minibatch_size must divide frames_per_batch and be divisible by ranks"
             )
+        if self.critic is not None and any(
+            layer.component.requires_post_train_fit
+            for layers in self.critic.stages.values()
+            for layer in layers
+        ):
+            raise ValueError("DDP PPO cannot use a critic that requires a post-train fit")
 
     def build(self, context: RLAlgorithmBuildContext) -> nn.Module:
         try:

@@ -629,6 +629,12 @@ class RayCollectorSpec(SpecModel):
 
     address: str | None = None
     num_gpus: int = Field(default=0, strict=True, ge=0, le=1, exclude_if=lambda value: value == 0)
+    num_cpus: float = Field(
+        default=1, gt=0, allow_inf_nan=False, exclude_if=lambda value: value == 1
+    )
+    admission_timeout_s: float = Field(
+        default=600, gt=0, allow_inf_nan=False, exclude_if=lambda value: value == 600
+    )
     resources: dict[str, Annotated[float, Field(gt=0, allow_inf_nan=False)]] = Field(
         default_factory=dict
     )
