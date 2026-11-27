@@ -224,6 +224,9 @@ GPUs in one worker, not the two-node topology already tested. On an
 allocated worker with two visible GPUs, run the actual collective first.
 The same preflight can be launched across nodes using an approved torchrun
 rendezvous instead of `--standalone`.
+The available RTX nodes each advertise one GPU. The inventory's eight-GPU
+host reports V100 devices and a 535-series driver, outside the pinned
+Isaac/CUDA 13 lane; separate pods on RTX nodes do not qualify same-host P2P.
 
 ```bash
 .venv/bin/python -m torch.distributed.run --standalone --nproc-per-node=2 \
@@ -444,6 +447,13 @@ bypassing TLS on the external endpoint. Do not use this tunnel for WebRTC.
   browser was attached; both ranks unwound and the selected listener
   refused further connections before exit.
   Receipt: `/tmp/opencode/nexuml-pod-viser-cancel-EXRtDM/`.
+- Matched two-node Newton Cartpole timing with and without a connected
+  spectator on rank 1: 16 environments per rank, 512 global frames per
+  rollout, 4,096 frames and 64 optimizer steps per fit. On the same GPU
+  pair, median warm batch time was **63.8 ms headless vs 86.8 ms with
+  Viser** (about 36% longer, or 8.0k vs 5.9k frames/s). This is one
+  matched pair, excluding startup and browser handshake, not a universal
+  overhead estimate. Receipt: `/tmp/opencode/nexuml-pod-viser-timing-MFRJs7/`.
 
 To rerun the two-node NCCL probe, use one terminal for the authenticated
 Kubernetes tunnel and another for the submission:
