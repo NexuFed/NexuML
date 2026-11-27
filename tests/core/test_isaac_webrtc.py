@@ -25,7 +25,14 @@ def test_web_rtc_opt_in_can_only_change_playback():
         WebRTCSpec.model_validate({"advertise_address": "127.0.0.1"})
 
 
-def test_web_rtc_requires_requested_local_ports(monkeypatch):
+@pytest.mark.parametrize(
+    "kind,port,endpoint",
+    [
+        (socket.SOCK_STREAM, "_SIGNAL_PORT", "TCP signaling"),
+        (socket.SOCK_DGRAM, "_MEDIA_PORT", "UDP media"),
+    ],
+)
+def test_web_rtc_requires_requested_local_ports(monkeypatch, kind, port, endpoint):
     psutil = pytest.importorskip("psutil")
     spec = WebRTCSpec(advertise_address="127.0.0.1", private_network=True)
     monkeypatch.setattr(
@@ -33,11 +40,37 @@ def test_web_rtc_requires_requested_local_ports(monkeypatch):
         "net_if_addrs",
         lambda: {"lo": [SimpleNamespace(family=socket.AF_INET, address="127.0.0.1")]},
     )
-    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as busy:
+    with socket.socket(socket.AF_INET, kind) as busy:
         busy.bind(("127.0.0.1", 0))
-        monkeypatch.setattr(_isaaclab_webrtc, "_MEDIA_PORT", busy.getsockname()[1])
         monkeypatch.setattr(_isaaclab_webrtc, "_SIGNAL_PORT", 0)
-        with pytest.raises(ValueError, match="UDP media port"):
+        monkeypatch.setattr(_isaaclab_webrtc, "_MEDIA_PORT", 0)
+        monkeypatch.setattr(_isaaclab_webrtc, port, busy.getsockname()[1])
+        with pytest.raises(ValueError, match=f"{endpoint} port"):
+            _isaaclab_webrtc.preflight(spec)
+
+
+@pytest.mark.parametrize("missing", ["interface", "libvulkan.so.1", "libnvidia-encode.so.1"])
+def test_web_rtc_rejects_missing_private_interface_or_graphics(monkeypatch, missing):
+    psutil = pytest.importorskip("psutil")
+    spec = WebRTCSpec(advertise_address="127.0.0.1", private_network=True)
+    loopback = SimpleNamespace(family=socket.AF_INET, address="127.0.0.1")
+    monkeypatch.setattr(
+        psutil, "net_if_addrs", lambda: {"lo": [] if missing == "interface" else [loopback]}
+    )
+    monkeypatch.setattr(_isaaclab_webrtc, "_SIGNAL_PORT", 0)
+    monkeypatch.setattr(_isaaclab_webrtc, "_MEDIA_PORT", 0)
+
+    def load(name):
+        if name == missing:
+            raise OSError(name)
+        return SimpleNamespace(NvEncodeAPICreateInstance=object())
+
+    monkeypatch.setattr(_isaaclab_webrtc.ctypes, "CDLL", load)
+    if missing == "interface":
+        with pytest.raises(ValueError, match="IPv4 is not assigned"):
+            _isaaclab_webrtc.preflight(spec)
+    else:
+        with pytest.raises(RuntimeError, match="requires Vulkan graphics and the NVIDIA encoder"):
             _isaaclab_webrtc.preflight(spec)
 
 
