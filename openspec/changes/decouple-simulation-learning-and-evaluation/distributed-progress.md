@@ -615,6 +615,15 @@ an X11 proxy socket qualifies the client path. No existing workstation
 was used. Checks and receipts:
 `/tmp/opencode/nexuml-4a4-private-readiness-jKTxfc/`.
 
+The private client test inputs are staged at
+`/tmp/opencode/nexuml-4a4-private-capsule-MUSHMk/`. Both wheels match the
+passing isolated-server receipt byte for byte. All 15 checksums pass;
+an isolated CPU check confirmed the export and scenario are compatible.
+The scenario reads `ISAACSIM_HOST` from the prepared pod's `wt0` address.
+Follow the bundle's README for the offline install and bounded
+18,000-step playback command. It was not deployed or connected to a
+client, and does not qualify media delivery.
+
 **Real ROS 2 three-domain and mixed-objective proofs (1b/6.2a):** no
 authorized episodes with a matching embodiment, calibrated controlled
 joints, units, timing and held-out splits were supplied. The
@@ -847,6 +856,14 @@ env -u RAY_ADDRESS -u RAY_API_SERVER_ADDRESS .venv/bin/ray job submit \
   revision identity, approved ANTLR wheel delivery, and a compatible
   full-Kit dependency fix. Neither project manifest nor the lock was
   changed. Probes: `/tmp/opencode/nexuml-package-6.3-followup.TTaxhz8Z/`.
+- NVIDIA's 6.2 packaging source and published CPython 3.12 Linux wheel
+  metadata both list `idna-ssl` unconditionally under `isaacsim-kernel`.
+  A scan of the wheel's Python and configuration files found the pin,
+  but no `idna_ssl` import or patch call; that does not prove external
+  extensions or native binaries never need it. No checked official 6.2
+  profile keeps Kit PhysX, RTX and interactive playback while avoiding
+  the kernel dependency. No packages were omitted.
+  Source and metadata receipts: `/tmp/opencode/nexuml-idna-upstream.Qtil4Yjc/`.
 - The prepared-image CI smoke now uses the image entrypoint and
   `/env/bin/python`, with checkout sources first on `PYTHONPATH` and
   pulls disabled. The previous checkout `.venv` command failed in a
