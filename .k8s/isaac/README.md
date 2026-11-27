@@ -76,6 +76,11 @@ Enter that IP in the [NVIDIA WebRTC Streaming Client](https://docs.isaacsim.omni
 Confirm video and keyboard/mouse input. A TCP connection alone does not prove
 UDP media works; `kubectl port-forward` does not forward UDP.
 
+Check the `isaac` container, not just the Pod phase: NetBird can keep the
+Pod `Running` after Isaac exits. With `restartPolicy: Never`, a crashed
+Isaac container will not restart in place. Before replacing the Pod,
+confirm the enrollment key is still usable; the peer address can change.
+
 Use Kubernetes attach for remote editing if needed. Save USD scenes under
 `/mnt/persistent/nexuml/isaac-workstation/assets`. The editor exits when the
 Pod ends; saved files on the PVC remain. Use a new enrollment key if recreating
