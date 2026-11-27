@@ -282,12 +282,12 @@ jobs:
           version: "latest"
       - name: Smoke test locked simulator-free CUDA learner
         run: |
-          output="$RUNNER_TEMP/isaaclab-output/learner"
+          mkdir -p "$RUNNER_TEMP/isaaclab-output"
+          output="$(mktemp -d "$RUNNER_TEMP/isaaclab-output/learner.XXXXXX")"
           scratch="$(mktemp -d "$RUNNER_TEMP/nexuml-learner.XXXXXX")"
           trap 'rm -rf -- "$scratch"' EXIT
           export UV_PROJECT_ENVIRONMENT="$scratch/.venv"
           export NEXUML_LOGS_ROOT="$output/logs"
-          mkdir -p "$output"
           uv sync --locked --python 3.12 --no-default-groups --no-install-workspace --no-build \
             --extra library --extra reinforcement --extra ray
           uv build --all-packages --wheel --out-dir "$output/wheels"

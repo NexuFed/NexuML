@@ -202,7 +202,8 @@ environments = ["sys_platform == 'linux' and platform_machine == 'x86_64' and py
 # The pinned Lab/Sim stack publishes prerelease native wheels on NVIDIA's index.
 index-strategy = "first-index"
 prerelease = "if-necessary"
-constraint-dependencies = ["lerobot==0.6.1"]
+# Ray collection requires the TorchRL 0.14.0 lifecycle in this workspace lock.
+constraint-dependencies = ["lerobot==0.6.1", "torchrl==0.14.0"]
 override-dependencies = [
     "packaging==25.0",
     "transformers==5.10.4",

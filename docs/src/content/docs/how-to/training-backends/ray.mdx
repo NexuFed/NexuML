@@ -510,8 +510,8 @@ from the workspace lock and exclude the default dependency groups. The
 default `native-sources` group includes MuJoCo tooling. The opt-in Isaac CI
 job installs the selected dependencies with `uv sync --locked --no-build`,
 adds the workspace wheels, and verifies a CUDA fit, export and resume
-without simulator packages. This installed learner smoke uses direct PPO;
-the remote collector's TorchRL version constraint below still applies.
+without simulator packages. This smoke uses direct PPO; the workspace lock
+also selects the TorchRL version required by Ray collection.
 
 Prepare the worker interpreter before starting the fit. Install pinned
 wheels once per job, not inside each actor. The qualified binary-only
@@ -525,9 +525,9 @@ The learner publishes one detached CPU weight snapshot through Ray's
 object store and waits for every collector to apply it. This needs no
 separate TorchRL rendezvous actor on the stock Ray head, and does not
 move the learner off CUDA or change the direct CUDA/DDP path.
-The native rollout shutdown/version adapter is pinned to **TorchRL 0.14.0**;
-the default lock can resolve 0.15 for direct learning, not this Ray
-collector lane. Do not mix Ray collectors with co-located DDP.
+The workspace lock pins **TorchRL 0.14.0** for the native rollout
+shutdown/version adapter. A separate direct PPO install may use a newer
+TorchRL version. Do not mix Ray collectors with co-located DDP.
 
 For independent native snapshot evaluation, set
 `training.evaluation.ray.num_gpus: 1`, choose evaluator resources separately,
