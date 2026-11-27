@@ -215,7 +215,7 @@ NEXUML_RUN_SIMULATOR_TESTS=1 NEXUML_TEST_RAY_NATIVE_SNAPSHOT=1 \
 | 2a.4 | Synthetic pressure, transfer and weight-parity fixture; public native RGB fit fixture | Co-located native image-input fit passes; split visual and large-model results unqualified |
 | 3.4–3.5 | Actor admission, CUDA learner, published weights and native checkpoint/recovery proven with local resources | Two distinct collector nodes plus learner GPU never allocated; remote grouped rollout remains unsupported |
 | 4.4 | Rank-zero snapshots, separate process/Ray GPU evaluation and bounded cancellation | Native snapshots pass; native fit/eval overlap on distinct devices unverified |
-| 4a.1, 4a.4, 4a.6 | Typed WebRTC preflight and selected-rank/collector Viser routing | Live two-node selected-rank Viser attach, disconnect and normal cleanup passed; cancellation and overhead still open. WebRTC startup failed; external media and forwarded X11 unqualified |
+| 4a.1, 4a.4, 4a.6 | Typed WebRTC preflight and selected-rank/collector Viser routing | Live two-node selected-rank Viser attach, disconnect and listener cleanup passed, including injected cancellation. WebRTC startup failed; external media and forwarded X11 unqualified |
 | 6.3 | Binary installed learner and prepared-image CI recipe retained; role interpreter selection implemented | Stock-worker native wheels and matching deployed role profiles unqualified |
 | 1b, 6.2a | Existing simulator-only SDK and recipe validation retained | Real ROS 2 proof needs authorized matching data |
 
@@ -408,6 +408,10 @@ bypassing TLS on the external endpoint. Do not use this tunnel for WebRTC.
   X11/toolbar options and the authoring experience. No external media
   test was possible. Receipts: `/tmp/opencode/nexuml-pod-stream-cached-H7C5hk/`
   and `/tmp/opencode/nexuml-minimal-stream-pod-LdDUuJ/`.
+  Separate one-variable checks of renderer idle settings and an Xvfb
+  display did not get past native startup either. No unqualified
+  rendering overrides were retained. Local Kit still ran 12 native
+  transitions and cleared its context after the streaming-only change.
 - The Kit-less Newton/Ray profile resolves with binary wheels while
   omitting the full Isaac Sim extra and its `idna-ssl` dependency. The
   reviewed Lab and ANTLR wheel hashes matched; the Lab install retained
@@ -436,6 +440,10 @@ bypassing TLS on the external endpoint. Do not use this tunnel for WebRTC.
   acceptance harness, so this does not measure spectator overhead.
   Logs, screenshot and replayable harness:
   `/tmp/opencode/nexuml-pod-ddp-viser-handshake-tlzKGz/`.
+  A second run injected coordinated Lightning cancellation while a
+  browser was attached; both ranks unwound and the selected listener
+  refused further connections before exit.
+  Receipt: `/tmp/opencode/nexuml-pod-viser-cancel-EXRtDM/`.
 
 To rerun the two-node NCCL probe, use one terminal for the authenticated
 Kubernetes tunnel and another for the submission:
