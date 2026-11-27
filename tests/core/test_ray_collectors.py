@@ -622,7 +622,7 @@ def test_ray_publication_commits_only_after_all_acknowledge(monkeypatch):
     monkeypatch.setattr(ray_collector.ray, "get", get)
 
     try:
-        with pytest.raises(GetTimeoutError, match="did not reply"):
+        with pytest.raises(TimeoutError, match="acknowledge policy version 1 within 7 s"):
             collector.update_policy_weights_(weights)
     finally:
         collector._remote_collectors.clear()

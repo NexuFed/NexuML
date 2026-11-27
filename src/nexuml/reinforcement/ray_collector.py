@@ -4,6 +4,7 @@ from importlib.metadata import version
 
 import ray
 import torch
+from ray.exceptions import GetTimeoutError
 from tensordict import TensorDictBase
 from torchrl.collectors.distributed.ray import RayCollector
 
@@ -107,7 +108,13 @@ class _GracefulRayCollector(RayCollector):
         acknowledgements = [
             worker.update_policy_weights_.remote(weights) for worker in self.remote_collectors
         ]
-        ray.get(acknowledgements, timeout=self._admission_timeout_s)
+        try:
+            ray.get(acknowledgements, timeout=self._admission_timeout_s)
+        except GetTimeoutError as error:
+            raise TimeoutError(
+                f"Ray rollout workers did not all acknowledge policy version "
+                f"{self._published_version + 1} within {self._admission_timeout_s:g} s"
+            ) from error
         self._weight_sync_initialized = True
         self._published_version += 1
 
