@@ -615,6 +615,13 @@ an X11 proxy socket qualifies the client path. No existing workstation
 was used. Checks and receipts:
 `/tmp/opencode/nexuml-4a4-private-readiness-jKTxfc/`.
 
+After the workstation was recreated, Kit reported the full streaming
+app loaded and TCP signaling listening. The operator then supplied a
+screenshot of the decoded Isaac editor and its rendered viewport in the
+NVIDIA WebRTC Streaming Client over NetBird. This confirms the recovered
+editor video path, not live policy motion or playback socket cleanup.
+Server receipt: `/tmp/opencode/nexuml-workstation-recovery-WX8ETo/`.
+
 The private client test inputs are staged at
 `/tmp/opencode/nexuml-4a4-private-capsule-MUSHMk/`. Both wheels match the
 passing isolated-server receipt byte for byte. All 15 checksums pass;
