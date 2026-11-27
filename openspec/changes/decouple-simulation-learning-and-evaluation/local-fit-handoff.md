@@ -203,12 +203,19 @@ these interfaces.
 | Dataset schema 1 | Existing supervised SDK, unchanged; installed-wheel regressions passed. |
 | SO-101, headless PhysX | Public schema 2 API, two independent fits with different approved bases and a selected trainable subset. |
 | Isaac Cartpole and CPU MuJoCo InvertedPendulum | Two rounds in the test fixture with validated declared mappings and distinct local provenance. No blanket opt-in for stock Gymnasium tasks. |
+| Simulated two-joint arm | See the [SIL and mixed-objective evidence](distributed-progress.md#simulated-ros-2-bridge-and-common-objective-learning). The bridge is an offline data source, never a PPO collector. |
 | Grouped actors, independent/distributed collectors, native checkpoint import | Not qualified. |
 | Physical ROS 2 | No interactive support; real recorded experience and a matching embodiment contract are prerequisites for the offline proof. |
 
 NexuFL owns authorization of the received manifest and base digest, local
 recipe selection, federation, aggregation weights, and candidate promotion.
 Only policy tensors and approved numeric receipts cross the local boundary.
+For the simulated mixed-objective fixture, the PPO SDK owns the complete
+schema 2 actor. The supervised SDK owns only schema 1 pipeline tensors.
+The test compares their shared names, shapes, dtypes and trainable roles
+and puts the supervised tensors back in the complete actor without
+changing its Gaussian adapter buffers. This is a checked reference
+mapping, not a production schema-conversion or promotion API.
 For a real ROS 2 follow-up, require operator-approved episodes with the same
 embodiment, measured joint zeros, units/order, action limits, control period,
 reset and timestamp semantics as a qualified simulation mapping. Keep

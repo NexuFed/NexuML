@@ -16,6 +16,10 @@ _NAMESPACE = "nexuml_sil"
 _JOINTS = ("joint1", "joint2")
 _PERIOD = 0.2
 _TIMEOUT = 0.35
+_TARGET = (0.5, -0.5)
+_HORIZON = 20
+_TOLERANCE = 0.05
+_JOINT_FIELDS = ("joint_position", "joint_velocity", "target_position")
 
 
 def _trajectory_target(names, points):
@@ -31,26 +35,27 @@ def _trajectory_target(names, points):
     return target
 
 
-def _arm(stage):
+def _arm(stage, path=_ARM):
     from pxr import Gf, UsdGeom, UsdPhysics
 
     UsdGeom.SetStageUpAxis(stage, UsdGeom.Tokens.z)
     UsdGeom.SetStageMetersPerUnit(stage, 1)
-    UsdPhysics.Scene.Define(stage, "/World/Physics")
-    root = UsdGeom.Xform.Define(stage, _ARM).GetPrim()
+    if path == _ARM:
+        UsdPhysics.Scene.Define(stage, "/World/Physics")
+    root = UsdGeom.Xform.Define(stage, path).GetPrim()
     UsdPhysics.ArticulationRootAPI.Apply(root)
     links = []
     for index in range(3):
-        link = UsdGeom.Xform.Define(stage, f"{_ARM}/link{index}")
+        link = UsdGeom.Xform.Define(stage, f"{path}/link{index}")
         link.AddTranslateOp().Set(Gf.Vec3d(index * 0.25, 0, 0.5))
         UsdPhysics.RigidBodyAPI.Apply(link.GetPrim())
         mass = UsdPhysics.MassAPI.Apply(link.GetPrim())
         mass.CreateMassAttr(1.0)
         mass.CreateDiagonalInertiaAttr(Gf.Vec3f(0.1, 0.1, 0.1))
         links.append(link.GetPath())
-    UsdPhysics.FixedJoint.Define(stage, f"{_ARM}/base_fixed").CreateBody1Rel().SetTargets(links[:1])
+    UsdPhysics.FixedJoint.Define(stage, f"{path}/base_fixed").CreateBody1Rel().SetTargets(links[:1])
     for index, name in enumerate(_JOINTS):
-        joint = UsdPhysics.RevoluteJoint.Define(stage, f"{_ARM}/{name}")
+        joint = UsdPhysics.RevoluteJoint.Define(stage, f"{path}/{name}")
         joint.CreateBody0Rel().SetTargets([links[index]])
         joint.CreateBody1Rel().SetTargets([links[index + 1]])
         joint.CreateLocalPos0Attr(Gf.Vec3f(0.25, 0, 0))
@@ -62,6 +67,7 @@ def _arm(stage):
         drive.CreateStiffnessAttr(2000.0)
         drive.CreateDampingAttr(200.0)
         drive.CreateMaxForceAttr(20.0)
+    return root
 
 
 def _bridge_graph():
@@ -233,7 +239,9 @@ def _record(output, episodes):
         reset_service="reset",
         control_period_s=_PERIOD,
         timeout_s=20,
-        max_episode_steps=20,
+        max_episode_steps=_HORIZON,
+        target_positions=_TARGET,
+        success_tolerance=_TOLERANCE,
     )
     rows = []
     runtime = definition.build(EnvironmentBuildContext(purpose="eval", device="cpu", num_envs=1))

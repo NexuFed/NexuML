@@ -37,7 +37,7 @@ adds a transport and data path, not another physics engine. Physical
 robots and real-world recordings are outside this change.
 
 - [x] 1b.1 Use compatible native Isaac, native MuJoCo and §6.2a bridge-recorded episodes to fit the same starting actor with behavior cloning. Combine the updates in the existing test-only reference, reload/evaluate and fit a second bounded round. Compare equal-client and equal-lane weights against native-simulator-only and local-only baselines; report held-out results for each lane and the worst lane. Do not wait for §§2–5 or Gazebo/CARLA.
-- [ ] 1b.2 After 1a.2 and 1b.1, compare bounded local PPO on native Isaac and MuJoCo with offline imitation on §6.2a bridge recordings, starting from the same actor. Verify shared tensor roles; record objectives, budgets, counts and update conflicts. Compare held-out results against common-objective, native-simulator-only and local-only baselines with predeclared criteria and explicit weights. Report negative or inconclusive results and hand off to NexuFL. No automatic promotion or hardware claim.
+- [x] 1b.2 After 1a.2 and 1b.1, compare bounded local PPO on native Isaac and MuJoCo with offline imitation on §6.2a bridge recordings, starting from the same actor. Verify shared tensor roles; record objectives, budgets, counts and update conflicts. Compare held-out results against common-objective, native-simulator-only and local-only baselines with predeclared criteria and explicit weights. Report negative or inconclusive results and hand off to NexuFL. No automatic promotion or hardware claim.
 
 ## 2. Independent device placement (optional split; direct CUDA is primary)
 

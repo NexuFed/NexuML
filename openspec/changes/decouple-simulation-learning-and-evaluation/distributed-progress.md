@@ -379,9 +379,42 @@ NEXUML_RUN_SIMULATOR_TESTS=1 NEXUML_TEST_RAY_NATIVE_SNAPSHOT=1 \
 | 4.4 | Rank-zero snapshots, separate process/Ray GPU evaluation and bounded cancellation | Native Kit-less PPO and separate-node GPU snapshot evaluation overlapped; final snapshot drained |
 | 4a.1, 4a.4, 4a.6 | Typed viewer selection, restricted native Kit toolbar, endpoint admission, native headless RGB and selected-rank/collector Viser routing tested | Two-node Viser attach, disconnect and cancel passed. NVIDIA client decoded and displayed moving Cartpole policy playback via private NetBird. Socket release passed in separate runs. Forwarded Windows X11 remains unqualified. |
 | 6.3 | One workspace lock pins official Isaac packages; existing opt-in GPU CI covers a simulator-free learner and the prepared Kit image | Fresh pod passed Newton fit/resume and headless PhysX playback in one environment. Upstream metadata conflicts remain; this does not qualify graphics or new stock-Ray placements. |
-| 1b, 6.2a | Existing simulator-only SDK and ROS 2 adapter retained; bounded live Isaac Sim bridge fixture | Live motion, watchdog hold, cleanup and episode capture passed. Three-lane imitation comparison passed; mixed PPO and imitation remains open. |
+| 1b, 6.2a | Existing simulator-only SDK and ROS 2 adapter retained; bounded live Isaac Sim bridge fixture | Live motion, watchdog hold, cleanup and capture passed. Both learning comparisons ran; the mixed candidate did not beat the comparable all-imitation baseline. |
 
 ### Simulated ROS 2 bridge and common-objective learning
+
+**§1b.2 protocol (before mixed fits):** use one seeded bounded Gaussian
+actor, with the same named observations and absolute joint commands in
+radians at 5 Hz. Use two independent native Isaac PPO clients and one
+CPU MuJoCo PPO client (512 fresh frames and eight minibatch updates
+each, with separate actor and critic optimizer steps), plus offline behavior
+cloning by bounded Gaussian negative log likelihood on bridge data (eight
+optimizer steps, batch size four). Refit all-BC baselines from the same actor with
+episode-disjoint splits. Compare equal-client and equal-lane weights,
+native-only equal-lane, and every local-only update; do not compare
+PPO frame counts to unique or consumed BC windows.
+
+The functional gate is native signed-action/reset proof, exact base and
+shared-role parity, validated nonzero finite updates, frozen state
+unchanged, reload and held-out results. Compare update norms and pairwise
+cosines (negative means disagreement). Primary outcome: mean per-step
+joint tracking error on paired held-out native resets; report goal
+attainment separately (error at most 0.05 rad). Report demonstrated-action
+MSE separately on the three recorded test splits; it is not bridge
+closed-loop performance. A mixed candidate is favorable in this smoke
+test only if worst native tracking error improves by at least 5% over
+both same-weight all-BC and native-only PPO and neither native lane
+regresses by more than 5%. Report the local-only comparisons regardless.
+Single-base, fixed-goal results do not authorize promotion.
+
+The fixture uses the existing Isaac direct task and Gymnasium runtime
+interfaces, the normal TorchRL/Lightning PPO and supervised SDK paths,
+and fresh native processes for every independent fit/evaluation. The
+offline job only trains pipeline parameters: the adapter's immutable
+bounds remain owned by the complete actor. The run rejects underspecified
+or incomplete bridge recordings rather than repairing them. The
+[reproduction commands](../../../scripts/isaaclab/README.md#ros-2-software-in-the-loop)
+use the same recorded bridge cohort for comparison.
 
 **§6.2a passed** on `nex212-sil-accept-d0nwhd` (RTX 4090, driver
 580.126.20, Isaac Sim 6.2, bundled Jazzy). The existing NexuML adapter
@@ -416,6 +449,65 @@ Including bridge data did not beat the native-only baseline in this
 small test. All local-only and both-round results are in
 `/tmp/opencode/nexuml-sil-common-A3SqCd/run/report.json`; the driver and
 native capture scripts are under `/tmp/opencode/nexuml-isaac-sil-PvOcGn/`.
+
+**§1b.2 fit receipts:** RTX 4080 SUPER/driver 610.43.03, Isaac Lab 3.0.0
+with native PhysX, MuJoCo 3.12.0 on CPU, Torch 2.11.0+cu130 and TorchRL
+0.14.0. Both native tasks passed signed commands and recorded four
+successful reaches. All PPO clients started from actor SHA-256
+`9da4d7e66908a3dab1e59caed5926a7e043fd2729944f4949638422ab2c9257c`.
+Each completed 512 frames, 8 minibatches and 16 optimizer steps; completed
+episodes were 24/25/26 (Isaac seed 31, Isaac seed 32, MuJoCo seed 31).
+The BC fits used 3/4/7/12 unique training windows on those three client
+partitions and bridge seed 31, respectively, consuming 24/32/28/32
+windows over eight optimizer steps each. All updates changed only four
+shared parameter tensors; the two action-bound buffers were unchanged.
+
+Weights in that client order: equal client `(1/4, 1/4, 1/4, 1/4)`;
+equal lane `(1/6, 1/6, 1/3, 1/3)`; native-only `(1/4, 1/4, 1/2, 0)`.
+PPO delta L2 norms were 0.01476–0.01623 versus 0.78770 for bridge BC.
+Mixed pairwise cosines ranged from −0.006 (Isaac seed 32 vs bridge BC) to
+0.551; all-BC cosines were 0.858–0.989. The update magnitudes mean that
+equal weights are not equal influence. This is not gradient conflict
+measurement or a recommendation to normalize production updates.
+
+Data, actors, manifests and per-fit receipts are in
+`/tmp/opencode/nexuml-sil-mixed-NeLcZQ/`. `comparison.json` SHA-256:
+`a1e532ec0aa7439f5889bd54a7d7e2463d187d268557895c4ae1ffd0115610cd`.
+The recorder accepted the actual bridge artifact and rejected negative
+controls for reversed joint order, incomplete episodes and non-simulation
+data.
+Focused regressions: **238 passed, 16 skipped** for local fit, PPO, ROS,
+Isaac preflight and evaluation; **81 passed, one deselected** for visual
+placement admission, Isaac definitions and DDP tests. These software runs
+do not substitute for the two same-host GPU acceptance gates.
+
+**§1b.2 comparison completed; no mixed candidate preferred.** The existing
+evaluator reloaded 15 candidates and completed 240 native episodes: eight
+starts (seeds 211–218, up to 20 steps) for every candidate on each engine.
+Recorded action errors below use only episode 3 from each lane and are
+not closed-loop returns or a measurement of live bridge policy quality.
+
+| Candidate | Isaac tracking error, rad | MuJoCo tracking error, rad | Worst native, rad | Recorded action MSE (Isaac / MuJoCo / ROS 2), rad² |
+| --- | ---: | ---: | ---: | --- |
+| Untrained base | 0.4365 | 0.4359 | 0.4365 | 0.03828 / 0.03823 / 0.05004 |
+| All BC, equal-client | 0.1743 | 0.1740 | 0.1743 | 0.02601 / 0.02590 / 0.01380 |
+| All BC, equal-lane | 0.1648 | 0.1645 | 0.1648 | 0.02776 / 0.02764 / 0.01482 |
+| Native-only BC | 0.2002 | 0.2000 | 0.2002 | 0.02227 / 0.02220 / 0.01255 |
+| Bridge BC alone (best local native tracking) | 0.1047 | 0.1037 | 0.1047 | 0.04429 / 0.04405 / 0.02567 |
+| Native-only PPO | 0.4251 | 0.4245 | 0.4251 | 0.03683 / 0.03677 / 0.04782 |
+| Mixed, equal-client | 0.3466 | 0.3460 | 0.3466 | 0.02787 / 0.02779 / 0.02719 |
+| Mixed, equal-lane | 0.3197 | 0.3191 | 0.3197 | 0.02649 / 0.02640 / 0.02266 |
+
+Equal-lane mixing reduced worst native error 24.8% vs native-only PPO
+but was 94.0% worse than same-weight all-BC. Both mixed candidates
+missed the predeclared criterion. Bridge BC alone reached the goal twice
+in Isaac and three times in MuJoCo; all other distinct candidates reached
+it zero times. The offline metric ranked them differently. Do not infer
+general objective compatibility, a converged PPO policy, or physical
+transfer from this single-base smoke test. No candidate was promoted.
+The full aggregate, including every local baseline, is `held-out-summary.json`
+in the same receipt directory, SHA-256
+`a3674847fa5229def3d03562657b285d04b01003cf2fe18bb78fcc2cd11db978`.
 
 **Historical SIL preflight (scope revised in `119483e6`):** in the cached prepared Isaac
 Sim 6.2 image, a GPU container with no external network started the Jazzy

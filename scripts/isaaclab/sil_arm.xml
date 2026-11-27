@@ -1,0 +1,22 @@
+<mujoco model="sil_arm">
+  <compiler angle="radian"/>
+  <option timestep="0.008333333333333333" gravity="0 0 0"/>
+  <default>
+    <joint type="hinge" axis="0 0 1" range="-1 1"/>
+    <position kp="34.906585" kv="3.4906585" ctrlrange="-1 1" forcerange="-20 20"/>
+  </default>
+  <worldbody>
+    <body pos="0.25 0 0.5">
+      <inertial pos="0 0 0" mass="1" diaginertia="0.1 0.1 0.1"/>
+      <joint name="joint1"/>
+      <body pos="0.25 0 0">
+        <inertial pos="0 0 0" mass="1" diaginertia="0.1 0.1 0.1"/>
+        <joint name="joint2"/>
+      </body>
+    </body>
+  </worldbody>
+  <actuator>
+    <position name="joint1" joint="joint1"/>
+    <position name="joint2" joint="joint2"/>
+  </actuator>
+</mujoco>

@@ -21,8 +21,8 @@ and absolute policy outputs, and a monitored physical **4 GiB** free-disk stop.
 ## Current worktree profile: Lab 3 / CUDA 13
 
 The root `pyproject.toml` and `uv.lock` select Python 3.12, CUDA-13 PyTorch,
-Sim 6.2 and Lab source `70ab24fec3eabf51222817db0cdb5a4e7133bd7e` through
-the upstream aggregate-wheel builder. Published `nexuml[robots]` forwards to
+Sim 6.2 and NVIDIA's published Isaac Lab 3.0.0 packages. Published
+`nexuml[robots]` forwards to
 `nexuml-library[robots]`; `all` does not enable it. Consumer tool configuration
 and temporary dependency exceptions are not propagated to downstream users.
 See the [RL guide](../../docs/src/content/docs/how-to/reinforcement-learning.mdx#optional-robotics-dependencies)
@@ -82,6 +82,35 @@ It captures four bounded episodes from native Isaac ROS bridge nodes and
 checks the simulated timeout hold. `episodes.json` is written only after
 those checks; `partial-transitions.json` is diagnostic, not a complete data
 source. The hold is part of the simulated fixture, not a hardware watchdog.
+
+For the simulation-only mixed-objective comparison, copy the completed
+`episodes.json` from that run to a new output directory as `ros2.json`.
+With the locked Isaac and MuJoCo dependencies installed, run from the repo
+root on one CUDA GPU:
+
+```bash
+out=$(mktemp -d /tmp/nexuml-sil-fit-XXXXXX)
+cp /path/to/completed/episodes.json "$out/ros2.json"
+runner=scripts/isaaclab/sil_arm_fit.py
+.venv/bin/python "$runner" "$out" prepare
+for lane in isaac mujoco; do
+  .venv/bin/python "$runner" "$out" record --lane "$lane"
+  .venv/bin/python "$runner" "$out" fit --lane "$lane"
+done
+.venv/bin/python "$runner" "$out" fit --lane isaac --client-index 1
+.venv/bin/python "$runner" "$out" combine
+for actor in "$out"/candidates/*.pt; do
+  candidate=${actor##*/}
+  for lane in isaac mujoco; do
+    .venv/bin/python "$runner" "$out" evaluate --lane "$lane" --candidate "${candidate%.pt}"
+  done
+done
+```
+
+Each native fit or evaluation gets a fresh process. `comparison.json`
+contains the weights, update conflicts and held-out action error on all
+three recorded lanes; `*-evaluation-*.json` contains native closed-loop
+results on paired seeds. The ROS recording is never fed to PPO.
 
 The five-joint SO-101 reaching profile selects the Sim 6.2 calibrated SO-101
 asset, five absolute targets with scale 0.5 rad and a separately fixed gripper
