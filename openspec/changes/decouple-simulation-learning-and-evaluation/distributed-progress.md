@@ -400,6 +400,41 @@ The reduced clock scene also passed on a separate RTX 4090 cluster pod
 native event loop advanced the same 4 ticks with ROS enabled, unlike
 the synchronous Python launcher. These are playback receipts only:
 neither proves command/feedback, timeout/hold, or recorded episodes.
+The first full cluster attempt also initialized the native controller
+manager and received its ROS service endpoint. The client's initial
+`load_controller` request expired while Kit's main thread was preloading
+MDL materials; the manager logged the request after the client deadline.
+That is not a controller rejection. The native event loop and a 45-second
+wait still timed out during `load_controller` in the second run. The next
+fixture uses the bridge's native clock, joint-state publisher and generic
+`JointTrajectory` subscriber directly, with a bounded simulated drive and
+hold-on-timeout. It does not claim to qualify the separate `ros2_control`
+controller-manager integration.
+With the default bridge context, the live graph initialized the arm
+and joint-state publisher but the external ROS node did not establish
+clock and command readiness within 10 seconds. An explicit graph context
+bound to the isolated ROS domain and endpoint diagnostics distinguish
+discovery from a missing/paused simulation clock: the external client
+discovered `/clock`, joint states and one command subscriber, but its
+simulation clock remained zero. This is no longer an endpoint-discovery
+failure. The next probe compares raw wire samples with the Kit clock
+source. Kit logged a nonzero, advancing source (`0.25` to `3.2` s);
+the external node counted one `/clock` publisher but received no raw
+`Clock` message during its bounded wait. Discovery alone is not data
+flow. A per-job UDP-only DDS diagnostic reproduced the zero clock with
+matched endpoints. Only the first Kit clock checkpoint printed; that
+does not establish that Kit kept advancing during the wait. The next
+run excludes unused material search paths from the headless fixture,
+isolating the MDL preload observed in the full-job traceback. No
+cluster network or editor configuration changed. Excluding material
+search paths alone still left the late-started client without a clock.
+Starting a lightweight ROS listener **before** Kit on RTX 4090 passed:
+39 `/clock` samples and 39 joint-state samples with matching timestamps
+from 0.3667 to 1.0 s, plus four independent ROS heartbeats. Both owned
+processes exited. The receipt is in
+`/tmp/opencode/nexuml-isaac-sil-graph-cG4baS/cluster.log`. This proves
+live feedback, not action acceptance or watchdog hold. The full fixture
+now starts its recorder before Kit as well.
 
 The independent CPU MuJoCo check exercised signed joint position targets
 at the same declared 0.2 s control period. Two 8-step SDK behavior-cloning
