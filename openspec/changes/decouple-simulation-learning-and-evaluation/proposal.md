@@ -4,16 +4,17 @@
 
 The robotics branch already has a portable interaction contract, native Isaac Lab tasks, TorchRL collection, Lightning optimization and an evaluation-only Arena integration. At baseline c745927b505b1ca2402186217949c7d454e8ee45, Isaac requires a single direct collector on the learner's CUDA device; Ray rollout collection starts a local CPU-only Ray runtime; Arena-composed tasks cannot enter normal training. Remote job submission is not distributed simulation. These qualification restrictions prevent researchers from selecting the best simulator and independently scaling simulation, training and evaluation.
 
-The strategic goal is not to outperform or replace Isaac Lab as a simulator/trainer. NexuML is the common local learning backend for NexuFL: compatible clients using Isaac Lab/Arena, MuJoCo and physical ROS 2 robots must be able to start from the same versioned global policy, learn locally and return compatible numeric updates for one global model without transferring raw experience. Native training remains a valid entry point.
+The strategic goal is not to outperform or replace Isaac Lab. As a common local learning backend for NexuFL, NexuML lets compatible clients start from the same versioned policy, learn locally and return numeric updates without transferring raw experience. Native training remains a valid entry point.
 
-This change qualifies the simulator-only handoff. The real-robot learning
-experiments below are retained as follow-up requirements, not release gates;
-the existing ROS 2 adapter and safety checks are unchanged.
+This change qualifies the simulator-only handoff, including a ROS 2 client
+connected to a simulated robot through Isaac Sim's ROS 2 Bridge. Physical
+robots and real-world recordings are not required. The existing ROS 2
+adapter and hardware safety restrictions are unchanged.
 
 ## What Changes
 
 - Run an early, matched native Isaac Lab versus NexuML decision gate on a reward-bearing SO-101 task. Compare correctness, learning, wall-clock/GPU/memory performance, code and dependency burden, export and suitability for repeated external-weight local fitting. Reuse or remove redundant abstractions where upstream preserves semantics; do not treat all later stages as unconditional backlog.
-- Extend the existing bounded local-fit and manifest contract toward interactive RL and heterogeneous local experience, not a new federation API. Separate shared actor/parameter compatibility from client-specific task, recipe and runtime provenance; qualify numeric update production from a common base using Isaac, MuJoCo and ROS 2 experience. Keep training-only critics, optimizer state and raw data local by default; NexuFL owns rounds, aggregation, transport and promotion. Prioritize a common-objective three-domain learning proof using authorized demonstrations, followed by an explicitly measured mixed-objective experiment (local simulator PPO and real-robot imitation/offline learning). Neither experiment depends on full distributed GPU qualification.
+- Extend the existing bounded local-fit and manifest contract toward interactive RL and heterogeneous local experience, not a new federation API. Qualify updates from a common actor using native Isaac, native MuJoCo and simulated demonstrations recorded through the live Isaac Sim ROS 2 Bridge. First use a common imitation objective; then compare native simulator PPO with offline imitation in the ROS 2 client. Keep critics, optimizer state and raw data local by default; NexuFL owns rounds, aggregation, transport and promotion. Neither experiment depends on distributed GPU qualification.
 - Qualify one narrow native-first policy import/initialization path from a maintained Isaac Lab learner, with explicit actor architecture, preprocessing, controls and parameter mapping. Do not promise arbitrary checkpoint conversion or import of optimizer state.
 
 - Keep ScenarioSpec, compiler, CompiledPolicy, EnvironmentDefinition/Runtime, TensorDict, TorchRL and Lightning. Native scene, task, sensor, physics and control configuration remains provider-owned.
@@ -38,7 +39,7 @@ the existing ROS 2 adapter and safety checks are unchanged.
 - `snapshot-policy-evaluation`: independent evaluation placement, immutable versioned snapshots, native results and bounded concurrency.
 - `cross-simulator-qualification`: second native provider and staged system-level backends, runtime/image compatibility and measured evidence.
 - `native-learning-comparison`: measured native Isaac Lab baseline, decision gate and narrow native-first interoperability.
-- `heterogeneous-local-learning-handoff`: common global-policy identity, bounded compatible local fitting and numeric update receipts across simulation and authorized real-world experience.
+- `heterogeneous-local-learning-handoff`: common global-policy identity, bounded compatible local fitting and numeric update receipts across native simulation and a ROS 2 bridge-connected simulated client.
 - `policy-playback`: shared inference-only continuous/bounded native vectorized playback, interactive simulation controls, pacing, recording and independent local/remote execution.
 - `native-viewer-selection`: typed viewer modes, provider-specific native launch and capability validation, private connectivity, purpose-specific control isolation and actual display/stream acceptance.
 

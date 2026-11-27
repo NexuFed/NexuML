@@ -31,23 +31,20 @@ The SDK SHALL return a validated full numeric update or explicitly supported ver
 
 ### Requirement: Cross-provider handoff is demonstrated before production federation
 
-NexuML SHALL demonstrate compatible Isaac and MuJoCo fits from one actor, a deterministic test-only combination, candidate reload and evaluation, and a second bounded round. The three-domain proof SHALL additionally require approved real ROS 2 experience with a validated matching physical contract and SHALL run independently of distributed GPU qualification. Mixed RL/imitation objectives or shared-subset configurations SHALL require separate evidence.
+NexuML SHALL demonstrate compatible fits from one actor across native Isaac, native MuJoCo and an offline ROS 2 lane using episodes recorded through the live Isaac Sim ROS 2 Bridge with a validated matching observation/control contract. The proof SHALL run independently of distributed GPU qualification and need no physical robot. Mixed RL/imitation objectives or shared-subset configurations SHALL require separate evidence.
 
 #### Scenario: Compatible local results are combined in a reference fixture
 - **WHEN** valid numeric updates from the same base are returned by qualified providers
 - **THEN** a deterministic test fixture combines only declared shared parameters, reloads the candidate, evaluates it and starts a subsequent fit without claiming a deployed NexuFL round or guaranteed improvement.
 
-#### Scenario: Genuine compatible episodes are available from all three domains
-- **WHEN** Isaac, MuJoCo and approved physical ROS 2 episodes are used for the initial proof
-- **THEN** all three fits use the same behavior-cloning objective. Results compare equal-client and equal-domain weights and report per-domain learning and worst-domain regressions against local-only and simulator-only baselines.
+#### Scenario: Compatible episodes are available from all three simulated lanes
+- **WHEN** native Isaac, native MuJoCo and bridge-recorded Isaac Sim episodes are used for the common-objective proof
+- **THEN** all three fits use the same behavior-cloning objective. Results compare equal-client and equal-lane weights and report per-lane and worst-lane held-out results against local-only and native-simulator-only baselines.
+- **AND** The candidate is reloaded and evaluated, and a second bounded round starts from it. The bridge lane is labeled simulated, not a third physics engine.
 
-#### Scenario: A candidate is considered for physical online learning
-- **WHEN** the reference fixture produces a candidate
-- **THEN** aggregation does not deploy it. Physical online learning requires authorized safe control and supervised, bounded operation.
-
-#### Scenario: Real ROS 2 data or hardware is unavailable
-- **WHEN** only simulated or fake-transport evidence exists
-- **THEN** the simulator-only handoff can be qualified independently and the three-domain real-experience gate remains blocked or unverified.
+#### Scenario: Only mocked ROS 2 transport is available
+- **WHEN** the live bridge has not produced compatible episodes
+- **THEN** existing native Isaac and MuJoCo evidence remains valid, but the ROS 2 lane is unverified. Neither lane authorizes physical actuation or deployment.
 
 ### Requirement: NexuFL owns federation rather than the local learning SDK
 
@@ -57,16 +54,16 @@ NexuML SHALL expose a documented, pinned numeric model/update contract and local
 - **WHEN** it supplies the approved base state, manifest and locally installed recipe
 - **THEN** NexuML returns a bounded validated update receipt through its ordinary local-learning interface, independently of the federation transport.
 
-### Requirement: Mixed local objectives are qualified explicitly and domain weighting is observable
+### Requirement: Mixed local objectives are qualified explicitly and lane weighting is observable
 
-After the common-objective proof, NexuML SHALL compare bounded simulation RL and authorized real-world offline updates from the exact same actor base. The reference experiment SHALL validate shared parameter roles and physical semantics and keep training state private. Numeric compatibility SHALL NOT imply general mixed-objective compatibility or automatic promotion. Production aggregation remains NexuFL-owned.
+After the common-objective proof, NexuML SHALL compare bounded native simulation RL and offline updates from bridge-recorded simulated episodes, starting from the exact same actor base. The reference experiment SHALL validate shared parameter roles and physical semantics and keep training state private. Numeric compatibility SHALL NOT imply general mixed-objective compatibility or automatic promotion. Production aggregation remains NexuFL-owned.
 
-#### Scenario: Simulators learn with PPO while a robot learns from demonstrations
+#### Scenario: Native simulators use PPO while the ROS 2 lane learns offline
 - **GIVEN** Qualified local RL and offline learning modes with the same approved shared actor manifest and starting state
 - **WHEN** Their bounded numeric updates are combined in the reference experiment
-- **THEN** held-out results compare equal-client and equal-domain weighting against common-objective, local-only and simulation-only baselines using predeclared criteria.
+- **THEN** held-out results compare equal-client and equal-lane weighting against common-objective, local-only and native-simulator-only baselines using predeclared criteria.
 - **AND** the report identifies each objective, budget, count and weighting choice, update conflicts and incompatible shared roles. Negative or inconclusive outcomes remain visible.
 
-#### Scenario: Real-world experience is scarce relative to simulation
-- **WHEN** A large simulated frame count and a smaller approved real-world episode set contribute updates
-- **THEN** The experiment reports distinct count semantics and an equal-domain comparison rather than implicitly equating raw transitions with eligible demonstrations.
+#### Scenario: Offline demonstration counts differ from PPO frame counts
+- **WHEN** fresh simulator rollouts and bridge-recorded demonstrations contribute updates
+- **THEN** the experiment reports distinct count semantics and an equal-lane comparison rather than implicitly equating raw transitions with eligible demonstrations.

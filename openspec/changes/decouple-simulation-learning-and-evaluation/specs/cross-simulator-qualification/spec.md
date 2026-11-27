@@ -18,6 +18,12 @@ Gazebo and CARLA integrations SHALL use native stepping, clock/tick ownership, s
 - **WHEN** the corresponding supported workflow is executed
 - **THEN** The declared runtime validates prerequisites, owns only its authorized resources, and preserves native timing and cleanup; unsupported modes fail explicitly.
 
+#### Scenario: The ROS 2 adapter controls a simulated arm through Isaac Sim
+- **GIVEN** Isaac Sim's native ROS 2 Bridge publishes simulation time and joint feedback in an isolated ROS 2 domain and namespace without physical hardware endpoints
+- **WHEN** the existing NexuML ROS 2 adapter reads fresh feedback and sends a bounded command over live ROS 2 transport, then the fixture interrupts the command stream
+- **THEN** the fixture observes the expected simulated joint response, verifies the watchdog and safe-stop behavior, and closes the owned resources.
+- **AND** Episodes captured through the bridge identify their simulation source and validated observation/control contract. Mocked transport alone does not qualify the bridge; the result does not qualify physical hardware.
+
 ### Requirement: Optional runtime profiles and evidence are reproducible
 
 Qualified provider and learner profiles SHALL use the existing NexuML optional-dependency and image/CI mechanisms. Simulator-free inference and remote learner installations SHALL remain possible. Runtime versions, driver/ABI, assets, assigned resources, actual native GPU execution, learning, throughput, network bytes and cleanup SHALL be recorded for claimed topologies; missing hardware SHALL be reported as blocked/unverified rather than pass.
