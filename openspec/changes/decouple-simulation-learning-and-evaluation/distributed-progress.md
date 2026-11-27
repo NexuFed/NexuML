@@ -302,7 +302,7 @@ NEXUML_RUN_SIMULATOR_TESTS=1 NEXUML_TEST_RAY_NATIVE_SNAPSHOT=1 \
 | 3.4–3.5 | Actor admission, CUDA learner, published weights and native checkpoint/recovery proven with local resources | Three-node native fit and resume exercised; strict simulator-free learner check still separate. Grouped Ray rollout unsupported |
 | 4.4 | Rank-zero snapshots, separate process/Ray GPU evaluation and bounded cancellation | Native Kit-less PPO and separate-node GPU snapshot evaluation overlapped; final snapshot drained |
 | 4a.1, 4a.4, 4a.6 | Typed viewer selection, CLI mapping, native headless RGB and selected-rank/collector Viser routing tested | Live two-node Viser attach, disconnect and listener cleanup passed, including injected cancellation. Native WebRTC startup and client media remain open under 4a.4 |
-| 6.3 | Binary installed learner and prepared-image CI recipe retained; role interpreter selection implemented | Stock-worker native wheels and matching deployed role profiles unqualified |
+| 6.3 | Binary installed learner and prepared-image CI recipe retained; role interpreter selection implemented | Binary Kit-less profile passed on stock workers; full-Kit stock-worker dependency closure and remaining deployment profiles unqualified |
 | 1b, 6.2a | Existing simulator-only SDK and recipe validation retained | Real ROS 2 proof needs authorized matching data |
 
 **Same-host peer NCCL and co-located native DDP:** requires two compatible
@@ -347,7 +347,7 @@ for inference in cuda:0 cuda:1; do
 done
 ```
 
-**Native fit/evaluation overlap (4.4):** on the same two-GPU worker,
+**Optional same-host native fit/evaluation overlap (4.4):** on a two-GPU worker,
 run a single native fit on `cuda:0` with snapshots in a child on `cuda:1`.
 Capture concurrent process/device activity, snapshot frame/digest receipts,
 and cleanup on completion and cancellation; command success alone is not
@@ -360,7 +360,7 @@ from nexuml.core.types import ProcessEvaluationSpec, RLEvaluationSpec
 from nexuml_library.scenarios.reinforcement.isaaclab import isaac_cartpole_ppo
 
 spec = isaac_cartpole_ppo(total_frames=8192)
-spec.policy_evaluation = RLEvaluationSpec(
+spec.training.evaluation = RLEvaluationSpec(
     episodes=1, at_start=True, every_n_frames=2048, max_steps_per_episode=16,
     process=ProcessEvaluationSpec(device="cuda:1", scheduling="skip_if_busy"),
 )
