@@ -635,7 +635,14 @@ preemption; the scheduler reported insufficient GPUs on 15 nodes.
 The Job and its pending pod were removed. Playback never started,
 and the recovered editor remained ready. Reproduction script, inputs
 check and scheduler events: `/tmp/opencode/nexuml-private-cartpole-nhk9Pp/`.
-No decoded policy video was tested.
+The retry `rglitza/nex212-cartpole-lmroq3` was admitted on `cip-gpu-2`.
+It initialized the native Cartpole and reported the private NetBird
+endpoint on TCP 49100, with UDP 47998 awaiting a client. It was still
+inside a policy-driven native step when the 20-minute process deadline
+sent SIGTERM; it did not report completing the 36,000-step budget.
+The native context cleared, both sockets were released, and the Job
+was deleted. No decoded policy video was confirmed. Logs and replay
+scripts: `/tmp/opencode/nexuml-private-cartpole-retry-lMroq3/`.
 
 **Real ROS 2 three-domain and mixed-objective proofs (1b/6.2a):** no
 authorized episodes with a matching embodiment, calibrated controlled
