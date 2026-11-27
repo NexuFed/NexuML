@@ -301,19 +301,22 @@ jobs:
           test -n "$NEXUML_ISAAC_IMAGE"
           docker image inspect "$NEXUML_ISAAC_IMAGE" >/dev/null
           install -d -m 0777 "$RUNNER_TEMP/isaaclab-output"
-          docker run --rm --gpus '"device=0"' --cpus 4 --memory 16g --shm-size 2g \
+          docker run --rm --pull never --gpus '"device=0"' --cpus 4 --memory 16g --shm-size 2g \
             --cap-drop ALL --security-opt no-new-privileges \
             -e NVIDIA_DRIVER_CAPABILITIES=compute,utility,graphics \
             -e ACCEPT_EULA=Y -e OMNI_KIT_ACCEPT_EULA=YES \
             -e NEXUML_RUN_SIMULATOR_TESTS=1 \
             -e TMPDIR=/workspace/output \
             -e NEXUML_RUN_SYSTEM_TESTS=0 -e NEXUML_RUN_HARDWARE_TESTS=0 \
+            --workdir /workspace/nexuml \
             --mount "type=bind,source=$GITHUB_WORKSPACE,target=/workspace/nexuml,readonly" \
             --mount "type=bind,source=$RUNNER_TEMP/isaaclab-output,target=/workspace/output" \
-            --entrypoint /bin/bash "$NEXUML_ISAAC_IMAGE" \
-            /workspace/nexuml/scripts/isaaclab/run.sh -m pytest \
-            tests/core/test_isaaclab_integration.py -q \
-            --basetemp=/workspace/output/pytest -o cache_dir=/workspace/output/pytest-cache
+            "$NEXUML_ISAAC_IMAGE" /bin/bash -c '
+              export PYTHONPATH="$PWD/src:$PWD/library/src${PYTHONPATH:+:$PYTHONPATH}"
+              exec /env/bin/python scripts/isaaclab/run.py -m pytest \
+                tests/core/test_isaaclab_integration.py -q \
+                --basetemp=/workspace/output/pytest -o cache_dir=/workspace/output/pytest-cache
+            '
       - uses: actions/upload-artifact@v6
         if: always()
         with:

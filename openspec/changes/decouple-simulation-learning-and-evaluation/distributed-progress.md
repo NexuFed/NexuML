@@ -295,6 +295,8 @@ NEXUML_RUN_SIMULATOR_TESTS=1 TMPDIR=/tmp/opencode OMP_NUM_THREADS=1 \
   .venv/bin/python -m pytest -q tests/core/test_isaaclab_integration.py \
   -k native_ppo_placement
 .venv/bin/python tests/fixtures/visual_rollout_pressure.py --frames 2048 --side 128 --batch 64
+.venv/bin/python tests/fixtures/visual_rollout_pressure.py --frames 2048 --side 128 \
+  --batch 64 --channels 128
 # On a compatible two-GPU host, re-run the same workload with explicit roles:
 .venv/bin/python tests/fixtures/visual_rollout_pressure.py --frames 2048 --side 128 \
   --batch 64 --simulation cuda:0 --inference cuda:0 --learner cuda:1
@@ -325,6 +327,33 @@ allocation, with all phases recorded in
 The separate real CUDA/Ray worker regressions passed (2 tests), including
 CPU collection and a native Newton GPU worker. Neither is a same-host
 split GPU receipt. Logs: `/tmp/opencode/nexuml-split-regressions-Q1V7wj/`.
+
+Follow-up native placement oracle (§2.2): the PhysX case ends one real
+episode by leaving the track and another by timeout. It checks actual
+native/exported frames, terminal vs reset observations on the learner,
+and both GAE batches against a backward recurrence and a fresh critic
+evaluation of the ending observations. Two co-located cases passed;
+both split cases skipped. Admission negatives passed (84 tests). The
+local RTX 4080 SUPER and active Ray GPU worker each expose one GPU; the
+only multi-GPU Kubernetes node in the inventory has V100s and driver
+535.247.01, incompatible with the pinned CUDA 13 stack. No suitable
+same-host allocation was available. Inventory, commands and results:
+`/tmp/opencode/nex-212-task22.7cmdBm/` and
+`/tmp/opencode/nexuml-task22-integration-uZDg7O/`.
+
+Follow-up synthetic visual placement (§2a.4): checked all bytes of the
+patterned RGB batch and inference parity across two weight publications.
+The JSON reports logical payloads separately from payloads crossing
+CUDA devices, per-phase timings and allocated/reserved peaks, and labels
+peer capability separately from the actual transfer route.
+On one RTX 4080 SUPER, 16- and 128-channel runs each stored 96 MiB of RGB
+with zero cross-device payload; second-pass update peaks above baseline
+were 60.0 and 384.1 MiB. The 32,768-channel small-image case used
+3,932,168 bytes per model replica and 7,864,352 bytes of Adam state.
+Oversized or unsupported placements reject before allocating the model;
+native Newton RGB split, native Isaac FSDP and mixed-precision RL DDP
+remain unsupported. No native split visual, PEFT or VLA claim.
+Receipts: `/tmp/opencode/nex212-visual-pressure-VkjDMm/`.
 
 Raw measurements: `/tmp/opencode/nexuml-visual-pressure-0plGFI/`.
 
@@ -576,6 +605,16 @@ Local Kit regression on private Xvfb passed **24 steps / 48 transitions**
 and cleared the native context:
 `/tmp/opencode/nexuml-toolbar-local-regression-xBDJbZ/`.
 
+Follow-up private-viewer readiness at `37e555ee`: no authorized NVIDIA
+client or route to a task-owned playback workload was available. The
+compatible Ready node set advertised 15 GPUs with 15 already requested;
+this was an API snapshot, not a new admission attempt. The previously
+forwarded X11 display `:11` could not be opened. The local server receipts
+and wheel/asset checksums still pass; neither a running NetBird sidecar nor
+an X11 proxy socket qualifies the client path. No existing workstation
+was used. Checks and receipts:
+`/tmp/opencode/nexuml-4a4-private-readiness-jKTxfc/`.
+
 **Real ROS 2 three-domain and mixed-objective proofs (1b/6.2a):** no
 authorized episodes with a matching embodiment, calibrated controlled
 joints, units, timing and held-out splits were supplied. The
@@ -796,6 +835,30 @@ env -u RAY_ADDRESS -u RAY_API_SERVER_ADDRESS .venv/bin/ray job submit \
   Receipts: `/tmp/opencode/nexuml-package-lane.quhTJJaf/` and
   `/tmp/opencode/nexuml-staged-kitless-lock-Jkfajr/`. Archive origin:
   `/tmp/opencode/nexuml-direct-wheel-provenance-ZxfpqH/`.
+- The follow-up found no retained upstream Lab wheel artifact for the
+  exact commit. Fresh `uv sync --locked --no-build` still rejected the
+  Git requirement with the genuine reviewed cache available; the
+  workaround in the prepared image uses `uv pip install` and does not
+  establish a clean workspace sync. The ANTLR wheel on piwheels does
+  not match the reviewed hash. Its unapproved `idna-ssl` wheel imports
+  `ssl.match_hostname`, which Python 3.12 no longer provides. The
+  checked NVIDIA index did not offer a newer 6.2 kernel wheel. The
+  remaining inputs are a supported immutable Lab binary with verifiable
+  revision identity, approved ANTLR wheel delivery, and a compatible
+  full-Kit dependency fix. Neither project manifest nor the lock was
+  changed. Probes: `/tmp/opencode/nexuml-package-6.3-followup.TTaxhz8Z/`.
+- The prepared-image CI smoke now uses the image entrypoint and
+  `/env/bin/python`, with checkout sources first on `PYTHONPATH` and
+  pulls disabled. The previous checkout `.venv` command failed in a
+  clean checkout. The corrected command collected 69 tests offline.
+  A local replay of that command filtered to `native_ppo_placement
+  and physx-colocated` used the checkout, cached image and five verified
+  assets in a network-isolated GPU container. Exit 0, 128 exported
+  frames, eight optimizer steps asserted by the fixture, terminal/GAE
+  parity, and native context cleanup. This was not hosted CI or a clean
+  native workspace install. Workflow command and results:
+  `/tmp/opencode/nexuml-package-6.3-followup.TTaxhz8Z/` and
+  `/tmp/opencode/nexuml-ci-native-candidate-23Ac3a/`.
 - CUDA learner plus native CUDA rollout actor resumed on one shared GPU
   from a partial checkpoint: fresh actor identity, exact restored policy
   and Adam state, policy version 1 in the fresh collector, CPU transport,
@@ -832,6 +895,10 @@ env -u RAY_ADDRESS -u RAY_API_SERVER_ADDRESS .venv/bin/ray job submit \
   and interface/graphics/port tests **196 passed**. Gloo and batch receipts:
   `/tmp/opencode/nexuml-final-gloo-VUyUlz/` and
   `/tmp/opencode/nexuml-decouple-followup-YX4v5Q/`.
+- Parallel follow-up across the non-ROS gates: **142 passed** for visual
+  placement guards, native preflight and definitions, and WebRTC.
+  Ruff, formatting and targeted typing passed for the placement changes.
+  Receipt: `/tmp/opencode/nexuml-nonros-placement-buEULU/`.
 
 ```bash
 UV_PROJECT_ENVIRONMENT="$(mktemp -d /tmp/opencode/nexuml-native-cold-XXXXXX)/.venv" \
