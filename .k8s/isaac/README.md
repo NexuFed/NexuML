@@ -81,6 +81,31 @@ Use Kubernetes attach for remote editing if needed. Save USD scenes under
 Pod ends; saved files on the PVC remain. Use a new enrollment key if recreating
 a Pod that used a single-use key.
 
+## Try standalone policy playback
+
+Use a separate copy of `pod.yaml` with a unique name and its own run directory.
+Keep the private ingress-deny label and the `wt0` address check. Verify that
+the approved NetBird setup and policy apply to the new pod before starting it.
+Do not run the editor and policy playback at the same time in that pod.
+
+In a trusted playback scenario for the exported policy, configure the
+environment with `WebRTCSpec(advertise_address=os.environ["ISAACSIM_HOST"],
+private_network=True)`. Keep the task and observation/action contract used
+by the export. Replace the editor's final `exec` line with:
+
+```bash
+exec nexuml play "$NEXUML_WORKSPACE_ROOT/runs/cartpole/policy" \
+  --scenario-file "$NEXUML_WORKSPACE_ROOT/tasks/play.py" \
+  --viewer webrtc --device cuda:0 --num-envs 1 --real-time
+```
+
+Use paths to your actual export and scenario. This is a qualification
+recipe, not a confirmed policy stream: first require the CLI's TCP
+signaling receipt, then check decoded policy motion through the NVIDIA
+client over the private TCP/UDP route. Stop the playback pod and verify
+the stream closes. An editor stream or a TCP-only check does not pass
+policy playback.
+
 ## Train
 
 Copy `job.yaml` and choose a new Job name. Keep the same Harbor digest as the editor.
