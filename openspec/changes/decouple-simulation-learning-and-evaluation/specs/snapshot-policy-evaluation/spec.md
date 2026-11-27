@@ -26,3 +26,12 @@ Standalone checkpoint/package evaluation SHALL use existing public commands and 
 - **GIVEN** The benchmark and policy package are compatible
 - **WHEN** the corresponding supported workflow is executed
 - **THEN** The evaluator runs without constructing a learner or modifying the artifact and publishes native outcomes.
+
+
+### Requirement: Native fit evaluation is independently placed and rank-owned
+
+Qualified Isaac periodic/final evaluation SHALL use an independently allocated compatible native process/worker and immutable snapshot; in-process or shared unsupported app/GPU evaluation remains rejected. Distributed learning SHALL have exactly one designated snapshot/report owner, coordinated finalization, explicit bounded scheduling and no rank-local duplication or stale source frame. Independent viewer/evaluator failure SHALL follow explicit policy and never mutate training.
+
+#### Scenario: A distributed learner requests periodic Isaac evaluation
+- **WHEN** a compatible separate native GPU resource is admitted
+- **THEN** only the designated owner submits the complete snapshot at its global frame, the evaluator runs in its own app, and other ranks continue or synchronously wait according to declared scheduling without deadlock.

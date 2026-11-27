@@ -1,4 +1,6 @@
-# Acceptance matrix — current local candidate
+# Acceptance matrix — recorded candidate evidence
+
+**Planning amendment (not new execution evidence):** the 35/44 historical checked gates remain scoped to their recorded candidates. Primary distributed path is now rank-local GPU PPO via Lightning/Ray Train DDP/NCCL; GPU split/remote collection optional. See [execution-plan.md](execution-plan.md) for independent software/live gates. No new DDP, large-model, split-GPU, independent native fit-eval or external WebRTC claim follows from this amendment. Preserve local Kit/TigerVNC and headless/Viser evidence; missing live resources are lane-specific, not a global implementation stop.
 
 See linked records for the tested source/asset hashes, interpreter and native
 versions, exact invocations and raw receipts. Each result applies to its
