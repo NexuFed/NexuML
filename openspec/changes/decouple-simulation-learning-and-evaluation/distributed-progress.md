@@ -395,6 +395,12 @@ before any NexuML node connected. No command receipt or bridge episodes
 were emitted. This isolates the stall to that bridge-enabled launch path,
 not the arm asset or the NexuML ROS adapter.
 
+The reduced clock scene also passed on a separate RTX 4090 cluster pod
+(driver 580.126.20) with the prepared image. Locally, launching Kit's
+native event loop advanced the same 4 ticks with ROS enabled, unlike
+the synchronous Python launcher. These are playback receipts only:
+neither proves command/feedback, timeout/hold, or recorded episodes.
+
 The independent CPU MuJoCo check exercised signed joint position targets
 at the same declared 0.2 s control period. Two 8-step SDK behavior-cloning
 fits reloaded the first updated tensors and used an episode-disjoint split.
@@ -411,6 +417,22 @@ rendezvous instead of `--standalone`.
 The available RTX nodes each advertise one GPU. The inventory's eight-GPU
 host reports V100 devices and a 535-series driver, outside the pinned
 Isaac/CUDA 13 lane; separate pods on RTX nodes do not qualify same-host P2P.
+
+**DGX hardware check:** `rglitza/nex212-dgx-pair-1k3c4i` received two
+Tesla V100-SXM2-32GB devices on one node with host driver 535.247.01.
+The headless PyTorch 2.5.1 / CUDA 12.1 image ran verified **1 MiB direct
+CUDA peer copies in both directions** and two-rank scalar and 1 MiB
+all-reduces with NCCL 2.21.5; the channels reported `P2P/CUMEM`. The
+owned job exited successfully and was deleted. No driver, node or pool
+changes. Replay and image digest: `/tmp/opencode/nexuml-dgx-pair-1k3C4I/`
+(`submit.sh`, `pair.py`, `placement.json`, `run.log`).
+
+This qualifies the tested V100 pair on CUDA 12.1, not the current
+Isaac/CUDA 13 runtime. NVIDIA's [CUDA compatibility guide](https://docs.nvidia.com/deploy/cuda-compatibility/minor-version-compatibility.html)
+requires driver 580 or newer for CUDA 13 minor-version compatibility;
+the V100 is Volta (`sm_70`), below CUDA 13's supported GPU targets.
+No Isaac, TorchRL PPO, native RGB or split learner workload ran on this
+pair. Tasks 2.2 and 2a.4 remain unchecked.
 
 ```bash
 .venv/bin/python -m torch.distributed.run --standalone --nproc-per-node=2 \
