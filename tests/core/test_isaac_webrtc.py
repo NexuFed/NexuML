@@ -67,15 +67,27 @@ def test_web_rtc_reports_listener_separately_from_media_socket(monkeypatch, caps
         assert f"UDP awaiting client:{media_port}" in capsys.readouterr().out
 
 
-def test_stream_uses_minimal_experience_without_x11_presentation():
+@pytest.mark.parametrize("viewer", ["webrtc", "local", "headless"])
+def test_playback_uses_minimal_toolbar_only_for_interactive_kit(viewer):
     from nexuml_library.environments._isaaclab_runtime import _launch_environment
 
+    streaming = viewer == "webrtc"
+    local = viewer == "local"
+    stream_arg = " --/exts/omni.kit.livestream.app/primaryStream/publicIp=127.0.0.1"
+
     def check(_cfg, args):
-        assert args["headless"] and args["livestream"] == 2
-        assert args["experience"] == "isaaclab.python.headless.rendering.kit"
-        assert "primaryStream/publicIp=127.0.0.1" in args["kit_args"]
-        assert "present/enabled=true" not in args["kit_args"]
-        assert "omni.kit.widget.toolbar" not in args["kit_args"]
+        assert args["headless"] is not local
+        assert args["livestream"] == (2 if streaming else 0)
+        assert (stream_arg in args["kit_args"]) == streaming
+        assert ("present/enabled=true" in args["kit_args"]) == local
+        interactive = local or streaming
+        experience = "isaaclab.python.headless.rendering.kit" if interactive else None
+        assert args.get("experience") == experience
+        assert ("--enable omni.kit.widget.toolbar" in args["kit_args"]) == interactive
+        for tool in ("Grab", "PlayButton", "SelectionButton", "TransformButton"):
+            assert (
+                f"omni.kit.widget.toolbar/{tool}/enabled=false" in args["kit_args"]
+            ) == interactive
         raise RuntimeError("stop before native launch")
 
     with pytest.raises(RuntimeError, match="stop before native launch"):
@@ -84,5 +96,6 @@ def test_stream_uses_minimal_experience_without_x11_presentation():
             None,
             check,
             lambda: False,
-            streaming=" --/exts/omni.kit.livestream.app/primaryStream/publicIp=127.0.0.1",
+            local=local,
+            streaming=stream_arg if streaming else "",
         )

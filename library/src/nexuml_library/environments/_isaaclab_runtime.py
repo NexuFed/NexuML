@@ -41,9 +41,9 @@ _KIT_EDITOR_EXTENSIONS = (
     "omni.kit.window.extensions",
     "omni.kit.window.console",
 )
-_KIT_LOCAL_ARGS = (
+# Lab initializes its toolbar in both windowed and livestream modes.
+_KIT_PLAYBACK_TOOLBAR_ARGS = (
     " --enable omni.kit.widget.toolbar"
-    " --/exts/omni.renderer.core/present/enabled=true"
     " --/exts/omni.kit.widget.toolbar/Grab/enabled=false"
     " --/exts/omni.kit.widget.toolbar/PlayButton/enabled=false"
     " --/exts/omni.kit.widget.toolbar/SelectionButton/enabled=false"
@@ -166,7 +166,8 @@ def _launch_environment(
             "--/telemetry/enableAnonymousAppName=false --/telemetry/enableSentry=false "
             "--/structuredLog/enable=false"
             + close_setting
-            + (_KIT_LOCAL_ARGS if local else "")
+            + (_KIT_PLAYBACK_TOOLBAR_ARGS if local or streaming else "")
+            + (" --/exts/omni.renderer.core/present/enabled=true" if local else "")
             + streaming
         ),
     }
