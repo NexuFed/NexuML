@@ -384,16 +384,13 @@ spec.interaction.environment = env.model_copy(
 ```
 
 **Multi-node independent collection (3.4/3.5) and CI profile (6.3):**
-require an approved binary native worker profile and the three GPU roles.
-The [cluster follow-up](#cluster-follow-up) proved simultaneous admission;
-that probe did not run the collector or learner. Use the authenticated API
-tunnel below if external ingress trust is unavailable.
-Use the configured pool resources and inspect the actual actor nodes:
-logical indices are not proof of distinct placement. Grouped remote
-PhysX collection is still rejected; do not use the state reference
-as its substitute. Verify borrowed runtime ownership, missing/stale
-batches, resumed native workers and network/throughput before widening
-the support matrix.
+Use the separately pinned learner and native worker inputs from the
+[three-node Kit-less fit and resume](#cluster-follow-up). The replayable
+Jobs harness verifies actual actor nodes, CUDA learner batches, versions
+and exported frames; logical device indices alone do not prove placement.
+That receipt does not qualify grouped remote tasks or stock-worker full Kit.
+Use the authenticated dashboard tunnel below if external ingress trust is
+unavailable.
 
 ```bash
 curl --fail --cacert "$RAY_CA_BUNDLE" "$RAY_API_SERVER_ADDRESS/api/version"
@@ -407,12 +404,13 @@ ray`, `num_collectors: 2`, `collector.ray.num_gpus: 1`, actor role
 selectors, prepared `py_executable` and CPU object-store storage. Also
 reserve the evaluator GPU if testing periodic native snapshots. Do not
 rerun with TLS disabled or on the idle-inventory assumption.
-The [wheel audit](ray-rollout-placement.md#worker-dependency-setup-diagnostic-34-not-native-qualification)
+For full Kit on stock workers, the
+[wheel audit](ray-rollout-placement.md#worker-dependency-setup-diagnostic-34-not-native-qualification)
 records `idna-ssl==1.1.0`, `antlr4-python3-runtime==4.9.3` and
 the exact Isaac Lab source pin. The last two have reviewed image wheels;
-the stock-worker install still needs an approved binary closure.
+full Kit still needs an approved stock-worker binary closure.
 
-**WebRTC (4a.1/4a.4):** run the ordinary `nexuml play` command in the
+**WebRTC runtime and media (4a.4):** run the ordinary `nexuml play` command in the
 [WebRTC how-to](../../../docs/src/content/docs/how-to/isaac-native-configuration.mdx#native-webrtc-playback)
 on an approved private graphics worker, with Vulkan/NVENC, TCP 49100 and
 UDP 47998. Require client-decoded policy motion and released sockets on
