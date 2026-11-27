@@ -469,6 +469,19 @@ No host ports were published. Script and stack:
 `/tmp/opencode/nexuml-stream-configured-6hHQ5o/` and
 `/tmp/opencode/nexuml-stream-native-experience-Zb1wOX/`.
 
+The standalone NetBird pod recipe is documented in
+[`.k8s/isaac/README.md`](../../../.k8s/isaac/README.md#try-standalone-policy-playback).
+A fresh protected vendor-control Job (`nex212-vendor-gkkfl1`) did not
+start: the scheduler reported insufficient GPUs/memory on the cached
+candidate nodes. The Job was deleted without using the existing
+workstation pod or changing network policy. The same vendor command
+in a local Docker container with no network reached renderer startup
+but did not produce the vendor ready marker; its paired Python
+stage did not run. This local result is not a NetBird media test.
+Manifests, scheduler events, launcher script and logs:
+`/tmp/opencode/nexuml-vendor-stream-control-gkKfL1/` and
+`/tmp/opencode/nexuml-local-vendor-stream-control-hKK9G2/`.
+
 **Real ROS 2 three-domain and mixed-objective proofs (1b/6.2a):** no
 authorized episodes with a matching embodiment, calibrated controlled
 joints, units, timing and held-out splits were supplied. The
