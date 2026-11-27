@@ -504,6 +504,12 @@ selectors. The learner may use its own GPU independently. A trusted prepared
 interpreter at `collector.ray.py_executable` lets the rollout worker import
 Isaac without installing it in the learner environment. Use the same
 Python, Ray, PyTorch, TensorDict and TorchRL versions across that transport.
+Prepare the worker interpreter before starting the fit. Install pinned
+wheels once per job, not inside each actor. The qualified binary-only
+Kit-less Newton/MJWarp evaluator job shipped bootstrap files as a Ray
+`py_modules` package; the native worker used the prepared interpreter, not the driver's
+job working directory. This does not qualify pip-installed full Kit on a
+stock Ray worker.
 Set `collector.ray.num_cpus` and `admission_timeout_s` for your approved
 worker pool; the latter bounds startup and each policy publication.
 The learner publishes one detached CPU weight snapshot through Ray's

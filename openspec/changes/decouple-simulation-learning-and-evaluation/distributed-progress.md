@@ -200,6 +200,12 @@ Wheel hashes and trace: `/tmp/opencode/nexuml-peer-so101-metric-vector-XhSw9L/`.
   physical GPU **only as a transport test**: 32 frames, eight optimizer
   steps, synchronous CPU-staged rollouts and the borrowed Ray runtime
   survived teardown. This is not a separate-GPU or multi-node result.
+  After the Ray publication change, all three native checkpoint/resume
+  cases passed again (PhysX CPU learner, PhysX CUDA learner, Newton CUDA
+  learner). An earlier suite left a `ray::Collector` SIGSEGV core; the
+  instrumented repeat showed PhysX context cleanup and no repeat crash in
+  the retained worker logs. Do not extend this to full-Kit cluster claims.
+  Receipts: `/tmp/opencode/nexuml-native-publication-logs-fv8CQO/`.
 - Built and installed both application wheels into a dedicated learner
   environment without Isaac Sim/Lab, MuJoCo/Warp or ROS. TorchRL 0.15.0
   directly trained for 32 frames/eight steps on CUDA; the installed CLI

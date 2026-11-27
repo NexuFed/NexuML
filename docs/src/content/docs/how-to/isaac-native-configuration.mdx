@@ -148,9 +148,10 @@ continuous player.
 ## Run PhysX rollouts on a Ray GPU worker
 
 On a prepared Ray Core cluster, a single CPU learner can collect state-only
-PhysX rollouts from a headless GPU worker. Install matching NexuML, Ray,
-TorchRL and TensorDict versions on both sides, and the pinned Isaac runtime
-and native assets on the worker. Set `training.accelerator: cpu` and
+PhysX rollouts from a headless GPU worker. The same configuration supports
+Kit-less Newton/MJWarp. Install matching NexuML, Ray, TorchRL and TensorDict
+versions on both sides, and the pinned Isaac runtime and native assets on
+the worker. Set `training.accelerator: cpu` and
 `training.devices: 1` in the scenario. Replace its `training.collector` with:
 
 ```yaml
@@ -171,8 +172,8 @@ requests one CPU and one whole GPU; `cuda:0` is relative to that worker's
 assigned GPU. Use a frame batch divisible by the number of collectors times
 environments. Each batch crosses the process boundary once, is checked for
 one policy version, and is consumed by the learner; the worker does not
-receive an RPC per physics step. Automatic Isaac fit evaluation remains
-disabled.
+receive an RPC per physics step. In-process Isaac fit evaluation remains
+disabled; native snapshot evaluation needs an independently reserved GPU.
 
 To target a specific prepared worker group, use `ray.resources` and/or
 `ray.label_selector` with values the operator has advertised to Ray Core.
