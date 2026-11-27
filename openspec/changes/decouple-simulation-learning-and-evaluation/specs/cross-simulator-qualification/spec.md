@@ -26,3 +26,16 @@ Qualified provider and learner profiles SHALL use the existing NexuML optional-d
 - **GIVEN** The learner and simulation workers use distinct compatible pinned images
 - **WHEN** the corresponding supported workflow is executed
 - **THEN** Real public workflow evidence identifies exact placement, dependency versions, native execution and learning outcomes; a missing GPU or incompatible image prevents a support claim.
+
+
+### Requirement: Software delivery and live evidence have independent gates
+
+Implementation SHALL reuse CI/image mechanisms and immutable role-specific
+profiles. Independently feasible software and tests SHALL continue when
+live inputs are absent. A software handoff SHALL not assert full native
+or multi-node acceptance.
+
+#### Scenario: Hardware or a private WebRTC client is unavailable
+- **WHEN** the acceptance prerequisite is missing
+- **THEN** the specific live gate remains blocked and other implementation, tests, documentation and qualified profile delivery continue without repeated user intervention.
+- **AND** Record the exact prerequisite, completed work and reproduction without unapproved infrastructure, downloads or actuation. Headless, graphics and Kit-less profiles are qualified separately.

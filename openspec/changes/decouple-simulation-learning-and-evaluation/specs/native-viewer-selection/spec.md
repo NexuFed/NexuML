@@ -40,3 +40,18 @@ All training and scientific evaluation viewers SHALL be nonmutating; local and W
 #### Scenario: A native display, browser or stream is qualified
 - **WHEN** a viewer is submitted for acceptance
 - **THEN** evidence shows the actual live policy rollout and cleanup; application startup, endpoint reachability or fake tests alone do not qualify it.
+
+
+### Requirement: Distributed visualization is optional and role scoped
+
+Distributed training SHALL be headless by default without disabling policy
+sensors. One selected rank or collector MAY provide a private read-only
+Viser of its actual rollout. Independent snapshot play remains complementary,
+and Kit/WebRTC SHALL NOT be required for training.
+
+#### Scenario: An operator selects one live training spectator
+- **WHEN** a qualified distributed training run uses the selected rank's private Viser
+- **THEN** Only that rank shows actual transitions, owns a unique endpoint and limits the visible subset. Disconnect or cancellation preserves learning semantics and native ownership.
+
+#### Scenario: An operator requests an external native viewer
+- **THEN** Use explicit prepared independent playback or a compatible local profile. Qualify WebRTC client UDP, forwarded Windows X11 and other external displays independently of proven headless/Viser and Kit/TigerVNC. No provisioning or fallback.

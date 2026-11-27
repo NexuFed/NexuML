@@ -17,3 +17,18 @@ NexuML SHALL qualify one named native Isaac Lab actor import or initialization p
 #### Scenario: A supported native policy is supplied
 - **WHEN** the operator supplies the approved local checkpoint and explicit compatible mapping
 - **THEN** known-input inference parity, held-out native evaluation and bounded external-weight fine-tuning are demonstrated without requiring initial training in NexuML.
+
+
+### Requirement: Native GPU scaling is evaluated at representative workload sizes
+
+NexuML SHALL retain TorchRL and compare co-located GPU PPO with the native
+learner under matched hardware, task, precision, frame budgets and held-out
+evaluation. Profile before optimizing and preserve transition correctness.
+Report the actual gap against the 90% warm-throughput target.
+
+#### Scenario: A matched native throughput run completes
+- **THEN** Report realistic vector widths, startup, collection, GAE, optimization, synchronization, transfers, device memory and scaling efficiency where qualified.
+
+#### Scenario: A state-only benchmark passes
+- **WHEN** a larger image or memory-pressure workload is requested
+- **THEN** Report placement, memory, latency and learning on visual and configurable pressure references. Real large-model claims require their own approved model, objective and resource evidence.
