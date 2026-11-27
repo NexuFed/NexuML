@@ -68,6 +68,21 @@ must use a fresh process for another runtime. Graphics/media support is separate
 from state stepping; current RGB replay requires a manager task with Kit PhysX.
 SO-101 keeps its separate PhysX-only asset/control validation.
 
+### ROS 2 software-in-the-loop
+
+In a fresh prepared Isaac container or pod with an isolated ROS domain and
+no physical endpoints, start the bridge acceptance fixture:
+
+```bash
+ROS_DOMAIN_ID=79 bash scripts/isaaclab/run_ros2_sil.sh /tmp/nexuml-sil-new
+```
+
+The launcher starts the recorder first and confines DDS discovery to localhost.
+It captures four bounded episodes from native Isaac ROS bridge nodes and
+checks the simulated timeout hold. `episodes.json` is written only after
+those checks; `partial-transitions.json` is diagnostic, not a complete data
+source. The hold is part of the simulated fixture, not a hardware watchdog.
+
 The five-joint SO-101 reaching profile selects the Sim 6.2 calibrated SO-101
 asset, five absolute targets with scale 0.5 rad and a separately fixed gripper
 at 0.2555162024919699 rad. Its raw root/physics/robot/geometry/material/sensor

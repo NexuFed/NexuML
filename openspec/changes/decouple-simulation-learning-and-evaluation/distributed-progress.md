@@ -379,9 +379,45 @@ NEXUML_RUN_SIMULATOR_TESTS=1 NEXUML_TEST_RAY_NATIVE_SNAPSHOT=1 \
 | 4.4 | Rank-zero snapshots, separate process/Ray GPU evaluation and bounded cancellation | Native Kit-less PPO and separate-node GPU snapshot evaluation overlapped; final snapshot drained |
 | 4a.1, 4a.4, 4a.6 | Typed viewer selection, restricted native Kit toolbar, endpoint admission, native headless RGB and selected-rank/collector Viser routing tested | Two-node Viser attach, disconnect and cancel passed. NVIDIA client decoded and displayed moving Cartpole policy playback via private NetBird. Socket release passed in separate runs. Forwarded Windows X11 remains unqualified. |
 | 6.3 | One workspace lock pins official Isaac packages; existing opt-in GPU CI covers a simulator-free learner and the prepared Kit image | Fresh pod passed Newton fit/resume and headless PhysX playback in one environment. Upstream metadata conflicts remain; this does not qualify graphics or new stock-Ray placements. |
-| 1b, 6.2a | Existing simulator-only SDK and ROS 2 adapter retained; live Isaac Sim bridge fixture in progress | Pending live joint response, timeout/hold, and episode capture; physical data is no longer an acceptance gate |
+| 1b, 6.2a | Existing simulator-only SDK and ROS 2 adapter retained; bounded live Isaac Sim bridge fixture | Live motion, watchdog hold, cleanup and episode capture passed. Three-lane imitation comparison passed; mixed PPO and imitation remains open. |
 
-**SIL preflight (scope revised in `119483e6`):** in the cached prepared Isaac
+### Simulated ROS 2 bridge and common-objective learning
+
+**§6.2a passed** on `nex212-sil-accept-d0nwhd` (RTX 4090, driver
+580.126.20, Isaac Sim 6.2, bundled Jazzy). The existing NexuML adapter
+completed four simulated reaches, recording 27 transitions with
+advancing bridge clock and joint-state timestamps. The final command
+was followed by the fixture's watchdog hold at 8.283 s. The arm
+settled at `[0.4992, -0.4992]` rad within limits with velocity below
+0.05 rad/s. Both processes exited, and the pod was removed. No hardware
+or `ros2_control` qualification is implied. Receipt and exact pod
+invocations: `/tmp/opencode/nexuml-isaac-sil-record-D0nwHd/`.
+`episodes.json` SHA-256:
+`05604c668ce23f039a76c373cd08d736bfe410345d1c9c0fa29d493a45e6702d`.
+
+**§1b.1 passed** using the same actor base with two native Isaac clients
+on disjoint training episodes, one CPU MuJoCo client and one bridge
+client. All four SDK fits ran eight optimizer steps per round. The
+equal-lane candidate was saved, reloaded and used as the exact base
+for all second-round fits. Held-out demonstrated-action mean squared
+error (rad², lower is better):
+
+| Candidate | Isaac | MuJoCo | ROS 2 | Worst |
+| --- | ---: | ---: | ---: | ---: |
+| Untrained base | 0.17195 | 0.17318 | 0.16031 | 0.17318 |
+| Best local-only by worst lane (MuJoCo) | 0.03253 | 0.03251 | 0.03175 | 0.03253 |
+| Equal-client | 0.03415 | 0.03410 | 0.03335 | 0.03415 |
+| Equal-lane | 0.03387 | 0.03382 | 0.03307 | 0.03387 |
+| Native-simulator-only | 0.03373 | 0.03369 | 0.03294 | 0.03373 |
+
+This is offline action prediction on separate recorded test episodes
+at a fixed target, not closed-loop policy quality or physical transfer.
+Including bridge data did not beat the native-only baseline in this
+small test. All local-only and both-round results are in
+`/tmp/opencode/nexuml-sil-common-A3SqCd/run/report.json`; the driver and
+native capture scripts are under `/tmp/opencode/nexuml-isaac-sil-PvOcGn/`.
+
+**Historical SIL preflight (scope revised in `119483e6`):** in the cached prepared Isaac
 Sim 6.2 image, a GPU container with no external network started the Jazzy
 RMW, message bindings and native `isaacsim.ros2.bridge` 5.1.4. The desktop
 experience also started Kit and authored the two-joint stage but stalled on
@@ -434,7 +470,38 @@ from 0.3667 to 1.0 s, plus four independent ROS heartbeats. Both owned
 processes exited. The receipt is in
 `/tmp/opencode/nexuml-isaac-sil-graph-cG4baS/cluster.log`. This proves
 live feedback, not action acceptance or watchdog hold. The full fixture
-now starts its recorder before Kit as well.
+now starts its recorder before Kit as well. The graph-driven arm run
+received and decoded the adapter's initial zero-pose trajectory, logged
+a simulated watchdog hold at 3.833 s, and closed its ROS resources.
+The recorder timed out before receiving joint feedback at the next
+required boundary (last sample 4.050 s, required 4.083 s). The launcher
+forced Kit shutdown after its deadline. No complete motion/episode
+receipt yet. Full-run diagnostics:
+`/tmp/opencode/nexuml-isaac-sil-record-D0nwHd/graph-drive.log`.
+On the next RTX 4090 run, six NexuML steps moved the arm from its reset
+pose to `[0.4986, -0.4986]` rad for the `[0.5, -0.5]` target and ended
+one episode successfully. Clock and feedback froze during the following
+episode at 3.800 s, short of the required 3.950 s boundary; the process
+needed forced cleanup and the complete recording was not published.
+This is a command/response receipt, not a completed §6.2a recording or
+shutdown pass. Log:
+`/tmp/opencode/nexuml-isaac-sil-record-D0nwHd/first-episode.log`.
+Loading only the maintained ROS graph-node extension again reached the
+target in episode one. The next reset returned fresh feedback before
+the arm had settled; the fixture now waits for the measured zero-pose
+tolerance instead of treating a reset acknowledgement as arrival.
+This changes the simulation fixture only, not transport timing or limits.
+The settled-reset run preserved six transitions from one successful
+episode plus one transition from the next before the clock stopped.
+`settled-reset-partial.json` in the same receipt directory is explicitly
+partial, not a training dataset. Disabling default viewport updates
+then produced seven full reaches (46 transitions) before the clock
+stopped at the start of episode eight. The failed run and partial data
+are preserved as `seven-episodes.log` and `seven-episodes-partial.json`;
+they do not establish end-of-run hold or shutdown. The next independent
+acceptance run is bounded to four complete episodes, enough for the
+fixture's episode-disjoint train/validation/test split, with the
+watchdog still required after the last command.
 
 The independent CPU MuJoCo check exercised signed joint position targets
 at the same declared 0.2 s control period. Two 8-step SDK behavior-cloning

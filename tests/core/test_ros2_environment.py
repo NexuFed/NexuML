@@ -30,6 +30,34 @@ def action(values):
     return TensorDict({"joint_command": torch.tensor(values, dtype=torch.float32)}, batch_size=[])
 
 
+@pytest.mark.parametrize("invalid", [None, "joint_order", "duration", "bounds", "nan"])
+def test_isaac_sil_trajectory_decodes_only_expected_targets(invalid):
+    import runpy
+    from pathlib import Path
+
+    fixture = Path(__file__).parents[2] / "scripts/isaaclab/ros2_sil.py"
+    decode = runpy.run_path(str(fixture))["_trajectory_target"]
+    names = ["joint1", "joint2"]
+    positions = [0.25, -0.25]
+    duration = 200_000_000
+    if invalid == "joint_order":
+        names.reverse()
+    elif invalid == "duration":
+        duration += 1
+    elif invalid == "bounds":
+        positions[0] = 2.0
+    elif invalid == "nan":
+        positions[0] = float("nan")
+    points = [
+        json.dumps({"positions": positions, "time_from_start": {"sec": 0, "nanosec": duration}})
+    ]
+    if invalid:
+        with pytest.raises(ValueError, match="SIL"):
+            decode(names, points)
+    else:
+        assert decode(names, points) == positions
+
+
 def test_fake_transport_uses_the_real_task_and_enforces_boundaries():
     definition = Ros2JointReachEnvironment(max_episode_steps=2)
     transport = FakeRos2Transport()
