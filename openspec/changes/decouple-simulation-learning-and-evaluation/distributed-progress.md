@@ -628,8 +628,14 @@ passing isolated-server receipt byte for byte. All 15 checksums pass;
 an isolated CPU check confirmed the export and scenario are compatible.
 The scenario reads `ISAACSIM_HOST` from the prepared pod's `wt0` address.
 Follow the bundle's README for the offline install and bounded
-18,000-step playback command. It was not deployed or connected to a
-client, and does not qualify media delivery.
+18,000-step playback command. The separate private Cartpole Job
+`rglitza/nex212-cartpole-nhk9pp` passed admission dry-run with NetBird
+injection and an isolated volume. It then waited 15 minutes without
+preemption; the scheduler reported insufficient GPUs on 15 nodes.
+The Job and its pending pod were removed. Playback never started,
+and the recovered editor remained ready. Reproduction script, inputs
+check and scheduler events: `/tmp/opencode/nexuml-private-cartpole-nhk9Pp/`.
+No decoded policy video was tested.
 
 **Real ROS 2 three-domain and mixed-objective proofs (1b/6.2a):** no
 authorized episodes with a matching embodiment, calibrated controlled
