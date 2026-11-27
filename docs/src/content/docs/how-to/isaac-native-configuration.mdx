@@ -180,11 +180,13 @@ To target a specific prepared worker group, use `ray.resources` and/or
 These apply to every collector actor. A Ray Jobs `entrypoint_resources`
 reservation places the job driver, not the collectors inside it.
 
-This profile was verified with a CPU learner and one GPU collector. A CUDA
-learner was additionally tested with a collector sharing one physical GPU
-for transport and checkpoint recovery, not production placement.
-Separate-GPU learning, multi-node collection, grouped Ray tasks and Arena
-collection on Ray are not qualified. Direct Isaac training defaults to one GPU.
+PhysX was verified with one GPU collector and a CPU learner, and for CUDA
+transport and checkpoint recovery sharing one GPU. Kit-less Newton/MJWarp
+passed on three distinct Ray nodes with two GPU collectors and a
+simulator-free CUDA learner. Use `training.accelerator: gpu` on the learner
+and set `ray.py_executable` to the prepared native worker Python command.
+Grouped tasks, Arena, and full-Kit multi-node collection remain unqualified.
+Direct Isaac training defaults to one GPU.
 
 ## Compose a headless Arena task
 

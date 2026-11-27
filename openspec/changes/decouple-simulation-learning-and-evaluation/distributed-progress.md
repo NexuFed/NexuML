@@ -299,7 +299,7 @@ NEXUML_RUN_SIMULATOR_TESTS=1 NEXUML_TEST_RAY_NATIVE_SNAPSHOT=1 \
 | 2.2 | Explicit GPU roles, validation, and TorchRL device transfers implemented | Separate-device and P2P receipts need a compatible GPU pair |
 | 2a.2–2a.3 | NCCL preflight and matched benchmark runnable | Two-node fit/resume, strong/weak scaling, fixed-global held-out outcomes and NCCL payloads measured; same-host peer still unqualified |
 | 2a.4 | Synthetic pressure, transfer and weight-parity fixture; public native RGB fit fixture | Co-located native image-input fit passes; split visual and large-model results unqualified |
-| 3.4–3.5 | Actor admission, CUDA learner, published weights and native checkpoint/recovery proven with local resources | Three-node native fit and resume exercised; strict simulator-free learner check still separate. Grouped Ray rollout unsupported |
+| 3.4–3.5 | Actor admission, CUDA learner, published weights and native checkpoint/recovery proven with local resources | Three-node fit, export and resume passed with a simulator-free GPU learner. Same-host transport measured; grouped Ray rollout unsupported |
 | 4.4 | Rank-zero snapshots, separate process/Ray GPU evaluation and bounded cancellation | Native Kit-less PPO and separate-node GPU snapshot evaluation overlapped; final snapshot drained |
 | 4a.1, 4a.4, 4a.6 | Typed viewer selection, CLI mapping, native headless RGB and selected-rank/collector Viser routing tested | Live two-node Viser attach, disconnect and listener cleanup passed, including injected cancellation. Native WebRTC startup and client media remain open under 4a.4 |
 | 6.3 | Binary installed learner and prepared-image CI recipe retained; role interpreter selection implemented | Binary Kit-less profile passed on stock workers; full-Kit stock-worker dependency closure and remaining deployment profiles unqualified |
@@ -553,6 +553,18 @@ bypassing TLS on the external endpoint. Do not use this tunnel for WebRTC.
   Earlier attempts failed the inherited working directory or TorchRL's
   default Gloo rendezvous actor import, not GPU capacity. The current
   adapter publishes weights through the object store without that actor.
+- `nex212-newton-split-0f237f78` passed the same three-node fit and resume
+  with **separate hash-pinned binary environments**: 240 native worker
+  packages and 126 learner packages, both with clean `uv pip check`.
+  The CUDA learner had no Isaac Lab, Isaac Sim, Newton or MuJoCo
+  packages. CPU-staged rollouts arrived on the learner CUDA device with
+  complete versions `[1, 2, 1]`. Both exports reloaded at the expected
+  frame counts (128 and 192); optimizer steps progressed from 8 to 12.
+  Resume created fresh actors using the configured worker seed mapping;
+  it did not restore simulator trajectories. The job succeeded and Ray
+  state confirmed all four owned collector actors stopped.
+  Reproduction, binary locks, wheel hashes and cleanup:
+  `/tmp/opencode/nexuml-ray-newton-lean-iEIzKG/`.
 
 - `nex212-peer-d12f1247`: two native CUDA ranks ran Newton/MJWarp with
   Viser on rank 1 only. Chromium connected through an authenticated
