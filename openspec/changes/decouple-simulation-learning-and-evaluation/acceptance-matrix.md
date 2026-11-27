@@ -6,7 +6,7 @@ See linked records for the tested source/asset hashes, interpreter and native
 versions, exact invocations and raw receipts. Each result applies to its
 recorded candidate. This is not a release matrix.
 
-## Distributed learner follow-up (`d8579994`)
+## Distributed learner follow-ups
 
 See the [distributed progress ledger](distributed-progress.md) for raw
 receipts, performance breakdowns, exact reproduction commands and scope
@@ -18,9 +18,11 @@ limits. The evidence below does not broaden the historical lanes.
 | Ray Train frame lifecycle | Pass on two same-host CPU workers and on two cluster CUDA workers with binary-only Kit-less Isaac Newton/Warp; exports and fresh resume. Full Kit on the Ray Train worker thread is unsupported. |
 | CUDA NCCL | Scalar and 1 MiB collectives pass locally at one rank. The [cluster follow-up](distributed-progress.md#cluster-follow-up) also passed both collectives on two distinct GPU nodes. This is not native CUDA PPO. |
 | Native PhysX via torchrun | Pass for two cluster RTX 4000 Ada pods on distinct nodes: CUDA rollouts, exact actor/critic agreement, rank-zero exports, fresh 256→384 frame continuation. No same-host two-GPU claim. |
-| Independent native snapshot | Pass on a separate process and on a whole-GPU Ray task. No simultaneous native learner/evaluator multi-GPU claim. |
+| Independent native snapshot | Pass on a separate process and on a whole-GPU Ray task. On two distinct GPU nodes, a native Kit-less learner reached 4,096 frames while the evaluator ran; frame-zero and final snapshot receipts passed. |
 | CUDA learner with a CUDA Ray collector | Pass for synchronous transport with both sharing one physical GPU. Split, separately placed inference and multi-node actor layouts remain unverified. |
 | Large-width native SO-101 throughput | Pass for measurement, not for the 90% target. Median 28,575 / 99,015 / 283,886 frames/s at widths 256 / 1,024 / 4,096. |
+| Two-node native SO-101 | At 1,024 environments per rank, 186,586 warm frames/s (88.9% of RSL-RL). Fixed-global scaling was slower than one GPU. Both fixed-global checkpoint replays achieved 0/32 held-out successes. |
+| Selected-rank Viser | Pass on two native ranks: private browser attach/disconnect, bounded rank-one view, normal and cancellation cleanup. 63.8→86.8 ms median warm batch time in one matched Cartpole run. |
 | Installed simulator-free CUDA learner | Pass from installed wheels: 32 frames, eight optimizer steps, export, eight CPU replay transitions. Not a released image or binary stock-worker profile qualification. |
 
 Post-merge evidence at `70204139` and the follow-up checkpoint guard is
@@ -30,8 +32,8 @@ fresh native actor; browser Viser passed locally. The
 [native RGB fit](distributed-progress.md#visual-and-memory-pressure-probes)
 ran on one GPU; the two-device cases skipped. Prepared-image WebRTC
 playback timed out before reporting a listener, independently of the
-missing external client. No new multi-GPU, multi-node, or live WebRTC
-qualification.
+missing external client. That earlier evidence does not qualify peer or
+live WebRTC execution; later peer runs are scoped above.
 
 ## Historical evidence
 

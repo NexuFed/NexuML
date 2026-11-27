@@ -127,6 +127,53 @@ done
 For held-out replay, use the same `backend`, training `seed` and existing
 output directory in `so101_learning_comparison.py "$backend" evaluate "$seed" "$OUTPUT"`.
 
+### Two-node SO-101 scaling
+
+`nex212-peer-bad1346c` used one RTX 4000 Ada per pod, the same task,
+driver and pinned software, seed 17 with rank-local seed offsets, eight
+rollouts of 32 ticks, and 64 minibatch updates per fit. Warm rates use the
+slower rank's median collect-plus-update time after the first two
+rollouts. These are aggregate physical frames, not per-rank rates.
+
+| Layout | Global frames | NexuML frames/s | RSL-RL frames/s | NexuML / RSL-RL |
+| --- | ---: | ---: | ---: | ---: |
+| 1 × 1,024 | 262,144 | 105,561 | 118,993 | 88.7% |
+| 2 × 512 (fixed global batch) | 262,144 | 96,971 | 112,294 | 86.4% |
+| 2 × 1,024 (fixed per-rank batch) | 524,288 | 186,586 | 209,796 | 88.9% |
+
+With 1,024 environments per rank, NexuML scaled 1.77× (88.4% weak
+scaling efficiency); RSL-RL scaled 1.76× (88.2%). At fixed global width,
+two ranks delivered 91.9% and 94.4% of their respective single-GPU rates.
+Rank-zero median collect/update times in the wide two-rank lane were
+285/65 ms for NexuML and 262/49 ms for RSL-RL, with 82 and 50 MiB of peak
+Torch-reserved CUDA memory per rank. Simulator memory is not included.
+Rank-zero pod `eth0` sent/received 2.91/2.90 MiB (NexuML) and
+2.80/2.77 MiB (RSL-RL) across each eight-rollout wide run. These counters
+include native startup/teardown traffic; they are not isolated NCCL bytes.
+
+The throughput run did not replay the exports. A separate fixed-global
+repeat (`nex212-peer-d1c34b82`) evaluated both rank-zero exports in fresh
+native processes on 32 held-out seeds. Both learners scored 0/32 at
+initialization and after fitting; every episode timed out. Mean terminal
+joint error improved from 0.158 to 0.138 rad for NexuML and 0.163 to
+0.127 rad for RSL-RL. This short budget does not establish task success.
+Replay logs: `/tmp/opencode/nexuml-peer-so101-heldout-Q5Cq8B/`.
+The harness writes rank-local diagnostic exports; the production rank-zero
+export path is verified separately.
+Both Jobs completed and were removed. Reproduce from the repository root
+with `bash "$EVIDENCE/run-pods.sh" "$EVIDENCE"`, after copying the benchmark
+harness and inputs from `/tmp/opencode/nexuml-peer-so101-live-4iCzNc/` to
+a fresh `$EVIDENCE` directory.
+
+A traced fixed-global repeat (`nex212-peer-76b666ce`, NCCL 2.28.9,
+`NCCL_DEBUG=TRACE NCCL_DEBUG_SUBSYS=COLL`) measured **2,838,732 bytes**
+of logical all-reduce input per NexuML rank (230 calls) versus
+**2,755,332 bytes** for RSL-RL (65 calls). Main gradient payload was
+64 × 11,083 FP32 elements versus 64 × 10,763; NexuML also synchronized
+global advantage moments and small status and log tensors. Counts include
+collective startup but not TCP overhead. The trace contains no rollout
+buffers. Trace: `/tmp/opencode/nexuml-peer-so101-nccl-smh315/`.
+
 ## Additional acceptance at `d8579994`
 
 - Ray Train V2 trained and resumed native Isaac Newton/Warp Cartpole on
@@ -211,11 +258,11 @@ NEXUML_RUN_SIMULATOR_TESTS=1 NEXUML_TEST_RAY_NATIVE_SNAPSHOT=1 \
 | Task | Software status | Live status |
 | --- | --- | --- |
 | 2.2 | Explicit GPU roles, validation, and TorchRL device transfers implemented | Separate-device and P2P receipts need a compatible GPU pair |
-| 2a.2–2a.3 | NCCL preflight and matched benchmark runnable | Native peer fit/resume passed on two nodes via torchrun and Ray Train; same-host peer, scaling and collective-byte benchmarks not established |
+| 2a.2–2a.3 | NCCL preflight and matched benchmark runnable | Two-node fit/resume, strong/weak scaling, fixed-global held-out outcomes and NCCL payloads measured; same-host peer still unqualified |
 | 2a.4 | Synthetic pressure, transfer and weight-parity fixture; public native RGB fit fixture | Co-located native image-input fit passes; split visual and large-model results unqualified |
-| 3.4–3.5 | Actor admission, CUDA learner, published weights and native checkpoint/recovery proven with local resources | Two distinct collector nodes plus learner GPU never allocated; remote grouped rollout remains unsupported |
-| 4.4 | Rank-zero snapshots, separate process/Ray GPU evaluation and bounded cancellation | Native snapshots pass; native fit/eval overlap on distinct devices unverified |
-| 4a.1, 4a.4, 4a.6 | Typed WebRTC preflight and selected-rank/collector Viser routing | Live two-node selected-rank Viser attach, disconnect and listener cleanup passed, including injected cancellation. WebRTC startup failed; external media and forwarded X11 unqualified |
+| 3.4–3.5 | Actor admission, CUDA learner, published weights and native checkpoint/recovery proven with local resources | Three roles admitted and both native collectors started; default TorchRL rendezvous actor could not import on the stock head. No multi-node rollout pass yet; grouped rollout unsupported |
+| 4.4 | Rank-zero snapshots, separate process/Ray GPU evaluation and bounded cancellation | Native Kit-less PPO and separate-node GPU snapshot evaluation overlapped; final snapshot drained |
+| 4a.1, 4a.4, 4a.6 | Typed viewer selection, CLI mapping, native headless RGB and selected-rank/collector Viser routing tested | Live two-node Viser attach, disconnect and listener cleanup passed, including injected cancellation. Native WebRTC startup and client media remain open under 4a.4 |
 | 6.3 | Binary installed learner and prepared-image CI recipe retained; role interpreter selection implemented | Stock-worker native wheels and matching deployed role profiles unqualified |
 | 1b, 6.2a | Existing simulator-only SDK and recipe validation retained | Real ROS 2 proof needs authorized matching data |
 
@@ -332,6 +379,12 @@ on an approved private graphics worker, with Vulkan/NVENC, TCP 49100 and
 UDP 47998. Require client-decoded policy motion and released sockets on
 exit. Prior TigerVNC playback remains qualified; a Kit editor session
 or open signaling listener does not count as a policy stream.
+
+```bash
+timeout -k 10s 90s .venv/bin/nexuml play "$POLICY" --scenario-file "$PLAY_SCENARIO" \
+  --viewer webrtc --device cuda:0 --num-envs 1 --steps 120 --real-time
+```
+
 The installed-wheel playback test in the prepared Isaac image reached
 Vulkan/RTX initialization but timed out twice (150 s and 100 s), using
 both the explicit minimal rendering experience and the maintained Lab
@@ -433,6 +486,18 @@ bypassing TLS on the external endpoint. Do not use this tunnel for WebRTC.
   interpreter installs or runtime image changes. Reproduction and
   install, fit and resume receipts:
   `/tmp/opencode/nexuml-kitless-head-safe-IUn2Cj/`.
+- `nex212-native-eval-491fd21a`: **native GPU learner and GPU snapshot
+  evaluator on distinct Ray nodes**. The learner fit Kit-less Cartpole
+  to 4,096 frames. The evaluator task was in `RUNNING` state before and
+  after each of the 16 PPO batches. Two fresh-process snapshot receipts
+  retained frame 0 and 4,096 and different hashes; the final evaluation
+  drained even though the periodic snapshot was skipped while busy.
+  The initial `working_dir` run timed out without a receipt; the passing
+  run shipped input files with Ray `py_modules` and used a bounded
+  16-step evaluation. This was one native learner, not an overlap test
+  with multiple DDP ranks. Submission, hashes and logs:
+  `/tmp/opencode/nexuml-ray-native-eval-modules-wCUBFF/`.
+
 - `nex212-peer-d12f1247`: two native CUDA ranks ran Newton/MJWarp with
   Viser on rank 1 only. Chromium connected through an authenticated
   loopback Kubernetes tunnel; rank 1 saw the client then its disconnect,
@@ -454,6 +519,21 @@ bypassing TLS on the external endpoint. Do not use this tunnel for WebRTC.
   Viser** (about 36% longer, or 8.0k vs 5.9k frames/s). This is one
   matched pair, excluding startup and browser handshake, not a universal
   overhead estimate. Receipt: `/tmp/opencode/nexuml-pod-viser-timing-MFRJs7/`.
+
+Copy the Ray Jobs submission and its input directory to a new `$EVIDENCE`
+directory to preserve prior receipts. Run from the repository root.
+This dashboard-only tunnel is not a media route:
+
+```bash
+(
+  kubectl -n ray-cluster port-forward --address 127.0.0.1 \
+    svc/ray-cluster-kuberay-head-svc :8265 > "$EVIDENCE/tunnel.log" 2>&1 &
+  tunnel=$!
+  trap 'kill "$tunnel" 2>/dev/null || true; wait "$tunnel" 2>/dev/null || true' EXIT
+  env -u RAY_ADDRESS -u RAY_API_SERVER_ADDRESS TMPDIR=/tmp/opencode \
+    .venv/bin/python "$EVIDENCE/submit.py"
+)
+```
 
 To rerun the two-node NCCL probe, use one terminal for the authenticated
 Kubernetes tunnel and another for the submission:
