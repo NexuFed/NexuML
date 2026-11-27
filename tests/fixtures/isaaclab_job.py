@@ -499,6 +499,69 @@ def _so101_config():
         raise AssertionError("SO-101 selected a different backend")
 
 
+def _placement(config):
+    from unittest.mock import patch
+
+    import torch
+    from lightning.pytorch.callbacks import Callback
+
+    from nexuml.core.config import ResolvedConfig
+    from nexuml.core.types import ReinforcementLearningSpec
+    from nexuml.execution import run
+    from nexuml.training.reinforcement import NexuRLLightningModule
+
+    scenario = ResolvedConfig.load(config).to_scenario()
+    training = scenario.training
+    assert isinstance(training, ReinforcementLearningSpec) and isinstance(training.devices, str)
+    spec = training.collector
+    storing = torch.device(spec.storing_device)
+    inference = torch.device(spec.policy_device)
+    learner = torch.device(f"cuda:{training.devices.rstrip(',')}")
+    transfer = NexuRLLightningModule.transfer_batch_to_device
+
+    def checked_transfer(module, batch, device, dataloader_idx):
+        assert all(tensor.device == storing for tensor in batch.values(True, True))
+        moved = transfer(module, batch, device, dataloader_idx)
+        assert all(tensor.device == learner for tensor in moved.values(True, True))
+        if storing != learner:
+            for key, tensor in batch.items(True, True):
+                torch.testing.assert_close(tensor, moved[key], rtol=0, atol=0, check_device=False)
+        return moved
+
+    class Placement(Callback):
+        batches = 0
+
+        def on_train_batch_start(self, trainer, pl_module, batch, batch_idx):
+            collector = pl_module._collector
+            actor = pl_module.algorithm.rollout_policy
+            assert collector.env_device == torch.device(spec.env_device)
+            assert all(p.device == inference for p in collector.policy.parameters())
+            assert all(p.device == learner for p in pl_module.algorithm.critic.parameters())
+            torch.testing.assert_close(
+                collector.policy.state_dict(),
+                actor.state_dict(),
+                rtol=0,
+                atol=0,
+                check_device=False,
+            )
+            with torch.no_grad():
+                torch.testing.assert_close(
+                    actor.get_dist(batch.clone()).log_prob(batch["action"]),
+                    batch["action_log_prob"],
+                    rtol=1e-4,
+                    atol=1e-5,
+                )
+            self.batches += 1
+
+    proof = Placement()
+    with patch.object(NexuRLLightningModule, "transfer_batch_to_device", checked_transfer):
+        result = run(scenario, observer=proof, enable_progress_bar=False)
+    assert proof.batches == 2 and result.trainer.global_step == 8
+    assert result.lightning_module.fit_device == str(learner)
+    assert result.lightning_module._collector is None
+    print("NATIVE_PPO_PLACEMENT_AND_ON_POLICY_PARITY_VERIFIED", flush=True)
+
+
 def _local_fit_round(output):
     from unittest.mock import patch
 
@@ -599,6 +662,8 @@ if __name__ == "__main__":
         _cancel_native()
     elif phase == "config":
         _so101_config()
+    elif phase == "placement":
+        _placement(Path(directory))
     elif phase == "local-fit":
         _local_fit_round(task_root)
     elif phase.startswith("paired-"):

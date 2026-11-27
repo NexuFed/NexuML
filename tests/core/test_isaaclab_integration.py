@@ -166,11 +166,11 @@ def test_native_terminal_pixels_match_the_ending_scene_not_reset_scene(tmp_path)
 
 
 @pytest.mark.parametrize(
-    "inference,learner",
-    [(0, 0), (0, 1), (1, 1)],
-    ids=["rgb-colocated", "physx-split-learner", "physx-split-inference"],
+    "rgb,inference,learner",
+    [(True, 0, 0), (False, 0, 0), (False, 0, 1), (False, 1, 1)],
+    ids=["rgb-colocated", "physx-colocated", "physx-split-learner", "physx-split-inference"],
 )
-def test_native_ppo_placement(tmp_path, inference, learner):
+def test_native_ppo_placement(tmp_path, rgb, inference, learner):
     import torch
 
     from nexuml.core.config import ResolvedConfig
@@ -181,7 +181,7 @@ def test_native_ppo_placement(tmp_path, inference, learner):
     from nexuml_library.scenarios.reinforcement.isaaclab_sensors import isaac_rgb_cartpole_ppo
 
     # The RGB reference uses Newton; direct split placement is only supported with PhysX.
-    reference = isaac_cartpole_ppo if learner else isaac_rgb_cartpole_ppo
+    reference = isaac_rgb_cartpole_ppo if rgb else isaac_cartpole_ppo
     scenario = reference(total_frames=128, frames_per_batch=64, num_envs=4)
     training = scenario.training
     training.devices = f"{learner},"
@@ -195,14 +195,8 @@ def test_native_ppo_placement(tmp_path, inference, learner):
     scenario.exports = [ExportSpec(kind="train_package", output=str(policy_path))]
     config_path = tmp_path / "train.yaml"
     ResolvedConfig.from_scenario(scenario).save(config_path)
-    log = _run(
-        ["-m", "nexuml.cli.main", "train", "--config", config_path],
-        tmp_path,
-        "native-placement",
-        process_scope=False,
-    )
-    assert f"Fit device observed at start: cuda:{learner}" in log
-    assert "Optimizer steps: 8" in log
+    log = _run([JOB, "cartpole", "placement", config_path], tmp_path, "native-placement")
+    assert "NATIVE_PPO_PLACEMENT_AND_ON_POLICY_PARITY_VERIFIED" in log
     _, _, metadata = load_inference_package(policy_path)
     assert metadata["training_frames"] == 128
 

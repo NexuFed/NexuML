@@ -307,6 +307,14 @@ The native RGB reference is Newton and remains co-located by provider
 validation; the separate synthetic RGB fixture exercises explicit devices
 without asserting native camera qualification.
 
+The placement test checks actual rollout leaves before and after the
+learner transfer, exact field values on split transfers, collector and
+critic devices, and current policy weights and behavior log likelihood
+on both batches. The exported frame count and collector teardown are
+checked as well. The enhanced test passed for co-located native RGB and
+PhysX; its two split cases skipped on one visible GPU. Logs:
+`/tmp/opencode/nexuml-native-split-oracle/`.
+
 Raw measurements: `/tmp/opencode/nexuml-visual-pressure-0plGFI/`.
 
 ```bash
@@ -710,8 +718,15 @@ env -u RAY_ADDRESS -u RAY_API_SERVER_ADDRESS .venv/bin/ray job submit \
   also rejects Isaac Sim 6.2's `idna-ssl==1.1.0`, which has no usable
   wheel. A compatible upstream release or an approved binary source is
   needed; no alternate lock, source build or dependency omission added.
+  Official PyPI/NVIDIA index and upstream release metadata exposed no
+  matching Lab or ANTLR wheel source. The two approved local wheels
+  could install as direct references, but uv recorded an archive
+  origin, not a VCS commit (even with the approved SHA256 in the URL).
+  A future wheel source must also preserve verifiable revision identity
+  for the runtime and Viser checks; a version-only install is not enough.
   Receipts: `/tmp/opencode/nexuml-package-lane.quhTJJaf/` and
-  `/tmp/opencode/nexuml-staged-kitless-lock-Jkfajr/`.
+  `/tmp/opencode/nexuml-staged-kitless-lock-Jkfajr/`. Archive origin:
+  `/tmp/opencode/nexuml-direct-wheel-provenance-ZxfpqH/`.
 - CUDA learner plus native CUDA rollout actor resumed on one shared GPU
   from a partial checkpoint: fresh actor identity, exact restored policy
   and Adam state, policy version 1 in the fresh collector, CPU transport,
