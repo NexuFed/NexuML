@@ -332,6 +332,7 @@ profile, not a learning-quality comparison or a speedup claim.
 All four opt-in Cartpole profile lanes passed in 62.62 s:
 `NEXUML_RUN_SIMULATOR_TESTS=1 .venv/bin/python -m pytest -q -ra tests/fixtures/test_mujoco_warp_profile.py`.
 Source, lock, phase and GPU receipts:
-`/tmp/opencode/nex212-cartpole-ray-profile-dfEXwr/`. Split-GPU and
-multi-node timings, network bytes, and grouped native rollouts remain
-unqualified; task 3.5 stays open.
+`/tmp/opencode/nex212-cartpole-ray-profile-dfEXwr/`. The later
+[matched cluster profile](distributed-progress.md#matched-cluster-topology-profile)
+compares direct CUDA, remote GPU collection and co-located two-node DDP.
+It does not establish same-host split-GPU or grouped native rollouts.

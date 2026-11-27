@@ -244,6 +244,34 @@ for mode in direct ray; do
 done
 ```
 
+### Matched cluster topology profile
+
+`nex212-native-profile-f06ddadd` reused the binary Newton/MJWarp Cartpole
+profile with 16 total environments, 512 global frames per batch, 4,096
+frames and 64 optimizer steps. Direct and remote used the same RTX 4070
+learner; the two-node DDP lane used the same RTX 4000 Ada and RTX 5080
+nodes as the two remote collectors.
+
+| Layout | Warm frames/s | Collect/update ms | Logical rollout bytes | Batch transfer ms | Learner CUDA reserved |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Direct CUDA | 7,750 | 52.5 / 13.6 | 33,792 on GPU | 0.018, no host staging | 22 MiB |
+| Two Ray collectors + CUDA learner | 3,420 | 85.1 / 43.3 | 41,984 through Ray | 0.323 CPU-to-GPU | 22 MiB |
+| Two-node co-located DDP | 5,481 | 72.2 / 21.1 | 16,896 per GPU | 0.029, no host staging | 24 MiB per rank |
+
+Warm rates use median batch intervals after the first two batches;
+collect/update columns are separate medians. Ray published 5,128 logical
+weight bytes per batch to both collectors. These are tensor sizes and
+learner allocator peaks, not wire bytes or simulator/object-store peaks.
+The learners used matched task and frame geometry, not identical GPU
+models across layouts. This is one short systems run, not a learning
+quality or speedup claim. [The earlier one-host PhysX profile](ray-rollout-placement.md#matched-one-host-physx-profile-35-slice)
+contains GPU sampling, object-store cleanup and episode outcomes for that
+profile only. Same-host two-GPU split remains open under 2.2 and 2a.4.
+
+The job succeeded and all four owned collector and DDP actors stopped.
+Use the Jobs replay command below with the inputs, scripts and hashes in
+`/tmp/opencode/nexuml-ray-newton-topologies-BmMf6B/`.
+
 ## Visual and memory-pressure probes
 
 Native headless sensor and terminal-pixel oracles passed (**3 tests**).
@@ -299,7 +327,7 @@ NEXUML_RUN_SIMULATOR_TESTS=1 NEXUML_TEST_RAY_NATIVE_SNAPSHOT=1 \
 | 2.2 | Explicit GPU roles, validation, and TorchRL device transfers implemented | Separate-device and P2P receipts need a compatible GPU pair |
 | 2a.2–2a.3 | NCCL preflight and matched benchmark runnable | Two-node fit/resume, strong/weak scaling, fixed-global held-out outcomes and NCCL payloads measured; same-host peer still unqualified |
 | 2a.4 | Synthetic pressure, transfer and weight-parity fixture; public native RGB fit fixture | Co-located native image-input fit passes; split visual and large-model results unqualified |
-| 3.4–3.5 | Actor admission, CUDA learner, published weights and native checkpoint/recovery proven with local resources | Three-node fit, export and resume passed with a simulator-free GPU learner. Same-host transport measured; grouped Ray rollout unsupported |
+| 3.4–3.5 | Actor admission, CUDA learner, published weights and native checkpoint/recovery proven with local resources | Three-node fit, export and resume passed with a simulator-free GPU learner; matched direct, remote and two-node DDP rates measured. Grouped Ray rollout unsupported |
 | 4.4 | Rank-zero snapshots, separate process/Ray GPU evaluation and bounded cancellation | Native Kit-less PPO and separate-node GPU snapshot evaluation overlapped; final snapshot drained |
 | 4a.1, 4a.4, 4a.6 | Typed viewer selection, CLI mapping, native headless RGB and selected-rank/collector Viser routing tested | Live two-node Viser attach, disconnect and listener cleanup passed, including injected cancellation. Native WebRTC startup and client media remain open under 4a.4 |
 | 6.3 | Binary installed learner and prepared-image CI recipe retained; role interpreter selection implemented | Binary Kit-less profile passed on stock workers; full-Kit stock-worker dependency closure and remaining deployment profiles unqualified |
