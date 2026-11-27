@@ -41,6 +41,32 @@ def test_web_rtc_requires_requested_local_ports(monkeypatch):
             _isaaclab_webrtc.preflight(spec)
 
 
+def test_web_rtc_reports_listener_separately_from_media_socket(monkeypatch, capsys):
+    pytest.importorskip("psutil")
+    spec = WebRTCSpec(advertise_address="127.0.0.1", private_network=True)
+    with (
+        socket.socket(socket.AF_INET, socket.SOCK_STREAM) as signal,
+        socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as media,
+    ):
+        signal.bind(("127.0.0.1", 0))
+        media.bind(("127.0.0.1", 0))
+        signal_port, media_port = signal.getsockname()[1], media.getsockname()[1]
+        monkeypatch.setattr(_isaaclab_webrtc, "_SIGNAL_PORT", signal_port)
+        monkeypatch.setattr(_isaaclab_webrtc, "_MEDIA_PORT", media_port)
+        with pytest.raises(RuntimeError, match="did not open TCP signaling"):
+            _isaaclab_webrtc.report_endpoint(spec)
+
+        signal.listen()
+        _isaaclab_webrtc.report_endpoint(spec)
+        report = capsys.readouterr().out
+        assert f"TCP 127.0.0.1:{signal_port}" in report
+        assert f"UDP 127.0.0.1:{media_port}" in report
+
+        media.close()
+        _isaaclab_webrtc.report_endpoint(spec)
+        assert f"UDP awaiting client:{media_port}" in capsys.readouterr().out
+
+
 def test_stream_uses_minimal_experience_without_x11_presentation():
     from nexuml_library.environments._isaaclab_runtime import _launch_environment
 
