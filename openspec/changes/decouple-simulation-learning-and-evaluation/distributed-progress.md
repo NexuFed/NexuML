@@ -294,8 +294,10 @@ spec.interaction.environment = env.model_copy(
 ```
 
 **Multi-node independent collection (3.4/3.5) and CI profile (6.3):**
-require the trusted Jobs CA, approved binary native worker profile and
-two simultaneously schedulable GPU actor nodes plus a learner GPU.
+require an approved binary native worker profile and the three GPU roles.
+The [cluster follow-up](#cluster-follow-up) proved simultaneous admission;
+that probe did not run the collector or learner. Use the authenticated API
+tunnel below if external ingress trust is unavailable.
 Use the configured pool resources and inspect the actual actor nodes:
 logical indices are not proof of distinct placement. Grouped remote
 PhysX collection is still rejected; do not use the state reference
@@ -350,6 +352,54 @@ authorized episodes with a matching embodiment, calibrated controlled
 joints, units, timing and held-out splits were supplied. The
 [local-fit handoff](local-fit-handoff.md) names those prerequisites.
 Do not run a synthetic/real mix or physical control as a substitute.
+
+## Cluster follow-up
+
+Kubernetes API access and a loopback-only port-forward to the existing Ray
+dashboard allowed normal Jobs submissions without changing ingress trust or
+bypassing TLS on the external endpoint. Do not use this tunnel for WebRTC.
+
+- `nex212-gpu-roles-c11c8d68`: a `STRICT_SPREAD` reservation delivered
+  three distinct Ray nodes and three whole GPUs (RTX 5080, 4070 and 4000 Ada).
+  Each worker confirmed its assigned accelerator and device UUID. This
+  proves scheduler admission, not training. The probe released its owned
+  placement group. Receipts: `/tmp/opencode/nexuml-ray-gpu-admission-ZX4sW5/`.
+- `nex212-nccl-fabric-da7c3c56`: actual **two-node NCCL**, RTX 4070 and
+  RTX 5080, Torch 2.11.0+cu130, NCCL 2.28.9, network socket transport.
+  Scalar and 1 MiB all-reduces matched the exact sums on both GPUs.
+  The stock worker images were unchanged; Torch was installed from wheels
+  into job runtime environments. This does not prove native simulation or
+  replica updates. Receipts: `/tmp/opencode/nexuml-ray-nccl-plain-5sk1VB/`.
+- Initial prepared-image jobs were scheduled to GPU nodes but took longer
+  than the wait window to pull the image from Harbor. The isolated
+  WebRTC pod selected the existing ingress-deny policy; it did not get
+  past the image pull. No changes were made to the old workstation,
+  worker pools, nodes, or networking.
+- The Kit-less Newton/Ray profile resolves with binary wheels while
+  omitting the full Isaac Sim extra and its `idna-ssl` dependency. The
+  reviewed Lab and ANTLR wheel hashes matched; the Lab install retained
+  genuine VCS metadata via the existing offline cache workflow. See
+  `/tmp/opencode/nexuml-kitless-binary-nik4LR/` for the hash-qualified
+  dependency list. This does not establish a binary PhysX worker profile.
+
+To rerun the two-node NCCL probe, use one terminal for the authenticated
+Kubernetes tunnel and another for the submission:
+
+```bash
+kubectl -n ray-cluster port-forward --address 127.0.0.1 \
+  svc/ray-cluster-kuberay-head-svc 18265:8265
+```
+
+```bash
+input=$(mktemp -d /tmp/opencode/nexuml-peer-input-XXXXXX)
+mkdir -p "$input/scripts/isaaclab"
+cp scripts/isaaclab/nccl_preflight.py "$input/scripts/isaaclab/"
+cp tests/fixtures/ray_nccl_probe.py "$input/"
+env -u RAY_ADDRESS -u RAY_API_SERVER_ADDRESS .venv/bin/ray job submit \
+  --address http://127.0.0.1:18265 --working-dir "$input" --entrypoint-num-cpus 0.1 \
+  --runtime-env-json '{"env_vars":{"UV_CACHE_DIR":"/mnt/data/uv-cache"}}' \
+  -- timeout -k 15s 890s python -u ray_nccl_probe.py --pool-resource pool_gpu_workers
+```
 
 ## Post-merge checks
 

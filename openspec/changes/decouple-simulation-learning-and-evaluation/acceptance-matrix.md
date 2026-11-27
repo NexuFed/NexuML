@@ -16,7 +16,7 @@ limits. The evidence below does not broaden the historical lanes.
 | --- | --- |
 | Rank-local PPO, CPU/Gloo | Pass on two real ranks; matched single-process GAE/minibatches, actor and critic synchronization, fresh checkpoint continuation and coordinated rollout failure/cancellation. |
 | Ray Train frame lifecycle | Pass on two real same-host CPU workers and separately on one CUDA rank with Kit-less Isaac Newton/Warp; exports and fresh resume. Full Kit on Ray Train's worker thread is unsupported. |
-| CUDA NCCL | Scalar and 1 MiB collectives pass at one rank. Peer NCCL and multi-rank native CUDA are unverified; only one compatible GPU was available locally. |
+| CUDA NCCL | Scalar and 1 MiB collectives pass locally at one rank. The [cluster follow-up](distributed-progress.md#cluster-follow-up) also passed both collectives on two distinct GPU nodes. This is not native CUDA PPO. |
 | Independent native snapshot | Pass on a separate process and on a whole-GPU Ray task. No simultaneous native learner/evaluator multi-GPU claim. |
 | CUDA learner with a CUDA Ray collector | Pass for synchronous transport with both sharing one physical GPU. Split, separately placed inference and multi-node actor layouts remain unverified. |
 | Large-width native SO-101 throughput | Pass for measurement, not for the 90% target. Median 28,575 / 99,015 / 283,886 frames/s at widths 256 / 1,024 / 4,096. |
