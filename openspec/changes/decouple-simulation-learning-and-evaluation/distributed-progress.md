@@ -299,7 +299,7 @@ NEXUML_RUN_SIMULATOR_TESTS=1 NEXUML_TEST_RAY_NATIVE_SNAPSHOT=1 \
 | 2.2 | Explicit GPU roles, validation, and TorchRL device transfers implemented | Separate-device and P2P receipts need a compatible GPU pair |
 | 2a.2–2a.3 | NCCL preflight and matched benchmark runnable | Two-node fit/resume, strong/weak scaling, fixed-global held-out outcomes and NCCL payloads measured; same-host peer still unqualified |
 | 2a.4 | Synthetic pressure, transfer and weight-parity fixture; public native RGB fit fixture | Co-located native image-input fit passes; split visual and large-model results unqualified |
-| 3.4–3.5 | Actor admission, CUDA learner, published weights and native checkpoint/recovery proven with local resources | Three roles admitted and both native collectors started; default TorchRL rendezvous actor could not import on the stock head. No multi-node rollout pass yet; grouped rollout unsupported |
+| 3.4–3.5 | Actor admission, CUDA learner, published weights and native checkpoint/recovery proven with local resources | Three-node native fit and resume exercised; strict simulator-free learner check still separate. Grouped Ray rollout unsupported |
 | 4.4 | Rank-zero snapshots, separate process/Ray GPU evaluation and bounded cancellation | Native Kit-less PPO and separate-node GPU snapshot evaluation overlapped; final snapshot drained |
 | 4a.1, 4a.4, 4a.6 | Typed viewer selection, CLI mapping, native headless RGB and selected-rank/collector Viser routing tested | Live two-node Viser attach, disconnect and listener cleanup passed, including injected cancellation. Native WebRTC startup and client media remain open under 4a.4 |
 | 6.3 | Binary installed learner and prepared-image CI recipe retained; role interpreter selection implemented | Stock-worker native wheels and matching deployed role profiles unqualified |
@@ -536,6 +536,21 @@ bypassing TLS on the external endpoint. Do not use this tunnel for WebRTC.
   16-step evaluation. This was one native learner, not an overlap test
   with multiple DDP ranks. Submission, hashes and logs:
   `/tmp/opencode/nexuml-ray-native-eval-modules-wCUBFF/`.
+- `nex212-newton-split-2ebe664f`: two whole-GPU Newton/MJWarp collectors
+  and the CUDA learner used three distinct Ray nodes. The fit reached
+  128 frames/eight optimizer steps; independent actor identities resumed
+  to 192 frames/12 steps. Batches crossed the object store on CPU and
+  reached PPO on CUDA with complete versions `[1, 2, 1]`; the Ray state
+  API confirmed all four fit/resume actors stopped. This used one Python
+  prefix for both roles. A post-fit assertion that no simulator module
+  had been imported failed: TorchRL's optional `mujoco.mjx` discovery
+  imports the installed `mujoco` parent package even without building a
+  simulator. The job failed that assertion, not its fit/resume assertions.
+  Separate learner dependency isolation remains a distinct gate.
+  Receipt: `/tmp/opencode/nexuml-ray-newton-publication-tKLqO8/`.
+  Earlier attempts failed the inherited working directory or TorchRL's
+  default Gloo rendezvous actor import, not GPU capacity. The current
+  adapter publishes weights through the object store without that actor.
 
 - `nex212-peer-d12f1247`: two native CUDA ranks ran Newton/MJWarp with
   Viser on rank 1 only. Chromium connected through an authenticated
