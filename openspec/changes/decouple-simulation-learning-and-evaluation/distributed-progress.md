@@ -211,18 +211,19 @@ NEXUML_RUN_SIMULATOR_TESTS=1 NEXUML_TEST_RAY_NATIVE_SNAPSHOT=1 \
 | Task | Software status | Live status |
 | --- | --- | --- |
 | 2.2 | Explicit GPU roles, validation, and TorchRL device transfers implemented | Separate-device and P2P receipts need a compatible GPU pair |
-| 2a.2–2a.3 | NCCL preflight and matched benchmark runnable | Single GPU passes functional checks; peer scaling, collective bytes and interference unmeasured |
+| 2a.2–2a.3 | NCCL preflight and matched benchmark runnable | Native peer fit/resume passed on two nodes via torchrun and Ray Train; same-host peer, scaling and collective-byte benchmarks not established |
 | 2a.4 | Synthetic pressure, transfer and weight-parity fixture; public native RGB fit fixture | Co-located native image-input fit passes; split visual and large-model results unqualified |
 | 3.4–3.5 | Actor admission, CUDA learner, published weights and native checkpoint/recovery proven with local resources | Two distinct collector nodes plus learner GPU never allocated; remote grouped rollout remains unsupported |
 | 4.4 | Rank-zero snapshots, separate process/Ray GPU evaluation and bounded cancellation | Native snapshots pass; native fit/eval overlap on distinct devices unverified |
-| 4a.1, 4a.4, 4a.6 | Typed WebRTC preflight and selected-rank/collector Viser routing | Native WebRTC startup failed; external media, forwarded X11 and actual distributed spectator unverified |
+| 4a.1, 4a.4, 4a.6 | Typed WebRTC preflight and selected-rank/collector Viser routing | Live two-node selected-rank Viser attach, disconnect and normal cleanup passed; cancellation and overhead still open. WebRTC startup failed; external media and forwarded X11 unqualified |
 | 6.3 | Binary installed learner and prepared-image CI recipe retained; role interpreter selection implemented | Stock-worker native wheels and matching deployed role profiles unqualified |
 | 1b, 6.2a | Existing simulator-only SDK and recipe validation retained | Real ROS 2 proof needs authorized matching data |
 
-**Peer NCCL and co-located native DDP:** requires two compatible GPUs.
-On an allocated worker with two visible GPUs, run the actual collective
-first. The same preflight can be launched across nodes using your approved
-torchrun rendezvous instead of `--standalone`.
+**Same-host peer NCCL and co-located native DDP:** requires two compatible
+GPUs in one worker, not the two-node topology already tested. On an
+allocated worker with two visible GPUs, run the actual collective first.
+The same preflight can be launched across nodes using an approved torchrun
+rendezvous instead of `--standalone`.
 
 ```bash
 .venv/bin/python -m torch.distributed.run --standalone --nproc-per-node=2 \
@@ -370,6 +371,28 @@ bypassing TLS on the external endpoint. Do not use this tunnel for WebRTC.
   The stock worker images were unchanged; Torch was installed from wheels
   into job runtime environments. This does not prove native simulation or
   replica updates. Receipts: `/tmp/opencode/nexuml-ray-nccl-plain-5sk1VB/`.
+- `nex212-peer-e1608057`: **two-node native PhysX PPO via torchrun**, using
+  the pinned workstation image and installed NexuML wheels on two RTX
+  4000 Ada pods. Peer collectives ran before Isaac startup. Eight native
+  environments per rank retained rollout/action tensors on CUDA; actor
+  and critic parameters matched bit-for-bit across ranks after each
+  global batch. Training reached 256 frames/eight optimizer steps and
+  exported only on rank zero. A fresh public-worker invocation resumed
+  to 384 frames, with seeds 49 and 57 rather than 17 and 25. Both contexts
+  cleared and both jobs completed. Rank one's torchrun agent warned about
+  the TCPStore exit barrier after the resume; this did not prevent either
+  completion receipt. This is not same-host CUDA P2P or Ray Train evidence.
+  Setup, proof scripts, wheel hashes, placement and cleanup receipts:
+  `/tmp/opencode/nexuml-pod-physx-peer-cached-r8xd2J/`. From the repository
+  root rerun `bash "$EVIDENCE/run-pods.sh" "$EVIDENCE"` using that receipt
+  directory and substituting a currently approved cached RTX worker in
+  `job_manifest.py` if needed.
+- A separate two-pod PhysX run injected a native step error on rank 1
+  before the first PPO update. Rank 0 reported a collective rollout
+  failure naming rank 1; both simulators cleared and both torchrun
+  processes exited nonzero before the deadline. The two owned Jobs and
+  their config map were removed.
+  Receipts: `/tmp/opencode/nexuml-pod-ddp-failure-u1KcXp/`.
 - Initial prepared-image jobs were scheduled to GPU nodes but took longer
   than the wait window to pull the image from Harbor. An extended
   attempt verified the pinned image and CUDA runtime on one RTX 4000
@@ -394,6 +417,25 @@ bypassing TLS on the external endpoint. Do not use this tunnel for WebRTC.
   Ray Train's placement-group cleaner inherited the GPU-only interpreter
   and could not launch on the unmounted stock head; the first fit was
   intentionally stopped. This does not establish a binary PhysX profile.
+- `nex212-kitless-ddp-37b358db`: **two CUDA Ray Train ranks** ran
+  Kit-less Newton/MJWarp Cartpole, 256 global frames/eight optimizer
+  steps, and resumed from the Ray-staged checkpoint to 384 frames/12
+  steps with fresh simulators. The job-local command launched the
+  verified Python prefix on training workers and the stock Ray Python
+  on the head where Ray Train's placement cleaner runs. No base
+  interpreter installs or runtime image changes. Reproduction and
+  install, fit and resume receipts:
+  `/tmp/opencode/nexuml-kitless-head-safe-IUn2Cj/`.
+- `nex212-peer-d12f1247`: two native CUDA ranks ran Newton/MJWarp with
+  Viser on rank 1 only. Chromium connected through an authenticated
+  loopback Kubernetes tunnel; rank 1 saw the client then its disconnect,
+  and the browser exposed no simulator mutation controls. The visible
+  subset was bounded to two environments. Both ranks finished 256 frames
+  and eight optimizer steps with matching weights; the listener closed
+  before the job exited. The browser handshake deliberately pauses the
+  acceptance harness, so this does not measure spectator overhead.
+  Logs, screenshot and replayable harness:
+  `/tmp/opencode/nexuml-pod-ddp-viser-handshake-tlzKGz/`.
 
 To rerun the two-node NCCL probe, use one terminal for the authenticated
 Kubernetes tunnel and another for the submission:

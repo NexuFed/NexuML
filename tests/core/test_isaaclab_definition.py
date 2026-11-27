@@ -480,8 +480,9 @@ def test_gpu_ray_preflight_keeps_learner_placement_separate(training):
         definition.validate_training(training, device="cuda:0")
     training.accelerator = "gpu"
     definition.validate_training(training, device="cuda:0")
-    with pytest.raises(ValueError, match="single-agent PhysX state"):
-        definition.model_copy(update={"physics": "newton_mjwarp"}).validate_training(training)
+    definition.model_copy(update={"physics": "newton_mjwarp"}).validate_training(training)
+    with pytest.raises(ValueError, match="single-agent state with PhysX or Newton/MJWarp"):
+        definition.model_copy(update={"physics": "ovphysx"}).validate_training(training)
     training.collector.sync = False
     with pytest.raises(ValueError, match="synchronous updates every batch"):
         definition.validate_training(training)

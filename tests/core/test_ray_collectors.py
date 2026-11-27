@@ -65,7 +65,7 @@ def local_ray(request, monkeypatch):
             ray.init(
                 address="local",
                 num_cpus=2,
-                num_gpus=int(profile in ("gpu", "shared-gpu")),
+                num_gpus=int(profile in ("gpu", "shared-gpu", "newton-gpu")),
                 include_dashboard=False,
                 resources={"snapshot-test": 1},
                 labels={"nexuml-test-placement": "cpu-rollout"},
@@ -492,6 +492,15 @@ def test_ray_cuda_learner_synchronizes_cpu_workers(local_ray, tmp_path, monkeypa
                 pytest.mark.requires_optional("isaaclab"),
             ],
         ),
+        pytest.param(
+            "newton-gpu",
+            id="newton-gpu-worker-cuda-learner-transport",
+            marks=[
+                pytest.mark.requires_gpu,
+                pytest.mark.requires_simulator,
+                pytest.mark.requires_optional("isaaclab"),
+            ],
+        ),
     ],
     indirect=True,
 )
@@ -504,6 +513,11 @@ def test_ray_checkpoint_resumes_with_fresh_workers(local_ray, tmp_path, request,
         from nexuml_library.scenarios.reinforcement.isaaclab import isaac_cartpole_ppo
 
         spec = isaac_cartpole_ppo(total_frames=32, frames_per_batch=16, num_envs=2)
+        if request.node.callspec.params["local_ray"] == "newton-gpu":
+            assert spec.interaction is not None
+            spec.interaction.environment = spec.interaction.environment.model_copy(
+                update={"physics": "newton_mjwarp"}
+            )
         # One actual GPU can prove the CUDA transport; it is not separate-GPU placement.
         spec.training.accelerator = (
             "gpu" if request.node.callspec.id.endswith("-transport") else "cpu"

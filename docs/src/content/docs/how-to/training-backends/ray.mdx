@@ -478,17 +478,17 @@ cluster-wide Python command. Keep the command usable on non-training nodes
 as well; each training rank still needs its prepared CUDA environment and a
 whole GPU reservation.
 
-The qualified distributed learner is single-agent PPO on two CPU/Gloo
-ranks, including same-host Ray Train. Ray Train runs user code on a
-background thread; the pinned Kit launcher requires a main thread. Select
-an explicitly Kit-less Isaac configuration on Ray Train. Use torchrun for
-Kit PhysX, with the same rank-local learner. To resume an external torchrun
+Single-agent PPO passed on two CPU/Gloo ranks and on two GPU nodes via
+Ray Train with Kit-less Newton/MJWarp. Kit PhysX passed on two GPU nodes
+via torchrun with the same rank-local learner. Ray Train runs user code on
+a background thread; the pinned Kit launcher requires a main thread.
+To resume an external torchrun
 job, pass `--trainer-checkpoint /path/to/lightning.ckpt` to
 `nexuml.execution.worker`; every rank must be able to read the same trusted
 checkpoint. An inference package is not a trainer checkpoint.
-CUDA DDP requires separate peer
-NCCL and native acceptance. Run this on the **allocated workers**, before
-loading Isaac (use the same rendezvous for multi-node torchrun):
+Before trying a new CUDA topology, run the peer NCCL check on the
+**allocated workers**, before loading Isaac (use a shared rendezvous
+for multi-node torchrun):
 
 ```bash
 .venv/bin/python -m torch.distributed.run --standalone --nproc-per-node=2 \

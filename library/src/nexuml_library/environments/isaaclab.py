@@ -289,12 +289,15 @@ class IsaacLabEnvironment(EnvironmentDefinition):
             ):
                 raise ValueError("Ray Isaac Viser requires an explicit in-range train_rank")
             if (
-                self.physics != "isaacsim_physx"
+                self.physics not in ("isaacsim_physx", "newton_mjwarp")
                 or self.arena_factory is not None
                 or contract.groups
                 or any(field.modality != "vector" for field in contract.observations.values())
             ):
-                raise ValueError("Isaac Lab Ray collection requires single-agent PhysX state")
+                raise ValueError(
+                    "Isaac Lab Ray collection requires single-agent state "
+                    "with PhysX or Newton/MJWarp"
+                )
         else:
             self._validate_direct_devices(training, device, learner_index)
         if ray_gpu and (not collector.sync or collector.policy_sync_interval_batches != 1):
