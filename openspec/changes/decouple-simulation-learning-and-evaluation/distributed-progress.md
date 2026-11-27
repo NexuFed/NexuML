@@ -652,10 +652,15 @@ were moving. The server recorded an established TCP 49100 connection on
 the advertised NetBird address and the policy process owning UDP 47998.
 This is decoded policy playback over the prepared private route, not
 editor video or a TCP-forwarding test. The editor was not interrupted.
-Earlier runs verified socket release on completion and cancellation;
-the client retry was still running at confirmation. The optional
-forwarded Windows X11 profile was unavailable. Exact launch scripts,
-logs and socket receipt: `/tmp/opencode/nexuml-cartpole-client-retry-RuWlWk/`.
+Earlier runs verified normal completion and graceful cancellation without
+a client. In the client retry, SIGTERM surfaced in a Kit async callback
+at the 30-minute process deadline, but the process did not exit within
+the 10-second grace window. The deadline wrapper sent SIGKILL (exit 137).
+Both sockets were released and the test Job was deleted; this does not
+qualify graceful shutdown after a client session. The editor remained
+ready. Optional forwarded Windows X11 was unavailable. Exact launch
+scripts, logs and socket receipt:
+`/tmp/opencode/nexuml-cartpole-client-retry-RuWlWk/`.
 
 **Real ROS 2 three-domain and mixed-objective proofs (1b/6.2a):** no
 authorized episodes with a matching embodiment, calibrated controlled
