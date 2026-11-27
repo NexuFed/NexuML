@@ -897,6 +897,35 @@ env -u RAY_ADDRESS -u RAY_API_SERVER_ADDRESS .venv/bin/ray job submit \
   profile keeps Kit PhysX, RTX and interactive playback while avoiding
   the kernel dependency. No packages were omitted.
   Source and metadata receipts: `/tmp/opencode/nexuml-idna-upstream.Qtil4Yjc/`.
+- A disposable copy of the whole workspace replaced only the Lab and
+  ANTLR artifact sources with the two reviewed local wheels and added a
+  Kit-less group (Lab without the `isaacsim` extra, CUDA Torch/torchvision).
+  `uv lock` generated one lock for that copy: 388 packages and no version
+  changes versus the checked-in lock. A fresh `uv sync --locked --no-build`
+  installed 238 dependencies without source builds or native package skips.
+  Both installed application wheels brought the count to 240;
+  `uv pip check` passed and Isaac Sim was absent. The unmodified runtime
+  rejected the wheel's ordinary archive origin. The runtime now verifies
+  the exact reviewed Lab wheel's SHA-256, its recorded files, and the
+  imported Lab entry point without generating fake VCS metadata.
+  The installed Kit-less Newton Cartpole fit and fresh-context resume
+  passed on CUDA: **32→48 frames, 8→12 optimizer steps**, both exports
+  reloaded, and both simulators closed.
+  Exact replay (requires the preserved generated lock, artifacts, and
+  cached dependency wheels):
+
+  ```bash
+  bash /tmp/opencode/nexuml-kitless-wheel-lock-rEiKHN/replay.sh
+  ```
+
+  The generated test lock is not tracked or a second runtime lock.
+  Removing the local wheel inputs made `uv lock --check --offline` and
+  even the simulator-free learner's `uv sync --locked --dry-run` fail on
+  metadata. As a result, the shared lock was not switched to local
+  paths. Stable delivery of these wheel inputs is still required for a
+  portable native worker install; full Kit additionally retains the
+  upstream `idna-ssl` edge. Viser, Arena and full Kit were not qualified
+  with the archive-origin path.
 - The prepared-image CI smoke now uses the image entrypoint and
   `/env/bin/python`, with checkout sources first on `PYTHONPATH` and
   pulls disabled. The previous checkout `.venv` command failed in a

@@ -2,6 +2,7 @@
 
 from collections.abc import Callable, Mapping
 from contextlib import contextmanager
+from hashlib import file_digest
 from importlib import import_module
 from importlib.metadata import distribution
 import json
@@ -15,6 +16,8 @@ from threading import current_thread, main_thread
 from time import monotonic_ns
 import traceback
 from typing import Any, cast
+from urllib.parse import unquote, urlsplit
+from zipfile import ZipFile
 
 import torch
 from tensordict import TensorDict, TensorDictBase
@@ -32,6 +35,10 @@ _process_definition = None
 _process_launcher = None
 _process_returning_close = False
 _active_runtime = None
+
+# Exact reviewed output for the pinned Lab revision (containers/isaac/artifacts.json).
+_LAB_WHEEL_SHA256 = "3ce4b0bfba6b0038b8e762785ab82ad458f764d424a07b4167010ef31b807399"
+_LAB_WHEEL_REVISION = "70ab24fec3eabf51222817db0cdb5a4e7133bd7e"
 
 _KIT_EDITOR_EXTENSIONS = (
     "omni.kit.window.stage",
@@ -230,6 +237,31 @@ def _register_arena(owner, definition, context, gym):
     return cfg
 
 
+def _local_lab_wheel_revision(installed, origin, source_file):
+    if "archive_info" not in origin:
+        return None
+    url = urlsplit(origin.get("url", ""))
+    if url.scheme != "file" or url.netloc:
+        return None
+    path = Path(unquote(url.path))
+    if not path.is_absolute() or path.suffix != ".whl" or not path.is_file():
+        return None
+    try:
+        with path.open("rb") as stream:
+            if file_digest(stream, "sha256").hexdigest() != _LAB_WHEEL_SHA256:
+                return None
+            with ZipFile(stream) as wheel:
+                original = wheel.read("isaaclab-3.0.0.dist-info/RECORD").decode().splitlines()
+                if Path(source_file).read_bytes() != wheel.read("isaaclab/__init__.py"):
+                    return None
+    except OSError:
+        return None
+    recorded = set((installed.read_text("RECORD") or "").splitlines())
+    if any(row not in recorded for row in original if not row.endswith(",,")):
+        return None
+    return _LAB_WHEEL_REVISION
+
+
 def _create_environment(owner, definition, context):
     global _process_definition, _process_launcher, _active_runtime
     if not _process_active:
@@ -300,6 +332,10 @@ def _create_environment(owner, definition, context):
     installed = distribution("isaaclab")
     origin = json.loads(installed.read_text("direct_url.json") or "{}")
     revision = origin.get("vcs_info", {}).get("commit_id")
+    if revision is None and "archive_info" in origin:
+        revision = _local_lab_wheel_revision(installed, origin, source_file)
+        if revision is None:
+            raise ValueError("Isaac Lab archive does not match the reviewed local wheel")
     if revision is not None:
         if (
             Path(str(installed.locate_file("isaaclab/__init__.py"))).resolve()
