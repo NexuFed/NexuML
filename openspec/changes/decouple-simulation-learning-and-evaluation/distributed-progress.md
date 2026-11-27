@@ -378,7 +378,7 @@ NEXUML_RUN_SIMULATOR_TESTS=1 NEXUML_TEST_RAY_NATIVE_SNAPSHOT=1 \
 | 3.4–3.5 | Actor admission, CUDA learner, published weights and native checkpoint/recovery proven with local resources | Three-node fit, export and resume passed with a simulator-free GPU learner; matched direct, remote and two-node DDP rates measured. Grouped Ray rollout unsupported |
 | 4.4 | Rank-zero snapshots, separate process/Ray GPU evaluation and bounded cancellation | Native Kit-less PPO and separate-node GPU snapshot evaluation overlapped; final snapshot drained |
 | 4a.1, 4a.4, 4a.6 | Typed viewer selection, restricted native Kit toolbar, endpoint admission, native headless RGB and selected-rank/collector Viser routing tested | Two-node Viser attach, disconnect and cancel passed. NVIDIA client decoded and displayed moving Cartpole policy playback via private NetBird. Socket release passed in separate runs. Forwarded Windows X11 remains unqualified. |
-| 6.3 | Generated workspace lock drives the installed CUDA learner smoke in existing opt-in GPU CI; role interpreter selection implemented | Staged binary Kit-less profile passed on stock workers; clean workspace-lock native worker installs and full-Kit dependency closure still unqualified |
+| 6.3 | One workspace lock pins official Isaac packages; existing opt-in GPU CI covers a simulator-free learner and the prepared Kit image | Fresh pod passed Newton fit/resume and headless PhysX playback in one environment. Upstream metadata conflicts remain; this does not qualify graphics or new stock-Ray placements. |
 | 1b, 6.2a | Existing simulator-only SDK, ROS 2 adapter and safety checks retained | Real-robot learning deferred, not passed; needs authorized matching data if revisited |
 
 **Same-host peer NCCL and co-located native DDP:** requires two compatible
@@ -882,6 +882,27 @@ overrides against upstream `isaacsim-kernel` (`urllib3`, `requests`)
 and `ovphysx` (`packaging`) pins. No new overrides or custom wheel
 inputs were added. Normal `uv sync` built `idna-ssl` and ANTLR from
 their upstream PyPI source distributions.
+
+The retry, `rglitza/nex212-isaac-official-e7evdb`, installed
+297 packages into an empty, pod-local environment with `--no-editable`.
+On an RTX 5080 (driver 580.126.20), the installed SDK fit and resumed
+Newton Cartpole from **32 to 48 CUDA frames** and **8 to 12 optimizer
+steps** with fresh native contexts, both exports reloaded, and no Kit
+on either fit. Using the same interpreter, a short PhysX fit started Kit
+and produced a policy that the installed `nexuml play --viewer headless`
+ran for **24 steps / 24 transitions**. The test finished successfully,
+the job was removed, and the editor remained ready.
+
+Replay inputs and complete logs:
+`/tmp/opencode/nexuml-official-isaac-pod-E7EVdb/` (`job.json`,
+`pod-run.sh`, `smoke.py`, `run.log`). The SeaweedFS checkout and lane
+receipts are under `nexuml/isaac-workstation/runs/nex212-isaac-official-e7evdb/`;
+the pod-local environment and cache were not retained. The retry still
+reported the same three `uv pip check` metadata conflicts; no override
+was added. This closes the clean-install and same-environment runtime
+check, not the full §6.3 acceptance: fresh-install windowed/WebRTC
+graphics and same-host split placement were not tested. The existing
+prepared graphics and previously qualified Ray lanes remain separate.
 
 ## Post-merge checks
 
