@@ -654,6 +654,11 @@ env -u RAY_ADDRESS -u RAY_API_SERVER_ADDRESS .venv/bin/ray job submit \
   604 subtests passed**. The final ordered actor graph checkpoint guard
   rejected changed actor definitions before collection and passed the
   focused PPO, grouped, evaluation and DDP suite (**172 passed, 15 skipped**).
+- The standard CPU suite at `5835df61` passed: **3,779 passed, 158 skipped,
+  604 subtests passed**. The separate real Ray admission/publication slice,
+  including partial admission with native-scope-style cleanup, passed
+  **3 tests** at `df8f86cb`. CPU suite log:
+  `/tmp/opencode/nexuml-decouple-final-cpu-WVutA9/suite.log`.
 - Focused type checks pass. The repository-wide type checker still reports
   115 diagnostics with the prepared runtime (including absent optional
   packages and existing fixture issues); the preceding tree reports 126.
