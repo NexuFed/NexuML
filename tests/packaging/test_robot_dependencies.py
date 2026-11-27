@@ -45,7 +45,7 @@ def test_native_source_and_backend_choices_are_only_root_tool_configuration():
     core = tomllib.loads(Path("pyproject.toml").read_text())
     library = tomllib.loads(Path("library/pyproject.toml").read_text())
     assert "uv" not in library.get("tool", {})
-    assert core["tool"]["uv"]["sources"]["isaaclab"]["rev"]
+    assert core["tool"]["uv"]["sources"]["isaaclab"] == {"index": "nvidia-pypi"}
     assert core["tool"]["uv"]["sources"]["torch"] == [
         {"index": "pytorch-cu130", "group": "native-sources"}
     ]

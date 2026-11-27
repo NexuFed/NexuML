@@ -38,6 +38,14 @@ Kit-less environment is needed: Newton with no Kit sensors or viewers leaves
 Kit unused. Isaac Sim PhysX still starts Kit even with `--viewer headless`.
 The existing prepared image remains the documented route for remote graphics.
 
+With this lock, `uv pip check` reports three accepted metadata conflicts.
+Isaac Sim 6.2 pins `urllib3==2.7.0` and `requests==2.32.3`; the workspace
+uses `urllib3==2.8.0` for Isaac Lab and `requests==2.34.2` for a security fix.
+OvPhysX requires `packaging<24`, but the shared lock uses `25.0` for
+compatibility with Ray and LeRobot. The cluster check passed Newton and
+headless Isaac Sim PhysX; it did not exercise OvPhysX. Investigate any
+additional discrepancies rather than ignoring `uv pip check` failures.
+
 ## Recorded remote qualification profile
 
 For Ubuntu 22.04 amd64 workers, the private setup helper supplies missing

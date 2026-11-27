@@ -108,10 +108,9 @@ Published requirements declare compatibility minimums, not our development
 Python/CUDA/Torch pins. The consuming uv project's root selects native sources,
 wheel indexes, approved overrides and a reproducible lock. This repository's
 `tool.uv` configuration is its standalone Python-3.12/cu130 validation selection;
-it is not inherited by downstream packages. The current Isaac Lab 3 source
-selection needs the pinned upstream aggregate-wheel builder until an appropriate
-release wheel is published. Other consumers must select a compatible native
-source themselves; genuine upstream wheel/API/ABI constraints still apply.
+it is not inherited by downstream packages. The workspace uses [NVIDIA's
+published Isaac Lab 3.0.0 package](/how-to/isaac-native-configuration/#install-from-the-workspace-lock).
+Other consumers must select a compatible native stack themselves.
 
 The standalone validation selection currently carries temporary consumer-root
 exceptions for packaging, Transformers, NumPy, urllib3 and USD. Sim's Requests
